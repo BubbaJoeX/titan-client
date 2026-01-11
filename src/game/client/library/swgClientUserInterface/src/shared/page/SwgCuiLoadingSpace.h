@@ -37,6 +37,7 @@ public:
 	virtual void   Notify                 (UINotificationServer *, UIBaseObject *, Code);
 	virtual void   OnButtonPressed        (UIWidget * context);
 	void           setupPage              (std::string const & planetName, StringId const & textId, StringId const & titleId, std::string const & picture);
+	void           setupPageRaw           (std::string const & planetName, std::string const & text, std::string const & title, std::string const & picture);
 
 private:
 	//disabled

@@ -221,6 +221,7 @@
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\shared\core\SwgCuiTcgManager.cpp" />
+    <ClCompile Include="..\..\src\shared\core\SwgCuiMotdFetcher.cpp" />
     <ClCompile Include="..\..\src\shared\core\SwgCuiWebBrowserManager.cpp" />
     <ClCompile Include="..\..\src\shared\page\SwgCuiAllTargets.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
@@ -925,6 +926,7 @@
     <ClInclude Include="..\..\src\shared\core\SwgCuiMediatorTypes.h" />
     <ClInclude Include="..\..\src\shared\core\SwgCuiServerData.h" />
     <ClInclude Include="..\..\src\shared\core\SwgCuiTcgManager.h" />
+    <ClInclude Include="..\..\src\shared\core\SwgCuiMotdFetcher.h" />
     <ClInclude Include="..\..\src\shared\core\SwgCuiWebBrowserManager.h" />
     <ClInclude Include="..\..\src\shared\page\SwgCuiAllTargets.h" />
     <ClInclude Include="..\..\src\shared\page\SwgCuiAllTargetsGround.h" />

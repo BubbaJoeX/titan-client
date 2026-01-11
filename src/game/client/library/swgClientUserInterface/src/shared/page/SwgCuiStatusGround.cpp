@@ -433,7 +433,7 @@ namespace SwgCuiStatusGroundNamespace
 				{
 					s.push_back('\n');
 				}
-				s += Unicode::narrowToWide("(God Mode)");
+				s += Unicode::narrowToWide("*");
 			}
 		}
 	}

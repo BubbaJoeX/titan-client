@@ -906,7 +906,7 @@ void SwgCuiExpertise::updateExpertiseDisplayName()
 	Unicode::String localizedDisplayDescription;
 	ClientExpertiseManager::localizeExpertiseDescription(m_currentBaseSkillName, localizedDisplayDescription);
 	if (PlayerObject::isAdmin()) {
-		localizedDisplayDescription.append(Unicode::narrowToWide("\n\\#ffff00 ***God Mode Override is On***\\#."));
+		localizedDisplayDescription.append(Unicode::narrowToWide("\n\\#ffff00 ***Game Master Override is On***\\#."));
 	}
 	m_expertiseDisplayDescription->SetLocalText(localizedDisplayDescription);
 	

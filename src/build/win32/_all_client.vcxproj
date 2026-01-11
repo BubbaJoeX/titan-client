@@ -84,6 +84,7 @@
     </Midl>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\game\client\library\swgClientUserInterface\include\public\swgClientUserInterface\SwgCuiMotdFetcher.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

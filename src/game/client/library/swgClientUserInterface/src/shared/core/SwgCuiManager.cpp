@@ -65,6 +65,7 @@
 #include "swgClientUserInterface/SwgCuiLoadingSpace.h"
 #include "swgClientUserInterface/SwgCuiMediatorFactorySetup.h"
 #include "swgClientUserInterface/SwgCuiMediatorTypes.h"
+#include "swgClientUserInterface/SwgCuiMotdFetcher.h"
 #include "swgClientUserInterface/SwgCuiQuestHelper.h"
 #include "swgClientUserInterface/SwgCuiServerData.h"
 #include "swgClientUserInterface/SwgCuiStatusGround.h"
@@ -109,28 +110,46 @@ namespace SwgCuiManagerNamespace
 
 		std::string const & motdTable = ConfigClientUserInterface::getMessageOfTheDayTable();
 
+		// Check for web-fetched MOTD first on initial loading screen
+		bool useWebMotd = CuiLoadingManager::isInitialLoadingScreen() && SwgCuiMotdFetcher::hasMotd();
+
 		//show motd for the first loading screen
-		if (s_showingMotd || (CuiLoadingManager::isInitialLoadingScreen() && !motdTable.empty()))
+		if (s_showingMotd || useWebMotd || (CuiLoadingManager::isInitialLoadingScreen() && !motdTable.empty()))
 		{
-			textId  = StringId(motdTable, "text");
-			titleId = StringId(motdTable, "title");
-			picture = Unicode::wideToNarrow(StringId(motdTable, "image").localize());
-
-			if (!picture.empty())
-			{
-				if (!TreeFile::exists(picture.c_str()))
-				{
-					WARNING(true, ("MOTD picture [%s] does not exist (fix in %s)", picture.c_str(), motdTable.c_str()));
-				}
-			}
-
 			s_showingMotd = true;
 			SwgCuiLoadingSpace * const loadingSpace = dynamic_cast<SwgCuiLoadingSpace*>(CuiMediatorFactory::get (CuiMediatorTypes::LoadingSpace));
+
 			if(loadingSpace)
 			{
 				if(!CuiLoadingManager::firstLoadingScreenHasBeenShown() || s_showingEmptyPage)
 				{
-					loadingSpace->setupPage(planetName, textId, titleId, picture);
+					// Prefer web-fetched MOTD if available
+					if (SwgCuiMotdFetcher::hasMotd())
+					{
+						loadingSpace->setupPageRaw(
+							planetName,
+							SwgCuiMotdFetcher::getMotdText(),
+							SwgCuiMotdFetcher::getMotdTitle(),
+							SwgCuiMotdFetcher::getMotdImage()
+						);
+					}
+					else
+					{
+						// Fallback to localized string table MOTD
+						textId  = StringId(motdTable, "text");
+						titleId = StringId(motdTable, "title");
+						picture = Unicode::wideToNarrow(StringId(motdTable, "image").localize());
+
+						if (!picture.empty())
+						{
+							if (!TreeFile::exists(picture.c_str()))
+							{
+								WARNING(true, ("MOTD picture [%s] does not exist (fix in %s)", picture.c_str(), motdTable.c_str()));
+							}
+						}
+
+						loadingSpace->setupPage(planetName, textId, titleId, picture);
+					}
 				}
 			}
 			IGNORE_RETURN(CuiMediatorFactory::activate (CuiMediatorTypes::LoadingSpace));
@@ -470,6 +489,7 @@ void SwgCuiManager::install ()
 
 	SwgCuiMediatorFactorySetup::install();
 	SwgCuiAvatarCreationHelper::install();
+	SwgCuiMotdFetcher::install();
 	SwgCuiQuestHelper::install();
 	SwgCuiWebBrowserManager::install();
 	SwgCuiTcgManager::install();
@@ -502,6 +522,7 @@ void SwgCuiManager::remove ()
 	
 	SwgCuiWebBrowserManager::remove();
 	SwgCuiTcgManager::remove ();
+	SwgCuiMotdFetcher::remove ();
 	SwgCuiQuestHelper::remove ();
 	SwgCuiAvatarCreationHelper::remove ();
 	SwgCuiMediatorFactorySetup::remove ();
@@ -550,6 +571,7 @@ void SwgCuiManager::update (float deltaTimeSecs)
 
 	SwgCuiWebBrowserManager::update(deltaTimeSecs);
 	SwgCuiTcgManager::update(deltaTimeSecs);
+	SwgCuiMotdFetcher::update(deltaTimeSecs);
 	
 	if (s_checkHud)
 	{

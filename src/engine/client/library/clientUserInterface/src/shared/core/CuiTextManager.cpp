@@ -278,14 +278,14 @@ void  CuiTextManager::render (UICanvas & canvas)
 		{
 			init = true;			
 			godinfo_tq.worldDistance     = 0.0f;
-			godinfo_tq.opacity           = 1.0f;
+			godinfo_tq.opacity           = 0.7f;
 			godinfo_tq.backgroundOpacity = 0.0f;
-			godinfo_tq.textColor         = UIColor::yellow;
-			godinfo_tq.textWeight        = CuiTextManagerTextEnqueueInfo::TW_starwars;
-			godinfo_tq.textSize          = 3.0f;
+			godinfo_tq.textColor         = UIColor::maroon;
+			godinfo_tq.textWeight        = CuiTextManagerTextEnqueueInfo::TW_heavy;
+			godinfo_tq.textSize          = 0.6f;
 		}
 			
-		static TextInfo godinfo (Unicode::narrowToWide ("GOD MODE"), 1.0f, TextChatInfo (), godinfo_tq);
+		static TextInfo godinfo (Unicode::narrowToWide ("GAME MASTER"), 0.6f, TextChatInfo (), godinfo_tq);
 
 		godinfo.m_pt.x = s_screenSize.x / 2;
 		godinfo.m_info.screenVect.x = static_cast<float>(godinfo.m_pt.x);

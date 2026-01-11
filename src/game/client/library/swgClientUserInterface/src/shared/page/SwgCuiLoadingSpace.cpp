@@ -196,6 +196,46 @@ void SwgCuiLoadingSpace::setupPage(std::string const & planetName, StringId cons
 
 //----------------------------------------------------------------------
 
+void SwgCuiLoadingSpace::setupPageRaw(std::string const & planetName, std::string const & text, std::string const & title, std::string const & picture)
+{
+	setupBackground(planetName);
+
+	std::string localPicture(picture);
+
+	if (localPicture.empty())
+	{
+		localPicture = cms_defaultPicture;
+	}
+
+	// Set title text directly
+	if (!title.empty())
+	{
+		m_textScreenshotName->SetText(Unicode::narrowToWide(title));
+	}
+	else
+	{
+		m_textScreenshotName->Clear();
+	}
+
+	// Set body text directly
+	if (!text.empty())
+	{
+		m_text->SetText(Unicode::narrowToWide(text));
+	}
+	else
+	{
+		m_text->Clear();
+	}
+
+	// Set picture
+	std::string screenshot = localPicture;
+	if (!TreeFile::exists((cms_texturePre + localPicture + cms_texturePost).c_str()))
+		screenshot = cms_defaultPicture;
+	IGNORE_RETURN(m_image->SetSourceResource(Unicode::narrowToWide(screenshot)));
+}
+
+//----------------------------------------------------------------------
+
 void SwgCuiLoadingSpace::update()
 {
 	int const percent = CuiLoadingManager::getFullscreenLoadingPercent ();
