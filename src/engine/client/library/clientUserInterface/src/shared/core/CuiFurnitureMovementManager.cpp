@@ -13,6 +13,7 @@
 #include "clientDirectInput/DirectInput.h"
 #include "clientGame/ClientCommandQueue.h"
 #include "clientGame/ClientObject.h"
+#include "clientGame/ClientWorld.h"
 #include "clientGame/CreatureObject.h"
 #include "clientGame/FreeCamera.h"
 #include "clientGame/Game.h"
@@ -506,8 +507,9 @@ bool CuiFurnitureMovementManager::processMouseInput(int x, int y, bool leftButto
 					{
 						float const panSensitivity = 0.005f;
 						FreeCamera::Info info = freeCamera->getInfo();
-						info.yaw -= static_cast<float>(deltaX) * panSensitivity;
-						info.pitch -= static_cast<float>(deltaY) * panSensitivity;
+						// Inverted panning controls
+						info.yaw += static_cast<float>(deltaX) * panSensitivity;
+						info.pitch += static_cast<float>(deltaY) * panSensitivity;
 						
 						// Clamp pitch
 						if (info.pitch > PI * 0.49f) info.pitch = PI * 0.49f;
@@ -540,7 +542,7 @@ bool CuiFurnitureMovementManager::processMouseInput(int x, int y, bool leftButto
 		return true;
 	}
 	
-	// Handle mouse down - start drag
+	// Handle mouse down - start drag or switch focus
 	if (leftButton && !s_isDragging)
 	{
 		GizmoComponent const hit = hitTestGizmo(x, y, camera, objectPosition, gizmoSize);
@@ -552,6 +554,66 @@ bool CuiFurnitureMovementManager::processMouseInput(int x, int y, bool leftButto
 			s_lastMouseY = y;
 			s_dragStartPosition = objectPosition;
 			return true;
+		}
+		
+		// Click didn't hit gizmo - check if we clicked another object to switch focus
+		if (s_decoratorCameraActive)
+		{
+			// Ray cast to find clicked object
+			Vector const start = camera->getPosition_w();
+			Vector const direction = camera->rotate_o2w(camera->reverseProjectInScreenSpace(x, y));
+			Vector const end = start + direction * 256.0f;
+			
+			ClientWorld::ObjectVector objectsInRange;
+			ClientWorld::findObjectsInRange(start, 256.0f, objectsInRange);
+			
+			ClientObject * closestHit = NULL;
+			float closestDist = 999999.0f;
+			
+			for (ClientWorld::ObjectVector::iterator it = objectsInRange.begin(); it != objectsInRange.end(); ++it)
+			{
+				Object * const testObj = *it;
+				if (!testObj || testObj == obj) continue;
+				
+				ClientObject * const clientObj = testObj->asClientObject();
+				if (!clientObj) continue;
+				
+				// Simple distance check to ray
+				Vector const toObj = testObj->getPosition_w() - start;
+				float const t = toObj.dot(direction);
+				if (t < 0.0f) continue;
+				
+				Vector const closest = start + direction * t;
+				float const dist = closest.magnitudeBetween(testObj->getPosition_w());
+				
+				float const objRadius = testObj->getAppearanceSphereRadius();
+				if (dist < objRadius && t < closestDist)
+				{
+					closestDist = t;
+					closestHit = clientObj;
+				}
+			}
+			
+			if (closestHit)
+			{
+				// Switch to this object
+				NetworkId const & newId = closestHit->getNetworkId();
+				if (newId.isValid())
+				{
+					// Apply current changes first
+					applyMovementToServer();
+					
+					// Switch to new object
+					s_selectedFurniture = newId;
+					s_originalTransform = closestHit->getTransform_o2p();
+					s_cachedObjectRadius = getObjectRadius(closestHit);
+					resetDeltas();
+					resetGizmoState();
+					
+					CuiSystemMessageManager::sendFakeSystemMessage(Unicode::narrowToWide("Switched to new object."));
+					return true;
+				}
+			}
 		}
 	}
 	
@@ -742,47 +804,76 @@ void CuiFurnitureMovementManager::render()
 		// Z axis (Blue)
 		drawThickLine(Vector::zero, Vector(0.0f, 0.0f, gizmoSize), zColor);
 		
-		// Draw axis endpoint cubes
-		float const cubeSize = gizmoSize * 0.12f;
+		// Draw larger axis endpoint cubes (bigger handles)
+		float const cubeSize = gizmoSize * 0.18f;
 		Graphics::drawCube(Vector(gizmoSize, 0.0f, 0.0f), cubeSize, xColor);
 		Graphics::drawCube(Vector(0.0f, gizmoSize, 0.0f), cubeSize, yColor);
 		Graphics::drawCube(Vector(0.0f, 0.0f, gizmoSize), cubeSize, zColor);
 		
-		// Draw small center indicator for translate mode
+		// Draw center indicator for translate mode (bigger)
 		bool const centerH = (s_hoveredComponent == GC_Sphere || s_activeComponent == GC_Sphere);
 		VectorArgb const centerColor = centerH ? VectorArgb(1.0f, 1.0f, 1.0f, 1.0f) : VectorArgb(1.0f, 0.9f, 0.9f, 0.5f);
-		Graphics::drawOctahedron(Vector::zero, gizmoSize * 0.1f, centerColor);
+		Graphics::drawOctahedron(Vector::zero, gizmoSize * 0.15f, centerColor);
 	}
 	else if (s_gizmoMode == GM_Rotate)
 	{
-		// Draw large rotation rings - 3 distinct colored rings
+		// Draw hollow disc rotation gizmos
 		bool const yawH = (s_hoveredComponent == GC_RotateYaw || s_activeComponent == GC_RotateYaw);
 		bool const pitchH = (s_hoveredComponent == GC_RotatePitch || s_activeComponent == GC_RotatePitch);
 		bool const rollH = (s_hoveredComponent == GC_RotateRoll || s_activeComponent == GC_RotateRoll);
 		
-		// Make rings larger and more visible
-		float const radius = gizmoSize * 1.2f;
-		int const segments = 64;
-		float const ringThickness = gizmoSize * 0.03f;
+		float const outerRadius = gizmoSize * 1.2f;
+		float const innerRadius = gizmoSize * 0.9f;
+		int const segments = 48;
 		
-		// Yaw ring (Green - around Y axis, horizontal)
+		// Colors
 		VectorArgb const yawColor = yawH ? VectorArgb(1.0f, 0.5f, 1.0f, 0.5f) : VectorArgb(1.0f, 0.2f, 0.8f, 0.2f);
-		// Pitch ring (Red - around X axis, vertical front-back)
 		VectorArgb const pitchColor = pitchH ? VectorArgb(1.0f, 1.0f, 0.5f, 0.5f) : VectorArgb(1.0f, 0.8f, 0.2f, 0.2f);
-		// Roll ring (Blue - around Z axis, vertical left-right)
 		VectorArgb const rollColor = rollH ? VectorArgb(1.0f, 0.5f, 0.5f, 1.0f) : VectorArgb(1.0f, 0.2f, 0.2f, 0.8f);
 		
-		// Draw multiple offset circles for each ring to create thickness
-		for (float offset = -ringThickness; offset <= ringThickness; offset += ringThickness * 0.5f)
+		// Draw hollow discs by drawing inner and outer circles plus connecting lines
+		// Yaw disc (Green - horizontal around Y axis)
+		Graphics::drawCircle(Vector::zero, Vector::unitY, outerRadius, segments, yawColor);
+		Graphics::drawCircle(Vector::zero, Vector::unitY, innerRadius, segments, yawColor);
+		// Draw radial lines to make it look like a disc
+		for (int i = 0; i < 8; ++i)
 		{
-			// Yaw (Y axis) - green horizontal ring
-			Graphics::drawCircle(Vector(0.0f, offset, 0.0f), Vector::unitY, radius, segments, yawColor);
-			
-			// Pitch (X axis) - red vertical ring (front-back tilt)
-			Graphics::drawCircle(Vector(offset, 0.0f, 0.0f), Vector::unitX, radius * 0.9f, segments, pitchColor);
-			
-			// Roll (Z axis) - blue vertical ring (left-right tilt)
-			Graphics::drawCircle(Vector(0.0f, 0.0f, offset), Vector::unitZ, radius * 0.8f, segments, rollColor);
+			float const angle = (static_cast<float>(i) / 8.0f) * 2.0f * PI;
+			float const cosA = std::cos(angle);
+			float const sinA = std::sin(angle);
+			Vector const inner(cosA * innerRadius, 0.0f, sinA * innerRadius);
+			Vector const outer(cosA * outerRadius, 0.0f, sinA * outerRadius);
+			Graphics::drawLine(inner, outer, yawColor);
+		}
+		
+		// Pitch disc (Red - vertical around X axis)
+		float const pitchOuter = outerRadius * 0.95f;
+		float const pitchInner = innerRadius * 0.95f;
+		Graphics::drawCircle(Vector::zero, Vector::unitX, pitchOuter, segments, pitchColor);
+		Graphics::drawCircle(Vector::zero, Vector::unitX, pitchInner, segments, pitchColor);
+		for (int i = 0; i < 8; ++i)
+		{
+			float const angle = (static_cast<float>(i) / 8.0f) * 2.0f * PI;
+			float const cosA = std::cos(angle);
+			float const sinA = std::sin(angle);
+			Vector const inner(0.0f, cosA * pitchInner, sinA * pitchInner);
+			Vector const outer(0.0f, cosA * pitchOuter, sinA * pitchOuter);
+			Graphics::drawLine(inner, outer, pitchColor);
+		}
+		
+		// Roll disc (Blue - vertical around Z axis)
+		float const rollOuter = outerRadius * 0.9f;
+		float const rollInner = innerRadius * 0.9f;
+		Graphics::drawCircle(Vector::zero, Vector::unitZ, rollOuter, segments, rollColor);
+		Graphics::drawCircle(Vector::zero, Vector::unitZ, rollInner, segments, rollColor);
+		for (int i = 0; i < 8; ++i)
+		{
+			float const angle = (static_cast<float>(i) / 8.0f) * 2.0f * PI;
+			float const cosA = std::cos(angle);
+			float const sinA = std::sin(angle);
+			Vector const inner(cosA * rollInner, sinA * rollInner, 0.0f);
+			Vector const outer(cosA * rollOuter, sinA * rollOuter, 0.0f);
+			Graphics::drawLine(inner, outer, rollColor);
 		}
 	}
 }
@@ -829,37 +920,68 @@ CuiFurnitureMovementManager::GizmoComponent CuiFurnitureMovementManager::hitTest
 {
 	if (!camera) return GC_None;
 	
-	float const threshold = 20.0f; // pixels
+	// Bigger hit threshold for easier clicking
+	float const threshold = 30.0f; // pixels
+	float const handleThreshold = 40.0f; // even bigger for handles
 	
 	if (s_gizmoMode == GM_Translate)
 	{
+		// Test axis endpoint handles first (bigger hit area)
+		Vector xEnd = gizmoPosition + Vector(gizmoSize, 0.0f, 0.0f);
+		Vector yEnd = gizmoPosition + Vector(0.0f, gizmoSize, 0.0f);
+		Vector zEnd = gizmoPosition + Vector(0.0f, 0.0f, gizmoSize);
+		
+		Vector screenX_end, screenY_end, screenZ_end;
+		if (camera->projectInWorldSpace(xEnd, &screenX_end.x, &screenX_end.y, &screenX_end.z, false))
+		{
+			float dx = static_cast<float>(screenX) - screenX_end.x;
+			float dy = static_cast<float>(screenY) - screenX_end.y;
+			if (std::sqrt(dx * dx + dy * dy) < handleThreshold)
+				return GC_AxisX;
+		}
+		if (camera->projectInWorldSpace(yEnd, &screenY_end.x, &screenY_end.y, &screenY_end.z, false))
+		{
+			float dx = static_cast<float>(screenX) - screenY_end.x;
+			float dy = static_cast<float>(screenY) - screenY_end.y;
+			if (std::sqrt(dx * dx + dy * dy) < handleThreshold)
+				return GC_AxisY;
+		}
+		if (camera->projectInWorldSpace(zEnd, &screenZ_end.x, &screenZ_end.y, &screenZ_end.z, false))
+		{
+			float dx = static_cast<float>(screenX) - screenZ_end.x;
+			float dy = static_cast<float>(screenY) - screenZ_end.y;
+			if (std::sqrt(dx * dx + dy * dy) < handleThreshold)
+				return GC_AxisZ;
+		}
+		
 		// Test axis lines
-		if (hitTestAxis(screenX, screenY, camera, gizmoPosition, gizmoPosition + Vector(gizmoSize, 0.0f, 0.0f), threshold))
+		if (hitTestAxis(screenX, screenY, camera, gizmoPosition, xEnd, threshold))
 			return GC_AxisX;
-		if (hitTestAxis(screenX, screenY, camera, gizmoPosition, gizmoPosition + Vector(0.0f, gizmoSize, 0.0f), threshold))
+		if (hitTestAxis(screenX, screenY, camera, gizmoPosition, yEnd, threshold))
 			return GC_AxisY;
-		if (hitTestAxis(screenX, screenY, camera, gizmoPosition, gizmoPosition + Vector(0.0f, 0.0f, gizmoSize), threshold))
+		if (hitTestAxis(screenX, screenY, camera, gizmoPosition, zEnd, threshold))
 			return GC_AxisZ;
 	}
 	else if (s_gizmoMode == GM_Rotate)
 	{
-		float const radius = gizmoSize * 0.8f;
+		// Test hollow discs - use outer radius for hit testing
+		float const outerRadius = gizmoSize * 1.2f;
 		
-		if (hitTestCircle(screenX, screenY, camera, gizmoPosition, Vector::unitY, radius, threshold))
+		if (hitTestCircle(screenX, screenY, camera, gizmoPosition, Vector::unitY, outerRadius, threshold))
 			return GC_RotateYaw;
-		if (hitTestCircle(screenX, screenY, camera, gizmoPosition, Vector::unitX, radius, threshold))
+		if (hitTestCircle(screenX, screenY, camera, gizmoPosition, Vector::unitX, outerRadius * 0.95f, threshold))
 			return GC_RotatePitch;
-		if (hitTestCircle(screenX, screenY, camera, gizmoPosition, Vector::unitZ, radius, threshold))
+		if (hitTestCircle(screenX, screenY, camera, gizmoPosition, Vector::unitZ, outerRadius * 0.9f, threshold))
 			return GC_RotateRoll;
 	}
 	
-	// Test center sphere
+	// Test center sphere (bigger hit area)
 	Vector screenPos;
 	if (camera->projectInWorldSpace(gizmoPosition, &screenPos.x, &screenPos.y, &screenPos.z, false))
 	{
 		float const dx = static_cast<float>(screenX) - screenPos.x;
 		float const dy = static_cast<float>(screenY) - screenPos.y;
-		if (std::sqrt(dx * dx + dy * dy) < threshold * 1.5f)
+		if (std::sqrt(dx * dx + dy * dy) < handleThreshold)
 			return GC_Sphere;
 	}
 	
