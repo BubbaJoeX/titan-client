@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -446,6 +446,7 @@
     </ClCompile>
     <ClCompile Include="..\..\src\shared\page\SwgCuiG15Lcd.cpp" />
     <ClCompile Include="..\..\src\shared\page\SwgCuiGalacticCivilWar.cpp" />
+    <ClCompile Include="..\..\src\shared\page\SwgCuiDecoratorSpawn.cpp" />
     <ClCompile Include="..\..\src\shared\page\SwgCuiGameMenu.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
     </ClCompile>
@@ -1007,6 +1008,7 @@
     <ClInclude Include="..\..\src\shared\page\SwgCuiFaction.h" />
     <ClInclude Include="..\..\src\shared\page\SwgCuiG15Lcd.h" />
     <ClInclude Include="..\..\src\shared\page\SwgCuiGalacticCivilWar.h" />
+    <ClInclude Include="..\..\src\shared\page\SwgCuiDecoratorSpawn.h" />
     <ClInclude Include="..\..\src\shared\page\SwgCuiGameMenu.h" />
     <ClInclude Include="..\..\src\shared\page\SwgCuiGroundRadar.h" />
     <ClInclude Include="..\..\src\shared\page\SwgCuiGroundRadar_BlipPane.h" />
@@ -1176,3 +1178,5 @@
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
 </Project>
+
+

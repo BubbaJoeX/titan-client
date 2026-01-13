@@ -211,6 +211,7 @@
     <ClCompile Include="..\..\src\shared\core\CuiDataDrivenPageManager.cpp" />
     <ClCompile Include="..\..\src\shared\core\CuiDragInfo.cpp" />
     <ClCompile Include="..\..\src\shared\core\CuiDragManager.cpp" />
+	<ClCompile Include="..\..\src\shared\core\CuiFurnitureMovementManager.cpp" />
     <ClCompile Include="..\..\src\shared\core\CuiGameColorManager.cpp" />
     <ClCompile Include="..\..\src\shared\core\CuiIconManager.cpp" />
     <ClCompile Include="..\..\src\shared\core\CuiIconManagerCallback.cpp" />
@@ -372,6 +373,7 @@
     <ClInclude Include="..\..\src\shared\core\CuiDragInfo.h" />
     <ClInclude Include="..\..\src\shared\core\CuiDragInfoTypes.h" />
     <ClInclude Include="..\..\src\shared\core\CuiDragManager.h" />
+	<ClInclude Include="..\..\src\shared\core\CuiFurnitureMovementManager.h" />
     <ClInclude Include="..\..\src\shared\core\CuiGameColorManager.h" />
     <ClInclude Include="..\..\src\shared\core\CuiIconManager.h" />
     <ClInclude Include="..\..\src\shared\core\CuiIconManagerCallback.h" />

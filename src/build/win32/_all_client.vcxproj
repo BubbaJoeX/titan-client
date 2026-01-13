@@ -84,7 +84,11 @@
     </Midl>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\engine\client\library\clientUserInterface\src\shared\core\CuiFurnitureMovementManager.h" />
     <ClInclude Include="src\game\client\library\swgClientUserInterface\include\public\swgClientUserInterface\SwgCuiMotdFetcher.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\engine\client\library\clientUserInterface\src\shared\core\CuiFurnitureMovementManager.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
