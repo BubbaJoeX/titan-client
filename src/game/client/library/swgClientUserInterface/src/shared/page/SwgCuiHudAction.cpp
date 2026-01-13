@@ -295,6 +295,7 @@ m_toggleDownTimeNames          (0.0f)
 	CuiActionManager::addAction (CuiActions::commPlayerQuest, this, false);
 
 	CuiActionManager::addAction (CuiActions::gcwInfo, this, false);
+	CuiActionManager::addAction (CuiActions::decoratorSpawn, this, false);
 
 	static bool s_installed = false;
 	if (!s_installed)
@@ -1693,6 +1694,10 @@ bool  SwgCuiHudAction::performAction (const std::string & id, const Unicode::Str
 	else if (id == CuiActions::gcwInfo)
 	{
 		CuiMediatorFactory::toggleInWorkspace(CuiMediatorTypes::WS_GalacticCivilWar);
+	}
+	else if (id == CuiActions::decoratorSpawn)
+	{
+		CuiMediatorFactory::toggleInWorkspace(CuiMediatorTypes::WS_DecoratorSpawn);
 	}
 
 	//unknown action

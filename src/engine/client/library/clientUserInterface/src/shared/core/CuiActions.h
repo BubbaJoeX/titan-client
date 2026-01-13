@@ -262,6 +262,7 @@ namespace CuiActions
 	MAKE_ACTION(rating);
 	MAKE_ACTION(commPlayerQuest);
 	MAKE_ACTION(gcwInfo);
+	MAKE_ACTION(decoratorSpawn);
 }
 
 #undef MAKE_ACTION

@@ -110,6 +110,7 @@ namespace CuiMediatorTypes
 	MAKE_MEDIATOR_TYPE (WS_Rating);
 	MAKE_MEDIATOR_TYPE (WS_PlayerQuestConversation);
 	MAKE_MEDIATOR_TYPE (WS_GalacticCivilWar);
+	MAKE_MEDIATOR_TYPE (WS_DecoratorSpawn);
 
 	//space
 	MAKE_MEDIATOR_TYPE (WS_ShipTargetInfo);

@@ -24,9 +24,14 @@
 #include "clientGraphics/Graphics.h"
 #include "clientGraphics/ShaderTemplateList.h"
 #include "clientObject/GameCamera.h"
+#include "clientUserInterface/CuiActionManager.h"
+#include "clientUserInterface/CuiActions.h"
 #include "clientUserInterface/CuiManager.h"
+#include "clientUserInterface/CuiPreferences.h"
 #include "clientUserInterface/CuiSystemMessageManager.h"
 #include "sharedCollision/BoxExtent.h"
+#include "sharedCollision/CollideParameters.h"
+#include "sharedCollision/CollisionInfo.h"
 #include "sharedCollision/Extent.h"
 #include "sharedFoundation/Clock.h"
 #include "sharedFoundation/Crc.h"
@@ -37,6 +42,7 @@
 #include "sharedMath/VectorArgb.h"
 #include "sharedObject/Appearance.h"
 #include "sharedObject/CachedNetworkId.h"
+#include "sharedObject/CellProperty.h"
 #include "sharedObject/NetworkIdManager.h"
 #include "UnicodeUtils.h"
 
@@ -73,6 +79,7 @@ namespace CuiFurnitureMovementManagerNamespace
 	bool s_active = false;
 	bool s_decoratorCameraActive = false;
 	int s_previousCameraMode = -1;
+	float s_previousHudOpacity = 1.0f;
 
 	// Camera control keys (WASD)
 	bool s_cameraKeyW = false;
@@ -82,6 +89,11 @@ namespace CuiFurnitureMovementManagerNamespace
 	bool s_cameraKeySpace = false;  // Up
 	bool s_cameraKeyCtrl = false;   // Down
 	float s_cameraSpeed = 10.0f;
+
+	// Hit test caching to reduce lag
+	int s_lastHitTestX = -1;
+	int s_lastHitTestY = -1;
+	CuiFurnitureMovementManager::GizmoComponent s_cachedHitResult = CuiFurnitureMovementManager::GC_None;
 
 	CachedNetworkId s_selectedFurniture;
 	Transform s_originalTransform;
@@ -256,14 +268,14 @@ bool CuiFurnitureMovementManager::enterMovementMode(NetworkId const & furnitureI
 	Object * const obj = NetworkIdManager::getObjectById(furnitureId);
 	if (!obj)
 	{
-		CuiSystemMessageManager::sendFakeSystemMessage(Unicode::narrowToWide("Cannot find furniture object."));
+		CuiSystemMessageManager::sendFakeSystemMessage(Unicode::narrowToWide("Cannot find object."));
 		return false;
 	}
 	
 	ClientObject * const clientObj = obj->asClientObject();
 	if (!clientObj)
 	{
-		CuiSystemMessageManager::sendFakeSystemMessage(Unicode::narrowToWide("Invalid furniture object."));
+		CuiSystemMessageManager::sendFakeSystemMessage(Unicode::narrowToWide("Invalid object."));
 		return false;
 	}
 	
@@ -279,7 +291,14 @@ bool CuiFurnitureMovementManager::enterMovementMode(NetworkId const & furnitureI
 	// Enable decorator camera for gizmo interaction
 	enableDecoratorCamera();
 	
-	CuiSystemMessageManager::sendFakeSystemMessage(Unicode::narrowToWide("Furniture Mode: Drag gizmo, R=mode, Enter/Esc"));
+	CuiSystemMessageManager::sendFakeSystemMessage(Unicode::narrowToWide("== Decorator Mode == "));
+	CuiSystemMessageManager::sendFakeSystemMessage(Unicode::narrowToWide("TAB: Cycle Gizmo"));
+	CuiSystemMessageManager::sendFakeSystemMessage(Unicode::narrowToWide("WASD: Movement"));
+	CuiSystemMessageManager::sendFakeSystemMessage(Unicode::narrowToWide("Mouse 1: Drag or select an object"));
+	CuiSystemMessageManager::sendFakeSystemMessage(Unicode::narrowToWide("Mouse 2: Drag to pan"));
+	CuiSystemMessageManager::sendFakeSystemMessage(Unicode::narrowToWide("R: Apply Changes"));
+	CuiSystemMessageManager::sendFakeSystemMessage(Unicode::narrowToWide("Q or E: Scale Gizmo:"));
+	CuiSystemMessageManager::sendFakeSystemMessage(Unicode::narrowToWide("T: Object Tree Viewer"));
 	return true;
 }
 
@@ -385,6 +404,14 @@ bool CuiFurnitureMovementManager::processKeyDown(int const keystroke)
 	// Cancel and exit
 	case DIK_ESCAPE:
 		exitMovementMode(false);
+		return true;
+		
+	// Open object spawn UI
+	case DIK_T:
+		if (s_decoratorCameraActive)
+		{
+			openSpawnUI();
+		}
 		return true;
 		
 	// Camera movement (WASD + Space/Ctrl)
@@ -551,7 +578,7 @@ bool CuiFurnitureMovementManager::processMouseInput(int x, int y, bool leftButto
 			s_isDragging = true;
 			s_activeComponent = hit;
 			s_lastMouseX = x;
-			s_lastMouseY = y;
+		 s_lastMouseY = y;
 			s_dragStartPosition = objectPosition;
 			return true;
 		}
@@ -559,59 +586,45 @@ bool CuiFurnitureMovementManager::processMouseInput(int x, int y, bool leftButto
 		// Click didn't hit gizmo - check if we clicked another object to switch focus
 		if (s_decoratorCameraActive)
 		{
-			// Ray cast to find clicked object
+			// Use proper collision detection for mesh-accurate targeting
 			Vector const start = camera->getPosition_w();
 			Vector const direction = camera->rotate_o2w(camera->reverseProjectInScreenSpace(x, y));
-			Vector const end = start + direction * 256.0f;
+			Vector const end = start + direction * 512.0f;
 			
-			ClientWorld::ObjectVector objectsInRange;
-			ClientWorld::findObjectsInRange(start, 256.0f, objectsInRange);
+			// Use ClientWorld::collide for accurate mesh collision
+			CollideParameters collideParams;
+			collideParams.setQuality(CollideParameters::Q_high);
 			
-			ClientObject * closestHit = NULL;
-			float closestDist = 999999.0f;
+			ClientWorld::CollisionInfoVector results;
+			CellProperty const * const startCell = CellProperty::getWorldCellProperty();
 			
-			for (ClientWorld::ObjectVector::iterator it = objectsInRange.begin(); it != objectsInRange.end(); ++it)
+			if (ClientWorld::collide(startCell, start, end, collideParams, results, ClientWorld::CF_tangible || ClientWorld::CF_tangibleNotTargetable || ClientWorld::CF_interiorGeometry, obj))
 			{
-				Object * const testObj = *it;
-				if (!testObj || testObj == obj) continue;
-				
-				ClientObject * const clientObj = testObj->asClientObject();
-				if (!clientObj) continue;
-				
-				// Simple distance check to ray
-				Vector const toObj = testObj->getPosition_w() - start;
-				float const t = toObj.dot(direction);
-				if (t < 0.0f) continue;
-				
-				Vector const closest = start + direction * t;
-				float const dist = closest.magnitudeBetween(testObj->getPosition_w());
-				
-				float const objRadius = testObj->getAppearanceSphereRadius();
-				if (dist < objRadius && t < closestDist)
+				// Results are sorted front to back, take the first valid one
+				for (ClientWorld::CollisionInfoVector::const_iterator it = results.begin(); it != results.end(); ++it)
 				{
-					closestDist = t;
-					closestHit = clientObj;
-				}
-			}
-			
-			if (closestHit)
-			{
-				// Switch to this object
-				NetworkId const & newId = closestHit->getNetworkId();
-				if (newId.isValid())
-				{
-					// Apply current changes first
-					applyMovementToServer();
+					Object const * const hitObject = it->getObject();
+					if (!hitObject || hitObject == obj) continue;
 					
-					// Switch to new object
-					s_selectedFurniture = newId;
-					s_originalTransform = closestHit->getTransform_o2p();
-					s_cachedObjectRadius = getObjectRadius(closestHit);
-					resetDeltas();
-					resetGizmoState();
+					ClientObject * const clientObj = const_cast<Object*>(hitObject)->asClientObject();
+					if (!clientObj) continue;
 					
-					CuiSystemMessageManager::sendFakeSystemMessage(Unicode::narrowToWide("Switched to new object."));
-					return true;
+					NetworkId const & newId = clientObj->getNetworkId();
+					if (newId.isValid())
+					{
+						// Apply current changes first
+						applyMovementToServer();
+						
+						// Switch to new object
+						s_selectedFurniture = newId;
+						s_originalTransform = clientObj->getTransform_o2p();
+						s_cachedObjectRadius = getObjectRadius(clientObj);
+						resetDeltas();
+						resetGizmoState();
+						
+						CuiSystemMessageManager::sendFakeSystemMessage(Unicode::narrowToWide("New object selected."));
+						return true;
+					}
 				}
 			}
 		}
@@ -624,8 +637,14 @@ bool CuiFurnitureMovementManager::processMouseInput(int x, int y, bool leftButto
 		s_activeComponent = GC_None;
 	}
 	
-	// Update hover state
-	s_hoveredComponent = hitTestGizmo(x, y, camera, objectPosition, gizmoSize);
+	// Update hover state (with caching to reduce lag)
+	if (x != s_lastHitTestX || y != s_lastHitTestY)
+	{
+		s_cachedHitResult = hitTestGizmo(x, y, camera, objectPosition, gizmoSize);
+		s_lastHitTestX = x;
+		s_lastHitTestY = y;
+	}
+	s_hoveredComponent = s_cachedHitResult;
 	s_lastMouseX = x;
 	s_lastMouseY = y;
 	
@@ -817,63 +836,39 @@ void CuiFurnitureMovementManager::render()
 	}
 	else if (s_gizmoMode == GM_Rotate)
 	{
-		// Draw hollow disc rotation gizmos
+		// Draw 3 rotation circles (like a sphere/gimbal)
 		bool const yawH = (s_hoveredComponent == GC_RotateYaw || s_activeComponent == GC_RotateYaw);
 		bool const pitchH = (s_hoveredComponent == GC_RotatePitch || s_activeComponent == GC_RotatePitch);
 		bool const rollH = (s_hoveredComponent == GC_RotateRoll || s_activeComponent == GC_RotateRoll);
 		
-		float const outerRadius = gizmoSize * 1.2f;
-		float const innerRadius = gizmoSize * 0.9f;
-		int const segments = 48;
+		float const radius = gizmoSize * 1.2f;
+		int const segments = 64;
 		
-		// Colors
-		VectorArgb const yawColor = yawH ? VectorArgb(1.0f, 0.5f, 1.0f, 0.5f) : VectorArgb(1.0f, 0.2f, 0.8f, 0.2f);
-		VectorArgb const pitchColor = pitchH ? VectorArgb(1.0f, 1.0f, 0.5f, 0.5f) : VectorArgb(1.0f, 0.8f, 0.2f, 0.2f);
-		VectorArgb const rollColor = rollH ? VectorArgb(1.0f, 0.5f, 0.5f, 1.0f) : VectorArgb(1.0f, 0.2f, 0.2f, 0.8f);
+		// Colors - brighter when hovered
+		VectorArgb const yawColor = yawH ? VectorArgb(1.0f, 0.6f, 1.0f, 0.6f) : VectorArgb(1.0f, 0.3f, 0.9f, 0.3f);
+		VectorArgb const pitchColor = pitchH ? VectorArgb(1.0f, 1.0f, 0.6f, 0.6f) : VectorArgb(1.0f, 0.9f, 0.3f, 0.3f);
+		VectorArgb const rollColor = rollH ? VectorArgb(1.0f, 0.6f, 0.6f, 1.0f) : VectorArgb(1.0f, 0.3f, 0.3f, 0.9f);
 		
-		// Draw hollow discs by drawing inner and outer circles plus connecting lines
-		// Yaw disc (Green - horizontal around Y axis)
-		Graphics::drawCircle(Vector::zero, Vector::unitY, outerRadius, segments, yawColor);
-		Graphics::drawCircle(Vector::zero, Vector::unitY, innerRadius, segments, yawColor);
-		// Draw radial lines to make it look like a disc
-		for (int i = 0; i < 8; ++i)
+		// Draw 3 circles forming a sphere-like gimbal
+		// Each circle is drawn multiple times with slight offsets for thickness
+		float const thickness = gizmoSize * 0.015f;
+		
+		// Yaw circle (Green - horizontal plane, around Y axis)
+		for (float offset = -thickness; offset <= thickness; offset += thickness)
 		{
-			float const angle = (static_cast<float>(i) / 8.0f) * 2.0f * PI;
-			float const cosA = std::cos(angle);
-			float const sinA = std::sin(angle);
-			Vector const inner(cosA * innerRadius, 0.0f, sinA * innerRadius);
-			Vector const outer(cosA * outerRadius, 0.0f, sinA * outerRadius);
-			Graphics::drawLine(inner, outer, yawColor);
+			Graphics::drawCircle(Vector(0.0f, offset, 0.0f), Vector::unitY, radius, segments, yawColor);
 		}
 		
-		// Pitch disc (Red - vertical around X axis)
-		float const pitchOuter = outerRadius * 0.95f;
-		float const pitchInner = innerRadius * 0.95f;
-		Graphics::drawCircle(Vector::zero, Vector::unitX, pitchOuter, segments, pitchColor);
-		Graphics::drawCircle(Vector::zero, Vector::unitX, pitchInner, segments, pitchColor);
-		for (int i = 0; i < 8; ++i)
+		// Pitch circle (Red - vertical plane front/back, around X axis)
+		for (float offset = -thickness; offset <= thickness; offset += thickness)
 		{
-			float const angle = (static_cast<float>(i) / 8.0f) * 2.0f * PI;
-			float const cosA = std::cos(angle);
-			float const sinA = std::sin(angle);
-			Vector const inner(0.0f, cosA * pitchInner, sinA * pitchInner);
-			Vector const outer(0.0f, cosA * pitchOuter, sinA * pitchOuter);
-			Graphics::drawLine(inner, outer, pitchColor);
+			Graphics::drawCircle(Vector(offset, 0.0f, 0.0f), Vector::unitX, radius, segments, pitchColor);
 		}
 		
-		// Roll disc (Blue - vertical around Z axis)
-		float const rollOuter = outerRadius * 0.9f;
-		float const rollInner = innerRadius * 0.9f;
-		Graphics::drawCircle(Vector::zero, Vector::unitZ, rollOuter, segments, rollColor);
-		Graphics::drawCircle(Vector::zero, Vector::unitZ, rollInner, segments, rollColor);
-		for (int i = 0; i < 8; ++i)
+		// Roll circle (Blue - vertical plane left/right, around Z axis)
+		for (float offset = -thickness; offset <= thickness; offset += thickness)
 		{
-			float const angle = (static_cast<float>(i) / 8.0f) * 2.0f * PI;
-			float const cosA = std::cos(angle);
-			float const sinA = std::sin(angle);
-			Vector const inner(cosA * rollInner, sinA * rollInner, 0.0f);
-			Vector const outer(cosA * rollOuter, sinA * rollOuter, 0.0f);
-			Graphics::drawLine(inner, outer, rollColor);
+			Graphics::drawCircle(Vector(0.0f, 0.0f, offset), Vector::unitZ, radius, segments, rollColor);
 		}
 	}
 }
@@ -1161,6 +1156,10 @@ void CuiFurnitureMovementManager::enableDecoratorCamera()
 	// Save current camera mode
 	s_previousCameraMode = gs->getCurrentView();
 	
+	// Save current HUD opacity and hide UI
+	s_previousHudOpacity = CuiPreferences::getHudOpacity();
+	CuiPreferences::setHudOpacity(0.0f);
+	
 	// Switch to free camera mode
 	gs->setView(GroundScene::CI_free);
 	
@@ -1169,7 +1168,7 @@ void CuiFurnitureMovementManager::enableDecoratorCamera()
 	
 	s_decoratorCameraActive = true;
 	
-	CuiSystemMessageManager::sendFakeSystemMessage(Unicode::narrowToWide("Decorator camera enabled. Use mouse to interact with gizmos."));
+	CuiSystemMessageManager::sendFakeSystemMessage(Unicode::narrowToWide("Decorator camera enabled. WASD to move, Right-click to pan, R to apply, Esc to exit."));
 }
 
 //----------------------------------------------------------------------
@@ -1185,6 +1184,9 @@ void CuiFurnitureMovementManager::disableDecoratorCamera()
 		gs->setView(s_previousCameraMode);
 	}
 	
+	// Restore HUD opacity
+	CuiPreferences::setHudOpacity(s_previousHudOpacity);
+	
 	// Disable pointer toggle
 	CuiManager::setPointerToggledOn(false);
 	
@@ -1199,6 +1201,14 @@ void CuiFurnitureMovementManager::disableDecoratorCamera()
 bool CuiFurnitureMovementManager::isDecoratorCameraActive()
 {
 	return s_decoratorCameraActive;
+}
+
+//----------------------------------------------------------------------
+
+void CuiFurnitureMovementManager::openSpawnUI()
+{
+	// Open the decorator spawn UI
+	CuiActionManager::performAction(CuiActions::decoratorSpawn, Unicode::emptyString);
 }
 
 //----------------------------------------------------------------------

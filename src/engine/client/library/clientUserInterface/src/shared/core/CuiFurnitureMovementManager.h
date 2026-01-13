@@ -119,6 +119,7 @@ private:
 	static void applyMovementToServer();
 	static void revertToOriginalPosition();
 	static void updateFurnitureTransform();
+	static void openSpawnUI();
 
 	// Gizmo rendering helpers
 	static void renderTranslationGizmo(Vector const & position, float scale);
