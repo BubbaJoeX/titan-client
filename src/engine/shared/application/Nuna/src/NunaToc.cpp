@@ -361,7 +361,10 @@ Result listTitanlst(const std::string& inputFile, const ListOptions& options)
         std::string fn(&fNames[e.fileNameOffset]);
         if (!options.filter.empty() && fn.find(options.filter) == std::string::npos)
             continue;
-        std::cout << fn << " [" << e.length << "b] Archive" << e.treeFileIndex << "\n";
+        
+        // Show the actual TRE filename instead of just "Archive#"
+        const char* treeName = (e.treeFileIndex < treeFiles.size()) ? treeFiles[e.treeFileIndex].c_str() : "Unknown";
+        std::cout << fn << " [" << e.length << "b] " << treeName << "\n";
     }
     return result;
 }
