@@ -242,16 +242,28 @@ Result validateTitanlst(const std::string& inputFile)
     }
     TitanlstHeader header;
     inFile.read(reinterpret_cast<char*>(&header), sizeof(header));
+    
+    if (!inFile.good() || inFile.gcount() != sizeof(header))
+    {
+        result.code = ResultCode::InvalidArchive;
+        result.message = "Failed to read header (too small)";
+        return result;
+    }
+    
     if (header.token != TAG_TOC)
     {
         result.code = ResultCode::InvalidArchive;
-        result.message = "Bad titanlst magic";
+        char buf[128];
+        sprintf(buf, "Bad titanlst magic: 0x%08X (expected 0x%08X 'TOC ')", header.token, TAG_TOC);
+        result.message = buf;
         return result;
     }
     if (header.version != TAG_0001)
     {
         result.code = ResultCode::InvalidArchive;
-        result.message = "Bad titanlst version";
+        char buf[128];
+        sprintf(buf, "Bad titanlst version: 0x%08X (expected 0x%08X '0001')", header.version, TAG_0001);
+        result.message = buf;
         return result;
     }
     result.message = "titanlst file is valid";
@@ -271,10 +283,20 @@ Result listTitanlst(const std::string& inputFile, const ListOptions& options)
     
     TitanlstHeader header;
     inFile.read(reinterpret_cast<char*>(&header), sizeof(header));
+    
+    if (!inFile.good() || inFile.gcount() != sizeof(header))
+    {
+        result.code = ResultCode::InvalidArchive;
+        result.message = "Failed to read header (file too small)";
+        return result;
+    }
+    
     if (header.token != TAG_TOC || header.version != TAG_0001)
     {
         result.code = ResultCode::InvalidArchive;
-        result.message = "Invalid titanlst file";
+        char buf[256];
+        sprintf(buf, "Invalid titanlst file (magic=0x%08X, version=0x%08X)", header.token, header.version);
+        result.message = buf;
         return result;
     }
     
