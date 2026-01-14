@@ -79,7 +79,8 @@ void CollisionCallbacks::install()
 	CollisionCallbackManager::registerOnHitFunction(CollisionCallbacksNamespace::onHitDoCollisionWith, shipFighter, miningAsteroidStatic);
 	CollisionCallbackManager::registerOnHitFunction(CollisionCallbacksNamespace::onHitDoCollisionWith, shipFighter, miningAsteroidDynamic);
 
-//CollisionCallbackManager::registerDoCollisionWithTerrainFunction(CollisionCallbacksNamespace::onDoCollisionWithTerrain);
+	// Enable terrain collision for ships (atmospheric flight support)
+	CollisionCallbackManager::registerDoCollisionWithTerrainFunction(CollisionCallbacksNamespace::onDoCollisionWithTerrain);
 
 	{
 		CrcLowerString const name("clienteffect/space_collision.cef");

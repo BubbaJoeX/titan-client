@@ -14,12 +14,19 @@
 
 class CrcString;
 class MemoryBlockManager;
+class TitanPakEncryptionContext;
 
 #include "sharedFile/TreeFile.h"
 #include "sharedFile/FileStreamer.h"
 #include "../../../../../../engine/shared/library/sharedFoundation/include/public/sharedFoundation/LessPointerComparator.h"
 #include "../../../../../../engine/shared/library/sharedFoundation/include/public/sharedFoundation/Os.h"
 #include "../../../../../../engine/shared/library/sharedFoundation/include/public/sharedFoundation/Tag.h"
+
+// ======================================================================
+// TitanPak encryption constants
+// ======================================================================
+
+const Tag TAG_NUNA = TAG(N,U,N,A);  // Magic for encrypted TitanPak archives
 
 // ======================================================================
 
@@ -198,12 +205,14 @@ public:
 
 private:
 
-	char                   *m_treeFileName;
-	FileStreamer::File     *m_treeFile;
-	uint32                  m_version;
-	int                     m_numberOfFiles;
-	char                   *m_fileNames;
-	TableOfContentsEntry   *m_tableOfContents;
+	char                         *m_treeFileName;
+	FileStreamer::File           *m_treeFile;
+	uint32                        m_version;
+	int                           m_numberOfFiles;
+	char                         *m_fileNames;
+	TableOfContentsEntry         *m_tableOfContents;
+	bool                          m_encrypted;
+	TitanPakEncryptionContext    *m_encryptionContext;
 };
 
 // ======================================================================

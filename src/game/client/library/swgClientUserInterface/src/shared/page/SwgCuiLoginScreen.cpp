@@ -20,6 +20,7 @@
 #include "clientGame/Game.h"
 #include "clientGame/GameNetwork.h"
 #include "clientGame/LoginConnection.h"
+#include "clientGame/SplashScreen.h"
 #include "clientUserInterface/CuiLoginManager.h"
 #include "clientUserInterface/CuiManager.h"
 #include "clientUserInterface/CuiMediatorFactory.h"
@@ -128,6 +129,9 @@ SwgCuiLoginScreen::~SwgCuiLoginScreen()
 
 void SwgCuiLoginScreen::performActivate ()
 {
+	// Dismiss splash screen when login screen appears
+	SplashScreen::dismiss();
+	
 	SwgCuiAvatarCreationHelper::setCreatingJedi (false);
 
 	GameNetwork::disconnectLoginServer ();
@@ -378,7 +382,7 @@ void SwgCuiLoginScreen::receiveMessage(const MessageDispatch::Emitter & source, 
 
 	//----------------------------------------------------------------------
 
-	else if(message.isType(UnnamedMessages::LoginClientToken))
+	else if (message.isType (UnnamedMessages::LoginClientToken))
 	{
 		if (m_connecting)
 		{

@@ -22,7 +22,6 @@ class UISliderbar;
 class UITabbedPane;
 class UITreeView;
 class UIText;
-class UITextbox;
 class CuiWidget3dObjectListViewer;
 
 //----------------------------------------------------------------------
@@ -56,12 +55,16 @@ private:
 	void                        populateTemplateList      ();
 	void                        updateTreeDisplay         ();
 	void                        filterTree                (Unicode::String const & filter);
+	void                        performSearch             ();
+	void                        nextPage                  ();
+	void                        prevPage                  ();
 	void                        updatePreview             ();
 	void                        updateInfoDisplay         ();
 	void                        updateViewerSettings      ();
 	void                        spawnSelectedObject       ();
 	std::string                 getSelectedTemplatePath   () const;
 	std::string                 convertToServerTemplate   (std::string const & sharedTemplate) const;
+	std::string                 getDisplayNameForTemplate (std::string const & templatePath) const;
 
 	UITreeView *                      m_tree;
 	UIButton *                        m_buttonPreview;
@@ -70,7 +73,7 @@ private:
 	UIButton *                        m_buttonNextPage;
 	UIButton *                        m_buttonPrevPage;
 	UIButton *                        m_buttonSearch;
-	UITextbox *                       m_filterTextbox;
+	UIText *                          m_filterTextbox;
 	UIText *                          m_selectedText;
 	UIText *                          m_pageText;
 	CuiWidget3dObjectListViewer *     m_viewer;
@@ -86,10 +89,21 @@ private:
 	UICheckbox *                      m_checkAutoZoom;
 	UICheckbox *                      m_checkHeadshot;
 	UICheckbox *                      m_checkRotate;
+	UICheckbox *                      m_checkDragYaw;
+	UICheckbox *                      m_checkDragPitch;
+	UICheckbox *                      m_checkShadows;
 	UISliderbar *                     m_sliderFOV;
+	UISliderbar *                     m_sliderFitDistance;
+	UISliderbar *                     m_sliderCameraYaw;
+	UISliderbar *                     m_sliderCameraPitch;
+	UISliderbar *                     m_sliderLightYaw;
+	UISliderbar *                     m_sliderLightPitch;
 	UISliderbar *                     m_sliderAmbientR;
 	UISliderbar *                     m_sliderAmbientG;
 	UISliderbar *                     m_sliderAmbientB;
+	UISliderbar *                     m_sliderLightR;
+	UISliderbar *                     m_sliderLightG;
+	UISliderbar *                     m_sliderLightB;
 
 	typedef stdvector<std::string>::fwd TemplateList;
 	TemplateList *                    m_allTemplates;

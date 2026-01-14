@@ -9,6 +9,7 @@
 
 #include "sharedFile/FirstSharedFile.h"
 #include "sharedFile/TreeFile_SearchNode.h"
+#include "sharedFile/TitanPakCrypto.h"
 
 #include "sharedCompression/Compressor.h"
 #include "sharedCompression/ZlibCompressor.h"
@@ -213,6 +214,7 @@ AbstractFile *TreeFile::SearchAbsolute::open(const char *fileName, AbstractFile:
 	return new FileStreamerFile(priority, *file);
 }
 
+
 // ======================================================================
 
 bool TreeFile::SearchTree::validate(const char *fileName)
@@ -233,12 +235,12 @@ bool TreeFile::SearchTree::validate(const char *fileName)
 	if (readPos != isizeof(header))
 		return false;
 
-	// validate the token
-	if (header.token != TAG_TREE)
+	// validate the token - accept both TREE and NUNA (encrypted)
+	if (header.token != TAG_TREE && header.token != TAG_NUNA)
 		return false;
 
 	// validate the version number
-	if (header.version < TAG_0004 || header.version > TAG_0004)
+	if (header.version < TAG_0004 || header.version > TAG_0005)
 		return false;
 
 	return true;
@@ -253,7 +255,9 @@ TreeFile::SearchTree::SearchTree(int priority, const char *fileName)
 	m_version(0),
 	m_numberOfFiles(0),
 	m_fileNames(NULL),
-	m_tableOfContents(NULL)
+	m_tableOfContents(NULL),
+	m_encrypted(false),
+	m_encryptionContext(NULL)
 {
 	NOT_NULL(fileName);
 
@@ -263,10 +267,29 @@ TreeFile::SearchTree::SearchTree(int priority, const char *fileName)
 	m_treeFile = FileStreamer::open(m_treeFileName, true);
 	DEBUG_FATAL(!m_treeFile, ("failed to open TreeFile %s", m_treeFileName));
 
-	// read the header (the first 32 bytes of the tree file) 
+	// read the header (the first 36 bytes of the tree file) 
 	Header header;
 	m_treeFile->read(0, &header, sizeof(header), AbstractFile::PriorityData);
-	DEBUG_FATAL(header.token != TAG_TREE, ("file does not look like a tree file"));
+	DEBUG_FATAL(header.token != TAG_TREE && header.token != TAG_NUNA, ("file does not look like a tree file or titanpak"));
+
+	// Check if this is an encrypted TitanPak archive
+	m_encrypted = (header.token == TAG_NUNA);
+	
+	if (m_encrypted)
+	{
+		// Read the encryption header
+		TitanPakCrypto::EncryptionHeader encHeader;
+		m_treeFile->read(sizeof(header), &encHeader, sizeof(encHeader), AbstractFile::PriorityData);
+		
+		// Get the encryption password from config
+		const char* password = ConfigFile::getKeyString("SharedFile", "titanPakPassword", "");
+		
+		// Initialize encryption context
+		m_encryptionContext = new TitanPakEncryptionContext();
+		m_encryptionContext->initialize(password, encHeader);
+		
+		DEBUG_REPORT_LOG(true, ("Loaded encrypted TitanPak: %s\n", m_treeFileName));
+	}
 
 	// set to the number of files that has been compressed within the tree file
 	m_numberOfFiles = static_cast<int>(header.numberOfFiles);
@@ -295,6 +318,12 @@ TreeFile::SearchTree::SearchTree(int priority, const char *fileName)
 					DEBUG_FATAL(bytesRead != static_cast<int>(header.sizeOfTOC), ("failed to read tree file TOC entries"));
 					readPosition += bytesRead;
 
+					// decrypt if encrypted TitanPak
+					if (m_encrypted && m_encryptionContext)
+					{
+						m_encryptionContext->decryptAt(entryBuffer, header.sizeOfTOC, header.tocOffset);
+					}
+
 					// decompress data into toc 
 					static_cast<void>(ZlibCompressor().expand(entryBuffer, header.sizeOfTOC, m_tableOfContents, tableOfContentsSize));
 
@@ -306,6 +335,12 @@ TreeFile::SearchTree::SearchTree(int priority, const char *fileName)
 					const int bytesRead = m_treeFile->read(header.tocOffset, m_tableOfContents, tableOfContentsSize, AbstractFile::PriorityData);
 					DEBUG_FATAL(bytesRead != tableOfContentsSize, ("failed to read tree file tableOfContents entries"));
 					readPosition += bytesRead;
+					
+					// decrypt if encrypted TitanPak
+					if (m_encrypted && m_encryptionContext)
+					{
+						m_encryptionContext->decryptAt(reinterpret_cast<uint8_t*>(m_tableOfContents), tableOfContentsSize, header.tocOffset);
+					}
 				}
 
 				if (header.blockCompressor)
@@ -318,6 +353,12 @@ TreeFile::SearchTree::SearchTree(int priority, const char *fileName)
 					UNREF(bytesRead);
 					DEBUG_FATAL(bytesRead != static_cast<int>(header.sizeOfNameBlock), ("failed to read tree file name block"));
 
+					// decrypt if encrypted TitanPak
+					if (m_encrypted && m_encryptionContext)
+					{
+						m_encryptionContext->decryptAt(nameBuffer, header.sizeOfNameBlock, readPosition);
+					}
+
 					// decompress data into tocFileNames 
 					static_cast<void>(ZlibCompressor().expand(nameBuffer, header.sizeOfNameBlock, m_fileNames, header.uncompSizeOfNameBlock));
 					
@@ -329,6 +370,12 @@ TreeFile::SearchTree::SearchTree(int priority, const char *fileName)
 					const int bytesRead = m_treeFile->read(readPosition, m_fileNames, header.uncompSizeOfNameBlock, AbstractFile::PriorityData);
 					UNREF(bytesRead);
 					DEBUG_FATAL(bytesRead != static_cast<int>(header.uncompSizeOfNameBlock), ("failed to read tree file name block"));
+					
+					// decrypt if encrypted TitanPak
+					if (m_encrypted && m_encryptionContext)
+					{
+						m_encryptionContext->decryptAt(reinterpret_cast<uint8_t*>(m_fileNames), header.uncompSizeOfNameBlock, readPosition);
+					}
 				}
 			}
 			break;
@@ -336,6 +383,8 @@ TreeFile::SearchTree::SearchTree(int priority, const char *fileName)
 		default:
 			{
 				delete m_treeFile;
+				delete m_encryptionContext;
+				m_encryptionContext = NULL;
 
 #if PRODUCTION
 				FATAL(true, ("TreeFile corruption detected.  Please do a \"Full Scan\" from the launchpad. (%08x %s)", m_version, m_treeFileName));
@@ -404,6 +453,7 @@ bool TreeFile::SearchTree::localExists(const char *fileName, int *index, bool &d
 			*index = mid;
 	}
 
+
 	return found;
 }
 
@@ -415,6 +465,7 @@ TreeFile::SearchTree::~SearchTree(void)
 	delete [] m_tableOfContents;
 	delete [] m_fileNames;
 	delete m_treeFile;
+	delete m_encryptionContext;
 }
 
 // ----------------------------------------------------------------------
@@ -486,13 +537,41 @@ AbstractFile *TreeFile::SearchTree::open(const char *fileName, AbstractFile::Pri
 		const TableOfContentsEntry &entry = m_tableOfContents[tableOfContentsIndex];
 
 		if (!TreeFile::SearchTree::isCompressed(entry.compressor))
-			return new FileStreamerFile(priority, *m_treeFile, entry.offset, entry.length);
+		{
+			// Uncompressed file
+			if (m_encrypted && m_encryptionContext)
+			{
+				// For encrypted archives, we need to read and decrypt the data
+				byte *buffer = new byte[entry.length];
+				const int bytesRead = m_treeFile->read(entry.offset, buffer, entry.length, priority);
+				DEBUG_FATAL(bytesRead != entry.length, ("error reading data into buffer"));
+				UNREF(bytesRead);
+				
+				// Decrypt the data
+				m_encryptionContext->decryptAt(buffer, entry.length, entry.offset);
+				
+				// Return a memory file with the decrypted data
+				return new MemoryFile(entry.length, buffer, true);
+			}
+			else
+			{
+				// Standard unencrypted file - use direct file streaming
+				return new FileStreamerFile(priority, *m_treeFile, entry.offset, entry.length);
+			}
+		}
 
+		// Compressed file
 		byte * compressedBuffer = new byte[entry.compressedLength];
 
 		const int bytesRead = m_treeFile->read(entry.offset, compressedBuffer, entry.compressedLength, priority);
 		DEBUG_FATAL(bytesRead != entry.compressedLength, ("error reading compressed data into buffer"));
 		UNREF(bytesRead);
+
+		// Decrypt if encrypted TitanPak
+		if (m_encrypted && m_encryptionContext)
+		{
+			m_encryptionContext->decryptAt(compressedBuffer, entry.compressedLength, entry.offset);
+		}
 
 		return new ZlibFile(entry.length, compressedBuffer, entry.compressedLength, true);
 	}

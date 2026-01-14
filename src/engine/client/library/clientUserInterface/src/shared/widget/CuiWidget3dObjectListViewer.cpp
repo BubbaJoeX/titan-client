@@ -1296,7 +1296,7 @@ void  CuiWidget3dObjectListViewer::Notify( UINotificationServer *, UIBaseObject 
 			{
 				const Appearance * const app = obj->getAppearance ();
 				if (app)
-					app->setRenderedThisFrame ();
+				 app->setRenderedThisFrame ();
 
 				++it;
 			}
@@ -2108,6 +2108,7 @@ void  CuiWidget3dObjectListViewer::GetPropertyNames( UIPropertyNameVector & in, 
 	in.push_back (PropertyName::DragPitchMin);
 	in.push_back (PropertyName::DragPitchOk);
 	in.push_back (PropertyName::DragYawOk);
+	in.push_back (PropertyName::DrawName);
 	in.push_back (PropertyName::FieldOfView );
 	in.push_back (PropertyName::FitDistanceFactor);
 	in.push_back (PropertyName::FitRect );
@@ -2381,7 +2382,7 @@ bool CuiWidget3dObjectListViewer::checkAppearancesReady () const
 		else
 		{
 			const DetailAppearance * const detailApp = app->asDetailAppearance ();
-			if (detailApp && !const_cast<DetailAppearance *>(detailApp)->rebuildIfDirtyAndAvailable())
+			if (detailApp && !detailApp->isLoaded())
 				return false;
 		}
 	}

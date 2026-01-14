@@ -30,7 +30,6 @@
 #include "UISliderbar.h"
 #include "UITabbedPane.h"
 #include "UIText.h"
-#include "UITextbox.h"
 #include "UITreeView.h"
 #include "UnicodeUtils.h"
 
@@ -85,13 +84,26 @@ m_viewer(NULL),
 m_tabs(NULL),
 m_searchPage(NULL),
 m_settingsPage(NULL),
+m_infoPage(NULL),
+m_infoText(NULL),
 m_checkAutoZoom(NULL),
 m_checkHeadshot(NULL),
 m_checkRotate(NULL),
+m_checkDragYaw(NULL),
+m_checkDragPitch(NULL),
+m_checkShadows(NULL),
 m_sliderFOV(NULL),
+m_sliderFitDistance(NULL),
+m_sliderCameraYaw(NULL),
+m_sliderCameraPitch(NULL),
+m_sliderLightYaw(NULL),
+m_sliderLightPitch(NULL),
 m_sliderAmbientR(NULL),
 m_sliderAmbientG(NULL),
 m_sliderAmbientB(NULL),
+m_sliderLightR(NULL),
+m_sliderLightG(NULL),
+m_sliderLightB(NULL),
 m_allTemplates(new TemplateList),
 m_filteredTemplates(new TemplateList),
 m_currentFilter(),
@@ -104,12 +116,9 @@ m_templatesLoaded(false)
 	getCodeDataObject(TUIButton, m_buttonPreview, "buttonPreview");
 	getCodeDataObject(TUIButton, m_buttonSpawn, "buttonSpawn");
 	getCodeDataObject(TUIButton, m_buttonClose, "buttonClose");
-	getCodeDataObject(TUITextbox, m_filterTextbox, "filterTextbox");
+	getCodeDataObject(TUIButton, m_buttonSearch, "buttonSearch", true);
+	getCodeDataObject(TUIText, m_filterTextbox, "filterTextbox");
 	getCodeDataObject(TUIText, m_selectedText, "selectedText");
-	
-	// Optional pagination controls
-	getCodeDataObject(TUIButton, m_buttonNextPage, "buttonNextPage", true);
-	getCodeDataObject(TUIButton, m_buttonPrevPage, "buttonPrevPage", true);
 	getCodeDataObject(TUIText, m_pageText, "pageText", true);
 	
 	// Tabs
@@ -119,10 +128,21 @@ m_templatesLoaded(false)
 	getCodeDataObject(TUICheckbox, m_checkAutoZoom, "checkAutoZoom", true);
 	getCodeDataObject(TUICheckbox, m_checkHeadshot, "checkHeadshot", true);
 	getCodeDataObject(TUICheckbox, m_checkRotate, "checkRotate", true);
+	getCodeDataObject(TUICheckbox, m_checkDragYaw, "checkDragYaw", true);
+	getCodeDataObject(TUICheckbox, m_checkDragPitch, "checkDragPitch", true);
+	getCodeDataObject(TUICheckbox, m_checkShadows, "checkShadows", true);
 	getCodeDataObject(TUISliderbar, m_sliderFOV, "sliderFOV", true);
+	getCodeDataObject(TUISliderbar, m_sliderFitDistance, "sliderFitDistance", true);
+	getCodeDataObject(TUISliderbar, m_sliderCameraYaw, "sliderCameraYaw", true);
+	getCodeDataObject(TUISliderbar, m_sliderCameraPitch, "sliderCameraPitch", true);
+	getCodeDataObject(TUISliderbar, m_sliderLightYaw, "sliderLightYaw", true);
+	getCodeDataObject(TUISliderbar, m_sliderLightPitch, "sliderLightPitch", true);
 	getCodeDataObject(TUISliderbar, m_sliderAmbientR, "sliderAmbientR", true);
 	getCodeDataObject(TUISliderbar, m_sliderAmbientG, "sliderAmbientG", true);
 	getCodeDataObject(TUISliderbar, m_sliderAmbientB, "sliderAmbientB", true);
+	getCodeDataObject(TUISliderbar, m_sliderLightR, "sliderLightR", true);
+	getCodeDataObject(TUISliderbar, m_sliderLightG, "sliderLightG", true);
+	getCodeDataObject(TUISliderbar, m_sliderLightB, "sliderLightB", true);
 	
 	UIWidget * viewerWidget = NULL;
 	getCodeDataObject(TUIWidget, viewerWidget, "viewer");
@@ -161,14 +181,36 @@ m_templatesLoaded(false)
 		registerMediatorObject(*m_checkHeadshot, true);
 	if (m_checkRotate)
 		registerMediatorObject(*m_checkRotate, true);
+	if (m_checkDragYaw)
+		registerMediatorObject(*m_checkDragYaw, true);
+	if (m_checkDragPitch)
+		registerMediatorObject(*m_checkDragPitch, true);
+	if (m_checkShadows)
+		registerMediatorObject(*m_checkShadows, true);
 	if (m_sliderFOV)
 		registerMediatorObject(*m_sliderFOV, true);
+	if (m_sliderFitDistance)
+		registerMediatorObject(*m_sliderFitDistance, true);
+	if (m_sliderCameraYaw)
+		registerMediatorObject(*m_sliderCameraYaw, true);
+	if (m_sliderCameraPitch)
+		registerMediatorObject(*m_sliderCameraPitch, true);
+	if (m_sliderLightYaw)
+		registerMediatorObject(*m_sliderLightYaw, true);
+	if (m_sliderLightPitch)
+		registerMediatorObject(*m_sliderLightPitch, true);
 	if (m_sliderAmbientR)
 		registerMediatorObject(*m_sliderAmbientR, true);
 	if (m_sliderAmbientG)
 		registerMediatorObject(*m_sliderAmbientG, true);
 	if (m_sliderAmbientB)
 		registerMediatorObject(*m_sliderAmbientB, true);
+	if (m_sliderLightR)
+		registerMediatorObject(*m_sliderLightR, true);
+	if (m_sliderLightG)
+		registerMediatorObject(*m_sliderLightG, true);
+	if (m_sliderLightB)
+		registerMediatorObject(*m_sliderLightB, true);
 }
 
 //----------------------------------------------------------------------
@@ -200,10 +242,21 @@ SwgCuiDecoratorSpawn::~SwgCuiDecoratorSpawn()
 	m_checkAutoZoom = NULL;
 	m_checkHeadshot = NULL;
 	m_checkRotate = NULL;
+	m_checkDragYaw = NULL;
+	m_checkDragPitch = NULL;
+	m_checkShadows = NULL;
 	m_sliderFOV = NULL;
+	m_sliderFitDistance = NULL;
+	m_sliderCameraYaw = NULL;
+	m_sliderCameraPitch = NULL;
+	m_sliderLightYaw = NULL;
+	m_sliderLightPitch = NULL;
 	m_sliderAmbientR = NULL;
 	m_sliderAmbientG = NULL;
 	m_sliderAmbientB = NULL;
+	m_sliderLightR = NULL;
+	m_sliderLightG = NULL;
+	m_sliderLightB = NULL;
 }
 
 //----------------------------------------------------------------------
@@ -281,6 +334,18 @@ void SwgCuiDecoratorSpawn::OnButtonPressed(UIWidget * context)
 	{
 		deactivate();
 	}
+	else if (context == m_buttonSearch)
+	{
+		performSearch();
+	}
+	else if (context == m_buttonNextPage)
+	{
+		nextPage();
+	}
+	else if (context == m_buttonPrevPage)
+	{
+		prevPage();
+	}
 }
 
 //----------------------------------------------------------------------
@@ -290,9 +355,16 @@ void SwgCuiDecoratorSpawn::OnGenericSelectionChanged(UIWidget * context)
 	if (context == m_tree)
 	{
 		std::string const path = getSelectedTemplatePath();
-		if (!path.empty() && m_selectedText)
+		if (!path.empty())
 		{
-			m_selectedText->SetLocalText(Unicode::narrowToWide(path));
+			// Update selected text
+			if (m_selectedText)
+			{
+				m_selectedText->SetLocalText(Unicode::narrowToWide(path));
+			}
+			
+			// Auto-update viewer and info on selection
+			updatePreview();
 		}
 	}
 }
@@ -336,6 +408,29 @@ void SwgCuiDecoratorSpawn::populateTree()
 	
 	// Build tree structure
 	filterTree(Unicode::emptyString);
+}
+
+//----------------------------------------------------------------------
+
+void SwgCuiDecoratorSpawn::populateTemplateList()
+{
+	m_allTemplates->clear();
+	
+	stdvector<const char *>::fwd templateNames;
+	ObjectTemplateList::getAllTemplateNamesFromCrcStringTable(templateNames);
+	
+	// Filter to only object/ .iff files
+	for (stdvector<const char *>::fwd::const_iterator it = templateNames.begin(); it != templateNames.end(); ++it)
+	{
+		std::string const name(*it);
+		if (startsWith(name, cms_objectPrefix) && name.find(".iff") != std::string::npos)
+		{
+			m_allTemplates->push_back(name);
+		}
+	}
+	
+	// Sort alphabetically
+	std::sort(m_allTemplates->begin(), m_allTemplates->end());
 }
 
 //----------------------------------------------------------------------
@@ -407,25 +502,62 @@ void SwgCuiDecoratorSpawn::filterTree(Unicode::String const & filter)
 
 //----------------------------------------------------------------------
 
-void SwgCuiDecoratorSpawn::populateTemplateList()
+void SwgCuiDecoratorSpawn::performSearch()
 {
-	m_allTemplates->clear();
+	if (!m_filterTextbox) return;
 	
-	stdvector<const char *>::fwd templateNames;
-	ObjectTemplateList::getAllTemplateNamesFromCrcStringTable(templateNames);
+	Unicode::String filterText;
+	m_filterTextbox->GetLocalText(filterText);
+	std::string const newFilter = Unicode::wideToNarrow(filterText);
 	
-	// Filter to only object/ .iff files
-	for (stdvector<const char *>::fwd::const_iterator it = templateNames.begin(); it != templateNames.end(); ++it)
+	m_currentFilter = newFilter;
+	m_currentPage = 0;
+	
+	// Filter the templates
+	m_filteredTemplates->clear();
+	
+	if (m_currentFilter.length() >= 2)
 	{
-		std::string const name(*it);
-		if (startsWith(name, cms_objectPrefix) && name.find(".iff") != std::string::npos)
+		for (TemplateList::const_iterator it = m_allTemplates->begin(); it != m_allTemplates->end(); ++it)
 		{
-			m_allTemplates->push_back(name);
+			if (containsIgnoreCase(*it, m_currentFilter))
+			{
+				m_filteredTemplates->push_back(*it);
+			}
 		}
+		
+		// Sort results alphabetically A-Z
+		std::sort(m_filteredTemplates->begin(), m_filteredTemplates->end());
 	}
 	
-	// Sort alphabetically
-	std::sort(m_allTemplates->begin(), m_allTemplates->end());
+	// Calculate total pages
+	int const totalItems = static_cast<int>(m_filteredTemplates->size());
+	m_totalPages = (totalItems + ms_itemsPerPage - 1) / ms_itemsPerPage;
+	if (m_totalPages < 1) m_totalPages = 1;
+	
+	updateTreeDisplay();
+}
+
+//----------------------------------------------------------------------
+
+void SwgCuiDecoratorSpawn::nextPage()
+{
+	if (m_currentPage < m_totalPages - 1)
+	{
+		++m_currentPage;
+		updateTreeDisplay();
+	}
+}
+
+//----------------------------------------------------------------------
+
+void SwgCuiDecoratorSpawn::prevPage()
+{
+	if (m_currentPage > 0)
+	{
+		--m_currentPage;
+		updateTreeDisplay();
+	}
 }
 
 //----------------------------------------------------------------------
@@ -478,11 +610,8 @@ void SwgCuiDecoratorSpawn::updateTreeDisplay()
 	{
 		std::string const & path = (*m_filteredTemplates)[static_cast<size_t>(i)];
 		
-		// Extract filename for display
-		std::string displayName = path;
-		size_t const lastSlash = path.rfind('/');
-		if (lastSlash != std::string::npos)
-			displayName = path.substr(lastSlash + 1);
+		// Get localized display name from StringId
+		std::string displayName = getDisplayNameForTemplate(path);
 		
 		UIDataSourceContainer * item = new UIDataSourceContainer;
 		item->SetName(displayName);
@@ -541,9 +670,6 @@ void SwgCuiDecoratorSpawn::spawnSelectedObject()
 	
 	uint32 const hashSpawn = Crc::normalizeAndCalculate("spawn");
 	ClientCommandQueue::enqueueCommand(hashSpawn, NetworkId::cms_invalid, Unicode::narrowToWide(buffer));
-	
-	// Close the window after spawning
-	deactivate();
 }
 
 //----------------------------------------------------------------------
@@ -593,6 +719,59 @@ std::string SwgCuiDecoratorSpawn::convertToServerTemplate(std::string const & sh
 
 //----------------------------------------------------------------------
 
+std::string SwgCuiDecoratorSpawn::getDisplayNameForTemplate(std::string const & templatePath) const
+{
+	// Try to get localized name from the object template's objectName StringId
+	ObjectTemplate const * const objectTemplate = ObjectTemplateList::fetch(templatePath);
+	if (objectTemplate)
+	{
+		SharedObjectTemplate const * const sharedTemplate = dynamic_cast<SharedObjectTemplate const *>(objectTemplate);
+		if (sharedTemplate)
+		{
+			StringId const & nameId = sharedTemplate->getObjectName();
+			if (!nameId.isInvalid())
+			{
+				Unicode::String localizedName;
+				if (nameId.localize(localizedName) && !localizedName.empty())
+				{
+					objectTemplate->releaseReference();
+					return Unicode::wideToNarrow(localizedName);
+				}
+			}
+		}
+		objectTemplate->releaseReference();
+	}
+	
+	// Fallback: extract and clean filename
+	std::string filename;
+	size_t const lastSlash = templatePath.rfind('/');
+	if (lastSlash != std::string::npos)
+	{
+		filename = templatePath.substr(lastSlash + 1);
+	}
+	else
+	{
+		filename = templatePath;
+	}
+	
+	// Remove .iff extension
+	size_t const dotPos = filename.rfind('.');
+	if (dotPos != std::string::npos)
+	{
+		filename = filename.substr(0, dotPos);
+	}
+	
+	// Remove shared_ prefix
+	if (filename.compare(0, 7, "shared_") == 0)
+	{
+		filename = filename.substr(7);
+	}
+	
+	return filename;
+}
+
+//----------------------------------------------------------------------
+
 void SwgCuiDecoratorSpawn::OnTabbedPaneChanged(UIWidget * context)
 {
 	if (context == m_tabs)
@@ -611,7 +790,8 @@ void SwgCuiDecoratorSpawn::OnTabbedPaneChanged(UIWidget * context)
 
 void SwgCuiDecoratorSpawn::OnCheckboxSet(UIWidget * context)
 {
-	if (context == m_checkAutoZoom || context == m_checkHeadshot || context == m_checkRotate)
+	if (context == m_checkAutoZoom || context == m_checkHeadshot || context == m_checkRotate || 
+		context == m_checkDragYaw || context == m_checkDragPitch || context == m_checkShadows)
 	{
 		updateViewerSettings();
 	}
@@ -621,7 +801,8 @@ void SwgCuiDecoratorSpawn::OnCheckboxSet(UIWidget * context)
 
 void SwgCuiDecoratorSpawn::OnCheckboxUnset(UIWidget * context)
 {
-	if (context == m_checkAutoZoom || context == m_checkHeadshot || context == m_checkRotate)
+	if (context == m_checkAutoZoom || context == m_checkHeadshot || context == m_checkRotate || 
+		context == m_checkDragYaw || context == m_checkDragPitch || context == m_checkShadows)
 	{
 		updateViewerSettings();
 	}
@@ -631,8 +812,10 @@ void SwgCuiDecoratorSpawn::OnCheckboxUnset(UIWidget * context)
 
 void SwgCuiDecoratorSpawn::OnSliderbarChanged(UIWidget * context)
 {
-	if (context == m_sliderFOV || context == m_sliderAmbientR || 
-	    context == m_sliderAmbientG || context == m_sliderAmbientB)
+	if (context == m_sliderFOV || context == m_sliderFitDistance || context == m_sliderCameraYaw || 
+	    context == m_sliderCameraPitch || context == m_sliderLightYaw || context == m_sliderLightPitch || 
+	    context == m_sliderAmbientR || context == m_sliderAmbientG || context == m_sliderAmbientB || 
+	    context == m_sliderLightR || context == m_sliderLightG || context == m_sliderLightB)
 	{
 		updateViewerSettings();
 	}
@@ -663,15 +846,90 @@ void SwgCuiDecoratorSpawn::updateViewerSettings()
 		m_viewer->setRotateSpeed(m_checkRotate->IsChecked() ? 4.0f : 0.0f);
 	}
 	
-	// Update FOV (convert slider value 50-120 to radians)
+	// Update drag yaw
+	if (m_checkDragYaw)
+	{
+		m_viewer->SetProperty(CuiWidget3dObjectListViewer::PropertyName::DragYawOk, 
+			Unicode::narrowToWide(m_checkDragYaw->IsChecked() ? "true" : "false"));
+	}
+	
+	// Update drag pitch
+	if (m_checkDragPitch)
+	{
+		m_viewer->SetProperty(CuiWidget3dObjectListViewer::PropertyName::DragPitchOk, 
+			Unicode::narrowToWide(m_checkDragPitch->IsChecked() ? "true" : "false"));
+	}
+	
+	// Update shadows
+	if (m_checkShadows)
+	{
+		m_viewer->SetProperty(CuiWidget3dObjectListViewer::PropertyName::Shadows, 
+			Unicode::narrowToWide(m_checkShadows->IsChecked() ? "true" : "false"));
+	}
+	
+	// Update FOV (convert slider value to degrees for property)
 	if (m_sliderFOV)
 	{
 		long fovDegrees = m_sliderFOV->GetValue();
-		float fovRadians = static_cast<float>(fovDegrees) * 3.14159f / 180.0f;
 		char fovStr[32];
-		snprintf(fovStr, sizeof(fovStr), "%.4f", fovRadians);
+		snprintf(fovStr, sizeof(fovStr), "%ld", fovDegrees);
 		m_viewer->SetProperty(CuiWidget3dObjectListViewer::PropertyName::FieldOfView, 
 			Unicode::narrowToWide(fovStr));
+	}
+	
+	// Update fit distance factor (slider value / 100 for 0.5 - 3.0 range)
+	if (m_sliderFitDistance)
+	{
+		long fitDistancePercent = m_sliderFitDistance->GetValue();
+		float fitDistanceFactor = static_cast<float>(fitDistancePercent) / 100.0f;
+		char fitStr[32];
+		snprintf(fitStr, sizeof(fitStr), "%.2f", fitDistanceFactor);
+		m_viewer->SetProperty(CuiWidget3dObjectListViewer::PropertyName::FitDistanceFactor, 
+			Unicode::narrowToWide(fitStr));
+	}
+	
+	// Update camera yaw (convert degrees to radians)
+	if (m_sliderCameraYaw)
+	{
+		long yawDegrees = m_sliderCameraYaw->GetValue();
+		float yawRadians = static_cast<float>(yawDegrees) * 3.14159f / 180.0f;
+		char yawStr[32];
+		snprintf(yawStr, sizeof(yawStr), "%.4f", yawRadians);
+		m_viewer->SetProperty(CuiWidget3dObjectListViewer::PropertyName::CameraYaw, 
+			Unicode::narrowToWide(yawStr));
+	}
+	
+	// Update camera pitch (convert degrees to radians)
+	if (m_sliderCameraPitch)
+	{
+		long pitchDegrees = m_sliderCameraPitch->GetValue();
+		float pitchRadians = static_cast<float>(pitchDegrees) * 3.14159f / 180.0f;
+		char pitchStr[32];
+		snprintf(pitchStr, sizeof(pitchStr), "%.4f", pitchRadians);
+		m_viewer->SetProperty(CuiWidget3dObjectListViewer::PropertyName::CameraPitch, 
+			Unicode::narrowToWide(pitchStr));
+	}
+	
+	// Update light yaw (convert degrees to radians)
+	if (m_sliderLightYaw)
+	{
+		long lightYawDegrees = m_sliderLightYaw->GetValue();
+		float lightYawRadians = static_cast<float>(lightYawDegrees) * 3.14159f / 180.0f;
+		char yawStr[32];
+		snprintf(yawStr, sizeof(yawStr), "%.4f", lightYawRadians);
+		m_viewer->SetProperty(CuiWidget3dObjectListViewer::PropertyName::LightYaw, 
+			Unicode::narrowToWide(yawStr));
+	}
+	
+	// Update light pitch (convert degrees to radians)
+	if (m_sliderLightPitch)
+	{
+		long lightPitchDegrees = m_sliderLightPitch->GetValue();
+		float lightPitchRadians = static_cast<float>(lightPitchDegrees) * 3.14159f / 180.0f;
+		char pitchStr[32];
+		snprintf(pitchStr, sizeof(pitchStr), "%.4f", lightPitchRadians);
+		m_viewer->SetProperty(CuiWidget3dObjectListViewer::PropertyName::LightPitch, 
+			Unicode::narrowToWide(pitchStr));
 	}
 	
 	// Update ambient light color
@@ -686,6 +944,21 @@ void SwgCuiDecoratorSpawn::updateViewerSettings()
 		snprintf(colorStr, sizeof(colorStr), "#%02X%02X%02X", 
 			static_cast<int>(r), static_cast<int>(g), static_cast<int>(b));
 		m_viewer->SetProperty(CuiWidget3dObjectListViewer::PropertyName::LightAmbientColor, 
+			Unicode::narrowToWide(colorStr));
+	}
+	
+	// Update light color
+	if (m_sliderLightR && m_sliderLightG && m_sliderLightB)
+	{
+		long r = m_sliderLightR->GetValue();
+		long g = m_sliderLightG->GetValue();
+		long b = m_sliderLightB->GetValue();
+		
+		// Format as #RRGGBB hex color
+		char colorStr[16];
+		snprintf(colorStr, sizeof(colorStr), "#%02X%02X%02X", 
+			static_cast<int>(r), static_cast<int>(g), static_cast<int>(b));
+		m_viewer->SetProperty(CuiWidget3dObjectListViewer::PropertyName::LightColor, 
 			Unicode::narrowToWide(colorStr));
 	}
 	

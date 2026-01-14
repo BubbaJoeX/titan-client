@@ -81,6 +81,7 @@
 #include "swgClientUserInterface/SwgCuiManager.h"
 #include "swgSharedNetworkMessages/SetupSwgSharedNetworkMessages.h"
 
+#include "clientGame/SplashScreen.h"
 
 #include "Resource.h"
 
@@ -312,6 +313,10 @@ int ClientMain(
 
 		if (SetupClientGraphics::install(setupGraphicsData))
 		{
+			// Install and render splash screen immediately after graphics initialization
+			SplashScreen::install();
+			SplashScreen::render();
+			
 			VideoList::install(Audio::getMilesDigitalDriver());
 
 			//-- directinput

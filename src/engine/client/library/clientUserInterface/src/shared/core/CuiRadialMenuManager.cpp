@@ -1308,24 +1308,11 @@ bool CuiRadialMenuManager::populateMenu (CuiMenuInfoHelper & helper, const Objec
 			return true;
 		}
 		//Add move option for furniture not in world or on player
-		if (PlayerObject::isAdmin())
-		{
-			if (got != SharedObjectTemplate::GOT_creature && got != SharedObjectTemplate::GOT_installation && got != SharedObjectTemplate::GOT_data)
-			{
-				//send warning
-				WARNING(!isInWorld && !isOnPlayer, ("Admin moving object that is either in world or on player"));
-				helper.addRootMenu(ITEM_MOVEMENT_MODE, got);
-			}
-		}
-		else if (got == SharedObjectTemplate::GOT_misc_furniture)
+		if (got == SharedObjectTemplate::GOT_misc_furniture)
 		{
 			if (!isInWorld && !isOnPlayer)
 			{
 				pickupable = true;
-			}
-			if ((isInWorld || (containedByObject && containedByObject->getCellProperty())))
-			{
-				helper.addRootMenu(ITEM_MOVEMENT_MODE, got);
 			}
 		}
 
@@ -2606,6 +2593,11 @@ bool CuiRadialMenuManager::updateRanges ()
 	CreatureObject const * const creatureObject = clientObject->asCreatureObject();
 	if (creatureObject && !creatureObject->getCoverVisibility() && !creatureObject->isPassiveRevealPlayerCharacter(Game::getPlayerNetworkId()))
 	{
+		if (PlayerObject::isAdmin())
+		{
+			// allow gods to keep the radial up
+			return false;
+		}
 		CuiRadialMenuManager::clear ();
 		return false;
 	}
