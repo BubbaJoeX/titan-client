@@ -8,6 +8,8 @@
 #include "NunaCompression.h"
 #include <iostream>
 #include <filesystem>
+#include <cstring>  // For std::memcpy
+
 
 namespace Nuna
 {
