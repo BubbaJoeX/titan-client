@@ -1,18 +1,19 @@
 // ======================================================================
 //
 // main.cpp
-// Nuna - TRE Archive Packer/Unpacker Command Line Tool
+// Nuna - TitanPak Archive Packer/Unpacker Command Line Tool
 // Copyright (c) Titan Project
 //
 // Usage:
-//   nuna pack <directory> <output.tre> [options]
-//   nuna unpack <input.tre> <directory> [options]
-//   nuna list <input.tre> [options]
-//   nuna validate <input.tre> [options]
+//   nuna pack <directory> <output.titanpak> [options]
+//   nuna unpack <input.titanpak> <directory> [options]
+//   nuna list <input.titanpak> [options]
+//   nuna validate <input.titanpak> [options]
 //
 // ======================================================================
 
 #include "Nuna.h"
+#include "NunaCrypto.h"
 
 #include <iostream>
 #include <string>
@@ -22,6 +23,7 @@
 // ======================================================================
 // Command Line Parsing
 // ======================================================================
+
 
 struct CommandLine
 {
@@ -58,12 +60,10 @@ Commands:
   validate   Validate a TitanPak archive
 
 Supported Formats:
-  .titanpak  - TitanPak format (encrypted with NUNA magic, or unencrypted with TREE magic)
-  .tre       - Legacy TRE format (compatible with SWG client)
+  .titanpak  - TitanPak format (auto-encrypted with built-in key)
+  .tre       - Legacy TRE format (unencrypted, SWG compatible)
 
 Options:
-  -e, --encrypt <password>    Encrypt the archive with password (recommended for .titanpak)
-  -d, --decrypt <password>    Decrypt the archive with password
   -c, --no-compress           Disable file compression
   -t, --no-toc-compress       Disable TOC/name block compression only
   -q, --quiet                 Suppress output
@@ -74,10 +74,10 @@ Options:
   -h, --help                  Show this help
 
 Examples:
-  nuna pack ./data assets.titanpak -e MySecretPassword
-  nuna unpack assets.titanpak ./extracted -d MySecretPassword
-  nuna list assets.titanpak -d MySecretPassword
-  nuna pack ./data legacy.tre              (unencrypted, SWG compatible)
+  nuna pack ./data assets.titanpak       (auto-encrypted)
+  nuna unpack assets.titanpak ./extracted
+  nuna list assets.titanpak
+  nuna pack ./data legacy.tre            (unencrypted .tre)
   nuna list legacy.tre
 
 )" << std::endl;
@@ -178,7 +178,7 @@ int main(int argc, char* argv[])
     {
         if (cmd.arg1.empty() || cmd.arg2.empty())
         {
-            std::cerr << "Error: pack requires <directory> and <output.tre>" << std::endl;
+            std::cerr << "Error: pack requires <directory> and <output.titanpak>" << std::endl;
             return 1;
         }
         
@@ -188,10 +188,23 @@ int main(int argc, char* argv[])
         options.quiet = cmd.quiet;
         options.verbose = cmd.verbose;
         
-        if (!cmd.password.empty())
+        // Auto-enable encryption for .titanpak files using hardcoded password
+        // Use .tre extension for unencrypted legacy archives
+        std::string outputFile = cmd.arg2;
+        const std::string titanpakExt = ".titanpak";
+        bool isTitanPak = false;
+        
+        if (outputFile.length() >= titanpakExt.length())
         {
+            std::string ext = outputFile.substr(outputFile.length() - titanpakExt.length());
+            isTitanPak = (ext == titanpakExt);
+        }
+        
+        if (isTitanPak)
+        {
+            // Auto-encrypt .titanpak files with hardcoded password
             options.encryption.enabled = true;
-            options.encryption.password = cmd.password;
+            options.encryption.password = Nuna::Crypto::getTitanPakPassword();
         }
         
         result = Nuna::pack(cmd.arg1, cmd.arg2, options);
@@ -201,7 +214,7 @@ int main(int argc, char* argv[])
     {
         if (cmd.arg1.empty() || cmd.arg2.empty())
         {
-            std::cerr << "Error: unpack requires <input.tre> and <directory>" << std::endl;
+            std::cerr << "Error: unpack requires <input.titanpak> and <directory>" << std::endl;
             return 1;
         }
         
@@ -211,11 +224,11 @@ int main(int argc, char* argv[])
         options.verbose = cmd.verbose;
         options.filter = cmd.filter;
         
-        if (!cmd.password.empty())
-        {
-            options.encryption.enabled = true;
-            options.encryption.password = cmd.password;
-        }
+        // Always enable encryption with hardcoded password for encrypted archives
+        // The unpack function will detect if the archive is actually encrypted
+        options.encryption.enabled = true;
+        options.encryption.password = cmd.password.empty() ? 
+            Nuna::Crypto::getTitanPakPassword() : cmd.password;
         
         result = Nuna::unpack(cmd.arg1, cmd.arg2, options);
     }
@@ -224,7 +237,7 @@ int main(int argc, char* argv[])
     {
         if (cmd.arg1.empty())
         {
-            std::cerr << "Error: list requires <input.tre>" << std::endl;
+            std::cerr << "Error: list requires <input.titanpak>" << std::endl;
             return 1;
         }
         
@@ -232,11 +245,10 @@ int main(int argc, char* argv[])
         options.showOffset = cmd.showOffset;
         options.filter = cmd.filter;
         
-        if (!cmd.password.empty())
-        {
-            options.encryption.enabled = true;
-            options.encryption.password = cmd.password;
-        }
+        // Always enable encryption with hardcoded password for encrypted archives
+        options.encryption.enabled = true;
+        options.encryption.password = cmd.password.empty() ? 
+            Nuna::Crypto::getTitanPakPassword() : cmd.password;
         
         result = Nuna::list(cmd.arg1, options);
     }

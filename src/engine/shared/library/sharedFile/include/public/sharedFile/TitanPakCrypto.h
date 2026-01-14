@@ -17,6 +17,14 @@
 #include <string>
 
 // ======================================================================
+// Hardcoded TitanPak encryption password
+// This is embedded in the binary - do not share source code publicly
+// Must match the password in Nuna tool's NunaCrypto.h
+// ======================================================================
+
+static const char* const TITANPAK_PASSWORD = "T1t4n_S3cur3_P4k_K3y_2024!@#$";
+
+// ======================================================================
 
 class TitanPakCrypto
 {
@@ -25,6 +33,15 @@ public:
     static const size_t IV_SIZE = 16;
     static const size_t KEY_SIZE = 32;
     static const size_t BLOCK_SIZE = 256;
+
+    // ======================================================================
+    // Get the hardcoded TitanPak password
+    // ======================================================================
+    
+    static const char* getPassword()
+    {
+        return TITANPAK_PASSWORD;
+    }
 
     // ======================================================================
     // Encryption Header (follows standard TRE header for encrypted files)

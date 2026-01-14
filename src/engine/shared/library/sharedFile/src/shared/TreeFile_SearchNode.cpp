@@ -281,8 +281,8 @@ TreeFile::SearchTree::SearchTree(int priority, const char *fileName)
 		TitanPakCrypto::EncryptionHeader encHeader;
 		m_treeFile->read(sizeof(header), &encHeader, sizeof(encHeader), AbstractFile::PriorityData);
 		
-		// Get the encryption password from config
-		const char* password = ConfigFile::getKeyString("SharedFile", "titanPakPassword", "");
+		// Use the hardcoded encryption password
+		const char* password = TitanPakCrypto::getPassword();
 		
 		// Initialize encryption context
 		m_encryptionContext = new TitanPakEncryptionContext();
@@ -551,7 +551,8 @@ AbstractFile *TreeFile::SearchTree::open(const char *fileName, AbstractFile::Pri
 				m_encryptionContext->decryptAt(buffer, entry.length, entry.offset);
 				
 				// Return a memory file with the decrypted data
-				return new MemoryFile(entry.length, buffer, true);
+				// Note: MemoryFile takes ownership of the buffer
+				return new MemoryFile(buffer, entry.length);
 			}
 			else
 			{

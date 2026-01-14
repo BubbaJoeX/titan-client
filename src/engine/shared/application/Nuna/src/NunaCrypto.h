@@ -23,6 +23,13 @@ namespace Nuna
 {
 
 // ======================================================================
+// Hardcoded TitanPak encryption password
+// This is embedded in the binary - do not share source code publicly
+// ======================================================================
+
+static const char* const TITANPAK_PASSWORD = "T1t4n_S3cur3_P4k_K3y_2024!@#$";
+
+// ======================================================================
 // Simple but effective XOR-based stream cipher with key expansion
 // This provides obfuscation; for true security, upgrade to AES
 // ======================================================================
@@ -34,6 +41,12 @@ public:
     static constexpr size_t IV_SIZE = 16;
     static constexpr size_t KEY_SIZE = 32;
     static constexpr size_t BLOCK_SIZE = 256;
+
+    // Get the hardcoded TitanPak password
+    static const char* getTitanPakPassword()
+    {
+        return TITANPAK_PASSWORD;
+    }
 
     // Generate random bytes for salt/IV
     static void generateRandom(uint8_t* buffer, size_t size)
@@ -47,6 +60,7 @@ public:
             buffer[i] = static_cast<uint8_t>(dist(gen));
         }
     }
+
 
     // Derive a key from password and salt using a simple PBKDF-like function
     static void deriveKey(const std::string& password, 
