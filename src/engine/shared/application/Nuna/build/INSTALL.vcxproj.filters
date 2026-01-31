@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="D:\titan\client\src\engine\shared\application\Nuna\build\CMakeFiles\92ea08269c4af95110787e78d67f31bd\INSTALL_force.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{5287668C-BD37-3B1F-B612-01DDAE32E866}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

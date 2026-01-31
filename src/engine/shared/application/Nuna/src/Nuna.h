@@ -36,6 +36,7 @@ constexpr uint32_t TAG_NUNA = 'A' | ('N' << 8) | ('U' << 16) | ('N' << 24);  // 
 
 // TOC Format Constants
 constexpr uint32_t TAG_TOC  = ' ' | ('C' << 8) | ('O' << 16) | ('T' << 24);  // "TOC " (space-C-O-T in little-endian)
+constexpr uint32_t TAG_NTOC = 'N' | ('T' << 8) | ('O' << 16) | ('C' << 24);  // "NTOC" (encrypted titanlst)
 constexpr uint32_t TAG_0001 = '1' | ('0' << 8) | ('0' << 16) | ('0' << 24);  // "0001"
 
 // ======================================================================

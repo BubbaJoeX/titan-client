@@ -1,0 +1,651 @@
+﻿// ======================================================================
+// NunaToc.cpp - titanlst/TOC File Support for Nuna
+// Copyright (c) Titan Project
+// ======================================================================
+
+#include "NunaToc.h"
+#include "Nuna.h"
+#include "NunaCompression.h"
+#include "NunaCrypto.h"
+#include <iostream>
+#include <filesystem>
+#include <cstring>  // For std::memcpy
+
+
+namespace Nuna
+{
+
+Result createTitanlst(const std::string& outputFile, const std::vector<std::string>& treFiles, const PackOptions& options)
+{
+    Result result;
+    
+    if (treFiles.empty())
+    {
+        result.code = ResultCode::InvalidArguments;
+        result.message = "No TRE files specified";
+        return result;
+    }
+    
+    // Open all TRE archives and read their TOCs
+    std::vector<std::string> treNames;
+    std::vector<std::vector<TocEntry>> allEntries;
+    std::vector<std::string> allFileNames;
+    uint32_t totalFiles = 0;
+    
+    for (size_t i = 0; i < treFiles.size(); ++i)
+    {
+        const std::string& treFile = treFiles[i];
+        std::ifstream inFile(treFile, std::ios::binary);
+        if (!inFile)
+        {
+            result.code = ResultCode::FileNotFound;
+            result.message = "Cannot open TRE: " + treFile;
+            return result;
+        }
+        
+        TreHeader header;
+        inFile.read(reinterpret_cast<char*>(&header), sizeof(header));
+        
+        if (header.token != TAG_TREE)
+        {
+            result.code = ResultCode::InvalidArchive;
+            result.message = "Invalid TRE file: " + treFile;
+            return result;
+        }
+        
+        // Extract filename from path
+        size_t lastSlash = treFile.find_last_of("/\\");
+        std::string treBaseName = (lastSlash != std::string::npos) ? treFile.substr(lastSlash + 1) : treFile;
+        treNames.push_back(treBaseName);
+        
+        // Read TOC entries
+        inFile.seekg(header.tocOffset);
+        std::vector<TocEntry> entries(header.numberOfFiles);
+        uint32_t tocSize = sizeof(TocEntry) * header.numberOfFiles;
+        
+        if (header.tocCompressor == static_cast<uint32_t>(CompressionType::Zlib))
+        {
+            std::vector<uint8_t> compressed(header.sizeOfTOC);
+            inFile.read(reinterpret_cast<char*>(compressed.data()), header.sizeOfTOC);
+            uLongf destLen = tocSize;
+            if (uncompress(reinterpret_cast<Bytef*>(entries.data()), &destLen, compressed.data(), header.sizeOfTOC) != Z_OK)
+            {
+                result.code = ResultCode::DecompressionError;
+                result.message = "Failed to decompress TOC: " + treFile;
+                return result;
+            }
+        }
+        else
+        {
+            inFile.read(reinterpret_cast<char*>(entries.data()), tocSize);
+        }
+        
+        // Read filename block
+        inFile.seekg(header.tocOffset + header.sizeOfTOC);
+        std::vector<char> nameBlock(header.uncompSizeOfNameBlock);
+        
+        if (header.blockCompressor == static_cast<uint32_t>(CompressionType::Zlib))
+        {
+            std::vector<uint8_t> compressed(header.sizeOfNameBlock);
+            inFile.read(reinterpret_cast<char*>(compressed.data()), header.sizeOfNameBlock);
+            uLongf destLen = header.uncompSizeOfNameBlock;
+            if (uncompress(reinterpret_cast<Bytef*>(nameBlock.data()), &destLen, compressed.data(), header.sizeOfNameBlock) != Z_OK)
+            {
+                result.code = ResultCode::DecompressionError;
+                result.message = "Failed to decompress name block: " + treFile;
+                return result;
+            }
+        }
+        else
+        {
+            inFile.read(nameBlock.data(), header.uncompSizeOfNameBlock);
+        }
+        
+        // Store entries and filenames
+        allEntries.push_back(entries);
+        for (const auto& entry : entries)
+        {
+            std::string fileName(&nameBlock[entry.fileNameOffset]);
+            allFileNames.push_back(fileName);
+        }
+        
+        totalFiles += header.numberOfFiles;
+        
+        if (!options.quiet)
+            std::cout << "Read " << header.numberOfFiles << " files from " << treBaseName << "\n";
+    }
+    
+    // Build titanlst header
+    // .titanlst files are always encrypted with NTOC magic
+    TitanlstHeader tocHeader = {};
+    tocHeader.token = TAG_NTOC;  // Encrypted titanlst format
+    tocHeader.version = TAG_0001;
+    tocHeader.numberOfFiles = totalFiles;
+    tocHeader.numberOfTreeFiles = static_cast<uint32_t>(treNames.size());
+    tocHeader.tocCompressor = options.compressToc ? static_cast<uint8_t>(CompressionType::Zlib) : 0;
+    tocHeader.fileNameBlockCompressor = options.compressToc ? static_cast<uint8_t>(CompressionType::Zlib) : 0;
+    
+    // Initialize encryption context for titanlst
+    EncryptionContext encContext;
+    encContext.initEncrypt(Crypto::getTitanPakPassword());
+    
+    // Build tree filename block
+    std::vector<char> treeNameBlock;
+    for (const auto& name : treNames)
+    {
+        treeNameBlock.insert(treeNameBlock.end(), name.begin(), name.end());
+        treeNameBlock.push_back('\0');
+    }
+    tocHeader.sizeOfTreeFileNameBlock = static_cast<uint32_t>(treeNameBlock.size());
+    
+    // Build titanlst entries
+    std::vector<TitanlstEntry> tocEntries;
+    std::vector<char> fileNameBlock;
+    
+    for (size_t treeIdx = 0; treeIdx < allEntries.size(); ++treeIdx)
+    {
+        size_t baseFileIdx = 0;
+        for (size_t i = 0; i < treeIdx; ++i)
+            baseFileIdx += allEntries[i].size();
+        
+        for (size_t entryIdx = 0; entryIdx < allEntries[treeIdx].size(); ++entryIdx)
+        {
+            const auto& treEntry = allEntries[treeIdx][entryIdx];
+            const std::string& fileName = allFileNames[baseFileIdx + entryIdx];
+            
+            TitanlstEntry tocEntry = {};
+            tocEntry.compressor = static_cast<uint8_t>(treEntry.compressor);
+            tocEntry.treeFileIndex = static_cast<uint16_t>(treeIdx);
+            tocEntry.crc = treEntry.crc;
+            tocEntry.fileNameOffset = static_cast<uint32_t>(fileName.length());
+            tocEntry.offset = treEntry.offset;
+            tocEntry.length = treEntry.length;
+            tocEntry.compressedLength = treEntry.compressedLength;
+            
+            tocEntries.push_back(tocEntry);
+            fileNameBlock.insert(fileNameBlock.end(), fileName.begin(), fileName.end());
+            fileNameBlock.push_back('\0');
+        }
+    }
+    
+    tocHeader.uncompSizeOfNameBlock = static_cast<uint32_t>(fileNameBlock.size());
+    
+    // Compress TOC entries if needed
+    std::vector<uint8_t> tocData;
+    uint32_t tocRawSize = static_cast<uint32_t>(tocEntries.size() * sizeof(TitanlstEntry));
+    
+    if (tocHeader.tocCompressor == static_cast<uint8_t>(CompressionType::Zlib))
+    {
+        uLongf compSize = compressBound(tocRawSize);
+        tocData.resize(compSize);
+        if (compress2(tocData.data(), &compSize, reinterpret_cast<const Bytef*>(tocEntries.data()), tocRawSize, options.compressionLevel) != Z_OK)
+        {
+            result.code = ResultCode::CompressionError;
+            result.message = "Failed to compress TOC";
+            return result;
+        }
+        tocData.resize(compSize);
+        tocHeader.sizeOfTOC = compSize;
+    }
+    else
+    {
+        tocData.resize(tocRawSize);
+        std::memcpy(tocData.data(), tocEntries.data(), tocRawSize);
+        tocHeader.sizeOfTOC = tocRawSize;
+    }
+    
+    // Compress filename block if needed
+    std::vector<uint8_t> nameData;
+    if (tocHeader.fileNameBlockCompressor == static_cast<uint8_t>(CompressionType::Zlib))
+    {
+        uLongf compSize = compressBound(tocHeader.uncompSizeOfNameBlock);
+        nameData.resize(compSize);
+        if (compress2(nameData.data(), &compSize, reinterpret_cast<const Bytef*>(fileNameBlock.data()), tocHeader.uncompSizeOfNameBlock, options.compressionLevel) != Z_OK)
+        {
+            result.code = ResultCode::CompressionError;
+            result.message = "Failed to compress filename block";
+            return result;
+        }
+        nameData.resize(compSize);
+        tocHeader.sizeOfNameBlock = compSize;
+    }
+    else
+    {
+        nameData.assign(reinterpret_cast<const uint8_t*>(fileNameBlock.data()), 
+                       reinterpret_cast<const uint8_t*>(fileNameBlock.data()) + fileNameBlock.size());
+        tocHeader.sizeOfNameBlock = tocHeader.uncompSizeOfNameBlock;
+    }
+    
+    // Write titanlst file (encrypted)
+    std::ofstream outFile(outputFile, std::ios::binary);
+    if (!outFile)
+    {
+        result.code = ResultCode::IOError;
+        result.message = "Cannot create output file: " + outputFile;
+        return result;
+    }
+    
+    // Write header (unencrypted)
+    outFile.write(reinterpret_cast<const char*>(&tocHeader), sizeof(tocHeader));
+    
+    // Write encryption header
+    EncryptionHeader encHeader = {};
+    encHeader.encryptionVersion = 1;
+    std::memcpy(encHeader.salt, encContext.getSalt(), Crypto::SALT_SIZE);
+    std::memcpy(encHeader.iv, encContext.getIv(), Crypto::IV_SIZE);
+    encHeader.flags = 0;
+    outFile.write(reinterpret_cast<const char*>(&encHeader), sizeof(encHeader));
+    
+    // Track current offset for encryption (after header + encryption header)
+    uint64_t currentOffset = sizeof(tocHeader) + sizeof(encHeader);
+    
+    // Encrypt and write tree name block
+    std::vector<uint8_t> encTreeNameBlock(treeNameBlock.begin(), treeNameBlock.end());
+    encContext.encryptAt(encTreeNameBlock.data(), encTreeNameBlock.size(), currentOffset);
+    outFile.write(reinterpret_cast<const char*>(encTreeNameBlock.data()), encTreeNameBlock.size());
+    currentOffset += encTreeNameBlock.size();
+    
+    // Encrypt and write TOC data
+    std::vector<uint8_t> encTocData = tocData;
+    encContext.encryptAt(encTocData.data(), encTocData.size(), currentOffset);
+    outFile.write(reinterpret_cast<const char*>(encTocData.data()), encTocData.size());
+    currentOffset += encTocData.size();
+    
+    // Encrypt and write filename block
+    std::vector<uint8_t> encNameData = nameData;
+    encContext.encryptAt(encNameData.data(), encNameData.size(), currentOffset);
+    outFile.write(reinterpret_cast<const char*>(encNameData.data()), encNameData.size());
+    
+    if (!options.quiet)
+        std::cout << "Created encrypted titanlst: " << outputFile << " (" << totalFiles << " files from " << treNames.size() << " archives)\n";
+    
+    return result;
+}
+
+Result validateTitanlst(const std::string& inputFile)
+{
+    Result result;
+    std::ifstream inFile(inputFile, std::ios::binary);
+    if (!inFile)
+    {
+        result.code = ResultCode::FileNotFound;
+        result.message = "Cannot open: " + inputFile;
+        return result;
+    }
+    TitanlstHeader header;
+    inFile.read(reinterpret_cast<char*>(&header), sizeof(header));
+    
+    if (!inFile.good() || inFile.gcount() != sizeof(header))
+    {
+        result.code = ResultCode::InvalidArchive;
+        result.message = "Failed to read header (too small)";
+        return result;
+    }
+    
+    if (header.token != TAG_TOC && header.token != TAG_NTOC)
+    {
+        result.code = ResultCode::InvalidArchive;
+        char buf[128];
+        sprintf(buf, "Bad titanlst magic: 0x%08X (expected 0x%08X 'TOC ' or 0x%08X 'NTOC')", header.token, TAG_TOC, TAG_NTOC);
+        result.message = buf;
+        return result;
+    }
+    if (header.version != TAG_0001)
+    {
+        result.code = ResultCode::InvalidArchive;
+        char buf[128];
+        sprintf(buf, "Bad titanlst version: 0x%08X (expected 0x%08X '0001')", header.version, TAG_0001);
+        result.message = buf;
+        return result;
+    }
+    result.message = "titanlst file is valid";
+    return result;
+}
+
+Result listTitanlst(const std::string& inputFile, const ListOptions& options)
+{
+    Result result;
+    std::ifstream inFile(inputFile, std::ios::binary);
+    if (!inFile)
+    {
+        result.code = ResultCode::FileNotFound;
+        result.message = "Cannot open: " + inputFile;
+        return result;
+    }
+    
+    TitanlstHeader header;
+    inFile.read(reinterpret_cast<char*>(&header), sizeof(header));
+    
+    if (!inFile.good() || inFile.gcount() != sizeof(header))
+    {
+        result.code = ResultCode::InvalidArchive;
+        result.message = "Failed to read header (file too small)";
+        return result;
+    }
+    
+    if ((header.token != TAG_TOC && header.token != TAG_NTOC) || header.version != TAG_0001)
+    {
+        result.code = ResultCode::InvalidArchive;
+        char buf[256];
+        sprintf(buf, "Invalid titanlst file (magic=0x%08X, version=0x%08X)", header.token, header.version);
+        result.message = buf;
+        return result;
+    }
+    
+    // Check for encryption
+    bool encrypted = (header.token == TAG_NTOC);
+    EncryptionContext encContext;
+    uint64_t currentOffset = sizeof(header);
+    
+    if (encrypted)
+    {
+        EncryptionHeader encHeader;
+        inFile.read(reinterpret_cast<char*>(&encHeader), sizeof(encHeader));
+        encContext.initDecrypt(Crypto::getTitanPakPassword(), encHeader.salt, encHeader.iv);
+        currentOffset += sizeof(encHeader);
+    }
+    
+    // Read tree file names
+    std::vector<char> treeNames(header.sizeOfTreeFileNameBlock);
+    inFile.read(treeNames.data(), header.sizeOfTreeFileNameBlock);
+    
+    if (encrypted)
+    {
+        encContext.decryptAt(reinterpret_cast<uint8_t*>(treeNames.data()), treeNames.size(), currentOffset);
+    }
+    currentOffset += header.sizeOfTreeFileNameBlock;
+    
+    std::vector<std::string> treeFiles;
+    for (size_t p = 0; p < treeNames.size();)
+    {
+        std::string n(&treeNames[p]);
+        if (!n.empty()) treeFiles.push_back(n);
+        p += n.length() + 1;
+    }
+    
+    // Read TOC entries
+    std::vector<TitanlstEntry> entries(header.numberOfFiles);
+    uint32_t tocSz = sizeof(TitanlstEntry) * header.numberOfFiles;
+    
+    if (header.tocCompressor == static_cast<uint8_t>(CompressionType::Zlib))
+    {
+        std::vector<uint8_t> c(header.sizeOfTOC);
+        inFile.read(reinterpret_cast<char*>(c.data()), header.sizeOfTOC);
+        
+        if (encrypted)
+        {
+            encContext.decryptAt(c.data(), c.size(), currentOffset);
+        }
+        
+        uLongf d = tocSz;
+        uncompress(reinterpret_cast<Bytef*>(entries.data()), &d, c.data(), header.sizeOfTOC);
+    }
+    else
+    {
+        inFile.read(reinterpret_cast<char*>(entries.data()), tocSz);
+        
+        if (encrypted)
+        {
+            encContext.decryptAt(reinterpret_cast<uint8_t*>(entries.data()), tocSz, currentOffset);
+        }
+    }
+    currentOffset += header.sizeOfTOC;
+    
+    // Convert filename lengths to offsets
+    uint32_t off = 0;
+    for (auto& e : entries)
+    {
+        uint32_t l = e.fileNameOffset;
+        e.fileNameOffset = off;
+        off += l + 1;
+    }
+    
+    // Read file names
+    std::vector<char> fNames(header.uncompSizeOfNameBlock);
+    if (header.fileNameBlockCompressor == static_cast<uint8_t>(CompressionType::Zlib))
+    {
+        std::vector<uint8_t> c(header.sizeOfNameBlock);
+        inFile.read(reinterpret_cast<char*>(c.data()), header.sizeOfNameBlock);
+        
+        if (encrypted)
+        {
+            encContext.decryptAt(c.data(), c.size(), currentOffset);
+        }
+        
+        uLongf d = header.uncompSizeOfNameBlock;
+        uncompress(reinterpret_cast<Bytef*>(fNames.data()), &d, c.data(), header.sizeOfNameBlock);
+    }
+    else
+    {
+        inFile.read(fNames.data(), header.uncompSizeOfNameBlock);
+        
+        if (encrypted)
+        {
+            encContext.decryptAt(reinterpret_cast<uint8_t*>(fNames.data()), header.uncompSizeOfNameBlock, currentOffset);
+        }
+    }
+    
+    std::cout << "Titanlst: " << inputFile << (encrypted ? " (encrypted)" : "") << "\nArchives: " << treeFiles.size() << "\n";
+    for (size_t i = 0; i < treeFiles.size(); ++i)
+        std::cout << "  [" << i << "] " << treeFiles[i] << "\n";
+    std::cout << "Files: " << header.numberOfFiles << "\n";
+    
+    for (const auto& e : entries)
+    {
+        std::string fn(&fNames[e.fileNameOffset]);
+        if (!options.filter.empty() && fn.find(options.filter) == std::string::npos)
+            continue;
+        
+        // Show the actual TRE filename instead of just "Archive#"
+        const char* treeName = (e.treeFileIndex < treeFiles.size()) ? treeFiles[e.treeFileIndex].c_str() : "Unknown";
+        std::cout << fn << " [" << e.length << "b] " << treeName << "\n";
+    }
+    return result;
+}
+
+Result unpackTitanlst(const std::string& inputFile, const std::string& outputDir, const UnpackOptions& options)
+{
+    Result result;
+    std::ifstream inFile(inputFile, std::ios::binary);
+    if (!inFile)
+    {
+        result.code = ResultCode::FileNotFound;
+        result.message = "Cannot open: " + inputFile;
+        return result;
+    }
+    
+    TitanlstHeader header;
+    inFile.read(reinterpret_cast<char*>(&header), sizeof(header));
+    if ((header.token != TAG_TOC && header.token != TAG_NTOC) || header.version != TAG_0001)
+    {
+        result.code = ResultCode::InvalidArchive;
+        result.message = "Invalid titanlst file";
+        return result;
+    }
+    
+    // Check for encryption
+    bool encrypted = (header.token == TAG_NTOC);
+    EncryptionContext encContext;
+    uint64_t currentOffset = sizeof(header);
+    
+    if (encrypted)
+    {
+        EncryptionHeader encHeader;
+        inFile.read(reinterpret_cast<char*>(&encHeader), sizeof(encHeader));
+        encContext.initDecrypt(Crypto::getTitanPakPassword(), encHeader.salt, encHeader.iv);
+        currentOffset += sizeof(encHeader);
+    }
+    
+    // Determine search path for archive files
+    std::string searchPath = options.treSearchPath;
+    if (searchPath.empty())
+    {
+        size_t s = inputFile.find_last_of("/\\");
+        searchPath = (s != std::string::npos) ? inputFile.substr(0, s + 1) : "./";
+    }
+    if (searchPath.back() != '/' && searchPath.back() != '\\')
+        searchPath += '/';
+    
+    // Read tree file names
+    std::vector<char> treeNames(header.sizeOfTreeFileNameBlock);
+    inFile.read(treeNames.data(), header.sizeOfTreeFileNameBlock);
+    
+    if (encrypted)
+    {
+        encContext.decryptAt(reinterpret_cast<uint8_t*>(treeNames.data()), treeNames.size(), currentOffset);
+    }
+    currentOffset += header.sizeOfTreeFileNameBlock;
+    
+    std::vector<std::string> treeList;
+    for (size_t p = 0; p < treeNames.size();)
+    {
+        std::string n(&treeNames[p]);
+        if (!n.empty()) treeList.push_back(n);
+        p += n.length() + 1;
+    }
+    
+    // Open all archive files
+    std::vector<std::unique_ptr<std::ifstream>> archiveFiles(treeList.size());
+    for (size_t i = 0; i < treeList.size(); ++i)
+    {
+        std::string archivePath = searchPath + treeList[i];
+        archiveFiles[i] = std::make_unique<std::ifstream>(archivePath, std::ios::binary);
+        if (!archiveFiles[i]->is_open())
+        {
+            result.code = ResultCode::TreFileNotFound;
+            result.message = "Cannot open archive: " + archivePath;
+            return result;
+        }
+        if (!options.quiet)
+            std::cout << "Opened: " << archivePath << "\n";
+    }
+    
+    // Read TOC entries
+    std::vector<TitanlstEntry> entries(header.numberOfFiles);
+    uint32_t tocSz = sizeof(TitanlstEntry) * header.numberOfFiles;
+    
+    if (header.tocCompressor == static_cast<uint8_t>(CompressionType::Zlib))
+    {
+        std::vector<uint8_t> c(header.sizeOfTOC);
+        inFile.read(reinterpret_cast<char*>(c.data()), header.sizeOfTOC);
+        
+        if (encrypted)
+        {
+            encContext.decryptAt(c.data(), c.size(), currentOffset);
+        }
+        
+        uLongf d = tocSz;
+        uncompress(reinterpret_cast<Bytef*>(entries.data()), &d, c.data(), header.sizeOfTOC);
+    }
+    else
+    {
+        inFile.read(reinterpret_cast<char*>(entries.data()), tocSz);
+        
+        if (encrypted)
+        {
+            encContext.decryptAt(reinterpret_cast<uint8_t*>(entries.data()), tocSz, currentOffset);
+        }
+    }
+    currentOffset += header.sizeOfTOC;
+    
+    // Convert filename lengths to offsets
+    uint32_t off = 0;
+    for (auto& e : entries)
+    {
+        uint32_t l = e.fileNameOffset;
+        e.fileNameOffset = off;
+        off += l + 1;
+    }
+    
+    // Read file names
+    std::vector<char> fNames(header.uncompSizeOfNameBlock);
+    if (header.fileNameBlockCompressor == static_cast<uint8_t>(CompressionType::Zlib))
+    {
+        std::vector<uint8_t> c(header.sizeOfNameBlock);
+        inFile.read(reinterpret_cast<char*>(c.data()), header.sizeOfNameBlock);
+        
+        if (encrypted)
+        {
+            encContext.decryptAt(c.data(), c.size(), currentOffset);
+        }
+        
+        uLongf d = header.uncompSizeOfNameBlock;
+        uncompress(reinterpret_cast<Bytef*>(fNames.data()), &d, c.data(), header.sizeOfNameBlock);
+    }
+    else
+    {
+        inFile.read(fNames.data(), header.uncompSizeOfNameBlock);
+        
+        if (encrypted)
+        {
+            encContext.decryptAt(reinterpret_cast<uint8_t*>(fNames.data()), header.uncompSizeOfNameBlock, currentOffset);
+        }
+    }
+    
+    // Create output directory
+    std::filesystem::create_directories(outputDir);
+    
+    uint32_t cnt = 0;
+    for (const auto& e : entries)
+    {
+        std::string fn(&fNames[e.fileNameOffset]);
+        if (!options.filter.empty() && fn.find(options.filter) == std::string::npos)
+            continue;
+        if (e.treeFileIndex >= archiveFiles.size())
+            continue;
+        
+        std::string outPath = outputDir + "/" + fn;
+        std::filesystem::create_directories(std::filesystem::path(outPath).parent_path());
+        
+        if (!options.overwrite && std::filesystem::exists(outPath))
+            continue;
+        
+        auto& archiveFile = *archiveFiles[e.treeFileIndex];
+        archiveFile.seekg(e.offset);
+        
+        std::vector<uint8_t> data;
+        if (e.compressor == static_cast<uint8_t>(CompressionType::Zlib))
+        {
+            std::vector<uint8_t> c(e.compressedLength);
+            archiveFile.read(reinterpret_cast<char*>(c.data()), e.compressedLength);
+            data.resize(e.length);
+            uLongf d = e.length;
+            if (uncompress(data.data(), &d, c.data(), e.compressedLength) != Z_OK)
+                continue;
+        }
+        else
+        {
+            data.resize(e.length);
+            archiveFile.read(reinterpret_cast<char*>(data.data()), e.length);
+        }
+        
+        std::ofstream out(outPath, std::ios::binary);
+        out.write(reinterpret_cast<const char*>(data.data()), data.size());
+        
+        if (options.verbose)
+            std::cout << fn << " (" << data.size() << ")\n";
+        ++cnt;
+    }
+    
+    if (!options.quiet)
+        std::cout << "Extracted " << cnt << " files\n";
+    return result;
+}
+
+// Legacy TOC API aliases
+Result validateToc(const std::string& inputToc)
+{
+    return validateTitanlst(inputToc);
+}
+
+Result listToc(const std::string& inputToc, const ListOptions& options)
+{
+    return listTitanlst(inputToc, options);
+}
+
+Result unpackToc(const std::string& inputToc, const std::string& outputDir, const UnpackOptions& options)
+{
+    return unpackTitanlst(inputToc, outputDir, options);
+}
+
+} // namespace Nuna

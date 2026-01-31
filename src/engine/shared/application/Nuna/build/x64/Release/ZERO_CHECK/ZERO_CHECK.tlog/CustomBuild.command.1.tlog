@@ -1,0 +1,10 @@
+^D:\TITAN\CLIENT\SRC\ENGINE\SHARED\APPLICATION\NUNA\BUILD\CMAKEFILES\92EA08269C4AF95110787E78D67F31BD\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SD:/titan/client/src/engine/shared/application/Nuna -BD:/titan/client/src/engine/shared/application/Nuna/build --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file D:/titan/client/src/engine/shared/application/Nuna/build/Nuna.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

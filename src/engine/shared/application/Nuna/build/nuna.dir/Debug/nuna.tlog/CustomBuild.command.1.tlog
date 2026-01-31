@@ -1,0 +1,10 @@
+^D:\TITAN\CLIENT\SRC\ENGINE\SHARED\APPLICATION\NUNA\CMAKELISTS.TXT
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SD:/titan/client/src/engine/shared/application/Nuna -BD:/titan/client/src/engine/shared/application/Nuna/build --check-stamp-file D:/titan/client/src/engine/shared/application/Nuna/build/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

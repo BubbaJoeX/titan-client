@@ -30,15 +30,53 @@ namespace Nuna
 namespace
 {
 
-// Normalize path separators to forward slashes
+// Normalize path to match client's TreeFile::fixUpFileName behavior
+// - Convert to lowercase
+// - Convert backslashes to forward slashes  
+// - Remove leading slashes, "./" and "../"
+// - Collapse consecutive slashes
 std::string normalizePath(const std::string& path)
 {
-    std::string result = path;
-    std::replace(result.begin(), result.end(), '\\', '/');
+    std::string result;
+    result.reserve(path.size());
     
-    // Remove leading slash if present
-    if (!result.empty() && result[0] == '/')
-        result = result.substr(1);
+    const char* f = path.c_str();
+    
+    // Skip leading "/" or "\"
+    while (*f == '\\' || *f == '/')
+        ++f;
+    
+    // Skip leading "./" or ".\"
+    while (f[0] == '.' && (f[1] == '\\' || f[1] == '/'))
+        f += 2;
+    
+    // Skip leading "../" or "..\"
+    while (f[0] == '.' && f[1] == '.' && (f[2] == '\\' || f[2] == '/'))
+        f += 3;
+    
+    bool previousIsSlash = false;
+    
+    for (; *f; ++f)
+    {
+        char c = *f;
+        bool currentIsSlash = (c == '\\' || c == '/');
+        
+        if (currentIsSlash)
+        {
+            // Convert to forward slash and skip if previous was also a slash
+            if (!previousIsSlash)
+            {
+                result += '/';
+                previousIsSlash = true;
+            }
+        }
+        else
+        {
+            // Lowercase all other characters
+            result += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+            previousIsSlash = false;
+        }
+    }
     
     return result;
 }
@@ -485,6 +523,7 @@ Result unpack(const std::string& inputTre,
         return result;
     }
     
+    
     bool isEncrypted = (header.token == TAG_NUNA);
     
     // Setup decryption if needed
@@ -495,14 +534,14 @@ Result unpack(const std::string& inputTre,
     {
         inFile.read(reinterpret_cast<char*>(&encHeader), sizeof(encHeader));
         
-        if (!options.encryption.enabled || options.encryption.password.empty())
+        // Use provided password or fall back to default
+        std::string password = options.encryption.password;
+        if (password.empty())
         {
-            result.code = ResultCode::InvalidPassword;
-            result.message = "Archive is encrypted, password required";
-            return result;
+            password = TITANPAK_PASSWORD;
         }
         
-        encCtx.initDecrypt(options.encryption.password, encHeader.salt, encHeader.iv);
+        encCtx.initDecrypt(password, encHeader.salt, encHeader.iv);
     }
     
     if (header.version != TAG_0005 && header.version != TAG_0004)
@@ -720,14 +759,14 @@ Result list(const std::string& inputTre,
     {
         inFile.read(reinterpret_cast<char*>(&encHeader), sizeof(encHeader));
         
-        if (!options.encryption.enabled || options.encryption.password.empty())
+        // Use provided password or fall back to default
+        std::string password = options.encryption.password;
+        if (password.empty())
         {
-            result.code = ResultCode::InvalidPassword;
-            result.message = "Archive is encrypted, password required";
-            return result;
+            password = TITANPAK_PASSWORD;
         }
         
-        encCtx.initDecrypt(options.encryption.password, encHeader.salt, encHeader.iv);
+        encCtx.initDecrypt(password, encHeader.salt, encHeader.iv);
     }
     
     // Read TOC
@@ -877,14 +916,75 @@ Result validate(const std::string& inputTre,
         return result;
     }
     
-    if (header.token == TAG_NUNA && (!encryption.enabled || encryption.password.empty()))
+    bool isEncrypted = (header.token == TAG_NUNA);
+    
+    // For encrypted archives, verify we can decrypt the TOC
+    if (isEncrypted)
     {
-        result.code = ResultCode::InvalidPassword;
-        result.message = "Archive is encrypted, password required for validation";
-        return result;
+        // Read encryption header
+        EncryptionHeader encHeader;
+        inFile.read(reinterpret_cast<char*>(&encHeader), sizeof(encHeader));
+        
+        // Use provided password or fall back to default
+        std::string password = encryption.password;
+        if (password.empty())
+        {
+            password = TITANPAK_PASSWORD;
+        }
+        
+        // Initialize decryption context
+        EncryptionContext encCtx;
+        encCtx.initDecrypt(password, encHeader.salt, encHeader.iv);
+        
+        // Try to read and decrypt TOC to verify password
+        inFile.seekg(header.tocOffset);
+        
+        if (header.tocCompressor == static_cast<uint32_t>(CompressionType::Zlib))
+        {
+            std::vector<uint8_t> compressed(header.sizeOfTOC);
+            inFile.read(reinterpret_cast<char*>(compressed.data()), header.sizeOfTOC);
+            
+            encCtx.decryptAt(compressed.data(), header.sizeOfTOC, header.tocOffset);
+            
+            uint32_t tocSize = sizeof(TocEntry) * header.numberOfFiles;
+            std::vector<uint8_t> tocData(tocSize);
+            uLongf destLen = tocSize;
+            
+            if (uncompress(tocData.data(), &destLen, compressed.data(), header.sizeOfTOC) != Z_OK)
+            {
+                result.code = ResultCode::InvalidPassword;
+                result.message = "Failed to decrypt/decompress TOC - invalid password or corrupted archive";
+                return result;
+            }
+        }
+        else
+        {
+            uint32_t tocSize = sizeof(TocEntry) * header.numberOfFiles;
+            std::vector<uint8_t> tocData(tocSize);
+            inFile.read(reinterpret_cast<char*>(tocData.data()), tocSize);
+            
+            encCtx.decryptAt(tocData.data(), tocSize, header.tocOffset);
+            
+            // Basic validation: check that first entry looks reasonable
+            if (header.numberOfFiles > 0)
+            {
+                TocEntry* firstEntry = reinterpret_cast<TocEntry*>(tocData.data());
+                if (firstEntry->offset < 0 || firstEntry->length < 0)
+                {
+                    result.code = ResultCode::InvalidPassword;
+                    result.message = "TOC validation failed - invalid password or corrupted archive";
+                    return result;
+                }
+            }
+        }
+        
+        result.message = "Encrypted archive is valid";
+    }
+    else
+    {
+        result.message = "Archive is valid";
     }
     
-    result.message = "Archive is valid";
     return result;
 }
 
