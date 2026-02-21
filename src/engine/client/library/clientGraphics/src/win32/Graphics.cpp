@@ -37,6 +37,7 @@
 #include "StringId.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <vector>
 
@@ -2496,6 +2497,55 @@ void Graphics::drawOctahedron(const Vector &center, const float radius, const Ve
 	drawLineList();
 }
 
+void Graphics::drawSolidOctahedron(const Vector &center, float radius, const VectorArgb & color)
+{
+	VertexBufferFormat format;
+	format.setPosition();
+	format.setColor0();
+	DynamicVertexBuffer vertexBuffer(format);
+	PackedArgb const packedColor(color);
+
+	Vector const v0 = center + Vector(-radius, 0.0f, 0.0f);
+	Vector const v1 = center + Vector(radius, 0.0f, 0.0f);
+	Vector const v2 = center + Vector(0.0f, -radius, 0.0f);
+	Vector const v3 = center + Vector(0.0f, radius, 0.0f);
+	Vector const v4 = center + Vector(0.0f, 0.0f, -radius);
+	Vector const v5 = center + Vector(0.0f, 0.0f, radius);
+
+	// 8 faces, 3 vertices each = 24 vertices (triangle list)
+	vertexBuffer.lock(24);
+	VertexBufferWriteIterator vbi = vertexBuffer.begin();
+	// Top 4 faces (around +Y = v3)
+	vbi.setPosition(v3); vbi.setColor0(packedColor); ++vbi;
+	vbi.setPosition(v1); vbi.setColor0(packedColor); ++vbi;
+	vbi.setPosition(v5); vbi.setColor0(packedColor); ++vbi;
+	vbi.setPosition(v3); vbi.setColor0(packedColor); ++vbi;
+	vbi.setPosition(v5); vbi.setColor0(packedColor); ++vbi;
+	vbi.setPosition(v0); vbi.setColor0(packedColor); ++vbi;
+	vbi.setPosition(v3); vbi.setColor0(packedColor); ++vbi;
+	vbi.setPosition(v0); vbi.setColor0(packedColor); ++vbi;
+	vbi.setPosition(v4); vbi.setColor0(packedColor); ++vbi;
+	vbi.setPosition(v3); vbi.setColor0(packedColor); ++vbi;
+	vbi.setPosition(v4); vbi.setColor0(packedColor); ++vbi;
+	vbi.setPosition(v1); vbi.setColor0(packedColor); ++vbi;
+	// Bottom 4 faces (around -Y = v2)
+	vbi.setPosition(v2); vbi.setColor0(packedColor); ++vbi;
+	vbi.setPosition(v5); vbi.setColor0(packedColor); ++vbi;
+	vbi.setPosition(v1); vbi.setColor0(packedColor); ++vbi;
+	vbi.setPosition(v2); vbi.setColor0(packedColor); ++vbi;
+	vbi.setPosition(v0); vbi.setColor0(packedColor); ++vbi;
+	vbi.setPosition(v5); vbi.setColor0(packedColor); ++vbi;
+	vbi.setPosition(v2); vbi.setColor0(packedColor); ++vbi;
+	vbi.setPosition(v4); vbi.setColor0(packedColor); ++vbi;
+	vbi.setPosition(v0); vbi.setColor0(packedColor); ++vbi;
+	vbi.setPosition(v2); vbi.setColor0(packedColor); ++vbi;
+	vbi.setPosition(v1); vbi.setColor0(packedColor); ++vbi;
+	vbi.setPosition(v4); vbi.setColor0(packedColor); ++vbi;
+	vertexBuffer.unlock();
+	setVertexBuffer(vertexBuffer);
+	drawTriangleList();
+}
+
 void Graphics::drawCylinder(const Vector &base, const float radius, const float height, const int tessTheta, const int tessRho, const int tessZ, int nSpokes, const VectorArgb & color )
 {
 	VertexBufferFormat format;
@@ -2628,6 +2678,58 @@ void Graphics::drawCylinder(const Vector &base, const float radius, const float 
 			}
 		}
 	}
+}
+
+// ----------------------------------------------------------------------
+/**
+ * Draw a solid (filled) cylinder along +Y from base to base+(0,height,0).
+ */
+void Graphics::drawSolidCylinder(const Vector &base, float radius, float height, int segments, const VectorArgb &argb)
+{
+	if (segments < 3) return;
+	VertexBufferFormat format;
+	format.setPosition();
+	format.setColor0();
+	PackedArgb const packedColor(argb);
+	float const step = PI_TIMES_2 / static_cast<float>(segments);
+	// Bottom cap + top cap + side: segments*3 + segments*3 + segments*6 = 12*segments vertices
+	int const numVerts = 12 * segments;
+	DynamicVertexBuffer vertexBuffer(format);
+	vertexBuffer.lock(numVerts);
+	VertexBufferWriteIterator vbi = vertexBuffer.begin();
+	Vector const bottomCenter = base;
+	Vector const topCenter = base + Vector(0.0f, height, 0.0f);
+	for (int i = 0; i < segments; ++i)
+	{
+		float const a0 = step * static_cast<float>(i);
+		float const a1 = step * static_cast<float>(i + 1);
+		float const x0 = radius * cosf(a0);
+		float const z0 = radius * sinf(a0);
+		float const x1 = radius * cosf(a1);
+		float const z1 = radius * sinf(a1);
+		Vector const b0 = base + Vector(x0, 0.0f, z0);
+		Vector const b1 = base + Vector(x1, 0.0f, z1);
+		Vector const t0 = base + Vector(x0, height, z0);
+		Vector const t1 = base + Vector(x1, height, z1);
+		// Bottom cap triangle
+		vbi.setPosition(bottomCenter); vbi.setColor0(packedColor); ++vbi;
+		vbi.setPosition(b0); vbi.setColor0(packedColor); ++vbi;
+		vbi.setPosition(b1); vbi.setColor0(packedColor); ++vbi;
+		// Top cap triangle
+		vbi.setPosition(topCenter); vbi.setColor0(packedColor); ++vbi;
+		vbi.setPosition(t1); vbi.setColor0(packedColor); ++vbi;
+		vbi.setPosition(t0); vbi.setColor0(packedColor); ++vbi;
+		// Side quad as 2 triangles
+		vbi.setPosition(b0); vbi.setColor0(packedColor); ++vbi;
+		vbi.setPosition(b1); vbi.setColor0(packedColor); ++vbi;
+		vbi.setPosition(t1); vbi.setColor0(packedColor); ++vbi;
+		vbi.setPosition(b0); vbi.setColor0(packedColor); ++vbi;
+		vbi.setPosition(t1); vbi.setColor0(packedColor); ++vbi;
+		vbi.setPosition(t0); vbi.setColor0(packedColor); ++vbi;
+	}
+	vertexBuffer.unlock();
+	setVertexBuffer(vertexBuffer);
+	drawTriangleList();
 }
 
 // ----------------------------------------------------------------------
@@ -2950,6 +3052,106 @@ void Graphics::drawExtent (const Extent* extent, const VectorArgb& color)
 		drawCircle (extent->getSphere().getCenter (), Vector::unitY, extent->getSphere().getRadius (), 20, color);
 		drawCircle (extent->getSphere().getCenter (), Vector::unitZ, extent->getSphere().getRadius (), 20, color);
 	}
+}
+
+// ----------------------------------------------------------------------
+/**
+ * Draw a single filled disc (circle) in 3-space with the given normal, radius, and color.
+ */
+namespace
+{
+	void drawDisc(const Vector &center, const Vector &normal, float radius, int segments, const VectorArgb &color)
+	{
+		if (radius <= 0.f || segments < 3) return;
+		Vector n(normal);
+		if (!n.normalize()) return;
+		Vector u, v;
+		if (fabs(n.y) < 0.9f)
+		{
+			u = n.cross(Vector::unitY);
+			u.normalize();
+		}
+		else
+		{
+			u = n.cross(Vector::unitX);
+			u.normalize();
+		}
+		v = n.cross(u);
+		v.normalize();
+
+		// Triangle fan: center + circle points (close the loop with first point again)
+		VertexBufferFormat format;
+		format.setPosition();
+		format.setColor0();
+		DynamicVertexBuffer vertexBuffer(format);
+		vertexBuffer.lock(2 + segments);
+		VertexBufferWriteIterator vbi = vertexBuffer.begin();
+		vbi.setPosition(center);
+		vbi.setColor0(color);
+		++vbi;
+		for (int i = 0; i <= segments; ++i, ++vbi)
+		{
+			float theta = (PI_TIMES_2 / static_cast<float>(segments)) * static_cast<float>(i);
+			Vector p = center + (radius * cos(theta)) * u + (radius * sin(theta)) * v;
+			vbi.setPosition(p);
+			vbi.setColor0(color);
+		}
+		vertexBuffer.unlock();
+		Graphics::setVertexBuffer(vertexBuffer);
+		Graphics::drawTriangleFan();
+	}
+	void drawCircleOutlineImpl(const Vector &center, const Vector &normal, float radius, int segments, const VectorArgb &color)
+	{
+		if (radius <= 0.f || segments < 3 || segments > 512) return;
+		// Reject NaN/Inf center (portable: NaN != NaN)
+		if (center.x != center.x || center.y != center.y || center.z != center.z) return;
+		Vector n(normal);
+		if (!n.normalize()) return;
+		Vector u, v;
+		if (fabs(n.y) < 0.9f)
+			u = n.cross(Vector::unitY);
+		else
+			u = n.cross(Vector::unitX);
+		if (u.magnitudeSquared() < 0.01f) return;
+		if (!u.normalize()) return;
+		v = n.cross(u);
+		if (v.magnitudeSquared() < 0.01f) return;
+		if (!v.normalize()) return;
+		VertexBufferFormat format;
+		format.setPosition();
+		format.setColor0();
+		DynamicVertexBuffer vertexBuffer(format);
+		vertexBuffer.lock(segments + 1);
+		VertexBufferWriteIterator vbi = vertexBuffer.begin();
+		for (int i = 0; i <= segments; ++i, ++vbi)
+		{
+			float theta = (PI_TIMES_2 / static_cast<float>(segments)) * static_cast<float>(i);
+			Vector p = center + (radius * cos(theta)) * u + (radius * sin(theta)) * v;
+			if (p.x != p.x || p.y != p.y || p.z != p.z) { vertexBuffer.unlock(); return; }
+			vbi.setPosition(p);
+			vbi.setColor0(color);
+		}
+		vertexBuffer.unlock();
+		Graphics::setVertexBuffer(vertexBuffer);
+		Graphics::drawLineStrip();
+	}
+}
+
+// ----------------------------------------------------------------------
+void Graphics::drawCircleOutline(const Vector &center, const Vector &normal, float radius, int segments, const VectorArgb &color)
+{
+	drawCircleOutlineImpl(center, normal, radius, segments, color);
+}
+
+// ----------------------------------------------------------------------
+void Graphics::drawExtentDiscsYPR(const Vector &center, float radius, int segments)
+{
+	// Y (Yaw)   = XZ plane, normal Y = blue
+	// P (Pitch) = YZ plane, normal X = green
+	// R (Roll)  = XY plane, normal Z = red
+	drawDisc(center, Vector::unitY, radius, segments, VectorArgb::solidBlue);
+	drawDisc(center, Vector::unitX, radius, segments, VectorArgb::solidGreen);
+	drawDisc(center, Vector::unitZ, radius, segments, VectorArgb::solidRed);
 }
 
 // ----------------------------------------------------------------------

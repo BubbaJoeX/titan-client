@@ -398,7 +398,6 @@ void BuildoutAreaSupport::saveBuildoutArea(std::string const &areaName, std::vec
 	ActionsBuildoutArea::getInstance().actionRefresh->doActivate();
 
 	// refresh the world snapshot
-
 }
 
 // ----------------------------------------------------------------------

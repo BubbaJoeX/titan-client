@@ -141,6 +141,9 @@ void FreeCamera::setActive (bool newActive)
 			}
 			if (groundScene != 0 && freeChaseCamera != 0)
 			{
+				Object const * const chaseTarget = freeChaseCamera->getTarget();
+				if (chaseTarget == 0)
+					goto skipChaseInit;
 				Object const * const target = m_target->getRootParent();
 				//set the camera to be in the same cell as the target (and since cell notifications are off, it will stay there)
 				CellProperty* currentCell = getParentCell();
@@ -159,8 +162,10 @@ void FreeCamera::setActive (bool newActive)
 				yaw_o   (m_info.yaw);
 				pitch_o (m_info.pitch);
 				m_info.translate = getPosition_p ();
-				m_info.distance = (freeChaseCamera->getTarget()->getPosition_w() - getPosition_w()).magnitude();
+				float const dist = (chaseTarget->getPosition_w() - getPosition_w()).magnitude();
+				m_info.distance = std::max(0.1f, dist);
 			}
+			skipChaseInit:;
 		}
 		else if(!m_initializeFromFreeCamera)
 		{

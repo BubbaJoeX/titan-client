@@ -720,4 +720,17 @@ unsigned int ServerCommander::setGodMode()
 	return 0;
 }
 
+unsigned int ServerCommander::persistObject(const ClientObject& obj)
+{
+	if (Game::getSinglePlayer())
+	{
+		return 0;
+	}
+	char buf[1024];
+	const ClientObject* persistee = &obj;
+	IGNORE_RETURN(_snprintf(buf, sizeof(buf), "object persist %s", persistee->getNetworkId().getValueString().c_str()));
+	return issueCommand(buf);
+}
+
+
 // ================================================================

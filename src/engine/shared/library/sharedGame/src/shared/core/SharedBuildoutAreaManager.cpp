@@ -17,6 +17,7 @@
 #include "sharedTerrain/ProceduralTerrainAppearance.h"
 #include "sharedTerrain/TerrainObject.h"
 #include "sharedUtility/DataTable.h"
+#include "../../../../../../client/library/clientGame/src/shared/core/Game.h"
 
 // ======================================================================
 
@@ -195,6 +196,11 @@ void SharedBuildoutAreaManager::install()
 		for (int sceneRow = 0; sceneRow < sceneCount; ++sceneRow)
 		{
 			const std::string &sceneNameTemp = buildoutScenesTable.getStringValue("sceneName", sceneRow);
+			// Skip server-side worldserver files in god client
+			if (sceneNameTemp.find("_ws") != std::string::npos)
+			{
+				continue;
+			}
 			s_buildoutScenes.push_back(sceneNameTemp);
 			const std::string &sceneName = s_buildoutScenes.back();
 
@@ -289,7 +295,7 @@ void SharedBuildoutAreaManager::remove()
 
 //----------------------------------------------------------------------
 
-void SharedBuildoutAreaManager::load(std::string const & sceneName)
+void SharedBuildoutAreaManager::load(std::string const& sceneName)
 {
 	if (sceneName == s_currentScene)
 		return;
@@ -297,15 +303,15 @@ void SharedBuildoutAreaManager::load(std::string const & sceneName)
 	s_currentScene = sceneName;
 
 	BuildoutAreaNameMap::const_iterator const it = s_buildoutAreas.find(sceneName);
-	
+
 	if (it != s_buildoutAreas.end())
 	{
 		s_buildoutAreasForCurrentScene = &(it->second);
 	}
 	else
 	{
-		s_buildoutAreasForCurrentScene=&s_emptyBuildoutAreas;
-	}	
+		s_buildoutAreasForCurrentScene = &s_emptyBuildoutAreas;
+	}
 }
 
 // ----------------------------------------------------------------------

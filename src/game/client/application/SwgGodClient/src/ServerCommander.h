@@ -76,6 +76,8 @@ public:
 	unsigned int          sendSystemMessage     (const std::string& messageType, const std::string targetName, const std::string& message);
 	unsigned int          setGodMode            ();
 
+	unsigned int persistObject(const ClientObject& obj);
+
 signals:
 	void                  consoleCommandIssued  (const char*);
 

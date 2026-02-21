@@ -12,6 +12,7 @@
 
 #include "clientGame/ClientCommandQueue.h"
 #include "clientGame/Game.h"
+#include "clientUserInterface/CuiFurnitureMovementManager.h"
 #include "clientUserInterface/CuiManager.h"
 #include "clientUserInterface/CuiWidget3dObjectListViewer.h"
 #include "sharedFoundation/Crc.h"
@@ -40,7 +41,8 @@
 
 namespace SwgCuiDecoratorSpawnNamespace
 {
-	std::string const cms_objectPrefix = "object/tangible";
+	std::string const cms_objectPrefix = "object/";
+	std::string const cms_objectIntangiblePrefix = "object/intangible/";
 	
 	bool startsWith(std::string const & str, std::string const & prefix)
 	{
@@ -104,6 +106,7 @@ m_sliderAmbientB(NULL),
 m_sliderLightR(NULL),
 m_sliderLightG(NULL),
 m_sliderLightB(NULL),
+m_openedFromDecoratorCamera(false),
 m_allTemplates(new TemplateList),
 m_filteredTemplates(new TemplateList),
 m_currentFilter(),
@@ -264,6 +267,8 @@ SwgCuiDecoratorSpawn::~SwgCuiDecoratorSpawn()
 void SwgCuiDecoratorSpawn::performActivate()
 {
 	CuiMediator::performActivate();
+
+	m_openedFromDecoratorCamera = CuiFurnitureMovementManager::isDecoratorCameraActive();
 	
 	// Request pointer for mouse interaction
 	CuiManager::requestPointer(true);
@@ -357,10 +362,11 @@ void SwgCuiDecoratorSpawn::OnGenericSelectionChanged(UIWidget * context)
 		std::string const path = getSelectedTemplatePath();
 		if (!path.empty())
 		{
-			// Update selected text
+			// Update selected text (localized name when from decorator camera, else path)
 			if (m_selectedText)
 			{
-				m_selectedText->SetLocalText(Unicode::narrowToWide(path));
+				std::string const display = getDisplayNameForTemplate(path);
+				m_selectedText->SetLocalText(Unicode::narrowToWide(m_openedFromDecoratorCamera ? display : (display.empty() ? path : display)));
 			}
 			
 			// Auto-update viewer and info on selection
@@ -393,11 +399,11 @@ void SwgCuiDecoratorSpawn::populateTree()
 	stdvector<const char *>::fwd templateNames;
 	ObjectTemplateList::getAllTemplateNamesFromCrcStringTable(templateNames);
 	
-	// Filter to only object/ .iff files
+	// Filter to object/ .iff files, exclude object/intangible/
 	for (stdvector<const char *>::fwd::const_iterator it = templateNames.begin(); it != templateNames.end(); ++it)
 	{
 		std::string const name(*it);
-		if (startsWith(name, cms_objectPrefix) && name.find(".iff") != std::string::npos)
+		if (startsWith(name, cms_objectPrefix) && !startsWith(name, cms_objectIntangiblePrefix) && name.find(".iff") != std::string::npos)
 		{
 			m_allTemplates->push_back(name);
 		}
@@ -419,11 +425,11 @@ void SwgCuiDecoratorSpawn::populateTemplateList()
 	stdvector<const char *>::fwd templateNames;
 	ObjectTemplateList::getAllTemplateNamesFromCrcStringTable(templateNames);
 	
-	// Filter to only object/ .iff files
+	// Filter to object/ .iff files, exclude object/intangible/
 	for (stdvector<const char *>::fwd::const_iterator it = templateNames.begin(); it != templateNames.end(); ++it)
 	{
 		std::string const name(*it);
-		if (startsWith(name, cms_objectPrefix) && name.find(".iff") != std::string::npos)
+		if (startsWith(name, cms_objectPrefix) && !startsWith(name, cms_objectIntangiblePrefix) && name.find(".iff") != std::string::npos)
 		{
 			m_allTemplates->push_back(name);
 		}
@@ -742,6 +748,10 @@ std::string SwgCuiDecoratorSpawn::getDisplayNameForTemplate(std::string const & 
 		objectTemplate->releaseReference();
 	}
 	
+	// When opened from Decorator Camera, do not render encoded name (path/filename fallback)
+	if (m_openedFromDecoratorCamera)
+		return std::string();
+	
 	// Fallback: extract and clean filename
 	std::string filename;
 	size_t const lastSlash = templatePath.rfind('/');
@@ -980,13 +990,14 @@ void SwgCuiDecoratorSpawn::updateInfoDisplay()
 	
 	std::string infoStr;
 	
-	// Template Path
-	infoStr += "\\#ffffff== Template Info ==\\#cccccc\n";
-	infoStr += "Template Path:\n  " + templatePath + "\n\n";
-	
-	// Server Template Path
-	std::string const serverPath = convertToServerTemplate(templatePath);
-	infoStr += "Server Path:\n  " + serverPath + "\n\n";
+	// Template Path and Server Path (omit when from Decorator Camera - do not render encoded names)
+	if (!m_openedFromDecoratorCamera)
+	{
+		infoStr += "\\#ffffff== Template Info ==\\#cccccc\n";
+		infoStr += "Template Path:\n  " + templatePath + "\n\n";
+		std::string const serverPath = convertToServerTemplate(templatePath);
+		infoStr += "Server Path:\n  " + serverPath + "\n\n";
+	}
 	
 	// Load the template for more info
 	ObjectTemplate const * const objectTemplate = ObjectTemplateList::fetch(templatePath);
@@ -999,9 +1010,11 @@ void SwgCuiDecoratorSpawn::updateInfoDisplay()
 			StringId const & nameId = sharedTemplate->getObjectName();
 			if (!nameId.isInvalid())
 			{
-				infoStr += "String File:\n  " + nameId.getTable() + "\n";
-				infoStr += "String ID:\n  " + nameId.getText() + "\n";
-				
+				if (!m_openedFromDecoratorCamera)
+				{
+					infoStr += "String File:\n  " + nameId.getTable() + "\n";
+					infoStr += "String ID:\n  " + nameId.getText() + "\n";
+				}
 				Unicode::String localizedName;
 				if (nameId.localize(localizedName) && !localizedName.empty())
 				{

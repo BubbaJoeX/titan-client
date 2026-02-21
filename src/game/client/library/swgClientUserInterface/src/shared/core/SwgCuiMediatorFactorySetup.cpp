@@ -63,6 +63,8 @@
 #include "swgClientUserInterface/SwgCuiDataStorage.h"
 #include "swgClientUserInterface/SwgCuiDebugInfoPage.h"
 #include "swgClientUserInterface/SwgCuiDecoratorSpawn.h"
+#include "swgClientUserInterface/SwgCuiAirspeederPanel.h"
+#include "swgClientUserInterface/SwgCuiDecoratorCameraPanel.h"
 #include "swgClientUserInterface/SwgCuiDpsMeter.h"
 #include "swgClientUserInterface/SwgCuiDroidCommand.h"
 #include "swgClientUserInterface/SwgCuiExamine.h"
@@ -265,6 +267,8 @@ void SwgCuiMediatorFactorySetup::install ()
 	MAKE_SWG_CTOR_WS (Rating,                         "/pda.ratingScreen");
 	MAKE_SWG_CTOR_WS (GalacticCivilWar,               "/pda.GCWInformation");
 	MAKE_SWG_CTOR_WS (DecoratorSpawn,                 "/pda.DecoratorSpawn");
+	MAKE_SWG_CTOR_WS (AirspeederPanel,                "/GroundHUD.AirspeederPanel");
+	MAKE_SWG_CTOR_WS (DecoratorCameraPanel,           "/GroundHUD.DecoratorCameraPanel");
 
 	//space
 	MAKE_SWG_CTOR_WS (SpaceConversation,              "/space.convo");

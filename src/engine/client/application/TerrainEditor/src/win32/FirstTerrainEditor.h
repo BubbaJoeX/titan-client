@@ -11,6 +11,13 @@
 #define INCLUDED_FirstTerrainEditor_H
 
 //-------------------------------------------------------------------
+// Define Windows version before any headers to avoid WINVER default warning
+#ifndef WINVER
+#define WINVER 0x0502
+#endif
+#ifndef _WIN32_WINNT
+#define _WIN32_WINNT 0x0502
+#endif
 
 //#define NOMINMAX
 #define VC_EXTRALEAN		// Exclude rarely-used stuff from Windows headers

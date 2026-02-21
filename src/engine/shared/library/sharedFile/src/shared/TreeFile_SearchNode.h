@@ -26,7 +26,7 @@ class TitanPakEncryptionContext;
 // TitanPak encryption constants
 // ======================================================================
 
-const Tag TAG_NUNA = TAG(N,U,N,A);  // Magic for encrypted TitanPak archives
+//const Tag TAG_NUNA = TAG(N,U,N,A);  // Magic for encrypted TitanPak archives
 
 // ======================================================================
 
@@ -301,15 +301,17 @@ public:
 
 private:
 
-	char                   *m_TOCFileName;
-	FileStreamer::File     *m_TOCFile;
-	FileStreamer::File     **m_treeFiles;
-	uint32                 m_numberOfTreeFiles;
-	uint32                 m_numberOfFiles;
-	char                   *m_treeFileNames;
-	char                   **m_treeFileNamePointers;
-	TableOfContentsEntry   *m_tableOfContents;
-	char                   *m_fileNames;
+	char                          *m_TOCFileName;
+	FileStreamer::File            *m_TOCFile;
+	FileStreamer::File            **m_treeFiles;
+	TitanPakEncryptionContext     **m_encryptionContexts;   // Encryption contexts for each tree file (NULL if not encrypted)
+	TitanPakEncryptionContext     *m_tocEncryptionContext;  // Encryption context for the titanlst file itself (NULL if not encrypted)
+	uint32                        m_numberOfTreeFiles;
+	uint32                        m_numberOfFiles;
+	char                          *m_treeFileNames;
+	char                          **m_treeFileNamePointers;
+	TableOfContentsEntry          *m_tableOfContents;
+	char                          *m_fileNames;
 };
 
 // ======================================================================

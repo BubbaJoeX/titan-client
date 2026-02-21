@@ -239,13 +239,19 @@ public:
 	static void                          drawSphere2(const Vector &center, float radius, int tessTheta, int nLongitudes, int nLatitudes, const VectorArgb & color);
 	static void                          drawXZCircle(const Vector &center, float radius, int tessTheta, const VectorArgb & color);
 	static void                          drawOctahedron(const Vector &center, float radius, const VectorArgb & color);
+	static void                          drawSolidOctahedron(const Vector &center, float radius, const VectorArgb & color);
 	static void                          drawCylinder(const Vector &base, float radius, float height, int tessTheta, int tessRho, int tessZ, int nSpokes, const VectorArgb &argb);
+	static void                          drawSolidCylinder(const Vector &base, float radius, float height, int segments, const VectorArgb &argb);
 	static void                          drawFrustum(const Vector *frustumVertices, const PackedArgb &color);
 	static void                          drawBox(const Vector &leftRearBottomCorner, float height, float width, float depth, const VectorArgb &argb);
 	static void                          drawBox(const Vector &extentMin, const Vector& extentMax, const VectorArgb &argb);
 	static void                          drawVertexNormals(VertexBufferReadIterator first, const VertexBufferReadIterator &last, float scale = 1, const VectorArgb &argbLine = VectorArgb::solidGreen,	const VectorArgb &argbEndpoint = VectorArgb::solidRed);
 	static void                          drawVertexMatrixFrames(VertexBufferReadIterator first, const VertexBufferReadIterator &last, float scale = 0.1f);
 	static void                          drawExtent(const Extent* extent, const VectorArgb& color);
+	/** Draw three filled discs for Y/P/R axes: blue (XZ plane / Yaw), green (YZ plane / Pitch), red (XY plane / Roll). */
+	static void                          drawExtentDiscsYPR(const Vector &center, float radius, int segments = 20);
+	/** Draw a hollow circle (line strip) in the plane with the given normal. */
+	static void                          drawCircleOutline(const Vector &center, const Vector &normal, float radius, int segments, const VectorArgb &color);
 
 	// draw routines
 

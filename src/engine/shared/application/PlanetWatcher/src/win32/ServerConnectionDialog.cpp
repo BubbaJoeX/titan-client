@@ -19,9 +19,9 @@
 
 namespace ServerConnectionDialogNamespace
 {
-	QString const s_qaServer("swo-dev17");
+	QString const s_qaServer("test.swgtitan.org");
 	QString const s_qaPort("60002");
-	QString const s_betaServer("sdt-01-01.starwarsgalaxies.net");
+	QString const s_betaServer("test.swgtitan.org");
 	QString const s_betaPort("60002");
 };
 

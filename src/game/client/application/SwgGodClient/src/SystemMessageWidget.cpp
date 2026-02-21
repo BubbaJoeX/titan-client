@@ -86,7 +86,7 @@ void SystemMessageWidget::sendMessage()
 	{
 		messageType = "Channel";
 		//TODO finish implementing this (channel selection)
-		targetName = "SWG.EricDev.system";
+		targetName = "SWG.Titan.system";
 	}
 
 	ServerCommander::getInstance().sendSystemMessage(messageType, targetName, message);

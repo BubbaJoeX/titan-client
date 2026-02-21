@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -511,6 +511,9 @@
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\shared\clientGameServer\EnterTicketPurchaseModeMessage.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+    </ClCompile>
+    <ClCompile Include="..\..\src\shared\clientGameServer\ShowAirspeederPanelMessage.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\shared\clientGameServer\EnvironmentalHitData.cpp">
@@ -1292,6 +1295,7 @@
     <ClInclude Include="..\..\src\shared\clientGameServer\EditStatsMessage.h" />
     <ClInclude Include="..\..\src\shared\clientGameServer\EnterStructurePlacementModeMessage.h" />
     <ClInclude Include="..\..\src\shared\clientGameServer\EnterTicketPurchaseModeMessage.h" />
+    <ClInclude Include="..\..\src\shared\clientGameServer\ShowAirspeederPanelMessage.h" />
     <ClInclude Include="..\..\src\shared\clientGameServer\EnvironmentalHitData.h" />
     <ClInclude Include="..\..\src\shared\clientGameServer\ExpertiseRequestMessage.h" />
     <ClInclude Include="..\..\src\shared\clientGameServer\FactionRequestMessage.h" />

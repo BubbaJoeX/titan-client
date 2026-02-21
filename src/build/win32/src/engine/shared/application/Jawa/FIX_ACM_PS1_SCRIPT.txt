@@ -1,0 +1,81 @@
+# ======================================================================
+# CRITICAL: FIX YOUR ACM.PS1 SCRIPT
+# ======================================================================
+
+# The error shows:
+#   "D:\titan\data\sku.0\sys.client\compiled\game\\customization\asset_customization_manager.mif"
+#
+# This is WRONG. The MIF source files should be in:
+#   "D:\titan\dsrc\sku.0\sys.shared\compiled\game\customization\asset_customization_manager.mif"
+#
+# Your ACM.ps1 is passing the wrong paths to Jawa!
+
+# ======================================================================
+# CORRECT PATHS FOR JAWA:
+# ======================================================================
+
+# BASE PATH (where source .mif files are):
+$basePath = "D:/titan/dsrc/sku.0/sys.shared/compiled/game"
+
+# CLIENT PATH (where compiled .iff files go):
+$clientPath = "D:/titan/data/sku.0/sys.client/compiled/game"
+# OR for shared output:
+# $clientPath = "D:/titan/data/sku.0/sys.shared/compiled/game"
+
+# PERL LIB PATH:
+$perlLibPath = "D:/titan/client/tools/perllib"
+
+# ======================================================================
+# CORRECT JAWA COMMAND:
+# ======================================================================
+
+& "D:\titan\client\src\engine\shared\application\Jawa\build\bin\Jawa.exe" `
+    --verbose `
+    --perl-lib "$perlLibPath" `
+    --client-path "$clientPath" `
+    "$basePath"
+
+# ======================================================================
+# EXPLANATION:
+# ======================================================================
+
+# JAWA needs:
+#   1. BASE PATH -> dsrc/sku.0/sys.shared/compiled/game/ 
+#      (this is the SOURCE where .mif, .tab files are)
+#   
+#   2. CLIENT PATH -> data/sku.0/sys.client/compiled/game/
+#      (this is the DESTINATION where compiled .iff files go)
+#
+#   3. PERL LIB PATH -> client/tools/perllib/
+#      (so Perl can find VehicleCustomizationVariableGenerator.pm)
+
+# ======================================================================
+# PATH STRUCTURE:
+# ======================================================================
+
+# titan/
+#   ├── dsrc/              <- SOURCE (uncompiled assets)
+#   │   └── sku.0/
+#   │       ├── sys.shared/compiled/game/
+#   │       │   ├── customization/
+#   │       │   │   ├── *.mif       <- READ FROM HERE
+#   │       │   │   └── *.tab       <- READ FROM HERE
+#   │       │   └── datatables/
+#   │       └── sys.client/compiled/game/
+#   │           └── customization/
+#   │               └── *.mif       <- READ FROM HERE (client-specific)
+#   │
+#   ├── data/              <- DESTINATION (compiled assets)
+#   │   └── sku.0/
+#   │       ├── sys.shared/compiled/game/
+#   │       │   └── customization/
+#   │       │       └── *.iff       <- WRITE TO HERE
+#   │       └── sys.client/compiled/game/
+#   │           └── customization/
+#   │               └── *.iff       <- WRITE TO HERE (client-specific)
+#   │
+#   └── client/
+#       └── tools/
+#           ├── perllib/            <- Perl modules
+#           ├── *.pl                <- Perl scripts
+#           └── Miff.exe            <- Compiler

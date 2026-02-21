@@ -31,6 +31,7 @@
 
 #include <eh.h>
 #include <cstdio>
+#include <Psapi.h>
 
 // ======================================================================
 
@@ -152,8 +153,38 @@ LONG __stdcall SetupSharedFoundationNamespace::MyUnhandledExceptionFilter(LPEXCE
 	// tell the Os not to abort so we can rethrow the exception
 	Os::returnFromAbort();
 
+	// Try to identify which module the crash occurred in
+	static char moduleName[MAX_PATH] = "unknown";
+	static char fatalMessage[1024];
+	HMODULE hMods[1024];
+	DWORD cbNeeded;
+	void* crashAddr = exceptionPointers->ExceptionRecord->ExceptionAddress;
+	
+	if (EnumProcessModules(GetCurrentProcess(), hMods, sizeof(hMods), &cbNeeded))
+	{
+		for (unsigned int i = 0; i < (cbNeeded / sizeof(HMODULE)); i++)
+		{
+			MODULEINFO modInfo;
+			if (GetModuleInformation(GetCurrentProcess(), hMods[i], &modInfo, sizeof(modInfo)))
+			{
+				void* modBase = modInfo.lpBaseOfDll;
+				void* modEnd = reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(modBase) + modInfo.SizeOfImage);
+				if (crashAddr >= modBase && crashAddr < modEnd)
+				{
+					GetModuleBaseNameA(GetCurrentProcess(), hMods[i], moduleName, sizeof(moduleName));
+					break;
+				}
+			}
+		}
+	}
+	
+	sprintf(fatalMessage, "ExceptionHandler invoked: Exception code 0x%08x at address 0x%08x in module %s",
+		exceptionPointers->ExceptionRecord->ExceptionCode,
+		reinterpret_cast<uintptr_t>(crashAddr),
+		moduleName);
+
 	// Let the ExitChain do its job
-	Fatal("ExceptionHandler invoked");
+	Fatal("%s", fatalMessage);
 
 	// rethrow the exception so that the debugger can catch it
 	entered = false;

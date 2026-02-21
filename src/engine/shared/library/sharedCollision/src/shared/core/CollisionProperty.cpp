@@ -1140,8 +1140,9 @@ bool CollisionProperty::blocksInteraction (InteractionType) const
 
 bool CollisionProperty::blocksMovement () const
 {
-	//@todo - HACK - force mobiles to block movement so we can collide with
-	// them
+	// Non-collidable objects (e.g. airspeeder mode vehicles, dead/incap) do not block movement
+	if (!isCollidable())
+		return false;
 
 	if(isMobile())
 		return true;

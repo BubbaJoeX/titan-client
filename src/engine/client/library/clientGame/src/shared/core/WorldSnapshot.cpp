@@ -419,6 +419,12 @@ void WorldSnapshot::load (char const *sceneName)
 
 	NOT_NULL(sceneName);
 
+	// Skip converted _ws buildout files in god client - these are server-side snapshots, not client buildouts
+	if (strstr(sceneName, "_ws"))
+	{
+		return;
+	}
+
 	//-- clear the current snapshot
 	ms_loadedList.clear ();
 	ms_reader.removeFromWorld ();

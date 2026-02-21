@@ -12,6 +12,7 @@
 #include "UIUtils.h"
 #include "unicodeArchive/UnicodeArchive.h"
 #include "clientGame/AlarmManager.h"
+#include "clientGame/ClientCommandQueue.h"
 #include "clientGame/AwayFromKeyBoardManager.h"
 #include "clientGame/ClientTextManager.h"
 #include "clientGame/CommunityManager.h"
@@ -20,6 +21,7 @@
 #include "clientGame/CustomerServiceManager.h"
 #include "clientGame/Game.h"
 #include "clientGame/GameNetwork.h"
+#include "sharedNetworkMessages/GenericValueTypeMessage.h"
 #include "clientGame/MatchMakingManager.h"
 #include "clientGame/MoodManagerClient.h"
 #include "clientGame/NetworkScene.h"
@@ -33,6 +35,7 @@
 #include "clientUserInterface/CuiAliasHandler.h"
 #include "clientUserInterface/CuiChatParser.h"
 #include "clientUserInterface/CuiChatRoomDataNode.h"
+#include "clientUserInterface/CuiMediator.h"
 #include "clientUserInterface/CuiMediatorFactory.h"
 #include "clientUserInterface/CuiPersistentMessageManager.h"
 #include "clientUserInterface/CuiSocialsParser.h"
@@ -44,6 +47,7 @@
 #include "clientUserInterface/CuiStringVariablesData.h"
 #include "clientUserInterface/CuiStringVariablesManager.h"
 #include "clientUserInterface/CuiUtils.h"
+#include "clientUserInterface/CuiFurnitureMovementManager.h"
 #include "fileInterface/StdioFile.h"
 #include "sharedCommandParser/CommandParserHistory.h"
 #include "sharedDebug/DebugMonitor.h"
@@ -134,6 +138,8 @@ namespace SwgCuiCommandParserDefaultNamespace
 		MAKE_COMMAND (flushGraphicsResources);
 		MAKE_COMMAND (copyCrashReportInformation);
 		MAKE_COMMAND (reloadTextures);
+		MAKE_COMMAND (decoratorCamera);
+		MAKE_COMMAND (showSkywayPanel);
 		MAKE_COMMAND (createMail);
 #if PRODUCTION == 0
 		MAKE_COMMAND (cancelTickets);
@@ -201,6 +207,8 @@ namespace SwgCuiCommandParserDefaultNamespace
 		{ Commands::flushGraphicsResources,      1, "<fullReset>",                        "Flush the graphics resources, or perform a full reset"},
 		{ Commands::copyCrashReportInformation,  0, "",                                   "Copy the test that would be sent with a client crash to the windows clipboard"},
 		{ Commands::reloadTextures,              0, "",                                   "Reload all textures from disk"},
+		{ Commands::decoratorCamera,             0, "",                                   "Toggle decorator camera mode (admin only)"},
+		{ Commands::showSkywayPanel,            0, "",                                   "Toggle Skyway/Airspeeder panel (for testing)"},
 		{ "",                                    0, "",                                   ""} // this must be last
 	};
 
@@ -1827,6 +1835,41 @@ bool SwgCuiCommandParserDefault::performParsing (const NetworkId & userId, const
 	{
 		TextureList::reloadTextures();
 		return true; //lint !e527
+	}
+
+	//-----------------------------------------------------------------
+
+	else if (isCommand( argv [0], Commands::decoratorCamera))
+	{
+		// Check admin status
+		if (!PlayerObject::isAdmin())
+		{
+			result += Unicode::narrowToWide("This command is only available to administrators.");
+			return true;
+		}
+		
+		// Toggle decorator camera
+		if (CuiFurnitureMovementManager::isDecoratorCameraActive())
+		{
+			CuiFurnitureMovementManager::disableDecoratorCamera();
+			CuiMediatorFactory::deactivateInWorkspace(CuiMediatorTypes::WS_DecoratorCameraPanel);
+			result += Unicode::narrowToWide("Decorator camera disabled.");
+		}
+		else
+		{
+			CuiFurnitureMovementManager::enableDecoratorCamera();
+			CuiMediatorFactory::activateInWorkspace(CuiMediatorTypes::WS_DecoratorCameraPanel);
+			result += Unicode::narrowToWide("Decorator camera enabled.");
+		}
+		return true;
+	}
+
+	else if (isCommand(argv[0], Commands::showSkywayPanel))
+	{
+		GenericValueTypeMessage<int> const msg("RequestShowSkywayPanel", 0);
+		GameNetwork::send(msg, true);
+		result += Unicode::narrowToWide("Skyway panel toggle sent to server.");
+		return true;
 	}
 
 	//-----------------------------------------------------------------

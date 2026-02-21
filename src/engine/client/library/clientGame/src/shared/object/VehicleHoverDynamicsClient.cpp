@@ -29,10 +29,14 @@
 #include "clientParticle/LightningAppearance.h"
 #include "clientSkeletalAnimation/SkeletalAppearance2.h"
 #include "sharedCollision/BoxExtent.h"
+#include "sharedCollision/CollisionProperty.h"
 #include "sharedFoundation/PersistentCrcString.h"
+#include "sharedGame/GameObjectTypes.h"
+#include "sharedGame/SharedObjectTemplate.h"
 #include "sharedFoundation/TemporaryCrcString.h"
 #include "sharedObject/Appearance.h"
 #include "sharedObject/AppearanceTemplate.h"
+#include "sharedObject/CellProperty.h"
 #include "sharedObject/AppearanceTemplateList.h"
 #include "sharedTerrain/TerrainObject.h"
 #include <list>
@@ -53,6 +57,10 @@ namespace
 	
 	const int s_numCrumbs      = 120;
 	const int s_numCrumbsPopup = 60;
+
+	// Airspeeder: height above terrain (m) to enter mode; hysteresis 0.5m for exit
+	const float s_airspeederHeightThreshold = 10.0f;
+	const float s_airspeederExitHysteresis   = 0.5f;
 	
 	typedef VehicleHoverDynamicsClient::ParticleEffectVector ParticleEffectVector;
 	typedef VehicleHoverDynamicsClient::SoundIdVector SoundIdVector;
@@ -240,7 +248,8 @@ m_hasAltered            (0),
 m_groundEffects         (new GroundEffectClientDataVector),
 m_lastSpeedPercent      (0.0f),
 m_lastHeadTurnPercent   (0.0f),
-m_lightningEffects      (new LightningEffectDataVector)
+m_lightningEffects      (new LightningEffectDataVector),
+m_airspeederActive      (false)
 {
 	m_engineSounds.m_dynamics = this;
 	m_engineSoundsDamaged.m_dynamics = this;
@@ -448,6 +457,48 @@ float VehicleHoverDynamicsClient::alter(float elapsedTime)
 	}
 
 	const float retval = VehicleHoverDynamics::alter (elapsedTime);
+	
+	// Airspeeder mode: client-side collision toggle based on height above terrain (server validates independently)
+	if (motorCreature && motorCreature->getParentCell () == CellProperty::getWorldCellProperty () &&
+		GameObjectTypes::isTypeOf( motorCreature->getGameObjectType(), SharedObjectTemplate::GOT_vehicle_hover ))
+	{
+		const CreatureObject * const player = Game::getPlayerCreature ();
+		if (player && (player->getParent () == vehicleObject || player->getContainedBy () == static_cast<const Object *>(motorCreature)))
+		{
+			TerrainObject * const terrain = TerrainObject::getInstance ();
+			if (terrain)
+			{
+				const Vector pos_w = motorCreature->getPosition_w ();
+				float terrainHeight = 0.0f;
+				if (terrain->getHeight (Vector (pos_w.x, 0.0f, pos_w.z), terrainHeight))
+				{
+					const float heightAboveTerrain = pos_w.y - terrainHeight;
+					const float exitThreshold = s_airspeederHeightThreshold - s_airspeederExitHysteresis;
+					const bool wantAirspeeder = heightAboveTerrain >= s_airspeederHeightThreshold;
+					const bool wantExit = heightAboveTerrain < exitThreshold;
+
+					if (wantAirspeeder && !m_airspeederActive)
+						m_airspeederActive = true;
+					else if (wantExit && m_airspeederActive)
+						m_airspeederActive = false;
+
+					CollisionProperty * const collision = motorCreature->getCollisionProperty ();
+					if (collision && collision->isCollidable () != !m_airspeederActive)
+						collision->setCollidable (!m_airspeederActive);
+				}
+			}
+		}
+		else
+		{
+			if (m_airspeederActive)
+			{
+				m_airspeederActive = false;
+				CollisionProperty * const collision = motorCreature->getCollisionProperty ();
+				if (collision)
+					collision->setCollidable (true);
+			}
+		}
+	}
 	
 	FreeChaseCamera::ms_vehicleCameraOffsetY = 0.0f;
 	

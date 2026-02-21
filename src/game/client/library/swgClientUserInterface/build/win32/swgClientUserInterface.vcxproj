@@ -447,6 +447,8 @@
     <ClCompile Include="..\..\src\shared\page\SwgCuiG15Lcd.cpp" />
     <ClCompile Include="..\..\src\shared\page\SwgCuiGalacticCivilWar.cpp" />
     <ClCompile Include="..\..\src\shared\page\SwgCuiDecoratorSpawn.cpp" />
+    <ClCompile Include="..\..\src\shared\page\SwgCuiAirspeederPanel.cpp" />
+    <ClCompile Include="..\..\src\shared\page\SwgCuiDecoratorCameraPanel.cpp" />
     <ClCompile Include="..\..\src\shared\page\SwgCuiGameMenu.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
     </ClCompile>
@@ -1009,6 +1011,8 @@
     <ClInclude Include="..\..\src\shared\page\SwgCuiG15Lcd.h" />
     <ClInclude Include="..\..\src\shared\page\SwgCuiGalacticCivilWar.h" />
     <ClInclude Include="..\..\src\shared\page\SwgCuiDecoratorSpawn.h" />
+    <ClInclude Include="..\..\src\shared\page\SwgCuiAirspeederPanel.h" />
+    <ClInclude Include="..\..\src\shared\page\SwgCuiDecoratorCameraPanel.h" />
     <ClInclude Include="..\..\src\shared\page\SwgCuiGameMenu.h" />
     <ClInclude Include="..\..\src\shared\page\SwgCuiGroundRadar.h" />
     <ClInclude Include="..\..\src\shared\page\SwgCuiGroundRadar_BlipPane.h" />

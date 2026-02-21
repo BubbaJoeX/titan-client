@@ -61,7 +61,7 @@
             </rect>
         </property>
         <property name="text">
-            <string>Please wait while the GodClient initializes...</string>
+            <string>Loading Titan Developer Client...</string>
         </property>
     </widget>
 </widget>

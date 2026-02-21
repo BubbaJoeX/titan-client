@@ -357,14 +357,20 @@ void TreeFile::addSearchCache(int priority)
  * @param priority  Search priority for the search tree
  */
 
-void TreeFile::addSearchTree(const char *fileName, int priority)
+void TreeFile::addSearchTree(const char* fileName, int priority)
 {
-	if (FileStreamer::exists (fileName))
+	WARNING(true, ("TreeFile::addSearchTree attempting [%s] priority %d\n", fileName, priority));
+
+	if (FileStreamer::exists(fileName))
+	{
+		WARNING(true, ("TreeFile::addSearchTree - creating SearchTree for [%s]\n", fileName));
 		addSearchNode(new SearchTree(priority, fileName));
+	}
 	else
 	{
+		WARNING(true, ("TreeFile::addSearchTree - NOT FOUND [%s]\n", fileName));
 #ifdef _DEBUG
-		DEBUG_FATAL(true, ("TreeFile::addSearchTree - [%s] not found", fileName));
+		WARNING(true, ("TreeFile::addSearchTree - [%s] not found", fileName));
 #else
 		WARNING(true, ("TreeFile::addSearchTree - [%s] not found", fileName));
 #endif
@@ -664,6 +670,12 @@ AbstractFile* TreeFile::open(const char *fileName, AbstractFile::PriorityType pr
 
 	char fixedFileName[Os::MAX_PATH_LENGTH];
 	fixUpFileName(fixedFileName, fileName, true);
+
+#if PRODUCTION == 0
+	// Log the file open attempt only when SharedFile warnTreeFileOpens is set (reduces console spam)
+	if (ms_warnTreeFileOpens)
+		WARNING(true, ("TreeFile::open('%s') -> fixed='%s'", fileName, fixedFileName));
+#endif
 
 	// check the cache to see if the file has been preloaded
 	ms_criticalSection.enter();

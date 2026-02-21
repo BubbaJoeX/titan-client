@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.10)
+project(Kaadu VERSION 1.0.0 LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+add_executable(Kaadu src/shared/AcmBuildTool.cpp src/shared/main.cpp)
+target_compile_definitions(Kaadu PRIVATE _WIN32 _CRT_SECURE_NO_WARNINGS)
+target_include_directories(Kaadu PRIVATE src/shared)

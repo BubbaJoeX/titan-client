@@ -160,9 +160,9 @@ int ClientMain(
 	data.hInstance = hInstance;
 	data.commandLine = lpCmdLine;
 #if PRODUCTION == 0
-	data.configFile = "client_d.cfg";
+	data.configFile = "titan_d.cfg";
 #else
-	data.configFile = "client.cfg";
+	data.configFile = "titan.cfg";
 #endif
 	data.clockUsesSleep = true;
 	data.minFrameRate = 1.f;

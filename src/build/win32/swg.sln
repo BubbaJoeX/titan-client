@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
-VisualStudioVersion = 12.0.40629.0
+# Visual Studio Version 18
+VisualStudioVersion = 18.3.11429.125
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AnimationEditor", "..\..\engine\client\application\AnimationEditor\build\win32\AnimationEditor.vcxproj", "{AB9A58E2-734B-45E4-B4BB-C7E9FF6ACA3F}"
 	ProjectSection(ProjectDependencies) = postProject
@@ -702,7 +702,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "StringFileTool", "..\..\eng
 		{B97963EF-49E4-477E-85FF-E7FEE7C626D7} = {B97963EF-49E4-477E-85FF-E7FEE7C626D7}
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SwgClient", "..\..\game\client\application\SwgClient\build\win32\SwgClient.vcxproj", "{2379493D-680B-41DF-9BEF-FFBC09827BAF}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SwgTitan", "..\..\game\client\application\SwgClient\build\win32\SwgClient.vcxproj", "{2379493D-680B-41DF-9BEF-FFBC09827BAF}"
 	ProjectSection(ProjectDependencies) = postProject
 		{EAA23F07-4419-4AED-83D2-06654119B6F6} = {EAA23F07-4419-4AED-83D2-06654119B6F6}
 		{AFA9AD0A-6E1A-4004-A1FF-8293EB957EF1} = {AFA9AD0A-6E1A-4004-A1FF-8293EB957EF1}
@@ -771,7 +771,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SwgClient", "..\..\game\cli
 		{ECBDFCFF-F4AE-475A-AA90-729EB96430A0} = {ECBDFCFF-F4AE-475A-AA90-729EB96430A0}
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SwgClientSetup", "..\..\game\client\application\SwgClientSetup\build\win32\SwgClientSetup.vcxproj", "{9080903C-CB60-41C9-BDA0-3BDE29CFF1B3}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SwgTitanSetup", "..\..\game\client\application\SwgClientSetup\build\win32\SwgClientSetup.vcxproj", "{9080903C-CB60-41C9-BDA0-3BDE29CFF1B3}"
 	ProjectSection(ProjectDependencies) = postProject
 		{ECBDFCFF-F4AE-475A-AA90-729EB96430A0} = {ECBDFCFF-F4AE-475A-AA90-729EB96430A0}
 	EndProjectSection
@@ -1602,6 +1602,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libEverQuestTCG", "..\..\ex
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "zlib", "..\..\external\3rd\library\zlib-1.2.3\zlib.vcxproj", "{9496A020-65AD-45A6-9ACF-AE4F3358B027}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SwgMapRasterizer", "..\..\engine\shared\application\SwgMapRasterizer\build\win32\SwgMapRasterizer.vcxproj", "{A1B2C3D4-E5F6-4890-ABCD-EF1234567890}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -2383,6 +2385,12 @@ Global
 		{9496A020-65AD-45A6-9ACF-AE4F3358B027}.Optimized|Win32.Build.0 = Release|Win32
 		{9496A020-65AD-45A6-9ACF-AE4F3358B027}.Release|Win32.ActiveCfg = Release|Win32
 		{9496A020-65AD-45A6-9ACF-AE4F3358B027}.Release|Win32.Build.0 = Release|Win32
+		{A1B2C3D4-E5F6-4890-ABCD-EF1234567890}.Debug|Win32.ActiveCfg = Debug|Win32
+		{A1B2C3D4-E5F6-4890-ABCD-EF1234567890}.Debug|Win32.Build.0 = Debug|Win32
+		{A1B2C3D4-E5F6-4890-ABCD-EF1234567890}.Optimized|Win32.ActiveCfg = Optimized|Win32
+		{A1B2C3D4-E5F6-4890-ABCD-EF1234567890}.Optimized|Win32.Build.0 = Optimized|Win32
+		{A1B2C3D4-E5F6-4890-ABCD-EF1234567890}.Release|Win32.ActiveCfg = Release|Win32
+		{A1B2C3D4-E5F6-4890-ABCD-EF1234567890}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

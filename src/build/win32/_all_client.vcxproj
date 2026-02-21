@@ -85,10 +85,75 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="src\engine\client\library\clientUserInterface\src\shared\core\CuiFurnitureMovementManager.h" />
+    <ClInclude Include="src\engine\shared\application\AcmBuildTool\src\shared\AcmBuildTool.h" />
+    <ClInclude Include="src\engine\shared\application\AcmBuildTool\src\shared\FirstAcmBuildTool.h" />
+    <ClInclude Include="src\engine\shared\application\Jawa\src\shared\FirstJawa.h" />
+    <ClInclude Include="src\engine\shared\application\Jawa\src\shared\Jawa.h" />
+    <ClInclude Include="src\engine\shared\application\Nuna\src\Nuna.h" />
+    <ClInclude Include="src\engine\shared\application\Nuna\src\NunaCompression.h" />
+    <ClInclude Include="src\engine\shared\application\Nuna\src\NunaCrc.h" />
+    <ClInclude Include="src\engine\shared\application\Nuna\src\NunaToc.h" />
+    <ClInclude Include="src\engine\shared\library\sharedFile\src\shared\TreeFile_SearchNode.h" />
     <ClInclude Include="src\game\client\library\swgClientUserInterface\include\public\swgClientUserInterface\SwgCuiMotdFetcher.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\engine\client\library\clientUserInterface\src\shared\core\CuiFurnitureMovementManager.cpp" />
+    <ClCompile Include="src\engine\shared\application\AcmBuildTool\src\shared\AcmBuildTool.cpp" />
+    <ClCompile Include="src\engine\shared\application\AcmBuildTool\src\shared\main.cpp" />
+    <ClCompile Include="src\engine\shared\application\Jawa\COMPLETE_IMPLEMENTATION.cpp" />
+    <ClCompile Include="src\engine\shared\application\Jawa\src\shared\buildPerlCommand_new.cpp" />
+    <ClCompile Include="src\engine\shared\application\Jawa\src\shared\main.cpp" />
+    <ClCompile Include="src\engine\shared\application\Nuna\src\main.cpp" />
+    <ClCompile Include="src\engine\shared\application\Nuna\src\NunaToc.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="public\terrain-viewer.html" />
+    <None Include="src\engine\shared\application\AcmBuildTool\.gitignore" />
+    <None Include="src\engine\shared\application\AcmBuildTool\build.bat" />
+    <None Include="src\engine\shared\application\AcmBuildTool\build.sh" />
+    <None Include="src\engine\shared\application\AcmBuildTool\cmake_build.bat" />
+    <None Include="src\engine\shared\application\AcmBuildTool\CMAKE_BUILD.md" />
+    <None Include="src\engine\shared\application\AcmBuildTool\cmake_build.sh" />
+    <None Include="src\engine\shared\application\AcmBuildTool\CONFIGURATION_SUMMARY.md" />
+    <None Include="src\engine\shared\application\AcmBuildTool\CONFIG_OPTIONS.md" />
+    <None Include="src\engine\shared\application\AcmBuildTool\IMPLEMENTATION.md" />
+    <None Include="src\engine\shared\application\AcmBuildTool\Makefile" />
+    <None Include="src\engine\shared\application\AcmBuildTool\QUICKSTART.md" />
+    <None Include="src\engine\shared\application\AcmBuildTool\README.md" />
+    <None Include="src\engine\shared\application\AcmBuildTool\run_example.bat" />
+    <None Include="src\engine\shared\application\AcmBuildTool\run_example.sh" />
+    <None Include="src\engine\shared\application\AcmBuildTool\src\shared\AcmBuildConfig.h.in" />
+    <None Include="src\engine\shared\application\Jawa\.gitignore" />
+    <None Include="src\engine\shared\application\Jawa\build.bat" />
+    <None Include="src\engine\shared\application\Jawa\build.sh" />
+    <None Include="src\engine\shared\application\Jawa\FINAL_STATUS.md" />
+    <None Include="src\engine\shared\application\Jawa\PATH_FIXES_README.md" />
+    <None Include="src\engine\shared\application\Jawa\QUICK_REFERENCE.md" />
+    <None Include="src\engine\shared\application\Jawa\README.md" />
+    <None Include="src\engine\shared\application\Jawa\src\shared\JawaConfig.h.in" />
+    <None Include="src\engine\shared\application\Jawa\STEP_BY_STEP_INSTRUCTIONS.md" />
+    <None Include="tools\buildACM.bat" />
+    <None Include="tools\buildACM.sh" />
+    <None Include="tools\buildACM_new.pl" />
+    <None Include="tools\buildACM_README.md" />
+    <None Include="tools\buildACM_SUMMARY.md" />
+    <None Include="tools\datatable-reader.js" />
+    <None Include="tools\iff-reader.js" />
+    <None Include="tools\model-service.js" />
+    <None Include="tools\object-template-reader.js" />
+    <None Include="tools\PERL_FILES_STATUS.md" />
+    <None Include="tools\stf-writer.js" />
+    <None Include="tools\swg-parsers.js" />
+    <None Include="tools\swg-terrain-service.js" />
+    <None Include="tools\swg-terrain-viewer.js" />
+    <None Include="tools\swg_blender_addon\__init__.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="src\engine\shared\application\AcmBuildTool\CMakeLists.txt" />
+    <Text Include="src\engine\shared\application\Jawa\CMakeLists.txt" />
+    <Text Include="src\engine\shared\application\Jawa\FIX_ACM_PS1_SCRIPT.txt" />
+    <Text Include="src\engine\shared\application\Jawa\JAWA_CPP_PATCH.txt" />
+    <Text Include="tools\PERL_PATCH_INSTRUCTIONS.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

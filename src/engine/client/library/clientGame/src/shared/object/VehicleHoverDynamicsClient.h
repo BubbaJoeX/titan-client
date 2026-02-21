@@ -216,6 +216,9 @@ private:
 
 	float m_lastHeadTurnPercent;
 
+	// Airspeeder mode: client-side collision based on height above terrain
+	bool m_airspeederActive;
+
 
 	class LightningEffectData
 	{

@@ -52,6 +52,7 @@
 #include "sharedNetworkMessages/EditStatsMessage.h"
 #include "sharedNetworkMessages/EnterStructurePlacementModeMessage.h"
 #include "sharedNetworkMessages/EnterTicketPurchaseModeMessage.h"
+#include "sharedNetworkMessages/ShowAirspeederPanelMessage.h"
 #include "sharedNetworkMessages/NewbieTutorialEnableHudElement.h"
 #include "sharedNetworkMessages/NewbieTutorialHighlightUIElement.h"
 #include "sharedNetworkMessages/NewbieTutorialRequest.h"
@@ -451,6 +452,7 @@ void SwgCuiHudWindowManager::handlePerformActivate ()
 	connectToMessage (PermissionListCreateMessage::MessageType);
 	connectToMessage (EnterStructurePlacementModeMessage::cms_name);
 	connectToMessage (EnterTicketPurchaseModeMessage::cms_name);
+	connectToMessage (ShowAirspeederPanelMessage::cms_name);
 	connectToMessage (NewbieTutorialRequest::cms_name);
 	connectToMessage (NewbieTutorialEnableHudElement::cms_name);
 	connectToMessage (ConsentRequestMessage::cms_name);
@@ -498,6 +500,7 @@ void SwgCuiHudWindowManager::handlePerformDeactivate ()
 	disconnectFromMessage (PermissionListCreateMessage::MessageType);
 	disconnectFromMessage (EnterStructurePlacementModeMessage::cms_name);
 	disconnectFromMessage (EnterTicketPurchaseModeMessage::cms_name);
+	disconnectFromMessage (ShowAirspeederPanelMessage::cms_name);
 	disconnectFromMessage (NewbieTutorialRequest::cms_name);
 	disconnectFromMessage (NewbieTutorialEnableHudElement::cms_name);
 	disconnectFromMessage (ConsentRequestMessage::cms_name);
@@ -594,6 +597,19 @@ void SwgCuiHudWindowManager::receiveMessage(const MessageDispatch::Emitter & , c
 				DEBUG_WARNING (true, ("GroundScene::receiveMessage (EnterTicketPurchaseModeMessage): setting ticket purchase data failed!"));
 			}
 		}
+	}
+
+	//----------------------------------------------------------------------
+
+	else if (message.isType (ShowAirspeederPanelMessage::cms_name))
+	{
+		Archive::ReadIterator ri = NON_NULL (safe_cast<const GameNetworkMessage *>(&message))->getByteStream().begin();
+		const ShowAirspeederPanelMessage msg (ri);
+
+		if (msg.getShow())
+			CuiMediatorFactory::activateInWorkspace (CuiMediatorTypes::WS_AirspeederPanel);
+		else
+			CuiMediatorFactory::deactivateInWorkspace (CuiMediatorTypes::WS_AirspeederPanel);
 	}
 
 	//----------------------------------------------------------------------

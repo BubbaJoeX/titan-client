@@ -51,11 +51,12 @@ public:
 
 private:
 
-	static int       updateNumber;
-	static WORD      status;
-	static Precision precision;
-	static Rounding  rounding;
-	static bool      exceptionEnabled[E_max];
+	static int          updateNumber;
+	static WORD         status;
+	static Precision    precision;
+	static Rounding     rounding;
+	static bool         exceptionEnabled[E_max];
+	static unsigned int mxcsrStatus;
 
 public:
 

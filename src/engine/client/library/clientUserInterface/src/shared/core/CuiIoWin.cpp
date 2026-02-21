@@ -669,21 +669,29 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 	{
 	case IOET_MouseMove:
 		{
-			// Handle furniture movement gizmo dragging first
+			// In decorator mode, always consume mouse move so it never drives character movement
+			if (CuiFurnitureMovementManager::isDecoratorCameraActive())
+			{
+				bool leftButton = (msg.Modifiers.LeftMouseDown != 0);
+				bool rightButton = (msg.Modifiers.RightMouseDown != 0);
+				CuiFurnitureMovementManager::processMouseInput(
+					m_mouseCursor->getX(),
+					m_mouseCursor->getY(),
+					leftButton,
+					rightButton);
+				return IOR_Block;
+			}
+			// Handle gizmo dragging when object selected
 			if (CuiFurnitureMovementManager::isActive())
 			{
 				bool leftButton = (msg.Modifiers.LeftMouseDown != 0);
 				bool rightButton = (msg.Modifiers.RightMouseDown != 0);
-				
 				if (CuiFurnitureMovementManager::processMouseInput(
 					m_mouseCursor->getX(),
 					m_mouseCursor->getY(),
 					leftButton,
 					rightButton))
-				{
-					// Gizmo consumed the input, don't process further
 					return IOR_Block;
-				}
 			}
 			
 			UIPoint newCoords;
@@ -978,8 +986,8 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 	case IOET_KeyDown:
 		AwayFromKeyBoardManager::touch();
 		
-		// Check if furniture movement mode wants to consume this input
-		if (CuiFurnitureMovementManager::isActive())
+		// Check if decorator camera or furniture movement mode wants to consume this input (WASD, etc.)
+		if (CuiFurnitureMovementManager::isActive() || CuiFurnitureMovementManager::isDecoratorCameraActive())
 		{
 			if (CuiFurnitureMovementManager::processKeyDown(event->arg2))
 			{
@@ -1030,8 +1038,8 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 		{
 			m_ignoreNextNumPadValue = false;
 
-			// Check if furniture movement mode wants to consume this input
-			if (CuiFurnitureMovementManager::isActive())
+			// Check if decorator camera or furniture movement mode wants to consume this input
+			if (CuiFurnitureMovementManager::isActive() || CuiFurnitureMovementManager::isDecoratorCameraActive())
 			{
 				if (CuiFurnitureMovementManager::processKeyUp(event->arg2))
 				{
@@ -1056,22 +1064,25 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 		break;
 	case IOET_MouseButtonUp:
 	case IOET_MouseButtonDown:
-		// Check if furniture movement mode wants to consume mouse input
-		if (CuiFurnitureMovementManager::isActive())
+		// Check if decorator camera or furniture movement mode wants to consume mouse input (pan, gizmo, selection)
+		if (CuiFurnitureMovementManager::isActive() || CuiFurnitureMovementManager::isDecoratorCameraActive())
 		{
 			bool leftButton = false;
 			bool rightButton = false;
-			
+			if (event->arg2 == 3)
+			{
+				if (event->type == IOET_MouseButtonDown)
+					CuiFurnitureMovementManager::setMouse4Down(true);
+				else if (event->type == IOET_MouseButtonUp)
+					CuiFurnitureMovementManager::setMouse4Down(false);
+			}
 			if (event->type == IOET_MouseButtonDown)
 			{
 				leftButton = (event->arg2 == 0);
 				rightButton = (event->arg2 == 1);
 			}
-			// For button up, we still pass the current button states from modifiers
-			// so the manager knows which button was released
 			else if (event->type == IOET_MouseButtonUp)
 			{
-				// Check current modifier state, but note which button was just released
 				leftButton = (msg.Modifiers.LeftMouseDown != 0) && (event->arg2 != 0);
 				rightButton = (msg.Modifiers.RightMouseDown != 0) && (event->arg2 != 1);
 			}
@@ -1086,6 +1097,25 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 				break;
 			}
 		}
+		// Handle object selection when decorator camera is active and processMouseInput did not consume (e.g. left-click on empty space)
+		if (CuiFurnitureMovementManager::isDecoratorCameraActive() && event->type == IOET_MouseButtonDown)
+		{
+			bool leftButton = (event->arg2 == 0);
+			if (leftButton)
+			{
+				// Try to select object at click position
+				if (CuiFurnitureMovementManager::selectObjectAtScreenPosition(
+					m_mouseCursor->getX(), 
+					m_mouseCursor->getY()))
+				{
+					retval = true;
+					break;
+				}
+			}
+		}
+		// In decorator mode, never pass mouse1/mouse2 to the game so character does not move
+		if (CuiFurnitureMovementManager::isDecoratorCameraActive())
+			retval = true;
 		break;
 	case IOET_SetSystemMouseCursorPosition:
 		break;

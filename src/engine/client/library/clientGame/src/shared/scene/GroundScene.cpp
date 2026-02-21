@@ -1381,7 +1381,17 @@ void GroundScene::postload (void)
 
 	if (!m_disableWorldSnapshot)
 	{
-		WorldSnapshot::load(fileName);
+		if (strstr(fileName.getString(), "_ws"))
+		{
+			//catch _ws files and skip loading the world snapshot
+			DEBUG_REPORT_LOG(true, ("GroundScene::postload: skipping world snapshot load for god client terrain %s\n", fileName.getString()));
+		}
+		else
+		{
+			//continue as normal
+			WorldSnapshot::load(fileName);
+		}
+		
 	}
 	else
 	{
@@ -3371,7 +3381,6 @@ void GroundScene::receiveMessage(const MessageDispatch::Emitter &, const Message
 	}
 	else if (message.isType("SaveTextOnClient"))
 	{
-#if PRODUCTION == 0
 		Archive::ReadIterator readIterator = NON_NULL (gnm)->getByteStream().begin();
 		GenericValueTypeMessage<std::pair<std::string, std::string> > genericMessage(readIterator);
 		std::string const &filename = genericMessage.getValue().first;
@@ -3406,7 +3415,6 @@ void GroundScene::receiveMessage(const MessageDispatch::Emitter &, const Message
 				}
 			}
 		}
-#endif // PRODUCTION == 0
 	}
 	else if (message.isType(SlowDownEffectMessage::MessageType))
 	{

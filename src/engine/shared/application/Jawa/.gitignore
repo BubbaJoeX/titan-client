@@ -1,0 +1,23 @@
+# Build artifacts
+build/
+bin/
+*.o
+*.obj
+*.exe
+*.out
+
+# Temporary ACM files
+acm_lookup.dat
+acm_collect_result.dat
+acm_collect_result-optimized.dat
+build_output.txt
+error_output.txt
+
+# Output
+client/
+
+# IDE
+.vs/
+.vscode/
+*.user
+*.suo

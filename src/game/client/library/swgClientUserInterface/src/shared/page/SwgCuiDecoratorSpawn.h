@@ -66,6 +66,8 @@ private:
 	std::string                 convertToServerTemplate   (std::string const & sharedTemplate) const;
 	std::string                 getDisplayNameForTemplate (std::string const & templatePath) const;
 
+	bool                              m_openedFromDecoratorCamera;
+
 	UITreeView *                      m_tree;
 	UIButton *                        m_buttonPreview;
 	UIButton *                        m_buttonSpawn;

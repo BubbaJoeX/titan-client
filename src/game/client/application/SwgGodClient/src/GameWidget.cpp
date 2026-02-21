@@ -105,9 +105,12 @@
 #include "RecentDirectory.h"
 #include "ServerCommander.h"
 
+
 //system includes
 #include <ctime>
 #include <dinput.h>
+#include <sstream> 
+
 
 //QT includes
 #include <qaction.h>
@@ -125,13 +128,18 @@
 namespace GameWidgetNamespace
 {
 	//-- @todo: preferences manager should handle key mapping
+
+	//Transform keys
 	const int s_translateKey       = static_cast<int>(Qt::Key_T);
 	const int s_groundTranslateKey = static_cast<int>(Qt::Key_G);
 	const int s_scaleKey           = static_cast<int>(Qt::Key_S);
 	const int s_rotateKey          = static_cast<int>(Qt::Key_R);
 	const int s_avatarKey          = static_cast<int>(Qt::Key_A);
+	//Modifier keys
 	const int s_shiftKey           = static_cast<int>(Qt::Key_Shift);
+	//Special action keys
 	const int s_gotoKey            = static_cast<int>(Qt::Key_Equal);
+	//Object manipulation keys
 	const int s_rotateLKey = static_cast<int>(Qt::Key_Greater);
 	const int s_rotateRKey = static_cast<int>(Qt::Key_Less);
 	const int s_moveUpKey = static_cast<int>(Qt::Key_Semicolon);
@@ -140,6 +148,11 @@ namespace GameWidgetNamespace
 	const int s_nudgeSouth = static_cast<int>(Qt::Key_Down);
 	const int s_nudgeWest = static_cast<int>(Qt::Key_Left);
 	const int s_nudgeEast = static_cast<int>(Qt::Key_Right);
+	//Perspective keys
+	const int s_moveTowardsCameraKey = static_cast<int>(Qt::Key_BracketRight);
+	const int s_moveAwayFromCameraKey = static_cast<int>(Qt::Key_BracketLeft);
+	//Persist object key
+	const int s_persistObjectKey = static_cast<int>(Qt::Key_P);
 
 	const int s_gameLoopTimeOut    = 5;
 
@@ -597,7 +610,7 @@ void GameWidget::keyPressEvent(QKeyEvent*keyEvent)
 	if(!m_gameHasFocus)
 	{
 		const float PI = 3.14159265359;
-		if (keyEvent->key() == s_avatarKey && Game::getSinglePlayer())
+		if (keyEvent->key() == s_avatarKey)// && Game::getSinglePlayer())
 		{
 			Vector position;
 			IGNORE_RETURN(getCursorPositionIntoWorld(position));
@@ -648,6 +661,52 @@ void GameWidget::keyPressEvent(QKeyEvent*keyEvent)
 		if (keyEvent->key() == s_nudgeEast)
 		{
 			GodClientData::getInstance().translateSelection(+1, +0, false);
+		}
+		//-- move towards camera
+		if (keyEvent->key() == s_moveTowardsCameraKey)
+		{
+			ConsoleWarning("GameWidget::keyPressEvent: s_moveTowardsCameraKey not implemented yet");
+		}
+		if (keyEvent->key() == s_moveAwayFromCameraKey)
+		{
+			ConsoleWarning("GameWidget::keyPressEvent: s_moveAwayFromCameraKey not implemented yet");
+		}
+		//--Persist key
+		if (keyEvent->key() == s_persistObjectKey)
+		{
+			GodClientData* gcd = &GodClientData::getInstance();
+			int objectCount = 0;
+			if (gcd->getSelectionEmpty())
+			{
+				const std::string err = "No object selected to persist!";
+				IGNORE_RETURN(QMessageBox::warning(&MainFrame::getInstance(), "Warning", err.c_str()));
+				return;
+			}
+			else
+			{
+				GodClientData::ObjectList_t olist;
+				gcd->getSelection(olist);
+				gcd->clearSelection();
+
+				ServerCommander commander;
+
+				for (GodClientData::ObjectList_t::iterator it = olist.begin(); it != olist.end(); ++it)
+				{
+					ClientObject* const obj = *it;
+					if (obj)
+					{
+						IGNORE_RETURN(commander.persistObject(*obj));
+						objectCount++;
+					}
+				}
+			}
+			std::ostringstream oss;
+			oss << objectCount;
+			const std::string msg = "Objects persisted by selection: " + oss.str();
+			IGNORE_RETURN(QMessageBox::information(&MainFrame::getInstance(), "Information", msg.c_str()));
+			return;
+
+
 		}
 		if (keyEvent->key() == s_gotoKey)
 		{

@@ -111,6 +111,8 @@ namespace CuiMediatorTypes
 	MAKE_MEDIATOR_TYPE (WS_PlayerQuestConversation);
 	MAKE_MEDIATOR_TYPE (WS_GalacticCivilWar);
 	MAKE_MEDIATOR_TYPE (WS_DecoratorSpawn);
+	MAKE_MEDIATOR_TYPE (WS_AirspeederPanel);
+	MAKE_MEDIATOR_TYPE (WS_DecoratorCameraPanel);
 
 	//space
 	MAKE_MEDIATOR_TYPE (WS_ShipTargetInfo);

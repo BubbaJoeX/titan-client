@@ -57,6 +57,7 @@
 #include <ddraw.h>
 #include <d3dx9.h>
 #include <stdio.h>
+#include <float.h>
 
 #pragma warning (disable: 4201)
 #include <mmsystem.h>
@@ -93,6 +94,20 @@ WINUSERAPI BOOL WINAPI GetMonitorInfoW(HMONITOR hMonitor, LPMONITORINFO lpmi);
 #if !defined(FFP) && !defined(VSPS)
 #error must define FFP, VSPS, or both
 #endif
+
+// ======================================================================
+
+// Helper function to reset FPU/SSE state and clear any pending exceptions
+static void ResetFloatingPointState()
+{
+	// Clear any pending x87 FPU exceptions by calling fnclex via _clearfp()
+	_clearfp();
+
+	// Mask all x87 FPU exceptions to prevent crashes
+	// This is the key fix - DirectX and SSE operations can trigger FPU exceptions
+	// if they are not masked
+	_controlfp(_MCW_EM, _MCW_EM);
+}
 
 // ======================================================================
 
@@ -950,6 +965,9 @@ const D3DFORMAT *Direct3d9Namespace::getMatchingDepthStencilFormats(int z, int s
 
 bool Direct3d9::install(Gl_install *gl_install)
 {
+	// Reset FPU/SSE state and mask all floating-point exceptions
+	ResetFloatingPointState();
+
 	DEBUG_FATAL(sizeof(PaddedVector) != sizeof(float) * 4, ("PaddedVector size bad"));
 	NOT_NULL(gl_install);
 	DEBUG_FATAL(ms_installed, ("already installed"));
@@ -968,6 +986,7 @@ bool Direct3d9::install(Gl_install *gl_install)
 	ms_alphaFadeOpacity.b = 0.0f;
 	ms_alphaFadeOpacity.a = 0.0f;
 #endif
+
 
 	// store the screen dimensions
 	ms_width               = gl_install->width;
@@ -1334,15 +1353,22 @@ bool Direct3d9::install(Gl_install *gl_install)
 					else
 					{
 						ms_supportsMultiSample = false;
-					}
+				}
 
-					setPresentParameters();
+				setPresentParameters();
 
 					// figure out what type of device to create
 					if (vertexProcessingMode == D3DCREATE_HARDWARE_VERTEXPROCESSING && ConfigDirect3d9::getUsePureDevice())
 						vertexProcessingMode |= D3DCREATE_PUREDEVICE;
 
+					// Preserve FPU state to prevent floating-point exceptions
+					// Without this flag, Direct3D changes the FPU control word on every call
+					vertexProcessingMode |= D3DCREATE_FPU_PRESERVE;
+
 					hresult = ms_direct3d->CreateDevice(ms_adapter, ms_deviceType, ms_window, vertexProcessingMode, &ms_presentParameters, &ms_device);
+					
+					// Reset FPU state after device creation regardless of FPU_PRESERVE flag
+					ResetFloatingPointState();
 
 					if (SUCCEEDED(hresult))
 					{
@@ -2338,12 +2364,18 @@ void Direct3d9Namespace::update(float elapsedTime)
 
 void Direct3d9Namespace::beginScene()
 {
+	// Reset FPU/SSE state and clear any pending exceptions
+	ResetFloatingPointState();
+
 	if (ms_displayModeChanged && !checkDisplayMode())
 		setWindowedMode(false);
 
 	// begin the 3d scene
 	const HRESULT hresult = ms_device->BeginScene();
 	FATAL_DX_HR("BeginScene failed %s", hresult);
+
+	// Reset again after D3D call which may have changed FPU state
+	ResetFloatingPointState();
 
 	Direct3d9_StaticShaderData::beginFrame();
 	Direct3d9_DynamicVertexBufferData::beginFrame();
@@ -2356,9 +2388,15 @@ void Direct3d9Namespace::beginScene()
 
 void Direct3d9Namespace::endScene()
 {
+	// Reset FPU state before D3D call
+	ResetFloatingPointState();
+	
 	// end the 3d scene
 	HRESULT hresult = ms_device->EndScene();
 	FATAL_DX_HR("EndScene failed %s", hresult);
+	
+	// Reset again after D3D call
+	ResetFloatingPointState();
 }
 
 // ----------------------------------------------------------------------
@@ -2461,10 +2499,14 @@ void Direct3d9Namespace::releaseBackBuffer()
 	}
 }
 
+
 // ----------------------------------------------------------------------
 
 bool Direct3d9Namespace::present(bool windowed, HWND window, int width, int height)
 {
+	// Reset FPU state before any D3D operations
+	ResetFloatingPointState();
+
 	if (ms_displayModeChanged)
 	{
 		if (!checkDisplayMode())
@@ -2490,11 +2532,15 @@ bool Direct3d9Namespace::present(bool windowed, HWND window, int width, int heig
 		hresult = ms_device->Present(NULL, NULL, NULL, NULL);
 	}
 
+	// Reset FPU state after Present call
+	ResetFloatingPointState();
+
 	// check if the device was lost for any reason
 	if (hresult == D3DERR_DEVICELOST || hresult == D3DERR_DRIVERINTERNALERROR)
 	{
 		char present[16];
 		sprintf(present, "%d", HRESULT_CODE(hresult));
+
 
 		// check if we can restore the device now
 		hresult = ms_device->TestCooperativeLevel();

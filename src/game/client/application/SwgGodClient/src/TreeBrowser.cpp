@@ -81,7 +81,7 @@ namespace
 			const Object* const player = NON_NULL(gs->getPlayer());
 			if(obj == player)
 			{
-				shortTemplateName = "Avatar(";
+				shortTemplateName = "Avatar (";
 				shortTemplateName += obj->getDebugName();
 				shortTemplateName += ")";
 			}	
@@ -119,7 +119,7 @@ namespace
 				size_t iffPos = shortTemplateName.find(".iff");
 				//assume that the .iff is at the end, and strip it off
 				if(shortTemplateName == "")
-					shortTemplateName = "No ServerTemplate available(bad?)";
+					shortTemplateName = "No ServerTemplate available (bad?)";
 				shortTemplateName = shortTemplateName.substr(0, iffPos);
 
 			}

@@ -1,0 +1,63 @@
+// ======================================================================
+// JAWA.CPP PATCH - Add these functions after fileExists() and before deleteFile()
+// ======================================================================
+
+// Add after line 234 (after fileExists function closing brace):
+
+// ----------------------------------------------------------------------
+
+std::string Jawa::normalizePath(const std::string &path)
+{
+	std::string result = path;
+	// Replace backslashes with forward slashes
+	for (size_t i = 0; i < result.length(); ++i)
+	{
+		if (result[i] == '\\')
+			result[i] = '/';
+	}
+	// Remove trailing slash
+	while (!result.empty() && result[result.length() - 1] == '/')
+		result = result.substr(0, result.length() - 1);
+	// Remove double slashes
+	size_t pos;
+	while ((pos = result.find("//")) != std::string::npos)
+		result.erase(pos, 1);
+	return result;
+}
+
+// ----------------------------------------------------------------------
+
+std::string Jawa::joinPath(const std::string &base, const std::string &sub)
+{
+	std::string b = normalizePath(base);
+	std::string s = normalizePath(sub);
+	while (!s.empty() && s[0] == '/')
+		s = s.substr(1);
+	if (b.empty()) return s;
+	if (s.empty()) return b;
+	return b + "/" + s;
+}
+
+// ======================================================================
+// Then update buildAssetCustomizationManager around line 581-583:
+// ======================================================================
+
+// CHANGE FROM:
+//   const std::string acmMiff = config.basePath + PATH_SEPARATOR + "customization" + PATH_SEPARATOR + "asset_customization_manager.mif";
+//   const std::string cimMiff = config.basePath + PATH_SEPARATOR + "customization" + PATH_SEPARATOR + "customization_id_manager.mif";
+
+// CHANGE TO:
+	const std::string acmMiff = joinPath(joinPath(config.basePath, "customization"), "asset_customization_manager.mif");
+	const std::string cimMiff = joinPath(joinPath(config.basePath, "customization"), "customization_id_manager.mif");
+
+// ======================================================================
+// And update around line 593-594:
+// ======================================================================
+
+// CHANGE FROM:
+//   const std::string acmIff = config.clientPath + PATH_SEPARATOR + "customization" + PATH_SEPARATOR + "asset_customization_manager.iff";
+//   const std::string cimIff = config.clientPath + PATH_SEPARATOR + "customization" + PATH_SEPARATOR + "customization_id_manager.iff";
+
+// CHANGE TO:
+	const std::string acmIff = joinPath(joinPath(config.clientPath, "customization"), "asset_customization_manager.iff");
+	const std::string cimIff = joinPath(joinPath(config.clientPath, "customization"), "customization_id_manager.iff");

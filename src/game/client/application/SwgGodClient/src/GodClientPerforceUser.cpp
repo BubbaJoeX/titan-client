@@ -26,23 +26,11 @@ public:
 	}
 };
 
-// ======================================================================
-
-GodClientPerforceUser::GodClientPerforceUser()
-: ClientUser(),
-  MessageDispatch::Emitter(),
-  m_errorOccurred(false),
-  m_lastError (0),
-  m_filteredErrors (),
-  m_return_value ()
-{
-}
-
 //-----------------------------------------------------------------
 
-void GodClientPerforceUser::HandleError( Error *err )
+void GodClientPerforceUser::HandleError(Error* err)
 {
-	if (err != NULL && err->Test())
+	/*if (err != NULL && err->Test())
 	{
 		if (err->GetGeneric() != EV_EMPTY)
 		{
@@ -65,68 +53,71 @@ void GodClientPerforceUser::HandleError( Error *err )
 		}
 	}
 
-	ClientUser::HandleError(err);
+	ClientUser::HandleError(err);*/
 }
 
 //-----------------------------------------------------------------
 
-void GodClientPerforceUser::OutputInfo(char level, char *data)
+void GodClientPerforceUser::OutputInfo(char level, char* data)
 {
-	switch(level)
+	/*switch(level)
 	{
 	default:
-	case '0': 
+	case '0':
 		break;
-		
+
 	case '1':
 		m_return_value += ("... ");
 		break;
-		
+
 	case '2':
 		m_return_value += ("... ");
 		break;
 	}
 	m_return_value += data;
+	*/
 } //lint !e818 "data could be const", no it can't - that would change the signature of a virtual function
 
 //-----------------------------------------------------------------
 
 void GodClientPerforceUser::Prompt(const StrPtr& msg, StrBuf& rsp, int noEcho, Error* e)
 {
-	UNREF(e);
+	/*UNREF(e);
 
 	bool ok;
 
 	QString text = QInputDialog::getText(
-		"Perforce Says", 
-		msg.Text(), 
-		noEcho ? QLineEdit::Password : QLineEdit::Normal, 
+		"Perforce Says",
+		msg.Text(),
+		noEcho ? QLineEdit::Password : QLineEdit::Normal,
 		QString::null,
 		&ok);
 
 	if (ok)
 	{
 		rsp = text;
-	}
+	}*/
 }
 
 //-----------------------------------------------------------------
 
-bool GodClientPerforceUser::runCommand (const char * command, const char * arg1)
-{ 
-	StringVector sv;
+bool GodClientPerforceUser::runCommand(const char* command, const char* arg1)
+{
+	/*StringVector sv;
 
 	if (arg1 != 0)
 		sv.push_back (arg1);
 
 	return runCommand (command, sv);
+	*/
+	return true;
 }
 
 //-----------------------------------------------------------------
 
-bool GodClientPerforceUser::runCommand (const char * command, const StringVector & args)
+bool GodClientPerforceUser::runCommand(const char* command, const StringVector& args)
 {
-	ClientApi client;
+	/*ClientApi client;
 	Error e;
 
 	// Connect to Perforce server
@@ -135,7 +126,7 @@ bool GodClientPerforceUser::runCommand (const char * command, const StringVector
 	{
 		return false;
 	}
-	
+
 	// check out the template file
 	char ** argv = new char * [args.size () + 1];
 
@@ -174,7 +165,7 @@ bool GodClientPerforceUser::runCommand (const char * command, const StringVector
 
 	if (errorOccurred())
 		return false;
-	
+	*/
 	return true;
 }
 

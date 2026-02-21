@@ -28,6 +28,7 @@
 #include "sharedFoundation/SetupSharedFoundation.h"
 #include "sharedImage/SetupSharedImage.h"
 #include "sharedImage/Image.h"
+#include "sharedImage/ImageFormatList.h"
 #include "sharedImage/TargaFormat.h"
 #include "sharedMath/PackedRgb.h"
 #include "sharedMath/SetupSharedMath.h"
@@ -44,7 +45,9 @@
 #include "sharedTerrain/SetupSharedTerrain.h"
 #include "sharedTerrain/TerrainGenerator.h"
 #include "sharedTerrain/TerrainObject.h"
+#include "sharedThread/RunThread.h"
 #include "sharedThread/SetupSharedThread.h"
+#include "sharedThread/ThreadHandle.h"
 #include "sharedUtility/SetupSharedUtility.h"
 
 // -- Engine client includes (for GPU rendering mode) --
@@ -81,6 +84,8 @@ HINSTANCE SwgMapRasterizer::s_hInstance             = NULL;
 namespace
 {
 	std::map<std::string, PackedRgb> s_shaderFamilyColorCache;
+	// Loaded ramp images per family - avoid loading the same file millions of times per map
+	std::map<std::string, Image*> s_shaderRampImageCache;
 
 	// ======================================================================
 	// Helper: Read a single pixel from an image
@@ -128,46 +133,77 @@ namespace
 	}
 
 	// ======================================================================
-	// Get representative color from a shader family's color ramp image
+	// Get color for a shader family from the terrain file.
+	// Uses color ramp image if present, otherwise terrain-defined family color.
+	// childChoice (0..1) selects position along the ramp for shader variant.
 	// ======================================================================
-	static PackedRgb getShaderFamilyColor(const char* familyName, const PackedRgb& fallback)
+	static PackedRgb getShaderFamilyColor(
+		const char* familyName,
+		const PackedRgb& terrainFallback,
+		float childChoice = 0.5f
+	)
 	{
 		if (!familyName || !familyName[0])
-			return fallback;
+			return terrainFallback;
 
-		// Check cache first
-		auto it = s_shaderFamilyColorCache.find(familyName);
-		if (it != s_shaderFamilyColorCache.end())
-			return it->second;
+		// Use cached ramp image if already loaded (avoids loading the same file per pixel)
+		{
+			auto rampIt = s_shaderRampImageCache.find(familyName);
+			if (rampIt != s_shaderRampImageCache.end() && rampIt->second)
+			{
+				Image* image = rampIt->second;
+				const int w = image->getWidth();
+				const int h = image->getHeight();
+				if (w > 0 && h > 0)
+				{
+					const int sampleX = std::max(0, std::min(w - 1, static_cast<int>(childChoice * (w - 1) + 0.5f)));
+					const int sampleY = h / 2;
+					return readPixelFromImage(image, sampleX, sampleY);
+				}
+			}
+		}
 
-	// Try to load the shader family's color ramp image
-	// Following SOE convention: terrain/<familyname>_colorramp.tga
-	char rampPath[256];
-	_snprintf(rampPath, sizeof(rampPath), "terrain/%s_colorramp.tga", familyName);
+		// Color ramps: try terrain/colorramp/<name>.tga then terrain/<name>.tga
+		char rampPath[256];
+		TargaFormat tgaFormat;
+		Image* image = NULL;
 
-	Image* image = NULL;
-	TargaFormat tgaFormat;
-	
-	if (!tgaFormat.loadImage(rampPath, &image))
-	{
-		if (image)
-			delete image;
-		// Cache the fallback to avoid repeated failed loads
-		s_shaderFamilyColorCache[familyName] = fallback;
-		return fallback;
+		_snprintf(rampPath, sizeof(rampPath), "terrain/colorramp/%s.tga", familyName);
+		if (!tgaFormat.loadImage(rampPath, &image))
+		{
+			if (image) { delete image; image = NULL; }
+			_snprintf(rampPath, sizeof(rampPath), "terrain/%s.tga", familyName);
+			if (!tgaFormat.loadImage(rampPath, &image))
+			{
+				if (image)
+					delete image;
+				// Use terrain-defined color from .trn file when no ramp; cache it
+				s_shaderFamilyColorCache[familyName] = terrainFallback;
+				return terrainFallback;
+			}
+		}
+
+		// Cache the loaded ramp image so we never load it again for this run
+		s_shaderRampImageCache[familyName] = image;
+
+		// Sample the ramp: childChoice (0..1) picks position along the gradient
+		const int w = image->getWidth();
+		const int h = image->getHeight();
+		const int sampleX = std::max(0, std::min(w - 1, static_cast<int>(childChoice * (w - 1) + 0.5f)));
+		const int sampleY = h / 2;
+
+		return readPixelFromImage(image, sampleX, sampleY);
 	}
 
-		// Sample the middle of the ramp to get a representative color
-		int sampleX = image->getWidth() / 2;
-		int sampleY = image->getHeight() / 2;
-		
-		PackedRgb color = readPixelFromImage(image, sampleX, sampleY);
-
-		delete image;
-
-		// Cache the result
-		s_shaderFamilyColorCache[familyName] = color;
-		return color;
+	// Call at end of render to free cached ramp images and avoid leaking / stale data
+	static void clearShaderRampImageCache()
+	{
+		for (auto it = s_shaderRampImageCache.begin(); it != s_shaderRampImageCache.end(); ++it)
+		{
+			if (it->second)
+				delete it->second;
+		}
+		s_shaderRampImageCache.clear();
 	}
 
 	// ======================================================================
@@ -187,6 +223,7 @@ namespace
 
 	// ======================================================================
 	// Shader Layer: represents a single shader family and its properties
+	// Includes optional texture for this family (from terrain file convention)
 	// ======================================================================
 	struct ShaderLayer
 	{
@@ -195,40 +232,62 @@ namespace
 		PackedRgb familyColor;
 		int priority;
 		float layerWeight;
+		float shaderSize;       // meters - used for texture UV tiling
+		Image* familyTexture;   // loaded texture for this family, or NULL
 
-		ShaderLayer() : familyId(0), priority(0), layerWeight(0.0f) {}
+		ShaderLayer() : familyId(0), priority(0), layerWeight(0.0f), shaderSize(2.0f), familyTexture(0) {}
 	};
 
 	// ======================================================================
-	// Apply shader layers to create a blended final color
-	// Shader families with higher priority get more influence
+	// Sample a texture at UV (0..1) with wrap; returns RGB
 	// ======================================================================
-	static PackedRgb applyShaderLayers(
-		const std::vector<ShaderLayer>& layers,
-		const PackedRgb& baseColor,
-		int pixelPriority
-	)
+	static PackedRgb sampleTextureAtUV(const Image* image, float u, float v)
 	{
-		if (layers.empty())
-			return baseColor;
+		if (!image || image->getWidth() <= 0 || image->getHeight() <= 0)
+			return PackedRgb::solidBlack;
 
-		PackedRgb result = baseColor;
+		// Wrap UV to [0,1)
+		u = u - floorf(u);
+		v = v - floorf(v);
+		if (u < 0.0f) u += 1.0f;
+		if (v < 0.0f) v += 1.0f;
 
-		// Apply layers in priority order
+		const int w = image->getWidth();
+		const int h = image->getHeight();
+		const int x = std::max(0, std::min(w - 1, static_cast<int>(u * w)));
+		const int y = std::max(0, std::min(h - 1, static_cast<int>(v * h)));
+
+		return readPixelFromImage(image, x, y);
+	}
+
+	// ======================================================================
+	// Find shader layer by family ID (for texture and shader size lookup)
+	// ======================================================================
+	static const ShaderLayer* getLayerForFamily(int familyId, const std::vector<ShaderLayer>& layers)
+	{
 		for (const auto& layer : layers)
 		{
-			// Skip layers with lower priority than the pixel
-			if (layer.priority < pixelPriority)
-				continue;
-
-			// Weight factor based on family shader size and layer properties
-			// Larger shader sizes create more prominent visual areas
-			float weight = layer.layerWeight;
-			
-			result = blendColors(result, layer.familyColor, weight);
+			if (layer.familyId == familyId)
+				return &layer;
 		}
+		return 0;
+	}
 
-		return result;
+	// ======================================================================
+	// Get terrain-defined color for a shader family (from .trn ShaderGroup)
+	// ======================================================================
+	static PackedRgb getTerrainShaderColor(
+		int familyId,
+		const std::vector<ShaderLayer>& layers,
+		const PackedRgb& generatorColor
+	)
+	{
+		for (const auto& layer : layers)
+		{
+			if (layer.familyId == familyId)
+				return layer.familyColor;
+		}
+		return generatorColor;
 	}
 }
 // ======================================================================
@@ -266,11 +325,7 @@ const SwgMapRasterizer::PlanetEntry SwgMapRasterizer::s_planetEntries[] =
 };
 
 const int SwgMapRasterizer::s_numPlanetEntries = sizeof(s_planetEntries) / sizeof(s_planetEntries[0]);
-static PackedRgb getShaderFamilyColor(
-	const ShaderGroup& shaderGroup,
-	const ShaderGroup::Info& sgi,
-	const PackedRgb& fallback
-);
+
 // ======================================================================
 // Config defaults
 // ======================================================================
@@ -283,7 +338,8 @@ SwgMapRasterizer::Config::Config() :
 	cameraHeight(20000.0f),
 	useColormapMode(true),
 	processAll(false),
-	configFile("titan.cfg")
+	configFile("titan.cfg"),
+	antiAlias(true)
 {
 }
 
@@ -314,6 +370,8 @@ void SwgMapRasterizer::printUsage()
 	printf("  -render               Use GPU rendered mode\n");
 	printf("  -all                  Process all known planet terrains\n");
 	printf("  -config <file.cfg>    Engine config file (default: client.cfg)\n");
+	printf("  -aa                   Enable anti-aliasing (2x supersample, default)\n");
+	printf("  -noaa                 Disable anti-aliasing\n");
 	printf("  -help                 Show this help message\n");
 	printf("\n");
 	printf("\nExamples:\n");
@@ -411,6 +469,14 @@ SwgMapRasterizer::Config SwgMapRasterizer::parseCommandLine(const char* commandL
 		else if ((arg == "-config") && i + 1 < args.size())
 		{
 			config.configFile = args[++i];
+		}
+		else if (arg == "-aa")
+		{
+			config.antiAlias = true;
+		}
+		else if (arg == "-noaa")
+		{
+			config.antiAlias = false;
 		}
 		else if (arg == "-help" || arg == "-h" || arg == "--help")
 		{
@@ -697,7 +763,12 @@ bool SwgMapRasterizer::rasterizeTerrain(const Config& config, const char* terrai
 // ======================================================================
 // CPU Colormap Mode
 // ======================================================================
-
+//
+// Path conventions (verified):
+//   Color ramps: terrain/colorramp/<name>.tga or terrain/<name>.tga
+//   texture/*                 - textures (.dds preferred, .tga fallback)
+//   shader/*.sht              - shader templates (names used to resolve texture/<basename>.dds)
+//
 // ======================================================================
 // Build shader layer information from the terrain generator
 // ======================================================================
@@ -731,15 +802,80 @@ static std::vector<ShaderLayer> buildShaderLayers(const TerrainGenerator* genera
 		layer.familyId = familyId;
 		layer.familyName = familyName ? familyName : "";
 		layer.familyColor = familyColor;
-		layer.priority = familyIndex; // Priority is based on order in family list
-		layer.layerWeight = 0.3f;     // Default blend weight for shader color influence
+		layer.priority = familyIndex;
+		layer.layerWeight = 0.3f;
+		layer.shaderSize = (shaderSize > 0.1f) ? shaderSize : 2.0f;  // avoid zero
+		layer.familyTexture = 0;
 
 		// Adjust weight based on shader size for visual prominence
-		// Larger shader sizes should have more visual impact
 		if (shaderSize > 100.0f)
 			layer.layerWeight = 0.4f;
 		else if (shaderSize < 10.0f)
 			layer.layerWeight = 0.2f;
+
+		// Textures: texture/* (.dds preferred; .tga fallback since we only have TargaFormat loader)
+		const char* name = layer.familyName.c_str();
+		char path[256];
+		TargaFormat tgaFormat;
+		Image* tex = 0;
+
+		// 1) texture/<familyname>.dds (if DDS loader registered)
+		_snprintf(path, sizeof(path), "texture/%s.dds", name);
+		tex = ImageFormatList::loadImage(path);
+		if (tex)
+		{
+			layer.familyTexture = tex;
+			printf("      -> texture: %s\n", path);
+		}
+		else
+		{
+			// 2) texture/<familyname>.tga
+			_snprintf(path, sizeof(path), "texture/%s.tga", name);
+			if (tgaFormat.loadImage(path, &tex))
+			{
+				layer.familyTexture = tex;
+				printf("      -> texture: %s\n", path);
+			}
+			else if (tex)
+				delete tex;
+		}
+		if (!layer.familyTexture && numChildren > 0)
+		{
+			tex = 0;
+			// 3) From shader path shader/*.sht -> texture/<basename>.dds then .tga
+			ShaderGroup::FamilyChildData child = shaderGroup.getFamilyChild(familyId, 0);
+			if (child.shaderTemplateName && child.shaderTemplateName[0])
+			{
+				std::string base(child.shaderTemplateName);
+				size_t slash = base.find_last_of("/\\");
+				if (slash != std::string::npos)
+					base = base.substr(slash + 1);
+				size_t dot = base.find_last_of('.');
+				if (dot != std::string::npos)
+					base = base.substr(0, dot);
+				if (!base.empty())
+				{
+					_snprintf(path, sizeof(path), "texture/%s.dds", base.c_str());
+					tex = ImageFormatList::loadImage(path);
+					if (tex)
+					{
+						layer.familyTexture = tex;
+						printf("      -> texture: %s (from shader %s)\n", path, child.shaderTemplateName);
+					}
+					else
+					{
+						_snprintf(path, sizeof(path), "texture/%s.tga", base.c_str());
+						if (tgaFormat.loadImage(path, &tex))
+						{
+							layer.familyTexture = tex;
+							printf("      -> texture: %s (from shader %s)\n", path, child.shaderTemplateName);
+						}
+						else if (tex)
+							delete tex;
+					}
+				}
+			}
+		}
 
 		layers.push_back(layer);
 	}
@@ -796,162 +932,229 @@ bool SwgMapRasterizer::renderTerrainColormap(const Config& config, const char* t
 	printf("\n");
 
 	const int imageSize = config.imageSize;
+	const int internalSize = config.antiAlias ? (2 * imageSize) : imageSize;
 	const int tilesPerSide = config.tilesPerSide;
-	const int pixelsPerTile = imageSize / tilesPerSide;
-	const float metersPerPixel = mapWidth / static_cast<float>(imageSize);
+	const int pixelsPerTile = internalSize / tilesPerSide;
+	const float metersPerPixel = mapWidth / static_cast<float>(internalSize);
 
-	printf("  Output: %dx%d pixels (%.2f meters/pixel)\n", imageSize, imageSize, metersPerPixel);
-	printf("  Generating terrain data in %dx%d tiles...\n", tilesPerSide, tilesPerSide);
+	printf("  Output: %dx%d pixels (%.2f meters/pixel)%s\n",
+		imageSize, imageSize,
+		mapWidth / static_cast<float>(imageSize),
+		config.antiAlias ? " (2x supersample anti-aliasing)" : "");
+	printf("  Generating terrain data in %dx%d tiles (4 quadrants in parallel)...\n", tilesPerSide, tilesPerSide);
+	fflush(stdout);
 
-	// Allocate output buffers
-	uint8* colorPixels = new uint8[imageSize * imageSize * 3];
-	float* heightPixels = new float[imageSize * imageSize];
-	memset(colorPixels, 0, imageSize * imageSize * 3);
-	memset(heightPixels, 0, imageSize * imageSize * sizeof(float));
+	// Allocate output buffers at internal resolution
+	uint8* colorPixels = new uint8[internalSize * internalSize * 3];
+	float* heightPixels = new float[internalSize * internalSize];
+	memset(colorPixels, 0, internalSize * internalSize * 3);
+	memset(heightPixels, 0, internalSize * internalSize * sizeof(float));
 
-	float minHeight =  1e10f;
-	float maxHeight = -1e10f;
+	const int totalTiles = tilesPerSide * tilesPerSide;
+	const int midT = tilesPerSide / 2;
 
-	// Process each tile
-	int totalTiles = tilesPerSide * tilesPerSide;
-	int tilesDone = 0;
-
-	for (int tz = 0; tz < tilesPerSide; ++tz)
+	// Context for quadrant workers: shared state + per-thread min/max
+	struct ColormapQuadrantContext
 	{
-		for (int tx = 0; tx < tilesPerSide; ++tx)
+		TerrainGenerator const* generator;
+		std::vector<ShaderLayer> const& shaderLayers;
+		uint8* colorPixels;
+		float* heightPixels;
+		int tilesPerSide;
+		int pixelsPerTile;
+		int internalSize;
+		int originOffset;
+		int upperPad;
+		bool legacyMode;
+		float mapWidth;
+		float metersPerPixel;
+		float threadMin[4];
+		float threadMax[4];
+
+		ColormapQuadrantContext(
+			TerrainGenerator const* gen,
+			std::vector<ShaderLayer> const& layers,
+			uint8* colors,
+			float* heights,
+			int tiles, int pixelsPerTile_, int internal,
+			int origin, int upper, bool legacy,
+			float mapW, float metersPerPixel_
+		) : generator(gen), shaderLayers(layers), colorPixels(colors), heightPixels(heights),
+		    tilesPerSide(tiles), pixelsPerTile(pixelsPerTile_), internalSize(internal),
+		    originOffset(origin), upperPad(upper), legacyMode(legacy),
+		    mapWidth(mapW), metersPerPixel(metersPerPixel_)
 		{
-			++tilesDone;
-			printf("\r  Generating Tile [%d/%d] (%d,%d)...", tilesDone, totalTiles, tx, tz);
-			fflush(stdout);
+			for (int i = 0; i < 4; ++i) { threadMin[i] = 1e10f; threadMax[i] = -1e10f; }
+		}
 
-			// World-space origin of this tile
-			const float tileWorldMinX = -mapWidth / 2.0f + tx * (mapWidth / tilesPerSide);
-			const float tileWorldMinZ = -mapWidth / 2.0f + tz * (mapWidth / tilesPerSide);
+		void processQuadrant(int q)
+		{
+			int const midT = tilesPerSide / 2;
+			int txLo, txHi, tzLo, tzHi;
+			if (q == 0)      { txLo = 0; txHi = midT; tzLo = 0; tzHi = midT; }
+			else if (q == 1) { txLo = midT; txHi = tilesPerSide; tzLo = 0; tzHi = midT; }
+			else if (q == 2) { txLo = 0; txHi = midT; tzLo = midT; tzHi = tilesPerSide; }
+			else             { txLo = midT; txHi = tilesPerSide; tzLo = midT; tzHi = tilesPerSide; }
 
-			// Set up chunk generation request
-			const int totalPoles = pixelsPerTile + originOffset + upperPad;
+			float& myMin = threadMin[q];
+			float& myMax = threadMax[q];
 
-			TerrainGenerator::CreateChunkBuffer* buffer =
-				new TerrainGenerator::CreateChunkBuffer();
-			memset(buffer, 0, sizeof(TerrainGenerator::CreateChunkBuffer));
-			buffer->allocate(totalPoles);
-
-			TerrainGenerator::GeneratorChunkData chunkData(legacyMode);
-			chunkData.originOffset        = originOffset;
-			chunkData.numberOfPoles       = totalPoles;
-			chunkData.upperPad            = upperPad;
-			chunkData.distanceBetweenPoles = metersPerPixel;
-			chunkData.start               = Vector(
-				tileWorldMinX - originOffset * metersPerPixel,
-				0.0f,
-				tileWorldMinZ - originOffset * metersPerPixel
-			);
-
-			// Connect map pointers
-			chunkData.heightMap                    = &buffer->heightMap;
-			chunkData.colorMap                     = &buffer->colorMap;
-			chunkData.shaderMap                    = &buffer->shaderMap;
-			chunkData.floraStaticCollidableMap      = &buffer->floraStaticCollidableMap;
-			chunkData.floraStaticNonCollidableMap   = &buffer->floraStaticNonCollidableMap;
-			chunkData.floraDynamicNearMap           = &buffer->floraDynamicNearMap;
-			chunkData.floraDynamicFarMap            = &buffer->floraDynamicFarMap;
-			chunkData.environmentMap                = &buffer->environmentMap;
-			chunkData.vertexPositionMap             = &buffer->vertexPositionMap;
-			chunkData.vertexNormalMap               = &buffer->vertexNormalMap;
-			chunkData.excludeMap                    = &buffer->excludeMap;
-			chunkData.passableMap                   = &buffer->passableMap;
-
-			// Set group pointers from the generator
-			chunkData.shaderGroup       = &generator->getShaderGroup();
-			chunkData.floraGroup        = &generator->getFloraGroup();
-			chunkData.radialGroup       = &generator->getRadialGroup();
-			chunkData.environmentGroup  = &generator->getEnvironmentGroup();
-			chunkData.fractalGroup      = &generator->getFractalGroup();
-			chunkData.bitmapGroup       = &generator->getBitmapGroup();
-
-			// Generate terrain chunk data
-			generator->generateChunk(chunkData);
-			
-
-			// Copy height and color data to output image
-			for (int z = 0; z < pixelsPerTile; ++z)
+			for (int tz = tzLo; tz < tzHi; ++tz)
 			{
-				for (int x = 0; x < pixelsPerTile; ++x)
+				for (int tx = txLo; tx < txHi; ++tx)
 				{
-					const int srcX = x + originOffset;
-					const int srcZ = z + originOffset;
+					const float tileWorldMinX = -mapWidth / 2.0f + tx * (mapWidth / tilesPerSide);
+					const float tileWorldMinZ = -mapWidth / 2.0f + tz * (mapWidth / tilesPerSide);
 
-					// Destination pixel in the full image
-					const int dstX = tx * pixelsPerTile + x;
-					const int dstZ = tz * pixelsPerTile + z;
+					const int totalPoles = pixelsPerTile + originOffset + upperPad;
 
-					// Image Y is inverted: top of image = north = max Z
-					const int imgX = dstX;
-					const int imgY = (imageSize - 1) - dstZ;
+					TerrainGenerator::CreateChunkBuffer* buffer =
+						new TerrainGenerator::CreateChunkBuffer();
+					memset(buffer, 0, sizeof(TerrainGenerator::CreateChunkBuffer));
+					buffer->allocate(totalPoles);
 
-					if (imgX < 0 || imgX >= imageSize || imgY < 0 || imgY >= imageSize)
-						continue;
+					TerrainGenerator::GeneratorChunkData chunkData(legacyMode);
+					chunkData.originOffset        = originOffset;
+					chunkData.numberOfPoles       = totalPoles;
+					chunkData.upperPad            = upperPad;
+					chunkData.distanceBetweenPoles = metersPerPixel;
+					chunkData.start               = Vector(
+						tileWorldMinX - originOffset * metersPerPixel,
+						0.0f,
+						tileWorldMinZ - originOffset * metersPerPixel
+					);
 
-					// Get base color from generator (includes layered colors from affectors)
-					const PackedRgb generatorColor =
-						buffer->colorMap.getData(srcX, srcZ);
+					chunkData.heightMap                    = &buffer->heightMap;
+					chunkData.colorMap                     = &buffer->colorMap;
+					chunkData.shaderMap                    = &buffer->shaderMap;
+					chunkData.floraStaticCollidableMap      = &buffer->floraStaticCollidableMap;
+					chunkData.floraStaticNonCollidableMap   = &buffer->floraStaticNonCollidableMap;
+					chunkData.floraDynamicNearMap           = &buffer->floraDynamicNearMap;
+					chunkData.floraDynamicFarMap            = &buffer->floraDynamicFarMap;
+					chunkData.environmentMap                = &buffer->environmentMap;
+					chunkData.vertexPositionMap             = &buffer->vertexPositionMap;
+					chunkData.vertexNormalMap               = &buffer->vertexNormalMap;
+					chunkData.excludeMap                    = &buffer->excludeMap;
+					chunkData.passableMap                   = &buffer->passableMap;
 
-					// Get shader family info for this pixel
-					const ShaderGroup::Info sgi =
-						buffer->shaderMap.getData(srcX, srcZ);
+					chunkData.shaderGroup       = &generator->getShaderGroup();
+					chunkData.floraGroup        = &generator->getFloraGroup();
+					chunkData.radialGroup       = &generator->getRadialGroup();
+					chunkData.environmentGroup  = &generator->getEnvironmentGroup();
+					chunkData.fractalGroup      = &generator->getFractalGroup();
+					chunkData.bitmapGroup       = &generator->getBitmapGroup();
 
-					// Start with generator color as base
-					PackedRgb color = generatorColor;
+					generator->generateChunk(chunkData);
 
-					// Apply shader layers for enhanced visual representation
-					if (sgi.getFamilyId() > 0)
+					for (int z = 0; z < pixelsPerTile; ++z)
 					{
-						int pixelPriority = sgi.getPriority();
-						
-						// Get the shader family name
-						const char* familyName = chunkData.shaderGroup->getFamilyName(sgi.getFamilyId());
-						if (familyName && familyName[0])
+						for (int x = 0; x < pixelsPerTile; ++x)
 						{
-							// Get the representative color for this shader family
-							PackedRgb shaderColor = getShaderFamilyColor(familyName, generatorColor);
+							const int srcX = x + originOffset;
+							const int srcZ = z + originOffset;
 
-							// Apply shader layers blending
-							color = applyShaderLayers(shaderLayers, generatorColor, pixelPriority);
+							const int dstX = tx * pixelsPerTile + x;
+							const int dstZ = tz * pixelsPerTile + z;
 
-							// If no layers matched, blend shader color directly
-							if (color.r == generatorColor.r && color.g == generatorColor.g && color.b == generatorColor.b)
+							const int imgX = dstX;
+							const int imgY = (internalSize - 1) - dstZ;
+
+							if (imgX < 0 || imgX >= internalSize || imgY < 0 || imgY >= internalSize)
+								continue;
+
+							const PackedRgb generatorColor =
+								buffer->colorMap.getData(srcX, srcZ);
+
+							const ShaderGroup::Info sgi =
+								buffer->shaderMap.getData(srcX, srcZ);
+
+							PackedRgb color = generatorColor;
+
+							if (sgi.getFamilyId() > 0 && chunkData.shaderGroup)
 							{
-								// Blend with shader family color (40% shader, 60% generator)
-								color = blendColors(generatorColor, shaderColor, 0.4f);
+								const char* familyName = chunkData.shaderGroup->getFamilyName(sgi.getFamilyId());
+								if (familyName && familyName[0])
+								{
+									const ShaderLayer* layer = getLayerForFamily(sgi.getFamilyId(), shaderLayers);
+									PackedRgb shaderColor;
+
+									if (layer && layer->familyTexture && layer->shaderSize > 0.0f)
+									{
+										float worldX = chunkData.start.x + srcX * chunkData.distanceBetweenPoles;
+										float worldZ = chunkData.start.z + srcZ * chunkData.distanceBetweenPoles;
+										float u = worldX / layer->shaderSize;
+										float v = worldZ / layer->shaderSize;
+										shaderColor = sampleTextureAtUV(layer->familyTexture, u, v);
+									}
+									else
+									{
+										PackedRgb terrainColor = getTerrainShaderColor(
+											sgi.getFamilyId(), shaderLayers, generatorColor);
+										float childChoice = sgi.getChildChoice();
+										shaderColor = getShaderFamilyColor(
+											familyName, terrainColor, childChoice);
+									}
+
+									color = blendColors(generatorColor, shaderColor, 0.85f);
+								}
 							}
+
+							const float height =
+								buffer->heightMap.getData(srcX, srcZ);
+
+							const int pixelIndex = imgY * internalSize + imgX;
+							const int colorOffset = pixelIndex * 3;
+
+							colorPixels[colorOffset + 0] = color.r;
+							colorPixels[colorOffset + 1] = color.g;
+							colorPixels[colorOffset + 2] = color.b;
+
+							heightPixels[pixelIndex] = height;
+
+							if (height < myMin) myMin = height;
+							if (height > myMax) myMax = height;
 						}
 					}
-
-					const float height =
-						buffer->heightMap.getData(srcX, srcZ);
-
-					const int pixelIndex = imgY * imageSize + imgX;
-					const int colorOffset = pixelIndex * 3;
-
-					colorPixels[colorOffset + 0] = color.r;
-					colorPixels[colorOffset + 1] = color.g;
-					colorPixels[colorOffset + 2] = color.b;
-
-					heightPixels[pixelIndex] = height;
-
-					if (height < minHeight) minHeight = height;
-					if (height > maxHeight) maxHeight = height;
+					delete buffer;
 				}
 			}
-			delete buffer;
 		}
+	};
+
+	ColormapQuadrantContext ctx(
+		generator, shaderLayers, colorPixels, heightPixels,
+		tilesPerSide, pixelsPerTile, internalSize,
+		originOffset, upperPad, legacyMode,
+		mapWidth, metersPerPixel
+	);
+
+	typedef TypedThreadHandle<MemberFunctionThreadOne<ColormapQuadrantContext, int> > QuadrantHandle;
+	QuadrantHandle h0 = runThread(ctx, &ColormapQuadrantContext::processQuadrant, 0);
+	QuadrantHandle h1 = runThread(ctx, &ColormapQuadrantContext::processQuadrant, 1);
+	QuadrantHandle h2 = runThread(ctx, &ColormapQuadrantContext::processQuadrant, 2);
+	QuadrantHandle h3 = runThread(ctx, &ColormapQuadrantContext::processQuadrant, 3);
+
+	h0->wait();
+	h1->wait();
+	h2->wait();
+	h3->wait();
+
+	float minHeight = ctx.threadMin[0];
+	float maxHeight = ctx.threadMax[0];
+	for (int q = 1; q < 4; ++q)
+	{
+		if (ctx.threadMin[q] < minHeight) minHeight = ctx.threadMin[q];
+		if (ctx.threadMax[q] > maxHeight) maxHeight = ctx.threadMax[q];
 	}
 
-	printf("\r  Generated %d tiles. Height range: %.1f to %.1f meters\n", totalTiles, minHeight, maxHeight);
+	printf("  [100%%] Generated %d tiles. Height range: %.1f to %.1f m\n", totalTiles, minHeight, maxHeight);
 
 	// Apply hillshading for 3D terrain effect
 	printf("  Applying hillshading...\n");
-	applyHillshading(heightPixels, colorPixels, imageSize, imageSize, mapWidth);
+	fflush(stdout);
+	applyHillshading(heightPixels, colorPixels, internalSize, internalSize, mapWidth);
+	printf("  Hillshading done.\n");
+	fflush(stdout);
 
 	// Apply water rendering
 	if (terrainTemplate->getUseGlobalWaterTable())
@@ -959,11 +1162,11 @@ bool SwgMapRasterizer::renderTerrainColormap(const Config& config, const char* t
 		const float waterHeight = terrainTemplate->getGlobalWaterTableHeight();
 		printf("  Rendering water (global water table at %.1f meters)...\n", waterHeight);
 
-		for (int y = 0; y < imageSize; ++y)
+		for (int y = 0; y < internalSize; ++y)
 		{
-			for (int x = 0; x < imageSize; ++x)
+			for (int x = 0; x < internalSize; ++x)
 			{
-				const int idx = y * imageSize + x;
+				const int idx = y * internalSize + x;
 				const float h = heightPixels[idx];
 
 				if (h <= waterHeight)
@@ -1012,25 +1215,53 @@ bool SwgMapRasterizer::renderTerrainColormap(const Config& config, const char* t
 		}
 	}
 
-	//flip vertically to match the expected orientation in the UI
-	const int rowBytes = imageSize * 3;
-	std::vector<uint8> flippedPixels(imageSize* imageSize * 3);
-	for (int y = 0; y < imageSize; ++y)
+	// Optionally downsample 2x for anti-aliased output
+	uint8* savePixels = colorPixels;
+	int saveWidth = internalSize;
+	int saveHeight = internalSize;
+	std::vector<uint8> downsampled;
+	if (config.antiAlias)
+	{
+		downsampled.resize(imageSize * imageSize * 3);
+		downsample2xRGB(colorPixels, internalSize, internalSize, &downsampled[0], imageSize, imageSize);
+		savePixels = &downsampled[0];
+		saveWidth = imageSize;
+		saveHeight = imageSize;
+		printf("  Downsampled 2x for anti-aliasing.\n");
+		fflush(stdout);
+	}
+
+	// Flip vertically to match the expected orientation in the UI
+	const int rowBytes = saveWidth * 3;
+	std::vector<uint8> flippedPixels(saveWidth * saveHeight * 3);
+	for (int y = 0; y < saveHeight; ++y)
 	{
 		const int srcOffset = y * rowBytes;
-		const int dstOffset = (imageSize - 1 - y) * rowBytes;
-		memcpy(&flippedPixels[dstOffset], &colorPixels[srcOffset], rowBytes);
+		const int dstOffset = (saveHeight - 1 - y) * rowBytes;
+		memcpy(&flippedPixels[dstOffset], &savePixels[srcOffset], rowBytes);
 	}
 	printf("  Flipped image vertically for correct orientation.\n");
+	fflush(stdout);
 
 	// Save output image
 	char outputPath[512];
 	_snprintf(outputPath, sizeof(outputPath), "%s/%s.tga", config.outputDir.c_str(), outputName);
 
-	printf("  Saving: %s\n", outputPath);
-	const bool saved = saveTGA(colorPixels, imageSize, imageSize, 3, outputPath);
+	printf("  Saving %s ...\n", outputPath);
+	fflush(stdout);
+	const bool saved = saveTGA(&flippedPixels[0], saveWidth, saveHeight, 3, outputPath);
 
-	// Cleanup
+	// Cleanup: release family textures and cached ramp images
+	for (size_t i = 0; i < shaderLayers.size(); ++i)
+	{
+		if (shaderLayers[i].familyTexture)
+		{
+			delete shaderLayers[i].familyTexture;
+			shaderLayers[i].familyTexture = 0;
+		}
+	}
+	clearShaderRampImageCache();
+
 	delete[] colorPixels;
 	delete[] heightPixels;
 	AppearanceTemplateList::release(at);
@@ -1109,7 +1340,8 @@ bool SwgMapRasterizer::renderTerrainShading(const Config& config, const char* te
 		for (int tx = 0; tx < tilesPerSide; ++tx)
 		{
 			++tilesDone;
-			printf("\r  Generating Tile [%d/%d] (%d,%d)...", tilesDone, totalTiles, tx, tz);
+			int pctShading = (totalTiles > 0) ? (tilesDone * 100 / totalTiles) : 0;
+			printf("\r  [%3d%%] Tile %d/%d (%d,%d)  ", pctShading, tilesDone, totalTiles, tx, tz);
 			fflush(stdout);
 
 			// World-space origin of this tile
@@ -1274,100 +1506,23 @@ bool SwgMapRasterizer::renderTerrainGPU(const Config& config, const char* terrai
 		return renderTerrainColormap(config, terrainFile, outputName);
 	}
 
-	printf("  Loading terrain for GPU rendering: %s\n", terrainFile);
-
-	// Load the terrain template (client-side version for rendering)
-	const AppearanceTemplate* at = AppearanceTemplateList::fetch(terrainFile);
-	if (!at)
-	{
-		printf("  ERROR: Failed to load terrain template '%s'.\n", terrainFile);
-		return false;
-	}
-
-	const ProceduralTerrainAppearanceTemplate* terrainTemplate = 
-		dynamic_cast<const ProceduralTerrainAppearanceTemplate*>(at);
-
-	if (!terrainTemplate)
-	{
-		printf("  ERROR: '%s' is not a procedural terrain file.\n", terrainFile);
-		AppearanceTemplateList::release(at);
-		return false;
-	}
-
-	const float mapWidth = terrainTemplate->getMapWidthInMeters();
-	printf("  Map width: %.0f meters\n", mapWidth);
-
-	// Create terrain appearance from the template
-	Appearance* appearance = at->createAppearance();
-	if (!appearance)
-	{
-		printf("  ERROR: Failed to create terrain appearance.\n");
-		AppearanceTemplateList::release(at);
-		return false;
-	}
-
-	// Create terrain object
-	TerrainObject* terrainObject = new TerrainObject();
-	terrainObject->setAppearance(appearance);
-
-	// Create object list and camera
-	ObjectList* objectList = new ObjectList(1);
-	objectList->addObject(terrainObject);
-
-	ObjectListCamera* camera = new ObjectListCamera(1);
-	camera->addObjectList(objectList);
-	camera->setViewport(0, 0, config.imageSize, config.imageSize);
-
-	// Render each tile
-	const int tilesPerSide = config.tilesPerSide;
-	const int tilePixelSize = config.imageSize / tilesPerSide;
-	int tilesDone = 0;
-	const int totalTiles = tilesPerSide * tilesPerSide;
-	bool allOk = true;
-
-	for (int tz = 0; tz < tilesPerSide; ++tz)
-	{
-		for (int tx = 0; tx < tilesPerSide; ++tx)
-		{
-			++tilesDone;
-			printf("\r  Rendering tile [%d/%d] (%d,%d)...", tilesDone, totalTiles, tx, tz);
-			fflush(stdout);
-
-			char tilePath[512];
-			if (tilesPerSide == 1)
-			{
-				_snprintf(tilePath, sizeof(tilePath), "%s/%s.tga", config.outputDir.c_str(), outputName);
-			}
-			else
-			{
-				_snprintf(tilePath, sizeof(tilePath), "%s/%s_tile_%d_%d.tga", 
-				         config.outputDir.c_str(), outputName, tx, tz);
-			}
-
-			if (!renderTile(camera, terrainObject, mapWidth, tx, tz, tilesPerSide,
-			                config.cameraHeight, tilePixelSize, tilePath))
-			{
-				printf("\n  WARNING: Failed to render tile (%d,%d)\n", tx, tz);
-				allOk = false;
-			}
-		}
-	}
-
-	printf("\r  Rendered %d/%d tiles successfully.        \n", tilesDone, totalTiles);
-
-	// Cleanup
-	camera->removeObjectList(objectList);
-	delete camera;
-	objectList->removeObject(terrainObject);
-	delete objectList;
-	delete terrainObject;
-	AppearanceTemplateList::release(at);
-
-	return allOk;
+	printf("\n");
+	printf("  ====== GPU Rendered Terrain Mode ======\n");
+	printf("  WARNING: GPU rendering is experimental. Using CPU colormap mode instead.\n");
+	printf("  (GPU rendering requires full D3D context setup and is not yet stable)\n\n");
+	
+	// GPU rendering is still experimental - fall back to proven CPU colormap mode
+	return renderTerrainColormap(config, terrainFile, outputName);
 }
 
-// ----------------------------------------------------------------------
-
+// ======================================================================
+// GPU Tile Rendering (Experimental - Currently Disabled)
+// 
+// This function renders individual tiles using GPU-accelerated terrain
+// rendering. It's kept for future use when full D3D context setup can be
+// properly integrated. For now, the CPU colormap mode is the stable option.
+// ======================================================================
+/*
 bool SwgMapRasterizer::renderTile(
 	ObjectListCamera* camera,
 	TerrainObject* terrain,
@@ -1384,38 +1539,100 @@ bool SwgMapRasterizer::renderTile(
 	const float halfTile  = tileWidth / 2.0f;
 
 	// Center of this tile in world space
+	// Map coordinates: X and Z are horizontal, Y is vertical
+	// Tile (0,0) is at map corner (-mapWidth/2, -mapWidth/2)
 	const float centerX = -mapWidth / 2.0f + (tileX + 0.5f) * tileWidth;
 	const float centerZ = -mapWidth / 2.0f + (tileZ + 0.5f) * tileWidth;
 
-	// Set camera transform: position high above, looking straight down
-	// Camera K (forward/Z) = world -Y (down)
-	// Camera J (up/Y)      = world +Z (north) 
-	// Camera I (right/X)   = world +X (east)
+	printf("\n    Setting up camera for tile (%d,%d) at world (%.1f, %.1f)\n", 
+		   tileX, tileZ, centerX, centerZ);
+
+	// ======================================================================
+	// Set camera transform: position high above terrain, looking straight down
+	// ======================================================================
 	Transform cameraTransform;
+	
+	// Camera coordinate frame:
+	//   K (forward)  = world -Y (down, towards ground)
+	//   J (up)       = world +Z (north)
+	//   I (right)    = world +X (east)
+	// This creates a top-down orthographic view
 	cameraTransform.setLocalFrameKJ_p(
-		Vector(0.0f, -1.0f, 0.0f),   // K = look down
-		Vector(0.0f,  0.0f, 1.0f)    // J = north is up
+		Vector(0.0f, -1.0f, 0.0f),   // K = look down (world -Y)
+		Vector(0.0f,  0.0f, 1.0f)    // J = north is up (world +Z)
 	);
+	
+	// Position camera high above the tile center
 	cameraTransform.setPosition_p(Vector(centerX, cameraHeight, centerZ));
 	camera->setTransform_o2p(cameraTransform);
 
-	// Set orthographic projection covering the tile area
-	// In camera space: X = world X, Y = world Z
+	printf("    Camera transform set: pos=(%.1f, %.1f, %.1f)\n", 
+		   centerX, cameraHeight, centerZ);
+
+	// ======================================================================
+	// Set orthographic (parallel) projection
+	// ======================================================================
+	// Covers the tile area in world space:
+	// X range: -halfTile to +halfTile (east-west)
+	// Z range: -halfTile to +halfTile (north-south)
+	// Near/far planes: handle terrain height variation
+	
 	camera->setNearPlane(1.0f);
 	camera->setFarPlane(cameraHeight + 5000.0f);
+	
+	// Orthographic projection bounds (left, right, top, bottom)
+	// In camera space, these map to world X and Z
 	camera->setParallelProjection(-halfTile, halfTile, halfTile, -halfTile);
 
-	// Warm up terrain - call alter to trigger chunk generation
-	for (int warmup = 0; warmup < 5; ++warmup)
+	printf("    Orthographic projection: bounds=[%.1f,%.1f] x [%.1f,%.1f]\n",
+		   -halfTile, halfTile, halfTile, -halfTile);
+
+	// ======================================================================
+	// Ensure terrain chunks are generated before rendering
+	// ======================================================================
+	printf("    Pre-loading terrain chunks...\n");
+	for (int warmup = 0; warmup < 10; ++warmup)
 	{
-		terrain->alter(0.1f);
+		// Call alter to trigger terrain generation
+		terrain->alter(0.05f);
+		
+		// Allow async operations and message processing
 		Os::update();
 	}
 
-	// Render the scene
-	camera->renderScene();
-	return Graphics::screenShot(outputPath);
+	// ======================================================================
+	// Render frames to ensure stable output
+	// ======================================================================
+	printf("    Rendering frames...\n");
+	for (int frame = 0; frame < 3; ++frame)
+	{
+		// Clear and render the scene
+		camera->renderScene();
+		
+		// Allow time for rendering to complete
+		Os::update();
+	}
+
+	// ======================================================================
+	// Capture the final rendered frame as TGA image
+	// ======================================================================
+	printf("    Capturing screenshot to %s\n", outputPath);
+	
+	bool success = Graphics::screenShot(outputPath);
+	
+	if (success)
+	{
+		printf("    ✓ Tile (%d,%d) rendered successfully\n", tileX, tileZ);
+	}
+	else
+	{
+		printf("    ✗ Failed to capture screenshot for tile (%d,%d)\n", tileX, tileZ);
+	}
+	
+	return success;
 }
+*/
+// End of experimental GPU tile rendering
 
 // ======================================================================
 // TGA file writer
@@ -1483,6 +1700,42 @@ bool SwgMapRasterizer::saveTGA(const uint8* pixels, int width, int height, int c
 
 	fclose(fp);
 	return true;
+}
+
+// ======================================================================
+// Downsample 2x: average each 2x2 block (src 2*outW x 2*outH -> out outW x outH, RGB)
+// ======================================================================
+
+void SwgMapRasterizer::downsample2xRGB(
+	const uint8* src,
+	int srcWidth,
+	int srcHeight,
+	uint8* out,
+	int outWidth,
+	int outHeight
+)
+{
+	if (!src || !out || srcWidth != 2 * outWidth || srcHeight != 2 * outHeight)
+		return;
+
+	for (int y = 0; y < outHeight; ++y)
+	{
+		for (int x = 0; x < outWidth; ++x)
+		{
+			const int sx = 2 * x;
+			const int sy = 2 * y;
+			const int i00 = (sy     * srcWidth + sx) * 3;
+			const int i10 = (sy     * srcWidth + sx + 1) * 3;
+			const int i01 = ((sy+1) * srcWidth + sx) * 3;
+			const int i11 = ((sy+1) * srcWidth + sx + 1) * 3;
+
+			for (int c = 0; c < 3; ++c)
+			{
+				unsigned sum = src[i00 + c] + src[i10 + c] + src[i01 + c] + src[i11 + c];
+				out[(y * outWidth + x) * 3 + c] = static_cast<uint8>((sum + 2) / 4);
+			}
+		}
+	}
 }
 
 // ======================================================================

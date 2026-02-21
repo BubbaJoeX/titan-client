@@ -1,0 +1,74 @@
+# ======================================================================
+# PERL SCRIPTS PATH FIXES FOR WINDOWS/LINUX CROSS-PLATFORM SUPPORT
+# ======================================================================
+
+# ======================================================================
+# FILE 1: D:\titan\client\tools\perllib\VehicleCustomizationVariableGenerator.pm
+# ======================================================================
+# 
+# FIND the collectData subroutine (around lines 264-288) and REPLACE with:
+#
+
+sub collectData
+{
+	my $branch = shift;
+	$branch = "current" if !defined($branch);
+
+	# Auto-detect build root for Windows/Linux
+	my $buildRoot = $ENV{SWG_DATATABLES_PATH};
+	if (!defined($buildRoot) || $buildRoot eq "")
+	{
+		use File::Basename;
+		use Cwd 'abs_path';
+		my $scriptDir = dirname(abs_path(__FILE__));
+		$scriptDir =~ s/\\/\//g;
+		my $rootDir = $scriptDir;
+		$rootDir =~ s/\/client\/tools\/perllib.*//i;
+		$buildRoot = $rootDir . "/dsrc/sku.0/sys.shared/compiled/game/";
+		$buildRoot = "//home/swg/swg-main/build/" unless -d $buildRoot;
+	}
+	$buildRoot =~ s/\\/\//g;
+	$buildRoot .= "/" unless $buildRoot =~ /\/$/;
+	
+	my $customizationsFileName = $buildRoot."customization/vehicle_customizations.tab";
+	loadVehicleCustomizations($customizationsFileName);
+
+	my $logicalSaddleNameMapFileName = $buildRoot."datatables/mount/logical_saddle_name_map.tab";
+	my $saddleAppearanceMapFileName = $buildRoot."datatables/mount/saddle_appearance_map.tab";
+	buildSatLinkageMap($logicalSaddleNameMapFileName, $saddleAppearanceMapFileName);
+	
+	my $appearanceTableFileName = $buildRoot."customization/vehicle_appearances.tab";
+	applyCustomizationsToVehicles($appearanceTableFileName);
+}
+
+# ======================================================================
+# FILE 2: D:\titan\client\tools\buildAssetCustomizationManagerData.pl
+# ======================================================================
+#
+# FIND loadCustomizationIdManagerMif subroutine (around line 1397)
+# CHANGE line ~1404 from:
+#
+#   open ($inputFile, "< " . $customizationIdManagerMifFileName) or die "...";
+#
+# TO:
+#
+	my $cimPath = $customizationIdManagerMifFileName;
+	$cimPath =~ s/\\/\//g;  # Normalize to forward slashes
+	# Ensure path uses /dsrc/ not /data/
+	$cimPath =~ s/\/data\//\/dsrc\//g;
+	if (!open($inputFile, "< " . $cimPath))
+	{
+		print "Note: CIM file [$cimPath] does not exist yet, creating new one.\n";
+		return ({}, 0);
+	}
+
+# ======================================================================
+# KEY PATH RULES:
+# ======================================================================
+# .mif (source)   -> dsrc/sku.0/sys.shared/compiled/game/
+#                 -> dsrc/sku.0/sys.client/compiled/game/
+# .iff (compiled) -> data/sku.0/sys.shared/compiled/game/
+#                 -> data/sku.0/sys.client/compiled/game/
+# .tab (tables)   -> dsrc/sku.0/sys.shared/compiled/game/datatables/
+#                 -> dsrc/sku.0/sys.shared/compiled/game/customization/
+# ======================================================================
