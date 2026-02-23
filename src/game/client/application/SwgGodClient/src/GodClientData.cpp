@@ -83,6 +83,7 @@ MESG(CLIPBOARD_CHANGED);        //lint !e19 useless declaration
 MESG(GHOSTS_CREATED);           //lint !e19 useless declaration
 MESG(GHOSTS_KILLED);            //lint !e19 useless declaration
 MESG(PALETTES_CHANGED);         //lint !e19 useless declaration
+MESG(PATROL_WAYPOINT_PLACEMENT_CHANGED); //lint !e19 useless declaration
 
 #undef MESG
 
@@ -139,22 +140,34 @@ GodClientData::ClipboardObject::ClipboardObject () :
 	serverObjectTemplateName (),
 	sharedObjectTemplateName (), 
 	transform (),
+	scale (1.0f, 1.0f, 1.0f),
+	scripts (),
+	objvars (),
 	networkId () 
 {
 }
 
 //-----------------------------------------------------------------
 
-GodClientData::ClipboardObject::ClipboardObject (const Object& object) : 
+GodClientData::ClipboardObject::ClipboardObject (const Object& object, bool copyTransform, bool copyScale, bool copyScripts, bool copyObjvars) : 
 	serverObjectTemplateName (),
 	sharedObjectTemplateName (),
-	transform (object.getTransform_o2w ()),
+	transform (),
+	scale (1.0f, 1.0f, 1.0f),
+	scripts (),
+	objvars (),
 	networkId (object.getNetworkId ())
 {
 	const ClientObject* const clientObject = dynamic_cast<const ClientObject*>(&object);
 
 	if (clientObject)
 	{
+		if (copyTransform)
+			transform = object.getTransform_o2w();
+
+		if (copyScale)
+			scale = object.getScale();
+
 		//get the server template name(the one we need to send the server to copy and paste)
 		ServerObjectData::ObjectInfo const *serverObjectData = ServerObjectData::getInstance().getObjectInfo(networkId, false);
 		if (!serverObjectData && object.getNetworkId() < NetworkId::cms_invalid)
@@ -164,7 +177,13 @@ GodClientData::ClipboardObject::ClipboardObject (const Object& object) :
 		}
 
 		if (serverObjectData)
+		{
 			serverObjectTemplateName = serverObjectData->serverTemplateName;
+			if (copyScripts)
+				scripts = serverObjectData->scriptList;
+			if (copyObjvars)
+				objvars = serverObjectData->objvarList;
+		}
 
 		sharedObjectTemplateName = clientObject->getObjectTemplateName ();
 	}
@@ -235,7 +254,14 @@ GodClientData::GodClientData()
   m_pivotPoint(),
   m_objectCreationPending(false),
   m_toggleDropToTerrainOn(false),
-  m_toggleAlignToTerrainOn(false)
+  m_toggleAlignToTerrainOn(false),
+  m_copyTransform(true),
+  m_copyScale(false),
+  m_copyScripts(false),
+  m_copyObjvars(false),
+  m_patrolWaypoints(),
+  m_patrolWaypointPlacementMode(false),
+  m_patrolPathType("cycle")
 {
 	connectToMessage(World::Messages::OBJECT_REMOVED);
 	connectToMessage(Game::Messages::SCENE_CHANGED);
@@ -609,6 +635,43 @@ void GodClientData::draw(const Camera& camera)
 		{
 			const Vector& loc = obj->getPosition_w();
 			Graphics::drawSphere(loc, iter->sphere.radius, 8, 16);
+		}
+	}
+
+	// Draw patrol waypoint spheres (numbered, colored by order; oscillate: first=green, last=red)
+	{
+		real const waypointRadius = 1.5f;
+		int idx = 0;
+		int const n = static_cast<int>(m_patrolWaypoints.size());
+		CuiTextManager::TextEnqueueInfo wpInfo;
+		wpInfo.backgroundOpacity = 0.0f;
+		wpInfo.opacity = 1.0f;
+		wpInfo.textSize = 1.5f;
+		for (std::vector<Vector>::const_iterator it = m_patrolWaypoints.begin(); it != m_patrolWaypoints.end(); ++it, ++idx)
+		{
+			VectorArgb color = VectorArgb::solidYellow;
+			if (m_patrolPathType == "oscillate" && n >= 2)
+			{
+				if (idx == 0)
+					color = VectorArgb::solidGreen;
+				else if (idx == n - 1)
+					color = VectorArgb::solidRed;
+				else
+					color = VectorArgb::solidBlue;
+			}
+			else
+			{
+				static VectorArgb const cycleColors[] = { VectorArgb::solidGreen, VectorArgb::solidCyan, VectorArgb::solidBlue, VectorArgb::solidMagenta, VectorArgb::solidRed, VectorArgb::solidYellow };
+				color = cycleColors[idx % (sizeof(cycleColors) / sizeof(cycleColors[0]))];
+			}
+			Graphics::drawSphere2(*it, waypointRadius, 8, 8, 8, color);
+			if (camera.projectInWorldSpace(*it, &wpInfo.screenVect.x, &wpInfo.screenVect.y, &wpInfo.screenVect.z, false))
+			{
+				char buf[16];
+				sprintf(buf, "%d", idx + 1);
+				wpInfo.textColor = UIColor(255, 255, 255);
+				CuiTextManager::enqueueText(Unicode::narrowToWide(buf), wpInfo);
+			}
 		}
 	}
 
@@ -1508,7 +1571,7 @@ void GodClientData::copySelection()
 			if(obj == player)
 				continue;
 			else
-				m_clipboard.push_back(new ClipboardObject(*obj));
+				m_clipboard.push_back(new ClipboardObject(*obj, getCopyTransform(), getCopyScale(), getCopyScripts(), getCopyObjvars()));
 		}
 	}
 	
@@ -1527,6 +1590,48 @@ bool GodClientData::getSelectionEmpty() const
 bool GodClientData::getClipboardEmpty() const
 {
 	return m_clipboard.empty();
+}
+
+//-----------------------------------------------------------------
+
+void GodClientData::setCopyTransform(bool v)
+{
+	m_copyTransform = v;
+}
+
+void GodClientData::setCopyScale(bool v)
+{
+	m_copyScale = v;
+}
+
+void GodClientData::setCopyScripts(bool v)
+{
+	m_copyScripts = v;
+}
+
+void GodClientData::setCopyObjvars(bool v)
+{
+	m_copyObjvars = v;
+}
+
+bool GodClientData::getCopyTransform() const
+{
+	return m_copyTransform;
+}
+
+bool GodClientData::getCopyScale() const
+{
+	return m_copyScale;
+}
+
+bool GodClientData::getCopyScripts() const
+{
+	return m_copyScripts;
+}
+
+bool GodClientData::getCopyObjvars() const
+{
+	return m_copyObjvars;
 }
 
 //-----------------------------------------------------------------
@@ -1580,6 +1685,7 @@ void GodClientData::synchronizeSelectionWithGhosts()
 				{
 					NetworkId objId = obj->getNetworkId();
 					ServerCommander::getInstance().setObjectScale(obj, selObj->ghost->getScale());
+					obj->reapplyClientData();
 					if (NetworkIdManager::getObjectById(objId) != obj)
 					{
 						iteratorsInvalidated = true;
@@ -2021,6 +2127,26 @@ void GodClientData::scaleSelectionY(real dy)
 
 //-----------------------------------------------------------------
 
+void GodClientData::scaleSelectionUniform(real dy)
+{
+	if(!m_gs)
+		return;
+
+	m_gs->activateGodClientCamera();
+	FreeCamera* const cam = NON_NULL(m_gs->getGodClientCamera());
+
+	Vector center;
+	if(!calculateSelectionCenter(center, true))
+		return;
+
+	const real dist = sqrt(std::max(CONST_REAL(10), center.magnitudeBetween(cam->getPosition_w())));
+	const real d = dy * dist;
+
+	scaleGhosts(Vector(d, d, d));
+}
+
+//-----------------------------------------------------------------
+
 void GodClientData::saveCurrentSelectionAsBrush(const std::string& brushName)
 {
 	ClipboardList_t newBrush;
@@ -2050,7 +2176,7 @@ void GodClientData::saveCurrentSelectionAsBrush(const std::string& brushName)
 			continue;
 		else
 		{
-			newBrush.push_back(new ClipboardObject(*obj));
+			newBrush.push_back(new ClipboardObject(*obj, getCopyTransform(), getCopyScale(), getCopyScripts(), getCopyObjvars()));
 		}
 	}
 	BrushData::getInstance().addBrush(brushName, newBrush);
@@ -2152,6 +2278,72 @@ void GodClientData::clearSpheres()
 {
 	m_triggerObjectSpheres.clear();
 	m_sphereTreeObjects.clear();
+}
+
+//-----------------------------------------------------------------
+
+void GodClientData::addPatrolWaypoint(Vector const & point)
+{
+	m_patrolWaypoints.push_back(point);
+	emitMessage(MessageDispatch::MessageBase(Messages::PATROL_WAYPOINT_PLACEMENT_CHANGED));
+}
+
+//-----------------------------------------------------------------
+
+void GodClientData::clearPatrolWaypoints()
+{
+	m_patrolWaypoints.clear();
+	emitMessage(MessageDispatch::MessageBase(Messages::PATROL_WAYPOINT_PLACEMENT_CHANGED));
+}
+
+//-----------------------------------------------------------------
+
+void GodClientData::removeLastPatrolWaypoint()
+{
+	if (!m_patrolWaypoints.empty())
+	{
+		m_patrolWaypoints.pop_back();
+		emitMessage(MessageDispatch::MessageBase(Messages::PATROL_WAYPOINT_PLACEMENT_CHANGED));
+	}
+}
+
+//-----------------------------------------------------------------
+
+std::vector<Vector> const & GodClientData::getPatrolWaypoints() const
+{
+	return m_patrolWaypoints;
+}
+
+//-----------------------------------------------------------------
+
+bool GodClientData::getPatrolWaypointPlacementMode() const
+{
+	return m_patrolWaypointPlacementMode;
+}
+
+//-----------------------------------------------------------------
+
+void GodClientData::setPatrolWaypointPlacementMode(bool on)
+{
+	if (m_patrolWaypointPlacementMode != on)
+	{
+		m_patrolWaypointPlacementMode = on;
+		emitMessage(MessageDispatch::MessageBase(Messages::PATROL_WAYPOINT_PLACEMENT_CHANGED));
+	}
+}
+
+//-----------------------------------------------------------------
+
+void GodClientData::setPatrolPathType(std::string const & type)
+{
+	m_patrolPathType = type;
+}
+
+//-----------------------------------------------------------------
+
+std::string GodClientData::getPatrolPathType() const
+{
+	return m_patrolPathType;
 }
 
 //-----------------------------------------------------------------
@@ -2383,7 +2575,7 @@ void GodClientData::stackObjects(int count, int orientationIndex, real distanceF
 	if (!obj)
 		return;
 
-	ClipboardObject clipObj(*obj);
+	ClipboardObject clipObj(*obj, getCopyTransform(), getCopyScale(), getCopyScripts(), getCopyObjvars());
 	std::string const& templateName = clipObj.serverObjectTemplateName.empty() ? clipObj.sharedObjectTemplateName : clipObj.serverObjectTemplateName;
 	if (templateName.empty())
 		return;

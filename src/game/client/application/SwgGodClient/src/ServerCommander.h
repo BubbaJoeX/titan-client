@@ -14,6 +14,8 @@
 
 #include "Singleton/Singleton.h"
 
+#include <vector>
+
 class CellProperty;
 class ClientObject;
 class CreatureObject;
@@ -78,6 +80,30 @@ public:
 	unsigned int          setGodMode            ();
 
 	unsigned int persistObject(const ClientObject& obj);
+
+	unsigned int makeGroundSpawner(
+		const std::string& name,
+		const std::string& type,
+		const std::string& spawns,
+		float radius,
+		int spawnCount,
+		int behavior,
+		bool useGoodLocation,
+		float minSpawnTime,
+		float maxSpawnTime,
+		const std::string& locationType
+	);
+
+	unsigned int makePatrolSpawner(
+		const std::string& name,
+		const std::string& spawns,
+		float radius,
+		int spawnCount,
+		float minSpawnTime,
+		float maxSpawnTime,
+		const std::string& pathType,
+		std::vector<Vector> const & waypoints
+	);
 
 signals:
 	void                  consoleCommandIssued  (const char*);

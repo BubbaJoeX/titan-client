@@ -23,6 +23,7 @@ class ActionsObjectTemplate;
 class ActionsScript;
 class ActionsTool;
 class ActionsWindow;
+class AdvancedCopyPasteWidget;
 class BookmarkBrowser;
 class ConsoleWindow;
 class FavoritesWindow;
@@ -151,6 +152,7 @@ private:
 	ObjectEditor*      m_objectEditor;
 	GroupObjectWindow* m_groupObjectWindow;
 	FilterWindow*      m_filterWindow;
+	AdvancedCopyPasteWidget* m_advancedCopyPasteWidget;
 	BookmarkBrowser*   m_bookmarkBrowser;
 	FavoritesWindow*   m_favoritesWindow;
 	StackerTool*       m_stackTool;
@@ -160,6 +162,7 @@ private:
 	QDockWindow*       m_objectEditorDock;
 	QDockWindow*       m_groupObjectWindowDock;
 	QDockWindow*       m_filterWindowDock;
+	QDockWindow*       m_advancedCopyPasteDock;
 	QDockWindow*       m_bookmarkBrowserDock;
 	QDockWindow*       m_regionsViewDock;
 	QDockWindow*       m_favoritesWindowDock;

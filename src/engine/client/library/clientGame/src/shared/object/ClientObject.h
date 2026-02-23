@@ -161,6 +161,7 @@ public:
 	static const boolean    isFakeNetworkId                (const NetworkId& id);
 
 	const ClientDataFile* getClientData () const;
+	void                   reapplyClientData ();
 
 	TerrainGenerator::Layer* getLayer () const;
 	void                     setLayer(TerrainGenerator::Layer* layer);

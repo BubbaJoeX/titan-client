@@ -180,6 +180,17 @@
                                 <bool>true</bool>
                             </property>
                         </column>
+                        <column>
+                            <property name="text">
+                                <string>Value</string>
+                            </property>
+                            <property name="clickable">
+                                <bool>true</bool>
+                            </property>
+                            <property name="resizeable">
+                                <bool>true</bool>
+                            </property>
+                        </column>
                     <item>
                         <property name="text">
                             <string>Item1</string>

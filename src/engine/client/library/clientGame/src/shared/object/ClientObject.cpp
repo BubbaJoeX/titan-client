@@ -16,6 +16,7 @@
 #include "clientGame/ClientController.h"
 #include "clientGame/ClientDataFile.h"
 #include "clientGame/ClientNoBuildNotification.h"
+#include "clientGame/TangibleObject.h"
 #include "clientGame/ClientObjectTemplate.h"
 #include "clientGame/ClientObjectTerrainModificationNotification.h"
 #include "clientGame/ClientSynchronizedUi.h"
@@ -1680,6 +1681,19 @@ const ClientDataFile* ClientObject::getClientData () const
 	}
 	else
 		return NULL;
+}
+
+//----------------------------------------------------------------------
+
+void ClientObject::reapplyClientData ()
+{
+	ClientDataFile const * const clientData = getClientData ();
+	if (clientData)
+	{
+		TangibleObject const * const tangibleObject = asTangibleObject ();
+		bool const on = (tangibleObject != NULL) ? tangibleObject->hasCondition (TangibleObject::C_onOff) : true;
+		clientData->applyOnOff (const_cast<ClientObject *> (this), on);
+	}
 }
 
 //----------------------------------------------------------------------

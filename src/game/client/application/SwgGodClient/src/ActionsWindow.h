@@ -42,6 +42,7 @@ public:
 	ActionHack*             m_favorites;
 	ActionHack*             m_groupObjectEditor;
 	ActionHack*             m_filters;
+	ActionHack*             m_advancedCopyPaste;
 	ActionHack*             m_console;
 	ActionHack*             m_gameWindow;
 	ActionHack*             m_regionsView;
@@ -59,6 +60,7 @@ private slots:
 	void onFavorites        (bool b) const;
 	void onGroupObjectEditor(bool b) const;
 	void onFilters          (bool b) const;
+	void onAdvancedCopyPaste(bool b) const;
 	void onConsole          (bool b) const;
 	void onGameWindow       (bool b) const;
 	void onRegionsView      (bool b) const;

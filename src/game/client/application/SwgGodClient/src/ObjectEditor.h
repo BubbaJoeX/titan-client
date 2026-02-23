@@ -41,6 +41,7 @@ public slots:
 	void refreshObjects();
 	void updateObjectData();
 	void onAttributeRenamed(QListViewItem* item, int col, const QString &text) const;
+	void onAttributeDoubleClicked(QListViewItem* item);
 	void onCreatureSkillsContextMenuRequested(QListBoxItem *, const QPoint &);
 	void onRevokeCreatureSkill();
 	void onRemoveScript();
@@ -48,6 +49,8 @@ public slots:
 	void onSetObjvar();
 	void onScriptsListContextMenuRequested(QListViewItem *, const QPoint &, int);
 	void onObjvarListContextMenuRequested(QListViewItem *, const QPoint &, int);
+	void onObjvarRenamed(QListViewItem* item, int col, const QString &text);
+	void onObjvarDoubleClicked(QListViewItem* item);
 public:
 	virtual void receiveMessage(const MessageDispatch::Emitter& source, const MessageDispatch::MessageBase& message);
 

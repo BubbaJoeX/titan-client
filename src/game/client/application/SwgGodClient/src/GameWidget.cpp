@@ -1046,6 +1046,10 @@ void GameWidget::mouseMoveEvent(QMouseEvent*mouseEvent)
 		{
 			GodClientData::getInstance().scaleSelection(dx, dy);
 		}
+		else if(isMiddleButtonMove(mouseEvent))
+		{
+			GodClientData::getInstance().scaleSelectionUniform(-dy);
+		}
 	}
 
 	//-- rubber banding
@@ -1292,6 +1296,18 @@ void GameWidget::mouseReleaseEvent(QMouseEvent*mouseEvent)
 			return;
 		}
 
+		//-- handle patrol waypoint placement (click in world to add waypoint)
+		if (GodClientData::getInstance().getPatrolWaypointPlacementMode() && m_gs && m_keyStates && mouseEvent->button() == QMouseEvent::LeftButton && !m_keyStates->hasAnyState())
+		{
+			CellProperty const * cellProp = 0;
+			Vector intersection;
+			if (GodClientData::getInstance().findIntersection_p(mouseEvent->x(), mouseEvent->y(), cellProp, intersection))
+			{
+				GodClientData::getInstance().addPatrolWaypoint(intersection);
+			}
+			return;
+		}
+
 		//-- handle click-to-select
 		if(m_gs)
 		{
@@ -1508,6 +1524,7 @@ void GameWidget::contextMenuEvent(QContextMenuEvent* evt)
 
 	IGNORE_RETURN(m_pop->insertSeparator());
 	IGNORE_RETURN(ea.createObjectFromSelectedTemplate->addTo(m_pop));
+	IGNORE_RETURN(ea.makeGroundSpawner->addTo(m_pop));
 
 	{
 		IGNORE_RETURN(m_pop->insertSeparator());

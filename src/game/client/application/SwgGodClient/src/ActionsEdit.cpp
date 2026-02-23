@@ -14,6 +14,7 @@
 #include "BuildoutAreaSupport.h"
 #include "ConfigGodClient.h"
 #include "FormWindow.h"
+#include "MakeGroundSpawnerDialog.h"
 #include "GodClientData.h"
 #include "IconLoader.h"
 #include "MainFrame.h"
@@ -29,6 +30,7 @@
 #include "sharedObject/ObjectTemplateList.h"
 #include "sharedRandom/Random.h"
 #include "sharedUtility/FileName.h"
+#include "Unicode.h"
 
 #include <qaccel.h>
 #include <qapplication.h>
@@ -37,6 +39,8 @@
 #include <qinputdialog.h>
 #include <qmessagebox.h>
 #include <qspinbox.h>
+
+#include <sstream>
 
 namespace ActionsEditNamespace
 {
@@ -60,8 +64,9 @@ paste(0),
 pasteBrush(0),
 del(0),
 cut(0),
-createObjectFromSelectedTemplate(0),
-dropToTerrain(0),
+	createObjectFromSelectedTemplate(0),
+	makeGroundSpawner(0),
+	dropToTerrain(0),
 randomRotate(0),
 applyTransform(0),
 unlockSelected(0),
@@ -152,6 +157,9 @@ m_selectedClientTemplate()
 
 	createObjectFromSelectedTemplate = new ActionHack("Create New Object []", IL_PIXMAP(hi16_action_window_new), "Create &New Object []", QT_ACCEL2(CTRL,Key_N), p, "create_new_object");
 	createObjectFromSelectedTemplate->setEnabled (false);
+
+	makeGroundSpawner = new ActionHack("Make Ground Spawner...", IL_PIXMAP(hi16_action_window_new), "Make &Ground Spawner...", 0, p, "make_ground_spawner");
+	IGNORE_RETURN(connect(makeGroundSpawner, SIGNAL(activated()), this, SLOT(onMakeGroundSpawner())));
 
 	alignToTerrain                   = new ActionHack("Align to Terrain", IL_PIXMAP(hi16_action_align_to_terrain), "&Align to Terrain", QT_ACCEL3(CTRL,ALT,Key_D), p, "align_to_terrain");
 	IGNORE_RETURN(connect(alignToTerrain, SIGNAL(activated()), this, SLOT(onAlignToTerrain())));
@@ -266,6 +274,7 @@ ActionsEdit::~ActionsEdit()
 	del = 0;
 	cut = 0;
 	createObjectFromSelectedTemplate = 0;
+	makeGroundSpawner = 0;
 	dropToTerrain = 0;
 	randomRotate = 0;
 	applyTransform = 0;
@@ -416,7 +425,58 @@ void ActionsEdit::internalPaste(GodClientData::ClipboardList_t& clip) const
 
 			//offset the object from the cursor by it's relative position
 			newObjTransform.setPosition_p(intersection_p - objRelativeToCenter + Vector(0, clipDelta, 0));
-			IGNORE_RETURN(ServerCommander::getInstance().createObject("toolbar pasted", clipObj->serverObjectTemplateName.empty() ? clipObj->sharedObjectTemplateName : clipObj->serverObjectTemplateName, cellProperty, newObjTransform));
+			Object* const newObj = ServerCommander::getInstance().createObject("toolbar pasted", clipObj->serverObjectTemplateName.empty() ? clipObj->sharedObjectTemplateName : clipObj->serverObjectTemplateName, cellProperty, newObjTransform);
+			ClientObject* const clientObj = newObj ? dynamic_cast<ClientObject*>(newObj) : 0;
+			if (clientObj)
+			{
+				ServerCommander::getInstance().setObjectScale(clientObj, clipObj->scale);
+				for (std::vector<std::string>::const_iterator si = clipObj->scripts.begin(); si != clipObj->scripts.end(); ++si)
+					IGNORE_RETURN(ServerCommander::getInstance().scriptAttach(*clientObj, *si));
+				for (std::vector<std::string>::const_iterator oi = clipObj->objvars.begin(); oi != clipObj->objvars.end(); ++oi)
+				{
+					std::string const& line = *oi;
+					std::string name;
+					std::string typeStr;
+					std::string value;
+					// Format 1: "name\tvalue" (tab-separated, server console)
+					size_t const tab = line.find('\t');
+					if (tab != std::string::npos)
+					{
+						name = line.substr(0, tab);
+						value = line.substr(tab + 1);
+					}
+					else
+					{
+						// Format 2: "name type value" (space-separated, buildout)
+						std::istringstream iss(line);
+						iss >> name >> typeStr;
+
+						if (!iss.fail())
+						{
+							std::getline(iss, value);
+
+							// Trim leading whitespace
+							size_t trim = value.find_first_not_of(" \t");
+							if (trim != std::string::npos)
+								value = value.substr(trim);
+							else
+								value.clear();
+						}
+					}
+					// Trim trailing newline from value
+					while (!value.empty() && (value[value.size()-1] == '\n' || value[value.size()-1] == '\r'))
+						value.resize(value.size()-1);
+					if (!name.empty())
+					{
+						if (typeStr == "int")
+							IGNORE_RETURN(ServerCommander::getInstance().objvarSet(*clientObj, name, atoi(value.c_str())));
+						else if (typeStr == "float")
+							IGNORE_RETURN(ServerCommander::getInstance().objvarSet(*clientObj, name, static_cast<float>(atof(value.c_str()))));
+						else
+							IGNORE_RETURN(ServerCommander::getInstance().objvarSet(*clientObj, name, value));
+					}
+				}
+			}
 		}
 	}
 }
@@ -1186,6 +1246,17 @@ namespace ActionsEditNamespace
 }
 
 //----------------------------------------------------------------------
+
+void ActionsEdit::onMakeGroundSpawner () const
+{
+	static MakeGroundSpawnerDialog* dlg = 0;
+	if (!dlg)
+		dlg = new MakeGroundSpawnerDialog(&MainFrame::getInstance());
+	dlg->show();
+	dlg->raise();
+}
+
+//-----------------------------------------------------------------
 
 void ActionsEdit::onCreateTheater () const
 {

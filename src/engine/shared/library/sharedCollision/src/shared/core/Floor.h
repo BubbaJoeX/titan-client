@@ -103,6 +103,7 @@ public:
 	
 	virtual bool        getExtentDirty      ( void ) const;
 	virtual void        updateExtent        ( void ) const;
+	void                invalidateExtent    ( void );
 	
 	bool                getGoodLocation     ( float radius, Vector & outLoc ) const;
 	
@@ -131,6 +132,7 @@ private:
 	
 	mutable BaseExtent *        m_extent;
 	mutable bool                m_extentDirty;
+	mutable float               m_lastScale;
 	mutable Sphere              m_sphere_l;
 	mutable Sphere              m_sphere_w;
 	

@@ -52,6 +52,7 @@ Floor::Floor( FloorMesh const * pMesh, Object const * owner, Appearance const * 
   m_spatialSubdivisionHandle(NULL),
   m_extent(NULL),
   m_extentDirty(true),
+  m_lastScale(-1.0f),
   m_sphere_l(),
   m_sphere_w()
 {
@@ -200,7 +201,17 @@ BaseExtent const * Floor::getExtent_p ( void ) const
 
 bool Floor::getExtentDirty ( void ) const
 {
+	float const scale = getScale();
+	if (m_lastScale >= 0.0f && scale != m_lastScale)
+		m_extentDirty = true;
 	return m_extentDirty;
+}
+
+// ----------
+
+void Floor::invalidateExtent ( void )
+{
+	m_extentDirty = true;
 }
 
 // ----------
@@ -219,18 +230,18 @@ void Floor::updateExtent ( void ) const
 	
 	if(m_extent && localExtent)
 	{
-		m_extent->transform( localExtent, getTransform_o2p(), getScale() );
-	
+		float const scale = getScale();
+		m_extent->transform( localExtent, getTransform_o2p(), scale );
+		m_lastScale = scale;
 		m_extentDirty = false;
 	}
 
 	// ----------
 
-    m_sphere_l = getExtent_l()->getBoundingSphere();
-
-    Vector worldCenter = getTransform_o2w().rotateTranslate_l2p(m_sphere_l.getCenter());
-
-    m_sphere_w = Sphere(worldCenter,m_sphere_l.getRadius());
+	m_sphere_l = getExtent_l()->getBoundingSphere();
+	float const scale = getScale();
+	Vector const scaledCenter(m_sphere_l.getCenter().x * scale, m_sphere_l.getCenter().y * scale, m_sphere_l.getCenter().z * scale);
+	m_sphere_w = Sphere(getTransform_o2w().rotateTranslate_l2p(scaledCenter), m_sphere_l.getRadius() * scale);
 }
 
 // ----------------------------------------------------------------------

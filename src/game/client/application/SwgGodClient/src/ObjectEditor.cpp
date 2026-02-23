@@ -34,6 +34,8 @@
 #include "Unicode.h"
 #include "UnicodeUtils.h"
 
+#include <cstdlib>
+
 #include <qdragobject.h>
 #include <qinputdialog.h>
 #include <qlistbox.h>
@@ -47,6 +49,9 @@ namespace ObjectEditorNamespace
 	// List cleanup support
 	void emptyListView(QListView * const list);
 	void deleteListViewItem(QListView * const list, QListViewItem * const item);
+
+	// Parse objvar string into name and value. Formats: "name\tvalue" (tab) or "name type value" (buildout).
+	void parseObjvarString(std::string const &str, std::string &name, std::string &value);
 };
 
 using namespace ObjectEditorNamespace;
@@ -70,6 +75,36 @@ void ObjectEditorNamespace::deleteListViewItem(QListView * const list, QListView
 {
 	list->takeItem(item);
 	delete item;
+}
+
+//-----------------------------------------------------------------
+
+void ObjectEditorNamespace::parseObjvarString(std::string const &str, std::string &name, std::string &value)
+{
+	name.clear();
+	value.clear();
+	std::string::size_type const tabPos = str.find('\t');
+	if (tabPos != std::string::npos)
+	{
+		name = str.substr(0, tabPos);
+		value = str.substr(tabPos + 1);
+		return;
+	}
+	std::string::size_type p1 = str.find_first_of(" \t");
+	if (p1 == std::string::npos)
+	{
+		name = str;
+		return;
+	}
+	name = str.substr(0, p1);
+	std::string::size_type p2 = str.find_first_of(" \t", p1 + 1);
+	if (p2 != std::string::npos)
+	{
+		value = str.substr(p2 + 1);
+		std::string::size_type trim = value.find_first_not_of(" \t");
+		if (trim != std::string::npos)
+			value = value.substr(trim);
+	}
 }
 
 //-----------------------------------------------------------------
@@ -210,6 +245,7 @@ ObjectEditor::ObjectEditor(QWidget* theParent, const char* theName)
 	}
 
 	IGNORE_RETURN(connect(m_attributesList, SIGNAL(itemRenamed(QListViewItem*, int, const QString&)), this, SLOT(onAttributeRenamed(QListViewItem*, int, const QString&))));
+	IGNORE_RETURN(connect(m_attributesList, SIGNAL(doubleClicked(QListViewItem*)), this, SLOT(onAttributeDoubleClicked(QListViewItem*))));
 
 	if(m_creatureSkills)
 	{
@@ -226,6 +262,8 @@ ObjectEditor::ObjectEditor(QWidget* theParent, const char* theName)
 	if(m_objVarsList)
 	{
 		IGNORE_RETURN(connect(m_objVarsList, SIGNAL(contextMenuRequested (QListViewItem *, const QPoint &, int)), this, SLOT(onObjvarListContextMenuRequested(QListViewItem *, const QPoint &, int))));
+		IGNORE_RETURN(connect(m_objVarsList, SIGNAL(itemRenamed(QListViewItem*, int, const QString&)), this, SLOT(onObjvarRenamed(QListViewItem*, int, const QString&))));
+		IGNORE_RETURN(connect(m_objVarsList, SIGNAL(doubleClicked(QListViewItem*)), this, SLOT(onObjvarDoubleClicked(QListViewItem*))));
 		IGNORE_RETURN(connect(Singleton<ActionsScript>::getInstance().removeObjvar, SIGNAL(activated()), this, SLOT(onRemoveObjvar())));
 		IGNORE_RETURN(connect(Singleton<ActionsScript>::getInstance().setObjvar, SIGNAL(activated()), this, SLOT(onSetObjvar())));
 	}
@@ -343,7 +381,11 @@ void ObjectEditor::updateObjectData()
 
 		if(thisStringOk)
 		{
-			new QListViewItem(m_objVarsList,(*oli).c_str()); //lint !e522 m_objvarsList takes ownership of the object, so storing it into a variable isn't important (except to lint)
+			std::string objvarName;
+			std::string objvarValue;
+			parseObjvarString(*oli, objvarName, objvarValue);
+			QListViewItem* objvarItem = new QListViewItem(m_objVarsList, objvarName.c_str(), objvarValue.c_str());
+			objvarItem->setRenameEnabled(1, true);
 		}
 	}
 
@@ -556,8 +598,11 @@ void ObjectEditor::receiveMessage(const MessageDispatch::Emitter &, const Messag
 				QListViewItem* last = NULL;
 				for(; i != lines.end(); ++i)
 				{
-					const std::string& objvar = (*i);
-					QListViewItem* current = new QListViewItem(m_objVarsList, objvar.c_str()); //lint !e522 m_scriptsList takes ownership of the object, so storing it into a variable isn't important (except to lint)
+					std::string objvarName;
+					std::string objvarValue;
+					parseObjvarString(*i, objvarName, objvarValue);
+					QListViewItem* current = new QListViewItem(m_objVarsList, objvarName.c_str(), objvarValue.c_str());
+					current->setRenameEnabled(1, true);
 					if(last)
 						current->moveItem(last);
 					last = current;
@@ -612,6 +657,28 @@ void ObjectEditor::dropEvent(QDropEvent* evt)
 				refreshObjects();
 			}
 		}
+	}
+}
+
+//-----------------------------------------------------------------
+
+void ObjectEditor::onAttributeDoubleClicked(QListViewItem* item)
+{
+	if (!item)
+		return;
+
+	// Only start rename for items that have rename enabled on column 1 (Value)
+	if (item == m_pmi.client.transform.translateX ||
+	    item == m_pmi.client.transform.translateY ||
+	    item == m_pmi.client.transform.translateZ ||
+	    item == m_pmi.client.transform.yaw ||
+	    item == m_pmi.client.transform.pitch ||
+	    item == m_pmi.client.transform.roll ||
+	    item == m_pmi.client.transform.scaleX ||
+	    item == m_pmi.client.transform.scaleY ||
+	    item == m_pmi.client.transform.scaleZ)
+	{
+		item->startRename(1);
 	}
 }
 
@@ -721,6 +788,55 @@ void ObjectEditor::onScriptsListContextMenuRequested(QListViewItem * item, const
 	IGNORE_RETURN(as->serverReload->addTo(m_pop));
 	m_pop->popup(point);
 } //lint !e818 item could be const, don't change sig of Qt function
+
+//-----------------------------------------------------------------------
+
+void ObjectEditor::onObjvarDoubleClicked(QListViewItem* item)
+{
+	if (!item || !m_obj)
+		return;
+	item->startRename(1);
+}
+
+//-----------------------------------------------------------------------
+
+void ObjectEditor::onObjvarRenamed(QListViewItem* item, int col, const QString &text)
+{
+	if (col != 1 || !item || !m_obj)
+		return;
+
+	ClientObject const * const o = dynamic_cast<ClientObject const *>(m_obj);
+	if (!o)
+		return;
+
+	std::string const objvarName = item->text(0).ascii() ? item->text(0).ascii() : "";
+	if (objvarName.empty())
+		return;
+
+	std::string const newValue = text.ascii() ? text.ascii() : "";
+
+	// Try to preserve type: int if integer, float if decimal, else string
+	char* endptr = 0;
+	long const intVal = strtol(newValue.c_str(), &endptr, 10);
+	if (endptr && *endptr == '\0')
+	{
+		IGNORE_RETURN(ServerCommander::getInstance().objvarSet(*o, objvarName, static_cast<int>(intVal)));
+	}
+	else
+	{
+		endptr = 0;
+		double const floatVal = strtod(newValue.c_str(), &endptr);
+		if (endptr && *endptr == '\0')
+		{
+			IGNORE_RETURN(ServerCommander::getInstance().objvarSet(*o, objvarName, static_cast<float>(floatVal)));
+		}
+		else
+		{
+			IGNORE_RETURN(ServerCommander::getInstance().objvarSet(*o, objvarName, newValue));
+		}
+	}
+	refreshObjects();
+}
 
 //-----------------------------------------------------------------------
 

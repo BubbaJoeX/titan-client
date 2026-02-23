@@ -78,7 +78,7 @@ namespace
 		
 		TransformModification(const Object& obj, const Transform& newTransform) :
 		Modification(),
-		m_obj(obj),
+		m_obj(obj, true, false, false, false),
 			m_newTransform(newTransform)
 		{
 		}
@@ -129,7 +129,7 @@ namespace
 		
 		explicit DeleteModification(const Object& obj) :
 		Modification(),
-		m_obj(obj)
+		m_obj(obj, true, true, true, true)
 		{
 		}
 		
@@ -178,7 +178,7 @@ namespace
 		
 		explicit CreateModification(const Object& obj) :
 		Modification(),
-		m_obj(obj)
+		m_obj(obj, true, true, true, true)
 		{
 		}
 		
@@ -752,5 +752,81 @@ unsigned int ServerCommander::persistObject(const ClientObject& obj)
 	return issueCommand(buf);
 }
 
+//-----------------------------------------------------------------
+
+unsigned int ServerCommander::makeGroundSpawner(
+	const std::string& name,
+	const std::string& type,
+	const std::string& spawns,
+	float radius,
+	int spawnCount,
+	int behavior,
+	bool useGoodLocation,
+	float minSpawnTime,
+	float maxSpawnTime,
+	const std::string& locationType)
+{
+	if (Game::getSinglePlayer())
+	{
+		return 0;
+	}
+	char buf[2048];
+	int len;
+	if (type == "location" && !locationType.empty())
+	{
+		len = _snprintf(buf, sizeof(buf),
+			"object makeGroundSpawner %s %s %s %.1f %d %d %d %.1f %.1f %s",
+			name.c_str(), type.c_str(), spawns.c_str(),
+			radius, spawnCount, behavior, useGoodLocation ? 1 : 0,
+			minSpawnTime, maxSpawnTime, locationType.c_str());
+	}
+	else
+	{
+		len = _snprintf(buf, sizeof(buf),
+			"object makeGroundSpawner %s %s %s %.1f %d %d %d %.1f %.1f",
+			name.c_str(), type.c_str(), spawns.c_str(),
+			radius, spawnCount, behavior, useGoodLocation ? 1 : 0,
+			minSpawnTime, maxSpawnTime);
+	}
+	if (len > 0 && len < static_cast<int>(sizeof(buf)))
+		return issueCommand(buf);
+	return 0;
+}
+
+//-----------------------------------------------------------------
+
+unsigned int ServerCommander::makePatrolSpawner(
+	const std::string& name,
+	const std::string& spawns,
+	float radius,
+	int spawnCount,
+	float minSpawnTime,
+	float maxSpawnTime,
+	const std::string& pathType,
+	std::vector<Vector> const & waypoints)
+{
+	if (Game::getSinglePlayer())
+		return 0;
+	if (waypoints.size() < 2)
+		return 0;
+
+	char buf[8192];
+	int len = _snprintf(buf, sizeof(buf),
+		"object makePatrolSpawner %s %s %.1f %d %.1f %.1f %s",
+		name.c_str(), spawns.c_str(), radius, spawnCount,
+		minSpawnTime, maxSpawnTime, pathType.c_str());
+
+	for (size_t i = 0; i < waypoints.size() && len > 0 && len < static_cast<int>(sizeof(buf) - 64); ++i)
+	{
+		int n = _snprintf(buf + len, sizeof(buf) - len, " %.1f,%.1f,%.1f",
+			waypoints[i].x, waypoints[i].y, waypoints[i].z);
+		if (n > 0)
+			len += n;
+	}
+
+	if (len > 0 && len < static_cast<int>(sizeof(buf)))
+		return issueCommand(buf);
+	return 0;
+}
 
 // ================================================================

@@ -21,6 +21,7 @@
 #include "clientGame/ClientEffectManager.h"
 #include "clientGame/ClientInteriorLayoutManager.h"
 #include "clientGame/ClientMissionObject.h"
+#include "clientGame/ClientObject.h"
 #include "clientGame/ClientObjectTerrainModificationNotification.h"
 #include "clientGame/ClientPathObject.h"
 #include "clientGame/ClientSecureTradeManager.h"
@@ -2901,7 +2902,12 @@ void GroundScene::receiveMessage(const MessageDispatch::Emitter &, const Message
 		UpdateScaleMessage const usm(ri);
 		Object * const object = NetworkIdManager::getObjectById(usm.getNetworkId());
 		if (object)
+		{
 			object->setScale(usm.getScale());
+			ClientObject * const clientObject = object->asClientObject();
+			if (clientObject)
+				clientObject->reapplyClientData();
+		}
 	}
 	else if (message.isType("UpdateTransformMessage"))
 	{

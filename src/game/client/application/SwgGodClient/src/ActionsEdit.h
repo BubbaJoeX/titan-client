@@ -45,6 +45,7 @@ public:
 	ActionHack*             del;
 	ActionHack*             cut;
 	ActionHack*             createObjectFromSelectedTemplate;
+	ActionHack*             makeGroundSpawner;
 	ActionHack*             dropToTerrain;
 	ActionHack*             randomRotate;
 	ActionHack*             applyTransform;
@@ -121,6 +122,7 @@ private slots:
 	void                  onToggleParticleSystemPause() const;
 	void                  onCreateTheater () const;
 	void                  onCreateClientDataFile () const;
+	void                  onMakeGroundSpawner () const;
 	void                  onToggleDropToTerrain () const;
 	void                  onToggleAlignToTerrain () const;
 

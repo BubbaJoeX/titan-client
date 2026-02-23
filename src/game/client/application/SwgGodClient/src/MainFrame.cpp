@@ -20,6 +20,7 @@
 #include "ActionsTool.h"
 #include "ActionsView.h"
 #include "ActionsWindow.h"
+#include "AdvancedCopyPasteWidget.h"
 #include "BookmarkBrowser.h"
 #include "BookmarkData.h"
 #include "BrushData.h"
@@ -82,6 +83,7 @@ MainFrame::MainFrame(QWidget *theParent, const char *theName)
   m_objectEditor(0),
   m_groupObjectWindow(0),
   m_filterWindow(0),
+  m_advancedCopyPasteWidget(0),
   m_bookmarkBrowser(0),
 	m_favoritesWindow(0),
 	m_stackTool(0),
@@ -90,6 +92,7 @@ MainFrame::MainFrame(QWidget *theParent, const char *theName)
   m_objectEditorDock(0),
   m_groupObjectWindowDock(0),
   m_filterWindowDock(0),
+  m_advancedCopyPasteDock(0),
   m_bookmarkBrowserDock(0),
   m_regionsViewDock(0),
 	m_favoritesWindowDock(0),
@@ -155,6 +158,14 @@ MainFrame::MainFrame(QWidget *theParent, const char *theName)
 		QMainWindow::addDockWindow(m_filterWindowDock, Qt::Right);
 		m_filterWindowDock->setCloseMode(QDockWindow::Always);
 //		loadDockWindowSettings(m_settings, m_filterWindowDock);
+
+		m_advancedCopyPasteDock = new QDockWindow(QDockWindow::InDock, this, "Advanced Copy/Paste");
+		m_advancedCopyPasteWidget = new AdvancedCopyPasteWidget(m_advancedCopyPasteDock, "AdvancedCopyPaste Widget");
+		m_advancedCopyPasteDock->setWidget(m_advancedCopyPasteWidget);
+		m_advancedCopyPasteDock->setResizeEnabled(true);
+		QMainWindow::addDockWindow(m_advancedCopyPasteDock, Qt::Right);
+		m_advancedCopyPasteDock->setCloseMode(QDockWindow::Always);
+		m_advancedCopyPasteDock->hide();
 
 		m_treeBrowserDock = new QDockWindow(QDockWindow::InDock, this, "TreeBrowser Window");
 		m_treeBrowser     = new TreeBrowser(m_treeBrowserDock, "treeBrowser Widget");
@@ -452,6 +463,7 @@ MainFrame::MainFrame(QWidget *theParent, const char *theName)
 			IGNORE_RETURN(m_actionsWindow->m_favorites->addTo        (&m_menus.window.menu));
 			IGNORE_RETURN(m_actionsWindow->m_groupObjectEditor->addTo(&m_menus.window.menu));
 			IGNORE_RETURN(m_actionsWindow->m_filters->addTo          (&m_menus.window.menu));
+			IGNORE_RETURN(m_actionsWindow->m_advancedCopyPaste->addTo(&m_menus.window.menu));
 			IGNORE_RETURN(m_actionsWindow->m_console->addTo          (&m_menus.window.menu));
 			IGNORE_RETURN(m_actionsWindow->m_gameWindow->addTo       (&m_menus.window.menu));
 			IGNORE_RETURN(m_actionsWindow->m_regionsView->addTo      (&m_menus.window.menu));
@@ -643,6 +655,7 @@ void MainFrame::closeEvent(QCloseEvent* e)
 
 	saveDockWindowSettings(m_settings, m_groupObjectWindowDock);
 	saveDockWindowSettings(m_settings, m_filterWindowDock);
+	saveDockWindowSettings(m_settings, m_advancedCopyPasteDock);
 	saveDockWindowSettings(m_settings, m_treeBrowserDock);
 	saveDockWindowSettings(m_settings, m_objectEditorDock);
 	saveDockWindowSettings(m_settings, m_bookmarkBrowserDock);
@@ -930,8 +943,9 @@ void MainFrame::showEvent(QShowEvent * event)
 
 		loadDockWindowSettings(m_settings, m_consoleDock);
 		loadDockWindowSettings(m_settings, m_groupObjectWindowDock);
-		loadDockWindowSettings(m_settings, m_filterWindowDock);
-		loadDockWindowSettings(m_settings, m_treeBrowserDock);
+	loadDockWindowSettings(m_settings, m_filterWindowDock);
+	loadDockWindowSettings(m_settings, m_advancedCopyPasteDock);
+	loadDockWindowSettings(m_settings, m_treeBrowserDock);
 		loadDockWindowSettings(m_settings, m_objectEditorDock);
 		loadDockWindowSettings(m_settings, m_bookmarkBrowserDock);
 		loadDockWindowSettings(m_settings, m_favoritesWindowDock);
@@ -942,8 +956,9 @@ void MainFrame::showEvent(QShowEvent * event)
 		m_actionsWindow->m_bookmarks->setOn(m_bookmarkBrowserDock->isVisible());
 		m_actionsWindow->m_favorites->setOn(m_favoritesWindowDock->isVisible());
 		m_actionsWindow->m_groupObjectEditor->setOn(m_groupObjectWindowDock->isVisible());
-		m_actionsWindow->m_filters->setOn(m_filterWindowDock->isVisible());
-		m_actionsWindow->m_console->setOn(m_consoleDock->isVisible());
+	m_actionsWindow->m_filters->setOn(m_filterWindowDock->isVisible());
+	m_actionsWindow->m_advancedCopyPaste->setOn(m_advancedCopyPasteDock->isVisible());
+	m_actionsWindow->m_console->setOn(m_consoleDock->isVisible());
 		m_actionsWindow->m_gameWindow->setOn(m_gameWindow->isVisible());
 	}
 

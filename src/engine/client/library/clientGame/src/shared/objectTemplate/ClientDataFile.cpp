@@ -1282,6 +1282,7 @@ void ClientDataFile::apply (Object* const object) const
 				objectToAdd->yaw_o(transformChildObject->m_orientation.x);
 				objectToAdd->pitch_o(transformChildObject->m_orientation.y);
 				objectToAdd->roll_o(transformChildObject->m_orientation.z);
+				objectToAdd->setScale(object->getScale());
 			}
 
 			RenderWorld::addObjectNotifications (*objectToAdd);
@@ -1394,6 +1395,7 @@ void ClientDataFile::apply (Object* const object) const
 				light->yaw_o (transformLightObject->m_orientation.x);
 				light->pitch_o (transformLightObject->m_orientation.y);
 				light->roll_o (transformLightObject->m_orientation.z);
+				light->setScale (object->getScale ());
 				object->addChildObject_o (light);
 			}
 		}
@@ -1625,6 +1627,7 @@ void ClientDataFile::applyGlows(Object & object, bool skipSelfGlows) const
 			if (!glowData->m_name.empty())
 				nonHardpointObject->setDebugName(glowData->m_name.c_str());
 			nonHardpointObject->setAppearance(glowAppearance);
+			nonHardpointObject->setScale(object.getScale());
 			RenderWorld::addObjectNotifications(*nonHardpointObject);
 			object.addChildObject_o(nonHardpointObject);
 			nonHardpointObject->move_p(glowData->m_position);
@@ -1692,6 +1695,7 @@ void ClientDataFile::applyOnOff (Object* const object, const bool on) const
 				objectToAdd->yaw_o (onOffObject->m_orientation.x);
 				objectToAdd->pitch_o (onOffObject->m_orientation.y);
 				objectToAdd->roll_o (onOffObject->m_orientation.z);
+				objectToAdd->setScale (object->getScale ());
 			}
 
 			if (onOffObject->m_appearanceTemplate)
@@ -1724,6 +1728,7 @@ void ClientDataFile::applyOnOff (Object* const object, const bool on) const
 				objectToAdd->yaw_o (onOffObject->m_orientation.x);
 				objectToAdd->pitch_o (onOffObject->m_orientation.y);
 				objectToAdd->roll_o (onOffObject->m_orientation.z);
+				objectToAdd->setScale (object->getScale ());
 			}
 
 			if (onOffObject->m_appearanceTemplate)
@@ -1990,6 +1995,7 @@ void ClientDataFile::applyDamage (Object* const object, const int index) const
 			objectToAdd->yaw_o (damageLevel->m_orientation.x);
 			objectToAdd->pitch_o (damageLevel->m_orientation.y);
 			objectToAdd->roll_o (damageLevel->m_orientation.z);
+			objectToAdd->setScale (object->getScale ());
 			RenderWorld::addObjectNotifications (*objectToAdd);
 		}
 

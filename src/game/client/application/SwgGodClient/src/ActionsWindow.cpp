@@ -45,6 +45,7 @@ ActionsWindow::ActionsWindow()
   m_favorites(0),
   m_groupObjectEditor(0),
   m_filters(0),
+  m_advancedCopyPaste(0),
   m_console(0),
   m_gameWindow(0),
   m_regionsView(0),
@@ -58,6 +59,7 @@ ActionsWindow::ActionsWindow()
 	m_favorites         = new ActionHack("Favorites",           IL_PIXMAP(hi16_action_window_new),   "Fa&vorites",            0, p, "favorites",         true);
 	m_groupObjectEditor = new ActionHack("Group Object Editor", IL_PIXMAP(hi16_action_window_new),   "G&roup Object Editor",  0, p, "groupobjecteditor", true);
 	m_filters           = new ActionHack("Filters",             IL_PIXMAP(hi16_action_window_new),   "&Filters",              0, p, "filters",           true);
+	m_advancedCopyPaste = new ActionHack("Advanced Copy/Paste", IL_PIXMAP(hi16_action_window_new),   "Ad&vanced Copy/Paste",  0, p, "advancedcopypaste", true);
 	m_treeBrowser       = new ActionHack("Tree Browser",        IL_PIXMAP(hi16_action_window_new),   "&Tree Browser",         0, p, "treebrowser",       true);
 	m_console           = new ActionHack("Console",             IL_PIXMAP(hi16_action_window_new),   "&Console",              0, p, "console",           true);
 	m_gameWindow        = new ActionHack("Game Window",         IL_PIXMAP(hi16_action_window_new),   "&Game Window",          0, p, "game_window",       true);
@@ -71,6 +73,7 @@ ActionsWindow::ActionsWindow()
 	IGNORE_RETURN(connect(m_favorites,         SIGNAL(toggled(bool)), this, SLOT(onFavorites        (bool))));
 	IGNORE_RETURN(connect(m_groupObjectEditor, SIGNAL(toggled(bool)), this, SLOT(onGroupObjectEditor(bool))));
 	IGNORE_RETURN(connect(m_filters,           SIGNAL(toggled(bool)), this, SLOT(onFilters          (bool))));
+	IGNORE_RETURN(connect(m_advancedCopyPaste, SIGNAL(toggled(bool)), this, SLOT(onAdvancedCopyPaste(bool))));
 	IGNORE_RETURN(connect(m_console,           SIGNAL(toggled(bool)), this, SLOT(onConsole          (bool))));
 	IGNORE_RETURN(connect(m_gameWindow,        SIGNAL(toggled(bool)), this, SLOT(onGameWindow       (bool))));
 	IGNORE_RETURN(connect(m_regionsView,       SIGNAL(toggled(bool)), this, SLOT(onRegionsView      (bool))));
@@ -104,6 +107,7 @@ ActionsWindow::~ActionsWindow()
 	m_favorites         = 0;
 	m_groupObjectEditor = 0;
 	m_filters           = 0;
+	m_advancedCopyPaste = 0;
 	m_console           = 0;
 	m_gameWindow        = 0;
 	m_regionsView       = 0;
@@ -168,6 +172,16 @@ void ActionsWindow::onFilters(bool b) const
 		MainFrame::getInstance().m_filterWindowDock->show();
 	else
 		MainFrame::getInstance().m_filterWindowDock->hide();
+}
+
+//----------------------------------------------------------------------
+
+void ActionsWindow::onAdvancedCopyPaste(bool b) const
+{
+	if(b)
+		MainFrame::getInstance().m_advancedCopyPasteDock->show();
+	else
+		MainFrame::getInstance().m_advancedCopyPasteDock->hide();
 }
 
 //----------------------------------------------------------------------

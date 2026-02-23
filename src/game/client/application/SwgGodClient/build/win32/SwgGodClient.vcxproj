@@ -787,6 +787,18 @@ for /r "D:\titan\client\src\compile\win32" %%f in (*_r.dll) do copy /Y "%%f" "D:
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
     </ClCompile>
+    <ClCompile Include="..\..\src\AdvancedCopyPasteWidget.cpp">
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="..\..\src\MakeGroundSpawnerDialog.cpp">
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+    </ClCompile>
     <ClCompile Include="..\..\src\ActionsFile.cpp">
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
@@ -1158,6 +1170,17 @@ for /r "D:\titan\client\src\compile\win32" %%f in (*_r.dll) do copy /Y "%%f" "D:
     <ClInclude Include="..\..\..\..\..\..\compile\win32\SwgGodClient\Release\BaseTreeBrowser.h" />
     <ClInclude Include="..\..\..\..\..\..\compile\win32\SwgGodClient\Release\BaseTriggerWindow.h" />
     <ClInclude Include="..\..\src\AbstractFilesystemTree.h" />
+    <CustomBuild Include="..\..\src\MakeGroundSpawnerDialog.h">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+    </CustomBuild>
     <CustomBuild Include="..\..\src\ActionHack.h">
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">moc %(Filename)</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
@@ -1170,6 +1193,17 @@ for /r "D:\titan\client\src\compile\win32" %%f in (*_r.dll) do copy /Y "%%f" "D:
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
     </CustomBuild>
     <CustomBuild Include="..\..\src\ActionsBuildoutArea.h">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="..\..\src\AdvancedCopyPasteWidget.h">
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">moc %(Filename)</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>

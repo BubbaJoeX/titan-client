@@ -23,6 +23,8 @@
 #include <map>
 #include <set>
 #include <list>
+#include <vector>
+#include <vector>
 
 // ======================================================================
 
@@ -67,6 +69,7 @@ public:
 		static const char* const GHOSTS_CREATED;
 		static const char* const GHOSTS_KILLED;
 		static const char* const PALETTES_CHANGED;
+		static const char* const PATROL_WAYPOINT_PLACEMENT_CHANGED;
 	};
 
 	struct SelectedObject
@@ -87,10 +90,13 @@ public:
 		std::string sharedObjectTemplateName;
 		std::string const & getObjectTemplateName() const;
 		Transform   transform;
+		Vector      scale;
+		std::vector<std::string> scripts;
+		std::vector<std::string> objvars;
 		NetworkId   networkId;
 
 		ClipboardObject();
-		explicit ClipboardObject(const Object& obj);
+		explicit ClipboardObject(const Object& obj, bool copyTransform, bool copyScale, bool copyScripts, bool copyObjvars);
 
 		Object* findInClientWorld() const;
 	};
@@ -158,6 +164,15 @@ public:
 	void             getSphereTreeSnapshot      ();
 	void             showTriggerVolumes         ();
 	void             clearSpheres               ();
+
+	void             addPatrolWaypoint          (Vector const & point);
+	void             clearPatrolWaypoints       ();
+	void             removeLastPatrolWaypoint   ();
+	std::vector<Vector> const & getPatrolWaypoints () const;
+	bool             getPatrolWaypointPlacementMode () const;
+	void             setPatrolWaypointPlacementMode (bool on);
+	void             setPatrolPathType          (std::string const & type);
+	std::string      getPatrolPathType          () const;
 	void             snapToGridDlg              ();
 	void             stackObjects               (int count, int orientationIndex, real distanceFromExtent, bool useMeshExtent = false);
 	void             setTransformDlg            ();
@@ -214,6 +229,7 @@ public:
 	void             translateSelectionY           (real y);
 	void             scaleSelection                (real dx, real dy);
 	void             scaleSelectionY               (real dy);
+	void             scaleSelectionUniform         (real dy);
 	void             translateGhosts               (const Vector& v, bool alongGround);
 	void             scaleGhosts                   (const Vector& v);
 	void             rotateGhosts                  (const real v, RotationType type, RotationPivotType pivotType);
@@ -231,6 +247,14 @@ public:
 	//---clipboard-related functions-----------------------------------
 	void             copySelection                 ();
 	void             clearClipboard                ();
+	void             setCopyTransform              (bool v);
+	void             setCopyScale                  (bool v);
+	void             setCopyScripts                (bool v);
+	void             setCopyObjvars                (bool v);
+	bool             getCopyTransform              () const;
+	bool             getCopyScale                  () const;
+	bool             getCopyScripts               () const;
+	bool             getCopyObjvars               () const;
 	bool             getClipboardEmpty             () const;
 	void             getClipboard                  (ClipboardList_t& objectList) const;
 	void             setCurrentBrush               (const ClipboardList_t& brush);
@@ -354,6 +378,15 @@ private:
 	bool                          m_toggleAlignToTerrainOn;
 
 	ClipboardList_t               m_currentBrush;
+
+	bool                          m_copyTransform;
+	bool                          m_copyScale;
+	bool                          m_copyScripts;
+	bool                          m_copyObjvars;
+
+	std::vector<Vector>           m_patrolWaypoints;
+	bool                          m_patrolWaypointPlacementMode;
+	std::string                   m_patrolPathType;
 };
 
 // ----------------------------------------------------------------------
