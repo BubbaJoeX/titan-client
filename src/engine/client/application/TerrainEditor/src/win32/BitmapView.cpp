@@ -472,8 +472,11 @@ void BitmapView::reset ()
 		IGNORE_RETURN (GetTreeCtrl ().SetItemData (familyRoot, static_cast<DWORD> (familyId)));
 	}
 
+	const bool wasDeleting = deletingUnused;
+	deletingUnused = true;
 	IGNORE_RETURN (GetTreeCtrl ().SelectItem (GetTreeCtrl ().GetRootItem ()));
 	IGNORE_RETURN (GetTreeCtrl ().EnsureVisible (GetTreeCtrl ().GetRootItem()));
+	deletingUnused = wasDeleting;
 }
 
 //-------------------------------------------------------------------

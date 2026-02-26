@@ -22,7 +22,7 @@ private:
 
 	EnvironmentGroup*    environmentGroup;
 
-	bool                 deletingUnused;
+	mutable bool         deletingUnused;
 
 private:
 

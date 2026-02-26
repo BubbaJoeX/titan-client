@@ -1511,8 +1511,12 @@ void MapView::OnDraw(CDC* pDC)
 {
 	UNREF (pDC);
 
+	static int s_drawCount = 0;
+
 	if (!terrain)
+	{
 		return;
+	}
 
 	TerrainEditorDoc* doc = static_cast<TerrainEditorDoc*>(GetDocument());
 	UNREF (doc);
@@ -1573,6 +1577,8 @@ void MapView::OnDraw(CDC* pDC)
 
 	Graphics::endScene ();
 	Graphics::present(m_hWnd, rect.Width (), rect.Height ());
+
+	s_drawCount++;
 }
 
 //-------------------------------------------------------------------
@@ -1596,6 +1602,9 @@ void MapView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 	UNREF (pSender);
 	UNREF (lHint);
 	UNREF (pHint);
+
+	static int s_updateCount = 0;
+	s_updateCount++;
 
 	if (lHint == TerrainEditorDoc::H_layerViewApply)
 	{

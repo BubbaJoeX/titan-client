@@ -70,6 +70,7 @@ private:
 
 	bool        imageListSet;
 	CImageList  imageList;
+	bool        initializing;
 
 	HCURSOR     moveCursor;
 	HCURSOR     copyCursor;

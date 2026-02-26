@@ -96,8 +96,10 @@
 #include "BrushData.h"
 #include "BuildoutAreaSupport.h"
 #include "BaseGotoDialog.h"
+#include "ConfigFileControl.h"
 #include "ConfigGodClient.h"
 #include "FavoritesListView.h"
+#include "FileControlClient.h"
 #include "FavoritesWindow.h"
 #include "FilesystemTree.h"
 #include "FormWindow.h"
@@ -184,6 +186,11 @@ namespace GameWidgetNamespace
 	std::string s_lastBuildoutFileOpened;
 	bool        s_askQuestionAboutBuildoutFiles = true;
 	bool        s_openBuildoutFiles = false;
+}
+
+static void fileControlLogToConsole(const char * message)
+{
+	MainFrame::getInstance().textToConsole(message);
 }
 
 using namespace GameWidgetNamespace;
@@ -422,6 +429,9 @@ GameWidget::GameWidget(QWidget* theParent, const char*theName)
 	Clock::noFrameRateLimit();
 
 	ConfigGodClient::install();
+	ConfigFileControl::install();
+	FileControlClient::install();
+	FileControlClient::setLogCallback(fileControlLogToConsole);
 
 	if(ConfigGodClient::getData().frameRateLimit)
 		setFrameRateLimit(ConfigGodClient::getData().frameRateLimit);

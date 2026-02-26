@@ -18,6 +18,7 @@
 #include "sharedFoundation/ExitChain.h"
 #include "sharedFoundation/Os.h"
 #include "sharedLog/Log.h"
+#include "sharedNetwork/NetworkHandler.h"
 #include "sharedNetwork/NetworkSetupData.h"
 #include "sharedNetwork/Service.h"
 
@@ -141,6 +142,9 @@ void FileControlServer::update()
 {
 	if (!ms_running || !ms_service)
 		return;
+
+	NetworkHandler::update();
+	NetworkHandler::dispatch();
 
 	unsigned long now = static_cast<unsigned long>(Os::getRealSystemTime());
 	if (now != ms_lastRateLimitTime)
@@ -1017,13 +1021,16 @@ void FileControlServer::collectDirectoryFiles(const std::string & dirPath, const
 
 		if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 		{
-			collectDirectoryFiles(dirPath, relativePath, outFiles, outSizes, outCrcs);
+			relativePath += "/";
+			outFiles.push_back(relativePath);
+			outSizes.push_back(0);
+			outCrcs.push_back(0);
 		}
 		else
 		{
 			outFiles.push_back(relativePath);
 			outSizes.push_back(static_cast<unsigned long>(findData.nFileSizeLow));
-			outCrcs.push_back(getFileCrc(relativePath));
+			outCrcs.push_back(0);
 		}
 	} while (FindNextFileA(hFind, &findData));
 
@@ -1051,13 +1058,16 @@ void FileControlServer::collectDirectoryFiles(const std::string & dirPath, const
 		{
 			if (S_ISDIR(st.st_mode))
 			{
-				collectDirectoryFiles(dirPath, relativePath, outFiles, outSizes, outCrcs);
+				relativePath += "/";
+				outFiles.push_back(relativePath);
+				outSizes.push_back(0);
+				outCrcs.push_back(0);
 			}
 			else
 			{
 				outFiles.push_back(relativePath);
 				outSizes.push_back(static_cast<unsigned long>(st.st_size));
-				outCrcs.push_back(getFileCrc(relativePath));
+				outCrcs.push_back(0);
 			}
 		}
 	}

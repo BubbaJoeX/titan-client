@@ -385,7 +385,6 @@ bool DatatableEditorWindow::writeTabFile(const std::string & path)
 		}
 		fputc('\n', fp);
 	}
-
 	fclose(fp);
 	return true;
 }

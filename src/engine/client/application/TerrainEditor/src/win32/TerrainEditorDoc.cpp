@@ -484,6 +484,7 @@ BOOL TerrainEditorDoc::OnOpenDocument(LPCTSTR lpszPathName)
 			}
 
 			Tag version = iff.getCurrentName();
+
 			if (version>=TAG_0013 && version<=TAG_0015)
 			{
 				_load(iff, version);

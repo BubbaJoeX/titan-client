@@ -27,11 +27,33 @@ private:
 	
 	real           yaw;
 	real           pitch;
+	real           moveSpeed;
+	real           drawDistance;
+	real           timeOfDay;
 
 	uint           timer;
 	const uint     milliseconds;
 	real           elapsedTime;
 	bool           render;
+	bool           hooksInstalled;
+	bool           needsRedraw;
+	bool           environmentInitialized;
+
+	CPoint         lastMousePoint;
+	bool           lastMouseValid;
+
+	void           clearTerrain ();
+	void           loadTerrain ();
+	void           playEnvironmentMusic ();
+
+public:
+
+	void           setDrawDistance (real distance);
+	void           setMoveSpeed (real speed);
+	void           setTimeOfDay (real time);
+	real           getDrawDistance () const { return drawDistance; }
+	real           getMoveSpeed () const { return moveSpeed; }
+	real           getTimeOfDay () const { return timeOfDay; }
 
 protected:
 
@@ -41,8 +63,10 @@ protected:
 	//{{AFX_VIRTUAL(View3dView)
 	public:
 	virtual void OnInitialUpdate();
+	virtual void OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint);
+	virtual BOOL PreTranslateMessage(MSG* pMsg);
 	protected:
-	virtual void OnDraw(CDC* pDC);      // overridden to draw this view
+	virtual void OnDraw(CDC* pDC);
 	//}}AFX_VIRTUAL
 
 protected:
@@ -58,6 +82,13 @@ protected:
 
 	//{{AFX_MSG(View3dView)
 	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
+	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
+	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
+	afx_msg void OnRButtonDown(UINT nFlags, CPoint point);
+	afx_msg void OnRButtonUp(UINT nFlags, CPoint point);
+	afx_msg void OnMButtonDown(UINT nFlags, CPoint point);
+	afx_msg void OnMButtonUp(UINT nFlags, CPoint point);
+	afx_msg BOOL OnMouseWheel(UINT nFlags, short zDelta, CPoint pt);
 	afx_msg void OnSize(UINT nType, int cx, int cy);
 	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
 	afx_msg void OnDestroy();

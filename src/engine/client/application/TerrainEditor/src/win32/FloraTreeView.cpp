@@ -903,8 +903,11 @@ void FloraTreeView::reset (void)
 	//-- expand the tree
 	expandAll ();
 
+	const bool wasDeleting = deletingUnused;
+	deletingUnused = true;
 	IGNORE_RETURN (GetTreeCtrl ().SelectItem (GetTreeCtrl ().GetRootItem ()));
 	IGNORE_RETURN (GetTreeCtrl ().EnsureVisible (GetTreeCtrl ().GetRootItem()));
+	deletingUnused = wasDeleting;
 }
 
 //-------------------------------------------------------------------

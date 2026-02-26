@@ -64,6 +64,7 @@
 #include "clientObject/SetupClientObject.h"
 #include "clientParticle/SetupClientParticle.h"
 #include "clientSkeletalAnimation/SetupClientSkeletalAnimation.h"
+#include "clientTerrain/SetupClientTerrain.h"
 #include "clientTextureRenderer/SetupClientTextureRenderer.h"
 #include "sharedCompression/SetupSharedCompression.h"
 #include "sharedDebug/SetupSharedDebug.h"
@@ -309,6 +310,7 @@ BOOL TerrainEditorApp::InitInstance()
 	}
 
 	AfxEnableControlContainer();
+	AfxSetAmbientActCtx(FALSE);
 
 	// Standard initialization
 	// If you are not using these features and wish to reduce the size
@@ -495,7 +497,7 @@ BOOL TerrainEditorApp::InitInstance()
 
         if (ApplicationVersion::isBootlegBuild())
         {
-	        ToolBugReporting::startCrashReporter();
+		ToolBugReporting::startCrashReporter();
         }
 
 		SetupSharedCompression::install();
@@ -558,6 +560,9 @@ BOOL TerrainEditorApp::InitInstance()
 		SetupClientObject::Data setupClientObjectData;
 		SetupClientObject::setupToolData (setupClientObjectData);
 		SetupClientObject::install (setupClientObjectData);
+
+		//-- client terrain (appearance templates, chunk rendering, flora)
+		SetupClientTerrain::install ();
 	}
 
 	// -qq- don't like these being hard-coded
@@ -627,10 +632,10 @@ TerrainEditorDoc* TerrainEditorApp::getDocument (void)
 	//-- only display the new view if there is a document
 	if (m_pMainWnd)
 	{
-		CMDIFrameWnd* mdiFrameWnd = static_cast<CMDIFrameWnd*> (static_cast<MainFrame*> (m_pMainWnd)->GetActiveFrame ());
+		CFrameWnd* frameWnd = static_cast<MainFrame*> (m_pMainWnd)->GetActiveFrame ();
 
-		if (mdiFrameWnd && mdiFrameWnd->GetActiveDocument ())
-			return static_cast<TerrainEditorDoc*> (mdiFrameWnd->GetActiveDocument ());
+		if (frameWnd && frameWnd->GetActiveDocument ())
+			return static_cast<TerrainEditorDoc*> (frameWnd->GetActiveDocument ());
 	}
 
 	return 0;

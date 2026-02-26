@@ -367,7 +367,10 @@ void FractalView::OnInitialUpdate()
 	TerrainEditorDoc* doc = safe_cast<TerrainEditorDoc*> (GetDocument ());
 	NOT_NULL (doc);
 
-	fractalGroup = &doc->getTerrainGenerator ()->getFractalGroup ();
+	TerrainGenerator* gen = doc->getTerrainGenerator();
+	NOT_NULL (gen);
+
+	fractalGroup = &gen->getFractalGroup ();
 	NOT_NULL (fractalGroup);
 
 	reset ();
@@ -460,8 +463,11 @@ void FractalView::reset ()
 		IGNORE_RETURN (GetTreeCtrl ().SetItemData (familyRoot, static_cast<DWORD> (familyId)));
 	}
 
+	const bool wasDeleting = deletingUnused;
+	deletingUnused = true;
 	IGNORE_RETURN (GetTreeCtrl ().SelectItem (GetTreeCtrl ().GetRootItem ()));
 	IGNORE_RETURN (GetTreeCtrl ().EnsureVisible (GetTreeCtrl ().GetRootItem()));
+	deletingUnused = wasDeleting;
 }
 
 //-------------------------------------------------------------------

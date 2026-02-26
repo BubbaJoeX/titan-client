@@ -48,8 +48,10 @@ END_MESSAGE_MAP()
 int FractalFrame::OnCreate(LPCREATESTRUCT lpCreateStruct) 
 {
 	if (CMDIChildWnd::OnCreate(lpCreateStruct) == -1)
+	{
 		return -1;
-	
+	}
+
 	//-- create tool bar
 	if (!m_wndToolBar.CreateEx(this) ||
 		!m_wndToolBar.LoadToolBar(IDR_FRACTALGROUPFRAME))

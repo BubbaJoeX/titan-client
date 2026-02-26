@@ -3,9 +3,8 @@
 // BuildoutEditorWindow.h
 // copyright 2024 Sony Online Entertainment
 //
-// Renders the planet map with an overlay grid of buildout areas.
-// Allows selection of areas to save en masse. 1024x768 window with
-// a Save button that activates when at least one area is selected.
+// Buildout Manager: renders the planet map with an overlay grid of
+// buildout areas. Supports selection, save, and reload of areas.
 //
 // ======================================================================
 
@@ -15,6 +14,7 @@
 // ======================================================================
 
 #include <qdialog.h>
+#include <qimage.h>
 #include <string>
 #include <vector>
 
@@ -40,13 +40,19 @@ public:
 		float       x2;
 		float       z2;
 		bool        selected;
+		bool        isEvent;
 	};
 
 	void setPlanetName(const std::string & planet);
+	void setMapImage(const QImage & image);
+	void setMapBounds(float minX, float minZ, float maxX, float maxZ);
 	void setBuildoutAreas(const std::vector<BuildoutArea> & areas);
+	void setShowEvents(bool showEvents);
+	bool getShowEvents() const;
 	const std::vector<BuildoutArea> & getBuildoutAreas() const;
 	int  getSelectedCount() const;
 	std::vector<std::string> getSelectedAreaNames() const;
+	std::vector<std::string> getAllSelectedAreaNames() const;
 
 signals:
 	void selectionChanged(int selectedCount);
@@ -61,9 +67,18 @@ private:
 
 	int findAreaAtPoint(int px, int py) const;
 	void worldToScreen(float wx, float wz, int & sx, int & sy) const;
+	void getSquareViewport(int & ox, int & oy, int & side) const;
+	void recomputeWorldBounds();
 
 	std::string m_planetName;
 	std::vector<BuildoutArea> m_areas;
+	QImage m_mapImage;
+	bool m_showEvents;
+
+	float m_mapMinX;
+	float m_mapMinZ;
+	float m_mapMaxX;
+	float m_mapMaxZ;
 
 	float m_worldMinX;
 	float m_worldMinZ;
@@ -87,18 +102,25 @@ signals:
 
 public slots:
 	void onSave();
+	void onReloadArea();
 	void onPlanetChanged(const QString & planet);
 	void onSelectionChanged(int count);
+	void onToggleMode();
 
 private:
 	BuildoutEditorWindow(const BuildoutEditorWindow &);
 	BuildoutEditorWindow & operator=(const BuildoutEditorWindow &);
 
 	void loadPlanetBuildouts(const std::string & planet);
+	bool loadPlanetMapImage(const std::string & planet);
+	void updateModeButton();
 
 	BuildoutAreaWidget * m_areaWidget;
 	QPushButton *        m_saveButton;
+	QPushButton *        m_reloadButton;
+	QPushButton *        m_modeButton;
 	QLabel *             m_statusLabel;
+	QLabel *             m_selectionLabel;
 	QComboBox *          m_planetCombo;
 	std::string          m_currentPlanet;
 };

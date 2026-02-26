@@ -77,6 +77,9 @@ void PropertyFrame::RefreshView ()
 
 void PropertyFrame::ChangeView (CRuntimeClass* cls, PropertyView::ViewData* vd)
 {
+	if (!GetSafeHwnd())
+		return;
+
 	CCreateContext ccc;
 	ccc.m_pNewViewClass   = cls ? cls : RUNTIME_CLASS (PropertyView);
 	ccc.m_pCurrentDoc     = GetActiveDocument();
@@ -84,12 +87,13 @@ void PropertyFrame::ChangeView (CRuntimeClass* cls, PropertyView::ViewData* vd)
 	ccc.m_pLastView       = NULL;
 	ccc.m_pNewDocTemplate = NULL;
 
-	// Destroy current view.
-	IGNORE_RETURN (GetActiveView ()->DestroyWindow ());
-
-	// Load new view.
+	CView* oldView = GetActiveView();
+	if (oldView)
+		IGNORE_RETURN (oldView->DestroyWindow ());
 
 	PropertyView* newView = static_cast<PropertyView*> (CreateView (&ccc));
+	if (!newView)
+		return;
 
 	newView->Initialize (vd);
 	newView->OnInitialUpdate ();

@@ -24,6 +24,8 @@ class FileControlClient
 {
 public:
 
+	typedef void (*LogCallback)(const char * message);
+
 	enum ClientCommand
 	{
 		CC_NONE,
@@ -36,10 +38,25 @@ public:
 	static void install();
 	static void remove();
 	static void update();
+	static void setLogCallback(LogCallback cb);
 
 	static bool executeCommand(ClientCommand command, const std::string & filePath);
 	static bool isConnected();
 	static bool isDone();
+
+	// GodClient API — works over a raw TCP socket to the FileControl server.
+	// All request* methods are thread-safe (serialized via internal lock).
+	static bool ensureConnected();
+	static bool requestSendAsset(const std::string & relativePath);
+	static bool requestRetrieveAsset(const std::string & relativePath, std::vector<unsigned char> & outData);
+	static bool requestReloadAsset(const std::string & relativePath);
+	static bool requestBroadcastUpdate();
+	static bool requestUpdateDbTemplates();
+	static bool requestVerifyAsset(const std::string & relativePath, unsigned long & outSize, unsigned long & outCrc);
+	static bool requestFlush();
+	static bool requestDirectoryListing(const std::string & rootPath, std::vector<std::string> & outFiles, std::vector<unsigned long> & outSizes, std::vector<unsigned long> & outCrcs);
+	static void lockApi();
+	static void unlockApi();
 
 private:
 
@@ -48,7 +65,11 @@ private:
 	FileControlClient & operator=(const FileControlClient &);
 
 	static bool connect();
-	static bool authenticate();
+	static bool sendRawMessage(const std::vector<unsigned char> & msg);
+	static bool recvRawMessage(std::vector<unsigned char> & msg, int timeoutMs);
+	static void handleIncomingMessage(const std::vector<unsigned char> & msg);
+	static bool recvExpectedMessage(uint8 expectedType, std::vector<unsigned char> & outPayload, int timeoutMs);
+
 	static bool readLocalFile(const std::string & filePath, std::vector<unsigned char> & data);
 	static bool writeLocalFile(const std::string & filePath, const std::vector<unsigned char> & data);
 	static unsigned long getLocalFileCrc(const std::string & filePath);
@@ -60,6 +81,10 @@ private:
 	static bool doCompareFile(const std::string & filePath);
 	static bool doTestRun(const std::string & filePath);
 
+	static void logMessage(const char * fmt, ...);
+
+	static LogCallback             ms_logCallback;
+	static int64                   ms_rawSocket;
 	static FileControlConnection * ms_connection;
 	static bool                    ms_connected;
 	static bool                    ms_authenticated;

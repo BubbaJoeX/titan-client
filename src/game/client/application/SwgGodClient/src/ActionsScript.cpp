@@ -314,8 +314,9 @@ void ActionsScript::onCompile() const
 //----------------------------------------------------------------------
 
 /**
- * Simply convert all / to .
- * Does not strip .class or .script suffix
+ * Convert script path to classpath:
+ * - replace / with .
+ * - strip trailing .class suffix
  */
 const std::string ActionsScript::convertToClasspath(const std::string & path)
 {
@@ -328,6 +329,9 @@ const std::string ActionsScript::convertToClasspath(const std::string & path)
 		classPath [slashPos] = '.';
 		slashPos = classPath.find('/', slashPos + 1);
 	}
+
+	if (classPath.size() > 6 && classPath.compare(classPath.size() - 6, 6, ".class") == 0)
+		classPath.erase(classPath.size() - 6);
 
 	return classPath;
 }

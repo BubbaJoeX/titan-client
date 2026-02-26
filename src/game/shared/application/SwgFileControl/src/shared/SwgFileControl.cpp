@@ -120,68 +120,51 @@ int main(int argc, char ** argv)
 void SwgFileControl::run()
 {
 	printf("SwgFileControl " __DATE__ " " __TIME__ "\n");
+	fflush(stdout);
 
+	printf("  isServerMode = %s\n", ConfigFileControl::isServerMode() ? "true" : "false");
+	fflush(stdout);
+
+	// Check server mode FIRST, before command line parsing
+	if (ConfigFileControl::isServerMode())
+	{
+		runServer();
+		return;
+	}
+
+	// Not server mode — parse command line for client commands
 	const CommandLine::MatchCode mc = CommandLine::parseOptions(optionSpecArray, optionSpecCount);
 
-	if (mc != CommandLine::MC_MATCH)
+	if (mc == CommandLine::MC_MATCH)
 	{
-		// No command line args: if server config exists, run as server
-		if (ConfigFileControl::isServerMode())
+		if (CommandLine::getOccurrenceCount(SNAME_HELP))
 		{
-			runServer();
+			usage();
 			return;
 		}
 
-		printf("Invalid command line. Use --help for usage.\n");
-		usage();
-		return;
-	}
+		if (CommandLine::getOccurrenceCount(SNAME_FILE_SERVER_KEY))
+			ms_fileServerKey = CommandLine::getOptionString(SNAME_FILE_SERVER_KEY);
 
-	if (CommandLine::getOccurrenceCount(SNAME_HELP))
-	{
-		usage();
-		return;
-	}
+		if (CommandLine::getOccurrenceCount(SNAME_UPDATE_FILE))
+			ms_updateFile = CommandLine::getOptionString(SNAME_UPDATE_FILE);
+		else if (CommandLine::getOccurrenceCount(SNAME_DOWNLOAD_FILE))
+			ms_downloadFile = CommandLine::getOptionString(SNAME_DOWNLOAD_FILE);
+		else if (CommandLine::getOccurrenceCount(SNAME_COMPARE_FILE))
+			ms_compareFile = CommandLine::getOptionString(SNAME_COMPARE_FILE);
+		else if (CommandLine::getOccurrenceCount(SNAME_TEST_RUN))
+			ms_testRunFile = CommandLine::getOptionString(SNAME_TEST_RUN);
 
-	// Override fileServerKey from command line if provided
-	if (CommandLine::getOccurrenceCount(SNAME_FILE_SERVER_KEY))
-	{
-		ms_fileServerKey = CommandLine::getOptionString(SNAME_FILE_SERVER_KEY);
-	}
-
-	// Determine which client command to run
-	if (CommandLine::getOccurrenceCount(SNAME_UPDATE_FILE))
-	{
-		ms_updateFile = CommandLine::getOptionString(SNAME_UPDATE_FILE);
-	}
-	else if (CommandLine::getOccurrenceCount(SNAME_DOWNLOAD_FILE))
-	{
-		ms_downloadFile = CommandLine::getOptionString(SNAME_DOWNLOAD_FILE);
-	}
-	else if (CommandLine::getOccurrenceCount(SNAME_COMPARE_FILE))
-	{
-		ms_compareFile = CommandLine::getOptionString(SNAME_COMPARE_FILE);
-	}
-	else if (CommandLine::getOccurrenceCount(SNAME_TEST_RUN))
-	{
-		ms_testRunFile = CommandLine::getOptionString(SNAME_TEST_RUN);
-	}
-
-	// If no client command specified, check if we should be server
-	if (ms_updateFile.empty() && ms_downloadFile.empty() && ms_compareFile.empty() && ms_testRunFile.empty())
-	{
-		if (ConfigFileControl::isServerMode())
+		if (!ms_updateFile.empty() || !ms_downloadFile.empty() || !ms_compareFile.empty() || !ms_testRunFile.empty())
 		{
-			runServer();
+			runClient();
 			return;
 		}
-
-		printf("No command specified. Use --help for usage.\n");
-		usage();
-		return;
 	}
 
-	runClient();
+	printf("No command specified and no [SwgFileControl] server config found.\n");
+	fflush(stdout);
+	usage();
 }
 
 // ======================================================================
@@ -189,9 +172,18 @@ void SwgFileControl::run()
 void SwgFileControl::runServer()
 {
 	printf("Starting in SERVER mode...\n");
+	fflush(stdout);
 	LOG("FileControl", ("Starting server mode"));
 
+	printf("  Installing FileControlServer...\n");
+	fflush(stdout);
+
 	FileControlServer::install();
+
+	printf("  Server installed. Listening on %s:%d\n", ConfigFileControl::getHost(), ConfigFileControl::getPort());
+	printf("  Channel: %s\n", ConfigFileControl::getChannel());
+	printf("  Press Ctrl+C to stop.\n");
+	fflush(stdout);
 
 	while (FileControlServer::isRunning())
 	{
@@ -199,7 +191,13 @@ void SwgFileControl::runServer()
 		Os::sleep(10);
 	}
 
+	printf("  Server shutting down...\n");
+	fflush(stdout);
+
 	FileControlServer::remove();
+
+	printf("  Server stopped.\n");
+	fflush(stdout);
 }
 
 // ======================================================================

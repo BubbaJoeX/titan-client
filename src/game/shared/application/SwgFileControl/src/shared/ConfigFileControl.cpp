@@ -34,6 +34,11 @@ namespace ConfigFileControlNamespace
 	bool         ms_disableReload              = false;
 	const char * ms_antBuildPath               = 0;
 
+	// Cluster console (server-only, but kept in sync)
+	const char * ms_centralConsoleHost        = 0;
+	int          ms_centralConsolePort        = 61000;
+	bool         ms_enableClusterReload       = false;
+
 	// Client [ClientGame]
 	const char * ms_clientHost                 = 0;
 	int          ms_clientPort                 = 44411;
@@ -77,6 +82,11 @@ void ConfigFileControl::install()
 	KEY_BOOL  (SwgFileControl, disableReload,              false);
 	KEY_STRING(SwgFileControl, antBuildPath,               "/home/swg/swg-main");
 
+	// Cluster console
+	KEY_STRING(SwgFileControl, centralConsoleHost,         "");
+	KEY_INT   (SwgFileControl, centralConsolePort,         61000);
+	KEY_BOOL  (SwgFileControl, enableClusterReload,        false);
+
 	// Client configuration
 	KEY_STRING(ClientGame, clientHost,                     "127.0.0.1");
 	KEY_INT   (ClientGame, clientPort,                     44411);
@@ -117,6 +127,9 @@ const char * ConfigFileControl::getWhitelistExtensions()        { return ms_whit
 bool         ConfigFileControl::getBackupBeforeReload()         { return ms_backupBeforeReload; }
 bool         ConfigFileControl::getDisableReload()              { return ms_disableReload; }
 const char * ConfigFileControl::getAntBuildPath()               { return ms_antBuildPath; }
+const char * ConfigFileControl::getCentralConsoleHost()         { return ms_centralConsoleHost; }
+int          ConfigFileControl::getCentralConsolePort()         { return ms_centralConsolePort; }
+bool         ConfigFileControl::getEnableClusterReload()        { return ms_enableClusterReload; }
 
 // ======================================================================
 // Client accessors

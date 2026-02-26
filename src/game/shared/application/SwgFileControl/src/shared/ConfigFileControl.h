@@ -37,6 +37,11 @@ public:
 	static bool         getDisableReload();
 	static const char * getAntBuildPath();
 
+	// Cluster console connection (for broadcasting reloads to game servers)
+	static const char * getCentralConsoleHost();
+	static int          getCentralConsolePort();
+	static bool         getEnableClusterReload();
+
 	// Client configuration [ClientGame]
 	static const char * getClientHost();
 	static int          getClientPort();

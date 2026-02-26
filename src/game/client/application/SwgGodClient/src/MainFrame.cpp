@@ -245,7 +245,7 @@ MainFrame::MainFrame(QWidget *theParent, const char *theName)
 
 		m_templateEditor  = new TemplateEditorWindow(0, "TemplateEditor");
 		m_datatableEditor = new DatatableEditorWindow(0, "DatatableEditor");
-		m_buildoutEditor  = new BuildoutEditorWindow(0, "BuildoutEditor");
+		m_buildoutEditor  = new BuildoutEditorWindow(0, "BuildoutManager");
 
 		//don't show the dock window list on right click (VERY annoying for some windows like the region viewer)
 		setDockMenuEnabled (false);

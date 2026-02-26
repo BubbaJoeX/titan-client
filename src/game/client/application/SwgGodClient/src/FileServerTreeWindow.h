@@ -3,9 +3,12 @@
 // FileServerTreeWindow.h
 // copyright 2024 Sony Online Entertainment
 //
-// Pop-out window listing the file server's data/ directory tree,
-// comparing local vs remote file status with multi-select checkboxes
-// and Send / Retrieve / Info buttons.
+// Lazy-loading folder tree for the FileControl server with a details
+// pane.  Only the immediate children of a folder are fetched when the
+// user expands it, preventing overload on large asset trees.
+//
+// Network operations run on a background thread so the UI stays
+// responsive.
 //
 // ======================================================================
 
@@ -15,14 +18,17 @@
 // ======================================================================
 
 #include <qwidget.h>
+#include <qevent.h>
 #include <string>
 #include <vector>
+#include <map>
 
 class QListView;
 class QListViewItem;
 class QPushButton;
 class QLabel;
 class QLineEdit;
+class QSplitter;
 
 // ======================================================================
 
@@ -49,6 +55,45 @@ public:
 		unsigned long remoteCrc;
 	};
 
+	enum CustomEventType
+	{
+		CE_LISTING_DONE  = 10001,
+		CE_SEND_DONE     = 10002,
+		CE_RETRIEVE_DONE = 10003,
+		CE_VERIFY_DONE   = 10004
+	};
+
+	struct ListingResult
+	{
+		std::string                dirPath;
+		bool                       ok;
+		std::vector<std::string>   files;
+		std::vector<unsigned long> sizes;
+		QListViewItem *            parentItem;
+		bool                       isTopLevel;
+	};
+
+	struct SendResult
+	{
+		std::string path;
+		bool        ok;
+	};
+
+	struct RetrieveResult
+	{
+		std::string                path;
+		bool                       ok;
+		std::vector<unsigned char> data;
+	};
+
+	struct VerifyResult
+	{
+		std::string   path;
+		bool          ok;
+		unsigned long size;
+		unsigned long crc;
+	};
+
 signals:
 	void statusMessage(const char * msg);
 	void selectedPathChanged(const std::string & path);
@@ -60,18 +105,32 @@ public slots:
 	void onInfo();
 	void onScopeChanged();
 	void onSelectionChanged(QListViewItem * item);
-	void onItemChecked(QListViewItem * item);
+	void onItemExpanded(QListViewItem * item);
+
+protected:
+	virtual void customEvent(QCustomEvent * event);
 
 private:
 	FileServerTreeWindow(const FileServerTreeWindow &);
 	FileServerTreeWindow & operator=(const FileServerTreeWindow &);
 
-	void buildTreeFromEntries(const std::vector<FileEntry> & entries);
+	void addPlaceholder(QListViewItem * parentItem);
+	bool isPlaceholder(QListViewItem * item) const;
+	bool isDirectory(const std::string & name) const;
+	void clearDetailsPane();
 	void updateButtonStates();
+	void applyListingResult(ListingResult * result);
+	void setBusy(bool busy);
 
-	std::string getStatusText(bool localAvail, bool remoteAvail, unsigned long localCrc, unsigned long remoteCrc) const;
+	QSplitter *   m_splitter;
+	QListView *   m_treeView;
+	QWidget *     m_detailsWidget;
+	QLabel *      m_detailPath;
+	QLabel *      m_detailLocalStatus;
+	QLabel *      m_detailRemoteStatus;
+	QLabel *      m_detailLocalSize;
+	QLabel *      m_detailRemoteSize;
 
-	QListView *  m_treeView;
 	QPushButton * m_sendButton;
 	QPushButton * m_retrieveButton;
 	QPushButton * m_infoButton;
@@ -80,8 +139,8 @@ private:
 	QLabel *      m_statusLabel;
 
 	std::string   m_rootScope;
-	std::vector<FileEntry> m_entries;
-	std::vector<std::string> m_checkedPaths;
+	std::map<std::string, bool> m_expandedDirs;
+	bool          m_busy;
 };
 
 // ======================================================================

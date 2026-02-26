@@ -816,6 +816,9 @@ EditorTerrain::~EditorTerrain ()
 
 void EditorTerrain::update (bool showProgress)
 {
+	static int s_updateCount = 0;
+	s_updateCount++;
+
 	NOT_NULL (mapView);
 
 	CRect rect;
@@ -942,6 +945,8 @@ void EditorTerrain::update (bool showProgress)
 
 void EditorTerrain::draw () const
 {
+	static int s_drawCount = 0;
+
 	NOT_NULL (document);
 	NOT_NULL (mapView);
 
@@ -1154,6 +1159,8 @@ void EditorTerrain::draw () const
 			chunk->render (vertexBuffer);
 		}
 	}
+
+	s_drawCount++;
 }
 
 //-------------------------------------------------------------------

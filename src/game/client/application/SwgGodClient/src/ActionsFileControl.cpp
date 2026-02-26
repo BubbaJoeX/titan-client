@@ -18,7 +18,7 @@
 #include "MainFrame.h"
 #include "TemplateEditorWindow.h"
 
-#include "FileControlServer.h"
+#include "FileControlClient.h"
 
 #include "sharedFoundation/ConfigFile.h"
 
@@ -57,7 +57,7 @@ ActionsFileControl::ActionsFileControl()
 	m_openFileServerTree  = new ActionHack("File Server Tree",   IL_PIXMAP(hi16_action_window_new),  "File Server &Tree",     0, p, "fc_tree");
 	m_openTemplateEditor  = new ActionHack("Template Editor",    IL_PIXMAP(hi16_action_window_new),  "Te&mplate Editor",      0, p, "fc_template_editor");
 	m_openDatatableEditor = new ActionHack("Datatable Editor",   IL_PIXMAP(hi16_action_window_new),  "&Datatable Editor",     0, p, "fc_datatable_editor");
-	m_openBuildoutEditor  = new ActionHack("Buildout Editor",    IL_PIXMAP(hi16_action_window_new),  "B&uildout Editor",      0, p, "fc_buildout_editor");
+	m_openBuildoutEditor  = new ActionHack("Buildout Manager",   IL_PIXMAP(hi16_action_window_new),  "B&uildout Manager",     0, p, "fc_buildout_manager");
 
 	IGNORE_RETURN(connect(m_sendAsset,         SIGNAL(activated()), this, SLOT(onSendAsset())));
 	IGNORE_RETURN(connect(m_reloadAsset,       SIGNAL(activated()), this, SLOT(onReloadAsset())));
@@ -156,7 +156,7 @@ void ActionsFileControl::onSendAsset()
 
 	setLifecycleStage(LS_UPLOADING);
 
-	bool success = FileControlServer::requestSendAsset(m_selectedPath);
+	bool success = FileControlClient::requestSendAsset(m_selectedPath);
 
 	if (success)
 	{
@@ -184,7 +184,7 @@ void ActionsFileControl::onReloadAsset()
 
 	setLifecycleStage(LS_RELOADING);
 
-	bool success = FileControlServer::requestReloadAsset(m_selectedPath);
+	bool success = FileControlClient::requestReloadAsset(m_selectedPath);
 
 	if (success)
 		setLifecycleStage(LS_CONFIRMED);
@@ -207,7 +207,7 @@ void ActionsFileControl::onRetrieveAsset()
 	setLifecycleStage(LS_UPLOADING);
 
 	std::vector<unsigned char> data;
-	bool success = FileControlServer::requestRetrieveAsset(m_selectedPath, data);
+	bool success = FileControlClient::requestRetrieveAsset(m_selectedPath, data);
 
 	if (success)
 	{
@@ -233,7 +233,7 @@ void ActionsFileControl::onBroadcastUpdate()
 {
 	setLifecycleStage(LS_DISTRIBUTING);
 
-	bool success = FileControlServer::requestBroadcastUpdate();
+	bool success = FileControlClient::requestBroadcastUpdate();
 
 	if (success)
 		setLifecycleStage(LS_CONFIRMED);
@@ -255,7 +255,7 @@ void ActionsFileControl::onUpdateDbTemplates()
 	{
 		setLifecycleStage(LS_REBUILDING);
 
-		bool success = FileControlServer::requestUpdateDbTemplates();
+		bool success = FileControlClient::requestUpdateDbTemplates();
 
 		if (success)
 			setLifecycleStage(LS_CONFIRMED);
@@ -278,15 +278,14 @@ void ActionsFileControl::onVerifyAsset()
 
 	unsigned long size = 0;
 	unsigned long crc = 0;
-	bool success = FileControlServer::requestVerifyAsset(m_selectedPath, size, crc);
+	bool success = FileControlClient::requestVerifyAsset(m_selectedPath, size, crc);
 
 	if (success)
 	{
 		char buf[512];
 		snprintf(buf, sizeof(buf),
-			"Asset: %s\nSize: %lu bytes\nCRC: 0x%08lx\nVersion: %lu",
-			m_selectedPath.c_str(), size, crc,
-			FileControlServer::isRunning() ? 0UL : 0UL);
+			"Asset: %s\nSize: %lu bytes\nCRC: 0x%08lx",
+			m_selectedPath.c_str(), size, crc);
 		QMessageBox::information(&MainFrame::getInstance(), "Asset Verification", buf);
 	}
 	else
@@ -310,7 +309,7 @@ void ActionsFileControl::onFlush()
 	{
 		setLifecycleStage(LS_RELOADING);
 
-		bool success = FileControlServer::requestFlush();
+		bool success = FileControlClient::requestFlush();
 
 		if (success)
 			setLifecycleStage(LS_CONFIRMED);
@@ -401,7 +400,7 @@ void ActionsFileControl::onOpenBuildoutEditor()
 	MainFrame & mf = MainFrame::getInstance();
 	if (mf.m_buildoutEditor)
 		mf.m_buildoutEditor->show();
-	mf.textToConsole("FileControl: Opening Buildout Editor");
+	mf.textToConsole("FileControl: Opening Buildout Manager");
 }
 
 // ======================================================================

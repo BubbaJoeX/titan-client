@@ -1069,8 +1069,11 @@ void ShaderTreeView::reset ()
 	//-- expand the tree
 	expandAll ();
 
+	const bool wasDeleting = deletingUnused;
+	deletingUnused = true;
 	GetTreeCtrl ().SelectItem (GetTreeCtrl ().GetRootItem ());
 	GetTreeCtrl ().EnsureVisible (GetTreeCtrl ().GetRootItem());
+	deletingUnused = wasDeleting;
 }
 
 //-------------------------------------------------------------------

@@ -48,7 +48,8 @@ FileControlConnection::~FileControlConnection()
 void FileControlConnection::onConnectionClosed()
 {
 	LOG("FileControl", ("Connection closed from %s:%d (machineId=%s)", getRemoteAddress().c_str(), getRemotePort(), m_machineId.c_str()));
-	FileControlServer::onConnectionClosed(this);
+	if (FileControlServer::isRunning())
+		FileControlServer::onConnectionClosed(this);
 }
 
 // ----------------------------------------------------------------------
@@ -56,7 +57,8 @@ void FileControlConnection::onConnectionClosed()
 void FileControlConnection::onConnectionOpened()
 {
 	LOG("FileControl", ("Connection opened from %s:%d", getRemoteAddress().c_str(), getRemotePort()));
-	FileControlServer::onConnectionOpened(this);
+	if (FileControlServer::isRunning())
+		FileControlServer::onConnectionOpened(this);
 }
 
 // ----------------------------------------------------------------------
@@ -133,7 +135,8 @@ void FileControlConnection::onReceive(const Archive::ByteStream & bs)
 					}
 				}
 
-				FileControlServer::onFileUploadReceived(this, relativePath, data, compressed);
+				if (FileControlServer::isRunning())
+					FileControlServer::onFileUploadReceived(this, relativePath, data, compressed);
 			}
 			break;
 
@@ -141,7 +144,8 @@ void FileControlConnection::onReceive(const Archive::ByteStream & bs)
 			{
 				std::string relativePath;
 				Archive::get(ri, relativePath);
-				FileControlServer::onFileDownloadRequested(this, relativePath);
+				if (FileControlServer::isRunning())
+					FileControlServer::onFileDownloadRequested(this, relativePath);
 			}
 			break;
 
@@ -175,7 +179,8 @@ void FileControlConnection::onReceive(const Archive::ByteStream & bs)
 			{
 				std::string relativePath;
 				Archive::get(ri, relativePath);
-				FileControlServer::onFileCompareRequested(this, relativePath);
+				if (FileControlServer::isRunning())
+					FileControlServer::onFileCompareRequested(this, relativePath);
 			}
 			break;
 
@@ -196,7 +201,8 @@ void FileControlConnection::onReceive(const Archive::ByteStream & bs)
 			{
 				std::string relativePath;
 				Archive::get(ri, relativePath);
-				FileControlServer::onFileTestRequested(this, relativePath);
+				if (FileControlServer::isRunning())
+					FileControlServer::onFileTestRequested(this, relativePath);
 			}
 			break;
 
@@ -215,7 +221,8 @@ void FileControlConnection::onReceive(const Archive::ByteStream & bs)
 			{
 				std::string rootPath;
 				Archive::get(ri, rootPath);
-				FileControlServer::onFileListRequested(this, rootPath);
+				if (FileControlServer::isRunning())
+					FileControlServer::onFileListRequested(this, rootPath);
 			}
 			break;
 

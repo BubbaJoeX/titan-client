@@ -37,6 +37,7 @@ LayerView::LayerView (void) :
 	CTreeView (),
 	imageListSet (false),
 	imageList (),
+	initializing (false),
 	moveCursor (0),
 	copyCursor (0),
 	m_dragMode (DM_nothing),
@@ -1251,6 +1252,12 @@ void LayerView::OnSelchanged(NMHDR* pNMHDR, LRESULT* pResult)
 	NM_TREEVIEW* pNMTreeView = (NM_TREEVIEW*)pNMHDR;
 	UNREF (pNMTreeView);
 
+	if (initializing)
+	{
+		*pResult = 0;
+		return;
+	}
+
 	//-- get the selection
 	HTREEITEM selection = GetTreeCtrl ().GetSelectedItem ();
 
@@ -1326,8 +1333,10 @@ void LayerView::OnInitialUpdate()
 	//-- expand the tree
 	expandAll ();
 
+	initializing = true;
 	IGNORE_RETURN (GetTreeCtrl ().SelectItem (GetTreeCtrl ().GetRootItem ()));
 	IGNORE_RETURN (GetTreeCtrl ().EnsureVisible (GetTreeCtrl ().GetRootItem()));
+	initializing = false;
 }
 
 //-------------------------------------------------------------------
