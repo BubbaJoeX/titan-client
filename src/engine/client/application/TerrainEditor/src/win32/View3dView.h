@@ -29,6 +29,8 @@ private:
 	real           pitch;
 	real           moveSpeed;
 	real           drawDistance;
+	real           nearPlaneDistance;
+	real           farPlaneDistance;
 	real           timeOfDay;
 
 	uint           timer;
@@ -38,6 +40,11 @@ private:
 	bool           hooksInstalled;
 	bool           needsRedraw;
 	bool           environmentInitialized;
+	bool           terrainReloadPending;
+	bool           terrainFaulted;
+	bool           middleMouseDragging;
+	bool           rightMouseDragging;
+	int            movingUpdateCounter;
 
 	CPoint         lastMousePoint;
 	bool           lastMouseValid;
@@ -49,9 +56,13 @@ private:
 public:
 
 	void           setDrawDistance (real distance);
+	void           setNearPlaneDistance (real distance);
+	void           setFarPlaneDistance (real distance);
 	void           setMoveSpeed (real speed);
 	void           setTimeOfDay (real time);
 	real           getDrawDistance () const { return drawDistance; }
+	real           getNearPlaneDistance () const { return nearPlaneDistance; }
+	real           getFarPlaneDistance () const { return farPlaneDistance; }
 	real           getMoveSpeed () const { return moveSpeed; }
 	real           getTimeOfDay () const { return timeOfDay; }
 
@@ -94,6 +105,7 @@ protected:
 	afx_msg void OnDestroy();
 	afx_msg void OnTimer(UINT nIDEvent);
 	afx_msg void OnRefresh();
+	afx_msg void OnClearTerrain();
 	afx_msg void OnSetFocus(CWnd* pOldWnd);
 	afx_msg void OnKillFocus(CWnd* pNewWnd);
 	//}}AFX_MSG

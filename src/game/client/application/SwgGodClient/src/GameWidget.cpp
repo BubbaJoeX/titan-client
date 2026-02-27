@@ -62,6 +62,7 @@
 #include "clientGame/Game.h"
 #include "clientGame/GroundScene.h"
 #include "clientGame/SetupClientGame.h"
+#include "clientGame/TangibleObject.h"
 #include "clientGraphics/Graphics.h"
 #include "clientGraphics/ScreenShotHelper.h"
 #include "clientGraphics/SetupClientGraphics.h"
@@ -120,6 +121,7 @@
 #include <qaction.h>
 #include <qdatetime.h>
 #include <qdragobject.h>
+#include <qinputdialog.h>
 #include <qlcdnumber.h>
 #include <qlineedit.h>
 #include <qmessagebox.h>
@@ -131,6 +133,12 @@
 
 namespace GameWidgetNamespace
 {
+	enum MagicPaintingMenuIds
+	{
+		MPMI_setCondition = 1,
+		MPMI_setUrl = 2
+	};
+
 	//-- @todo: preferences manager should handle key mapping
 
 	//Transform keys
@@ -268,6 +276,8 @@ GameWidget::GameWidget(QWidget* theParent, const char*theName)
   m_keyStates(0),
   m_pop(0),
   m_templateMenu(0),
+  m_setConditionMenu(0),
+  m_conditionMenuIdMap(),
   m_lastOID(10000),
   m_rubberBandRect(),
   m_rubberBanding(false),
@@ -473,6 +483,9 @@ GameWidget::GameWidget(QWidget* theParent, const char*theName)
 	m_templateMenu = new QPopupMenu(this, "GameWidget_templateMenu");
 	IGNORE_RETURN(connect(m_templateMenu, SIGNAL(aboutToShow()), this, SLOT(onTemplateMenuShow())));
 
+	m_setConditionMenu = new QPopupMenu(this, "GameWidget_setConditionMenu");
+	IGNORE_RETURN(connect(m_setConditionMenu, SIGNAL(activated(int)), this, SLOT(onSetConditionMenuActivated(int))));
+
 	m_keyStates = new KeyStates;
 
 	updateSceneData();
@@ -514,6 +527,7 @@ GameWidget::~GameWidget()
 	SetupSharedThread::remove();
 
 	m_templateMenu = NULL; //lint !e423 creation of memory leak, it's owned by Qt, gets deleted eventually
+	m_setConditionMenu = NULL; //lint !e423 creation of memory leak, it's owned by Qt, gets deleted eventually
 	m_gs = NULL;
 	m_autoDragNetworkId = NULL;
 	m_pop = NULL;          //lint !e423 creation of memory leak, it's owned by Qt, gets deleted eventually
@@ -621,9 +635,11 @@ void GameWidget::keyPressEvent(QKeyEvent*keyEvent)
 
 	if(!m_gameHasFocus)
 	{
+		const bool keyboardInputActive = CuiManager::getKeyboardInputActive();
+
 		// CTRL+T and Space apply transform - handle before transform keys consume T
 		if ((keyEvent->key() == s_translateKey && hasState(keyEvent, Qt::ControlButton)) ||
-			keyEvent->key() == static_cast<int>(Key_Space))
+			(!keyboardInputActive && keyEvent->key() == static_cast<int>(Qt::Key_Space)))
 		{
 			if (!keyEvent->isAutoRepeat())
 			{
@@ -781,7 +797,7 @@ void GameWidget::keyPressEvent(QKeyEvent*keyEvent)
 	}
 	// CTRL+T and Space apply transform - also when game has focus
 	else if ((keyEvent->key() == s_translateKey && hasState(keyEvent, Qt::ControlButton)) ||
-		keyEvent->key() == static_cast<int>(Key_Space))
+		(!CuiManager::getKeyboardInputActive() && keyEvent->key() == static_cast<int>(Qt::Key_Space)))
 	{
 		if (!keyEvent->isAutoRepeat())
 		{
@@ -1410,6 +1426,40 @@ void GameWidget::mouseDoubleClickEvent(QMouseEvent* mouseEvent)
 
 namespace
 {
+	struct ConditionMenuEntry
+	{
+		const char * label;
+		int value;
+	};
+
+	ConditionMenuEntry const s_playerFacingConditions[] =
+	{
+		{ "On/Off",                  TangibleObject::C_onOff },
+		{ "Vendor",                  TangibleObject::C_vendor },
+		{ "Insured",                 TangibleObject::C_insured },
+		{ "Conversable",             TangibleObject::C_conversable },
+		{ "Hibernating",             TangibleObject::C_hibernating },
+		{ "Magic Item",              TangibleObject::C_magicItem },
+		{ "Aggressive",              TangibleObject::C_aggressive },
+		{ "Want SAW Attack Trigger", TangibleObject::C_wantSawAttackTrigger },
+		{ "Invulnerable",            TangibleObject::C_invulnerable },
+		{ "Disabled",                TangibleObject::C_disabled },
+		{ "Uninsurable",             TangibleObject::C_uninsurable },
+		{ "Interesting",             TangibleObject::C_interesting },
+		{ "Space Interesting",       TangibleObject::C_spaceInteresting },
+		{ "Commable",                TangibleObject::C_commable },
+		{ "Dockable",                TangibleObject::C_dockable },
+		{ "Eject",                   TangibleObject::C_eject },
+		{ "Inspectable",             TangibleObject::C_inspectable },
+		{ "Transferable",            TangibleObject::C_transferable },
+		{ "Inflight Tutorial",       TangibleObject::C_inflightTutorial },
+		{ "Encounter Locked",        TangibleObject::C_encounterLocked },
+		{ "Spawned Creature",        TangibleObject::C_spawnedCreature },
+		{ "Holiday Interesting",     TangibleObject::C_holidayInteresting },
+		{ "Locked",                  TangibleObject::C_locked },
+		{ "Magic Painting URL",      TangibleObject::C_magicPaintingUrl }
+	};
+
 	void populateMenu(QPopupMenu* menu, const FilesystemTree::Node* node, int& num, QObject* const receiver, const char* const member)
 	{
 		for(FilesystemTree::Node::ConstIterator it = node->begin(); it != node->end(); ++it)
@@ -1482,6 +1532,33 @@ void GameWidget::contextMenuEvent(QContextMenuEvent* evt)
 		//only display the form editing option if this tempate type has a form bound to it
 		if(clientObj)
 		{
+			if (dynamic_cast<TangibleObject const *>(clientObj))
+			{
+				m_setConditionMenu->clear();
+				m_conditionMenuIdMap.clear();
+
+				int const conditionCount = static_cast<int>(sizeof(s_playerFacingConditions) / sizeof(s_playerFacingConditions[0]));
+				for (int i = 0; i < conditionCount; ++i)
+				{
+					if (s_playerFacingConditions[i].value == TangibleObject::C_magicPaintingUrl)
+					{
+						QPopupMenu * const magicPaintingConditionMenu = new QPopupMenu(m_setConditionMenu, "GameWidget_magicPaintingConditionMenu");
+						IGNORE_RETURN(connect(magicPaintingConditionMenu, SIGNAL(activated(int)), this, SLOT(onMagicPaintingConditionMenuActivated(int))));
+						IGNORE_RETURN(magicPaintingConditionMenu->insertItem("Set Condition", MPMI_setCondition));
+						IGNORE_RETURN(magicPaintingConditionMenu->insertItem("Set URL...", MPMI_setUrl));
+						IGNORE_RETURN(m_setConditionMenu->insertItem(s_playerFacingConditions[i].label, magicPaintingConditionMenu));
+					}
+					else
+					{
+						int const menuId = m_setConditionMenu->insertItem(s_playerFacingConditions[i].label);
+						m_conditionMenuIdMap[menuId] = s_playerFacingConditions[i].value;
+					}
+				}
+
+				IGNORE_RETURN(m_pop->insertItem("Set Condition", m_setConditionMenu));
+				IGNORE_RETURN(m_pop->insertSeparator());
+			}
+
 			char const * const templateName = clientObj->getTemplateName();
 			if(templateName)
 			{
@@ -1746,6 +1823,46 @@ void GameWidget::onPopupItemActivated(int id) const
 {
 	UNREF(id);
 	QCursor::setPos(m_popupData.point);
+}
+
+//-----------------------------------------------------------------
+
+void GameWidget::onSetConditionMenuActivated(int id)
+{
+	std::map<int, int>::const_iterator const it = m_conditionMenuIdMap.find(id);
+	if (it == m_conditionMenuIdMap.end() || m_menuIds.objNetworkId == NetworkId::cms_invalid)
+		return;
+
+	std::ostringstream param;
+	param << "setCondition " << it->second;
+
+	IGNORE_RETURN(ClientCommandQueue::enqueueCommand("developer", m_menuIds.objNetworkId, Unicode::narrowToWide(param.str())));
+}
+
+//-----------------------------------------------------------------
+
+void GameWidget::onMagicPaintingConditionMenuActivated(int id)
+{
+	if (m_menuIds.objNetworkId == NetworkId::cms_invalid)
+		return;
+
+	if (id == MPMI_setCondition)
+	{
+		std::ostringstream param;
+		param << "setCondition " << TangibleObject::C_magicPaintingUrl;
+		IGNORE_RETURN(ClientCommandQueue::enqueueCommand("developer", m_menuIds.objNetworkId, Unicode::narrowToWide(param.str())));
+	}
+	else if (id == MPMI_setUrl)
+	{
+		bool ok = false;
+		QString const url = QInputDialog::getText("Magic Painting URL", "Enter image URL (http/https):", QLineEdit::Normal, QString::null, &ok, this);
+		if (!ok || url.isEmpty())
+			return;
+
+		std::ostringstream param;
+		param << "magicPaintingUrl " << url.latin1();
+		IGNORE_RETURN(ClientCommandQueue::enqueueCommand("developer", m_menuIds.objNetworkId, Unicode::narrowToWide(param.str())));
+	}
 }
 
 //-----------------------------------------------------------------

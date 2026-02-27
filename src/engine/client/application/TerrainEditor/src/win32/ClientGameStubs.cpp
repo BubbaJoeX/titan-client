@@ -1,17 +1,7 @@
 //
 // ClientGameStubs.cpp
 //
-// Provides stub implementations for 5 game-runtime symbols referenced
-// transitively by GroundEnvironment (in clientTerrain.lib). These symbols
-// live in clientGame.lib, which cannot be linked here because it pulls in
-// the entire game client (~400+ cascading unresolved externals).
-//
-// GroundEnvironment::alter() references ClientRegionEffectManager and
-// Game::getPlayerObject() for region-based day/night effects.
-// GroundEnvironment::updateFactionCelestials() references GuildObject
-// and Game::ms_sceneId for faction-specific sky rendering.
-//
-// None of these have meaning in an offline terrain editor.
+// Minimal game-runtime symbols required by GroundEnvironment in editor builds.
 //
 
 #include "FirstTerrainEditor.h"
@@ -19,10 +9,6 @@
 #include <string>
 
 class PlayerObject;
-
-// =====================================================================
-// ClientRegionEffectManager - region-based permanent day/night checks
-// =====================================================================
 
 class ClientRegionEffectManager
 {
@@ -41,10 +27,6 @@ bool ClientRegionEffectManager::isCurrentRegionPermanentNight(long)
 	return false;
 }
 
-// =====================================================================
-// Game - player object access and scene identification
-// =====================================================================
-
 class Game
 {
 public:
@@ -60,10 +42,6 @@ PlayerObject * Game::getPlayerObject()
 }
 
 std::string Game::ms_sceneId;
-
-// =====================================================================
-// GuildObject - guild faction data for celestial rendering
-// =====================================================================
 
 class GuildObject
 {

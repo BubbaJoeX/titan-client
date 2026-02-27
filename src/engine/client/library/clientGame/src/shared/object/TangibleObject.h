@@ -36,6 +36,7 @@ class Player;
 class SlotDescriptor;
 class SharedTangibleObjectTemplate;
 class SlotId;
+class Texture;
 class Vector;
 
 // ======================================================================
@@ -86,6 +87,7 @@ public:
 		C_spawnedCreature      = 0x04000000,
 		C_holidayInteresting   = 0x08000000,
 		C_locked               = 0x10000000,
+		C_magicPaintingUrl     = 0x20000000, // Used to render a remote image above the object, double sided or single.
 	};
 
 public:
@@ -93,6 +95,11 @@ public:
 	struct Messages
 	{
 		struct AppearanceData;
+		struct RemoteTextureUrl;
+		struct RemoteTextureMode;
+		struct RemoteTextureDisplayMode;
+		struct RemoteTextureScrollH;
+		struct RemoteTextureScrollV;
 		struct DamageTaken
 		{
 			typedef std::pair<TangibleObject *, int> Payload;
@@ -217,11 +224,21 @@ private:
 
 		typedef DefaultCallback<Messages::DamageTaken,    int>              DamageTaken;
 		typedef DefaultCallback<Messages::AppearanceData, std::string>      AppearanceData;
+		typedef DefaultCallback<Messages::RemoteTextureUrl, std::string>    RemoteTextureUrl;
+		typedef DefaultCallback<Messages::RemoteTextureMode, std::string>   RemoteTextureMode;
+		typedef DefaultCallback<Messages::RemoteTextureDisplayMode, std::string> RemoteTextureDisplayMode;
+		typedef DefaultCallback<Messages::RemoteTextureScrollH, std::string> RemoteTextureScrollH;
+		typedef DefaultCallback<Messages::RemoteTextureScrollV, std::string> RemoteTextureScrollV;
 		typedef DefaultCallback<Messages::ConditionModified, int>           ConditionModified;
 		typedef DefaultCallback<Messages::MaxHitPointsModified, int>        MaxHitPointsModified;
 	};
 
 	friend Callbacks::AppearanceData;
+	friend Callbacks::RemoteTextureUrl;
+	friend Callbacks::RemoteTextureMode;
+	friend Callbacks::RemoteTextureDisplayMode;
+	friend Callbacks::RemoteTextureScrollH;
+	friend Callbacks::RemoteTextureScrollV;
 	friend Callbacks::ConditionModified;
 	friend Callbacks::MaxHitPointsModified;
 
@@ -232,6 +249,14 @@ private:
 	void                          setChildWingsOpened(bool wingsOpened);
 
 	void                          appearanceDataModified(const std::string & value);
+	void                          remoteTextureUrlModified(const std::string & value);
+	void                          remoteTextureModeModified(const std::string & value);
+	void                          remoteTextureDisplayModeModified(const std::string & value);
+	void                          remoteTextureScrollHModified(const std::string & value);
+	void                          remoteTextureScrollVModified(const std::string & value);
+	void                          updateRemoteImageTexture();
+	void                          updateGifAnimation(float elapsedTime);
+	void                          clearRemoteImageTexture();
 
 	void                          updateInterestingAttachedObject(int objectCondition);
 
@@ -255,6 +280,11 @@ private:
 	class CraftingToolSyncUi;
 
 	Archive::AutoDeltaVariableCallback<std::string, Callbacks::AppearanceData, TangibleObject> m_appearanceData;
+	Archive::AutoDeltaVariableCallback<std::string, Callbacks::RemoteTextureUrl, TangibleObject> m_remoteTextureUrl;
+	Archive::AutoDeltaVariableCallback<std::string, Callbacks::RemoteTextureMode, TangibleObject> m_remoteTextureMode;
+	Archive::AutoDeltaVariableCallback<std::string, Callbacks::RemoteTextureDisplayMode, TangibleObject> m_remoteTextureDisplayMode;
+	Archive::AutoDeltaVariableCallback<std::string, Callbacks::RemoteTextureScrollH, TangibleObject> m_remoteTextureScrollH;
+	Archive::AutoDeltaVariableCallback<std::string, Callbacks::RemoteTextureScrollV, TangibleObject> m_remoteTextureScrollV;
 	Archive::AutoDeltaVariableCallback<int,         Callbacks::DamageTaken, TangibleObject>    m_damageTaken;
 	Archive::AutoDeltaVariableCallback<int, Callbacks::MaxHitPointsModified, TangibleObject>   m_maxHitPoints;
 
@@ -305,6 +335,51 @@ inline void TangibleObject::Callbacks::AppearanceData::modified(TangibleObject &
 	UNREF(oldValue);
 	UNREF(isLocal);
 	target.appearanceDataModified(value);
+}
+
+//----------------------------------------------------------------------
+
+inline void TangibleObject::Callbacks::RemoteTextureUrl::modified(TangibleObject & target, const std::string & oldValue, const std::string & value, bool isLocal) const
+{
+	UNREF(oldValue);
+	UNREF(isLocal);
+	target.remoteTextureUrlModified(value);
+}
+
+//----------------------------------------------------------------------
+
+inline void TangibleObject::Callbacks::RemoteTextureMode::modified(TangibleObject & target, const std::string & oldValue, const std::string & value, bool isLocal) const
+{
+	UNREF(oldValue);
+	UNREF(isLocal);
+	target.remoteTextureModeModified(value);
+}
+
+//----------------------------------------------------------------------
+
+inline void TangibleObject::Callbacks::RemoteTextureDisplayMode::modified(TangibleObject & target, const std::string & oldValue, const std::string & value, bool isLocal) const
+{
+	UNREF(oldValue);
+	UNREF(isLocal);
+	target.remoteTextureDisplayModeModified(value);
+}
+
+//----------------------------------------------------------------------
+
+inline void TangibleObject::Callbacks::RemoteTextureScrollH::modified(TangibleObject & target, const std::string & oldValue, const std::string & value, bool isLocal) const
+{
+	UNREF(oldValue);
+	UNREF(isLocal);
+	target.remoteTextureScrollHModified(value);
+}
+
+//----------------------------------------------------------------------
+
+inline void TangibleObject::Callbacks::RemoteTextureScrollV::modified(TangibleObject & target, const std::string & oldValue, const std::string & value, bool isLocal) const
+{
+	UNREF(oldValue);
+	UNREF(isLocal);
+	target.remoteTextureScrollVModified(value);
 }
 
 //----------------------------------------------------------------------

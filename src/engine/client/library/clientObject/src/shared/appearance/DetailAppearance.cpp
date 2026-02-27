@@ -732,6 +732,14 @@ void DetailAppearance::setTexture(const Tag tag, const Texture &texture)
 
 // ----------------------------------------------------------------------
 
+void DetailAppearance::setTextureScroll(const Tag tag, float scrollU, float scrollV)
+{
+	if (m_currentDetailLevel >= 0 && m_currentDetailLevel < m_appearanceListSize && m_appearanceList[m_currentDetailLevel])
+		m_appearanceList[m_currentDetailLevel]->setTextureScroll(tag, scrollU, scrollV);
+}
+
+// ----------------------------------------------------------------------
+
 float DetailAppearance::alter(float deltaTime)
 {
 	float alterResult = Appearance::alter(deltaTime);

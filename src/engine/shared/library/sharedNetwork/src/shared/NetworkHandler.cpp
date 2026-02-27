@@ -1,5 +1,5 @@
 // NetworkHandler.cpp
-// Copyright 2000-02, Sony Online Entertainment Inc., all rights reserved.
+// Copyright 2000-02, Sony Online Entertainment Inc., all rights reserved
 
 //-----------------------------------------------------------------------
 
@@ -166,8 +166,8 @@ void NetworkHandler::dispatch()
 				}
 				catch(const Archive::ReadException & readException)
 				{
-					WARNING(true, ("Unhandled Archive read error (%s) on connection. Continuing to throw from NetwokrHandler::Dispatch", readException.what()));
-					throw(readException);
+					// Do not crash or disconnect on a malformed packet; skip it and continue processing.
+					WARNING(true, ("Unhandled Archive read error (%s) on connection. Dropping packet in NetworkHandler::dispatch", readException.what()));
 				}
 			}
 

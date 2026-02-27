@@ -68,6 +68,7 @@ public:
 	virtual void                getCostEstimate(int &numberOfVertices, int &numberOfTriangles, float &complexity) const;
 
 	void                        setTexture(Tag tag, const Texture &texture);
+	void                        setTextureScroll(Tag tag, float u1, float v1, float u2, float v2);
 
 	bool                        collide(Vector const & start_o, Vector const & end_o, CollideParameters const & collideParameters, CollisionInfo & result) const;
 
@@ -329,6 +330,32 @@ void ShaderPrimitiveSet::LocalShaderPrimitive::setTexture(const Tag tag, const T
 
 // ----------------------------------------------------------------------
 
+void ShaderPrimitiveSet::LocalShaderPrimitive::setTextureScroll(const Tag tag, float u1, float v1, float u2, float v2)
+{
+	StaticShader const * const staticShader = m_constShader->getStaticShader();
+
+	if (staticShader)
+	{
+		if (staticShader->hasTexture(tag))
+		{
+			if (!m_modifiableShader)
+			{
+				m_modifiableShader = m_constShader->convertToModifiableShader();
+				m_constShader = m_modifiableShader;
+			}
+
+			StaticShaderTemplate::TextureScroll textureScroll;
+			textureScroll.u1 = u1;
+			textureScroll.v1 = v1;
+			textureScroll.u2 = u2;
+			textureScroll.v2 = v2;
+			m_modifiableShader->getStaticShader()->setTextureScroll(tag, textureScroll);
+		}
+	}
+}
+
+// ----------------------------------------------------------------------
+
 bool ShaderPrimitiveSet::LocalShaderPrimitive::collide(Vector const & start_o, Vector const & end_o, CollideParameters const & collideParameters, CollisionInfo & result) const
 {
 	return m_template.collide(start_o, end_o, collideParameters, result);
@@ -493,6 +520,15 @@ void ShaderPrimitiveSet::setTexture(const Tag tag, const Texture &texture)
 	const Primitives::iterator end = m_primitives->end();
 	for (Primitives::iterator i = m_primitives->begin(); i != end; ++i)
 		(*i)->setTexture(tag, texture);
+}
+
+// ----------------------------------------------------------------------
+
+void ShaderPrimitiveSet::setTextureScroll(const Tag tag, float u1, float v1, float u2, float v2)
+{
+	const Primitives::iterator end = m_primitives->end();
+	for (Primitives::iterator i = m_primitives->begin(); i != end; ++i)
+		(*i)->setTextureScroll(tag, u1, v1, u2, v2);
 }
 
 // ----------------------------------------------------------------------

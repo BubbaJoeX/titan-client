@@ -31,14 +31,22 @@ private:
 	CSliderCtrl   m_sliderDrawDist;
 	CSliderCtrl   m_sliderCamSpeed;
 	CSliderCtrl   m_sliderTimeOfDay;
+	CSliderCtrl   m_sliderNearPlane;
+	CSliderCtrl   m_sliderFarPlane;
 	CStatic       m_labelDrawDist;
 	CStatic       m_labelCamSpeed;
 	CStatic       m_labelTimeOfDay;
+	CStatic       m_labelNearPlane;
+	CStatic       m_labelFarPlane;
 	CStatic       m_valueDrawDist;
 	CStatic       m_valueCamSpeed;
 	CStatic       m_valueTimeOfDay;
+	CStatic       m_valueNearPlane;
+	CStatic       m_valueFarPlane;
 
+	void          applySliderValues ();
 	void          updateValueLabels ();
+	void          layoutControlBarWidgets ();
 	View3dView*   getView3dView ();
 
 private:
@@ -64,6 +72,7 @@ protected:
 	afx_msg void OnDestroy();
 	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
 	afx_msg void OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
+	afx_msg void OnSize(UINT nType, int cx, int cy);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

@@ -422,6 +422,15 @@ void ComponentAppearance::setTexture(const Tag tag, const Texture &texture)
 			m_objectList->getObject(i)->getAppearance()->setTexture(tag, texture);
 }
 
+//-------------------------------------------------------------------
+
+void ComponentAppearance::setTextureScroll(const Tag tag, float scrollU, float scrollV)
+{
+	for (int i = 0; i < m_objectList->getNumberOfObjects(); i++)
+		if (m_objectList->getObject(i)->getAppearance())
+			m_objectList->getObject(i)->getAppearance()->setTextureScroll(tag, scrollU, scrollV);
+}
+
 // ----------------------------------------------------------------------
 
 const IndexedTriangleList* ComponentAppearance::getRadarShape () const

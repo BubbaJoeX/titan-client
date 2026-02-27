@@ -14,12 +14,16 @@
 #include "clientGame/ClientDataFile.h"
 #include "clientGame/ClientSynchronizedUi.h"
 #include "clientGame/ClientTangibleObjectTemplate.h"
+#include "clientGame/ClientWorld.h"
 #include "clientGame/ContainerInterface.h"
 #include "clientGame/Game.h"
 #include "clientGame/ManufactureSchematicObject.h"
 #include "clientGame/PlayerObject.h"
 #include "clientGame/SlotRuleManager.h"
 #include "clientGraphics/RenderWorld.h"
+#include "clientGraphics/StaticShader.h"
+#include "clientGraphics/Texture.h"
+#include "clientGraphics/TextureList.h"
 #include "clientParticle/ParticleEffectAppearance.h"
 #include "clientParticle/ParticleEffectAppearanceTemplate.h"
 #include "clientSkeletalAnimation/SkeletalAppearance2.h"
@@ -54,10 +58,24 @@
 #include "sharedObject/ObjectTemplateList.h"
 #include "sharedObject/RotationDynamics.h"
 #include "sharedObject/SlottedContainer.h"
+#include "sharedFoundation/Tag.h"
 #include "sharedUtility/Callback.h"
 
 #include <map>
 #include <vector>
+#include <cctype>
+#include <cstdlib>
+#include <string.h>
+
+#include <windows.h>
+#include <winhttp.h>
+#include <objidl.h>
+#include <propidl.h>
+#include <wincodec.h>
+
+#pragma comment(lib, "winhttp.lib")
+#pragma comment(lib, "windowscodecs.lib")
+#pragma comment(lib, "ole32.lib")
 
 // ======================================================================
 
@@ -99,6 +117,795 @@ private:
 
 namespace TangibleObjectNamespace
 {
+	enum RemoteImageFetchState
+	{
+		RIFS_idle = 0,
+		RIFS_fetching = 1,
+		RIFS_ready = 2,
+		RIFS_failed = 3
+	};
+
+	enum MagicPaintingDisplayMode
+	{
+		MPDM_cube = 0,
+		MPDM_flat = 1,
+		MPDM_doubleSided = 2
+	};
+
+	struct RemoteImageRuntimeData
+	{
+		RemoteImageRuntimeData() :
+			owner(0),
+			appliedUrl(),
+			requestedUrl(),
+			texture(0),
+			overlayObject(0),
+			overlayBackObject(0),
+			fetchThread(0),
+			fetchState(RIFS_idle),
+			fetchedBytes(0),
+			nonAdminPictureOnlyActive(false),
+			nameOverridden(false),
+			appliedDisplayMode(),
+			scrollH(0.0f),
+			scrollV(0.0f),
+			isPaintingTemplate(false),
+			gifFrames(),
+			gifFrameDelays(),
+			gifCurrentFrame(0),
+			gifFrameTimer(0.0f),
+			isGif(false)
+		{
+		}
+
+		TangibleObject const * owner;
+		std::string appliedUrl;
+		std::string requestedUrl;
+		Texture const * texture;
+		Object * overlayObject;
+		Object * overlayBackObject;
+		HANDLE fetchThread;
+		LONG fetchState;
+		std::vector<unsigned char> * fetchedBytes;
+		bool nonAdminPictureOnlyActive;
+		bool nameOverridden;
+		Unicode::String originalObjectName;
+		std::string appliedDisplayMode;
+		float scrollH;
+		float scrollV;
+		bool isPaintingTemplate;
+		std::vector<Texture const *> gifFrames;
+		std::vector<float> gifFrameDelays;
+		int gifCurrentFrame;
+		float gifFrameTimer;
+		bool isGif;
+	};
+
+	struct RemoteImageFetchThreadData
+	{
+		RemoteImageFetchThreadData(RemoteImageRuntimeData * runtimeData, std::string const & sourceUrl) :
+			runtime(runtimeData),
+			url(sourceUrl)
+		{
+		}
+
+		RemoteImageRuntimeData * runtime;
+		std::string url;
+	};
+
+	typedef std::map<TangibleObject const *, RemoteImageRuntimeData> RemoteImageRuntimeDataMap;
+	RemoteImageRuntimeDataMap ms_remoteImageRuntimeDataMap;
+
+	Tag const TAG_MAIN = TAG(M,A,I,N);
+	float const cs_magicPaintingOverlayHeight = 2.0f;
+	float const cs_magicPaintingOverlayBaseScale = 2.0f;
+	float const cs_magicPaintingOverlayBackYaw = 3.14159265358979323846f;
+
+	bool isHttpUrl(std::string const & url)
+	{
+		std::string lower(url);
+		for (std::string::iterator i = lower.begin(); i != lower.end(); ++i)
+			*i = static_cast<char>(std::tolower(static_cast<unsigned char>(*i)));
+
+		return (lower.find("http://") == 0) || (lower.find("https://") == 0);
+	}
+
+	MagicPaintingDisplayMode parseDisplayMode(std::string const & mode)
+	{
+		if (mode.empty())
+			return MPDM_cube;
+
+		std::string upper(mode);
+		for (std::string::iterator i = upper.begin(); i != upper.end(); ++i)
+			*i = static_cast<char>(std::toupper(static_cast<unsigned char>(*i)));
+
+		if (upper == "FLAT")
+			return MPDM_flat;
+		if (upper == "DOUBLE_SIDED")
+			return MPDM_doubleSided;
+
+		return MPDM_cube;
+	}
+
+	bool isGifUrl(std::string const & url)
+	{
+		if (url.size() < 4)
+			return false;
+		std::string ext = url.substr(url.size() - 4);
+		for (std::string::iterator i = ext.begin(); i != ext.end(); ++i)
+			*i = static_cast<char>(std::tolower(static_cast<unsigned char>(*i)));
+		return ext == ".gif";
+	}
+
+	bool templateNameContainsPainting(char const * templateName)
+	{
+		if (!templateName)
+			return false;
+		std::string lower(templateName);
+		for (std::string::iterator i = lower.begin(); i != lower.end(); ++i)
+			*i = static_cast<char>(std::tolower(static_cast<unsigned char>(*i)));
+		return lower.find("painting") != std::string::npos;
+	}
+
+	Appearance * createMagicPaintingOverlayAppearance()
+	{
+		Appearance * appearance = AppearanceTemplateList::createAppearance("appearance/defaultappearance.apt");
+		if (!appearance)
+			appearance = AppearanceTemplateList::createAppearance("appearance/info_disk.apt");
+		return appearance;
+	}
+
+	void removeOverlayObject(TangibleObject & owner, Object *& objectToRemove)
+	{
+		if (!objectToRemove)
+			return;
+
+		if (objectToRemove->isInWorld())
+			objectToRemove->removeFromWorld();
+
+		if (objectToRemove->getAttachedTo() == &owner)
+			owner.removeChildObject(objectToRemove, Object::DF_none);
+
+		if (objectToRemove->isInWorld())
+			objectToRemove->removeFromWorld();
+
+		delete objectToRemove;
+		objectToRemove = 0;
+	}
+
+	void updateOverlayObjectTransform(Object & overlayObject, bool backFace, MagicPaintingDisplayMode displayMode, bool isPaintingTemplate)
+	{
+		Transform overlayTransform = Transform::identity;
+
+		float const yOffset = isPaintingTemplate ? 0.0f : cs_magicPaintingOverlayHeight;
+		overlayTransform.setPosition_p(Vector(0.0f, yOffset, 0.0f));
+
+		if (displayMode == MPDM_flat || displayMode == MPDM_doubleSided)
+		{
+			overlayTransform.pitch_l(1.5707963267948966f);
+			if (backFace)
+				overlayTransform.yaw_l(cs_magicPaintingOverlayBackYaw);
+		}
+		else
+		{
+			if (backFace)
+				overlayTransform.yaw_l(cs_magicPaintingOverlayBackYaw);
+		}
+
+		overlayObject.setTransform_o2p(overlayTransform);
+	}
+
+	void applyCachedRuntimeTextureToSurfaces(RemoteImageRuntimeData & runtimeData, Appearance * ownerAppearance)
+	{
+		if (!runtimeData.texture)
+			return;
+
+		if (runtimeData.isPaintingTemplate)
+		{
+			if (ownerAppearance)
+				ownerAppearance->setTexture(TAG_MAIN, *runtimeData.texture);
+			return;
+		}
+
+		Appearance * const overlayAppearance = runtimeData.overlayObject ? runtimeData.overlayObject->getAppearance() : 0;
+		if (overlayAppearance)
+			overlayAppearance->setTexture(TAG_MAIN, *runtimeData.texture);
+
+		Appearance * const overlayBackAppearance = runtimeData.overlayBackObject ? runtimeData.overlayBackObject->getAppearance() : 0;
+		if (overlayBackAppearance)
+			overlayBackAppearance->setTexture(TAG_MAIN, *runtimeData.texture);
+
+		if (ownerAppearance)
+			ownerAppearance->setTexture(TAG_MAIN, *runtimeData.texture);
+	}
+
+	void createOverlayObject(TangibleObject & owner, RemoteImageRuntimeData & runtimeData, Object *& target, bool backFace, MagicPaintingDisplayMode displayMode)
+	{
+		if (target)
+			return;
+
+		if (!owner.isInWorld())
+			return;
+
+		Appearance * const appearance = createMagicPaintingOverlayAppearance();
+		if (!appearance)
+			return;
+
+		target = new Object();
+		target->setAppearance(appearance);
+		target->addNotification(ClientWorld::getIntangibleNotification());
+		RenderWorld::addObjectNotifications(*target);
+
+		updateOverlayObjectTransform(*target, backFace, displayMode, runtimeData.isPaintingTemplate);
+		target->setScale(Vector(cs_magicPaintingOverlayBaseScale, cs_magicPaintingOverlayBaseScale, cs_magicPaintingOverlayBaseScale));
+
+		bool const portalDisabled = (owner.getCellProperty() != 0);
+		if (portalDisabled)
+		{
+			CellProperty::setPortalTransitionsEnabled(false);
+			target->setParentCell(owner.getCellProperty());
+		}
+
+		target->attachToObject_w(&owner, true);
+		target->addToWorld();
+
+		if (runtimeData.texture)
+			appearance->setTexture(TAG_MAIN, *runtimeData.texture);
+
+		if (portalDisabled)
+			CellProperty::setPortalTransitionsEnabled(true);
+	}
+
+	void ensureRemoteImageOverlayObjects(TangibleObject & owner, RemoteImageRuntimeData & runtimeData, MagicPaintingDisplayMode displayMode, bool forceRecreate)
+	{
+		if (runtimeData.isPaintingTemplate)
+		{
+			removeOverlayObject(owner, runtimeData.overlayBackObject);
+			removeOverlayObject(owner, runtimeData.overlayObject);
+			return;
+		}
+
+		if (forceRecreate)
+		{
+			removeOverlayObject(owner, runtimeData.overlayBackObject);
+			removeOverlayObject(owner, runtimeData.overlayObject);
+		}
+
+		createOverlayObject(owner, runtimeData, runtimeData.overlayObject, false, displayMode);
+		if (!runtimeData.overlayObject)
+			return;
+
+		if (displayMode == MPDM_doubleSided)
+		{
+			createOverlayObject(owner, runtimeData, runtimeData.overlayBackObject, true, displayMode);
+		}
+		else
+		{
+			removeOverlayObject(owner, runtimeData.overlayBackObject);
+		}
+
+		if (runtimeData.overlayObject)
+			updateOverlayObjectTransform(*runtimeData.overlayObject, false, displayMode, runtimeData.isPaintingTemplate);
+		if (runtimeData.overlayBackObject)
+			updateOverlayObjectTransform(*runtimeData.overlayBackObject, true, displayMode, runtimeData.isPaintingTemplate);
+	}
+
+	void clearRemoteImageOverlayObjects(TangibleObject & owner, RemoteImageRuntimeData & runtimeData)
+	{
+		removeOverlayObject(owner, runtimeData.overlayBackObject);
+		removeOverlayObject(owner, runtimeData.overlayObject);
+	}
+
+	bool wideFromUtf8OrAnsi(std::string const & input, std::wstring & output)
+	{
+		output.clear();
+		if (input.empty())
+			return false;
+
+		int wideLength = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, input.c_str(), static_cast<int>(input.size()), 0, 0);
+		if (wideLength <= 0)
+			wideLength = MultiByteToWideChar(CP_ACP, 0, input.c_str(), static_cast<int>(input.size()), 0, 0);
+		if (wideLength <= 0)
+			return false;
+
+		output.resize(static_cast<size_t>(wideLength));
+		if (MultiByteToWideChar(CP_UTF8, 0, input.c_str(), static_cast<int>(input.size()), &output[0], wideLength) <= 0)
+		{
+			if (MultiByteToWideChar(CP_ACP, 0, input.c_str(), static_cast<int>(input.size()), &output[0], wideLength) <= 0)
+				return false;
+		}
+
+		return true;
+	}
+
+	bool fetchUrlBytes(std::string const & url, std::vector<unsigned char> & bytes)
+	{
+		std::wstring urlWide;
+		if (!wideFromUtf8OrAnsi(url, urlWide))
+			return false;
+
+		URL_COMPONENTS components;
+		memset(&components, 0, sizeof(components));
+		components.dwStructSize = sizeof(components);
+		components.dwSchemeLength = static_cast<DWORD>(-1);
+		components.dwHostNameLength = static_cast<DWORD>(-1);
+		components.dwUrlPathLength = static_cast<DWORD>(-1);
+		components.dwExtraInfoLength = static_cast<DWORD>(-1);
+		if (!WinHttpCrackUrl(urlWide.c_str(), static_cast<DWORD>(urlWide.size()), 0, &components))
+			return false;
+
+		std::wstring hostName(components.lpszHostName, components.dwHostNameLength);
+		std::wstring objectPath;
+		if (components.dwUrlPathLength > 0)
+			objectPath.assign(components.lpszUrlPath, components.dwUrlPathLength);
+		if (components.dwExtraInfoLength > 0)
+			objectPath.append(components.lpszExtraInfo, components.dwExtraInfoLength);
+		if (objectPath.empty())
+			objectPath = L"/";
+
+		HINTERNET const hSession = WinHttpOpen(L"SWGTitan/1.0", WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+		if (!hSession)
+			return false;
+
+		HINTERNET const hConnect = WinHttpConnect(hSession, hostName.c_str(), components.nPort, 0);
+		if (!hConnect)
+		{
+			WinHttpCloseHandle(hSession);
+			return false;
+		}
+
+		DWORD requestFlags = 0;
+		if (components.nScheme == INTERNET_SCHEME_HTTPS)
+			requestFlags |= WINHTTP_FLAG_SECURE;
+
+		HINTERNET const hRequest = WinHttpOpenRequest(hConnect, L"GET", objectPath.c_str(), 0, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, requestFlags);
+		if (!hRequest)
+		{
+			WinHttpCloseHandle(hConnect);
+			WinHttpCloseHandle(hSession);
+			return false;
+		}
+
+		bool success = false;
+		if (WinHttpSendRequest(hRequest, WINHTTP_NO_ADDITIONAL_HEADERS, 0, WINHTTP_NO_REQUEST_DATA, 0, 0, 0) && WinHttpReceiveResponse(hRequest, 0))
+		{
+			DWORD bytesRead = 0;
+			unsigned char buffer[8192];
+			do
+			{
+				bytesRead = 0;
+				if (!WinHttpReadData(hRequest, buffer, sizeof(buffer), &bytesRead))
+					break;
+				if (bytesRead > 0)
+					bytes.insert(bytes.end(), buffer, buffer + bytesRead);
+			}
+			while (bytesRead > 0);
+
+			success = !bytes.empty();
+		}
+
+		WinHttpCloseHandle(hRequest);
+		WinHttpCloseHandle(hConnect);
+		WinHttpCloseHandle(hSession);
+		return success;
+	}
+
+	DWORD WINAPI remoteImageFetchThreadProc(LPVOID context)
+	{
+		RemoteImageFetchThreadData * const threadData = reinterpret_cast<RemoteImageFetchThreadData *>(context);
+		if (!threadData || !threadData->runtime)
+			return 1;
+
+		RemoteImageRuntimeData * const runtime = threadData->runtime;
+		std::vector<unsigned char> * bytes = new std::vector<unsigned char>();
+		if (fetchUrlBytes(threadData->url, *bytes))
+		{
+			std::vector<unsigned char> * const oldBytes = reinterpret_cast<std::vector<unsigned char> *>(InterlockedExchangePointer(reinterpret_cast<PVOID *>(&runtime->fetchedBytes), bytes));
+			if (oldBytes)
+				delete oldBytes;
+
+			InterlockedExchange(&runtime->fetchState, RIFS_ready);
+		}
+		else
+		{
+			delete bytes;
+			InterlockedExchange(&runtime->fetchState, RIFS_failed);
+		}
+
+		delete threadData;
+		return 0;
+	}
+
+	void ensureComInitialized()
+	{
+		static bool s_comInitialized = false;
+		if (!s_comInitialized)
+		{
+			CoInitializeEx(0, COINIT_MULTITHREADED);
+			s_comInitialized = true;
+		}
+	}
+
+	bool decodeImageBytesToTexture(std::vector<unsigned char> const & bytes, Texture const *& texture)
+	{
+		texture = 0;
+		if (bytes.empty())
+			return false;
+
+		ensureComInitialized();
+
+		IWICImagingFactory * factory = 0;
+		HRESULT hr = CoCreateInstance(CLSID_WICImagingFactory, 0, CLSCTX_INPROC_SERVER, IID_IWICImagingFactory, reinterpret_cast<void **>(&factory));
+		if (FAILED(hr) || !factory)
+			return false;
+
+		IWICStream * wicStream = 0;
+		hr = factory->CreateStream(&wicStream);
+		if (FAILED(hr) || !wicStream)
+		{
+			factory->Release();
+			return false;
+		}
+
+		hr = wicStream->InitializeFromMemory(const_cast<unsigned char *>(&bytes[0]), static_cast<DWORD>(bytes.size()));
+		if (FAILED(hr))
+		{
+			wicStream->Release();
+			factory->Release();
+			return false;
+		}
+
+		IWICBitmapDecoder * decoder = 0;
+		hr = factory->CreateDecoderFromStream(wicStream, 0, WICDecodeMetadataCacheOnDemand, &decoder);
+		if (FAILED(hr) || !decoder)
+		{
+			wicStream->Release();
+			factory->Release();
+			return false;
+		}
+
+		IWICBitmapFrameDecode * frame = 0;
+		hr = decoder->GetFrame(0, &frame);
+		if (FAILED(hr) || !frame)
+		{
+			decoder->Release();
+			wicStream->Release();
+			factory->Release();
+			return false;
+		}
+
+		IWICFormatConverter * converter = 0;
+		hr = factory->CreateFormatConverter(&converter);
+		if (FAILED(hr) || !converter)
+		{
+			frame->Release();
+			decoder->Release();
+			wicStream->Release();
+			factory->Release();
+			return false;
+		}
+
+		hr = converter->Initialize(frame, GUID_WICPixelFormat32bppBGRA, WICBitmapDitherTypeNone, 0, 0.0, WICBitmapPaletteTypeCustom);
+		if (FAILED(hr))
+		{
+			converter->Release();
+			frame->Release();
+			decoder->Release();
+			wicStream->Release();
+			factory->Release();
+			return false;
+		}
+
+		UINT width = 0;
+		UINT height = 0;
+		converter->GetSize(&width, &height);
+		if (width == 0 || height == 0)
+		{
+			converter->Release();
+			frame->Release();
+			decoder->Release();
+			wicStream->Release();
+			factory->Release();
+			return false;
+		}
+
+		UINT const stride = width * 4u;
+		std::vector<unsigned char> pixels(static_cast<size_t>(stride) * static_cast<size_t>(height));
+		hr = converter->CopyPixels(0, stride, static_cast<UINT>(pixels.size()), &pixels[0]);
+
+		bool result = false;
+		if (SUCCEEDED(hr))
+		{
+			TextureFormat const runtimeFormats[] = { TF_ARGB_8888 };
+			texture = TextureList::fetch(&pixels[0], TF_ARGB_8888, static_cast<int>(width), static_cast<int>(height), runtimeFormats, 1);
+			result = (texture != 0);
+		}
+
+		converter->Release();
+		frame->Release();
+		decoder->Release();
+		wicStream->Release();
+		factory->Release();
+		return result;
+	}
+
+	bool decodeGifFrames(std::vector<unsigned char> const & bytes, std::vector<Texture const *> & frames, std::vector<float> & delays)
+	{
+		frames.clear();
+		delays.clear();
+		if (bytes.empty())
+			return false;
+
+		ensureComInitialized();
+
+		IWICImagingFactory * factory = 0;
+		HRESULT hr = CoCreateInstance(CLSID_WICImagingFactory, 0, CLSCTX_INPROC_SERVER, IID_IWICImagingFactory, reinterpret_cast<void **>(&factory));
+		if (FAILED(hr) || !factory)
+			return false;
+
+		IWICStream * wicStream = 0;
+		hr = factory->CreateStream(&wicStream);
+		if (FAILED(hr) || !wicStream)
+		{
+			factory->Release();
+			return false;
+		}
+
+		hr = wicStream->InitializeFromMemory(const_cast<unsigned char *>(&bytes[0]), static_cast<DWORD>(bytes.size()));
+		if (FAILED(hr))
+		{
+			wicStream->Release();
+			factory->Release();
+			return false;
+		}
+
+		IWICBitmapDecoder * decoder = 0;
+		hr = factory->CreateDecoderFromStream(wicStream, 0, WICDecodeMetadataCacheOnDemand, &decoder);
+		if (FAILED(hr) || !decoder)
+		{
+			wicStream->Release();
+			factory->Release();
+			return false;
+		}
+
+		UINT frameCount = 0;
+		decoder->GetFrameCount(&frameCount);
+		if (frameCount == 0)
+		{
+			decoder->Release();
+			wicStream->Release();
+			factory->Release();
+			return false;
+		}
+
+		UINT gifWidth = 0;
+		UINT gifHeight = 0;
+		{
+			IWICBitmapFrameDecode * firstFrame = 0;
+			if (SUCCEEDED(decoder->GetFrame(0, &firstFrame)) && firstFrame)
+			{
+				firstFrame->GetSize(&gifWidth, &gifHeight);
+				firstFrame->Release();
+			}
+		}
+		if (gifWidth == 0 || gifHeight == 0)
+		{
+			decoder->Release();
+			wicStream->Release();
+			factory->Release();
+			return false;
+		}
+
+		UINT const compositeStride = gifWidth * 4u;
+		std::vector<unsigned char> compositeBuffer(static_cast<size_t>(compositeStride) * static_cast<size_t>(gifHeight), 0);
+
+		for (UINT fi = 0; fi < frameCount; ++fi)
+		{
+			IWICBitmapFrameDecode * frame = 0;
+			hr = decoder->GetFrame(fi, &frame);
+			if (FAILED(hr) || !frame)
+				continue;
+
+			float frameDelay = 0.1f;
+			IWICMetadataQueryReader * metaReader = 0;
+			if (SUCCEEDED(frame->GetMetadataQueryReader(&metaReader)) && metaReader)
+			{
+				PROPVARIANT delayProp;
+				PropVariantInit(&delayProp);
+				if (SUCCEEDED(metaReader->GetMetadataByName(L"/grctlext/Delay", &delayProp)))
+				{
+					if (delayProp.vt == VT_UI2)
+						frameDelay = static_cast<float>(delayProp.uiVal) * 0.01f;
+					else if (delayProp.vt == VT_UI4)
+						frameDelay = static_cast<float>(delayProp.ulVal) * 0.01f;
+				}
+				PropVariantClear(&delayProp);
+				metaReader->Release();
+			}
+			if (frameDelay < 0.02f)
+				frameDelay = 0.1f;
+
+			UINT frameLeft = 0, frameTop = 0;
+			IWICMetadataQueryReader * metaReader2 = 0;
+			if (SUCCEEDED(frame->GetMetadataQueryReader(&metaReader2)) && metaReader2)
+			{
+				PROPVARIANT leftProp, topProp;
+				PropVariantInit(&leftProp);
+				PropVariantInit(&topProp);
+				if (SUCCEEDED(metaReader2->GetMetadataByName(L"/imgdesc/Left", &leftProp)) && leftProp.vt == VT_UI2)
+					frameLeft = leftProp.uiVal;
+				if (SUCCEEDED(metaReader2->GetMetadataByName(L"/imgdesc/Top", &topProp)) && topProp.vt == VT_UI2)
+					frameTop = topProp.uiVal;
+				PropVariantClear(&leftProp);
+				PropVariantClear(&topProp);
+				metaReader2->Release();
+			}
+
+			IWICFormatConverter * converter = 0;
+			hr = factory->CreateFormatConverter(&converter);
+			if (FAILED(hr) || !converter)
+			{
+				frame->Release();
+				continue;
+			}
+
+			hr = converter->Initialize(frame, GUID_WICPixelFormat32bppBGRA, WICBitmapDitherTypeNone, 0, 0.0, WICBitmapPaletteTypeCustom);
+			if (FAILED(hr))
+			{
+				converter->Release();
+				frame->Release();
+				continue;
+			}
+
+			UINT fw = 0, fh = 0;
+			converter->GetSize(&fw, &fh);
+			if (fw > 0 && fh > 0)
+			{
+				UINT const frameStride = fw * 4u;
+				std::vector<unsigned char> framePixels(static_cast<size_t>(frameStride) * static_cast<size_t>(fh));
+				hr = converter->CopyPixels(0, frameStride, static_cast<UINT>(framePixels.size()), &framePixels[0]);
+				if (SUCCEEDED(hr))
+				{
+					for (UINT row = 0; row < fh; ++row)
+					{
+						UINT const destRow = frameTop + row;
+						if (destRow >= gifHeight)
+							break;
+						for (UINT col = 0; col < fw; ++col)
+						{
+							UINT const destCol = frameLeft + col;
+							if (destCol >= gifWidth)
+								break;
+							size_t const srcIdx = (static_cast<size_t>(row) * frameStride) + (static_cast<size_t>(col) * 4u);
+							size_t const dstIdx = (static_cast<size_t>(destRow) * compositeStride) + (static_cast<size_t>(destCol) * 4u);
+							unsigned char const alpha = framePixels[srcIdx + 3];
+							if (alpha > 0)
+							{
+								compositeBuffer[dstIdx + 0] = framePixels[srcIdx + 0];
+								compositeBuffer[dstIdx + 1] = framePixels[srcIdx + 1];
+								compositeBuffer[dstIdx + 2] = framePixels[srcIdx + 2];
+								compositeBuffer[dstIdx + 3] = alpha;
+							}
+						}
+					}
+
+					TextureFormat const runtimeFormats[] = { TF_ARGB_8888 };
+					Texture const * tex = TextureList::fetch(&compositeBuffer[0], TF_ARGB_8888, static_cast<int>(gifWidth), static_cast<int>(gifHeight), runtimeFormats, 1);
+					if (tex)
+					{
+						frames.push_back(tex);
+						delays.push_back(frameDelay);
+					}
+				}
+			}
+
+			converter->Release();
+			frame->Release();
+		}
+
+		decoder->Release();
+		wicStream->Release();
+		factory->Release();
+		return !frames.empty();
+	}
+
+	typedef std::map<std::string, Texture const *> TextureCacheMap;
+	TextureCacheMap ms_textureCache;
+
+	RemoteImageRuntimeData & getRemoteImageRuntimeData(TangibleObject const * tangibleObject)
+	{
+		RemoteImageRuntimeData & data = ms_remoteImageRuntimeDataMap[tangibleObject];
+		if (!data.owner)
+			data.owner = tangibleObject;
+		return data;
+	}
+
+	void closeFinishedFetchThread(RemoteImageRuntimeData & runtimeData)
+	{
+		if (runtimeData.fetchThread && (InterlockedCompareExchange(&runtimeData.fetchState, RIFS_idle, RIFS_idle) != RIFS_fetching))
+		{
+			WaitForSingleObject(runtimeData.fetchThread, 0);
+			CloseHandle(runtimeData.fetchThread);
+			runtimeData.fetchThread = 0;
+		}
+	}
+
+	void clearFetchedBytes(RemoteImageRuntimeData & runtimeData)
+	{
+		std::vector<unsigned char> * const oldBytes = reinterpret_cast<std::vector<unsigned char> *>(InterlockedExchangePointer(reinterpret_cast<PVOID *>(&runtimeData.fetchedBytes), 0));
+		if (oldBytes)
+			delete oldBytes;
+	}
+
+	void clearGifFrames(RemoteImageRuntimeData & runtimeData)
+	{
+		for (size_t i = 0; i < runtimeData.gifFrames.size(); ++i)
+		{
+			if (runtimeData.gifFrames[i])
+				runtimeData.gifFrames[i]->release();
+		}
+		runtimeData.gifFrames.clear();
+		runtimeData.gifFrameDelays.clear();
+		runtimeData.gifCurrentFrame = 0;
+		runtimeData.gifFrameTimer = 0.0f;
+		runtimeData.isGif = false;
+	}
+
+	void applyTextureScrollToAppearance(Appearance * appearance, float scrollH, float scrollV)
+	{
+		if (!appearance)
+			return;
+		appearance->setTextureScroll(TAG_MAIN, scrollH, scrollV);
+	}
+
+	void applyTextureToSurface(Texture const * texture, Appearance * appearance)
+	{
+		if (texture && appearance)
+			appearance->setTexture(TAG_MAIN, *texture);
+	}
+
+	void applyPictureOnlyPresentation(TangibleObject & object, RemoteImageRuntimeData & runtimeData, bool pictureOnly)
+	{
+		bool const applyNonAdminPictureOnly = pictureOnly && !PlayerObject::isAdmin();
+		if (runtimeData.nonAdminPictureOnlyActive == applyNonAdminPictureOnly)
+			return;
+
+		if (applyNonAdminPictureOnly)
+		{
+			if (!runtimeData.nameOverridden)
+			{
+				runtimeData.originalObjectName = object.getObjectName();
+				runtimeData.nameOverridden = true;
+			}
+			object.setObjectName(Unicode::emptyString);
+
+			object.removeNotification(ClientWorld::getTangibleNotification(), true);
+			object.addNotification(ClientWorld::getTangibleNotTargetableNotification(), true);
+
+			Appearance * const appearance = object.getAppearance();
+			if (appearance)
+				appearance->setAlpha(false, 1.0f, true, 0.0f);
+		}
+		else
+		{
+			if (runtimeData.nameOverridden)
+			{
+				object.setObjectName(runtimeData.originalObjectName);
+				runtimeData.originalObjectName = Unicode::emptyString;
+				runtimeData.nameOverridden = false;
+			}
+
+			object.removeNotification(ClientWorld::getTangibleNotTargetableNotification(), true);
+			object.addNotification(ClientWorld::getTangibleNotification(), true);
+
+			Appearance * const appearance = object.getAppearance();
+			if (appearance)
+				appearance->setAlpha(true, 1.0f, true, 1.0f);
+		}
+
+		runtimeData.nonAdminPictureOnlyActive = applyNonAdminPictureOnly;
+	}
+
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 	typedef std::vector<Object*>  ObjectVector;
@@ -263,6 +1070,11 @@ TangibleObject *TangibleObject::findClosestInRangeChair(NetworkId const &searchC
 TangibleObject::TangibleObject(const SharedTangibleObjectTemplate* newTemplate) :
 ClientObject             (newTemplate),
 m_appearanceData         (),
+m_remoteTextureUrl       (),
+m_remoteTextureMode      (),
+m_remoteTextureDisplayMode(),
+m_remoteTextureScrollH   (),
+m_remoteTextureScrollV   (),
 m_damageTaken            (),
 m_maxHitPoints           (),
 m_components             (),
@@ -291,6 +1103,11 @@ m_effectsMap()
 {
 	NOT_NULL(newTemplate);
 	m_appearanceData.setSourceObject (this);
+	m_remoteTextureUrl.setSourceObject(this);
+	m_remoteTextureMode.setSourceObject(this);
+	m_remoteTextureDisplayMode.setSourceObject(this);
+	m_remoteTextureScrollH.setSourceObject(this);
+	m_remoteTextureScrollV.setSourceObject(this);
 	m_damageTaken.setSourceObject    (this);
 	m_condition.setSourceObject      (this);
 	m_maxHitPoints.setSourceObject   (this);
@@ -310,6 +1127,11 @@ m_effectsMap()
 	addSharedVariable_np(m_accessList);
 	addSharedVariable_np(m_guildAccessList);
 	addSharedVariable_np(m_effectsMap);
+	addSharedVariable_np(m_remoteTextureUrl);
+	addSharedVariable_np(m_remoteTextureMode);
+	addSharedVariable_np(m_remoteTextureDisplayMode);
+	addSharedVariable_np(m_remoteTextureScrollH);
+	addSharedVariable_np(m_remoteTextureScrollV);
 
 	m_effectsMap.setOnErase(this, &TangibleObject::OnObjectEffectErased);
 	m_effectsMap.setOnInsert(this, &TangibleObject::OnObjectEffectInsert);
@@ -357,6 +1179,8 @@ TangibleObject::~TangibleObject()
 		for(unsigned int i = 0; i < toRemove.size(); ++i)
 			RemoveObjectEffect(toRemove[i]);
 	}
+
+	clearRemoteImageTexture();
 }
 
 // ----------------------------------------------------------------------
@@ -405,6 +1229,11 @@ float TangibleObject::alter(const float elapsedTime)
 			if(isInWorld())
 			{
 				VerifyObjectEffects();
+				if (hasCondition(C_magicPaintingUrl))
+				{
+					updateRemoteImageTexture();
+					updateGifAnimation(elapsedTime);
+				}
 				// Restart any object effects that are finished playing.
 				std::map<std::string, Object *>::const_iterator iter = m_objectEffects.begin();
 				for(; iter != m_objectEffects.end(); ++iter)
@@ -420,6 +1249,9 @@ float TangibleObject::alter(const float elapsedTime)
 				std::map<std::string, Object *>::const_iterator iter = m_objectEffects.begin();
 				for(; iter != m_objectEffects.end(); ++iter)
 					RemoveObjectEffect(iter->first);
+
+				if (hasCondition(C_magicPaintingUrl))
+					clearRemoteImageTexture();
 			}
 
 		}
@@ -488,6 +1320,8 @@ void TangibleObject::addToWorld()
 
 	// Update the interesting attached object based upon user preferences
 	updateInterestingAttachedObject(getCondition ());
+	if (hasCondition(C_magicPaintingUrl))
+		updateRemoteImageTexture();
 }
 
 // ----------------------------------------------------------------------
@@ -511,6 +1345,9 @@ void TangibleObject::removeFromWorld()
 		delete m_interestingAttachedObject;
 		m_interestingAttachedObject = 0;
 	}
+
+	if (hasCondition(C_magicPaintingUrl))
+		clearRemoteImageTexture();
 
 	ClientObject::removeFromWorld();
 }
@@ -714,6 +1551,335 @@ void TangibleObject::appearanceDataModified(const std::string& value)
 	customizationData->release();
 
 	//-- Make sure the damn appearance gets an alter --- static meshes will not alter unless instructed.
+	scheduleForAlter();
+}
+
+//----------------------------------------------------------------------
+
+void TangibleObject::remoteTextureUrlModified(const std::string & value)
+{
+	UNREF(value);
+	if (!isInWorld())
+		return;
+	scheduleForAlter();
+}
+
+//----------------------------------------------------------------------
+
+void TangibleObject::remoteTextureModeModified(const std::string & value)
+{
+	UNREF(value);
+	if (!isInWorld())
+		return;
+	scheduleForAlter();
+}
+
+//----------------------------------------------------------------------
+
+void TangibleObject::remoteTextureDisplayModeModified(const std::string & value)
+{
+	UNREF(value);
+	if (!isInWorld())
+		return;
+	scheduleForAlter();
+}
+
+//----------------------------------------------------------------------
+
+void TangibleObject::remoteTextureScrollHModified(const std::string & value)
+{
+	UNREF(value);
+	if (!isInWorld())
+		return;
+	scheduleForAlter();
+}
+
+//----------------------------------------------------------------------
+
+void TangibleObject::remoteTextureScrollVModified(const std::string & value)
+{
+	UNREF(value);
+	if (!isInWorld())
+		return;
+	scheduleForAlter();
+}
+
+//----------------------------------------------------------------------
+
+void TangibleObject::updateRemoteImageTexture()
+{
+	std::string const remoteTextureUrl = m_remoteTextureUrl.get();
+	std::string const remoteTextureMode = m_remoteTextureMode.get();
+	std::string const remoteDisplayModeStr = m_remoteTextureDisplayMode.get();
+	std::string const remoteScrollHStr = m_remoteTextureScrollH.get();
+	std::string const remoteScrollVStr = m_remoteTextureScrollV.get();
+
+	bool const pictureOnlyMode = (!remoteTextureMode.empty() && (_stricmp(remoteTextureMode.c_str(), "DEFAULT") != 0));
+	MagicPaintingDisplayMode const displayMode = parseDisplayMode(remoteDisplayModeStr);
+	float const scrollH = remoteScrollHStr.empty() ? 0.0f : static_cast<float>(atof(remoteScrollHStr.c_str()));
+	float const scrollV = remoteScrollVStr.empty() ? 0.0f : static_cast<float>(atof(remoteScrollVStr.c_str()));
+
+	if (!hasCondition(C_magicPaintingUrl) || !isInWorld() || remoteTextureUrl.empty() || !isHttpUrl(remoteTextureUrl))
+	{
+		RemoteImageRuntimeDataMap::iterator runtimeIt = ms_remoteImageRuntimeDataMap.find(this);
+		if (runtimeIt == ms_remoteImageRuntimeDataMap.end())
+			return;
+
+		RemoteImageRuntimeData & existingRuntimeData = runtimeIt->second;
+		LONG const existingState = InterlockedCompareExchange(&existingRuntimeData.fetchState, RIFS_idle, RIFS_idle);
+		bool const hasActiveRuntimeData =
+			(existingRuntimeData.texture != 0) ||
+			(existingRuntimeData.overlayObject != 0) ||
+			(existingRuntimeData.overlayBackObject != 0) ||
+			(existingRuntimeData.fetchThread != 0) ||
+			(existingRuntimeData.fetchedBytes != 0) ||
+			(existingState != RIFS_idle) ||
+			!existingRuntimeData.appliedUrl.empty() ||
+			!existingRuntimeData.requestedUrl.empty() ||
+			existingRuntimeData.nonAdminPictureOnlyActive ||
+			existingRuntimeData.nameOverridden ||
+			!existingRuntimeData.gifFrames.empty();
+
+		if (!hasActiveRuntimeData)
+			return;
+
+		clearRemoteImageTexture();
+		return;
+	}
+
+	RemoteImageRuntimeData & runtimeData = getRemoteImageRuntimeData(this);
+	closeFinishedFetchThread(runtimeData);
+
+	runtimeData.isPaintingTemplate = templateNameContainsPainting(getObjectTemplateName());
+
+	bool const urlChanged = (runtimeData.appliedUrl != remoteTextureUrl);
+	bool const displayModeChanged = (runtimeData.appliedDisplayMode != remoteDisplayModeStr);
+
+	applyPictureOnlyPresentation(*this, runtimeData, pictureOnlyMode);
+	ensureRemoteImageOverlayObjects(*this, runtimeData, displayMode, displayModeChanged);
+
+	if (!runtimeData.isPaintingTemplate && !runtimeData.overlayObject)
+		return;
+
+	Appearance * const appearance = getAppearance();
+
+	if (runtimeData.texture && !urlChanged)
+	{
+		if (displayModeChanged)
+		{
+			runtimeData.appliedDisplayMode = remoteDisplayModeStr;
+			applyCachedRuntimeTextureToSurfaces(runtimeData, appearance);
+		}
+
+		runtimeData.scrollH = scrollH;
+		runtimeData.scrollV = scrollV;
+		if (runtimeData.isPaintingTemplate)
+		{
+			applyTextureScrollToAppearance(appearance, scrollH, scrollV);
+		}
+		else
+		{
+			if (runtimeData.overlayObject && runtimeData.overlayObject->getAppearance())
+				applyTextureScrollToAppearance(runtimeData.overlayObject->getAppearance(), scrollH, scrollV);
+			if (runtimeData.overlayBackObject && runtimeData.overlayBackObject->getAppearance())
+				applyTextureScrollToAppearance(runtimeData.overlayBackObject->getAppearance(), scrollH, scrollV);
+		}
+		return;
+	}
+
+	LONG const state = InterlockedCompareExchange(&runtimeData.fetchState, RIFS_idle, RIFS_idle);
+	if ((state == RIFS_idle || state == RIFS_failed) && (runtimeData.requestedUrl != remoteTextureUrl))
+	{
+		clearFetchedBytes(runtimeData);
+		clearGifFrames(runtimeData);
+		runtimeData.requestedUrl = remoteTextureUrl;
+		runtimeData.appliedUrl.clear();
+		InterlockedExchange(&runtimeData.fetchState, RIFS_fetching);
+
+		RemoteImageFetchThreadData * const threadData = new RemoteImageFetchThreadData(&runtimeData, remoteTextureUrl);
+		runtimeData.fetchThread = CreateThread(0, 0, remoteImageFetchThreadProc, threadData, 0, 0);
+		if (!runtimeData.fetchThread)
+		{
+			delete threadData;
+			InterlockedExchange(&runtimeData.fetchState, RIFS_failed);
+		}
+
+		scheduleForAlter();
+		return;
+	}
+
+	if (state != RIFS_ready)
+	{
+		scheduleForAlter();
+		return;
+	}
+
+	std::vector<unsigned char> * const fetchedBytes = reinterpret_cast<std::vector<unsigned char> *>(InterlockedExchangePointer(reinterpret_cast<PVOID *>(&runtimeData.fetchedBytes), 0));
+	if (!fetchedBytes)
+	{
+		InterlockedExchange(&runtimeData.fetchState, RIFS_failed);
+		return;
+	}
+
+	bool const urlIsGif = isGifUrl(remoteTextureUrl);
+
+	if (urlIsGif)
+	{
+		std::vector<Texture const *> gifFrames;
+		std::vector<float> gifDelays;
+		bool const gifDecoded = decodeGifFrames(*fetchedBytes, gifFrames, gifDelays);
+		delete fetchedBytes;
+
+		if (!gifDecoded || gifFrames.empty())
+		{
+			InterlockedExchange(&runtimeData.fetchState, RIFS_failed);
+			return;
+		}
+
+		if (runtimeData.isGif)
+			runtimeData.texture = 0;
+		else if (runtimeData.texture)
+		{
+			runtimeData.texture->release();
+			runtimeData.texture = 0;
+		}
+		clearGifFrames(runtimeData);
+
+		runtimeData.gifFrames = gifFrames;
+		runtimeData.gifFrameDelays = gifDelays;
+		runtimeData.gifCurrentFrame = 0;
+		runtimeData.gifFrameTimer = 0.0f;
+		runtimeData.isGif = true;
+		runtimeData.texture = gifFrames[0];
+		runtimeData.texture->fetch();
+	}
+	else
+	{
+		Texture const * decodedTexture = 0;
+		bool const decoded = decodeImageBytesToTexture(*fetchedBytes, decodedTexture);
+		delete fetchedBytes;
+
+		if (!decoded || !decodedTexture)
+		{
+			InterlockedExchange(&runtimeData.fetchState, RIFS_failed);
+			return;
+		}
+
+		if (runtimeData.isGif)
+			runtimeData.texture = 0;
+		else if (runtimeData.texture)
+			runtimeData.texture->release();
+		clearGifFrames(runtimeData);
+
+		runtimeData.texture = decodedTexture;
+		runtimeData.isGif = false;
+	}
+
+	applyCachedRuntimeTextureToSurfaces(runtimeData, appearance);
+
+	runtimeData.scrollH = scrollH;
+	runtimeData.scrollV = scrollV;
+	if (runtimeData.isPaintingTemplate)
+	{
+		applyTextureScrollToAppearance(appearance, scrollH, scrollV);
+	}
+	else
+	{
+		if (runtimeData.overlayObject && runtimeData.overlayObject->getAppearance())
+			applyTextureScrollToAppearance(runtimeData.overlayObject->getAppearance(), scrollH, scrollV);
+		if (runtimeData.overlayBackObject && runtimeData.overlayBackObject->getAppearance())
+			applyTextureScrollToAppearance(runtimeData.overlayBackObject->getAppearance(), scrollH, scrollV);
+	}
+
+	runtimeData.appliedUrl = remoteTextureUrl;
+	runtimeData.appliedDisplayMode = remoteDisplayModeStr;
+	InterlockedExchange(&runtimeData.fetchState, RIFS_idle);
+
+	if (runtimeData.isGif)
+		scheduleForAlter();
+}
+
+//----------------------------------------------------------------------
+
+void TangibleObject::clearRemoteImageTexture()
+{
+	RemoteImageRuntimeDataMap::iterator runtimeIt = ms_remoteImageRuntimeDataMap.find(this);
+	if (runtimeIt == ms_remoteImageRuntimeDataMap.end())
+		return;
+
+	RemoteImageRuntimeData & runtimeData = runtimeIt->second;
+	applyPictureOnlyPresentation(*this, runtimeData, false);
+	clearRemoteImageOverlayObjects(*this, runtimeData);
+
+	if (runtimeData.isGif)
+	{
+		runtimeData.texture = 0;
+		clearGifFrames(runtimeData);
+	}
+	else
+	{
+		if (runtimeData.texture)
+		{
+			runtimeData.texture->release();
+			runtimeData.texture = 0;
+		}
+	}
+
+	clearFetchedBytes(runtimeData);
+	closeFinishedFetchThread(runtimeData);
+	if (InterlockedCompareExchange(&runtimeData.fetchState, RIFS_idle, RIFS_idle) != RIFS_fetching)
+		InterlockedExchange(&runtimeData.fetchState, RIFS_idle);
+	runtimeData.requestedUrl.clear();
+	runtimeData.appliedUrl.clear();
+	runtimeData.appliedDisplayMode.clear();
+	ms_remoteImageRuntimeDataMap.erase(runtimeIt);
+}
+
+//----------------------------------------------------------------------
+
+void TangibleObject::updateGifAnimation(float elapsedTime)
+{
+	RemoteImageRuntimeDataMap::iterator runtimeIt = ms_remoteImageRuntimeDataMap.find(this);
+	if (runtimeIt == ms_remoteImageRuntimeDataMap.end())
+		return;
+
+	RemoteImageRuntimeData & runtimeData = runtimeIt->second;
+	if (!runtimeData.isGif || runtimeData.gifFrames.empty())
+		return;
+
+	int const frameCount = static_cast<int>(runtimeData.gifFrames.size());
+	if (runtimeData.gifCurrentFrame < 0 || runtimeData.gifCurrentFrame >= frameCount)
+		runtimeData.gifCurrentFrame = 0;
+
+	runtimeData.gifFrameTimer += elapsedTime;
+	float const currentDelay = (runtimeData.gifCurrentFrame < static_cast<int>(runtimeData.gifFrameDelays.size()))
+		? runtimeData.gifFrameDelays[runtimeData.gifCurrentFrame]
+		: 0.1f;
+
+	if (runtimeData.gifFrameTimer < currentDelay)
+	{
+		scheduleForAlter();
+		return;
+	}
+
+	runtimeData.gifFrameTimer -= currentDelay;
+	runtimeData.gifCurrentFrame = (runtimeData.gifCurrentFrame + 1) % frameCount;
+
+	Texture const * const frameTexture = runtimeData.gifFrames[runtimeData.gifCurrentFrame];
+	if (!frameTexture)
+	{
+		scheduleForAlter();
+		return;
+	}
+
+	if (runtimeData.texture && runtimeData.texture != frameTexture)
+		runtimeData.texture->release();
+	runtimeData.texture = frameTexture;
+	runtimeData.texture->fetch();
+
+	Appearance * const appearance = getAppearance();
+	applyCachedRuntimeTextureToSurfaces(runtimeData, appearance);
+
 	scheduleForAlter();
 }
 

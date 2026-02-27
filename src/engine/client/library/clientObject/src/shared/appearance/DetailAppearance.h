@@ -92,6 +92,7 @@ public:
 	virtual void drawDebugShapes (DebugShapeRenderer *renderer) const;
 
 	virtual void setTexture(Tag tag, const Texture &texture);
+	virtual void setTextureScroll(Tag tag, float scrollU, float scrollV);
 
 	const Appearance*               getAppearance (int detailLevel) const;
 

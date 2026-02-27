@@ -300,6 +300,30 @@ TerrainEditorApp::~TerrainEditorApp (void)
 
 //-------------------------------------------------------------------
 
+static void setWorkingDirectoryToExecutableFolder ()
+{
+	char modulePath [MAX_PATH] = { 0 };
+	if (!GetModuleFileNameA (0, modulePath, MAX_PATH))
+		return;
+
+	char* const lastSlash = strrchr (modulePath, '\\');
+	if (!lastSlash)
+		return;
+
+	*lastSlash = '\0';
+	IGNORE_RETURN (SetCurrentDirectoryA (modulePath));
+}
+
+//-------------------------------------------------------------------
+
+static void addDefaultGameAssetSearchPaths ()
+{
+	TreeFile::addSearchPath ("D:\\titan\\data\\sku.0\\sys.client\\compiled\\game", 0);
+	TreeFile::addSearchPath ("D:\\titan\\data\\sku.0\\sys.shared\\compiled\\game", 0);
+}
+
+//-------------------------------------------------------------------
+
 BOOL TerrainEditorApp::InitInstance()
 {
 	// CG: The following block was added by the Splash Screen component.
@@ -311,6 +335,7 @@ BOOL TerrainEditorApp::InitInstance()
 
 	AfxEnableControlContainer();
 	AfxSetAmbientActCtx(FALSE);
+	setWorkingDirectoryToExecutableFolder ();
 
 	// Standard initialization
 	// If you are not using these features and wish to reduce the size
@@ -504,6 +529,7 @@ BOOL TerrainEditorApp::InitInstance()
 
 		//-- file
 		SetupSharedFile::install(false);
+		addDefaultGameAssetSearchPaths ();
 
 		//-- math
 		SetupSharedMath::install();

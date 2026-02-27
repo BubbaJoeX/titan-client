@@ -128,6 +128,7 @@ public:
 	static void                 objectListCameraRenderDescend(Object const & obj);
 	
 	virtual void                setTexture(Tag tag, const Texture &texture);
+	virtual void                setTextureScroll(Tag tag, float scrollU, float scrollV);
 	bool getShadowBlobAllowed() const;
 	virtual void setShadowBlobAllowed();
 	virtual void renderShadowBlob (const Vector& position_o, float radius) const;

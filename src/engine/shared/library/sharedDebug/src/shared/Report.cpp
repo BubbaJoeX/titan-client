@@ -198,11 +198,16 @@ void Report::vprintf(const char *format, va_list va)
 {
 	char buffer[8 * 1024];
 
+	static const char prefix[] = "[Titan] ";
+	static const int prefixLen = sizeof(prefix) - 1;
+
+	memcpy(buffer, prefix, prefixLen);
+
 	// make sure the buffer is always NULL terminated
 	buffer[sizeof(buffer)-1] = '\0';
 
-	// format the string
-	IGNORE_RETURN(vsnprintf(buffer, sizeof(buffer)-1, format, va));
+	// format the string into the space after the prefix
+	IGNORE_RETURN(vsnprintf(buffer + prefixLen, sizeof(buffer) - prefixLen - 1, format, va));
 
 	// handle overflow reasonably nicely
 	if (strlen(buffer) == sizeof(buffer)-1)
@@ -210,7 +215,7 @@ void Report::vprintf(const char *format, va_list va)
 		buffer[sizeof(buffer)-3] = '+';
 		buffer[sizeof(buffer)-2] = '\n';
 	}
-	
+
 	puts(buffer);
 }
 

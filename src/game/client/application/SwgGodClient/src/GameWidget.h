@@ -41,6 +41,7 @@ namespace MessageDispatch
 
 #include <qcursor.h>                           // in the precompiled header, but included by QT-generated code that doesn't use our precompiled headers
 #include <qdatetime.h>
+#include <map>
 
 //-----------------------------------------------------------------
 
@@ -101,6 +102,8 @@ protected:
 private slots:
 	void secondElapsed       ();
 	void onPopupItemActivated(int id) const;
+	void onSetConditionMenuActivated(int id);
+	void onMagicPaintingConditionMenuActivated(int id);
 	void onPopupMenuShow     () const;
 	void onPopupMenuHide     () const;
 	void onTemplateMenuShow  ();
@@ -151,6 +154,8 @@ private:
 
 	QPopupMenu*        m_pop;
 	QPopupMenu*        m_templateMenu;
+	QPopupMenu*        m_setConditionMenu;
+	std::map<int, int> m_conditionMenuIdMap;
 
 	size_t             m_lastOID;
 

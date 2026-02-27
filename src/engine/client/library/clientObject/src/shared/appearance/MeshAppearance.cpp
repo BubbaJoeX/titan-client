@@ -389,6 +389,16 @@ void MeshAppearance::setTexture(const Tag tag, const Texture &texture)
 
 // ----------------------------------------------------------------------
 
+void MeshAppearance::setTextureScroll(const Tag tag, float scrollU, float scrollV)
+{
+	if (m_shaderPrimitiveSet)
+	{
+		m_shaderPrimitiveSet->setTextureScroll(tag, scrollU, scrollV, 0.0f, 0.0f);
+	}
+}
+
+// ----------------------------------------------------------------------
+
 void MeshAppearance::renderShadowBlob(Vector const & position_o, float const radius) const
 {
 	getMeshAppearanceTemplate()->renderSimpleShadow(position_o, radius);

@@ -47,6 +47,7 @@ public:
 	virtual void              objectListCameraRender() const;
 
 	virtual void              setTexture(Tag tag, const Texture &texture);
+	virtual void              setTextureScroll(Tag tag, float scrollU, float scrollV);
 
 	virtual const IndexedTriangleList* getRadarShape () const;
 

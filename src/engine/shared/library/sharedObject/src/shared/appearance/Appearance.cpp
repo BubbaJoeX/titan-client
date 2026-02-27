@@ -344,6 +344,12 @@ void Appearance::setTexture(Tag /*tag*/, const Texture & /*texture*/)
 }
 
 // ----------------------------------------------------------------------
+
+void Appearance::setTextureScroll(Tag /*tag*/, float /*scrollU*/, float /*scrollV*/)
+{
+}
+
+// ----------------------------------------------------------------------
 /**
  * Cast a ray through object space and return the result of the collision (if any) to result
  * 

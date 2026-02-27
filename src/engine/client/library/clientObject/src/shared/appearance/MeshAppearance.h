@@ -55,6 +55,7 @@ public:
 	const ShaderPrimitiveSet   *getShaderPrimitiveSet() const;
 
 	virtual void                setTexture(Tag tag, const Texture &texture);
+	virtual void                setTextureScroll(Tag tag, float scrollU, float scrollV);
 	virtual void renderShadowBlob (const Vector& position_o, float radius) const;
 	virtual void renderReticle (const Vector& position_o, float radius) const;
 	virtual AxialBox const getTangibleExtent() const;

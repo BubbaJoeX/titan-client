@@ -56,6 +56,7 @@ public:
 	void                      getCostEstimate(int &numberOfVertices, int &numberOfTriangles, float &complexity) const;
 
 	void                      setTexture(Tag tag, const Texture &texture);
+	void                      setTextureScroll(Tag tag, float u1, float v1, float u2, float v2);
 
 	bool collide(Vector const & start_o, Vector const & end_o, CollideParameters const & collideParameters, CollisionInfo & result) const;
 
