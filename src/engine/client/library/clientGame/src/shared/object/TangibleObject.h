@@ -154,6 +154,7 @@ public:
 	int                 getCount                          (void) const;
 	int                 getCondition                      (void) const;
 	bool                hasCondition                      (int condition) const;
+	std::string const & getRemoteStreamAspect             () const;
 
 	bool isInCombat() const;
 	void setIsInCombat(bool inCombat);
@@ -279,7 +280,6 @@ private:
 	void                          remoteStreamLoopModified(const std::string & value);
 	void                          remoteStreamAspectModified(const std::string & value);
 	void                          remoteEmitterParentIdModified(const std::string & value);
-	std::string const &           getRemoteStreamAspect() const;
 	void                          updateRemoteVideoStream();
 	void                          clearRemoteVideoStream();
 	void                          updateVideoEmitterAudio();
