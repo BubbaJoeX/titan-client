@@ -1492,6 +1492,28 @@ bool TangibleObject::getVideoPlaybackInfo(TangibleObject const * obj, __int64 & 
 	return (outTimeMs >= 0 && outLengthMs > 0);
 }
 
+//----------------------------------------------------------------------
+
+bool TangibleObject::seekVideoPlayback(TangibleObject const * obj, __int64 timeMs)
+{
+	if (!obj)
+		return false;
+
+	if (!ms_vlcApi.loaded || !ms_vlcApi.pMediaPlayerSetTime)
+		return false;
+
+	VideoStreamRuntimeDataMap::const_iterator it = ms_videoStreamRuntimeDataMap.find(obj);
+	if (it == ms_videoStreamRuntimeDataMap.end())
+		return false;
+
+	VideoStreamRuntimeData const & rd = it->second;
+	if (!rd.mediaPlayer)
+		return false;
+
+	ms_vlcApi.pMediaPlayerSetTime(rd.mediaPlayer, static_cast<libvlc_time_t>(timeMs));
+	return true;
+}
+
 // ======================================================================
 // class TangibleObject: public static member functions
 // ======================================================================
@@ -1638,6 +1660,7 @@ m_remoteStreamLoop       (),
 m_remoteStreamAspect     (),
 m_remoteStreamStartTime  (),
 m_remoteEmitterParentId  (),
+m_remoteEmitterVolume    (),
 m_damageTaken            (),
 m_maxHitPoints           (),
 m_components             (),
@@ -1677,6 +1700,7 @@ m_effectsMap()
 	m_remoteStreamAspect.setSourceObject(this);
 	m_remoteStreamStartTime.setSourceObject(this);
 	m_remoteEmitterParentId.setSourceObject(this);
+	m_remoteEmitterVolume.setSourceObject(this);
 	m_damageTaken.setSourceObject    (this);
 	m_condition.setSourceObject      (this);
 	m_maxHitPoints.setSourceObject   (this);
@@ -1707,6 +1731,7 @@ m_effectsMap()
 	addSharedVariable_np(m_remoteStreamAspect);
 	addSharedVariable_np(m_remoteStreamStartTime);
 	addSharedVariable_np(m_remoteEmitterParentId);
+	addSharedVariable_np(m_remoteEmitterVolume);
 
 	m_effectsMap.setOnErase(this, &TangibleObject::OnObjectEffectErased);
 	m_effectsMap.setOnInsert(this, &TangibleObject::OnObjectEffectInsert);
@@ -2847,6 +2872,15 @@ void TangibleObject::clearRemoteVideoStream()
 	runtimeData.settled = false;
 	runtimeData.dirty = true;
 
+	NetworkId const myNetId = getNetworkId();
+	std::string const myNetIdStr = myNetId.getValueString();
+
+	for (EmitterRuntimeDataMap::iterator emIt = ms_emitterRuntimeDataMap.begin(); emIt != ms_emitterRuntimeDataMap.end(); ++emIt)
+	{
+		if (emIt->second.parentNetworkIdStr == myNetIdStr)
+			emIt->second.active = false;
+	}
+
 	ms_videoStreamRuntimeDataMap.erase(runtimeIt);
 }
 
@@ -2889,6 +2923,14 @@ void TangibleObject::remoteStreamStartTimeModified(const std::string & value)
 //----------------------------------------------------------------------
 
 void TangibleObject::remoteEmitterParentIdModified(const std::string & value)
+{
+	UNREF(value);
+	scheduleForAlter();
+}
+
+//----------------------------------------------------------------------
+
+void TangibleObject::remoteEmitterVolumeModified(const std::string & value)
 {
 	UNREF(value);
 	scheduleForAlter();
@@ -2969,6 +3011,15 @@ void TangibleObject::updateVideoEmitterAudio()
 		{
 			volume *= AUDIO_OCCLUSION_FACTOR;
 		}
+	}
+
+	std::string const & emitterVolumeStr = m_remoteEmitterVolume.get();
+	if (!emitterVolumeStr.empty())
+	{
+		int emitterVolume = atoi(emitterVolumeStr.c_str());
+		if (emitterVolume < 0) emitterVolume = 0;
+		if (emitterVolume > 100) emitterVolume = 100;
+		volume *= (emitterVolume / 100.0f);
 	}
 
 	int vlcVolume = static_cast<int>(volume * 100.0f);

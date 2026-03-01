@@ -9,6 +9,7 @@
 
 #include "clientUserInterface/CuiDataDrivenPage.h"
 #include "sharedObject/CachedNetworkId.h"
+#include "UIEventCallback.h"
 
 #include <cstdint>
 
@@ -19,14 +20,19 @@ class UIText;
 // ======================================================================
 
 class CuiDataDrivenPageVideoPlayer :
-public CuiDataDrivenPage
+public CuiDataDrivenPage,
+public UIEventCallback
 {
 public:
 	                           CuiDataDrivenPageVideoPlayer(const std::string & name, UIPage & thePage, int clientPageId);
 	virtual                    ~CuiDataDrivenPageVideoPlayer();
 	virtual void               update                      (float deltaTimeSecs);
 
+	virtual void               OnSliderbarChanged          (UIWidget * context);
+
 protected:
+	virtual void               performActivate             ();
+	virtual void               performDeactivate           ();
 	virtual void               onSetProperty   (std::string const & widgetPath, bool isThisPage, std::string const & propertyName, Unicode::String const & propertyValue);
 
 private:
@@ -41,6 +47,7 @@ private:
 	UIText *      m_lblTime;
 	CachedNetworkId m_videoObjectId;
 	bool          m_tracking;
+	bool          m_userSeeking;
 	int64_t       m_lastTimeMs;
 };
 

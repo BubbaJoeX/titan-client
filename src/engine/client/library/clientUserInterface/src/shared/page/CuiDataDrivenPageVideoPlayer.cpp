@@ -23,6 +23,7 @@ m_slider(NULL),
 m_lblTime(NULL),
 m_videoObjectId(),
 m_tracking(false),
+m_userSeeking(false),
 m_lastTimeMs(-1)
 {
 	getCodeDataObject(TUISliderbar, m_slider,  "slider");
@@ -46,7 +47,49 @@ m_lastTimeMs(-1)
 
 CuiDataDrivenPageVideoPlayer::~CuiDataDrivenPageVideoPlayer()
 {
+	if (m_slider)
+		m_slider->RemoveCallback(this);
+
 	setIsUpdating(false);
+}
+
+//-----------------------------------------------------------------
+
+void CuiDataDrivenPageVideoPlayer::performActivate()
+{
+	CuiDataDrivenPage::performActivate();
+
+	if (m_slider)
+		m_slider->AddCallback(this);
+}
+
+//-----------------------------------------------------------------
+
+void CuiDataDrivenPageVideoPlayer::performDeactivate()
+{
+	if (m_slider)
+		m_slider->RemoveCallback(this);
+
+	CuiDataDrivenPage::performDeactivate();
+}
+
+//-----------------------------------------------------------------
+
+void CuiDataDrivenPageVideoPlayer::OnSliderbarChanged(UIWidget * context)
+{
+	if (context == m_slider && m_tracking)
+	{
+		m_userSeeking = true;
+
+		long const sliderValue = m_slider->GetValue();
+		int64_t const seekMs = static_cast<int64_t>(sliderValue) * 1000;
+
+		Object * const obj = NetworkIdManager::getObjectById(m_videoObjectId);
+		TangibleObject const * const tangible = TangibleObject::asTangibleObject(obj);
+
+		if (tangible)
+			TangibleObject::seekVideoPlayback(tangible, seekMs);
+	}
 }
 
 //-----------------------------------------------------------------
@@ -87,7 +130,16 @@ void CuiDataDrivenPageVideoPlayer::update(float deltaTimeSecs)
 			if (m_slider->GetUpperLimit() != upperLimit)
 				m_slider->SetUpperLimit(upperLimit, false);
 
-			m_slider->SetValue(value, false);
+			if (m_userSeeking)
+			{
+				long const sliderVal = m_slider->GetValue();
+				int64_t const diff = static_cast<int64_t>(sliderVal) - timeSec;
+				if (diff >= -1 && diff <= 1)
+					m_userSeeking = false;
+			}
+
+			if (!m_userSeeking)
+				m_slider->SetValue(value, false);
 
 			char currentBuf[16];
 			char totalBuf[16];

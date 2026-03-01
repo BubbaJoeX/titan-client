@@ -107,6 +107,7 @@ public:
 		struct RemoteStreamAspect;
 		struct RemoteStreamStartTime;
 		struct RemoteEmitterParentId;
+		struct RemoteEmitterVolume;
 		struct DamageTaken
 		{
 			typedef std::pair<TangibleObject *, int> Payload;
@@ -158,6 +159,7 @@ public:
 	std::string const & getRemoteStreamAspect             () const;
 
 	static bool         getVideoPlaybackInfo              (TangibleObject const * obj, __int64 & outTimeMs, __int64 & outLengthMs);
+	static bool         seekVideoPlayback                 (TangibleObject const * obj, __int64 timeMs);
 
 	bool isInCombat() const;
 	void setIsInCombat(bool inCombat);
@@ -245,6 +247,7 @@ private:
 		typedef DefaultCallback<Messages::RemoteStreamAspect, std::string>   RemoteStreamAspect;
 		typedef DefaultCallback<Messages::RemoteStreamStartTime, std::string> RemoteStreamStartTime;
 		typedef DefaultCallback<Messages::RemoteEmitterParentId, std::string> RemoteEmitterParentId;
+		typedef DefaultCallback<Messages::RemoteEmitterVolume, std::string> RemoteEmitterVolume;
 		typedef DefaultCallback<Messages::ConditionModified, int>           ConditionModified;
 		typedef DefaultCallback<Messages::MaxHitPointsModified, int>        MaxHitPointsModified;
 	};
@@ -261,6 +264,7 @@ private:
 	friend Callbacks::RemoteStreamAspect;
 	friend Callbacks::RemoteStreamStartTime;
 	friend Callbacks::RemoteEmitterParentId;
+	friend Callbacks::RemoteEmitterVolume;
 	friend Callbacks::ConditionModified;
 	friend Callbacks::MaxHitPointsModified;
 
@@ -286,6 +290,7 @@ private:
 	void                          remoteStreamAspectModified(const std::string & value);
 	void                          remoteStreamStartTimeModified(const std::string & value);
 	void                          remoteEmitterParentIdModified(const std::string & value);
+	void                          remoteEmitterVolumeModified(const std::string & value);
 	void                          updateRemoteVideoStream();
 	void                          clearRemoteVideoStream();
 	void                          updateVideoEmitterAudio();
@@ -324,6 +329,7 @@ private:
 	Archive::AutoDeltaVariableCallback<std::string, Callbacks::RemoteStreamAspect, TangibleObject> m_remoteStreamAspect;
 	Archive::AutoDeltaVariableCallback<std::string, Callbacks::RemoteStreamStartTime, TangibleObject> m_remoteStreamStartTime;
 	Archive::AutoDeltaVariableCallback<std::string, Callbacks::RemoteEmitterParentId, TangibleObject> m_remoteEmitterParentId;
+	Archive::AutoDeltaVariableCallback<std::string, Callbacks::RemoteEmitterVolume, TangibleObject> m_remoteEmitterVolume;
 	Archive::AutoDeltaVariableCallback<int,         Callbacks::DamageTaken, TangibleObject>    m_damageTaken;
 	Archive::AutoDeltaVariableCallback<int, Callbacks::MaxHitPointsModified, TangibleObject>   m_maxHitPoints;
 
@@ -473,6 +479,15 @@ inline void TangibleObject::Callbacks::RemoteEmitterParentId::modified(TangibleO
 	UNREF(oldValue);
 	UNREF(isLocal);
 	target.remoteEmitterParentIdModified(value);
+}
+
+//----------------------------------------------------------------------
+
+inline void TangibleObject::Callbacks::RemoteEmitterVolume::modified(TangibleObject & target, const std::string & oldValue, const std::string & value, bool isLocal) const
+{
+	UNREF(oldValue);
+	UNREF(isLocal);
+	target.remoteEmitterVolumeModified(value);
 }
 
 //----------------------------------------------------------------------
