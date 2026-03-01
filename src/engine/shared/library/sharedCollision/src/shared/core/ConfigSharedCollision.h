@@ -57,6 +57,9 @@ public:
 	static bool getBuildDebugData           ( void );
 	static void setBuildDebugData           ( bool val );
 
+	static bool getUseMeshGeometryCollision ( void );
+	static bool getUseMeshFloor             ( void );
+
 	static void setEnableCreatureCollision  ( bool enable );
 
 	static bool getReportStatus             ( void ); // Spam that goes to the debug window - # of objects in collision world, profiling

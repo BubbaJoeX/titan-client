@@ -116,6 +116,12 @@
     <Manifest>
       <EnableDpiAwareness>true</EnableDpiAwareness>
     </Manifest>
+    <PostBuildEvent>
+      <Command>if not exist "D:\titan\exe\win32_rel" mkdir "D:\titan\exe\win32_rel"
+copy /Y "$(OutDir)$(ProjectName)_d.exe" "D:\titan\exe\win32_rel\"
+for /r "D:\titan\client\src\compile\win32" %%f in (*_d.dll) do copy /Y "%%f" "D:\titan\exe\win32_rel\"</Command>
+      <Message>Copy SwgTitan_d.exe and *_d.dll to D:\titan\exe\win32_rel</Message>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">
     <ClCompile>

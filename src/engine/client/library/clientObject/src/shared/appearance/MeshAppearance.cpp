@@ -413,6 +413,35 @@ void MeshAppearance::renderReticle(Vector const & position_o, float const radius
 
 // ----------------------------------------------------------------------
 
+void MeshAppearance::getMeshGeometryForCollision(IndexedTriangleList & out) const
+{
+	const MeshAppearanceTemplate *const template_ = getMeshAppearanceTemplate();
+	if (!template_ || !template_->isLoaded())
+		return;
+
+	ShaderPrimitiveSetTemplate const *const spsTemplate = template_->getShaderPrimitiveSetTemplate();
+	if (!spsTemplate)
+		return;
+
+	int const numPrimitives = spsTemplate->getNumberOfShaderPrimitiveTemplates();
+	for (int i = 0; i < numPrimitives; ++i)
+	{
+		ShaderPrimitiveSetTemplate::LocalShaderPrimitiveTemplate const & primTemplate = spsTemplate->getShaderPrimitiveTemplate(i);
+		IndexedTriangleList const *const collisionList = primTemplate.getCollisionIndexedTriangleList();
+		if (!collisionList)
+			continue;
+
+		stdvector<Vector>::fwd const & verts = collisionList->getVertices();
+		stdvector<int>::fwd const & inds = collisionList->getIndices();
+		if (verts.empty() || inds.empty())
+			continue;
+
+		out.addIndexedTriangleList(&verts[0], static_cast<int>(verts.size()), &inds[0], static_cast<int>(inds.size()));
+	}
+}
+
+// ----------------------------------------------------------------------
+
 AxialBox const MeshAppearance::getTangibleExtent() const
 {
 	if (m_shaderPrimitiveSet)

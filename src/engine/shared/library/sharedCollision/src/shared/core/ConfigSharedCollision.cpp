@@ -43,6 +43,8 @@ bool    ms_enableIntraFrameTests    = true;
 bool    ms_enableMountRadii         = false;
 bool    ms_buildBoxTrees            = false;
 bool    ms_buildDebugData           = false;
+bool    ms_useMeshGeometryCollision = true;
+bool    ms_useMeshFloor             = true;
 
 bool    ms_updateStatus             = true;
 bool    ms_reportStatus             = false;
@@ -108,6 +110,8 @@ void ConfigSharedCollision::install ( void )
 	DebugFlags::registerFlag( ms_enableMountRadii,				"SharedCollision",    "enableMountRadii");
 	DebugFlags::registerFlag( ms_buildBoxTrees,					"SharedCollision",    "buildBoxTrees");
 	DebugFlags::registerFlag( ms_buildDebugData,				"SharedCollision",    "buildDebugData");
+	DebugFlags::registerFlag( ms_useMeshGeometryCollision,		"SharedCollision",    "useMeshGeometryCollision");
+	DebugFlags::registerFlag( ms_useMeshFloor,					"SharedCollision",    "useMeshFloor");
 																
 	DebugFlags::registerFlag( ms_updateStatus,					"SharedCollision",    "updateStatus", CollisionWorld::reportCallback);
 	DebugFlags::registerFlag( ms_reportStatus,					"SharedCollision",    "reportStatus");
@@ -134,6 +138,8 @@ void ConfigSharedCollision::install ( void )
 	ms_hopHeight             = ConfigFile::getKeyFloat("SharedCollision", "hopHeight",             ms_hopHeight);
 	ms_terrainLOSMinDistance = ConfigFile::getKeyFloat("SharedCollision", "terrainLOSMinDistance", ms_terrainLOSMinDistance);
 	ms_terrainLOSMaxDistance = ConfigFile::getKeyFloat("SharedCollision", "terrainLOSMaxDistance", ms_terrainLOSMaxDistance);
+	ms_useMeshGeometryCollision = ConfigFile::getKeyBool("SharedCollision", "useMeshGeometryCollision", ms_useMeshGeometryCollision);
+	ms_useMeshFloor          = ConfigFile::getKeyBool("SharedCollision", "useMeshFloor",           ms_useMeshFloor);
 }
 
 // ----------------------------------------------------------------------
@@ -173,6 +179,8 @@ bool ConfigSharedCollision::getEnableIntraFrameTests    ( void ) { return ms_ena
 bool ConfigSharedCollision::getEnableMountRadii         ( void ) { return ms_enableMountRadii; }
 bool ConfigSharedCollision::getBuildBoxTrees            ( void ) { return ms_buildBoxTrees; }
 bool ConfigSharedCollision::getBuildDebugData           ( void ) { return ms_buildDebugData; }
+bool ConfigSharedCollision::getUseMeshGeometryCollision ( void ) { return ms_useMeshGeometryCollision; }
+bool ConfigSharedCollision::getUseMeshFloor             ( void ) { return ms_useMeshFloor; }
 void ConfigSharedCollision::setBuildDebugData           (bool val)
 {
 	ms_buildDebugData = val;

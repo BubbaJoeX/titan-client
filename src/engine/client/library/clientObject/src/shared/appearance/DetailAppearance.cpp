@@ -1017,6 +1017,22 @@ int DetailAppearance::getDetailLevelCount() const
 
 // ----------------------------------------------------------------------
 
+void DetailAppearance::getMeshGeometryForCollision (IndexedTriangleList & out) const
+{
+	int const count = getDetailLevelCount();
+	if (count <= 0)
+		return;
+
+	int const lowestLodIndex = count - 1;
+	Appearance const *const lodAppearance = getAppearance(lowestLodIndex);
+	if (!lodAppearance)
+		return;
+
+	lodAppearance->getMeshGeometryForCollision(out);
+}
+
+// ----------------------------------------------------------------------
+
 void DetailAppearance::incrementDetailLevel()
 {
 	if (m_userControlled && m_nextDetailLevel == -1 && m_currentDetailLevel+1 < m_appearanceListSize)

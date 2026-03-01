@@ -691,6 +691,12 @@ const IndexedTriangleList* Appearance::getRadarShape () const
 
 // ----------------------------------------------------------------------
 
+void Appearance::getMeshGeometryForCollision (IndexedTriangleList & /*out*/) const
+{
+}
+
+// ----------------------------------------------------------------------
+
 bool Appearance::getShadowBlobAllowed() const
 {
 	return m_shadowBlobAllowed;

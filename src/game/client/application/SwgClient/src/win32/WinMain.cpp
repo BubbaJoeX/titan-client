@@ -11,6 +11,7 @@
 #include "LocalizedString.h"
 #include "StringId.h"
 
+#include "Archive/ByteStream.h"
 #include "clientGame/Game.h"
 #include "../../../../../../engine/shared/library/sharedFoundation/include/public/sharedFoundation/Production.h"
 #include "../../../../../../engine/shared/library/sharedGame/include/public/sharedGame/PlatformFeatureBits.h"
@@ -118,7 +119,15 @@ int WINAPI WinMain(
 	if (!SetUserSelectedMemoryManagerTarget())
 		SetDefaultMemoryManagerTargetSize();
 
-	return ClientMain(hInstance, hPrevInstance, lpCmdLine, nCmdShow);
+	try
+	{
+		return ClientMain(hInstance, hPrevInstance, lpCmdLine, nCmdShow);
+	}
+	catch (Archive::ReadException const & ex)
+	{
+		MessageBoxA(NULL, ex.what(), "Archive::ReadException", MB_OK | MB_ICONERROR);
+		return -1;
+	}
 }
 
 // ======================================================================

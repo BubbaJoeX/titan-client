@@ -23,6 +23,7 @@
 #include "sharedCollision/Extent.h"
 #include "sharedCollision/Floor.h"
 #include "sharedCollision/FloorManager.h"
+#include "sharedCollision/FloorMesh.h"
 #include "sharedCollision/Footprint.h"
 #include "sharedCollision/MeshExtent.h"
 #include "sharedCollision/SimpleExtent.h"
@@ -33,6 +34,7 @@
 #include "sharedGame/SharedShipObjectTemplate.h"
 
 #include "sharedMath/DebugShapeRenderer.h"
+#include "sharedMath/IndexedTriangleList.h"
 #include "sharedMath/SphereTree.h"
 
 #include "sharedObject/Appearance.h"
@@ -466,6 +468,33 @@ void CollisionProperty::initFloor ( void )
 		if (appearance)
 			appearance->setShadowBlobAllowed();
 	}
+
+	// Floor-from-mesh fallback: when no .flr, build floor from mesh geometry (skip for POBs)
+	if (!m_floor && appearance && ConfigSharedCollision::getUseMeshFloor())
+	{
+		PortalProperty * portalProperty = getOwner().getPortalProperty();
+		if (!portalProperty)
+		{
+			IndexedTriangleList meshTris;
+			appearance->getMeshGeometryForCollision(meshTris);
+
+			if (!meshTris.getVertices().empty() && !meshTris.getIndices().empty())
+			{
+				VectorVector const & verts = meshTris.getVertices();
+				IntVector const & indices = meshTris.getIndices();
+
+				FloorMesh * floorMesh = new FloorMesh(verts, indices);
+				floorMesh->compile();
+				m_floor = new Floor(floorMesh, &getOwner(), appearance, true);
+				// Floor's constructor calls addReference(); our new FloorMesh starts at refcount 0
+				// so Floor owns the only ref - do not release here ( FloorManager::create releases
+				// because fetch() returns mesh with refcount 1; we created ours with refcount 0 )
+
+				if (appearance)
+					appearance->setShadowBlobAllowed();
+			}
+		}
+	}
 }
 
 // ----------------------------------------------------------------------
@@ -659,6 +688,11 @@ void CollisionProperty::updateExtents ( void ) const
 		m_extent_p = NULL;
 
 		m_scale = newScale;
+		m_extentsDirty = true;
+
+		// Invalidate floor extent so it rebuilds with new scale
+		if(m_floor)
+			m_floor->invalidateExtent();
 	}
 
     if(!m_extent_l)
@@ -704,6 +738,24 @@ void CollisionProperty::updateExtents ( void ) const
 				}
 
 				delete source;
+			}
+		}
+
+		if(!m_extent_l && appearance && ConfigSharedCollision::getUseMeshGeometryCollision())
+		{
+			IndexedTriangleList meshTris;
+			appearance->getMeshGeometryForCollision(meshTris);
+
+			if(!meshTris.getVertices().empty() && !meshTris.getIndices().empty())
+			{
+				MeshExtent * meshExtent = new MeshExtent(meshTris.clone());
+				if(meshExtent)
+				{
+					BaseExtent * scaled = meshExtent->clone();
+					scaled->transform(meshExtent, Transform::identity, m_scale);
+					attachSourceExtent(scaled);
+					delete meshExtent;
+				}
 			}
 		}
 

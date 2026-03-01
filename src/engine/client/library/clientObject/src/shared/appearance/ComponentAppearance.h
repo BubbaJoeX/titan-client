@@ -51,6 +51,8 @@ public:
 
 	virtual const IndexedTriangleList* getRadarShape () const;
 
+	virtual void getMeshGeometryForCollision (IndexedTriangleList & out) const;
+
 	virtual ComponentAppearance *       asComponentAppearance();
 	virtual ComponentAppearance const * asComponentAppearance() const;
 

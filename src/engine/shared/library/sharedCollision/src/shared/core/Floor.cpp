@@ -384,16 +384,19 @@ bool Floor::dropTest ( Vector const & position_p, int triId, FloorLocator & outL
 }
 
 // ----------------------------------------------------------------------
-//@todo - Add scale support
 
 Vector Floor::transform_p2l ( Vector const & point ) const
 {
-    return getTransform_o2p().rotateTranslate_p2l(point);
+	float const scale = getScale();
+	Vector const local = getTransform_o2p().rotateTranslate_p2l(point);
+	return Vector(local.x / scale, local.y / scale, local.z / scale);
 }
 
 Vector Floor::transform_l2p ( Vector const & point ) const
 {
-    return getTransform_o2p().rotateTranslate_l2p(point);
+	float const scale = getScale();
+	Vector const scaledLocal(point.x * scale, point.y * scale, point.z * scale);
+	return getTransform_o2p().rotateTranslate_l2p(scaledLocal);
 }
 
 Vector Floor::rotate_p2l ( Vector const & dir ) const

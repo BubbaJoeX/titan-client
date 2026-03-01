@@ -3470,8 +3470,18 @@ namespace
 		if (object.getAppearance () == 0)
 			return;
 
-		const Vector & objectStart = object.rotateTranslate_w2o (worldStart);
-		const Vector & objectEnd   = object.rotateTranslate_w2o (worldEnd);
+		Vector objectStart = object.rotateTranslate_w2o (worldStart);
+		Vector objectEnd   = object.rotateTranslate_w2o (worldEnd);
+
+		// Appearance collide uses geometry in unscaled object-local space.
+		// rotateTranslate_w2o does not include scale, so divide by scale to match.
+		float const scale = object.getScale().x;
+		if (scale > 0.0f)
+		{
+			float const invScale = 1.0f / scale;
+			objectStart *= invScale;
+			objectEnd   *= invScale;
+		}
 
 		CollisionInfo result;
 		if (object.getAppearance()->collide(objectStart, objectEnd, CollideParameters::cms_toolPickDefault, result))

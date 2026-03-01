@@ -143,6 +143,8 @@ public:
 
 	virtual const IndexedTriangleList* getRadarShape () const;
 
+	virtual void getMeshGeometryForCollision (IndexedTriangleList & out) const;
+
 	void setRenderedThisFrame () const;
 	bool getRenderedThisFrame () const;
 	bool getRenderedLastFrame () const;

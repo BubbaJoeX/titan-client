@@ -13,6 +13,8 @@
 #include "clientGraphics/RenderWorld.h"
 #include "clientObject/ComponentAppearanceTemplate.h"
 #include "sharedCollision/CollisionInfo.h"
+#include "sharedMath/IndexedTriangleList.h"
+#include "sharedMath/Transform.h"
 #include "sharedCollision/BoxExtent.h"
 #include "sharedCollision/ExtentList.h"
 #include "sharedObject/AlterResult.h"
@@ -429,6 +431,41 @@ void ComponentAppearance::setTextureScroll(const Tag tag, float scrollU, float s
 	for (int i = 0; i < m_objectList->getNumberOfObjects(); i++)
 		if (m_objectList->getObject(i)->getAppearance())
 			m_objectList->getObject(i)->getAppearance()->setTextureScroll(tag, scrollU, scrollV);
+}
+
+// ----------------------------------------------------------------------
+
+void ComponentAppearance::getMeshGeometryForCollision (IndexedTriangleList & out) const
+{
+	if (!m_objectList)
+		return;
+
+	int const numObjects = m_objectList->getNumberOfObjects();
+	for (int i = 0; i < numObjects; ++i)
+	{
+		Object const *const childObject = m_objectList->getObject(i);
+		if (!childObject)
+			continue;
+
+		Appearance const *const childAppearance = childObject->getAppearance();
+		if (!childAppearance)
+			continue;
+
+		IndexedTriangleList tempList;
+		childAppearance->getMeshGeometryForCollision(tempList);
+
+		stdvector<Vector>::fwd const & verts = tempList.getVertices();
+		stdvector<int>::fwd const & inds = tempList.getIndices();
+		if (verts.empty() || inds.empty())
+			continue;
+
+		Transform const childToParent = childObject->getTransform_o2p();
+		std::vector<Vector> transformedVerts(verts.size());
+		for (size_t v = 0; v < verts.size(); ++v)
+			transformedVerts[v] = childToParent.rotateTranslate_l2p(verts[v]);
+
+		out.addIndexedTriangleList(&transformedVerts[0], static_cast<int>(transformedVerts.size()), &inds[0], static_cast<int>(inds.size()));
+	}
 }
 
 // ----------------------------------------------------------------------

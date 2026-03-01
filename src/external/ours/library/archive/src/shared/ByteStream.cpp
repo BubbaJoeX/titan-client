@@ -1,8 +1,9 @@
 //---------------------------------------------------------------------
 #include "FirstArchive.h"
 #include "ByteStream.h"
-#include "Archive/ArchiveMutex.h"
+#include "ArchiveMutex.h"
 #include <cassert>
+#include <cstring>
 
 // ======================================================================
 
@@ -19,7 +20,7 @@ namespace Archive {
 	@brief ReadIterator ctor
 
 	Initializes the read position to zero, and the ByteStream member value
-	is NULL
+	is nullptr
 */
 ReadIterator::ReadIterator() :
 	readPtr(0),
@@ -262,22 +263,23 @@ void ByteStream::put(void const * const source, const unsigned int sourceSize)
 		unsigned char const * const tmp = data->buffer;
 		data->deref();
 		data = Data::getNewData();
-		if (data->size < sourceSize)
+		const unsigned int totalSize = size + sourceSize;
+		if (data->size < totalSize)
 		{
 			delete[] data->buffer;
 
-			if (size > 0)
-				data->buffer = new unsigned char[size];
+			if (totalSize > 0)
+				data->buffer = new unsigned char[totalSize];
 			else
 				data->buffer = 0;
 
-			data->size = size;
+			data->size = totalSize;
 		}
 		
 		if (size > 0)
 			memcpy(data->buffer, tmp, size);
 
-		allocatedSize = size;		
+		allocatedSize = totalSize;		
 	}
 	growToAtLeast(size + sourceSize);
 	memcpy(&data->buffer[size], source, sourceSize);
@@ -344,7 +346,7 @@ ByteStream::Data *ByteStream::Data::getNewData()
 
 void ByteStream::Data::releaseOldData(ByteStream::Data *oldData)
 {
-	assert(reinterpret_cast<unsigned int>(oldData) != 0xefefefefu);
+	assert((unsigned) reinterpret_cast<long>(oldData) != 0xefefefefu);
 
 	if (oldData->size > 4096)
 		delete oldData;

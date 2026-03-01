@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -56,19 +56,21 @@
     <_ProjectFileVersion>12.0.30501.0</_ProjectFileVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <TargetName>gl05_d</TargetName>
     <OutDir>.\..\..\..\..\..\..\compile\win32\Direct3d9\Debug\</OutDir>
     <IntDir>.\..\..\..\..\..\..\compile\win32\Direct3d9\Debug\</IntDir>
     <LinkIncremental>true</LinkIncremental>
     <PreBuildEventUseInBuild>false</PreBuildEventUseInBuild>
-    <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <TargetName>gl05_r</TargetName>
     <OutDir>.\..\..\..\..\..\..\compile\win32\Direct3d9\Release\</OutDir>
     <IntDir>.\..\..\..\..\..\..\compile\win32\Direct3d9\Release\</IntDir>
     <LinkIncremental>false</LinkIncremental>
     <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">
+    <TargetName>gl05_o</TargetName>
     <OutDir>.\..\..\..\..\..\..\compile\win32\Direct3d9\Optimized\</OutDir>
     <IntDir>.\..\..\..\..\..\..\compile\win32\Direct3d9\Optimized\</IntDir>
     <LinkIncremental>true</LinkIncremental>
@@ -128,8 +130,9 @@
       <OutputFile>.\..\..\..\..\..\..\compile\win32\Direct3d9\Debug/Direct3d9.bsc</OutputFile>
     </Bscmake>
     <PostBuildEvent>
-      <Message>Copy debug dll</Message>
-      <Command>copy $(TargetPath) ..\..\..\..\..\..\..\dev\win32\gl05_d.dll</Command>
+      <Message>Copy gl05_d.dll to D:/titan/exe/win32_rel</Message>
+      <Command>if not exist "D:\titan\exe\win32_rel" mkdir "D:\titan\exe\win32_rel"
+copy /Y "$(TargetPath)" "D:\titan\exe\win32_rel\gl05_d.dll"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
