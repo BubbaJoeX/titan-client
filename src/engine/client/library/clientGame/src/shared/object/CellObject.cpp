@@ -141,6 +141,7 @@ void CellObject::endBaselines()
 	{
 		Light *light = new Light(Light::T_ambient, VectorArgb::solidWhite);
 		light->attachToObject_p(this, true);
+		m_cellLights.push_back(light);
 	}
 
 	PortalPropertyTemplateCell::LightList const *lightList = portalProperty->getPortalPropertyTemplate().getCell(m_cellNumber.get()).getLightList();
