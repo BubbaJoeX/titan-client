@@ -25,8 +25,8 @@ m_videoObjectId(),
 m_tracking(false),
 m_lastTimeMs(-1)
 {
-	getCodeDataObject(TUISliderbar, m_slider,  "sliderSection.slider");
-	getCodeDataObject(TUIText,      m_lblTime, "sliderSection.lblTime");
+	getCodeDataObject(TUISliderbar, m_slider,  "slider");
+	getCodeDataObject(TUIText,      m_lblTime, "lblTime");
 
 	if (m_slider)
 	{

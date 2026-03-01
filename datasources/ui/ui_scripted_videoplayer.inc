@@ -10,7 +10,9 @@
 	>
 		<Data
 			buttonclose='bg.mmc.close'
+			lblTime='comp.sliderSection.lblTime'
 			Name='CodeData'
+			slider='comp.sliderSection.slider'
 		/>
 
 		<!-- Main Content -->
