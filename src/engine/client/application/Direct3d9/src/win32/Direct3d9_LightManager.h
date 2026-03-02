@@ -203,21 +203,22 @@ private:
 
 inline void Direct3d9_LightManager::setFullAmbientOn(bool on)
 {
-	if (ms_overrideFullAmbient)
-	{
-		ms_fullAmbient.r = ms_overrideFullAmbientColor.r;
-		ms_fullAmbient.g = ms_overrideFullAmbientColor.g;
-		ms_fullAmbient.b = ms_overrideFullAmbientColor.b;
-		ms_fullAmbient.a = 0.0f;
-		return;
-	}
-
 	if (on)
 	{
-		ms_fullAmbient.r = 1.0f;
-		ms_fullAmbient.g = 1.0f;
-		ms_fullAmbient.b = 1.0f;
-		ms_fullAmbient.a = 0.0f;
+		if (ms_overrideFullAmbient)
+		{
+			ms_fullAmbient.r = ms_overrideFullAmbientColor.r;
+			ms_fullAmbient.g = ms_overrideFullAmbientColor.g;
+			ms_fullAmbient.b = ms_overrideFullAmbientColor.b;
+			ms_fullAmbient.a = 0.0f;
+		}
+		else
+		{
+			ms_fullAmbient.r = 1.0f;
+			ms_fullAmbient.g = 1.0f;
+			ms_fullAmbient.b = 1.0f;
+			ms_fullAmbient.a = 0.0f;
+		}
 	}
 	else
 	{
