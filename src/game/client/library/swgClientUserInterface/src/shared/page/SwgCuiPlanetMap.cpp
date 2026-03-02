@@ -617,9 +617,7 @@ void SwgCuiPlanetMap::OnPopupMenuSelection (UIWidget * context)
 	}
 	else if (selection == PopupItems::autopilot)
 	{
-		char buf[64];
-		snprintf(buf, sizeof(buf), "%.2f,%.2f", static_cast<float>(pos.x), static_cast<float>(pos.y));
-		GenericValueTypeMessage<std::string> const msg("AutoPilotWaypoint", std::string(buf));
+		GenericValueTypeMessage<std::pair<float, float> > const msg("AutoPilotWaypoint", std::make_pair(static_cast<float>(pos.x), static_cast<float>(pos.y)));
 		GameNetwork::send(msg, true);
 	}
 	else
