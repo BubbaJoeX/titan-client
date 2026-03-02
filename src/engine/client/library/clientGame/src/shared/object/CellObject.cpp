@@ -19,9 +19,13 @@
 #include "sharedCollision/Floor.h"
 #include "sharedCollision/FloorMesh.h"
 #include "sharedCollision/FloorTri.h"
+#include "sharedFile/TreeFile.h"
+#include "sharedFoundation/CrcLowerString.h"
 #include "sharedFoundation/DebugInfoManager.h"
 #include "sharedFoundation/Production.h"
 #include "sharedMath/IndexedTriangleList.h"
+#include "sharedObject/Appearance.h"
+#include "sharedObject/AppearanceTemplateList.h"
 #include "sharedObject/CellProperty.h"
 #include "sharedObject/ContainedByProperty.h"
 #include "sharedObject/NetworkIdManager.h"
@@ -29,12 +33,14 @@
 #include "sharedObject/Portal.h"
 #include "sharedObject/PortalProperty.h"
 #include "sharedObject/PortalPropertyTemplate.h"
+#include "sharedObject/PortalPropertyTemplateList.h"
 
 // ======================================================================
 
 namespace CellObjectNamespace
 {
 	Light *createLight(const PortalPropertyTemplateCellLight &lightData);
+	void swapBuildingToDarkPob(CellProperty * cellProperty);
 
 	std::string const & ms_debugInfoSectionName = "CellObject";
 }
@@ -121,6 +127,78 @@ Light *CellObjectNamespace::createLight(const PortalPropertyTemplateCellLight &l
 	}
 
 	return light;
+}
+
+// ----------------------------------------------------------------------
+
+void CellObjectNamespace::swapBuildingToDarkPob(CellProperty * cellProperty)
+{
+	if (!cellProperty)
+		return;
+
+	const PortalProperty * portalProperty = cellProperty->getPortalProperty();
+	if (!portalProperty)
+		return;
+
+	const char * pobName = portalProperty->getPobName();
+	if (!pobName || !*pobName)
+		return;
+
+	std::string pobStr(pobName);
+	const std::string::size_type dotPos = pobStr.rfind(".pob");
+	if (dotPos == std::string::npos)
+		return;
+
+	if (pobStr.find("_dark.pob") != std::string::npos)
+		return;
+
+	std::string darkPobStr = pobStr.substr(0, dotPos) + "_dark.pob";
+
+	if (!TreeFile::exists(darkPobStr.c_str()))
+		return;
+
+	const PortalPropertyTemplate * darkTemplate = PortalPropertyTemplateList::fetch(CrcLowerString(darkPobStr.c_str()));
+	if (!darkTemplate)
+		return;
+
+	const int numCells = portalProperty->getNumberOfCells();
+	const int darkNumCells = darkTemplate->getNumberOfCells();
+
+	for (int i = 1; i < numCells && i < darkNumCells; ++i)
+	{
+		const CellProperty * cell = portalProperty->getCell(i);
+		if (!cell)
+			continue;
+
+		Object * appearanceObj = cell->getAppearanceObject();
+		if (!appearanceObj)
+			continue;
+
+		const char * darkAppName = darkTemplate->getCell(i).getAppearanceName();
+		if (darkAppName && *darkAppName)
+		{
+			Appearance * const darkAppearance = AppearanceTemplateList::createAppearance(darkAppName);
+			if (darkAppearance)
+			{
+				darkAppearance->setShadowBlobAllowed();
+				appearanceObj->setAppearance(darkAppearance);
+			}
+		}
+	}
+
+	const char * darkExteriorName = darkTemplate->getExteriorAppearanceName();
+	if (darkExteriorName && *darkExteriorName)
+	{
+		Object & buildingObj = const_cast<PortalProperty *>(portalProperty)->getOwner();
+		Appearance * const darkExterior = AppearanceTemplateList::createAppearance(darkExteriorName);
+		if (darkExterior)
+		{
+			darkExterior->setShadowBlobAllowed();
+			buildingObj.setAppearance(darkExterior);
+		}
+	}
+
+	darkTemplate->release();
 }
 
 // ----------------------------------------------------------------------
@@ -338,6 +416,7 @@ void CellObject::setCellLightColor(float r, float g, float b, float brightness)
 	}
 	m_cellLights.clear();
 
+	const bool wasCustom = m_hasCustomLighting;
 	m_hasCustomLighting = true;
 
 	const float fr = r * brightness;
@@ -346,7 +425,12 @@ void CellObject::setCellLightColor(float r, float g, float b, float brightness)
 
 	CellProperty * const cellProperty = getCellProperty();
 	if (cellProperty)
+	{
 		cellProperty->setCustomLightingOverride(true, fr, fg, fb);
+
+		if (!wasCustom)
+			swapBuildingToDarkPob(cellProperty);
+	}
 }
 
 bool CellObject::hasCustomLighting() const
