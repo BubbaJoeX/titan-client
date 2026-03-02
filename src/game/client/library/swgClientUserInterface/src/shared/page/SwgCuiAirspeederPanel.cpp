@@ -98,6 +98,7 @@ SwgCuiAirspeederPanel::~SwgCuiAirspeederPanel()
 
 void SwgCuiAirspeederPanel::performActivate()
 {
+	setIsUpdating(true);
 	positionCenterRight();
 	refreshSkywayButtonText();
 	refreshBoostTrafficButtons();
@@ -109,6 +110,7 @@ void SwgCuiAirspeederPanel::performActivate()
 
 void SwgCuiAirspeederPanel::performDeactivate()
 {
+	setIsUpdating(false);
 	getPage().SetVisible(false);
 }
 
