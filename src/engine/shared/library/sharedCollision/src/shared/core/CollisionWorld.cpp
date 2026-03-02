@@ -599,6 +599,12 @@ void CollisionWorld::update(CollisionProperty * collider, float time)
 
 	PROFILER_AUTO_BLOCK_DEFINE("CollisionWorld::update");
 
+	if (!collider->isCollidable())
+	{
+		collider->storePosition();
+		return;
+	}
+
 	Object * object = &collider->getOwner();
 
 	Footprint * foot = collider->getFootprint();
