@@ -76,25 +76,25 @@
 				Size='232,26'
 				Style='/Styles.New.buttons.hud.style'
 			>Traffic Mode</Button>
-			<Text
-				Font='bold_13'
-				LocalText=''
-				Location='12,134'
-				Name='textAutoPilotStatus'
-				ScrollExtent='232,16'
-				Size='232,16'
-				TextColor='#90EE90'
-				Visible='false'
-			></Text>
-			<Button
-				LocalText='Cancel Auto-Pilot'
-				Location='12,154'
-				Name='buttonAutoPilotCancel'
-				ScrollExtent='160,26'
-				Size='160,26'
-				Style='/Styles.New.buttons.hud.style'
-				Visible='false'
-			>Cancel Auto-Pilot</Button>
+		<Text
+			Font='bold_13'
+			LocalText=''
+			Location='12,134'
+			Name='textAutoPilotStatus'
+			ScrollExtent='232,18'
+			Size='232,18'
+			TextColor='#90EE90'
+			Visible='false'
+		></Text>
+		<Button
+			LocalText='Cancel Auto-Pilot'
+			Location='12,158'
+			Name='buttonAutoPilotCancel'
+			ScrollExtent='232,26'
+			Size='232,26'
+			Style='/Styles.New.buttons.hud.style'
+			Visible='false'
+		>Cancel Auto-Pilot</Button>
 			<Button
 				LocalText='Horn'
 				Location='176,208'
