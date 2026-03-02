@@ -186,60 +186,6 @@ namespace CollisionWorldNamespace
 	CollisionWorld::DoCollisionWithTerrainFunction ms_doCollisionWithTerrainFunction = 0;
 	CollisionWorld::SkywayCollisionCallback ms_skywayCollisionCallback = 0;
 
-	float const cs_skywayQueryRadius = 60.0f;
-	float const cs_skywayVerticalMargin = 3.0f;
-	float const cs_skywayMinObjectHeight = 30.0f;
-
-	bool checkSkywayCollision(CollisionProperty * collider)
-	{
-		if (!ms_database)
-			return false;
-
-		Object & owner = collider->getOwner();
-		Vector const vehiclePos_w = owner.getPosition_w();
-
-		Sphere const querySphere(vehiclePos_w, cs_skywayQueryRadius);
-		ObjectVec results;
-		if (!ms_database->queryStatics(querySphere, &results))
-			return false;
-
-		for (ObjectVec::const_iterator it = results.begin(); it != results.end(); ++it)
-		{
-			Object * staticObj = *it;
-			if (!staticObj)
-				continue;
-
-			if (staticObj == &owner)
-				continue;
-
-			AxialBox const localBox = staticObj->getTangibleExtent();
-			if (localBox.isEmpty())
-				continue;
-
-			Transform const & o2w = staticObj->getTransform_o2w();
-
-			AxialBox worldBox;
-			for (int c = 0; c < 8; ++c)
-				worldBox.add(o2w.rotateTranslate_l2p(localBox.getCorner(c)));
-
-			float const objectHeight = worldBox.getMax().y - worldBox.getMin().y;
-			if (objectHeight < cs_skywayMinObjectHeight)
-				continue;
-
-			if (worldBox.getMax().y < vehiclePos_w.y - cs_skywayVerticalMargin)
-				continue;
-
-			if (vehiclePos_w.y < worldBox.getMin().y)
-				continue;
-
-			if (vehiclePos_w.x >= worldBox.getMin().x && vehiclePos_w.x <= worldBox.getMax().x &&
-				vehiclePos_w.z >= worldBox.getMin().z && vehiclePos_w.z <= worldBox.getMax().z)
-				return true;
-		}
-
-		return false;
-	}
-
 }
 
 using namespace CollisionWorldNamespace;
@@ -663,11 +609,6 @@ void CollisionWorld::update(CollisionProperty * collider, float time)
 
 	if (!collider->isCollidable())
 	{
-		if (collider->isSkyway() && checkSkywayCollision(collider))
-		{
-			if (ms_skywayCollisionCallback)
-				(*ms_skywayCollisionCallback)(&collider->getOwner());
-		}
 		collider->storePosition();
 		return;
 	}
