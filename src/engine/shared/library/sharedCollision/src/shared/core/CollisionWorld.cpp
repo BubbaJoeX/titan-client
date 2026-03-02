@@ -186,8 +186,9 @@ namespace CollisionWorldNamespace
 	CollisionWorld::DoCollisionWithTerrainFunction ms_doCollisionWithTerrainFunction = 0;
 	CollisionWorld::SkywayCollisionCallback ms_skywayCollisionCallback = 0;
 
-	float const cs_skywayHeightThreshold = 1.0f;
 	float const cs_skywayQueryRadius = 60.0f;
+	float const cs_skywayVerticalMargin = 3.0f;
+	float const cs_skywayMinObjectHeight = 30.0f;
 
 	bool checkSkywayCollision(CollisionProperty * collider)
 	{
@@ -221,7 +222,14 @@ namespace CollisionWorldNamespace
 			for (int c = 0; c < 8; ++c)
 				worldBox.add(o2w.rotateTranslate_l2p(localBox.getCorner(c)));
 
-			if (worldBox.getMax().y < vehiclePos_w.y - cs_skywayHeightThreshold)
+			float const objectHeight = worldBox.getMax().y - worldBox.getMin().y;
+			if (objectHeight < cs_skywayMinObjectHeight)
+				continue;
+
+			if (worldBox.getMax().y < vehiclePos_w.y - cs_skywayVerticalMargin)
+				continue;
+
+			if (vehiclePos_w.y < worldBox.getMin().y)
 				continue;
 
 			if (vehiclePos_w.x >= worldBox.getMin().x && vehiclePos_w.x <= worldBox.getMax().x &&
