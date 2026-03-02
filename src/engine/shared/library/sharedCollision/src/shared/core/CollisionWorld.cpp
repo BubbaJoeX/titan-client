@@ -211,30 +211,21 @@ namespace CollisionWorldNamespace
 			if (staticObj == &owner)
 				continue;
 
-			CollisionProperty * staticCollision = staticObj->getCollisionProperty();
-			if (!staticCollision)
+			AxialBox const localBox = staticObj->getTangibleExtent();
+			if (localBox.isEmpty())
 				continue;
 
-			BaseExtent const * extent = staticCollision->getExtent_p();
-			if (!extent)
-				continue;
-
-			AxialBox const localBox = extent->getBoundingBox();
 			Transform const & o2w = staticObj->getTransform_o2w();
-			Vector const minWorld = o2w.rotateTranslate_l2p(localBox.getMin());
-			Vector const maxWorld = o2w.rotateTranslate_l2p(localBox.getMax());
 
-			float const worldTop = std::max(minWorld.y, maxWorld.y);
-			if (worldTop < vehiclePos_w.y - cs_skywayHeightThreshold)
+			AxialBox worldBox;
+			for (int c = 0; c < 8; ++c)
+				worldBox.add(o2w.rotateTranslate_l2p(localBox.getCorner(c)));
+
+			if (worldBox.getMax().y < vehiclePos_w.y - cs_skywayHeightThreshold)
 				continue;
 
-			float const worldMinX = std::min(minWorld.x, maxWorld.x);
-			float const worldMaxX = std::max(minWorld.x, maxWorld.x);
-			float const worldMinZ = std::min(minWorld.z, maxWorld.z);
-			float const worldMaxZ = std::max(minWorld.z, maxWorld.z);
-
-			if (vehiclePos_w.x >= worldMinX && vehiclePos_w.x <= worldMaxX &&
-				vehiclePos_w.z >= worldMinZ && vehiclePos_w.z <= worldMaxZ)
+			if (vehiclePos_w.x >= worldBox.getMin().x && vehiclePos_w.x <= worldBox.getMax().x &&
+				vehiclePos_w.z >= worldBox.getMin().z && vehiclePos_w.z <= worldBox.getMax().z)
 				return true;
 		}
 
