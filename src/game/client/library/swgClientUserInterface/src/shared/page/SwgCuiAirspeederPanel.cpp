@@ -172,8 +172,8 @@ void SwgCuiAirspeederPanel::OnButtonPressed(UIWidget * context)
 			PlayerCreatureController * const controller = safe_cast<PlayerCreatureController *>(player->getController());
 			if (controller)
 			{
+				controller->fullStop();
 				controller->setAutoPilotLocked(false);
-				controller->appendMessage(CM_cancelAutoRun, 0.0f);
 			}
 		}
 
@@ -318,8 +318,8 @@ void SwgCuiAirspeederPanel::update(float deltaTimeSecs)
 		PlayerCreatureController * const controller = safe_cast<PlayerCreatureController *>(player->getController());
 		if (controller)
 		{
+			controller->fullStop();
 			controller->setAutoPilotLocked(false);
-			controller->appendMessage(CM_cancelAutoRun, 0.0f);
 		}
 
 		refreshAutoPilotUI();
@@ -411,8 +411,8 @@ void SwgCuiAirspeederPanel::disengageAutoPilot()
 		PlayerCreatureController * const controller = safe_cast<PlayerCreatureController *>(player->getController());
 		if (controller)
 		{
+			controller->fullStop();
 			controller->setAutoPilotLocked(false);
-			controller->appendMessage(CM_cancelAutoRun, 0.0f);
 		}
 	}
 

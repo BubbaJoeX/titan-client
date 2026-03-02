@@ -133,6 +133,7 @@ public:
 
 	void                  setAutoPilotLocked(bool locked);
 	bool                  getAutoPilotLocked() const;
+	void                  fullStop();
 
 	void                  setServerCellObject (Object const * serverCellObject);
 	void                  setServerTransform  (const Transform& serverTransform);

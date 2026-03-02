@@ -2756,6 +2756,15 @@ bool PlayerCreatureController::getAutoPilotLocked() const
 
 //----------------------------------------------------------------------
 
+void PlayerCreatureController::fullStop()
+{
+	m_currentSpeed = 0.0f;
+	m_desiredSpeed = 0.0f;
+	m_autoRun = false;
+}
+
+//----------------------------------------------------------------------
+
 bool PlayerCreatureController::shouldProcessMovement() const
 {
 	if (!m_allowMovement)
