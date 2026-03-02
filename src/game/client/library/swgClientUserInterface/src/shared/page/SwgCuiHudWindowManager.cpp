@@ -458,6 +458,7 @@ void SwgCuiHudWindowManager::handlePerformActivate ()
 	connectToMessage (EnterStructurePlacementModeMessage::cms_name);
 	connectToMessage (EnterTicketPurchaseModeMessage::cms_name);
 	connectToMessage (ShowAirspeederPanelMessage::cms_name);
+	connectToMessage ("AutoPilotStatusMessage");
 	connectToMessage ("SetObjectCollidableMessage");
 	connectToMessage (NewbieTutorialRequest::cms_name);
 	connectToMessage (NewbieTutorialEnableHudElement::cms_name);
@@ -507,6 +508,7 @@ void SwgCuiHudWindowManager::handlePerformDeactivate ()
 	disconnectFromMessage (EnterStructurePlacementModeMessage::cms_name);
 	disconnectFromMessage (EnterTicketPurchaseModeMessage::cms_name);
 	disconnectFromMessage (ShowAirspeederPanelMessage::cms_name);
+	disconnectFromMessage ("AutoPilotStatusMessage");
 	disconnectFromMessage ("SetObjectCollidableMessage");
 	disconnectFromMessage (NewbieTutorialRequest::cms_name);
 	disconnectFromMessage (NewbieTutorialEnableHudElement::cms_name);
@@ -622,6 +624,15 @@ void SwgCuiHudWindowManager::receiveMessage(const MessageDispatch::Emitter & , c
 			SwgCuiAirspeederPanel::resetPersistedState();
 			CuiMediatorFactory::deactivateInWorkspace (CuiMediatorTypes::WS_AirspeederPanel);
 		}
+	}
+
+	//----------------------------------------------------------------------
+
+	else if (message.isType ("AutoPilotStatusMessage"))
+	{
+		Archive::ReadIterator ri = NON_NULL (safe_cast<const GameNetworkMessage *>(&message))->getByteStream().begin();
+		GenericValueTypeMessage<std::pair<bool, int> > const msg(ri);
+		SwgCuiAirspeederPanel::setAutoPilotStatus(msg.getValue().first, msg.getValue().second);
 	}
 
 	//----------------------------------------------------------------------

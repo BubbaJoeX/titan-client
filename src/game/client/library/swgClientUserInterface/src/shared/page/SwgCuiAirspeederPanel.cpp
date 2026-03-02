@@ -18,6 +18,7 @@
 
 #include "UIButton.h"
 #include "UIPage.h"
+#include "UIText.h"
 
 //======================================================================
 
@@ -42,15 +43,21 @@ SwgCuiAirspeederPanel::SwgCuiAirspeederPanel(UIPage & page) :
 	m_buttonBoost(NULL),
 	m_buttonTraffic(NULL),
 	m_buttonHorn(NULL),
+	m_buttonAutoPilotCancel(NULL),
+	m_textAutoPilotStatus(NULL),
 	m_inSkyway(false),
 	m_boostMode(false),
 	m_trafficMode(false),
-	m_ascending(false)
+	m_ascending(false),
+	m_autoPilotActive(false),
+	m_autoPilotWaypointsRemaining(0)
 {
 	getCodeDataObject(TUIButton, m_buttonSkyway, "buttonSkyway");
 	getCodeDataObject(TUIButton, m_buttonBoost, "buttonBoost");
 	getCodeDataObject(TUIButton, m_buttonTraffic, "buttonTraffic");
 	getCodeDataObject(TUIButton, m_buttonHorn, "buttonHorn");
+	getCodeDataObject(TUIButton, m_buttonAutoPilotCancel, "buttonAutoPilotCancel");
+	getCodeDataObject(TUIText, m_textAutoPilotStatus, "textAutoPilotStatus");
 
 	registerMediatorObject(getPage(), true);
 	if (m_buttonSkyway)
@@ -61,6 +68,8 @@ SwgCuiAirspeederPanel::SwgCuiAirspeederPanel(UIPage & page) :
 		registerMediatorObject(*m_buttonTraffic, true);
 	if (m_buttonHorn)
 		registerMediatorObject(*m_buttonHorn, true);
+	if (m_buttonAutoPilotCancel)
+		registerMediatorObject(*m_buttonAutoPilotCancel, true);
 }
 
 //----------------------------------------------------------------------
@@ -71,6 +80,8 @@ SwgCuiAirspeederPanel::~SwgCuiAirspeederPanel()
 	m_buttonBoost = NULL;
 	m_buttonTraffic = NULL;
 	m_buttonHorn = NULL;
+	m_buttonAutoPilotCancel = NULL;
+	m_textAutoPilotStatus = NULL;
 }
 
 //----------------------------------------------------------------------
@@ -80,6 +91,7 @@ void SwgCuiAirspeederPanel::performActivate()
 	positionCenterRight();
 	refreshSkywayButtonText();
 	refreshBoostTrafficButtons();
+	refreshAutoPilotUI();
 	getPage().SetVisible(true);
 }
 
@@ -135,6 +147,12 @@ void SwgCuiAirspeederPanel::OnButtonPressed(UIWidget * context)
 	if (context == m_buttonHorn)
 	{
 		sendAirspeederCommand("horn");
+		return;
+	}
+	if (context == m_buttonAutoPilotCancel)
+	{
+		GenericValueTypeMessage<std::string> const msg("AutoPilotCancel", "cancel");
+		GameNetwork::send(msg, true);
 		return;
 	}
 }
@@ -200,6 +218,9 @@ void SwgCuiAirspeederPanel::resetPersistedState()
 		panel->m_ascending = false;
 		panel->m_boostMode = false;
 		panel->m_trafficMode = false;
+		panel->m_autoPilotActive = false;
+		panel->m_autoPilotWaypointsRemaining = 0;
+		panel->refreshAutoPilotUI();
 	}
 }
 
@@ -226,6 +247,69 @@ void SwgCuiAirspeederPanel::sendAirspeederCommand(const char* action)
 {
 	GenericValueTypeMessage<std::string> const msg("AirspeederControl", action);
 	GameNetwork::send(msg, true);
+}
+
+//----------------------------------------------------------------------
+
+bool SwgCuiAirspeederPanel::isInSkyway()
+{
+	CuiWorkspace * const ws = CuiWorkspace::getGameWorkspace();
+	if (!ws)
+		return false;
+
+	CuiMediator * const med = ws->findMediatorByType(typeid(SwgCuiAirspeederPanel));
+	if (!med)
+		return false;
+
+	SwgCuiAirspeederPanel * const panel = dynamic_cast<SwgCuiAirspeederPanel *>(med);
+	if (!panel)
+		return false;
+
+	return panel->m_inSkyway;
+}
+
+//----------------------------------------------------------------------
+
+void SwgCuiAirspeederPanel::setAutoPilotStatus(bool active, int waypointsRemaining)
+{
+	CuiWorkspace * const ws = CuiWorkspace::getGameWorkspace();
+	if (!ws)
+		return;
+
+	CuiMediator * const med = ws->findMediatorByType(typeid(SwgCuiAirspeederPanel));
+	if (!med)
+		return;
+
+	SwgCuiAirspeederPanel * const panel = dynamic_cast<SwgCuiAirspeederPanel *>(med);
+	if (!panel)
+		return;
+
+	panel->m_autoPilotActive = active;
+	panel->m_autoPilotWaypointsRemaining = waypointsRemaining;
+	panel->refreshAutoPilotUI();
+}
+
+//----------------------------------------------------------------------
+
+void SwgCuiAirspeederPanel::refreshAutoPilotUI()
+{
+	if (m_buttonAutoPilotCancel)
+		m_buttonAutoPilotCancel->SetVisible(m_autoPilotActive);
+
+	if (m_textAutoPilotStatus)
+	{
+		if (m_autoPilotActive)
+		{
+			char buf[64];
+			snprintf(buf, sizeof(buf), "Auto-Pilot: %d waypoint%s", m_autoPilotWaypointsRemaining, m_autoPilotWaypointsRemaining == 1 ? "" : "s");
+			m_textAutoPilotStatus->SetLocalText(Unicode::narrowToWide(buf));
+			m_textAutoPilotStatus->SetVisible(true);
+		}
+		else
+		{
+			m_textAutoPilotStatus->SetVisible(false);
+		}
+	}
 }
 
 //======================================================================

@@ -2,21 +2,23 @@
 			BackgroundColor='#2D2D2D'
 			BackgroundOpacity='0.95'
 			Location='804,400'
-			MinimumSize='240,200'
+			MinimumSize='240,240'
 			Name='AirspeederPanel'
 			PackLocation='fff,nfn'
 			PackSize='f,f'
 			RStyleDefault='/Styles.New.tool.tool_tip.rs_default'
-			ScrollExtent='256,200'
-			Size='256,200'
+			ScrollExtent='256,240'
+			Size='256,240'
 			UserMovable='true'
 			Visible='false'
 		>
 			<Data
+				buttonAutoPilotCancel='buttonAutoPilotCancel'
 				buttonBoost='buttonBoost'
 				buttonHorn='buttonHorn'
 				buttonSkyway='buttonSkyway'
 				buttonTraffic='buttonTraffic'
+				textAutoPilotStatus='textAutoPilotStatus'
 				Name='CodeData'
 			/>
 			<Page
@@ -74,9 +76,28 @@
 				Size='232,26'
 				Style='/Styles.New.buttons.hud.style'
 			>Traffic Mode</Button>
+			<Text
+				Font='bold_13'
+				LocalText=''
+				Location='12,134'
+				Name='textAutoPilotStatus'
+				ScrollExtent='232,16'
+				Size='232,16'
+				TextColor='#90EE90'
+				Visible='false'
+			></Text>
+			<Button
+				LocalText='Cancel Auto-Pilot'
+				Location='12,154'
+				Name='buttonAutoPilotCancel'
+				ScrollExtent='160,26'
+				Size='160,26'
+				Style='/Styles.New.buttons.hud.style'
+				Visible='false'
+			>Cancel Auto-Pilot</Button>
 			<Button
 				LocalText='Horn'
-				Location='176,168'
+				Location='176,208'
 				Name='buttonHorn'
 				ScrollExtent='68,24'
 				Size='68,24'

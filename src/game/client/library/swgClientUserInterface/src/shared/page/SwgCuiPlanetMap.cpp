@@ -48,7 +48,10 @@
 #include "sharedTerrain/TerrainObject.h"
 #include "sharedUtility/DataTable.h"
 #include "sharedUtility/DataTableManager.h"
+#include "swgClientUserInterface/SwgCuiAirspeederPanel.h"
 #include "swgClientUserInterface/SwgCuiMediatorTypes.h"
+#include "clientGame/GameNetwork.h"
+#include "sharedNetworkMessages/GenericValueTypeMessage.h"
 #include <list>
 #include <map>
 
@@ -78,6 +81,7 @@ namespace SwgCuiPlanetMapNamespace
 		const std::string waypoint_deactivate = "waypoint_deactivate";
 		const std::string waypoint_destroy    = "waypoint_destroy";
 		const std::string waypoint_set_name   = "waypoint_set_name";
+		const std::string autopilot           = "autopilot";
 	}
 
 	namespace Settings
@@ -611,6 +615,11 @@ void SwgCuiPlanetMap::OnPopupMenuSelection (UIWidget * context)
 	{
 		ClientWaypointObject::requestWaypoint (StringId::decodeString (entryName), Vector (pos.x, 0.0f, pos.y));
 	}
+	else if (selection == PopupItems::autopilot)
+	{
+		GenericValueTypeMessage<std::pair<float, float> > const msg("AutoPilotWaypoint", std::make_pair(static_cast<float>(pos.x), static_cast<float>(pos.y)));
+		GameNetwork::send(msg, true);
+	}
 	else
 	{
 		ClientWaypointObject * const waypoint = dynamic_cast<ClientWaypointObject *>(NetworkIdManager::getObjectById (id));
@@ -903,7 +912,10 @@ UIPopupMenu * SwgCuiPlanetMap::createPopupForEntry (const Vector2d & pos, const 
 	}
 	else
 		pop->AddItem (PopupItems::waypoint_create, CuiStringIdsPlanetMap::popup_waypoint_create.localize ());
-	
+
+	if (SwgCuiAirspeederPanel::isInSkyway())
+		pop->AddItem (PopupItems::autopilot, Unicode::narrowToWide("Auto-Pilot Here"));
+
 	Unicode::String vstr;
 	CuiUtils::FormatVector2d (vstr, pos);
 

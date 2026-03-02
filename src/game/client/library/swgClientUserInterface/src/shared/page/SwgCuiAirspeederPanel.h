@@ -17,6 +17,7 @@
 
 class UIButton;
 class UIPage;
+class UIText;
 
 //----------------------------------------------------------------------
 
@@ -35,6 +36,8 @@ public:
 	static SwgCuiAirspeederPanel * createInto(UIPage & parent);
 	static void resetPersistedState();
 	static void setSkywayActive();
+	static bool isInSkyway();
+	static void setAutoPilotStatus(bool active, int waypointsRemaining);
 
 private:
 	~SwgCuiAirspeederPanel();
@@ -44,6 +47,7 @@ private:
 	void positionCenterRight();
 	void refreshSkywayButtonText();
 	void refreshBoostTrafficButtons();
+	void refreshAutoPilotUI();
 
 	void sendAirspeederCommand(const char* action);
 
@@ -51,11 +55,15 @@ private:
 	UIButton * m_buttonBoost;
 	UIButton * m_buttonTraffic;
 	UIButton * m_buttonHorn;
+	UIButton * m_buttonAutoPilotCancel;
+	UIText *   m_textAutoPilotStatus;
 
 	bool m_inSkyway;
 	bool m_boostMode;
 	bool m_trafficMode;
 	bool m_ascending;
+	bool m_autoPilotActive;
+	int  m_autoPilotWaypointsRemaining;
 };
 
 //======================================================================
