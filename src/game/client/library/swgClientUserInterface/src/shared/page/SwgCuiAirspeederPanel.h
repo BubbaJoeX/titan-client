@@ -50,6 +50,7 @@ private:
 	UIButton * m_buttonSkyway;
 	UIButton * m_buttonBoost;
 	UIButton * m_buttonTraffic;
+	UIButton * m_buttonHorn;
 
 	bool m_inSkyway;
 	bool m_boostMode;

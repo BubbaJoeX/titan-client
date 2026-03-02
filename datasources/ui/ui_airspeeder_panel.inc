@@ -14,6 +14,7 @@
 		>
 			<Data
 				buttonBoost='buttonBoost'
+				buttonHorn='buttonHorn'
 				buttonSkyway='buttonSkyway'
 				buttonTraffic='buttonTraffic'
 				Name='CodeData'
@@ -73,4 +74,12 @@
 				Size='232,26'
 				Style='/Styles.New.buttons.hud.style'
 			>Traffic Mode</Button>
+			<Button
+				LocalText='Horn'
+				Location='176,168'
+				Name='buttonHorn'
+				ScrollExtent='68,24'
+				Size='68,24'
+				Style='/Styles.New.buttons.hud.style'
+			>Horn</Button>
 		</Page>

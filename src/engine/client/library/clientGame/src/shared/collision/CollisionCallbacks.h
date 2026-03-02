@@ -19,6 +19,7 @@ class CollisionCallbacks
 public:
 	static void install();
 	static void setIgnoreCollision(bool const value);
+	static void resetSkywayCollisionSent();
 private:
 	CollisionCallbacks();
 	CollisionCallbacks(CollisionCallbacks const & copy);

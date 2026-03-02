@@ -9,6 +9,7 @@
 #include "swgClientUserInterface/SwgCuiHudWindowManager.h"
 
 #include "clientGame/ClientSecureTradeManager.h"
+#include "clientGame/CollisionCallbacks.h"
 #include "clientGame/ConfigClientGame.h"
 #include "clientGame/ContainerInterface.h"
 #include "clientGame/CreatureObject.h"
@@ -634,10 +635,16 @@ void SwgCuiHudWindowManager::receiveMessage(const MessageDispatch::Emitter & , c
 		{
 			CollisionProperty * const collision = obj->getCollisionProperty();
 			if (collision)
+			{
 				collision->setCollidable(msg.getValue().second);
+				collision->setSkyway(!msg.getValue().second);
+			}
 		}
 		if (!msg.getValue().second)
+		{
 			SwgCuiAirspeederPanel::setSkywayActive();
+			CollisionCallbacks::resetSkywayCollisionSent();
+		}
 	}
 
 	//----------------------------------------------------------------------

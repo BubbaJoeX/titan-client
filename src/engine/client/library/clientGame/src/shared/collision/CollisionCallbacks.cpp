@@ -17,13 +17,16 @@
 #include "clientGame/ClientEffectTemplateList.h"
 #include "clientGame/ClientObject.h"
 #include "clientGame/Game.h"
+#include "clientGame/GameNetwork.h"
 #include "clientGame/ShipController.h"
 #include "clientGame/ShipObject.h"
+#include "sharedCollision/CollisionWorld.h"
 #include "sharedDebug/DebugFlags.h"
 #include "sharedDebug/InstallTimer.h"
 #include "sharedFoundation/CrcLowerString.h"
 #include "sharedGame/CollisionCallbackManager.h"
 #include "sharedGame/SharedObjectTemplate.h"
+#include "sharedNetworkMessages/GenericValueTypeMessage.h"
 #include "sharedNetworkMessages/MessageQueueUpdateShipOnCollision.h"
 #include "sharedObject/CellProperty.h"
 
@@ -36,6 +39,7 @@ namespace CollisionCallbacksNamespace
 
 	bool ms_isPlayingClientEffect = false;
 	bool ms_ignoreCollision;
+	bool ms_skywayCollisionSent = false;
 
 	void remove();
 
@@ -46,6 +50,7 @@ namespace CollisionCallbacksNamespace
 	bool onHitDoCollisionWith(Object * const object, Object * const wasHitByThisObject);
 	bool onHitDoCollisionWithPOBShipElseDoVisualsOnly(Object * const object, Object * const wasHitByThisObject);
 	bool onDoCollisionWithTerrain(Object * const object);
+	void onSkywayCollision(Object * const object);
 }
 
 using namespace CollisionCallbacksNamespace;
@@ -82,6 +87,8 @@ void CollisionCallbacks::install()
 	// Enable terrain collision for ships (atmospheric flight support)
 	CollisionCallbackManager::registerDoCollisionWithTerrainFunction(CollisionCallbacksNamespace::onDoCollisionWithTerrain);
 
+	CollisionWorld::registerSkywayCollisionCallback(CollisionCallbacksNamespace::onSkywayCollision);
+
 	{
 		CrcLowerString const name("clienteffect/space_collision.cef");
 		ms_shipShipClientEffectTemplate = ClientEffectTemplateList::fetch(name);
@@ -104,6 +111,13 @@ void CollisionCallbacks::setIgnoreCollision(bool const value)
 	ms_ignoreCollision = value;
 }
 
+// ----------------------------------------------------------------------
+
+void CollisionCallbacks::resetSkywayCollisionSent()
+{
+	ms_skywayCollisionSent = false;
+}
+
 // ======================================================================
 
 void CollisionCallbacksNamespace::remove()
@@ -119,6 +133,7 @@ void CollisionCallbacksNamespace::remove()
 		ms_shipObjectClientEffectTemplate = 0;
 	}
 
+	ms_skywayCollisionSent = false;
 	DebugFlags::unregisterFlag(ms_ignoreCollision);
 }
 
@@ -284,6 +299,19 @@ bool CollisionCallbacksNamespace::onDoCollisionWithTerrain(Object * const object
 		return true;
 	}
 	return false;
+}
+
+// ----------------------------------------------------------------------
+
+void CollisionCallbacksNamespace::onSkywayCollision(Object * const object)
+{
+	if (!object || ms_skywayCollisionSent)
+		return;
+
+	ms_skywayCollisionSent = true;
+
+	GenericValueTypeMessage<std::string> const msg("AirspeederCrash", "crash");
+	GameNetwork::send(msg, true);
 }
 
 // ======================================================================

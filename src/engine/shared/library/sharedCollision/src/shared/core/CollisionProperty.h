@@ -51,7 +51,8 @@ public:
 		F_inCombat                         = 0x0100,
 		F_inCollisionWorld                 = 0x0200,
 		F_idle                             = 0x0400,
-		F_disableCollisionWorldAddRemove   = 0x0800
+		F_disableCollisionWorldAddRemove   = 0x0800,
+		F_skyway                           = 0x1000
 	};
 
 public:
@@ -141,6 +142,7 @@ public:
 	void                    setCollidable       ( bool collidable );
 	void                    setServerSide       ( bool serverSide );
 	void                    setInCombat         ( bool inCombat );
+	void                    setSkyway           ( bool skyway );
 	
 	bool                    isMobile            ( void ) const;
 	bool                    isFlora             ( void ) const;
@@ -151,6 +153,7 @@ public:
 	bool                    isCollidable        ( void ) const;
 	bool                    isServerSide        ( void ) const;
 	bool                    isInCombat          ( void ) const;
+	bool                    isSkyway            ( void ) const;
 	
 	// ----------
 
@@ -354,6 +357,11 @@ inline void CollisionProperty::setInCombat ( bool inCombat )
 	modifyFlags(F_inCombat, inCombat);
 }
 
+inline void CollisionProperty::setSkyway ( bool skyway )
+{
+	modifyFlags(F_skyway, skyway);
+}
+
 // ----------
 
 inline bool CollisionProperty::isMobile ( void ) const
@@ -394,6 +402,11 @@ inline bool CollisionProperty::isCollidable ( void ) const
 inline bool CollisionProperty::isInCombat ( void ) const
 {
 	return hasFlags(F_inCombat);
+}
+
+inline bool CollisionProperty::isSkyway ( void ) const
+{
+	return hasFlags(F_skyway);
 }
 
 // ----------

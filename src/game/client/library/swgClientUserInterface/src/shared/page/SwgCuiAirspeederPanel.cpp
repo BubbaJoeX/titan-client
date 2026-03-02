@@ -41,6 +41,7 @@ SwgCuiAirspeederPanel::SwgCuiAirspeederPanel(UIPage & page) :
 	m_buttonSkyway(NULL),
 	m_buttonBoost(NULL),
 	m_buttonTraffic(NULL),
+	m_buttonHorn(NULL),
 	m_inSkyway(false),
 	m_boostMode(false),
 	m_trafficMode(false),
@@ -49,6 +50,7 @@ SwgCuiAirspeederPanel::SwgCuiAirspeederPanel(UIPage & page) :
 	getCodeDataObject(TUIButton, m_buttonSkyway, "buttonSkyway");
 	getCodeDataObject(TUIButton, m_buttonBoost, "buttonBoost");
 	getCodeDataObject(TUIButton, m_buttonTraffic, "buttonTraffic");
+	getCodeDataObject(TUIButton, m_buttonHorn, "buttonHorn");
 
 	registerMediatorObject(getPage(), true);
 	if (m_buttonSkyway)
@@ -57,6 +59,8 @@ SwgCuiAirspeederPanel::SwgCuiAirspeederPanel(UIPage & page) :
 		registerMediatorObject(*m_buttonBoost, true);
 	if (m_buttonTraffic)
 		registerMediatorObject(*m_buttonTraffic, true);
+	if (m_buttonHorn)
+		registerMediatorObject(*m_buttonHorn, true);
 }
 
 //----------------------------------------------------------------------
@@ -66,6 +70,7 @@ SwgCuiAirspeederPanel::~SwgCuiAirspeederPanel()
 	m_buttonSkyway = NULL;
 	m_buttonBoost = NULL;
 	m_buttonTraffic = NULL;
+	m_buttonHorn = NULL;
 }
 
 //----------------------------------------------------------------------
@@ -125,6 +130,11 @@ void SwgCuiAirspeederPanel::OnButtonPressed(UIWidget * context)
 		m_trafficMode = !m_trafficMode;
 		refreshBoostTrafficButtons();
 		sendAirspeederCommand("traffic");
+		return;
+	}
+	if (context == m_buttonHorn)
+	{
+		sendAirspeederCommand("horn");
 		return;
 	}
 }

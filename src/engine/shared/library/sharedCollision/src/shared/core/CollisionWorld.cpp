@@ -184,6 +184,48 @@ namespace CollisionWorldNamespace
 	CollisionWorld::NoCollisionDetectionThisFrameFunction ms_noCollisionDetectionThisFrameFunction = 0;
 	CollisionWorld::CollisionDetectionOnHitFunction ms_collisionDetectionOnHitFunction = 0;
 	CollisionWorld::DoCollisionWithTerrainFunction ms_doCollisionWithTerrainFunction = 0;
+	CollisionWorld::SkywayCollisionCallback ms_skywayCollisionCallback = 0;
+
+	float const cs_skywayCollisionMargin = 5.0f;
+	float const cs_skywayQueryRadius = 60.0f;
+
+	bool checkSkywayCollision(CollisionProperty * collider)
+	{
+		if (!ms_database)
+			return false;
+
+		Object & owner = collider->getOwner();
+		Vector const vehiclePos_w = owner.getPosition_w();
+
+		Sphere const querySphere(vehiclePos_w, cs_skywayQueryRadius);
+		ObjectVec results;
+		if (!ms_database->queryStatics(querySphere, &results))
+			return false;
+
+		for (ObjectVec::const_iterator it = results.begin(); it != results.end(); ++it)
+		{
+			Object * staticObj = *it;
+			if (!staticObj)
+				continue;
+
+			CollisionProperty * staticCollision = staticObj->getCollisionProperty();
+			if (!staticCollision)
+				continue;
+
+			BaseExtent const * extent = staticCollision->getExtent_p();
+			if (!extent)
+				continue;
+
+			AxialBox const box = extent->getBoundingBox();
+			Vector const topLocal(0.0f, box.getMax().y, 0.0f);
+			Vector const topWorld = staticObj->getTransform_o2w().rotateTranslate_l2p(topLocal);
+
+			if (topWorld.y >= vehiclePos_w.y - cs_skywayCollisionMargin)
+				return true;
+		}
+
+		return false;
+	}
 
 }
 
@@ -410,6 +452,13 @@ bool CollisionWorld::doCollisionWithTerrain(Object * const object)
 	return false;
 }
 
+// ----------------------------------------------------------------------
+
+void CollisionWorld::registerSkywayCollisionCallback(SkywayCollisionCallback callback)
+{
+	ms_skywayCollisionCallback = callback;
+}
+
 // ======================================================================
 // class CollisionWorld: PUBLIC STATIC
 // ======================================================================
@@ -601,6 +650,11 @@ void CollisionWorld::update(CollisionProperty * collider, float time)
 
 	if (!collider->isCollidable())
 	{
+		if (collider->isSkyway() && checkSkywayCollision(collider))
+		{
+			if (ms_skywayCollisionCallback)
+				(*ms_skywayCollisionCallback)(&collider->getOwner());
+		}
 		collider->storePosition();
 		return;
 	}

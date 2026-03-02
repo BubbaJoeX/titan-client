@@ -46,11 +46,13 @@ public:
 	typedef void (*NoCollisionDetectionThisFrameFunction)(Object * const object);
 	typedef bool (*CollisionDetectionOnHitFunction)(Object * const object, Object * const wasHitByThisObject);
 	typedef bool (*DoCollisionWithTerrainFunction)(Object * const object);
+	typedef void (*SkywayCollisionCallback)(Object * const object);
 
 	static void registerCanTestCollisionDetectionOnObjectThisFrame(CanTestCollisionDetectionOnObjectThisFrameFunction);
 	static void registerNoCollisionDetectionThisFrame(NoCollisionDetectionThisFrameFunction);
 	static void registerDoCollisionDetectionOnHit(CollisionDetectionOnHitFunction);
 	static void registerDoCollisionWithTerrain(DoCollisionWithTerrainFunction);
+	static void registerSkywayCollisionCallback(SkywayCollisionCallback callback);
 
 public:
 	
