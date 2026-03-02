@@ -55,6 +55,7 @@
 #include "sharedCollision/CollisionProperty.h"
 #include "sharedNetworkMessages/GenericValueTypeMessage.h"
 #include "sharedNetworkMessages/ShowAirspeederPanelMessage.h"
+#include "swgClientUserInterface/SwgCuiAirspeederPanel.h"
 #include "sharedNetworkMessages/NewbieTutorialEnableHudElement.h"
 #include "sharedNetworkMessages/NewbieTutorialHighlightUIElement.h"
 #include "sharedNetworkMessages/NewbieTutorialRequest.h"
@@ -612,9 +613,14 @@ void SwgCuiHudWindowManager::receiveMessage(const MessageDispatch::Emitter & , c
 		const ShowAirspeederPanelMessage msg (ri);
 
 		if (msg.getShow())
+		{
 			CuiMediatorFactory::activateInWorkspace (CuiMediatorTypes::WS_AirspeederPanel);
+		}
 		else
+		{
+			SwgCuiAirspeederPanel::resetPersistedState();
 			CuiMediatorFactory::deactivateInWorkspace (CuiMediatorTypes::WS_AirspeederPanel);
+		}
 	}
 
 	//----------------------------------------------------------------------

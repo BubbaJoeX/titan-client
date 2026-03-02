@@ -34,6 +34,7 @@ public:
 	virtual void OnButtonPressed(UIWidget * context);
 
 	static SwgCuiAirspeederPanel * createInto(UIPage & parent);
+	static void resetPersistedState();
 
 private:
 	~SwgCuiAirspeederPanel();

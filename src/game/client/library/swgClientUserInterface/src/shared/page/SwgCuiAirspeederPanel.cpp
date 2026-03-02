@@ -77,6 +77,7 @@ SwgCuiAirspeederPanel::~SwgCuiAirspeederPanel()
 
 void SwgCuiAirspeederPanel::performActivate()
 {
+	m_inSkyway = s_persistedInSkyway;
 	setIsUpdating(true);
 	positionCenterRight();
 	refreshSkywayButtonText();
@@ -89,10 +90,7 @@ void SwgCuiAirspeederPanel::performActivate()
 void SwgCuiAirspeederPanel::performDeactivate()
 {
 	setIsUpdating(false);
-	m_inSkyway = false;
-	m_ascending = false;
-	m_ascentEndTime = 0.0f;
-	s_persistedInSkyway = false;
+	s_persistedInSkyway = m_inSkyway;
 	getPage().SetVisible(false);
 }
 
@@ -205,6 +203,11 @@ void SwgCuiAirspeederPanel::refreshBoostTrafficButtons()
 		m_buttonTraffic->SetLocalText(m_trafficMode ? Unicode::narrowToWide("Traffic Mode (ON)") : Unicode::narrowToWide("Traffic Mode"));
 		m_buttonTraffic->SetEnabled(!m_boostMode);
 	}
+}
+
+void SwgCuiAirspeederPanel::resetPersistedState()
+{
+	s_persistedInSkyway = false;
 }
 
 void SwgCuiAirspeederPanel::sendAirspeederCommand(const char* action)
