@@ -12,6 +12,7 @@
 
 #include "clientGame/GameNetwork.h"
 #include "clientGraphics/ConfigClientGraphics.h"
+#include "clientUserInterface/CuiWorkspace.h"
 #include "sharedFoundation/Clock.h"
 #include "sharedFoundation/NetworkId.h"
 #include "sharedNetworkMessages/GenericValueTypeMessage.h"
@@ -26,7 +27,6 @@ namespace
 {
 	int const marginPixels = 16;
 	float const ascentDurationSecs = 5.0f;
-	bool s_persistedInSkyway = false;
 }
 
 //======================================================================
@@ -45,7 +45,7 @@ SwgCuiAirspeederPanel::SwgCuiAirspeederPanel(UIPage & page) :
 	m_buttonSkyway(NULL),
 	m_buttonBoost(NULL),
 	m_buttonTraffic(NULL),
-	m_inSkyway(s_persistedInSkyway),
+	m_inSkyway(false),
 	m_boostMode(false),
 	m_trafficMode(false),
 	m_ascending(false),
@@ -77,7 +77,6 @@ SwgCuiAirspeederPanel::~SwgCuiAirspeederPanel()
 
 void SwgCuiAirspeederPanel::performActivate()
 {
-	m_inSkyway = s_persistedInSkyway;
 	setIsUpdating(true);
 	positionCenterRight();
 	refreshSkywayButtonText();
@@ -90,7 +89,6 @@ void SwgCuiAirspeederPanel::performActivate()
 void SwgCuiAirspeederPanel::performDeactivate()
 {
 	setIsUpdating(false);
-	s_persistedInSkyway = m_inSkyway;
 	getPage().SetVisible(false);
 }
 
@@ -106,7 +104,6 @@ void SwgCuiAirspeederPanel::update(float deltaTimeSecs)
 		{
 			m_ascending = false;
 			m_inSkyway = true;
-			s_persistedInSkyway = true;
 			refreshSkywayButtonText();
 		}
 	}
@@ -121,14 +118,12 @@ void SwgCuiAirspeederPanel::OnButtonPressed(UIWidget * context)
 			m_ascending = false;
 			m_ascentEndTime = 0.0f;
 			m_inSkyway = false;
-			s_persistedInSkyway = false;
 			refreshSkywayButtonText();
 			sendAirspeederCommand("skyway");
 		}
 		else if (m_inSkyway)
 		{
 			m_inSkyway = false;
-			s_persistedInSkyway = false;
 			refreshSkywayButtonText();
 			sendAirspeederCommand("skyway");
 		}
@@ -207,7 +202,23 @@ void SwgCuiAirspeederPanel::refreshBoostTrafficButtons()
 
 void SwgCuiAirspeederPanel::resetPersistedState()
 {
-	s_persistedInSkyway = false;
+	CuiWorkspace * const ws = CuiWorkspace::getGameWorkspace();
+	if (!ws)
+		return;
+
+	CuiMediator * const med = ws->findMediatorByType(typeid(SwgCuiAirspeederPanel));
+	if (!med)
+		return;
+
+	SwgCuiAirspeederPanel * const panel = dynamic_cast<SwgCuiAirspeederPanel *>(med);
+	if (panel)
+	{
+		panel->m_inSkyway = false;
+		panel->m_ascending = false;
+		panel->m_ascentEndTime = 0.0f;
+		panel->m_boostMode = false;
+		panel->m_trafficMode = false;
+	}
 }
 
 void SwgCuiAirspeederPanel::sendAirspeederCommand(const char* action)
