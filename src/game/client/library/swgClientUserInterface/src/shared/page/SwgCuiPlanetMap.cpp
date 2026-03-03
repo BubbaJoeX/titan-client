@@ -51,6 +51,8 @@
 #include "swgClientUserInterface/SwgCuiAirspeederPanel.h"
 #include "swgClientUserInterface/SwgCuiMediatorTypes.h"
 #include "clientGame/GameNetwork.h"
+#include "clientGame/PlayerShipController.h"
+#include "clientGame/ShipObject.h"
 #include "sharedNetworkMessages/GenericValueTypeMessage.h"
 #include <list>
 #include <map>
@@ -617,8 +619,24 @@ void SwgCuiPlanetMap::OnPopupMenuSelection (UIWidget * context)
 	}
 	else if (selection == PopupItems::autopilot)
 	{
-		GenericValueTypeMessage<std::pair<float, float> > const msg("AutoPilotWaypoint", std::make_pair(static_cast<float>(pos.x), static_cast<float>(pos.y)));
-		GameNetwork::send(msg, true);
+		ShipObject * const pilotedShip = Game::getPlayerPilotedShip();
+		if (pilotedShip)
+		{
+			PlayerShipController * const psc = dynamic_cast<PlayerShipController *>(pilotedShip->getController());
+			if (psc)
+			{
+				float terrainHeight = 0.0f;
+				TerrainObject const * const terrain = TerrainObject::getConstInstance();
+				if (terrain)
+					terrain->getHeight(Vector(static_cast<float>(pos.x), 0.0f, static_cast<float>(pos.y)), terrainHeight);
+				psc->engageAutopilotToLocation(Vector(static_cast<float>(pos.x), terrainHeight + 200.0f, static_cast<float>(pos.y)));
+			}
+		}
+		else
+		{
+			GenericValueTypeMessage<std::pair<float, float> > const msg("AutoPilotWaypoint", std::make_pair(static_cast<float>(pos.x), static_cast<float>(pos.y)));
+			GameNetwork::send(msg, true);
+		}
 	}
 	else
 	{
@@ -913,7 +931,7 @@ UIPopupMenu * SwgCuiPlanetMap::createPopupForEntry (const Vector2d & pos, const 
 	else
 		pop->AddItem (PopupItems::waypoint_create, CuiStringIdsPlanetMap::popup_waypoint_create.localize ());
 
-	if (SwgCuiAirspeederPanel::isInSkyway())
+	if (SwgCuiAirspeederPanel::isInSkyway() || Game::getPlayerPilotedShip() != 0)
 		pop->AddItem (PopupItems::autopilot, Unicode::narrowToWide("Auto-Pilot Here"));
 
 	Unicode::String vstr;

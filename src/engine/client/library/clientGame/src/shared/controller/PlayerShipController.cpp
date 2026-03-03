@@ -1156,7 +1156,7 @@ void PlayerShipController::doAutopilot(float & yawPosition, float & pitchPositio
 
 	Vector avoidancePosition_w;
 	// Goal distance doesn't really matter for what we're using this test for, so it's arbitrarily set to where we'll be in 10 seconds:
-	if (m_autopilotMode != AM_rollLevel && m_autopilotMode != AM_follow && 
+	if (m_autopilotMode != AM_rollLevel && m_autopilotMode != AM_follow && Game::isSpace() &&
 		SpaceAvoidanceManager::getAvoidancePosition(*owner, m_shipDynamicsModel->getVelocity(), owner->getPosition_w() + m_shipDynamicsModel->getVelocity() * 10.0f, avoidancePosition_w, true))
 	{
 		cancelAutopilot();

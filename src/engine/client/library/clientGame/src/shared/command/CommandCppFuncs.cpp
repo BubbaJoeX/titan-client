@@ -2233,7 +2233,16 @@ void CommandCppFuncsNamespace::commandFuncWaypointAutopilot(Command const & /*co
 			CuiSystemMessageManager::sendFakeSystemMessage (Unicode::narrowToWide("(debug) You cannot autopilot to a different space zone."));
 			return;
 		}
-		playerShipController->engageAutopilotToLocation(waypoint->getLocation());
+		Vector targetLoc = waypoint->getLocation();
+		if (!Game::isSpace())
+		{
+			float terrainHeight = 0.0f;
+			TerrainObject const * const terrain = TerrainObject::getConstInstance();
+			if (terrain)
+				terrain->getHeight(Vector(targetLoc.x, 0.0f, targetLoc.z), terrainHeight);
+			targetLoc.y = terrainHeight + 200.0f;
+		}
+		playerShipController->engageAutopilotToLocation(targetLoc);
 		waypoint->setWaypointActive(true);
 	}
 }

@@ -333,17 +333,13 @@ void SwgCuiButtonBar::update (float deltaTimeSecs)
 		}
 	}
 
-	// Hide Home Port, Zone Map in atmospheric flight (ship on ground planet)
+	// Hide Home Port in atmospheric flight; map button stays visible
+	// so pilots can open the planet map for autopilot navigation.
 	bool const atmosphericFlight = Game::isShipScene() && !Game::isSpace();
 	if (m_homePortButton)
 	{
 		UIWidget * const homePortWidget = dynamic_cast<UIWidget *>(m_homePortButton->GetParent());
 		(homePortWidget ? homePortWidget : m_homePortButton)->SetVisible(!atmosphericFlight);
-	}
-	if (m_mapButton)
-	{
-		UIWidget * const mapWidget = dynamic_cast<UIWidget *>(m_mapButton->GetParent());
-		(mapWidget ? mapWidget : m_mapButton)->SetVisible(!atmosphericFlight);
 	}
 
 	const bool hasNewMail = CuiPersistentMessageManager::hasNewMail ();

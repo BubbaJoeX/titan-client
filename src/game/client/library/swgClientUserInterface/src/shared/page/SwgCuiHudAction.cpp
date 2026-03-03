@@ -726,7 +726,7 @@ bool  SwgCuiHudAction::performAction (const std::string & id, const Unicode::Str
 		if (!player)
 			return true;
 		
-		if (Game::getPlayerContainingShip() == 0)
+		if (Game::getPlayerContainingShip() == 0 || !Game::isSpace())
 		{
 			if (!PlanetMapManagerClient::isPlanetaryMapEnabled(Game::getSceneId(), player->getPosition_w()))
 				CuiMediatorFactory::deactivateInWorkspace (CuiMediatorTypes::WS_PlanetMap);
