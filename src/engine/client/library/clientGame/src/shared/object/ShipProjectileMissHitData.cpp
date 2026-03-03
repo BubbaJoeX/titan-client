@@ -36,6 +36,7 @@
 #include "sharedObject/AlterResult.h"
 #include "sharedObject/Appearance.h"
 #include "sharedObject/CellProperty.h"
+#include "sharedTerrain/TerrainObject.h"
 
 //----------------------------------------------------------------------
 
@@ -51,7 +52,8 @@ namespace ShipProjectileMissHitDataNamespace
 		return &childObject;
 	}
 
-	uint16 const ms_collisionFlags = ClientWorld::CF_tangible | ClientWorld::CF_tangibleNotTargetable | ClientWorld::CF_childObjects | ClientWorld::CF_disablePortalCrossing;
+	uint16 const ms_collisionFlagsSpace = ClientWorld::CF_tangible | ClientWorld::CF_tangibleNotTargetable | ClientWorld::CF_childObjects | ClientWorld::CF_disablePortalCrossing;
+	uint16 const ms_collisionFlagsAtmospheric = ClientWorld::CF_tangible | ClientWorld::CF_tangibleNotTargetable | ClientWorld::CF_childObjects | ClientWorld::CF_disablePortalCrossing | ClientWorld::CF_terrain;
 	bool ms_disableHitEffects;
 
 }
@@ -241,6 +243,9 @@ ClientEffectTemplate const * ShipProjectileMissHitData::getClientEffectTemplateF
 
 ShipProjectileMissHitData::HitType ShipProjectileMissHitData::findHitTypeForObject(Object const & object) const
 {
+	if (dynamic_cast<TerrainObject const *>(&object))
+		return HT_stone;
+
 	SharedObjectTemplate const * const sharedObjectTemplate = dynamic_cast<SharedObjectTemplate const *>(object.getObjectTemplate());
 	if (sharedObjectTemplate)
 	{
@@ -417,8 +422,10 @@ bool ShipProjectileMissHitData::handleCollision(Object & collider, ShipObject * 
 		}
 	}
 		
+	uint16 const collisionFlags = Game::isSpace() ? ms_collisionFlagsSpace : ms_collisionFlagsAtmospheric;
+
 	CollisionInfo result;
-	if (ClientWorld::collide(lastCellProperty, lastPosition_w, endPosition_w, collideParameters, result, ms_collisionFlags, ownerShip))
+	if (ClientWorld::collide(lastCellProperty, lastPosition_w, endPosition_w, collideParameters, result, collisionFlags, ownerShip))
 	{
 		Object const * const childObject = result.getObject();
 		if (NULL != childObject)
