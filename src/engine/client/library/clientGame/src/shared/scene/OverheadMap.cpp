@@ -17,6 +17,7 @@
 #include "clientGame/CreatureObject.h"
 #include "clientGame/Game.h"
 #include "clientGame/GroundScene.h"
+#include "clientGame/ShipObject.h"
 #include "clientGraphics/DynamicIndexBuffer.h"
 #include "clientGraphics/DynamicVertexBuffer.h"
 #include "clientGraphics/Graphics.h"
@@ -370,28 +371,38 @@ void OverheadMap::render () const
 	
 	m_radarCamera->resetRotate_o2p ();
 
-	if (Game::isSpace())
+	bool handledAsShipInterior = false;
+	if (!player->isInWorldCell())
 	{
-		if (!player->isInWorldCell())
+		CellProperty const * const cellProperty = player->getParentCell();
+		if (cellProperty)
 		{
-			CellProperty const * const cellProperty = player->getParentCell();
-			if (cellProperty)
+			PortalProperty const * const portalProperty = cellProperty->getPortalProperty();
+			if (portalProperty)
 			{
-				PortalProperty const * const portalProperty = cellProperty->getPortalProperty();
-				if (portalProperty)
+				Object const & owner = portalProperty->getOwner();
+				if (Game::isSpace())
 				{
-					Object const & owner = portalProperty->getOwner();
 					m_radarCamera->setTransform_o2w(owner.getTransform_o2w());
-
-					if (CuiPreferences::getRotateMap())
-						m_radarCamera->yaw_o(owner.rotate_w2o(camera->getObjectFrameK_w()).theta());
-
-					m_radarCamera->setPosition_w(playerPosition_w);
 				}
+				else
+				{
+					// In atmospheric flight the ship is tilted; use an upright transform
+					// at the building's world position so the overhead map stays level.
+					Transform uprightTransform;
+					uprightTransform.setPosition_p(owner.getPosition_w());
+					m_radarCamera->setTransform_o2w(uprightTransform);
+				}
+
+				if (CuiPreferences::getRotateMap())
+					m_radarCamera->yaw_o(owner.rotate_w2o(camera->getObjectFrameK_w()).theta());
+
+				m_radarCamera->setPosition_w(playerPosition_w);
+				handledAsShipInterior = true;
 			}
 		}
 	}
-	else
+	if (!handledAsShipInterior)
 	{
 		if (CuiPreferences::getRotateMap())
 			m_radarCamera->yaw_o (camera->getObjectFrameK_w ().theta ());
