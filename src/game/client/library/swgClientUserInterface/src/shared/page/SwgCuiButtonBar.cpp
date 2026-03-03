@@ -16,6 +16,7 @@
 #include "UIManager.h"
 #include "UIMessage.h"
 #include "UIPage.h"
+#include "UIWidget.h"
 #include "UIPopupMenu.h"
 #include "clientGame/ClientCommandQueue.h"
 #include "clientGame/ClientExpertiseManager.h"
@@ -330,6 +331,19 @@ void SwgCuiButtonBar::update (float deltaTimeSecs)
 		{
 			parent->MoveChild(&getPage(),UIBaseObject::Top);
 		}
+	}
+
+	// Hide Home Port, Zone Map in atmospheric flight (ship on ground planet)
+	bool const atmosphericFlight = Game::isShipScene() && !Game::isSpace();
+	if (m_homePortButton)
+	{
+		UIWidget * const homePortWidget = dynamic_cast<UIWidget *>(m_homePortButton->GetParent());
+		(homePortWidget ? homePortWidget : m_homePortButton)->SetVisible(!atmosphericFlight);
+	}
+	if (m_mapButton)
+	{
+		UIWidget * const mapWidget = dynamic_cast<UIWidget *>(m_mapButton->GetParent());
+		(mapWidget ? mapWidget : m_mapButton)->SetVisible(!atmosphericFlight);
 	}
 
 	const bool hasNewMail = CuiPersistentMessageManager::hasNewMail ();

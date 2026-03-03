@@ -1934,9 +1934,20 @@ void GroundScene::update(float elapsedTime)
 	}
 	else
 	{
-		Vector const playerPosition = getPlayer()->getPosition_w();
-		snprintf(ms_playerPosition, sizeof(ms_playerPosition), "Player: %5.2f %5.2f %5.2f\n", playerPosition.x, playerPosition.y, playerPosition.z);
-		WorldSnapshot::update(getPlayer()->getParentCell(), playerPosition);
+		Vector buildoutRefPosition = getPlayer()->getPosition_w();
+		CellProperty const * buildoutRefCell = getPlayer()->getParentCell();
+		// When piloting in atmospheric flight, use ship position for buildout loading so structures stream correctly from flight altitude
+		if (Game::isShipScene() && !Game::isSpace())
+		{
+			ShipObject const * const ship = Game::getPlayerContainingShip();
+			if (ship)
+			{
+				buildoutRefPosition = ship->getPosition_w();
+				buildoutRefCell = CellProperty::getWorldCellProperty();
+			}
+		}
+		snprintf(ms_playerPosition, sizeof(ms_playerPosition), "Player: %5.2f %5.2f %5.2f\n", buildoutRefPosition.x, buildoutRefPosition.y, buildoutRefPosition.z);
+		WorldSnapshot::update(buildoutRefCell, buildoutRefPosition);
 	}
 
 	//-- Handle destruction of any queued objects
@@ -1967,9 +1978,15 @@ void GroundScene::update(float elapsedTime)
 
 	if (ms_useBuildoutClip || FileManifest::shouldUpdateManifest())
 	{
-		Vector const & playerPos_w = getPlayer()->getPosition_w();
+		Vector buildoutClipPos_w = getPlayer()->getPosition_w();
+		if (Game::isShipScene() && !Game::isSpace())
+		{
+			ShipObject const * const ship = Game::getPlayerContainingShip();
+			if (ship)
+				buildoutClipPos_w = ship->getPosition_w();
+		}
 		BuildoutArea const * buildoutArea = NULL;		
-		buildoutArea = SharedBuildoutAreaManager::findBuildoutAreaAtPosition(playerPos_w.x, playerPos_w.z, false);
+		buildoutArea = SharedBuildoutAreaManager::findBuildoutAreaAtPosition(buildoutClipPos_w.x, buildoutClipPos_w.z, false);
 
 		if (FileManifest::shouldUpdateManifest())
 		{
@@ -2381,7 +2398,28 @@ void GroundScene::drawOverlays (void) const
 		m_overheadMap->render ();
 
 	if (m_spaceTargetBracketOverlay)
+	{
+		// Ensure camera viewport matches current render target (may have changed after Bloom/PostProcessing)
+		GameCamera* const overlayCamera = const_cast<GameCamera*>(getCurrentCamera());
+		if (overlayCamera)
+		{
+			int const rtWidth = Graphics::getCurrentRenderTargetWidth();
+			int const rtHeight = Graphics::getCurrentRenderTargetHeight();
+			if (ms_letterBoxedViewport)
+			{
+				int const viewportTop = rtHeight / 6;
+				int const viewportBottom = rtHeight * 2 / 3;
+				overlayCamera->setViewport(0, viewportTop, rtWidth, viewportBottom - viewportTop);
+				Graphics::setViewport(0, viewportTop, rtWidth, viewportBottom - viewportTop);
+			}
+			else
+			{
+				overlayCamera->setViewport(0, 0, rtWidth, rtHeight);
+				Graphics::setViewport(0, 0, rtWidth, rtHeight);
+			}
+		}
 		m_spaceTargetBracketOverlay->render();
+	}
 
 #if PRODUCTION == 0
 	PlotterManager::draw();

@@ -118,6 +118,7 @@ namespace WorldSnapshotNamespace
 	CellProperty const * ms_lastCellProperty;
 	Vector ms_lastPosition_w (0.f, -9999.f, 0.f);
 	float ms_updateDistanceSquared;
+	float ms_queryRadius = 512.f;
 	int ms_maximumNumberOfCreatesPerFrame = 1000;
 	int ms_maximumNumberOfDeletesPerFrame = 1000;
 
@@ -340,6 +341,7 @@ void WorldSnapshot::install ()
 	WorldSnapshotReaderWriter::Node::setDetailLevelChangedFunction (detailLevelChanged);
 
 	ms_updateDistanceSquared = sqr (ConfigFile::getKeyFloat ("ClientGame/WorldSnapshot", "updateDistance", 4.f));
+	ms_queryRadius = ConfigFile::getKeyFloat ("ClientGame/WorldSnapshot", "queryRadius", 512.f);
 	ms_maximumNumberOfCreatesPerFrame = ConfigFile::getKeyInt("ClientGame/WorldSnapshot", "maximumNumberOfCreatesPerFrame", ms_maximumNumberOfCreatesPerFrame);
 	ms_maximumNumberOfDeletesPerFrame = ConfigFile::getKeyInt("ClientGame/WorldSnapshot", "maximumNumberOfDeletesPerFrame", ms_maximumNumberOfDeletesPerFrame);
 
@@ -810,7 +812,7 @@ void WorldSnapshot::update(CellProperty const * const cellProperty, Vector const
 	//-- the first update's pending create query should ask the sphere tree for what should be loaded
 	ms_queryList.clear ();
 
-	ms_sphereTree.findInRange (position_w, 1.f, ms_queryList);
+	ms_sphereTree.findInRange (position_w, ms_queryRadius, ms_queryList);
 
 	if (!ms_queryList.empty () || !ms_loadedList.empty ())
 	{

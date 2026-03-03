@@ -230,7 +230,8 @@ bool  SwgCuiHudActionSpace::performAction (const std::string & id, const Unicode
 
 	else if(id == CuiActions::hyperspaceMap)
 	{
-		if (Game::getPlayerPilotedShip())
+		// Disable hyperspace map in atmospheric flight (not available on ground planets)
+		if (Game::getPlayerPilotedShip() && Game::isSpace())
 			getWindowManagerSpace().spawnHyperspaceMap();
 	}
 	
