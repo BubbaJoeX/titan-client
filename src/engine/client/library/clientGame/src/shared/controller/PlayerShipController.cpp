@@ -1201,33 +1201,80 @@ void PlayerShipController::doAutopilot(float & yawPosition, float & pitchPositio
 		case AM_toLocation:
 		{
 			Vector const & shipPosition = owner->getPosition_w();
-			m_autopilotTargetHeading =  m_autopilotTargetLocation - shipPosition;
 
-			float const result = doAutopilotTurnToHeading(pitchPosition, yawPosition);
-			if (result < c_autopilotTolerance) // only roll level when mostly on target, to avoid "drunken autopilot"
+			if (!Game::isSpace())
+			{
+				float terrainHeight = 0.0f;
+				TerrainObject const * const terrain = TerrainObject::getConstInstance();
+				if (terrain)
+					terrain->getHeight(shipPosition, terrainHeight);
+
+				float const cruiseAltitude = terrainHeight + 200.0f;
+
+				Vector flatTarget(m_autopilotTargetLocation.x, cruiseAltitude, m_autopilotTargetLocation.z);
+				m_autopilotTargetHeading = flatTarget - shipPosition;
+				m_autopilotTargetHeading.y = 0.0f;
+
+				float const result = doAutopilotTurnToHeading(pitchPosition, yawPosition);
+
 				IGNORE_RETURN(doAutopilotRollLevel(rollPosition));
 
-			// Adjust throttle.
-			float const distanceToTarget = m_autopilotTargetHeading.approximateMagnitude();
+				float const altitudeDelta = cruiseAltitude - shipPosition.y;
+				float const altitudeThreshold = 5.0f;
+				if (altitudeDelta > altitudeThreshold)
+					pitchPosition = -0.3f;
+				else if (altitudeDelta < -altitudeThreshold)
+					pitchPosition = 0.3f;
+				else
+					pitchPosition = 0.0f;
 
-			if (distanceToTarget < c_autopilotReachedTargetTolerance)
-			{
-				throttlePosition = 0.0f;
-				internalEngageAutopilotRollLevel();
+				float const distanceToTarget = m_autopilotTargetHeading.approximateMagnitude();
+
+				if (distanceToTarget < c_autopilotReachedTargetTolerance)
+				{
+					throttlePosition = 0.0f;
+					internalEngageAutopilotRollLevel();
+				}
+				else
+					throttlePosition = std::max(0.0f, computeRequiredAcceleration(0.0f, distanceToTarget, m_shipDynamicsModel->getVelocity().approximateMagnitude(),
+						getShipOwner()->getShipActualDecelerationRate(), getShipOwner()->getShipActualSpeedMaximum()));
+
+				if (result > c_autopilotTolerance)
+				{
+					float const multiplier = distanceToTarget < c_autopilotTurnSlowDistance ? 1.0f : 0.5f;
+					if (result > c_autopilotBadlyOffTargetTolerance)
+						throttlePosition -= throttlePosition * multiplier;
+					else
+						throttlePosition = throttlePosition * (1.0f - (multiplier * (result / c_autopilotBadlyOffTargetTolerance)));
+				}
 			}
 			else
-				throttlePosition = std::max(0.0f, computeRequiredAcceleration(0.0f, distanceToTarget, m_shipDynamicsModel->getVelocity().approximateMagnitude(),
-					getShipOwner()->getShipActualDecelerationRate(), getShipOwner()->getShipActualSpeedMaximum()));
-
-			// reduce throttle if not pointing the right direction
-			if (result > c_autopilotTolerance)
 			{
-				float const multiplier = distanceToTarget < c_autopilotTurnSlowDistance ? 1.0f : 0.5f;
+				m_autopilotTargetHeading = m_autopilotTargetLocation - shipPosition;
 
-				if (result > c_autopilotBadlyOffTargetTolerance)
-					throttlePosition -= throttlePosition * multiplier;
+				float const result = doAutopilotTurnToHeading(pitchPosition, yawPosition);
+				if (result < c_autopilotTolerance)
+					IGNORE_RETURN(doAutopilotRollLevel(rollPosition));
+
+				float const distanceToTarget = m_autopilotTargetHeading.approximateMagnitude();
+
+				if (distanceToTarget < c_autopilotReachedTargetTolerance)
+				{
+					throttlePosition = 0.0f;
+					internalEngageAutopilotRollLevel();
+				}
 				else
-					throttlePosition = throttlePosition * (1.0f - (multiplier * (result / c_autopilotBadlyOffTargetTolerance)));
+					throttlePosition = std::max(0.0f, computeRequiredAcceleration(0.0f, distanceToTarget, m_shipDynamicsModel->getVelocity().approximateMagnitude(),
+						getShipOwner()->getShipActualDecelerationRate(), getShipOwner()->getShipActualSpeedMaximum()));
+
+				if (result > c_autopilotTolerance)
+				{
+					float const multiplier = distanceToTarget < c_autopilotTurnSlowDistance ? 1.0f : 0.5f;
+					if (result > c_autopilotBadlyOffTargetTolerance)
+						throttlePosition -= throttlePosition * multiplier;
+					else
+						throttlePosition = throttlePosition * (1.0f - (multiplier * (result / c_autopilotBadlyOffTargetTolerance)));
+				}
 			}
 			break;
 		}
