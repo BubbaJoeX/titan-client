@@ -634,7 +634,9 @@ float FreeChaseCamera::alter (float elapsedTime)
 		resetRotate_o2p ();
 
 		//-- reverse yaw to get world space transform
-		if (!Game::isSpace())
+		//-- skip this when inside a ship cell (atmospheric flight) so the
+		//-- camera yaw stays cell-relative, matching space behavior
+		if (!Game::isSpace() && !Game::getPlayerContainingShip())
 			yaw_o (-getObjectFrameK_w ().theta ());
 
 		//-- yaw the world yaw amount
