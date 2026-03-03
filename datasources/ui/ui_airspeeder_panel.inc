@@ -19,7 +19,7 @@
 				buttonHorn='buttonHorn'
 				buttonSkyway='buttonSkyway'
 				buttonTraffic='buttonTraffic'
-				checkMuteGps='checkMuteGps'
+				checkMuteGps='header.checkMuteGps'
 				textAutoPilotStatus='textAutoPilotStatus'
 				Name='CodeData'
 			/>

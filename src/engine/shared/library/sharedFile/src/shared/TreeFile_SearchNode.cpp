@@ -723,6 +723,9 @@ TreeFile::SearchTOC::SearchTOC(int priority, const char *fileName)
 					char *emptyPath = new char('\0');
 					treePaths.push_back(emptyPath);
 
+					// add /tres/ subfolder so TOC tree files (e.g. bottom.tre) can be in exe/tres/
+					treePaths.push_back("tres/");
+
 					// add on all paths in config file
 					const char * result;
 					for (int index = 0; (result = ConfigFile::getKeyString("SharedFile", "TOCTreePath", index, NULL)) != NULL; ++index)

@@ -2748,6 +2748,26 @@ bool Game::isSpaceSceneName (std::string const & sceneName)
 
 //----------------------------------------------------------------------
 
+bool Game::isAtmosphericFlightSceneName (std::string const & sceneName)
+{
+	if (sceneName.empty() || isSpaceSceneName(sceneName))
+		return false;
+	if (_strnicmp("kashyyyk_", sceneName.c_str(), 9) == 0)
+		return false;
+	if (_stricmp(sceneName.c_str(), "mustafar") == 0)
+		return false;
+	return true;
+}
+
+//----------------------------------------------------------------------
+
+bool Game::isShipScene()
+{
+	return isSpace() || isAtmosphericFlightSceneName(ms_sceneId);
+}
+
+//----------------------------------------------------------------------
+
 bool Game::isTutorial(void)
 {
 	std::string zoneName;

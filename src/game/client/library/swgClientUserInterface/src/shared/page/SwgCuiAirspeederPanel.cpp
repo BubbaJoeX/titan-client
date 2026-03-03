@@ -16,8 +16,12 @@
 #include "clientGame/GameNetwork.h"
 #include "clientGame/PlayerCreatureController.h"
 #include "clientGraphics/ConfigClientGraphics.h"
+#include "clientUserInterface/CuiSystemMessageManager.h"
 #include "clientUserInterface/CuiWorkspace.h"
 #include "sharedCollision/CollisionDetect.h"
+#include "sharedCollision/CollisionWorld.h"
+#include "sharedObject/CellProperty.h"
+#include "sharedTerrain/TerrainObject.h"
 #include "sharedCollision/CollisionProperty.h"
 #include "sharedCollision/BaseExtent.h"
 #include "sharedFoundation/GameControllerMessage.h"
@@ -88,9 +92,9 @@ SwgCuiAirspeederPanel::SwgCuiAirspeederPanel(UIPage & page) :
 	getCodeDataObject(TUIButton, m_buttonBoost, "buttonBoost");
 	getCodeDataObject(TUIButton, m_buttonTraffic, "buttonTraffic");
 	getCodeDataObject(TUIButton, m_buttonHorn, "buttonHorn");
-	getCodeDataObject(TUIButton, m_buttonHandbrake, "buttonHandbrake");
+	getCodeDataObject(TUIButton, m_buttonHandbrake, "buttonHandbrake", true);
 	getCodeDataObject(TUIButton, m_buttonAutoPilotCancel, "buttonAutoPilotCancel");
-	getCodeDataObject(TUICheckbox, m_checkMuteGps, "checkMuteGps");
+	getCodeDataObject(TUICheckbox, m_checkMuteGps, "checkMuteGps", true);
 	getCodeDataObject(TUIText, m_textAutoPilotStatus, "textAutoPilotStatus");
 
 	registerMediatorObject(getPage(), true);
@@ -156,6 +160,44 @@ void SwgCuiAirspeederPanel::OnButtonPressed(UIWidget * context)
 {
 	if (context == m_buttonSkyway)
 	{
+		if (m_inSkyway)
+		{
+			CreatureObject * const player = Game::getPlayerCreature();
+			CreatureObject * const mount = player ? player->getMountedCreature() : NULL;
+			if (mount && mount->getParentCell() == CellProperty::getWorldCellProperty())
+			{
+				Vector const pos = mount->getPosition_w();
+				float terrainHeight = 0.0f;
+				TerrainObject const * const terrain = TerrainObject::getConstInstance();
+				if (!terrain || !terrain->getHeightForceChunkCreation(pos, terrainHeight))
+				{
+					CuiSystemMessageManager::sendFakeSystemMessage(Unicode::narrowToWide("Cannot land here - no ground."));
+					return;
+				}
+
+				Vector const endPos(pos.x, terrainHeight - 2.0f, pos.z);
+
+				float hitTime = 1.0f;
+				Object const * hitObject = NULL;
+				QueryInteractionResult const result = CollisionWorld::queryInteraction(
+					CellProperty::getWorldCellProperty(), pos,
+					CellProperty::getWorldCellProperty(), endPos,
+					mount,
+					false,
+					false,
+					0.0f,
+					10000.0f,
+					hitTime,
+					hitObject);
+
+				if (result == QIR_HitObjectExtent || result == QIR_HitObjectFloor || result == QIR_HitCellExtent)
+				{
+					CuiSystemMessageManager::sendFakeSystemMessage(Unicode::narrowToWide("Cannot land here - obstructed."));
+					return;
+				}
+			}
+		}
+
 		sendAirspeederCommand("skyway");
 		if (m_ascending)
 		{

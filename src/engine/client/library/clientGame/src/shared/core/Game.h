@@ -179,6 +179,8 @@ public:
 
 	static bool                isSpace              ();
 	static bool                isSpaceSceneName     (std::string const & sceneName);
+	static bool                isAtmosphericFlightSceneName (std::string const & sceneName);
+	static bool                isShipScene          ();
 
 	static bool                isTutorial           ();
 

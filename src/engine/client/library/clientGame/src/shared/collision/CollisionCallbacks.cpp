@@ -296,6 +296,12 @@ bool CollisionCallbacksNamespace::onDoCollisionWithTerrain(Object * const object
 			delete clientEffect;
 		}
 		ms_isPlayingClientEffect = true;
+
+		if (Game::isShipScene())
+		{
+			GenericValueTypeMessage<std::string> const terrainMsg("ShipTerrainCollision", "hit");
+			GameNetwork::send(terrainMsg, true);
+		}
 		return true;
 	}
 	return false;

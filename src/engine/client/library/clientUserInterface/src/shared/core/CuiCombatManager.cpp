@@ -1448,7 +1448,7 @@ bool CuiCombatManagerNamespace::isTargetCycleOk(TangibleObject const & obj)
 	
 	// frustum test
 
-	if (!Game::isHudSceneTypeSpace())
+	if (!Game::isSpace())
 	{
 		const Camera * const camera = Game::getCamera ();
 		if (!camera)

@@ -10,6 +10,7 @@
 #include "sharedFile/FirstSharedFile.h"
 #include "sharedFile/TreeFile.h"
 #include "sharedFile/TreeFile_SearchNode.h"
+#include "sharedFile/FileNameUtils.h"
 
 #include "sharedDebug/DebugFlags.h"
 #include "sharedDebug/PixCounter.h"
@@ -359,21 +360,24 @@ void TreeFile::addSearchCache(int priority)
 
 void TreeFile::addSearchTree(const char* fileName, int priority)
 {
-	WARNING(true, ("TreeFile::addSearchTree attempting [%s] priority %d\n", fileName, priority));
-
 	if (FileStreamer::exists(fileName))
-	{
-		WARNING(true, ("TreeFile::addSearchTree - creating SearchTree for [%s]\n", fileName));
 		addSearchNode(new SearchTree(priority, fileName));
-	}
 	else
 	{
-		WARNING(true, ("TreeFile::addSearchTree - NOT FOUND [%s]\n", fileName));
+		// Try /tres/ subfolder (e.g. exe/tres/bottom.tre when exe/bottom.tre not found)
+		std::string const dir = FileNameUtils::get(fileName, FileNameUtils::drive | FileNameUtils::directory);
+		std::string const base = FileNameUtils::get(fileName, FileNameUtils::fileName | FileNameUtils::extension);
+		std::string const tresPath = dir + "tres/" + base;
+		if (FileStreamer::exists(tresPath.c_str()))
+			addSearchNode(new SearchTree(priority, tresPath.c_str()));
+		else
+		{
 #ifdef _DEBUG
-		WARNING(true, ("TreeFile::addSearchTree - [%s] not found", fileName));
+			DEBUG_FATAL(true, ("TreeFile::addSearchTree - [%s] not found (also tried [%s])", fileName, tresPath.c_str()));
 #else
-		WARNING(true, ("TreeFile::addSearchTree - [%s] not found", fileName));
+			WARNING(true, ("TreeFile::addSearchTree - [%s] not found (also tried [%s])", fileName, tresPath.c_str()));
 #endif
+		}
 	}
 }
 
@@ -390,11 +394,20 @@ void TreeFile::addSearchTOC(const char *fileName, int priority)
 		addSearchNode(new SearchTOC(priority, fileName));
 	else
 	{
+		// Try /tres/ subfolder
+		std::string const dir = FileNameUtils::get(fileName, FileNameUtils::drive | FileNameUtils::directory);
+		std::string const base = FileNameUtils::get(fileName, FileNameUtils::fileName | FileNameUtils::extension);
+		std::string const tresPath = dir + "tres/" + base;
+		if (FileStreamer::exists(tresPath.c_str()))
+			addSearchNode(new SearchTOC(priority, tresPath.c_str()));
+		else
+		{
 #ifdef _DEBUG
-		DEBUG_FATAL(true, ("TreeFile::addSearchTOC - [%s] not found", fileName));
+			DEBUG_FATAL(true, ("TreeFile::addSearchTOC - [%s] not found (also tried [%s])", fileName, tresPath.c_str()));
 #else
-		WARNING(true, ("TreeFile::addSearchTOC - [%s] not found", fileName));
+			WARNING(true, ("TreeFile::addSearchTOC - [%s] not found (also tried [%s])", fileName, tresPath.c_str()));
 #endif
+		}
 	}
 }
 

@@ -446,7 +446,7 @@ SoundEditor::SoundEditor(QWidget *parent, char const *name)
 	data.useWindowHandle    = true;
 	data.processMessagePump = false;
 	data.windowHandle       = static_cast<HWND>(winId());
-	data.configFile         = "client.cfg";
+	data.configFile         = "SoundEditor.cfg";
 	data.clockUsesSleep     = true;
     data.writeMiniDumps		= ApplicationVersion::isBootlegBuild();
 	SetupSharedFoundation::install(data);
