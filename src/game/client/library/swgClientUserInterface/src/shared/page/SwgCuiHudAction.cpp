@@ -1440,6 +1440,12 @@ bool  SwgCuiHudAction::performAction (const std::string & id, const Unicode::Str
 		{
 			getWindowManager().spawnSpaceZoneMap(params);
 		}
+		else if (Game::isShipScene())
+		{
+			CreatureObject const * const mapPlayer = Game::getPlayerCreature();
+			if (mapPlayer && PlanetMapManagerClient::isPlanetaryMapEnabled(Game::getSceneId(), mapPlayer->getPosition_w()))
+				CuiMediatorFactory::toggleInWorkspace(CuiMediatorTypes::WS_PlanetMap);
+		}
 	}
 
 	else if (id == CuiActions::editBiography)
