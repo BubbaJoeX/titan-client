@@ -84,6 +84,7 @@ namespace SwgCuiPlanetMapNamespace
 		const std::string waypoint_destroy    = "waypoint_destroy";
 		const std::string waypoint_set_name   = "waypoint_set_name";
 		const std::string autopilot           = "autopilot";
+		const std::string autopilot_cancel    = "autopilot_cancel";
 	}
 
 	namespace Settings
@@ -638,6 +639,11 @@ void SwgCuiPlanetMap::OnPopupMenuSelection (UIWidget * context)
 			GameNetwork::send(msg, true);
 		}
 	}
+	else if (selection == PopupItems::autopilot_cancel)
+	{
+		GenericValueTypeMessage<std::string> const msg("AutoPilotCancel", "cancel");
+		GameNetwork::send(msg, true);
+	}
 	else
 	{
 		ClientWaypointObject * const waypoint = dynamic_cast<ClientWaypointObject *>(NetworkIdManager::getObjectById (id));
@@ -932,7 +938,14 @@ UIPopupMenu * SwgCuiPlanetMap::createPopupForEntry (const Vector2d & pos, const 
 		pop->AddItem (PopupItems::waypoint_create, CuiStringIdsPlanetMap::popup_waypoint_create.localize ());
 
 	if (SwgCuiAirspeederPanel::isInSkyway() || Game::getPlayerPilotedShip() != 0)
+	{
 		pop->AddItem (PopupItems::autopilot, Unicode::narrowToWide("Auto-Pilot Here"));
+	}
+	else if (Game::getPlayerContainingShip() != 0 && Game::getPlayerContainingShip()->isPobShip() && !Game::isSpace())
+	{
+		pop->AddItem (PopupItems::autopilot, Unicode::narrowToWide("Auto-Pilot Here"));
+		pop->AddItem (PopupItems::autopilot_cancel, Unicode::narrowToWide("Cancel Auto-Pilot"));
+	}
 
 	Unicode::String vstr;
 	CuiUtils::FormatVector2d (vstr, pos);
