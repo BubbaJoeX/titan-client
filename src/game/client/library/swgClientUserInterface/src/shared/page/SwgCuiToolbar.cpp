@@ -1446,10 +1446,23 @@ bool SwgCuiToolbar::OnMessage(UIWidget *context, const UIMessage & msg)
 				{
 					ClientObject * const obj = item->getClientObject ();
 					
-					//@ todo : radial menu default action
-					
 					if (obj)
 					{
+						const UIPoint screenPt = context->GetWorldLocation () + msg.MouseCoords + UIPoint::one;
+						CuiMenuInfoHelper * const radialHelper = CuiRadialMenuManager::createMenu(*obj, screenPt, pop);
+						if (radialHelper)
+						{
+							pop->AddItem (s_toolbarActionNames [TA_toolbar_item_remove][0],      s_toolbarActionNames [TA_toolbar_item_remove][1]);
+							if (needsDescribe)
+								pop->AddItem (s_toolbarActionNames [TA_toolbar_item_describe][0],    s_toolbarActionNames [TA_toolbar_item_describe][1]);
+
+							appendPopupOptions(pop);
+
+							pop->AddCallback (this);
+							UIManager::gUIManager ().PushContextWidget (*pop);
+							return false;
+						}
+
 						pop->AddItem (s_toolbarActionNames [TA_toolbar_item_use][0],         s_toolbarActionNames [TA_toolbar_item_use][1]);
 					}
 				}
@@ -1881,7 +1894,7 @@ void SwgCuiToolbar::OnPopupMenuSelection (UIWidget * context)
 	}
 	else
 	{
-		SwgCuiLockableMediator::OnPopupMenuSelection(context);
+		CuiRadialMenuManager::OnPopupMenuSelection(context);
 	}
 }
 
