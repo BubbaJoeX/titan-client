@@ -771,7 +771,7 @@ float PlayerShipController::realAlter(float const elapsedTime)
 			m_shipDynamicsModel->setTransform(t);
 		}
 
-		if (!Game::isSpace())
+		if (!Game::isSpace() && owner->getAppearance())
 		{
 			Transform t = m_shipDynamicsModel->getTransform();
 			Vector pos = t.getPosition_p();

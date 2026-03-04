@@ -928,7 +928,7 @@ float CockpitCamera::alter(float const elapsedTime)
 		DEBUG_REPORT_PRINT(ms_debugFlagCockpitZoom, ("CockpitZoom settting [%d], distance [%f] / [%f] = [%f]\n", m_zoomSetting, m_currentZoom, zoomMultiplier));
 	}
 
-	if (m_landingView && m_shipTarget)
+	if (m_landingView && m_shipTarget && m_shipTarget->getAppearance())
 	{
 		AxialBox const shipExtent = m_shipTarget->getTangibleExtent();
 		float const extentBottom = shipExtent.getMin().y;
