@@ -923,6 +923,8 @@ enum GameControllerMessage
 	CM_askGroupMemberToLaunchIntoSpace, //1080
 	CM_groupMemberInvitationToLaunchIntoSpaceResponse,
 	CM_relayGroupMemberInvitationToLaunchAnswer,
+	CM_shipElevatorUp,
+	CM_shipElevatorDown,
 //-- End space controller messages
 
 	CM_groupMakeLootMaster,

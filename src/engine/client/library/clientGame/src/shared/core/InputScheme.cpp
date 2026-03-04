@@ -18,6 +18,7 @@
 #include "clientUserInterface/CuiMessageBox.h"
 #include "clientUserInterface/CuiStringVariablesManager.h"
 #include "clientUserInterface/CuiPreferences.h"
+#include "sharedFoundation/GameControllerMessage.h"
 #include "sharedFoundation/NetworkId.h"
 #include "sharedInputMap/InputMap.h"
 #include "sharedInputMap/InputMap_Command.h"
@@ -278,6 +279,55 @@ namespace
 		CurrentUserOptionManager::save ();
 	}
 
+	void addElevatorCommands()
+	{
+		if (!s_groundInputMap)
+			return;
+
+		InputMap::Command cmdUp;
+		cmdUp.name = "CMD_shipElevatorUp";
+		cmdUp.category = "Ship";
+		cmdUp.types = InputMap::Command::T_BUTTON;
+		cmdUp.pressEvent = InputMap::Command::EventData(CM_shipElevatorUp, 1.0f, "CMD_shipElevatorUp");
+		cmdUp.releaseEvent = InputMap::Command::EventData(0, 0.0f);
+		cmdUp.repeatEvent = InputMap::Command::EventData(CM_shipElevatorUp, 1.0f, "CMD_shipElevatorUp");
+		cmdUp.resetEvent = InputMap::Command::EventData(0, 0.0f);
+		s_groundInputMap->addCustomCommand(cmdUp, true);
+
+		InputMap::Command cmdDown;
+		cmdDown.name = "CMD_shipElevatorDown";
+		cmdDown.category = "Ship";
+		cmdDown.types = InputMap::Command::T_BUTTON;
+		cmdDown.pressEvent = InputMap::Command::EventData(CM_shipElevatorDown, 1.0f, "CMD_shipElevatorDown");
+		cmdDown.releaseEvent = InputMap::Command::EventData(0, 0.0f);
+		cmdDown.repeatEvent = InputMap::Command::EventData(CM_shipElevatorDown, 1.0f, "CMD_shipElevatorDown");
+		cmdDown.resetEvent = InputMap::Command::EventData(0, 0.0f);
+		s_groundInputMap->addCustomCommand(cmdDown, true);
+
+		InputMap::Command const * const upCmd = s_groundInputMap->findCommandByName("CMD_shipElevatorUp", true);
+		InputMap::Command const * const downCmd = s_groundInputMap->findCommandByName("CMD_shipElevatorDown", true);
+
+		if (upCmd)
+		{
+			InputMap::CommandBindInfoSet * cbis = 0;
+			uint32 const numCmds = s_groundInputMap->getCommandBindings(cbis, upCmd);
+			bool alreadyBound = (numCmds > 0 && cbis && cbis[0].numBinds > 0);
+			delete[] cbis;
+			if (!alreadyBound)
+				s_groundInputMap->addBinding(InputMap::BindInfo(0, InputMap::IT_MouseButton, 3), upCmd);
+		}
+
+		if (downCmd)
+		{
+			InputMap::CommandBindInfoSet * cbis = 0;
+			uint32 const numCmds = s_groundInputMap->getCommandBindings(cbis, downCmd);
+			bool alreadyBound = (numCmds > 0 && cbis && cbis[0].numBinds > 0);
+			delete[] cbis;
+			if (!alreadyBound)
+				s_groundInputMap->addBinding(InputMap::BindInfo(0, InputMap::IT_MouseButton, 4), downCmd);
+		}
+	}
+
 }
 
 //----------------------------------------------------------------------
@@ -462,6 +512,9 @@ InputMap * InputScheme::fetchGroundInputMap()
 		ClientMacroManager::synchronizeWithInputMap (s_groundInputMap);
 		s_resetCallback  = new Callback;
 		s_resetCallback->fetch ();
+
+		if (sceneType == Game::ST_space)
+			addElevatorCommands();
 
 		if ( needsReset )
 		{

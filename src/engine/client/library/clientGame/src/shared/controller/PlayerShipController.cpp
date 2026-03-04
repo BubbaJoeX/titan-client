@@ -334,6 +334,7 @@ float PlayerShipController::realAlter(float const elapsedTime)
 	float joystickPitchPosition = 0.0f;
 	float rollPosition = 0.f;
 	float joystickRollPosition = 0.f;
+	float elevatorPosition = 0.f;
 
 	bool firingAllWeapons = false;
 	bool useThrottleAccelerationDecay = true;
@@ -467,6 +468,14 @@ float PlayerShipController::realAlter(float const elapsedTime)
 
 		case CM_rollButton:
 			rollPosition += value;
+			break;
+
+		case CM_shipElevatorUp:
+			elevatorPosition += value;
+			break;
+
+		case CM_shipElevatorDown:
+			elevatorPosition -= value;
 			break;
 
 		case CM_yaw:
@@ -686,6 +695,7 @@ float PlayerShipController::realAlter(float const elapsedTime)
 		yawPosition = 0.f;
 		pitchPosition = 0.f;
 		rollPosition = 0.f;
+		elevatorPosition = 0.f;
 	}
 
 	//-- Clear input state if pilot is frozen
@@ -695,6 +705,7 @@ float PlayerShipController::realAlter(float const elapsedTime)
 		yawPosition = 0.f;
 		pitchPosition = 0.f;
 		rollPosition = 0.f;
+		elevatorPosition = 0.f;
 		setThrottlePosition(0.f, true);
 	}
 
@@ -749,6 +760,16 @@ float PlayerShipController::realAlter(float const elapsedTime)
 	{
 		m_shipDynamicsModel->model(elapsedTime, yawPosition, pitchPosition, rollPosition, getThrottlePosition(), ClientShipObjectInterface(owner));
 		NOT_NULL(m_serverShipDynamicsModel);
+
+		if (elevatorPosition != 0.f)
+		{
+			static float const c_elevatorSpeed = 30.0f;
+			Transform t = m_shipDynamicsModel->getTransform();
+			Vector pos = t.getPosition_p();
+			pos.y += clamp(-1.f, elevatorPosition, 1.f) * c_elevatorSpeed * elapsedTime;
+			t.setPosition_p(pos);
+			m_shipDynamicsModel->setTransform(t);
+		}
 
 		m_serverShipDynamicsModel->setTransform(m_shipDynamicsModel->getTransform());
 		m_serverShipDynamicsModel->setVelocity(m_shipDynamicsModel->getVelocity());
