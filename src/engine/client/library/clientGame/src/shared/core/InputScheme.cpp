@@ -328,6 +328,33 @@ namespace
 		}
 	}
 
+	void addLandingViewCommand()
+	{
+		if (!s_groundInputMap)
+			return;
+
+		InputMap::Command cmd;
+		cmd.name = "CMD_shipLandingView";
+		cmd.category = "Ship";
+		cmd.types = InputMap::Command::T_BUTTON;
+		cmd.pressEvent = InputMap::Command::EventData(CM_shipLandingView, 1.0f, "CMD_shipLandingView");
+		cmd.releaseEvent = InputMap::Command::EventData(0, 0.0f);
+		cmd.repeatEvent = InputMap::Command::EventData(CM_shipLandingView, 1.0f, "CMD_shipLandingView");
+		cmd.resetEvent = InputMap::Command::EventData(0, 0.0f);
+		s_groundInputMap->addCustomCommand(cmd, true);
+
+		InputMap::Command const * const landCmd = s_groundInputMap->findCommandByName("CMD_shipLandingView", true);
+		if (landCmd)
+		{
+			InputMap::CommandBindInfoSet * cbis = 0;
+			uint32 const numCmds = s_groundInputMap->getCommandBindings(cbis, landCmd);
+			bool alreadyBound = (numCmds > 0 && cbis && cbis[0].numBinds > 0);
+			delete[] cbis;
+			if (!alreadyBound)
+				s_groundInputMap->addBinding(InputMap::BindInfo(0, InputMap::IT_Key, 0x13), landCmd);
+		}
+	}
+
 }
 
 //----------------------------------------------------------------------
@@ -514,7 +541,10 @@ InputMap * InputScheme::fetchGroundInputMap()
 		s_resetCallback->fetch ();
 
 		if (sceneType == Game::ST_space)
+		{
 			addElevatorCommands();
+			addLandingViewCommand();
+		}
 
 		if ( needsReset )
 		{

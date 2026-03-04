@@ -112,6 +112,9 @@ private:
 	bool m_rearView;
 	bool m_wasShowCockpitBeforeRearView;
 
+	bool m_landingView;
+	bool m_wasShowCockpitBeforeLandingView;
+
 	bool m_isInHyperspace;
 };
 

@@ -925,6 +925,7 @@ enum GameControllerMessage
 	CM_relayGroupMemberInvitationToLaunchAnswer,
 	CM_shipElevatorUp,
 	CM_shipElevatorDown,
+	CM_shipLandingView,
 //-- End space controller messages
 
 	CM_groupMakeLootMaster,

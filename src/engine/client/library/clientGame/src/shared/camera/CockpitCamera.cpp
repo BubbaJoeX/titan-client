@@ -30,6 +30,7 @@
 #include "sharedObject/AppearanceTemplateList.h"
 #include "sharedObject/CellProperty.h"
 #include "sharedObject/ContainedByProperty.h"
+#include "sharedMath/AxialBox.h"
 #include "sharedTerrain/SpaceTerrainAppearanceTemplate.h"
 #include "sharedTerrain/TerrainObject.h"
 #include "sharedUtility/CurrentUserOptionManager.h"
@@ -294,6 +295,8 @@ CockpitCamera::CockpitCamera() :
 	m_cameraLockTarget(false),
 	m_rearView(false),
 	m_wasShowCockpitBeforeRearView(false),
+	m_landingView(false),
+	m_wasShowCockpitBeforeLandingView(false),
 	m_isInHyperspace(false)
 {
 	m_zoomSettingList->push_back(0.f);
@@ -568,6 +571,9 @@ float CockpitCamera::alter(float const elapsedTime)
 	bool const wasRearView = m_rearView;
 	m_rearView = false;
 
+	bool const wasLandingView = m_landingView;
+	m_landingView = false;
+
 	NOT_NULL(m_queue);
 	for (int i = 0; i < m_queue->getNumberOfMessages(); ++i)
 	{
@@ -586,6 +592,10 @@ float CockpitCamera::alter(float const elapsedTime)
 				setYawAndYawTarget(-PI, -PI);
 
 			setPitchAndPitchTarget(0.0f, 0.0f);
+			break;
+
+		case CM_shipLandingView:
+			m_landingView = true;
 			break;
 
 		case CM_cameraYawMouse:
@@ -751,6 +761,17 @@ float CockpitCamera::alter(float const elapsedTime)
 		CockpitCamera::setShowCockpit(false);
 	}
 
+	if (wasLandingView && !m_landingView)
+	{
+		if (m_wasShowCockpitBeforeLandingView)
+			CockpitCamera::setShowCockpit(true);
+	}
+	else if (!wasLandingView && m_landingView)
+	{
+		m_wasShowCockpitBeforeLandingView = CockpitCamera::getShowCockpit();
+		CockpitCamera::setShowCockpit(false);
+	}
+
 	ShipObject const * const shipObject = NON_NULL(NON_NULL(m_shipTarget->asClientObject())->asShipObject());
 
 	if ((m_cameraLockTarget) && (shipObject != 0))
@@ -905,6 +926,35 @@ float CockpitCamera::alter(float const elapsedTime)
 		move_o(offset);
 
 		DEBUG_REPORT_PRINT(ms_debugFlagCockpitZoom, ("CockpitZoom settting [%d], distance [%f] / [%f] = [%f]\n", m_zoomSetting, m_currentZoom, zoomMultiplier));
+	}
+
+	if (m_landingView && m_shipTarget)
+	{
+		AxialBox const shipExtent = m_shipTarget->getTangibleExtent();
+		float const extentBottom = shipExtent.getMin().y;
+		static float const c_landingCameraOffset = 2.0f;
+
+		Transform const & shipTransform_w = m_shipTarget->getTransform_o2w();
+
+		Transform landingTransform;
+		landingTransform.setPosition_p(shipTransform_w.getPosition_p());
+
+		Vector const shipDown_w = shipTransform_w.rotate_l2p(Vector(0.f, extentBottom - c_landingCameraOffset, 0.f));
+		landingTransform.move_p(shipDown_w);
+
+		Vector const shipForward = shipTransform_w.getLocalFrameK_p();
+		Vector const shipNegY = -shipTransform_w.getLocalFrameJ_p();
+
+		landingTransform.setLocalFrameKJ_p(shipNegY, shipForward);
+		landingTransform.reorthonormalize();
+
+		setParentCell(CellProperty::getWorldCellProperty());
+
+		CellProperty::setPortalTransitionsEnabled(false);
+		setTransform_o2p(landingTransform);
+		CellProperty::setPortalTransitionsEnabled(true);
+
+		addExcludedObject(m_shipTarget);
 	}
 
 	//-- Chain back up to parent
