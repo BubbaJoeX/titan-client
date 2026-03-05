@@ -810,8 +810,9 @@ void ClientTangibleDynamics::updateHoverEffect(float elapsedTime)
 			float const bob = m_hoverBobAmplitude * sin(m_hoverBobPhase * PI_TIMES_2);
 			float const targetY = terrainHeight + m_hoverHeight + bob;
 
-			// Smooth interpolation toward target Y (lerp factor based on elapsed time)
-			float const lerpFactor = 1.0f - exp(-10.0f * elapsedTime);  // Smooth exponential interpolation
+			// Ultra-smooth interpolation for Y position
+			float const smoothFactor = 12.0f;  // Higher for hover since it's just Y axis
+			float const lerpFactor = 1.0f - exp(-smoothFactor * elapsedTime);
 			pos.y = pos.y + (targetY - pos.y) * lerpFactor;
 
 			owner->setPosition_w(pos);
@@ -863,29 +864,34 @@ void ClientTangibleDynamics::updateFollowTargetEffect(float elapsedTime)
 	float const bob = m_followBobAmplitude * sin(m_followBobPhase * PI_TIMES_2);
 	desiredPos.y = terrainHeight + m_followHoverHeight + bob;
 
-	// Smooth exponential interpolation toward desired position
-	// Higher values = faster catch-up, lower = smoother but laggier
-	float const smoothFactor = 8.0f;
-	float const lerpFactor = 1.0f - exp(-smoothFactor * elapsedTime);
+	// Ultra-smooth exponential interpolation
+	// Lower smoothFactor = smoother but more lag, higher = snappier but can feel jerky
+	// 5.0 provides a nice balance of smooth and responsive
+	float const positionSmoothFactor = 5.0f;
+	float const rotationSmoothFactor = 8.0f;
 
+	float const posLerpFactor = 1.0f - exp(-positionSmoothFactor * elapsedTime);
+	float const rotLerpFactor = 1.0f - exp(-rotationSmoothFactor * elapsedTime);
+
+	// Smooth position interpolation
 	Vector newPos;
-	newPos.x = ownerPos.x + (desiredPos.x - ownerPos.x) * lerpFactor;
-	newPos.y = ownerPos.y + (desiredPos.y - ownerPos.y) * lerpFactor;
-	newPos.z = ownerPos.z + (desiredPos.z - ownerPos.z) * lerpFactor;
+	newPos.x = ownerPos.x + (desiredPos.x - ownerPos.x) * posLerpFactor;
+	newPos.y = ownerPos.y + (desiredPos.y - ownerPos.y) * posLerpFactor;
+	newPos.z = ownerPos.z + (desiredPos.z - ownerPos.z) * posLerpFactor;
 
 	owner->setPosition_w(newPos);
 
-	// Smoothly interpolate rotation toward target's facing
+	// Smooth rotation interpolation toward target's facing
 	Transform ownerTransform = owner->getTransform_o2w();
 	Vector const currentFacing = ownerTransform.getLocalFrameK_p();
 
-	// Slerp-like interpolation for rotation (simplified)
+	// Interpolate facing direction
 	Vector newFacing;
-	newFacing.x = currentFacing.x + (targetFacing.x - currentFacing.x) * lerpFactor;
+	newFacing.x = currentFacing.x + (targetFacing.x - currentFacing.x) * rotLerpFactor;
 	newFacing.y = 0.0f;
-	newFacing.z = currentFacing.z + (targetFacing.z - currentFacing.z) * lerpFactor;
+	newFacing.z = currentFacing.z + (targetFacing.z - currentFacing.z) * rotLerpFactor;
 
-	// Normalize and apply
+	// Normalize and apply rotation
 	float const facingMag = sqrt(newFacing.x * newFacing.x + newFacing.z * newFacing.z);
 	if (facingMag > 0.001f)
 	{

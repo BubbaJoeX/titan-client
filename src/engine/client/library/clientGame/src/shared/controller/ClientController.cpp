@@ -434,6 +434,19 @@ bool ClientController::isOwnerAnimationDebuggerTarget() const
 
 void ClientController::handleNetUpdateTransform(const MessageQueueDataTransform& message)
 {
+	// Skip server transform updates for objects with active hover/follow dynamics
+	// The client handles smooth visual updates locally for these effects
+	Object* const ownerObject = getOwner();
+	if (ownerObject)
+	{
+		ClientTangibleDynamics const * const ctd = dynamic_cast<ClientTangibleDynamics const *>(ownerObject->getDynamics());
+		if (ctd && (ctd->isForceActive(ClientTangibleDynamics::FM_hover) ||
+		            ctd->isForceActive(ClientTangibleDynamics::FM_followTarget)))
+		{
+			// Don't apply server position - client is handling smooth movement
+			return;
+		}
+	}
 
 	//-- verify the object-to-parent position is within sane limits.
 	TerrainObject const *const terrain = TerrainObject::getInstance();
@@ -465,6 +478,20 @@ void ClientController::handleNetUpdateTransform(const MessageQueueDataTransform&
 
 void ClientController::handleNetUpdateTransformWithParent(const MessageQueueDataTransformWithParent& message)
 {
+	// Skip server transform updates for objects with active hover/follow dynamics
+	// The client handles smooth visual updates locally for these effects
+	Object* const ownerObject = getOwner();
+	if (ownerObject)
+	{
+		ClientTangibleDynamics const * const ctd = dynamic_cast<ClientTangibleDynamics const *>(ownerObject->getDynamics());
+		if (ctd && (ctd->isForceActive(ClientTangibleDynamics::FM_hover) ||
+		            ctd->isForceActive(ClientTangibleDynamics::FM_followTarget)))
+		{
+			// Don't apply server position - client is handling smooth movement
+			return;
+		}
+	}
+
 #ifdef _DEBUG
 	//-- verify that we did not receive the same transform
 	if (message.getParent () == getOwner ()->getParentCell ()->getOwner ().getNetworkId () && message.getTransform () == getOwner ()->getTransform_o2p ())
