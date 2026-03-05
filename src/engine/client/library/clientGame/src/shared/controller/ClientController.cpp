@@ -889,8 +889,33 @@ void ClientController::handleMessage (const int message, const float value, cons
 							ctd->setHoverEffect(v[0], v[1], v[2], v[3]);
 						break;
 					case 'F': // Follow: targetId,distance,speed,hoverHeight,bobAmplitude,duration
+						// Special handling: targetId must be parsed as uint64 directly, not float
+						// because float loses precision for large NetworkIds
+						{
+							size_t const firstComma = params.find(',');
+							if (firstComma != std::string::npos && v.size() >= 6)
+							{
+								std::string const targetIdStr = params.substr(0, firstComma);
+								uint64 const targetId = strtoull(targetIdStr.c_str(), nullptr, 10);
+								ctd->setFollowTargetEffect(targetId, v[1], v[2], v[3], v[4], v[5]);
+							}
+						}
+						break;
+					case 'Y': // Sway: swingAngle,swingSpeed,damping,duration
+						if (v.size() >= 4)
+							ctd->setSwayEffect(v[0], v[1], v[2], v[3]);
+						break;
+					case 'K': // Shake: intensity,frequency,duration
+						if (v.size() >= 3)
+							ctd->setShakeEffect(v[0], v[1], v[2]);
+						break;
+					case 'L': // Float: height,driftSpeed,randomStrength,duration
+						if (v.size() >= 4)
+							ctd->setFloatEffect(v[0], v[1], v[2], v[3]);
+						break;
+					case 'C': // Conveyor: dirX,dirY,dirZ,speed,wrapDistance,duration
 						if (v.size() >= 6)
-							ctd->setFollowTargetEffect(static_cast<uint64>(v[0]), v[1], v[2], v[3], v[4], v[5]);
+							ctd->setConveyorEffect(Vector(v[0], v[1], v[2]), v[3], v[4], v[5]);
 						break;
 					case 'E': // Easing: type,duration
 						if (v.size() >= 2)

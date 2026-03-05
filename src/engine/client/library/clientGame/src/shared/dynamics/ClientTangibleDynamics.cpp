@@ -136,6 +136,36 @@ ClientTangibleDynamics::ClientTangibleDynamics(Object* owner) :
 	m_followDuration(-1.0f),
 	m_followElapsed(0.0f),
 	m_followTargetEffectActive(false),
+	m_swayAngle(0.1f),
+	m_swaySpeed(1.0f),
+	m_swayDamping(0.0f),
+	m_swayPhase(0.0f),
+	m_swayDuration(-1.0f),
+	m_swayElapsed(0.0f),
+	m_swayEffectActive(false),
+	m_shakeIntensity(0.1f),
+	m_shakeFrequency(10.0f),
+	m_shakeOrigin(Vector::zero),
+	m_shakePhase(0.0f),
+	m_shakeDuration(-1.0f),
+	m_shakeElapsed(0.0f),
+	m_shakeEffectActive(false),
+	m_floatHeight(0.5f),
+	m_floatDriftSpeed(0.5f),
+	m_floatRandomStrength(0.1f),
+	m_floatOrigin(Vector::zero),
+	m_floatPhase(0.0f),
+	m_floatDuration(-1.0f),
+	m_floatElapsed(0.0f),
+	m_floatEffectActive(false),
+	m_conveyorDirection(Vector::unitZ),
+	m_conveyorSpeed(1.0f),
+	m_conveyorWrapDistance(0.0f),
+	m_conveyorOrigin(Vector::zero),
+	m_conveyorTravelDistance(0.0f),
+	m_conveyorDuration(-1.0f),
+	m_conveyorElapsed(0.0f),
+	m_conveyorEffectActive(false),
 	m_easeType(ET_none),
 	m_easeDuration(0.5f),
 	m_activeForceMask(FM_none)
@@ -455,6 +485,163 @@ float  ClientTangibleDynamics::getFollowHoverHeight() const    { return m_follow
 float  ClientTangibleDynamics::getFollowBobAmplitude() const   { return m_followBobAmplitude; }
 
 // ======================================================================
+// SWAY
+// ======================================================================
+
+void ClientTangibleDynamics::setSwayEffect(float swingAngle, float swingSpeed, float damping, float duration)
+{
+	m_swayAngle = swingAngle;
+	m_swaySpeed = swingSpeed;
+	m_swayDamping = damping;
+	m_swayPhase = 0.0f;
+	m_swayDuration = duration;
+	m_swayElapsed = 0.0f;
+	m_swayEffectActive = true;
+	recalculateMode();
+}
+
+void ClientTangibleDynamics::clearSwayEffect()
+{
+	m_swayAngle = 0.1f;
+	m_swaySpeed = 1.0f;
+	m_swayDamping = 0.0f;
+	m_swayPhase = 0.0f;
+	m_swayDuration = -1.0f;
+	m_swayElapsed = 0.0f;
+	m_swayEffectActive = false;
+	recalculateMode();
+}
+
+float ClientTangibleDynamics::getSwayAngle() const { return m_swayAngle; }
+float ClientTangibleDynamics::getSwaySpeed() const { return m_swaySpeed; }
+
+// ======================================================================
+// SHAKE
+// ======================================================================
+
+void ClientTangibleDynamics::setShakeEffect(float intensity, float frequency, float duration)
+{
+	Object* const owner = getOwner();
+
+	m_shakeIntensity = intensity;
+	m_shakeFrequency = frequency;
+	m_shakeOrigin = owner ? owner->getPosition_w() : Vector::zero;
+	m_shakePhase = 0.0f;
+	m_shakeDuration = duration;
+	m_shakeElapsed = 0.0f;
+	m_shakeEffectActive = true;
+	recalculateMode();
+}
+
+void ClientTangibleDynamics::clearShakeEffect()
+{
+	Object* const owner = getOwner();
+	if (owner != NULL && m_shakeEffectActive)
+	{
+		owner->setPosition_w(m_shakeOrigin);
+	}
+
+	m_shakeIntensity = 0.1f;
+	m_shakeFrequency = 10.0f;
+	m_shakeOrigin = Vector::zero;
+	m_shakePhase = 0.0f;
+	m_shakeDuration = -1.0f;
+	m_shakeElapsed = 0.0f;
+	m_shakeEffectActive = false;
+	recalculateMode();
+}
+
+float ClientTangibleDynamics::getShakeIntensity() const { return m_shakeIntensity; }
+float ClientTangibleDynamics::getShakeFrequency() const { return m_shakeFrequency; }
+
+// ======================================================================
+// FLOAT
+// ======================================================================
+
+void ClientTangibleDynamics::setFloatEffect(float floatHeight, float driftSpeed, float randomStrength, float duration)
+{
+	Object* const owner = getOwner();
+
+	m_floatHeight = floatHeight;
+	m_floatDriftSpeed = driftSpeed;
+	m_floatRandomStrength = randomStrength;
+	m_floatOrigin = owner ? owner->getPosition_w() : Vector::zero;
+	m_floatPhase = 0.0f;
+	m_floatDuration = duration;
+	m_floatElapsed = 0.0f;
+	m_floatEffectActive = true;
+	recalculateMode();
+}
+
+void ClientTangibleDynamics::clearFloatEffect()
+{
+	Object* const owner = getOwner();
+	if (owner != NULL && m_floatEffectActive)
+	{
+		owner->setPosition_w(m_floatOrigin);
+	}
+
+	m_floatHeight = 0.5f;
+	m_floatDriftSpeed = 0.5f;
+	m_floatRandomStrength = 0.1f;
+	m_floatOrigin = Vector::zero;
+	m_floatPhase = 0.0f;
+	m_floatDuration = -1.0f;
+	m_floatElapsed = 0.0f;
+	m_floatEffectActive = false;
+	recalculateMode();
+}
+
+float ClientTangibleDynamics::getFloatHeight() const { return m_floatHeight; }
+float ClientTangibleDynamics::getFloatDriftSpeed() const { return m_floatDriftSpeed; }
+
+// ======================================================================
+// CONVEYOR
+// ======================================================================
+
+void ClientTangibleDynamics::setConveyorEffect(const Vector& direction, float speed, float wrapDistance, float duration)
+{
+	Object* const owner = getOwner();
+
+	// Normalize direction
+	Vector normalizedDir = direction;
+	if (normalizedDir.normalize())
+	{
+		m_conveyorDirection = normalizedDir;
+	}
+	else
+	{
+		m_conveyorDirection = Vector::unitZ;
+	}
+
+	m_conveyorSpeed = speed;
+	m_conveyorWrapDistance = wrapDistance;
+	m_conveyorOrigin = owner ? owner->getPosition_w() : Vector::zero;
+	m_conveyorTravelDistance = 0.0f;
+	m_conveyorDuration = duration;
+	m_conveyorElapsed = 0.0f;
+	m_conveyorEffectActive = true;
+	recalculateMode();
+}
+
+void ClientTangibleDynamics::clearConveyorEffect()
+{
+	m_conveyorDirection = Vector::unitZ;
+	m_conveyorSpeed = 1.0f;
+	m_conveyorWrapDistance = 0.0f;
+	m_conveyorOrigin = Vector::zero;
+	m_conveyorTravelDistance = 0.0f;
+	m_conveyorDuration = -1.0f;
+	m_conveyorElapsed = 0.0f;
+	m_conveyorEffectActive = false;
+	recalculateMode();
+}
+
+Vector ClientTangibleDynamics::getConveyorDirection() const    { return m_conveyorDirection; }
+float  ClientTangibleDynamics::getConveyorSpeed() const        { return m_conveyorSpeed; }
+float  ClientTangibleDynamics::getConveyorWrapDistance() const { return m_conveyorWrapDistance; }
+
+// ======================================================================
 // EASING / COMBINED / QUERY
 // ======================================================================
 
@@ -482,6 +669,10 @@ void ClientTangibleDynamics::clearAllForces()
 	clearOrbitEffect();
 	clearHoverEffect();
 	clearFollowTargetEffect();
+	clearSwayEffect();
+	clearShakeEffect();
+	clearFloatEffect();
+	clearConveyorEffect();
 }
 
 int  ClientTangibleDynamics::getActiveForceMask() const          { return m_activeForceMask; }
@@ -506,6 +697,10 @@ float ClientTangibleDynamics::alter(float elapsedTime)
 		if (m_orbitEffectActive)       updateOrbitEffect(elapsedTime);
 		if (m_hoverEffectActive)       updateHoverEffect(elapsedTime);
 		if (m_followTargetEffectActive) updateFollowTargetEffect(elapsedTime);
+		if (m_swayEffectActive)        updateSwayEffect(elapsedTime);
+		if (m_shakeEffectActive)       updateShakeEffect(elapsedTime);
+		if (m_floatEffectActive)       updateFloatEffect(elapsedTime);
+		if (m_conveyorEffectActive)    updateConveyorEffect(elapsedTime);
 	}
 
 	// Return cms_alterNextFrame (0.0f) to ensure we get called every frame when forces are active
@@ -902,6 +1097,127 @@ void ClientTangibleDynamics::updateFollowTargetEffect(float elapsedTime)
 	}
 }
 
+// ----------------------------------------------------------------------
+
+void ClientTangibleDynamics::updateSwayEffect(float elapsedTime)
+{
+	Object* const owner = getOwner();
+	if (owner == NULL) { clearSwayEffect(); return; }
+
+	if (m_swayDuration >= 0.0f)
+	{
+		m_swayElapsed += elapsedTime;
+		if (m_swayElapsed >= m_swayDuration) { clearSwayEffect(); return; }
+	}
+
+	// Update phase
+	m_swayPhase += elapsedTime * m_swaySpeed;
+
+	// Calculate current angle with damping
+	float currentAngle = m_swayAngle;
+	if (m_swayDamping > 0.0f)
+	{
+		currentAngle *= exp(-m_swayDamping * m_swayElapsed);
+	}
+
+	// Apply pendulum swing (roll on Z axis)
+	float const swing = currentAngle * sin(m_swayPhase * PI_TIMES_2);
+	owner->roll_o(swing * elapsedTime);
+}
+
+// ----------------------------------------------------------------------
+
+void ClientTangibleDynamics::updateShakeEffect(float elapsedTime)
+{
+	Object* const owner = getOwner();
+	if (owner == NULL) { clearShakeEffect(); return; }
+
+	if (m_shakeDuration >= 0.0f)
+	{
+		m_shakeElapsed += elapsedTime;
+		if (m_shakeElapsed >= m_shakeDuration) { clearShakeEffect(); return; }
+	}
+
+	// Update phase
+	m_shakePhase += elapsedTime * m_shakeFrequency;
+
+	// Calculate random-ish offset using multiple sine waves for chaos
+	float const offsetX = m_shakeIntensity * sin(m_shakePhase * PI_TIMES_2);
+	float const offsetY = m_shakeIntensity * sin(m_shakePhase * PI_TIMES_2 * 1.7f + 0.5f) * 0.5f;
+	float const offsetZ = m_shakeIntensity * sin(m_shakePhase * PI_TIMES_2 * 2.3f + 1.0f);
+
+	Vector newPos = m_shakeOrigin;
+	newPos.x += offsetX;
+	newPos.y += offsetY;
+	newPos.z += offsetZ;
+
+	owner->setPosition_w(newPos);
+}
+
+// ----------------------------------------------------------------------
+
+void ClientTangibleDynamics::updateFloatEffect(float elapsedTime)
+{
+	Object* const owner = getOwner();
+	if (owner == NULL) { clearFloatEffect(); return; }
+
+	if (m_floatDuration >= 0.0f)
+	{
+		m_floatElapsed += elapsedTime;
+		if (m_floatElapsed >= m_floatDuration) { clearFloatEffect(); return; }
+	}
+
+	// Update phase
+	m_floatPhase += elapsedTime * m_floatDriftSpeed;
+
+	// Calculate vertical float with smooth sine wave
+	float const yOffset = m_floatHeight * 0.5f * (1.0f + sin(m_floatPhase * PI_TIMES_2));
+
+	// Calculate subtle horizontal drift
+	float const xOffset = m_floatRandomStrength * sin(m_floatPhase * PI_TIMES_2 * 0.7f);
+	float const zOffset = m_floatRandomStrength * sin(m_floatPhase * PI_TIMES_2 * 0.9f + 0.5f);
+
+	Vector newPos = m_floatOrigin;
+	newPos.x += xOffset;
+	newPos.y += yOffset;
+	newPos.z += zOffset;
+
+	owner->setPosition_w(newPos);
+}
+
+// ----------------------------------------------------------------------
+
+void ClientTangibleDynamics::updateConveyorEffect(float elapsedTime)
+{
+	Object* const owner = getOwner();
+	if (owner == NULL) { clearConveyorEffect(); return; }
+
+	if (m_conveyorDuration >= 0.0f)
+	{
+		m_conveyorElapsed += elapsedTime;
+		if (m_conveyorElapsed >= m_conveyorDuration) { clearConveyorEffect(); return; }
+	}
+
+	// Update travel distance
+	float const distanceDelta = m_conveyorSpeed * elapsedTime;
+	m_conveyorTravelDistance += distanceDelta;
+
+	// Handle wrap-around if wrapDistance is set
+	if (m_conveyorWrapDistance > 0.0f && m_conveyorTravelDistance >= m_conveyorWrapDistance)
+	{
+		// Reset travel distance (wraps back to origin)
+		m_conveyorTravelDistance = fmod(m_conveyorTravelDistance, m_conveyorWrapDistance);
+	}
+
+	// Calculate new position along conveyor path
+	Vector newPos;
+	newPos.x = m_conveyorOrigin.x + m_conveyorDirection.x * m_conveyorTravelDistance;
+	newPos.y = m_conveyorOrigin.y + m_conveyorDirection.y * m_conveyorTravelDistance;
+	newPos.z = m_conveyorOrigin.z + m_conveyorDirection.z * m_conveyorTravelDistance;
+
+	owner->setPosition_w(newPos);
+}
+
 // ======================================================================
 // RECALCULATE
 // ======================================================================
@@ -917,6 +1233,10 @@ void ClientTangibleDynamics::recalculateMode()
 	if (m_orbitEffectActive)       m_activeForceMask |= FM_orbit;
 	if (m_hoverEffectActive)       m_activeForceMask |= FM_hover;
 	if (m_followTargetEffectActive) m_activeForceMask |= FM_followTarget;
+	if (m_swayEffectActive)        m_activeForceMask |= FM_sway;
+	if (m_shakeEffectActive)       m_activeForceMask |= FM_shake;
+	if (m_floatEffectActive)       m_activeForceMask |= FM_float;
+	if (m_conveyorEffectActive)    m_activeForceMask |= FM_conveyor;
 }
 
 // ======================================================================
