@@ -305,6 +305,9 @@
     <ClCompile Include="..\..\src\shared\core\SpatialDatabase.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
     </ClCompile>
+    <ClCompile Include="..\..\src\shared\core\BVH.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+    </ClCompile>
     <ClCompile Include="..\..\src\shared\extent\BaseExtent.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
     </ClCompile>
@@ -397,6 +400,7 @@
     <ClInclude Include="..\..\src\shared\core\SimpleCollisionMesh.h" />
     <ClInclude Include="..\..\src\shared\core\SpaceAvoidanceManager.h" />
     <ClInclude Include="..\..\src\shared\core\SpatialDatabase.h" />
+    <ClInclude Include="..\..\src\shared\core\BVH.h" />
     <ClInclude Include="..\..\src\shared\extent\BaseExtent.h" />
     <ClInclude Include="..\..\src\shared\extent\BoxExtent.h" />
     <ClInclude Include="..\..\src\shared\extent\CollisionDetect.h" />

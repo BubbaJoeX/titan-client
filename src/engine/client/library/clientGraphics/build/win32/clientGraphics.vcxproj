@@ -362,6 +362,9 @@
     <ClCompile Include="..\..\src\shared\VideoPlaybackManager.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
     </ClCompile>
+    <ClCompile Include="..\..\src\shared\RenderBatchManager.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+    </ClCompile>
     <ClCompile Include="..\..\src\win32\FirstClientGraphics.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">Create</PrecompiledHeader>
@@ -447,6 +450,7 @@
     <ClInclude Include="..\..\src\shared\Video.h" />
     <ClInclude Include="..\..\src\shared\VideoList.h" />
     <ClInclude Include="..\..\src\shared\VideoPlaybackManager.h" />
+    <ClInclude Include="..\..\src\shared\RenderBatchManager.h" />
     <ClInclude Include="..\..\src\win32\Graphics.h" />
     <ClInclude Include="..\..\src\win32\ScreenShotHelper.h" />
     <ClInclude Include="..\..\src\win32\SetupClientGraphics.h" />

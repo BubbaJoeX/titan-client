@@ -15,8 +15,10 @@
 #include "ConfigDirect3d9.h"
 #include "Direct3d9_DynamicIndexBufferData.h"
 #include "Direct3d9_DynamicVertexBufferData.h"
+#include "Direct3d9_Instancing.h"
 #include "Direct3d9_LightManager.h"
 #include "Direct3d9_Metrics.h"
+#include "Direct3d9_OcclusionQuery.h"
 #include "Direct3d9_PixelShaderConstantRegisters.h"
 #include "Direct3d9_PixelShaderProgramData.h"
 #include "Direct3d9_RenderTarget.h"
@@ -1542,6 +1544,8 @@ bool Direct3d9::install(Gl_install *gl_install)
 	Direct3d9_TextureData::install();
 	Direct3d9_RenderTarget::install();
 	Direct3d9_LightManager::install();
+	Direct3d9_Instancing::install();
+	Direct3d9_OcclusionQuery::install();
 #ifdef _DEBUG
 	Direct3d9_Metrics::install();
 #endif
@@ -1629,6 +1633,8 @@ void Direct3d9Namespace::remove()
 #endif
 	Direct3d9_VertexDeclarationMap::remove();
 	Direct3d9_StateCache::remove();
+	Direct3d9_Instancing::remove();
+	Direct3d9_OcclusionQuery::remove();
 #ifdef _DEBUG
 	Direct3d9_Metrics::remove();
 #endif
@@ -1988,6 +1994,8 @@ void Direct3d9Namespace::lostDevice()
 	Direct3d9_StateCache::lostDevice();
 	Direct3d9_RenderTarget::lostDevice();
 	Direct3d9_ShaderImplementationData::lostDevice();
+	Direct3d9_Instancing::lostDevice();
+	Direct3d9_OcclusionQuery::lostDevice();
 	ms_transformDirty = true;
 
 	releaseBackBuffer();
@@ -2001,6 +2009,8 @@ void Direct3d9Namespace::restoreDevice()
 	Direct3d9_DynamicVertexBufferData::restoreDevice();
 	Direct3d9_DynamicIndexBufferData::restoreDevice();
 	Direct3d9_StateCache::restoreDevice();
+	Direct3d9_Instancing::restoreDevice();
+	Direct3d9_OcclusionQuery::restoreDevice();
 	setViewport(ms_viewportX, ms_viewportY, ms_viewportWidth, ms_viewportHeight, ms_viewportMinimumZ, ms_viewportMaximumZ);
 
 	CallbackFunctions::const_iterator const iEnd = ms_deviceRestoredCallbacks.end();

@@ -54,6 +54,12 @@ public:
 
 	static bool getAntiAlias();
 
+	// Engine optimization settings
+	static bool getEnableInstancing();
+	static int  getMaxInstancesPerBatch();
+	static bool getEnableOcclusionQueries();
+	static int  getOcclusionQueryLatency();
+
 };
 
 // ======================================================================

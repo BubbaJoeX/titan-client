@@ -735,6 +735,7 @@ void ClientTangibleDynamics::updatePushForce(float elapsedTime)
 
 	float const ease = computeEaseFactor(m_easeType, m_pushElapsed, m_pushDuration, m_easeDuration);
 
+	// Apply drag decay locally for smooth visuals
 	if (m_pushDrag > 0.0f)
 	{
 		float const dragFactor = exp(-m_pushDrag * elapsedTime);
@@ -745,19 +746,22 @@ void ClientTangibleDynamics::updatePushForce(float elapsedTime)
 
 	Vector const vel = m_pushVelocity * ease;
 
-	// Skip complex physics if inside a building cell
+	// Skip movement if velocity is negligible
+	if (vel.magnitudeSquared() < 0.001f)
+		return;
+
+	// Skip if inside a building cell
 	CellProperty const * const cell = owner->getParentCell();
 	bool const insideBuilding = (cell && cell != CellProperty::getWorldCellProperty());
 
 	if (m_pushSpace == MS_world && !insideBuilding)
 	{
-		// Hockey puck mode: terrain following and collision
+		// Client-side prediction for smooth visuals
+		// Server handles authoritative position updates
 		Vector const currentPos = owner->getPosition_w();
 		Vector nextPos = currentPos + vel * elapsedTime;
 
-		// ========================================
-		// TERRAIN FOLLOWING
-		// ========================================
+		// Terrain following
 		TerrainObject const * const terrain = TerrainObject::getConstInstance();
 		if (terrain)
 		{
@@ -769,89 +773,33 @@ void ClientTangibleDynamics::updatePushForce(float elapsedTime)
 			}
 		}
 
-		// ========================================
-		// COLLISION DETECTION (RICOCHET)
-		// ========================================
+		// Simple collision check - don't do complex ricochet, server handles that
 		float const objectRadius = 0.5f;
 		CanMoveResult const moveResult = CollisionWorld::canMove(
 			owner,
 			nextPos,
 			objectRadius,
-			false,    // checkY
-			false,    // checkFlora
-			false     // checkFauna
+			false,
+			false,
+			false
 		);
 
-		if (moveResult != CMR_MoveOK)
+		// Only move if path is clear - server will correct if needed
+		if (moveResult == CMR_MoveOK)
 		{
-			// Hit something - find obstacle and ricochet
-			Object const * hitObject = nullptr;
-			bool const foundObstacle = CollisionWorld::findFirstObstacle(
-				owner,
-				objectRadius,
-				currentPos,
-				nextPos,
-				true,     // testStatics
-				false,    // testCreatures
-				hitObject
-			);
-
-			if (foundObstacle && hitObject)
-			{
-				// Calculate reflection
-				Vector const toObstacle = hitObject->getPosition_w() - currentPos;
-				Vector normal(toObstacle.x, 0.0f, toObstacle.z);
-				if (normal.normalize())
-				{
-					normal = -normal;
-					float const dot = m_pushVelocity.x * normal.x + m_pushVelocity.z * normal.z;
-					m_pushVelocity.x = m_pushVelocity.x - 2.0f * dot * normal.x;
-					m_pushVelocity.z = m_pushVelocity.z - 2.0f * dot * normal.z;
-					m_pushVelocity *= 0.8f; // Energy loss
-
-					// Push away from wall
-					nextPos = currentPos + normal * (objectRadius * 0.5f);
-
-					// Re-apply terrain height
-					if (terrain)
-					{
-						float terrainHeight = nextPos.y;
-						if (terrain->getHeight(nextPos, terrainHeight))
-						{
-							nextPos.y = terrainHeight + 0.05f;
-						}
-					}
-				}
-			}
-			else
-			{
-				// Unknown obstacle - reverse and lose energy
-				m_pushVelocity = -m_pushVelocity * 0.5f;
-				return;
-			}
+			owner->setPosition_w(nextPos);
 		}
-
-		owner->setPosition_w(nextPos);
 	}
 	else
 	{
-		// Standard movement (inside building or non-world space)
-		switch (m_pushSpace)
-		{
-		case MS_world:
-			owner->move_o(owner->rotate_w2o(vel * elapsedTime));
-			break;
-		case MS_parent:
-			owner->move_o(owner->rotate_p2o(vel * elapsedTime));
-			break;
-		case MS_object:
-			owner->move_o(vel * elapsedTime);
-			break;
-		}
+		// Simple local space movement
+		Vector const currentPos = owner->getPosition_w();
+		Vector const nextPos = currentPos + vel * elapsedTime;
+		owner->setPosition_w(nextPos);
 	}
 }
 
-// ----------------------------------------------------------------------
+//-------------------------------------------------------------------
 
 void ClientTangibleDynamics::updateSpinForce(float elapsedTime)
 {

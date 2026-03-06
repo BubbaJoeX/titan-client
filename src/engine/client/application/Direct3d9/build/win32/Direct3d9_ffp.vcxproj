@@ -270,6 +270,8 @@ copy /Y "$(TargetPath)" "D:\titan\exe\win32_rel\gl06_d.dll"</Command>
     <ClCompile Include="..\..\src\win32\Direct3d9_VertexBufferVectorData.cpp" />
     <ClCompile Include="..\..\src\win32\Direct3d9_VertexDeclarationMap.cpp" />
     <ClCompile Include="..\..\src\win32\Direct3d9_VertexShaderData.cpp" />
+    <ClCompile Include="..\..\src\win32\Direct3d9_Instancing.cpp" />
+    <ClCompile Include="..\..\src\win32\Direct3d9_OcclusionQuery.cpp" />
     <ClCompile Include="..\..\src\win32\FirstDirect3d9.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">Create</PrecompiledHeader>
@@ -298,6 +300,8 @@ copy /Y "$(TargetPath)" "D:\titan\exe\win32_rel\gl06_d.dll"</Command>
     <ClInclude Include="..\..\src\win32\Direct3d9_VertexDeclarationMap.h" />
     <ClInclude Include="..\..\src\win32\Direct3d9_VertexShaderConstantRegisters.h" />
     <ClInclude Include="..\..\src\win32\Direct3d9_VertexShaderData.h" />
+    <ClInclude Include="..\..\src\win32\Direct3d9_Instancing.h" />
+    <ClInclude Include="..\..\src\win32\Direct3d9_OcclusionQuery.h" />
     <ClInclude Include="..\..\src\win32\Direct3d9_VertexShaderVertexRegisters.h" />
     <ClInclude Include="..\..\src\win32\FirstDirect3d9.h" />
   </ItemGroup>

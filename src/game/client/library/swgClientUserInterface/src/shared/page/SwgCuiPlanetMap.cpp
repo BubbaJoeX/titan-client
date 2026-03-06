@@ -85,6 +85,7 @@ namespace SwgCuiPlanetMapNamespace
 		const std::string waypoint_set_name   = "waypoint_set_name";
 		const std::string autopilot           = "autopilot";
 		const std::string autopilot_cancel    = "autopilot_cancel";
+		const std::string land_here           = "land_here";
 	}
 
 	namespace Settings
@@ -644,6 +645,17 @@ void SwgCuiPlanetMap::OnPopupMenuSelection (UIWidget * context)
 		GenericValueTypeMessage<std::string> const msg("AutoPilotCancel", "cancel");
 		GameNetwork::send(msg, true);
 	}
+	else if (selection == PopupItems::land_here)
+	{
+		// Send landing request to server with landing point NetworkId
+		if (id.isValid())
+		{
+			typedef std::pair<NetworkId, std::pair<float, float>> LandingRequestData;
+			GenericValueTypeMessage<LandingRequestData> const msg("AtmoLandingRequest",
+				std::make_pair(id, std::make_pair(static_cast<float>(pos.x), static_cast<float>(pos.y))));
+			GameNetwork::send(msg, true);
+		}
+	}
 	else
 	{
 		ClientWaypointObject * const waypoint = dynamic_cast<ClientWaypointObject *>(NetworkIdManager::getObjectById (id));
@@ -940,11 +952,23 @@ UIPopupMenu * SwgCuiPlanetMap::createPopupForEntry (const Vector2d & pos, const 
 	if (SwgCuiAirspeederPanel::isInSkyway() || Game::getPlayerPilotedShip() != 0)
 	{
 		pop->AddItem (PopupItems::autopilot, Unicode::narrowToWide("Auto-Pilot Here"));
+
+		// Add Land Here option for landing points (identified by NetworkId)
+		if (id.isValid() && !Game::isSpace())
+		{
+			pop->AddItem (PopupItems::land_here, Unicode::narrowToWide("Land Here"));
+		}
 	}
 	else if (Game::getPlayerContainingShip() != 0 && Game::getPlayerContainingShip()->isPobShip() && !Game::isSpace())
 	{
 		pop->AddItem (PopupItems::autopilot, Unicode::narrowToWide("Auto-Pilot Here"));
 		pop->AddItem (PopupItems::autopilot_cancel, Unicode::narrowToWide("Cancel Auto-Pilot"));
+
+		// Add Land Here option for landing points (identified by NetworkId)
+		if (id.isValid())
+		{
+			pop->AddItem (PopupItems::land_here, Unicode::narrowToWide("Land Here"));
+		}
 	}
 
 	Unicode::String vstr;

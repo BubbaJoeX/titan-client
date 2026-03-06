@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+﻿﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -247,6 +247,9 @@
     <ClCompile Include="..\..\src\shared\appearance\ViewerLightAppearance.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
     </ClCompile>
+    <ClCompile Include="..\..\src\shared\appearance\LODManager.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+    </ClCompile>
     <ClCompile Include="..\..\src\shared\camera\CameraController.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
     </ClCompile>
@@ -326,6 +329,7 @@
     <ClInclude Include="..\..\src\shared\appearance\SpriteAppearanceTemplate.h" />
     <ClInclude Include="..\..\src\shared\appearance\TrailAppearance.h" />
     <ClInclude Include="..\..\src\shared\appearance\ViewerLightAppearance.h" />
+    <ClInclude Include="..\..\src\shared\appearance\LODManager.h" />
     <ClInclude Include="..\..\src\shared\camera\CameraController.h" />
     <ClInclude Include="..\..\src\shared\camera\GameCamera.h" />
     <ClInclude Include="..\..\src\shared\camera\ObjectListCamera.h" />

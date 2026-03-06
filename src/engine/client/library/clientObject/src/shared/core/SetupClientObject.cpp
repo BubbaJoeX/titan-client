@@ -17,6 +17,7 @@
 #include "clientObject/GameCamera.h"
 #include "clientObject/HardpointObject.h"
 #include "clientObject/InteriorEnvironmentBlockManager.h"
+#include "clientObject/LODManager.h"
 #include "clientObject/MarkerAppearance.h"
 #include "clientObject/MarkerAppearanceTemplate.h"
 #include "clientObject/MeshAppearance.h"
@@ -97,6 +98,7 @@ void SetupClientObject::install (const Data& data)
 	ShadowBlobManager::install ();
 	ReticleManager::install ();
 	MeshAppearance::install ();
+	LODManager::install ();
 
 	ExitChain::add (SetupClientObjectNamespace::remove, "SetupClientObject");
 }

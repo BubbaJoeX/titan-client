@@ -18,6 +18,7 @@
 #include "clientGraphics/DynamicVertexBuffer.h"
 #include "clientGraphics/Graphics.h"
 #include "clientGraphics/GraphicsOptionTags.h"
+#include "clientGraphics/RenderBatchManager.h"
 #include "clientGraphics/RenderWorld.h"
 #include "clientGraphics/ScreenShotHelper.h"
 #include "clientGraphics/ShaderCapability.h"
@@ -235,6 +236,7 @@ bool SetupClientGraphics::install(const Data &data)
 		TextureList::addCleanupCallbackFunction(CellProperty::releaseWorldCellPropertyEnvironmentTexture);
 
 		RenderWorld::install();
+		RenderBatchManager::install();
 	}
 
 	StaticVertexBuffer::install();

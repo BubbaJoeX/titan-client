@@ -45,6 +45,12 @@ namespace ConfigDirect3d9Namespace
 
 	bool ms_antiAlias;
 
+	// Engine optimization settings
+	bool ms_enableInstancing;
+	int  ms_maxInstancesPerBatch;
+	bool ms_enableOcclusionQueries;
+	int  ms_occlusionQueryLatency;
+
 	ConfigDirect3d9::VertexProcessingMode ms_vertexProcessingMode = ConfigDirect3d9::VPM_default;
 }
 using namespace ConfigDirect3d9Namespace;
@@ -85,6 +91,12 @@ void ConfigDirect3d9::install()
 	KEY_BOOL(discardDynamicBuffersAtBeginningOfFrame, false);
 	
 	KEY_BOOL(antiAlias, true);
+
+	// Engine optimization settings
+	KEY_BOOL(enableInstancing, true);
+	KEY_INT (maxInstancesPerBatch, 256);
+	KEY_BOOL(enableOcclusionQueries, true);
+	KEY_INT (occlusionQueryLatency, 2);
 
 	int const vertexProcessingMode = ConfigFile::getKeyInt("Direct3d9", "vertexProcessingMode", 0);
 	FATAL(vertexProcessingMode < 0 || vertexProcessingMode > 2, ("vertexProcessingMode setting invalid %d [0..2]", vertexProcessingMode));
@@ -224,6 +236,34 @@ int ConfigDirect3d9::getMaxPixelShaderVersion()
 bool ConfigDirect3d9::getDiscardDynamicBuffersAtBeginningOfFrame()
 {
 	return ms_discardDynamicBuffersAtBeginningOfFrame;
+}
+
+// ----------------------------------------------------------------------
+
+bool ConfigDirect3d9::getEnableInstancing()
+{
+	return ms_enableInstancing;
+}
+
+// ----------------------------------------------------------------------
+
+int ConfigDirect3d9::getMaxInstancesPerBatch()
+{
+	return ms_maxInstancesPerBatch;
+}
+
+// ----------------------------------------------------------------------
+
+bool ConfigDirect3d9::getEnableOcclusionQueries()
+{
+	return ms_enableOcclusionQueries;
+}
+
+// ----------------------------------------------------------------------
+
+int ConfigDirect3d9::getOcclusionQueryLatency()
+{
+	return ms_occlusionQueryLatency;
 }
 
 // ======================================================================

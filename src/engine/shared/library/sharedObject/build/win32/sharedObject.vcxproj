@@ -295,6 +295,9 @@
     <ClCompile Include="..\..\src\shared\dynamics\TrackingDynamics.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
     </ClCompile>
+    <ClCompile Include="..\..\src\shared\dynamics\PhysicsWorld.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+    </ClCompile>
     <ClCompile Include="..\..\src\shared\lot\LotManager.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
     </ClCompile>
@@ -425,6 +428,7 @@
     <ClInclude Include="..\..\src\shared\dynamics\SpringDynamics.h" />
     <ClInclude Include="..\..\src\shared\dynamics\StateDynamics.h" />
     <ClInclude Include="..\..\src\shared\dynamics\TrackingDynamics.h" />
+    <ClInclude Include="..\..\src\shared\dynamics\PhysicsWorld.h" />
     <ClInclude Include="..\..\src\shared\lot\LotManager.h" />
     <ClInclude Include="..\..\src\shared\lot\LotType.h" />
     <ClInclude Include="..\..\src\shared\lot\StructureFootprint.h" />

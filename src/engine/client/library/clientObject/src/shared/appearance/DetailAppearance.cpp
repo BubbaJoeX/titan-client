@@ -18,6 +18,7 @@
 #include "clientGraphics/Texture.h"
 #include "clientObject/ConfigClientObject.h"
 #include "clientObject/DetailAppearanceTemplate.h"
+#include "clientObject/LODManager.h"
 #include "sharedCollision/BoxExtent.h"
 #include "sharedCollision/CollideParameters.h"
 #include "sharedCollision/Extent.h"
@@ -58,6 +59,7 @@ namespace DetailAppearanceNamespace
 	bool  ms_crossFadeEnabled      = false;
 	bool  ms_lockLod               = false;
 	float ms_detailLevelBias       = 1.f;
+	bool  ms_useLODManager         = true;  // Use enhanced LODManager for screen-space coverage LOD selection
 }
 using namespace DetailAppearanceNamespace;
 
@@ -83,6 +85,7 @@ void DetailAppearance::install()
 	LocalMachineOptionManager::registerOption (ms_detailLevelBias,       section, "detailLevelBias");
 	LocalMachineOptionManager::registerOption (ms_fadeInEnabled,         section, "fadeInEnabled");
 	LocalMachineOptionManager::registerOption (ms_crossFadeEnabled,      section, "crossFadeEnabled");
+	LocalMachineOptionManager::registerOption (ms_useLODManager,         section, "useLODManager");
 
 	if (Graphics::getShaderCapability() < ShaderCapability(1, 1))
 	{
@@ -418,65 +421,94 @@ int DetailAppearance::_chooseDetailLevel() const
 	const Camera *camera = &ShaderPrimitiveSorter::getCurrentCamera();
 	const float distance = camera->getPosition_w().magnitudeBetween(at->getUsePivotPoint() ? getTransform_w().getPosition_p() : getTransform_w ().rotateTranslate_l2p (getSphere().getCenter()));
 
-	// search from where we currently are
+	// Use LODManager for enhanced screen-space coverage based LOD selection
 	int detailLevel = m_currentDetailLevel;
-	if (detailLevel < 0)
+	bool usedLODManager = false;
+	if (ms_useLODManager && getOwner())
+	{
+		int const lodResult = LODManager::selectLOD(getOwner(), this);
+		if (lodResult == -1)
+		{
+			// Object should be culled due to minimum coverage
+			return -1;
+		}
+		else if (lodResult == -2)
+		{
+			// LODManager not active, use fallback distance-based selection
+			if (detailLevel < 0)
+				detailLevel = 0;
+		}
+		else if (lodResult >= 0 && lodResult < numberOfDetailLevels)
+		{
+			detailLevel = lodResult;
+			usedLODManager = true;
+		}
+		else if (detailLevel < 0)
+		{
+			detailLevel = 0;
+		}
+	}
+	else if (detailLevel < 0)
 	{
 		detailLevel = 0;
 	}
 
-	int direction = 0;
-	for (;;)
+	// Only run distance-based refinement if LODManager was not used
+	if (!usedLODManager)
 	{
-		// get the near and far distances for this detail level
-		float nearDist = at->getNearDistance(detailLevel);
-		float farDist = at->getFarDistance(detailLevel);
-		if (ms_enableDetailLevelStretch)
+		int direction = 0;
+		for (;;)
 		{
-			farDist += ConfigClientObject::getDetailLevelStretch ();
-		}
-		nearDist *= ms_detailLevelBias;
-		farDist *= ms_detailLevelBias;
+			// get the near and far distances for this detail level
+			float nearDist = at->getNearDistance(detailLevel);
+			float farDist = at->getFarDistance(detailLevel);
+			if (ms_enableDetailLevelStretch)
+			{
+				farDist += ConfigClientObject::getDetailLevelStretch ();
+			}
+			nearDist *= ms_detailLevelBias;
+			farDist *= ms_detailLevelBias;
 
-		if (distance > farDist)
-		{
-			// Object is too far from the camera for this level, go down a level
-			if (direction == 1)
+			if (distance > farDist)
 			{
-				// Goldilocks problem - the last detail level was too close, this one's too far away
-				DEBUG_WARNING(true, ("DetailAppearance::chooseDetailLevel3 - No suitable detail level for appearance [%s] at distance %f", at->getName(),distance));
-				break;
-			}
+				// Object is too far from the camera for this level, go down a level
+				if (direction == 1)
+				{
+					// Goldilocks problem - the last detail level was too close, this one's too far away
+					DEBUG_WARNING(true, ("DetailAppearance::chooseDetailLevel3 - No suitable detail level for appearance [%s] at distance %f", at->getName(),distance));
+					break;
+				}
 
-			// If we've gone off the end of our detail levels, use the most- or least-detailed one
-			if (--detailLevel < 0)
-			{
-				detailLevel = 0;
-				break;
+				// If we've gone off the end of our detail levels, use the most- or least-detailed one
+				if (--detailLevel < 0)
+				{
+					detailLevel = 0;
+					break;
+				}
+				direction = -1;
 			}
-			direction = -1;
-		}
-		else if (distance < nearDist)
-		{
-			// Object is too close to the camera for this level, go up a level
-			if (direction == -1)
+			else if (distance < nearDist)
 			{
-				// Goldilocks problem - the last detail level was too far away, this one's too close
-				DEBUG_WARNING(true, ("DetailAppearance::chooseDetailLevel3 - No suitable detail level for appearance [%s] at distance %f", at->getName(),distance));
-				break;
-			}
+				// Object is too close to the camera for this level, go up a level
+				if (direction == -1)
+				{
+					// Goldilocks problem - the last detail level was too far away, this one's too close
+					DEBUG_WARNING(true, ("DetailAppearance::chooseDetailLevel3 - No suitable detail level for appearance [%s] at distance %f", at->getName(),distance));
+					break;
+				}
 
-			if (++detailLevel >= numberOfDetailLevels)
+				if (++detailLevel >= numberOfDetailLevels)
+				{
+					detailLevel = numberOfDetailLevels - 1;
+					break;
+				}
+				direction = 1;
+			}
+			else
 			{
-				detailLevel = numberOfDetailLevels - 1;
+				// Object can use this detail level
 				break;
 			}
-			direction = 1;
-		}
-		else
-		{
-			// Object can use this detail level
-			break;
 		}
 	}
 
