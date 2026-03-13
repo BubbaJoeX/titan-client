@@ -103,13 +103,10 @@ private:
 		int &bindPoseFrameNumber, 
 		bool &ignoreTextures, 
 		bool &interactive, 
-		bool &commitToSourceControl, 
-		bool &createNewChangelist, 
 		bool &independentExport, 
 		bool &lock, 
 		bool &unlock, 
-		bool &showViewerAfterExport,
-		MString &branch
+		bool &showViewerAfterExport
 	);
 
 	static bool getShapePathFromParent(const MDagPath &parentPath, MDagPath &shapePath);

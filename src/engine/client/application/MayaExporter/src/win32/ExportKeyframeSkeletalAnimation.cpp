@@ -15,7 +15,6 @@
 #include "sharedMath/Transform.h"
 #include "sharedMath/Vector.h"
 
-#include "AlienbrainImporter.h"
 #include "AnimationMessageCollector.h"
 #include "ExportArgs.h"
 #include "ExporterLog.h"
@@ -26,7 +25,6 @@
 #include "MayaMisc.h"
 #include "MayaUtility.h"
 #include "Messenger.h"
-#include "PerforceImporter.h"
 #include "PluginMain.h"
 #include "Resource.h"
 #include "SetDirectoryCommand.h"
@@ -952,12 +950,9 @@ MStatus ExportKeyframeSkeletalAnimation::doIt(const MArgList &args)
 	MString              animationOutputDirectory;
 	MString              appearanceWriteDirectory;
 	MString              authorName;
-	MString              branch;
 	std::string          newLogFilename;
 	AnimationInfoVector  animations;
 	bool                 userAbort             = false;
-	bool                 commitToSourceControl = false;
-	bool                 createNewChangelist   = false;
 	bool                 interactive           = false;
 	bool                 lock                  = false;
 	bool                 unlock                = false;
@@ -977,11 +972,8 @@ MStatus ExportKeyframeSkeletalAnimation::doIt(const MArgList &args)
 												  &animations, 
 												  userAbort, 
 												  interactive, 
-												  commitToSourceControl, 
-												  createNewChangelist, 
 												  lock, 
 												  unlock, 
-												  branch,
 												  disableCompression
 												  );
 	if (!processSuccess)
@@ -1061,13 +1053,6 @@ MStatus ExportKeyframeSkeletalAnimation::doIt(const MArgList &args)
 			reexportArguments += ExportArgs::cs_nameArgName.asChar();
 			reexportArguments += " ";
 			reexportArguments += animationInfo.m_animationName.getString();
-			if(commitToSourceControl)
-			{
-				reexportArguments += " ";
-				reexportArguments += ExportArgs::cs_branchArgName.asChar();
-				reexportArguments += " ";
-				reexportArguments += branch.asChar();
-			}
 			ExporterLog::setMayaExportOptions(reexportArguments);
 
 			std::string shortLogFilename = animationInfo.m_animationName.getString();
@@ -1077,60 +1062,9 @@ MStatus ExportKeyframeSkeletalAnimation::doIt(const MArgList &args)
 			newLogFilename = SetDirectoryCommand::getDirectoryString(LOG_DIR_INDEX);
 			newLogFilename += shortLogFilename;
 
-			if (commitToSourceControl || lock || unlock)
-			{
-// JU_TODO: alienbrain def out
-#if 0
-				if (!AlienbrainImporter::connectToServer())
-				{
-					MESSENGER_LOG_ERROR(("Unable to connect to Alienbrain\n"));
-					return MStatus::kFailure;
-				}
-
-				bool result = AlienbrainImporter::preImport(ExportSkeleton::getSkeletonName(targetDagPath).asChar(), interactive);
-				IGNORE_RETURN(ExporterLog::writeSkeletalAnimation (newLogFilename.c_str(), interactive));
-				if (result)
-				{
-					if(!lock && !unlock)
-						AlienbrainImporter::importLogFile();
-					AlienbrainImporter::storeFileProperties();
-
-					bool branchSet = PerforceImporter::setBranch(branch.asChar());
-					if(branchSet)
-					{
-						IGNORE_RETURN(PerforceImporter::importCommon(interactive, createNewChangelist, lock, unlock));
-					}
-					else
-					{
-						MESSENGER_LOG_ERROR(("[%s] is not a valid branch, NOT submitting to Perforce\n", branch.asChar()));
-					}
-					PerforceImporter::reset();
- 				}
-				IGNORE_RETURN(AlienbrainImporter::disconnectFromServer());
-#else
-				
-				IGNORE_RETURN(ExporterLog::writeSkeletalAnimation (newLogFilename.c_str(), interactive));
-
-				bool branchSet = PerforceImporter::setBranch(branch.asChar());
-				if(branchSet)
-				{
-					IGNORE_RETURN(PerforceImporter::importCommon(interactive, createNewChangelist, lock, unlock));
-				}
-				else
-				{
-					MESSENGER_LOG_ERROR(("[%s] is not a valid branch, NOT submitting to Perforce\n", branch.asChar()));
-				}
-				PerforceImporter::reset();
- 				
-#endif
-// JU_TODO: end alienbrain def out
-			}
-			else
-			{
-				ExporterLog::setAssetGroup("Local export, N/A");
-				ExporterLog::setAssetName("Local export, N/A");
-				IGNORE_RETURN(ExporterLog::writeSkeletalAnimation (newLogFilename.c_str(), interactive));
-			}
+			ExporterLog::setAssetGroup("Local export, N/A");
+			ExporterLog::setAssetName("Local export, N/A");
+			IGNORE_RETURN(ExporterLog::writeSkeletalAnimation (newLogFilename.c_str(), interactive));
 		}
 	}
 
@@ -1436,11 +1370,8 @@ bool ExportKeyframeSkeletalAnimation::processArguments(
 	AnimationInfoVector *animations,
 	bool                &userAbort,
 	bool                &interactive,
-	bool                &commitToSourceControl,
-	bool                &createNewChangelist,
 	bool                &lock,
 	bool                &unlock,
-	MString             &branch,
 	bool                &disableCompression
 	)
 {
@@ -1463,12 +1394,9 @@ bool ExportKeyframeSkeletalAnimation::processArguments(
 	bool haveOutputDirectory = false;
 	bool isInteractive       = false;
 	bool haveSkeleton        = false;
-	bool haveBranch          = false;
 
 	userAbort                = false;
 	interactive              = false;
-	commitToSourceControl    = false;
-	createNewChangelist      = false;
 	lock                     = false;
 	unlock                   = false;
 
@@ -1495,10 +1423,6 @@ bool ExportKeyframeSkeletalAnimation::processArguments(
 			// silent mode - disable message box feedback (logs messages instead)
 			messenger->startSilentExport();
 		}
-		else if (argName == ExportArgs::cs_submitArgName)
-		{
-			commitToSourceControl = true;
-		}
 		else if (argName == ExportArgs::cs_lockArgName)
 		{
 			lock = true;
@@ -1506,18 +1430,6 @@ bool ExportKeyframeSkeletalAnimation::processArguments(
 		else if (argName == ExportArgs::cs_unlockArgName)
 		{
 			unlock = true;
-		}
-		else if (argName == ExportArgs::cs_branchArgName)
-		{
-			//-- handle branch argument
-			MESSENGER_REJECT(haveBranch, ("branch specified multiple times\n"));
-
-			branch = args.asString(argIndex + 1, &status);
-			MESSENGER_REJECT(!status, ("failed to get branch argument\n"));
-
-			// fixup argIndex
-			++argIndex;
-			haveBranch = true;
 		}
 		else if (argName == ExportArgs::cs_authorArgName)
 		{
@@ -1622,10 +1534,6 @@ bool ExportKeyframeSkeletalAnimation::processArguments(
 				animations->push_back(new MayaAnimationList::AnimationInfo(animationInfo));
 			}
 		}
-		else if (argName == ExportArgs::cs_createNewChangelistArgName)
-		{
-			createNewChangelist = true;
-		}
 		else if (argName == ExportArgs::cs_disableCompression)
 		{
 			disableCompression = true;
@@ -1662,7 +1570,6 @@ bool ExportKeyframeSkeletalAnimation::processArguments(
 		MESSENGER_LOG(("ARGS: fetched default output directory name [%s]\n", animationOutputDirectory->asChar()));
 	}
 
-	MESSENGER_REJECT(commitToSourceControl && !haveBranch, ("no branch, i.e. \"-branch <branchname>\" was specified\n"));
 	MESSENGER_REJECT(!isInteractive && !haveSkeleton, ("-interactive not specified, expecting -skeleton <skeleton name> and -name <animation name> args\n"));
 
 	return MStatus();

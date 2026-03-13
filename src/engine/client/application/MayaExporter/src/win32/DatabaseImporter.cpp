@@ -18,11 +18,9 @@
 #include "UnicodeUtils.h"
 
 //local mayaExporter includes
-#include "AlienbrainImporter.h"
 #include "ExportManager.h"
 #include "MayaExporterQuery.h"
 #include "Messenger.h"
-#include "PerforceImporter.h"
 #include "PluginMain.h"
 #include "Resource.h"
 #include "SetDirectoryCommand.h"
@@ -1027,15 +1025,7 @@ bool DatabaseImporter::selectAppearance(bool interactive, const std::string& nod
 
 	std::string category;
 
-// JU_TODO: alienbrain def out
-#if 0
-	category = AlienbrainImporter::getAssetDBCategory();
-#else
-	// JU_TODO: implement
-	std::string sourceFilename = ExporterLog::getSourceFilename();
-	category = ExportManager::getAssetDBCategory(sourceFilename);
-#endif
-// JU_TODO: end alienbrain def out
+	category = "Unknown";
 
 	int categoryNumber = -1;
 	if(_stricmp(category.c_str(), "Creature") == 0)

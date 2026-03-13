@@ -21,7 +21,6 @@
 #include "sharedUtility/UniqueNameList.h"
 
 //local MayaExporter includes
-#include "AlienbrainImporter.h"
 #if !NO_DATABASE
 #include "DatabaseImporter.h"
 #endif
@@ -36,7 +35,6 @@
 #include "MayaMisc.h"
 #include "Messenger.h"
 #include "OccludedFaceMapGenerator.h"
-#include "PerforceImporter.h"
 #include "PluginMain.h"
 #include "SetDirectoryCommand.h"
 #include "SkeletalMeshGeneratorWriter.h"
@@ -284,15 +282,12 @@ MStatus ExportSkeletalMeshGenerator::doIt(const MArgList &args)
 	MString   authorName;
 	MString   generatorOutputDirectory;
 	MDagPath  targetNode;
-	bool commitToSourceControl = false;
-	bool createNewChangelist   = false;
 	bool interactive           = false;
 	bool independentExport     = true;
 	bool exportSuccess         = true;
 	bool lock                  = false;
 	bool unlock                = false;
 	bool showViewerAfterExport = false;
-	MString branch;
 
 	MESSENGER_INDENT;
 
@@ -309,13 +304,10 @@ MStatus ExportSkeletalMeshGenerator::doIt(const MArgList &args)
 		bindPoseFrameNumber, 
 		m_ignoreTextures, 
 		interactive, 
-		commitToSourceControl, 
-		createNewChangelist, 
 		independentExport, 
 		lock, 
 		unlock, 
-		showViewerAfterExport,
-		branch
+		showViewerAfterExport
 	);
 	MESSENGER_REJECT_STATUS(!processSuccess, ("argument processing failed\n"));
 
@@ -341,13 +333,6 @@ MStatus ExportSkeletalMeshGenerator::doIt(const MArgList &args)
 	std::string reexportArguments = ExportArgs::cs_nodeArgName.asChar();
 	reexportArguments += " ";
 	reexportArguments += nodeName.asChar();
-	if(commitToSourceControl)
-	{
-		reexportArguments += " ";
-		reexportArguments += ExportArgs::cs_branchArgName.asChar();
-		reexportArguments += " ";
-		reexportArguments += branch.asChar();
-	}
 	ExporterLog::setMayaExportOptions(reexportArguments);
 
 	//try to load an old log file, for defaults and possibly non-interactive export
@@ -391,110 +376,11 @@ MStatus ExportSkeletalMeshGenerator::doIt(const MArgList &args)
 
 	if(exportSuccess)
 	{
-		//only send to source control if they want to and if the local export succeeded
-		if(commitToSourceControl || lock || unlock)
+		if(independentExport)
 		{
-			bool exportToPerforceSucceeded = false;
-
-			bool const setBranch = PerforceImporter::setBranch(branch.asChar());
-			if(!setBranch)
-				MESSENGER_LOG_ERROR(("[%s] is not a valid branch, NOT submitting to Perforce\n", branch.asChar()));
-
-			//only connect to AB and submit to perforce if this is a stand-alone export (as opposed to part of a SAT export)
-			if(independentExport)
-			{
-// JU_TODO: alienbrain def out
-#if 0
-				//gather asset database information from alienbrain, and store in the log file
-				if (!AlienbrainImporter::connectToServer())
-				{
-					MESSENGER_LOG_ERROR(("Unable to connect to Alienbrain\n"));
-					return MStatus::kFailure;
-				}
-
-				const bool result = AlienbrainImporter::preImport(targetNode.partialPathName().asChar(), interactive);
-
-				if(!ExportManager::validateTextureList(interactive))
-				{
-					messenger->printWarningsAndErrors();
-					return MS::kSuccess;
-				}
-				
-				AlienbrainImporter::storeFileProperties();
-
-				//select assetdb item, if necessary
-				IGNORE_RETURN(DatabaseImporter::startSession());
-				bool gotAppearance = DatabaseImporter::selectAppearance(interactive, nodeName.asChar());
-				IGNORE_RETURN(DatabaseImporter::endSession());
-				if(!gotAppearance)
-				{
-					MESSENGER_LOG_ERROR(("No appearance selected or other AssetDatabase-related error occured, aborting.\n"));
-					messenger->printWarningsAndErrors();
-					IGNORE_RETURN(AlienbrainImporter::disconnectFromServer());
-					return MS::kSuccess;
-				}
-
-				//submit the log file to alienbrain
-				IGNORE_RETURN(ExporterLog::writeSkeletalMeshGenerator (newLogFilename.c_str(), interactive));
-				if (result)
-				{
-					if(!lock && !unlock)
-						AlienbrainImporter::importLogFile();
-				}
-				IGNORE_RETURN(AlienbrainImporter::disconnectFromServer());
-
-				if(result)
-				{
-					exportToPerforceSucceeded = PerforceImporter::importCommon(interactive, createNewChangelist, lock, unlock);
-				}
-#else
-				//select assetdb item, if necessary
-#if !NO_DATABASE
-				IGNORE_RETURN(DatabaseImporter::startSession());
-				bool gotAppearance = DatabaseImporter::selectAppearance(interactive, nodeName.asChar());
-				IGNORE_RETURN(DatabaseImporter::endSession());
-				if(!gotAppearance)
-				{
-					MESSENGER_LOG_ERROR(("No appearance selected or other AssetDatabase-related error occured, aborting.\n"));
-					messenger->printWarningsAndErrors();
-					return MS::kSuccess;
-				}
-#endif
-
-				//submit the log file to alienbrain
-				IGNORE_RETURN(ExporterLog::writeSkeletalMeshGenerator (newLogFilename.c_str(), interactive));
-				exportToPerforceSucceeded = PerforceImporter::importCommon(interactive, createNewChangelist, lock, unlock);
-				
-#endif
-// JU_TODO: end alienbrain def out
-			}
-			//otherwise we're part of another (SAT) export, just put the files in the perforce changelist
-			else
-			{
-				exportToPerforceSucceeded = PerforceImporter::importCommon(interactive,false /* createNewChangelist */, lock, unlock);
-			}
-
-			PerforceImporter::reset();
-
-			if(exportToPerforceSucceeded)
-			{
-#if !NO_DATABASE
-				//import asset data into Asset Database
-				IGNORE_RETURN(DatabaseImporter::startSession());
-				if(!DatabaseImporter::importSkeletalMeshData(interactive, lock, unlock) && !interactive)
-					IGNORE_RETURN(MESSENGER_MESSAGE_BOX(NULL, "AssetDatabase import failed, see output window", "Error", MB_OK));
-				IGNORE_RETURN(DatabaseImporter::endSession());
-#endif
-			}
-		}
-		else
-		{
-			if(independentExport)
-			{
-				ExporterLog::setAssetGroup("Local export, N/A");
-				ExporterLog::setAssetName("Local export, N/A");
-				IGNORE_RETURN(ExporterLog::writeSkeletalMeshGenerator (newLogFilename.c_str(), interactive));
-			}
+			ExporterLog::setAssetGroup("Local export, N/A");
+			ExporterLog::setAssetName("Local export, N/A");
+			IGNORE_RETURN(ExporterLog::writeSkeletalMeshGenerator (newLogFilename.c_str(), interactive));
 		}
 	}
 	ExporterLog::remove();
@@ -1515,13 +1401,10 @@ bool ExportSkeletalMeshGenerator::processArguments(
 	int &bindPoseFrameNumber,
 	bool &ignoreTextures,
 	bool &interactive,
-	bool &commitToSourceControl,
-	bool &createNewChangelist,
 	bool &independentExport,
 	bool &lock,
 	bool &unlock,
-	bool &showViewerAfterExport,
-	MString &branch
+	bool &showViewerAfterExport
 )
 {
 	FATAL(!ms_installed, ("ExportSkeletalMeshGenerator not installed"));
@@ -1542,15 +1425,12 @@ bool ExportSkeletalMeshGenerator::processArguments(
 	bool haveNode            = false;
 	bool isInteractive       = false;
 	bool haveFrame           = false;
-	bool haveBranch          = false;
 
 	ignoreShaders           = false;
 	ignoreBlendTargets      = false;
 	ignoreTextures          = false;
 
 	interactive             = false;
-	commitToSourceControl   = false;
-	createNewChangelist     = false;
 	independentExport       = true;
 	lock                    = false;
 	unlock                  = false;
@@ -1649,14 +1529,6 @@ bool ExportSkeletalMeshGenerator::processArguments(
 		{
 			ignoreTextures = true;
 		}
-		else if (argName == ExportArgs::cs_createNewChangelistArgName)
-		{
-			createNewChangelist = true;
-		}
-		else if (argName == ExportArgs::cs_submitArgName)
-		{
-			commitToSourceControl = true;
-		}
 		else if (argName == ExportArgs::cs_lockArgName)
 		{
 			lock = true;
@@ -1673,22 +1545,6 @@ bool ExportSkeletalMeshGenerator::processArguments(
 		{
 			// silent mode - disable message box feedback (logs messages instead)
 			messenger->startSilentExport();
-		}
-		else if (argName == ExportArgs::cs_branchArgName)
-		{
-			//-- handle branch argument
-			MESSENGER_REJECT(haveBranch, ("branch specified multiple times\n"));
-
-			branch = args.asString(argIndex + 1, &status);
-			MESSENGER_REJECT(!status, ("failed to get branch argument\n"));
-
-			// fixup argIndex
-			++argIndex;
-			haveBranch = true;
-		}
-		else if (argName == ExportArgs::cs_createNewChangelistArgName)
-		{
-			createNewChangelist = true;
 		}
 		else
 		{
@@ -1740,7 +1596,6 @@ bool ExportSkeletalMeshGenerator::processArguments(
 	}
 
 	//-- make sure everything required was specified
-	MESSENGER_REJECT(commitToSourceControl && !haveBranch, ("no branch, i.e. \"-branch <branchname>\" was specified\n"));
 	MESSENGER_REJECT(!isInteractive && !haveNode, ("no joint node (-node) was specified\n"));
 
 	return true;

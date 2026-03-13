@@ -37,12 +37,9 @@ public:
 		const MArgList &args, 
 		MDagPath *targetDagPath, 
 		bool &interactive, 
-		bool &commitToAlienbrain, 
-		bool &commitToCurrent, 
 		bool &lock, 
 		bool &unlock, 
 		bool &showViewerAfterExport, 
-		MString &branch,
 		bool &fixPobCrc
 	);
 

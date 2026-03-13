@@ -37,8 +37,8 @@ public:
 	MStatus doIt(const MArgList &argList);
 
 private:
-	static bool processArguments(const MArgList &args, bool &partOfOtherExport, bool &noRevertOnFail, bool &commitToSourceControl, bool &commitToCurrent, std::string &reexportBranch);
-	static void exportFromLogFile(const std::string& logFilename, const std::string& reexportBranch, bool commitToAlienbrain);
+	static bool processArguments(const MArgList &args, bool &partOfOtherExport, bool &noRevertOnFail);
+	static void exportFromLogFile(const std::string& logFilename);
 };
 
 // ======================================================================

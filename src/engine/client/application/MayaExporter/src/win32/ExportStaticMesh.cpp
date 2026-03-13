@@ -18,7 +18,6 @@
 #include "sharedDebug/PerformanceTimer.h"
 
 //local MayaExporter includes
-#include "AlienbrainImporter.h"
 #if !NO_DATABASE
 #include "DatabaseImporter.h"
 #endif
@@ -29,7 +28,6 @@
 #include "MayaUtility.h"
 #include "MayaMeshReader.h"
 #include "Messenger.h"
-#include "PerforceImporter.h"
 #include "PluginMain.h"
 #include "SetDirectoryCommand.h"
 #include "StaticMeshBuilder.h"
@@ -91,12 +89,9 @@ bool ExportStaticMesh::processArguments(
 	const MArgList &args,
 	MDagPath *targetDagPath,
 	bool &interactive,
-	bool &commitToSourceControl,
-	bool &createNewChangelist,
 	bool &lock,
 	bool &unlock,
 	bool &showViewerAfterExport,
-	MString &branch,
 	bool &fixPobCrc
 	)
 {
@@ -111,12 +106,9 @@ bool ExportStaticMesh::processArguments(
 	bool haveNode            = false;
 	bool isInteractive       = false;
 	interactive              = false;
-	commitToSourceControl    = false;
-	createNewChangelist      = false;
 	lock                     = false;
 	unlock                   = false;
 	showViewerAfterExport    = false;
-	bool haveBranch          = false;
 
 	// always non-silent unless the silent arg is present
 	messenger->endSilentExport();
@@ -139,10 +131,6 @@ bool ExportStaticMesh::processArguments(
 		else if (argName == ExportArgs::cs_showViewerAfterExport)
 		{
 			showViewerAfterExport = true;
-		}
-		else if (argName == ExportArgs::cs_submitArgName)
-		{
-			commitToSourceControl = true;
 		}
 		else if (argName == ExportArgs::cs_lockArgName)
 		{
@@ -183,22 +171,6 @@ bool ExportStaticMesh::processArguments(
 			// silent mode - disable message box feedback (logs messages instead)
 			messenger->startSilentExport();
 		}
-		else if (argName == ExportArgs::cs_branchArgName)
-		{
-			//-- handle branch argument
-			MESSENGER_REJECT(haveBranch, ("branch specified multiple times\n"));
-
-			branch = args.asString(argIndex + 1, &status);
-			MESSENGER_REJECT(!status, ("failed to get branch argument\n"));
-
-			// fixup argIndex
-			++argIndex;
-			haveBranch = true;
-		}
-		else if (argName == ExportArgs::cs_createNewChangelistArgName)
-		{
-			createNewChangelist = true;
-		}
 		else if (argName == ExportArgs::cs_fixPobCrc)
 		{
 			fixPobCrc = true;
@@ -225,7 +197,6 @@ bool ExportStaticMesh::processArguments(
 
 		haveNode = true;
 	}
-	MESSENGER_REJECT(commitToSourceControl && !haveBranch, ("no branch, i.e. \"-branch <branchname>\" was specified\n"));
 	MESSENGER_REJECT(!isInteractive && !haveNode, ("neither joint node (-node) nor (-interactive) was specified\n"));
 	return MStatus();
 }
@@ -257,25 +228,19 @@ MStatus ExportStaticMesh::doIt(const MArgList &args)
 	const char *const     textureWriteDir            = SetDirectoryCommand::getDirectoryString(TEXTURE_WRITE_DIR_INDEX);
 	const char *const     author                     = SetDirectoryCommand::getDirectoryString(AUTHOR_INDEX);
 
-	bool commitToSourceControl = false;
-	bool createNewChangelist   = false;
 	bool interactive           = false;
 	bool lock                  = false;
 	bool unlock                = false;
 	bool showViewerAfterExport = false;
 	bool fixPobCrc             = false;
-	MString branch;
 
 	const bool processSuccess = processArguments(
 		args, 
 		&targetDagPath, 
 		interactive, 
-		commitToSourceControl, 
-		createNewChangelist, 
 		lock, 
 		unlock, 
 		showViewerAfterExport,
-		branch,
 		fixPobCrc
 	);
 	MESSENGER_REJECT_STATUS(!processSuccess, ("argument processing failed\n"));
@@ -312,19 +277,6 @@ MStatus ExportStaticMesh::doIt(const MArgList &args)
 	//do the actual export to disk (the slow part)
 	MESSENGER_REJECT_STATUS(!hierarchy.build (transformList), ("failed to build hierarchy\n"));
 
-	if (fixPobCrc)
-	{
-		std::string const pobFileName =
-			PerforceImporter::findFileOnDisk("//depot/swg/" + std::string(branch.asChar()) + "/.../" + hierarchy.getBaseName() + ".pob");
-
-		MESSENGER_REJECT_STATUS(pobFileName.empty(), ("ExportStaticMesh::doIt() - Failed to find POB file (%s) in perforce.\n", pobFileName.c_str()));
-
-		// revert any local changes first since Fix POB CRC is intended to preserve the POB CRC from the last file submitted in perforce
-		IGNORE_RETURN(PerforceImporter::revertFile(pobFileName));
-
-		hierarchy.setPobFileName(pobFileName);
-	}
-
 	//load the log file
 	MString nodeName = hierarchy.getBaseName();
 	std::string shortLogFilename = nodeName.asChar();
@@ -337,13 +289,6 @@ MStatus ExportStaticMesh::doIt(const MArgList &args)
 	std::string reexportArguments = ExportArgs::cs_nodeArgName.asChar();
 	reexportArguments += " ";
 	reexportArguments += buffer;
-	if(commitToSourceControl)
-	{
-		reexportArguments += " ";
-		reexportArguments += ExportArgs::cs_branchArgName.asChar();
-		reexportArguments += " ";
-		reexportArguments += branch.asChar();
-	}
 	ExporterLog::setMayaExportOptions(reexportArguments);
 	IGNORE_RETURN(ExporterLog::loadLogFile(shortLogFilename));
 	std::string newLogFilename = SetDirectoryCommand::getDirectoryString(LOG_DIR_INDEX);
@@ -370,120 +315,9 @@ MStatus ExportStaticMesh::doIt(const MArgList &args)
 			MESSENGER_MESSAGE_BOX(NULL, "Local export failed, see output window", "Error!", MB_OK);
 	}
 
-	//only submit to source control if they want to and if the local export succeeded
-	if(writeSuccess && (commitToSourceControl || lock || unlock))
-	{
-		bool exportToPerforceSucceeded = false;
-
-// JU_TODO: alienbrain def out
-#if 0
-		if (!AlienbrainImporter::connectToServer())
-		{
-			MESSENGER_LOG_ERROR(("Unable to connect to Alienbrain\n"));
-			return MStatus::kFailure;
-		}
-
-		bool result = AlienbrainImporter::preImport(hierarchy.getBaseName(), interactive); 
-		//now that we have all the custom data, write the log file
-
-		if(!ExportManager::validateTextureList(interactive))
-		{
-			messenger->printWarningsAndErrors();
-			return MS::kSuccess;
-		}
-
-		IGNORE_RETURN(ExporterLog::writeStaticMesh (newLogFilename.c_str(), interactive));
-
-		if (result)
-		{
-			if(!lock && !unlock)
-				AlienbrainImporter::importLogFile(); 
-			AlienbrainImporter::storeFileProperties();
-
-			//import asset data into Asset Database
-#if !NO_DATABASE
-			IGNORE_RETURN(DatabaseImporter::startSession());
-			bool gotAppearance = DatabaseImporter::selectAppearance(interactive, nodeName.asChar());
-			if(!gotAppearance)
-			{
-				MESSENGER_LOG_ERROR(("No appearance selected or other AssetDatabase-related error occured, aborting.\n"));
-				IGNORE_RETURN(DatabaseImporter::endSession());
-				messenger->printWarningsAndErrors();
-				return MS::kSuccess;
-			}
-#endif
-
-			//import all the destination files into Perforce
-			bool branchSet = PerforceImporter::setBranch(branch.asChar());
-			if(branchSet)
-			{
-				exportToPerforceSucceeded = PerforceImporter::importCommon(interactive, createNewChangelist, lock, unlock);
-			}
-			else
-			{
-				MESSENGER_LOG_ERROR(("[%s] is not a valid branch, NOT submitting to Perforce\n", branch.asChar()));
-			}
-			PerforceImporter::reset();
-			
-			if(exportToPerforceSucceeded)
-			{
-#if !NO_DATABASE
-				if(!DatabaseImporter::importStaticMeshData(interactive, lock, unlock) && interactive)
-					MESSENGER_MESSAGE_BOX(NULL, "AssetDatabase import failed, see output window", "Error", MB_OK);
-#endif
-			}
-#if !NO_DATABASE
-			IGNORE_RETURN(DatabaseImporter::endSession());
-#endif
-		}
-		IGNORE_RETURN(AlienbrainImporter::disconnectFromServer());
-#else
-		IGNORE_RETURN(ExporterLog::writeStaticMesh (newLogFilename.c_str(), interactive));
-
-#if !NO_DATABASE
-		//import asset data into Asset Database
-		IGNORE_RETURN(DatabaseImporter::startSession());
-		bool gotAppearance = DatabaseImporter::selectAppearance(interactive, nodeName.asChar());
-		if(!gotAppearance)
-		{
-			MESSENGER_LOG_ERROR(("No appearance selected or other AssetDatabase-related error occured, aborting.\n"));
-			IGNORE_RETURN(DatabaseImporter::endSession());
-			messenger->printWarningsAndErrors();
-			return MS::kSuccess;
-		}
-#endif
-
-		//import all the destination files into Perforce
-		bool branchSet = PerforceImporter::setBranch(branch.asChar());
-		if(branchSet)
-		{
-			exportToPerforceSucceeded = PerforceImporter::importCommon(interactive, createNewChangelist, lock, unlock);
-		}
-		else
-		{
-			MESSENGER_LOG_ERROR(("[%s] is not a valid branch, NOT submitting to Perforce\n", branch.asChar()));
-		}
-		PerforceImporter::reset();
-			
-		if(exportToPerforceSucceeded)
-		{
-#if !NO_DATABASE
-			if(!DatabaseImporter::importStaticMeshData(interactive, lock, unlock) && interactive)
-				MESSENGER_MESSAGE_BOX(NULL, "AssetDatabase import failed, see output window", "Error", MB_OK);
-#endif
-		}
-#if !NO_DATABASE
-		IGNORE_RETURN(DatabaseImporter::endSession());
-#endif
-#endif
-// JU_TODO: end alienbrain def out
-	}
-	else
-	{
-		ExporterLog::setAssetGroup("Local export, N/A");
-		ExporterLog::setAssetName("Local export, N/A");
-		IGNORE_RETURN(ExporterLog::writeStaticMesh (newLogFilename.c_str(), interactive));
-	}
+	ExporterLog::setAssetGroup("Local export, N/A");
+	ExporterLog::setAssetName("Local export, N/A");
+	IGNORE_RETURN(ExporterLog::writeStaticMesh (newLogFilename.c_str(), interactive));
 	ExporterLog::remove();
 
 	messenger->printWarningsAndErrors();

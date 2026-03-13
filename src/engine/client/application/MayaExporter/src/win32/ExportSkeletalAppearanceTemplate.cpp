@@ -9,7 +9,6 @@
 #include "FirstMayaExporter.h"
 #include "ExportSkeletalAppearanceTemplate.h"
 
-#include "AlienbrainImporter.h"
 #include "clientSkeletalAnimation/SkeletalAppearanceTemplate.h"
 #if !NO_DATABASE
 #include "DatabaseImporter.h"
@@ -28,7 +27,6 @@
 #include "maya/MSelectionList.h"
 #include "maya/MStatus.h"
 #include "Messenger.h"
-#include "PerforceImporter.h"
 #include "PluginMain.h"
 #include "SetDirectoryCommand.h"
 #include "sharedFile/Iff.h"
@@ -105,12 +103,9 @@ MStatus ExportSkeletalAppearanceTemplate::doIt(const MArgList &argList)
 	bool success = false;
 
 	bool interactive = false;
-	bool commitToSourceControl = false;
 	bool lock = false;
 	bool unlock = false;
 	bool showViewerAfterExport = false;
-	bool createNewChangelist = false;
-	std::string branch;
 	MStatus status;
 	const unsigned int argCount = argList.length();
 	for (unsigned int argIndex = 0; argIndex < argCount; ++argIndex)
@@ -123,10 +118,6 @@ MStatus ExportSkeletalAppearanceTemplate::doIt(const MArgList &argList)
 		{
 			interactive = true;
 		}
-		else if (arg == ExportArgs::cs_submitArgName)
-		{
-			commitToSourceControl = true;
-		}
 		else if (arg == ExportArgs::cs_lockArgName)
 		{
 			lock = true;
@@ -134,12 +125,6 @@ MStatus ExportSkeletalAppearanceTemplate::doIt(const MArgList &argList)
 		else if (arg == ExportArgs::cs_unlockArgName)
 		{
 			unlock = true;
-		}
-		else if (arg == ExportArgs::cs_branchArgName)
-		{
-			branch = argList.asString(argIndex + 1, &status).asChar();
-			// fixup argIndex
-			++argIndex;
 		}
 		else if (arg == ExportArgs::cs_showViewerAfterExport)
 		{
@@ -163,10 +148,6 @@ MStatus ExportSkeletalAppearanceTemplate::doIt(const MArgList &argList)
 			// fixup argIndex
 			++argIndex;
 		}
-		else if (arg == ExportArgs::cs_createNewChangelistArgName)
-		{
-			createNewChangelist = true;
-		}
 		else
 		{
 			MESSENGER_LOG_ERROR(("unknown argument [%s].\n", arg.asChar()));
@@ -175,32 +156,12 @@ MStatus ExportSkeletalAppearanceTemplate::doIt(const MArgList &argList)
 	}
 
 
-/*
-	//check for either "-interactive", "-interactive -submit", "-interactive -lock", or "-interactive -unlock"
-	if (((args.length() >= 1) && (args.length() <= 4)) && (args.asString(0) == ExportArgs::cs_interactiveArgName))
-	{	
-		if (args.asString(1) == ExportArgs::cs_submitArgName)
-			success = createInteractively(true, true, false, false);
-		else if (args.asString(1) == ExportArgs::cs_lockArgName)
-			success = createInteractively(true, true, true, false);
-		else if (args.asString(1) == ExportArgs::cs_unlockArgName)
-			success = createInteractively(true, true, false, true);
-		else 
- 			success = createInteractively(false, true, false, false);
-	}
-	else
-		success = createFromArgList(args);
-*/
-
 	if(interactive)
     {
  		success = createInteractively(
-			commitToSourceControl, 
-			createNewChangelist, 
 			lock ,
 			unlock, 
-			showViewerAfterExport, 
-			branch);
+			showViewerAfterExport);
     }
 	else
 	{
@@ -233,12 +194,8 @@ bool ExportSkeletalAppearanceTemplate::createFromArgList(const MArgList &argList
 	StringVector  meshGeneratorReferenceNames;
 	std::string   animationStateGraphReferenceName;
 	std::string   outputShortName;
-	bool          commitToSourceControl = false;
-	bool          createNewChangelist   = false;
 	bool          lock                  = false;
 	bool          unlock                = false;
-	std::string   branch;
-	bool          haveBranch            = false;
 	MStatus       status;
 
 	ExporterLog::install (messenger);
@@ -275,10 +232,6 @@ bool ExportSkeletalAppearanceTemplate::createFromArgList(const MArgList &argList
 		{
 			// nothing to do.
 		}
-		else if (arg == ExportArgs::cs_submitArgName)
-		{
-			commitToSourceControl = true;
-		}
 		else if (arg == ExportArgs::cs_lockArgName)
 		{
 			lock = true;
@@ -305,22 +258,6 @@ bool ExportSkeletalAppearanceTemplate::createFromArgList(const MArgList &argList
 			++argIndex;
 			skeletonReferenceNames.push_back(argList.asString(argIndex).asChar());
 		}
-		else if (arg == ExportArgs::cs_branchArgName)
-		{
-			//-- handle branch argument
-			MESSENGER_REJECT(haveBranch, ("branch specified multiple times\n"));
-
-			branch = argList.asString(argIndex + 1, &status).asChar();
-			MESSENGER_REJECT(!status, ("failed to get branch argument\n"));
-
-			// fixup argIndex
-			++argIndex;
-			haveBranch = true;
-		}
-		else if (arg == ExportArgs::cs_createNewChangelistArgName)
-		{
-			createNewChangelist = true;
-		}
 		else if (arg == ExportArgs::cs_showViewerAfterExport)
 		{
 			// don't show viewer on re-exports - ignore this argument
@@ -331,8 +268,6 @@ bool ExportSkeletalAppearanceTemplate::createFromArgList(const MArgList &argList
 			return MStatus::kFailure;
 		}
 	}
-
-	MESSENGER_REJECT(commitToSourceControl && !haveBranch, ("no branch, i.e. \"-branch <branchname>\" was specified\n"));
 
 	//build export options, to be stored in the log file
 	//outputfile
@@ -369,14 +304,6 @@ bool ExportSkeletalAppearanceTemplate::createFromArgList(const MArgList &argList
 		reexportArguments += animationStateGraphReferenceName + "\"";
 	}
 
-	if(commitToSourceControl)
-	{
-		reexportArguments += " ";
-		reexportArguments += ExportArgs::cs_branchArgName.asChar();
-		reexportArguments += " ";
-		reexportArguments += branch;
-	}
-
 	//set export options
 	ExporterLog::setMayaExportOptions(reexportArguments);
 
@@ -394,115 +321,15 @@ bool ExportSkeletalAppearanceTemplate::createFromArgList(const MArgList &argList
 	MESSENGER_REJECT_STATUS(outputShortName.empty(), ("caller must provide output filename with [%s] <filename>.\n", ExportArgs::cs_outputFileNameArgName.asChar()));
 	MESSENGER_REJECT_STATUS(meshGeneratorReferenceNames.empty() && skeletonReferenceNames.empty(), ("caller must specify at least one skeleton or mesh.\n"));
 
-	//-- create the SAT file
-	if(commitToSourceControl || lock || unlock)
-	{
-		bool exportToPerforceSucceeded = false;
-
-// JU_TODO: alienbrain def out
-#if 0
-		if (!AlienbrainImporter::connectToServer())
-		{
-			MESSENGER_LOG_ERROR(("Unable to connect to Alienbrain\n"));
-			return MStatus::kFailure;
-		}
-
-		bool result = AlienbrainImporter::preImport(outputShortName.c_str(), false);
-
-		if(!ExportManager::validateTextureList(false))
-		{
-			messenger->printWarningsAndErrors();
-			return MS::kSuccess;
-		}
-
-		//-- create the sat file
-		const bool csfResult = createSatFile(outputShortName, skeletonReferenceNames, meshGeneratorReferenceNames, animationStateGraphReferenceName);
-		IGNORE_RETURN(ExporterLog::writeSkeletalAppearanceTemplate(newLogFilename, true));
-		MESSENGER_REJECT(!csfResult, ("createSatFile() failed.\n"));
-		if (result)
-		{
-			if(!lock && !unlock)
-				AlienbrainImporter::importLogFile();
-			AlienbrainImporter::storeFileProperties();
-
-			IGNORE_RETURN(DatabaseImporter::startSession());
-			bool gotAppearance = DatabaseImporter::selectAppearance(false, nodeName.c_str());
-			IGNORE_RETURN(DatabaseImporter::endSession());
-			if(!gotAppearance)
-			{
-				MESSENGER_LOG_ERROR(("No appearance selected or other AssetDatabase-related error occured, aborting.\n"));
-				return MS::kSuccess;
-			}
-			
-			bool branchSet = PerforceImporter::setBranch(branch);
-			if(branchSet)
-			{
-				exportToPerforceSucceeded = PerforceImporter::importCommon(false, createNewChangelist, lock, unlock);
-			}
-			else
-			{
-				MESSENGER_LOG_ERROR(("[%s] is not a valid branch, NOT submitting to Perforce\n", branch));
-			}
-
-			PerforceImporter::reset();
-
-			if(!exportToPerforceSucceeded)
-			{
-				MESSENGER_LOG_ERROR(("Couldn't copy SAT to perforce location on local disk, aborting.\n"));
-				return MS::kSuccess;
-			}
-		}
-		IGNORE_RETURN(AlienbrainImporter::disconnectFromServer());
-#else
-		
-		//-- create the sat file
-		const bool csfResult = createSatFile(outputShortName, skeletonReferenceNames, meshGeneratorReferenceNames, animationStateGraphReferenceName);
-		IGNORE_RETURN(ExporterLog::writeSkeletalAppearanceTemplate(newLogFilename, true));
-		MESSENGER_REJECT(!csfResult, ("createSatFile() failed.\n"));
-		
-#if !NO_DATABASE
-		IGNORE_RETURN(DatabaseImporter::startSession());
-		bool gotAppearance = DatabaseImporter::selectAppearance(false, nodeName.c_str());
-		IGNORE_RETURN(DatabaseImporter::endSession());
-		if(!gotAppearance)
-		{
-			MESSENGER_LOG_ERROR(("No appearance selected or other AssetDatabase-related error occured, aborting.\n"));
-			return MS::kSuccess;
-		}
-#endif
-		
-		bool branchSet = PerforceImporter::setBranch(branch);
-		if(branchSet)
-		{
-			exportToPerforceSucceeded = PerforceImporter::importCommon(false, createNewChangelist, lock, unlock);
-		}
-		else
-		{
-			MESSENGER_LOG_ERROR(("[%s] is not a valid branch, NOT submitting to Perforce\n", branch));
-		}
-
-		PerforceImporter::reset();
-
-		if(!exportToPerforceSucceeded)
-		{
-			MESSENGER_LOG_ERROR(("Couldn't copy SAT to perforce location on local disk, aborting.\n"));
-			return MS::kSuccess;
-		}
-#endif
-// JU_TODO: end alienbrain def out
-	}
-	else
-	{
-		//-- create the sat file
-		const bool csfResult = createSatFile(outputShortName, skeletonReferenceNames, meshGeneratorReferenceNames, animationStateGraphReferenceName);
-		MESSENGER_REJECT(!csfResult, ("createSatFile() failed.\n"));
-		ExporterLog::setAssetGroup("Local export, N/A");
-		ExporterLog::setAssetName("Local export, N/A");
-		IGNORE_RETURN(ExporterLog::writeSkeletalAppearanceTemplate(newLogFilename, true));
-	}
+	//-- create the sat file
+	const bool csfResult = createSatFile(outputShortName, skeletonReferenceNames, meshGeneratorReferenceNames, animationStateGraphReferenceName);
+	MESSENGER_REJECT(!csfResult, ("createSatFile() failed.\n"));
+	ExporterLog::setAssetGroup("Local export, N/A");
+	ExporterLog::setAssetName("Local export, N/A");
+	IGNORE_RETURN(ExporterLog::writeSkeletalAppearanceTemplate(newLogFilename, true));
 
 	//-- Export MeshGeneratorTemplate instances given MeshGeneratorTemplate reference names.
-	const bool emgtSuccess = exportMeshGeneratorTemplates(meshGeneratorReferenceNames, commitToSourceControl, createNewChangelist, false, lock, unlock, branch);
+	const bool emgtSuccess = exportMeshGeneratorTemplates(meshGeneratorReferenceNames, false, lock, unlock);
 	MESSENGER_REJECT(!emgtSuccess, ("failed to export MeshGeneratorTemplate data associated with this SAT."));
 
 	ExporterLog::remove();
@@ -513,7 +340,7 @@ bool ExportSkeletalAppearanceTemplate::createFromArgList(const MArgList &argList
 
 // ----------------------------------------------------------------------
 
-bool ExportSkeletalAppearanceTemplate::createInteractively(bool commitToSourceControl, bool createNewChangelist, bool lock, bool unlock, bool showViewerAfterExport, const std::string & branch)
+bool ExportSkeletalAppearanceTemplate::createInteractively(bool lock, bool unlock, bool showViewerAfterExport)
 {
 	ExporterLog::install (messenger);
 
@@ -611,17 +438,6 @@ bool ExportSkeletalAppearanceTemplate::createInteractively(bool commitToSourceCo
 		reexportArguments += asgTemplateName + "\"";
 	}
 
-	// TPERRY - add branch info to export args in log file
-	if(commitToSourceControl)
-	{
-		reexportArguments += " ";
-		reexportArguments += ExportArgs::cs_branchArgName.asChar();
-		reexportArguments += " ";
-		reexportArguments += branch;
-	}
-
-	IGNORE_RETURN(PerforceImporter::setBranch(branch));
-
 	//set export options
 	ExporterLog::setMayaExportOptions(reexportArguments);
 
@@ -630,74 +446,6 @@ bool ExportSkeletalAppearanceTemplate::createInteractively(bool commitToSourceCo
 	std::string newLogFilename = SetDirectoryCommand::getDirectoryString(LOG_DIR_INDEX);
 	newLogFilename += shortLogFilename;
 
-	if(commitToSourceControl)
-	{
-		bool exportToPerforceSucceeded = false;
-
-// JU_TODO: alienbrain def out
-#if 0
-		if (!AlienbrainImporter::connectToServer())
-		{
-			MESSENGER_LOG_ERROR(("Unable to connect to Alienbrain\n"));
-			return MStatus::kFailure;
-		}
-
-		bool result = AlienbrainImporter::preImport(outputFileShortName.c_str(), true);
-
-		if(!ExportManager::validateTextureList(true))
-		{
-			messenger->printWarningsAndErrors();
-			return MS::kSuccess;
-		}
-		
-		//-- create the sat file
-		const bool csfResult = createSatFile(outputFileShortName, skeletonTemplateNames, meshNames, asgTemplateName);
-		MESSENGER_REJECT(!csfResult, ("createSatFile() failed.\n"));
-		IGNORE_RETURN(ExporterLog::writeSkeletalAppearanceTemplate(newLogFilename, true));
-		if (result)
-		{
-			AlienbrainImporter::importLogFile();
-			AlienbrainImporter::storeFileProperties();
-			exportToPerforceSucceeded = PerforceImporter::importCommon(true, createNewChangelist, lock, unlock);
-			PerforceImporter::reset();
-		}
-		IGNORE_RETURN(AlienbrainImporter::disconnectFromServer());
-#else
-		if(!ExportManager::validateTextureList(true))
-		{
-			messenger->printWarningsAndErrors();
-			return MS::kSuccess;
-		}
-		
-		//-- create the sat file
-		const bool csfResult = createSatFile(outputFileShortName, skeletonTemplateNames, meshNames, asgTemplateName);
-		MESSENGER_REJECT(!csfResult, ("createSatFile() failed.\n"));
-		IGNORE_RETURN(ExporterLog::writeSkeletalAppearanceTemplate(newLogFilename, true));
-	
-		exportToPerforceSucceeded = PerforceImporter::importCommon(true, createNewChangelist, lock, unlock);
-		PerforceImporter::reset();
-	
-#endif
-// JU_TODO: end alienbrain def out
-
-		if(!exportToPerforceSucceeded)
-		{
-			MESSENGER_LOG_ERROR(("Couldn't copy SAT to perforce location on local disk, aborting.\n"));
-			return MS::kSuccess;
-		}
-
-#if !NO_DATABASE
-		IGNORE_RETURN(DatabaseImporter::startSession());
-		bool gotAppearance = DatabaseImporter::selectAppearance(true, nodeName.asChar());
-		IGNORE_RETURN(DatabaseImporter::endSession());
-		if(!gotAppearance)
-		{
-			MESSENGER_LOG_ERROR(("No appearance selected or other AssetDatabase-related error occured, aborting.\n"));
-			return MS::kSuccess;
-		}
-#endif
-	}
-	else
 	{
 		//-- create the sat file
 		const bool csfResult = createSatFile(outputFileShortName, skeletonTemplateNames, meshNames, asgTemplateName);
@@ -710,7 +458,7 @@ bool ExportSkeletalAppearanceTemplate::createInteractively(bool commitToSourceCo
 	ExporterLog::remove();
 
 	//-- Export MeshGeneratorTemplate instances given MeshGeneratorTemplate reference names.
-	const bool emgtSuccess = exportMeshGeneratorTemplates(meshNames, commitToSourceControl, createNewChangelist, true, lock, unlock, branch);
+	const bool emgtSuccess = exportMeshGeneratorTemplates(meshNames, true, lock, unlock);
 	MESSENGER_REJECT(!emgtSuccess, ("failed to export MeshGeneratorTemplate data associated with this SAT."));
 	if(showViewerAfterExport)
 	{
@@ -1151,7 +899,7 @@ int CALLBACK ExportSkeletalAppearanceTemplate::exportSatDialogProc(HWND dialogHa
  *          process.
  */
 
- bool ExportSkeletalAppearanceTemplate::exportMeshGeneratorTemplates(const StringVector &meshReferencePathNames, bool commitToSourceControl, bool createNewChangelist, bool isInteractive, bool lock, bool unlock, const std::string & branch)
+ bool ExportSkeletalAppearanceTemplate::exportMeshGeneratorTemplates(const StringVector &meshReferencePathNames, bool isInteractive, bool lock, bool unlock)
 {
 	//-- Save the active selection list.
 	MSelectionList  initialSelectionList;
@@ -1168,11 +916,6 @@ int CALLBACK ExportSkeletalAppearanceTemplate::exportSatDialogProc(HWND dialogHa
 		status = exportArgList.addArg(ExportArgs::cs_interactiveArgName);
 		STATUS_REJECT(status, "exportArgList.addArg()");
 	}
-	if(commitToSourceControl)
-	{
-		status = exportArgList.addArg(ExportArgs::cs_submitArgName);
-		STATUS_REJECT(status, "exportArgList.addArg()");
-	}
 	if(lock)
 	{
 		status = exportArgList.addArg(ExportArgs::cs_lockArgName);
@@ -1181,16 +924,6 @@ int CALLBACK ExportSkeletalAppearanceTemplate::exportSatDialogProc(HWND dialogHa
 	if(unlock)
 	{
 		status = exportArgList.addArg(ExportArgs::cs_unlockArgName);
-		STATUS_REJECT(status, "exportArgList.addArg()");
-	}
-	if(commitToSourceControl)
-	{
-		status = exportArgList.addArg(ExportArgs::cs_branchArgName);
-		status = exportArgList.addArg(MString(branch.c_str()));
-	}
-	if(createNewChangelist)
-	{
-		status = exportArgList.addArg(ExportArgs::cs_createNewChangelistArgName);
 		STATUS_REJECT(status, "exportArgList.addArg()");
 	}
 

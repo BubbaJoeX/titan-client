@@ -33,17 +33,10 @@ public:
 	static const MString      cs_outputFileNameArgName;
 	static const MString      cs_partOfOtherExportArgName;
 	static const MString      cs_skeletonArgName;
-	static const MString      cs_submitArgName;
 	static const MString      cs_unlockArgName;
 	static const MString      cs_warningsArgName;
-	static const MString      cs_branchArgName;
 	static const MString      cs_silentArgName;
 	static const MString      cs_showViewerAfterExport;
-	static const std::string  cs_currentBranch;
-	static const std::string  cs_x1Branch;
-	static const std::string  cs_x2Branch;
-	static const std::string  cs_noneBranch;
-	static const MString      cs_createNewChangelistArgName;
 	static const MString      cs_disableCompression;
 	static const MString      cs_fixPobCrc;
 };

@@ -43,7 +43,7 @@ private:
 private:
 
 	static bool  createFromArgList(const MArgList &argList);
-	static bool  createInteractively(bool commitToSourceControl, bool createNewChangelist, bool lock, bool unlock, bool showViewerAfterExport,const std::string & branch);
+	static bool  createInteractively(bool lock, bool unlock, bool showViewerAfterExport);
 
 	static bool  createSatFile(const std::string &outputFileShortName, const StringVector &skeletonReferenceNames, const StringVector &meshGeneratorReferenceNames, const std::string &animationStateGraphReferenceName);
 	static bool  getMeshGeneratorReferenceNames(const DagPathVector &shapeDagPaths, StringVector &meshGeneratorReferenceNames);
@@ -53,7 +53,7 @@ private:
 	static bool  getUserData(std::string &outputFileShortName, std::string &animationStateGraphTemplateName);
 	static int CALLBACK exportSatDialogProc(HWND dialogHandle, UINT message, WPARAM wParam, LPARAM lParam);
 #endif
-	static bool  exportMeshGeneratorTemplates(const StringVector &meshReferencePathNames, bool commitToSourceControl, bool createNewChangelist, bool isInteractive, bool lock, bool unlock, const std::string & branch);
+	static bool  exportMeshGeneratorTemplates(const StringVector &meshReferencePathNames, bool isInteractive, bool lock, bool unlock);
 	static void  getNodeNameFromTemplatePathName(const std::string &templatePathName, std::string &nodeName);
 
 private:

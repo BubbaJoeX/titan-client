@@ -87,11 +87,8 @@ private:
 		AnimationInfoVector *animations, 
 		bool &userAbort, 
 		bool &interactive, 
-		bool &commitToAlienbrain, 
-		bool &createNewChangelist, 
 		bool &lock, 
 		bool &unlock, 
-		MString &branch,
 		bool &disableCompression
 		);
 

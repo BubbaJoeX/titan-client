@@ -52,12 +52,9 @@ private:
 		int *bindPoseFrameNumber, 
 		MDagPath *targetDagPath, 
 		bool &interactive, 
-		bool &commitToSourceControl, 
-		bool &commitToCurrent, 
 		bool &lock, 
 		bool &unlock, 
-		bool &showViewerAfterExport, 
-		MString &branch);
+		bool &showViewerAfterExport);
 	static bool     collectSkeletonNames(const MDagPath &lodGroupDagPath, CrcLowerStringVector &skeletonShortNames);
 	static bool     addJointSkeletonNames(const MDagPath &jointPath, CrcLowerStringVector &skeletonShortNames);
 

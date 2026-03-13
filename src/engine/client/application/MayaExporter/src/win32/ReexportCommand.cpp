@@ -12,11 +12,9 @@
 #include "maya/MFileIO.h"
 #include "maya/MGlobal.h"
 
-#include "AlienbrainImporter.h"
 #include "ExportArgs.h"
 #include "ExporterLog.h"
 #include "Messenger.h"
-#include "PerforceImporter.h"
 
 static Messenger *messenger;
 
@@ -52,7 +50,7 @@ void *ReexportCommand::creator()
  * Since a single maya file may export many items (skeletons, meshs, anims, etc.), each has its own log
  * file that knows how to recreate that exported item.
  */
-void ReexportCommand::exportFromLogFile(const std::string& logFilename, const std::string& reexportBranch, bool commitToAlienbrain)
+void ReexportCommand::exportFromLogFile(const std::string& logFilename)
 {
 	FILE* file = fopen(logFilename.c_str(), "r");
 	if(!file)
@@ -87,21 +85,6 @@ void ReexportCommand::exportFromLogFile(const std::string& logFilename, const st
 		}
 	}
 
-	//see if the log file points to a non-z: path
-	bool hadToFixUpPath = false;
-	pos = filename.find("/SWG/");
-	std::string prepend;
-	if(pos != std::string::npos) //lint !e737 !e650 std::string::npos isn't same signage as std::string's find(), sigh
-	{
-		prepend = filename.substr(0, pos);
-		if(_stricmp(prepend.c_str(), "z:") != 0)
-		{
-			IGNORE_RETURN(filename.erase(0, pos));
-			filename = "z:" + filename;
-			hadToFixUpPath = true;
-		}
-	}
-
 	//do not try to export from a log file that did not come from this file
 	//need a case-insensitive compare since the filename given might not be capitalized the same way as ours
 	if(_stricmp(sourceFilename.c_str(), filename.c_str()) != 0)
@@ -109,10 +92,6 @@ void ReexportCommand::exportFromLogFile(const std::string& logFilename, const st
 		fclose(file);
 		return;
 	}
-
-	//now that we know we have the right log file, complain if we had to go to extra lengths to figure it out
-	if(hadToFixUpPath)
-		MESSENGER_LOG_WARNING(("WARNING, log file doesn't point to z:, but to %s instead, export will succeed but please fix\n", prepend.c_str()));
 
 	pos = 0;
 	endPos = 0;
@@ -153,39 +132,8 @@ void ReexportCommand::exportFromLogFile(const std::string& logFilename, const st
 		}
 	}
 
-	// TPERRY - added ability to specify/override branch for reexport
-	if (reexportBranch.size())
-	{
-		std::string tempOptions = reexportOptions;
-		const std::string branchArg = "-branch ";
-		const std::string nextArg = " -";
-		pos = tempOptions.find(branchArg);
-		if (pos != std::string::npos)
-		{
-			// replace branch arg from log w/reexport branch
-			reexportOptions = tempOptions.substr(0, pos-1);
-			reexportOptions += " " + branchArg + reexportBranch;
-	
-			pos = tempOptions.find(nextArg);
-			if (pos != std::string::npos)
-			{
-				endPos = tempOptions.find('\n', pos);
-				reexportOptions += tempOptions.substr(pos, endPos);
-			}
-		}
-		else
-		{
-			// add reexport branch
-			reexportOptions += " " + branchArg + reexportBranch;
-		}
-	}
-
 	std::string melString = mayaCommand + " ";
 	melString += reexportOptions;
-	if(commitToAlienbrain)
-	{
-		melString += ExportArgs::cs_submitArgName.asChar();
-	}
 
 	//close the log file before we do the export
 	fclose(file);
@@ -196,7 +144,7 @@ void ReexportCommand::exportFromLogFile(const std::string& logFilename, const st
 
 // ======================================================================
 
-bool ReexportCommand::processArguments(const MArgList &args, bool &partOfOtherExport, bool &noRevertOnFail, bool &commitToSourceControl, bool &createNewChangelist, std::string &reexportBranch)
+bool ReexportCommand::processArguments(const MArgList &args, bool &partOfOtherExport, bool &noRevertOnFail)
 {
 	MESSENGER_INDENT;
 	MStatus  status;
@@ -210,7 +158,6 @@ bool ReexportCommand::processArguments(const MArgList &args, bool &partOfOtherEx
 	//-- handle each argument
 	partOfOtherExport  = false;
 	noRevertOnFail     = false;
-	createNewChangelist = false;
 
 	for (unsigned argIndex = 0; argIndex < argCount; ++argIndex)
 	{
@@ -226,21 +173,6 @@ bool ReexportCommand::processArguments(const MArgList &args, bool &partOfOtherEx
 		else if (argName == ExportArgs::cs_noRevertOnFailArgName)
 		{
 			noRevertOnFail     = true;
-		}
-		else if (argName == ExportArgs::cs_submitArgName)
-		{
-			commitToSourceControl = true;
-		}
-		else if (argName == ExportArgs::cs_branchArgName)
-		{
-			// TPERRY - added to allow branch specification
-			reexportBranch = args.asString(argIndex + 1, &status).asChar();
-			// fixup argIndex
-			++argIndex;
-		}
-		else if (argName == ExportArgs::cs_createNewChangelistArgName)
-		{
-			createNewChangelist = true;
 		}
 		else if (argName == ExportArgs::cs_showViewerAfterExport)
 		{
@@ -268,21 +200,8 @@ MStatus ReexportCommand::doIt(const MArgList &argList)
 
 	bool partofotherexport     = false;
 	bool noRevertOnFail        = false;
-	bool commitToSourceControl = false;
-	bool createNewChangelist   = false;
 
-	std::string reexportBranch;
-
-	IGNORE_RETURN(processArguments(argList, partofotherexport, noRevertOnFail, commitToSourceControl, createNewChangelist, reexportBranch));
-
-	if(noRevertOnFail)
-		PerforceImporter::setRevertOnFail(false);
-
-// JU_TODO: alienbrain def out
-#if 0
-	AlienbrainImporter::startMultiExport();
-#endif
-// JU_TODO: end alienbrain def out
+	IGNORE_RETURN(processArguments(argList, partofotherexport, noRevertOnFail));
 
 	//the log file(s) should be in ..\log, so find them
 	const std::string sourceFilename = MFileIO::currentFile().asChar();
@@ -376,7 +295,7 @@ MStatus ReexportCommand::doIt(const MArgList &argList)
 			if(filename.find(".log") != std::string::npos) //lint !e737 !e650 std::string::npos isn't same signage as std::string's find(), sigh
 			{
 				std::string logFile = logDirectory + filename;
-				exportFromLogFile(logFile.c_str(), reexportBranch, commitToSourceControl);
+				exportFromLogFile(logFile.c_str());
 			}
 		}
 	}
@@ -386,15 +305,6 @@ MStatus ReexportCommand::doIt(const MArgList &argList)
 	melString = "system(\"del \\\"";
 	melString += listOfLogsFilename + "\\\"\")";
 	IGNORE_RETURN(MGlobal::executeCommand(melString.c_str()));
-
-// JU_TODO: alienbrain def out
-#if 0
-	if(commitToSourceControl && !partofotherexport)
-	{
-		AlienbrainImporter::endMultiExport();
-	}
-#endif
-// JU_TODO: end alienbrain def out
 
 	if(!partofotherexport)
 	{

@@ -16,7 +16,6 @@
 #include "sharedMath/Transform.h"
 
 //local mayaExporter includes
-#include "AlienbrainImporter.h"
 #include "Messenger.h"
 
 //maya sdk includes

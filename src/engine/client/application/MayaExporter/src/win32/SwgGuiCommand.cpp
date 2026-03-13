@@ -1,0 +1,180 @@
+// ======================================================================
+//
+// SwgGuiCommand.cpp
+//
+// ======================================================================
+
+#include "FirstMayaExporter.h"
+#include "SwgGuiCommand.h"
+
+#include "maya/MArgList.h"
+#include "maya/MGlobal.h"
+#include "maya/MString.h"
+
+#include <string>
+
+// ======================================================================
+
+SwgGuiCommand::SwgGuiCommand()
+{
+}
+
+// ----------------------------------------------------------------------
+
+void *SwgGuiCommand::creator()
+{
+	return new SwgGuiCommand();
+}
+
+// ----------------------------------------------------------------------
+
+MStatus SwgGuiCommand::doIt(const MArgList &)
+{
+	// Build and show the SWG Import/Export GUI via MEL (escaped string for pre-C++11 compatibility)
+	static const char *melScript =
+		"global proc swgGuiBuildWindow()\n"
+		"{\n"
+		"	if (`window -exists swgGuiWindow`)\n"
+		"	{\n"
+		"		showWindow swgGuiWindow;\n"
+		"		return;\n"
+		"	}\n"
+		"	window -title \"SWG Import / Export\" -widthHeight 420 520 swgGuiWindow;\n"
+		"	columnLayout -adj true swgGuiMain;\n"
+		"	frameLayout -label \"Data Root (for short paths like appearance/...)\" -collapsable true -collapse false swgGuiBaseFrame;\n"
+		"		columnLayout -adj true;\n"
+		"		textField -text \"\" swgGuiBaseDirField;\n"
+		"		rowLayout -numberOfColumns 2 -columnWidth2 80 80;\n"
+		"			button -label \"Set Base Dir\" -command \"swgGuiSetBaseDir\";\n"
+		"			button -label \"Browse...\" -command \"swgGuiBrowseBaseDir\";\n"
+		"		setParent ..;\n"
+		"		setParent ..;\n"
+		"	setParent ..;\n"
+		"	tabLayout -innerMarginWidth 5 -innerMarginHeight 5 swgGuiTabs;\n"
+		"	columnLayout -adj true swgImportColumn;\n"
+		"		frameLayout -label \"Import\" -collapsable true -collapse false;\n"
+		"			columnLayout -adj true -columnOffset \"both\" 5;\n"
+		"				text -label \"Type:\";\n"
+		"				optionMenu swgGuiImportMenu;\n"
+		"					menuItem -label \"Skeleton (.skt)\";\n"
+		"					menuItem -label \"Skeletal Mesh (.mgn)\";\n"
+		"					menuItem -label \"LOD Mesh (.lmg)\";\n"
+		"					menuItem -label \"Static Mesh (.msh/.apt)\";\n"
+		"					menuItem -label \"Shader (.sht)\";\n"
+		"					menuItem -label \"Animation (.ans)\";\n"
+		"					menuItem -label \"Portal Object (.pob)\";\n"
+		"					menuItem -label \"SAT (.sat)\";\n"
+		"				text -label \"File path (full or short, e.g. appearance/skeleton/all_b.skt):\";\n"
+		"				textField -text \"\" swgGuiImportPathField;\n"
+		"				rowLayout -numberOfColumns 2 -columnWidth2 80 80;\n"
+		"					button -label \"Browse...\" -command \"swgGuiImportBrowse\";\n"
+		"					button -label \"Import\" -command \"swgGuiDoImport\" -backgroundColor 0.4 0.7 0.4;\n"
+		"				setParent ..;\n"
+		"			setParent ..;\n"
+		"		setParent ..;\n"
+		"	setParent ..;\n"
+		"	columnLayout -adj true swgExportColumn;\n"
+		"		frameLayout -label \"Export\" -collapsable true -collapse false;\n"
+		"			columnLayout -adj true -columnOffset \"both\" 5;\n"
+		"				text -label \"Type:\";\n"
+		"				optionMenu swgGuiExportMenu;\n"
+		"					menuItem -label \"Static Mesh (MSH/LOD)\";\n"
+		"					menuItem -label \"Skeleton (SKT)\";\n"
+		"					menuItem -label \"Mesh Generator (MGN)\";\n"
+		"					menuItem -label \"Animation (ANS)\";\n"
+		"					menuItem -label \"SAT and MGN\";\n"
+		"				rowLayout -numberOfColumns 1;\n"
+		"					checkBox -label \"Launch Viewer after export\" -value 1 swgGuiExportShowViewer;\n"
+		"				setParent ..;\n"
+		"				rowLayout -numberOfColumns 1;\n"
+		"					checkBox -label \"Animation: Export uncompressed\" -value 0 swgGuiExportAnimUncompressed;\n"
+		"				setParent ..;\n"
+		"				rowLayout -numberOfColumns 1;\n"
+		"					checkBox -label \"Static Mesh: Fix POB CRC\" -value 0 swgGuiExportFixPobCrc;\n"
+		"				setParent ..;\n"
+		"				separator -height 10;\n"
+		"				button -label \"Export\" -command \"swgGuiDoExport\" -backgroundColor 0.4 0.5 0.8;\n"
+		"			setParent ..;\n"
+		"		setParent ..;\n"
+		"	setParent ..;\n"
+		"	tabLayout -edit -tabLabel 0 \"Import\" -tabLabel 1 \"Export\" swgGuiTabs;\n"
+		"	setParent ..;\n"
+		"	showWindow swgGuiWindow;\n"
+		"}\n"
+		"global proc swgGuiSetBaseDir()\n"
+		"{\n"
+		"	string $path = `textField -query -text swgGuiBaseDirField`;\n"
+		"	if (size($path) > 0)\n"
+		"	{\n"
+		"		setBaseDir $path;\n"
+		"		print (\"Base directory set: \" + $path + \"\\n\");\n"
+		"	}\n"
+		"	else\n"
+		"	{\n"
+		"		warning \"Enter a base directory path first.\";\n"
+		"	}\n"
+		"}\n"
+		"global proc swgGuiBrowseBaseDir()\n"
+		"{\n"
+		"	string $result[] = `fileDialog2 -fileMode 3 -caption \"Select Data Root\" -okCaption \"Select\"`;\n"
+		"	if (size($result) > 0)\n"
+		"	{\n"
+		"		textField -edit -text $result[0] swgGuiBaseDirField;\n"
+		"	}\n"
+		"}\n"
+		"global proc swgGuiImportBrowse()\n"
+		"{\n"
+		"	string $result[] = `fileDialog2 -fileMode 1 -caption \"Select File to Import\" -okCaption \"Open\" -fileFilter \"All Files (*.*)\"`;\n"
+		"	if (size($result) > 0)\n"
+		"	{\n"
+		"		textField -edit -text $result[0] swgGuiImportPathField;\n"
+		"	}\n"
+		"}\n"
+		"global proc swgGuiDoImport()\n"
+		"{\n"
+		"	string $path = `textField -query -text swgGuiImportPathField`;\n"
+		"	if (size($path) == 0)\n"
+		"	{\n"
+		"		warning \"Enter a file path to import.\";\n"
+		"		return;\n"
+		"	}\n"
+		"	int $idx = `optionMenu -query -select swgGuiImportMenu`;\n"
+		"	string $cmd = \"\";\n"
+		"	if ($idx == 1) $cmd = \"importSkeleton -i \\\"\" + $path + \"\\\"\";\n"
+		"	else if ($idx == 2) $cmd = \"importSkeletalMesh -i \\\"\" + $path + \"\\\"\";\n"
+		"	else if ($idx == 3) $cmd = \"importLodMesh -i \\\"\" + $path + \"\\\"\";\n"
+		"	else if ($idx == 4) $cmd = \"importStaticMesh -i \\\"\" + $path + \"\\\"\";\n"
+		"	else if ($idx == 5) $cmd = \"importShader -i \\\"\" + $path + \"\\\"\";\n"
+		"	else if ($idx == 6) $cmd = \"importAnimation -i \\\"\" + $path + \"\\\"\";\n"
+		"	else if ($idx == 7) $cmd = \"importPob -i \\\"\" + $path + \"\\\"\";\n"
+		"	else if ($idx == 8) $cmd = \"importSat -i \\\"\" + $path + \"\\\"\";\n"
+		"	else { warning \"Unknown import type.\"; return; }\n"
+		"	eval($cmd);\n"
+		"}\n"
+		"global proc swgGuiDoExport()\n"
+		"{\n"
+		"	int $idx = `optionMenu -query -select swgGuiExportMenu`;\n"
+		"	string $cmd = \"\";\n"
+		"	if ($idx == 1) $cmd = \"exportStaticMesh \";\n"
+		"	else if ($idx == 2) $cmd = \"exportSkeleton \";\n"
+		"	else if ($idx == 3) $cmd = \"exportSkeletalMeshGenerator \";\n"
+		"	else if ($idx == 4) $cmd = \"exportSkeletalAnimation \";\n"
+		"	else if ($idx == 5) $cmd = \"exportSatFile \";\n"
+		"	else { warning \"Unknown export type.\"; return; }\n"
+		"	$cmd += \"-interactive \";\n"
+		"	int $showViewer = `checkBox -query -value swgGuiExportShowViewer`;\n"
+		"	if ($showViewer && $idx != 3 && $idx != 4) $cmd += \"-showViewerAfterExport \";\n"
+		"	int $uncompressed = `checkBox -query -value swgGuiExportAnimUncompressed`;\n"
+		"	if ($uncompressed && $idx == 4) $cmd += \"-nocompress \";\n"
+		"	int $fixPob = `checkBox -query -value swgGuiExportFixPobCrc`;\n"
+		"	if ($fixPob && $idx == 1) $cmd += \"-fixpobcrc \";\n"
+		"	eval($cmd);\n"
+		"}\n";
+
+	MStatus status = MGlobal::executeCommand(melScript);
+	if (!status)
+		return status;
+
+	status = MGlobal::executeCommand("swgGuiBuildWindow");
+	return status;
+}

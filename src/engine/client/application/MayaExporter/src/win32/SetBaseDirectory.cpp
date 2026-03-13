@@ -82,6 +82,7 @@ MStatus SetBaseDirectory::doIt(const MArgList &argList)
 	SetDirectoryCommand::setDirectoryString(SKELETON_TEMPLATE_WRITE_DIR_INDEX, skeletonTemplateWriteDir.c_str());
 	SetDirectoryCommand::setDirectoryString(LOG_DIR_INDEX, logWriteDir.c_str());
 	SetDirectoryCommand::setDirectoryString(SAT_WRITE_DIR_INDEX, satWriteDir.c_str());
+	SetDirectoryCommand::setDirectoryString(DATA_ROOT_DIR_INDEX, baseDirectory.c_str());
 
 	// create the directories if they don't exist
 	IGNORE_RETURN(MayaUtility::createDirectory(appearanceWriteDir.c_str()));
@@ -121,6 +122,7 @@ MStatus SetBaseDirectory::doIt(const MArgList &argList)
 	SetDirectoryCommand::setDirectoryString(SKELETON_TEMPLATE_REFERENCE_DIR_INDEX, skeletonTemplateReferenceDir.c_str());
 
 	// print reference directories
+	MESSENGER_LOG(("new data root directory (for import):    [%s]\n", baseDirectory.c_str()));
 	MESSENGER_LOG(("new shader reference directory:           [%s]\n", shaderTemplateReferenceDir.c_str()));
 	MESSENGER_LOG(("new effect reference directory:           [%s]\n", effectReferenceDir.c_str()));
 	MESSENGER_LOG(("new texture reference directory:          [%s]\n", textureReferenceDir.c_str()));

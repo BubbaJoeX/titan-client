@@ -33,17 +33,10 @@ const MString      ExportArgs::cs_outputDirArgName           = "-outputdir";
 const MString      ExportArgs::cs_outputFileNameArgName      = "-outputfile";
 const MString      ExportArgs::cs_partOfOtherExportArgName   = "-partofotherexport";
 const MString      ExportArgs::cs_skeletonArgName            = "-skeleton";
-const MString      ExportArgs::cs_submitArgName              = "-submit";
 const MString      ExportArgs::cs_unlockArgName              = "-unlock";
 const MString      ExportArgs::cs_warningsArgName            = "-warnings";
-const MString      ExportArgs::cs_branchArgName              = "-branch";
 const MString      ExportArgs::cs_silentArgName              = "-silent";
 const MString      ExportArgs::cs_showViewerAfterExport      = "-showviewerafterexport";
-const std::string  ExportArgs::cs_currentBranch              = "current";
-const std::string  ExportArgs::cs_x1Branch                   = "x1";
-const std::string  ExportArgs::cs_x2Branch                   = "x2";
-const std::string  ExportArgs::cs_noneBranch                 = "none";
-const MString      ExportArgs::cs_createNewChangelistArgName = "-createnewchangelist";
 const MString      ExportArgs::cs_disableCompression         = "-nocompress";
 const MString      ExportArgs::cs_fixPobCrc                  = "-fixpobcrc";
 

@@ -9,7 +9,6 @@
 #include "FirstMayaExporter.h"
 #include "ExportSkeleton.h"
 
-#include "AlienbrainImporter.h"
 #include "ExportArgs.h"
 #include "ExporterLog.h"
 #include "ExportManager.h"
@@ -19,7 +18,6 @@
 #include "MayaMisc.h"
 #include "MayaUtility.h"
 #include "Messenger.h"
-#include "PerforceImporter.h"
 #include "PluginMain.h"
 #include "SetDirectoryCommand.h"
 #include "sharedFile/Iff.h"
@@ -140,13 +138,10 @@ MStatus ExportSkeleton::doIt(const MArgList &args)
 	MDagPath     targetDagPath;
 	std::string  newLogFilename;
 	int          bindPoseFrameNumber  = 0;
-	bool         commitToSourceControl = false;
-	bool         createNewChangelist   = false;
 	bool         interactive           = false;
 	bool         lock                  = false;
 	bool         unlock                = false;
 	bool         showViewerAfterExport = false;
-	MString      branch;
 
 	ExporterLog::install(messenger);
 
@@ -172,12 +167,9 @@ MStatus ExportSkeleton::doIt(const MArgList &args)
 		&bindPoseFrameNumber, 
 		&targetDagPath, 
 		interactive, 
-		commitToSourceControl, 
-		createNewChangelist, 
 		lock, 
 		unlock, 
-		showViewerAfterExport, 
-		branch
+		showViewerAfterExport
 	);
 	MESSENGER_REJECT_STATUS(!processSuccess, ("argument processing failed\n"));
 
@@ -218,13 +210,6 @@ MStatus ExportSkeleton::doIt(const MArgList &args)
 	std::string reexportArguments = ExportArgs::cs_nodeArgName.asChar();
 	reexportArguments += " ";
 	reexportArguments += nodeName.asChar();
-	if(commitToSourceControl)
-	{
-		reexportArguments += " ";
-		reexportArguments += ExportArgs::cs_branchArgName.asChar();
-		reexportArguments += " ";
-		reexportArguments += branch.asChar();
-	}
 	ExporterLog::setMayaExportOptions(reexportArguments);
 
 	IGNORE_RETURN(ExporterLog::loadLogFile(shortLogFilename));
@@ -233,64 +218,9 @@ MStatus ExportSkeleton::doIt(const MArgList &args)
 	newLogFilename  = SetDirectoryCommand::getDirectoryString(LOG_DIR_INDEX);
 	newLogFilename += shortLogFilename;
 
-	//-- Handle AlienBrain support.
-	if(commitToSourceControl || lock || unlock)
-	{
-// JU_TODO: alienbrain def out
-#if 0
-		if (!AlienbrainImporter::connectToServer())
-		{
-			MESSENGER_LOG_ERROR(("Unable to connect to Alienbrain\n"));
-			return MStatus::kFailure;
-		}
-
-		bool result = AlienbrainImporter::preImport(skeletonName, interactive);
-
-		IGNORE_RETURN(ExporterLog::writeSkeletalTemplate (newLogFilename.c_str(), interactive));
-
-		if (result)
-		{
-			if(!lock && !unlock)
-				AlienbrainImporter::importLogFile();
-			AlienbrainImporter::storeFileProperties();
-
-			bool branchSet = PerforceImporter::setBranch(branch.asChar());
-			if(branchSet)
-			{
-				IGNORE_RETURN(PerforceImporter::importCommon(interactive, createNewChangelist, lock, unlock));
-			}
-			else
-			{
-				MESSENGER_LOG_ERROR(("[%s] is not a valid branch, NOT submitting to Perforce\n", branch.asChar()));
-			}
-
-			PerforceImporter::reset();
-		}
-
-		IGNORE_RETURN(AlienbrainImporter::disconnectFromServer());
-#else
-		IGNORE_RETURN(ExporterLog::writeSkeletalTemplate (newLogFilename.c_str(), interactive));
-
-		bool branchSet = PerforceImporter::setBranch(branch.asChar());
-		if(branchSet)
-		{
-			IGNORE_RETURN(PerforceImporter::importCommon(interactive, createNewChangelist, lock, unlock));
-		}
-		else
-		{
-			MESSENGER_LOG_ERROR(("[%s] is not a valid branch, NOT submitting to Perforce\n", branch.asChar()));
-		}
-
-		PerforceImporter::reset();
-#endif
-// JU_TODO: end alienbrain def out
-	}
-	else
-	{
-		ExporterLog::setAssetGroup("Local export, N/A");
-		ExporterLog::setAssetName("Local export, N/A");
-		IGNORE_RETURN(ExporterLog::writeSkeletalTemplate(newLogFilename.c_str(), interactive));
-	}
+	ExporterLog::setAssetGroup("Local export, N/A");
+	ExporterLog::setAssetName("Local export, N/A");
+	IGNORE_RETURN(ExporterLog::writeSkeletalTemplate(newLogFilename.c_str(), interactive));
 	ExporterLog::remove();
 
 	messenger->printWarningsAndErrors();
@@ -323,12 +253,9 @@ bool ExportSkeleton::processArguments(
 	int *bindPoseFrameNumber,
 	MDagPath *targetDagPath,
 	bool &interactive,
-	bool &commitToSourceControl,
-	bool &createNewChangelist,
 	bool &lock,
 	bool &unlock,
-	bool &showViewerAfterExport,
-  MString &branch
+	bool &showViewerAfterExport
 	)
 {
 	NOT_NULL(skeletonTemplateDirectory);
@@ -349,11 +276,8 @@ bool ExportSkeleton::processArguments(
 	bool haveNode            = false;
 	bool haveFrame           = false;
 	bool isInteractive       = false;
-	bool haveBranch          = false;
 
 	interactive              = false;
-	commitToSourceControl    = false;
-	createNewChangelist      = false;
 	lock                     = false;
 	unlock                   = false;
 	showViewerAfterExport    = false;
@@ -379,12 +303,6 @@ bool ExportSkeleton::processArguments(
 		else if (argName == ExportArgs::cs_showViewerAfterExport)
 		{
 			showViewerAfterExport = true;
-		}
-		//commit flag is used to state that we should go through all the processes to send the data to the
-		//source control systems (presents GUI's if necessary), etc.
-		else if (argName == ExportArgs::cs_submitArgName)
-		{
-			commitToSourceControl = true;
 		}
 		else if (argName == ExportArgs::cs_lockArgName)
 		{
@@ -463,22 +381,6 @@ bool ExportSkeleton::processArguments(
 			// silent mode - disable message box feedback (logs messages instead)
 			messenger->startSilentExport();
 		}
-		else if (argName == ExportArgs::cs_branchArgName)
-		{
-			//-- handle branch argument
-			MESSENGER_REJECT(haveBranch, ("branch specified multiple times\n"));
-
-			branch = args.asString(argIndex + 1, &status);
-			MESSENGER_REJECT(!status, ("failed to get branch argument\n"));
-
-			// fixup argIndex
-			++argIndex;
-			haveBranch = true;
-		}
-		else if (argName == ExportArgs::cs_createNewChangelistArgName)
-		{
-			createNewChangelist = true;
-		}
 		else
 		{
 			MESSENGER_LOG_ERROR(("unknown argument [%s]\n", argName.asChar()));
@@ -525,7 +427,6 @@ bool ExportSkeleton::processArguments(
 		MESSENGER_LOG(("ARGS: using default bind pose frame number [%d]\n", *bindPoseFrameNumber));
 	}
 
-	MESSENGER_REJECT(commitToSourceControl && !haveBranch, ("no branch, i.e. \"-branch <branchname>\" was specified\n"));
 	MESSENGER_REJECT(!isInteractive && !haveNode, ("neither joint node (-node) nor (-interactive) was specified\n"));
 
 	return MStatus();

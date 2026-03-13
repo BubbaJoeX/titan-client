@@ -62,7 +62,7 @@ const int	entryPointVersion = 1;				// constantly check DataEntryPoint.h to see 
 OutputFileHandler   *outfileHandler = NULL;
 const int   bufferSize = 16 * 1024 * 1024;
 const int   maxStringSize = 256;
-const char  version[] = "1.4 March 12t2026";
+const char  version[] = "1.4 March 12 2026";
 
 // vars set by pragmas or via command line
 char        drive[4];                               // should be no more then 2 char "C:"

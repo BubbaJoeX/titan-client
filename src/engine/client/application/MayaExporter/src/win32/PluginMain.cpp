@@ -35,8 +35,6 @@
 #include "gumi_atoi.h"
 
 #include "AddAnimationCommand.h"
-#include "AlienbrainConnection.h"
-#include "AlienbrainImporter.h"
 #include "AnimationMessageCollector.h"
 #include "CreateTransformMask.h"
 #if !NO_DATABASE
@@ -51,10 +49,19 @@
 #include "ExportStaticMesh.h"
 #include "ExporterLog.h"
 #include "ExportManager.h"
+#include "ImportAnimation.h"
+#include "ImportLodMesh.h"
+#include "ImportPob.h"
+#include "ImportSat.h"
+#include "ImportShader.h"
+#include "ImportSkeleton.h"
+#include "ImportSkeletalMesh.h"
+#include "ImportStaticMesh.h"
 #include "LogWindowMessenger.h"
 #include "MayaAnimatingTextureShaderTemplateWriter.h"
 #include "MayaAnimationList.h"
 #include "MayaCustomizableShaderTemplateWriter.h"
+#include "MayaSceneBuilder.h"
 #include "MayaLightMeshReader.h"
 #include "MayaMeshReader.h"
 #include "MayaMeshWeighting.h"
@@ -65,11 +72,11 @@
 #include "MayaStaticShaderTemplateWriter.h"
 #include "MeshBuilder.h"
 #include "OccludedFaceMapGenerator.h"
-#include "PerforceImporter.h"
 #include "ReexportCommand.h"
 #include "SetAuthorCommand.h"
 #include "SetBaseDirectory.h"
 #include "SetDirectoryCommand.h"
+#include "SwgGuiCommand.h"
 #include "VersionFile.h"
 #include "VertexIndexer.h"
 #include "VisitAnimationCommand.h"
@@ -78,6 +85,7 @@
 #include "maya/MFnPlugin.h"
 #pragma warning(pop)
 
+#include <stdlib.h>
 #include <time.h>
 
 #pragma warning (disable: 4505)
@@ -121,6 +129,9 @@ namespace PluginMainNamespace
 	static const char *const  ACTIVE_DRIVE_KEY                        = "ActiveDrive";
 	static const char *const  ACTIVE_DRIVE_VALUE                      = "c:\\";
 
+	static const char *const  DATA_ROOT_DIR_KEY                       = "DataRootDir";
+	static const char *const  DEFAULT_DATA_ROOT_DIR                   = "";
+
 	static const char *const  SKELETON_TEMPLATE_WRITE_DIR_KEY         = "SkeletonTemplateWriteDir";
 	static const char *const  DEFAULT_SKELETON_TEMPLATE_WRITE_DIR     = "\\exported\\appearance\\skeleton\\";
 
@@ -147,12 +158,6 @@ namespace PluginMainNamespace
 
 	static const char *const  VIEWER_LOCATION_KEY                     = "Viewer";
 	static const char *const  DEFAULT_VIEWER_LOCATION                 = "Enter full path to viewer.exe here (c:\\swg\\current\\exe\\win32\\viewer.exe)";
-
-	static const char *const  PERFORCE_BRANCH_LIST_KEY                = "PerforceBranchList";
-	static const char *const  DEFAULT_PERFORCE_BRANCH_LIST            = "current,x1,s0,test";
-
-	static const char *const  ALIENBRAIN_PROJECT_NAME_KEY             = "AlienbrainProjectName";
-	static const char *const  DEFAULT_ALIENBRAIN_PROJECT_NAME         = "swg";
 
 	static const char *const  BOOTPRINT_REGISTRY_KEY                  = "Software\\Bootprint\\StaticMeshExporter";
 	static const char *const  SOE_REGISTRY_KEY                        = "Software\\SOE\\MayaExporter";
@@ -251,9 +256,8 @@ static bool StartEngine ()
 	IGNORE_RETURN( SetDirectoryCommand::registerDirectory("assetdb login password") );
 	IGNORE_RETURN( SetDirectoryCommand::registerDirectory("assetdb activated state") );
 	IGNORE_RETURN( SetDirectoryCommand::registerDirectory("viewer location") );
-	IGNORE_RETURN( SetDirectoryCommand::registerDirectory("perforce branch list") );
-	IGNORE_RETURN( SetDirectoryCommand::registerDirectory("alienbrain project name") );
 	IGNORE_RETURN( SetDirectoryCommand::registerDirectory("active drive") );
+	IGNORE_RETURN( SetDirectoryCommand::registerDirectory("data root") );
 
 	VertexIndexer::Vertex::install();
 	MayaLightMeshReader::install(&theMessenger);	
@@ -266,11 +270,6 @@ static bool StartEngine ()
 	ExportSkeletalMeshGenerator::install(&theMessenger);
 	ExportKeyframeSkeletalAnimation::install(&theMessenger);
 	MayaMisc::install(&theMessenger);
-// JU_TODO: alienbrain def out
-#if 0
-	AlienbrainImporter::install(&theMessenger);
-#endif
-// JU_TODO: end alienbrain def out
 	SetBaseDirectory::install(&theMessenger);
 	MayaAnimationList::install(&theMessenger);
 	AddAnimationCommand::install(&theMessenger);
@@ -279,12 +278,6 @@ static bool StartEngine ()
 	DeleteAnimationCommand::install(&theMessenger);
 	SetAuthorCommand::install(&theMessenger);
 	ExporterLog::install(&theMessenger);
-// JU_TODO: alienbrain def out
-#if 0
-	AlienbrainConnection::install(&theMessenger);
-#endif
-// JU_TODO: end alienbrain def out
-	PerforceImporter::install(&theMessenger);
 	ExportCommand::install(&theMessenger);
 	OccludedFaceMapGenerator::install(&theMessenger);
 #if !NO_DATABASE
@@ -301,6 +294,16 @@ static bool StartEngine ()
 	BoxTree::install();
 	ExportManager::install(&theMessenger);
 	SimpleExtent::install();
+
+	MayaSceneBuilder::install(&theMessenger);
+	ImportSkeleton::install(&theMessenger);
+	ImportShader::install(&theMessenger);
+	ImportStaticMesh::install(&theMessenger);
+	ImportSkeletalMesh::install(&theMessenger);
+	ImportAnimation::install(&theMessenger);
+	ImportLodMesh::install(&theMessenger);
+	ImportPob::install(&theMessenger);
+	ImportSat::install(&theMessenger);
 
 	return true;
 }
@@ -326,6 +329,16 @@ void StopEngine(bool isCleanShutdown)
 	//-- remove in reverse order of install.
 	// -TRF- modify to use ExitChain.
 
+	ImportSat::remove();
+	ImportPob::remove();
+	ImportLodMesh::remove();
+	ImportAnimation::remove();
+	ImportSkeletalMesh::remove();
+	ImportStaticMesh::remove();
+	ImportShader::remove();
+	ImportSkeleton::remove();
+	MayaSceneBuilder::remove();
+
 	ExportManager::remove();
 	// BoxTree uses exit chain
 	CreateTransformMask::remove();
@@ -342,7 +355,6 @@ void StopEngine(bool isCleanShutdown)
 #endif
 	//OccludedFaceMapGenerator uses exit chain
 	ExportCommand::remove();
-	PerforceImporter::remove();
 	ExporterLog::remove();
 	SetAuthorCommand::remove();
 	DeleteAnimationCommand::remove();
@@ -352,12 +364,6 @@ void StopEngine(bool isCleanShutdown)
 	AddAnimationCommand::remove();
 	MayaAnimationList::remove();
 	SetBaseDirectory::remove();
-// JU_TODO: alienbrain def out
-#if 0
-	AlienbrainImporter::remove();
-	AlienbrainConnection::remove();
-#endif
-// JU_TODO: end alienbrain def out
 	MayaMisc::remove();
 	ExportKeyframeSkeletalAnimation::remove();
 	ExportSkeletalMeshGenerator::remove();
@@ -442,6 +448,9 @@ static void WriteRegistrySettings ()
 	directory = SetDirectoryCommand::getDirectoryString(ACTIVE_DRIVE_INDEX);
 	registryKey->setValue (ACTIVE_DRIVE_KEY, directory, strlen(directory) + 1, REG_SZ);
 
+	directory = SetDirectoryCommand::getDirectoryString(DATA_ROOT_DIR_INDEX);
+	registryKey->setValue (DATA_ROOT_DIR_KEY, directory, strlen(directory) + 1, REG_SZ);
+
 	directory = SetDirectoryCommand::getDirectoryString(SKELETON_TEMPLATE_WRITE_DIR_INDEX);
 	registryKey->setValue (SKELETON_TEMPLATE_WRITE_DIR_KEY, directory, strlen (directory) + 1, REG_SZ);
 
@@ -468,25 +477,6 @@ static void WriteRegistrySettings ()
 
 	directory = SetDirectoryCommand::getDirectoryString(VIEWER_LOCATION_INDEX);
 	registryKey->setValue (VIEWER_LOCATION_KEY, directory, strlen(directory) + 1, REG_SZ);
-
-	//version 2.194 moves the registry from a location in current_users to a location in local_machine.  There is also going to be a registry patch to that
-	//  location.  If the patch happened before the user opened the exporter (and migrated their settings), then the old value would overwrite the patch.
-	//  Once the dust settles with (say, version 2.196 or later) this functionality can be removed.
-	char directoryBuffer[MAX_PATH];
-	registryKey->getStringValue (PERFORCE_BRANCH_LIST_KEY, "", directoryBuffer, sizeof (directoryBuffer), true);
-	if(strcmp(directoryBuffer, DEFAULT_PERFORCE_BRANCH_LIST) == 0)
-	{
-		//DO NOTHING, the current value in the new location is current as of 2.194, do NOT overwrite it with an older version from the old registry location)
-	}
-	else
-	{
-		//else save out the perforce key as normal
-		directory = SetDirectoryCommand::getDirectoryString(PERFORCE_BRANCH_LIST_INDEX);
-		registryKey->setValue (PERFORCE_BRANCH_LIST_KEY, directory, strlen (directory) + 1, REG_SZ);
-	}
-
-	directory = SetDirectoryCommand::getDirectoryString(ALIENBRAIN_PROJECT_NAME_INDEX);
-	registryKey->setValue (ALIENBRAIN_PROJECT_NAME_KEY, directory, strlen (directory) + 1, REG_SZ);
 }
 
 // ----------------------------------------------------------------------
@@ -541,9 +531,8 @@ static bool LoadRegistrySettings ()
 	char assetDBPassword [MAX_PATH];
 	char assetDBActivated [MAX_PATH];
 	char viewerLocation[MAX_PATH];
-	char perforceBranchList [MAX_PATH];
-	char alienbrainProjectName [MAX_PATH];
 	char activeDrive [MAX_PATH];
+	char dataRootDirectory [MAX_PATH];
 
 	// appearance write dir
 	result = userRegistryKey->getStringValue (APPEARANCE_WRITE_DIR_KEY, DEFAULT_APPEARANCE_WRITE_DIR, appearanceWriteDirectory, sizeof (appearanceWriteDirectory), true);
@@ -598,6 +587,11 @@ static bool LoadRegistrySettings ()
 	result = userRegistryKey->getStringValue (ACTIVE_DRIVE_KEY, ACTIVE_DRIVE_VALUE, activeDrive, sizeof (activeDrive), true);
 	MESSENGER_REJECT (!result, ("failed to initialize active drive\n"));
 	SetDirectoryCommand::setDirectoryString(ACTIVE_DRIVE_INDEX, activeDrive);
+
+	// data root dir (for import path resolution when TITAN_DATA_ROOT not set)
+	result = userRegistryKey->getStringValue (DATA_ROOT_DIR_KEY, DEFAULT_DATA_ROOT_DIR, dataRootDirectory, sizeof (dataRootDirectory), true);
+	MESSENGER_REJECT (!result, ("failed to initialize data root directory\n"));
+	SetDirectoryCommand::setDirectoryString(DATA_ROOT_DIR_INDEX, dataRootDirectory);
 
 	// skeleton template write dir
 	result = userRegistryKey->getStringValue (SKELETON_TEMPLATE_WRITE_DIR_KEY, DEFAULT_SKELETON_TEMPLATE_WRITE_DIR, skeletonTemplateWriteDirectory, sizeof (skeletonTemplateWriteDirectory), true);
@@ -656,17 +650,6 @@ static bool LoadRegistrySettings ()
 	else
 		DatabaseImporter::activate(true, false);
 #endif
-
-	// p4 branch list
-	result = userRegistryKey->getStringValue (PERFORCE_BRANCH_LIST_KEY, DEFAULT_PERFORCE_BRANCH_LIST, perforceBranchList, sizeof (perforceBranchList), true);
-	MESSENGER_REJECT (!result, ("failed to initialize perforce branch list\n"));
-	SetDirectoryCommand::setDirectoryString(PERFORCE_BRANCH_LIST_INDEX, perforceBranchList);
-	ExportManager::setValidBranchesPacked(perforceBranchList);
-
-	//alienbrain project name
-	result = userRegistryKey->getStringValue (ALIENBRAIN_PROJECT_NAME_KEY, DEFAULT_ALIENBRAIN_PROJECT_NAME, alienbrainProjectName, sizeof (alienbrainProjectName), true);
-	MESSENGER_REJECT (!result, ("failed to initialize Alienbrain projects name\n"));
-	SetDirectoryCommand::setDirectoryString(ALIENBRAIN_PROJECT_NAME_INDEX, alienbrainProjectName);
 
 	//------
 
@@ -915,26 +898,77 @@ static bool LoadRegistrySettings ()
 	}
 	MESSENGER_LOG (("viewer location: \"%s\"\n", viewerLocation));
 
-	// p4 branch list
-	result = localMachineRegistryKey->getStringValue (PERFORCE_BRANCH_LIST_KEY, "", tempDirectory, sizeof (tempDirectory), true);
-	MESSENGER_REJECT (!result, ("failed to initialize perforce branch list\n"));
+	// data root dir (local machine override)
+	result = localMachineRegistryKey->getStringValue (DATA_ROOT_DIR_KEY, "", tempDirectory, sizeof (tempDirectory), true);
+	MESSENGER_REJECT (!result, ("failed to initialize data root directory\n"));
 	if(strlen(tempDirectory) != 0)
 	{
-		strcpy(perforceBranchList, tempDirectory);
-		SetDirectoryCommand::setDirectoryString(PERFORCE_BRANCH_LIST_INDEX, perforceBranchList);
-		ExportManager::setValidBranchesPacked(perforceBranchList);
+		strcpy(dataRootDirectory, tempDirectory);
+		convertBackSlashesToFrontSlashes (dataRootDirectory);
+		const size_t len = strlen(dataRootDirectory);
+		if (len > 0 && dataRootDirectory[len-1] != '/')
+		{
+			dataRootDirectory[len] = '/';
+			dataRootDirectory[len+1] = '\0';
+		}
+		SetDirectoryCommand::setDirectoryString(DATA_ROOT_DIR_INDEX, dataRootDirectory);
 	}
-	MESSENGER_LOG (("Perforce Branch List: \"%s\"\n", perforceBranchList));
+	MESSENGER_LOG (("data root directory: \"%s\"\n", dataRootDirectory));
 
-	//alienbrain project name
-	result = localMachineRegistryKey->getStringValue (ALIENBRAIN_PROJECT_NAME_KEY, "", tempDirectory, sizeof (tempDirectory), true);
-	MESSENGER_REJECT (!result, ("failed to initialize Alienbrain projects name\n"));
-	if(strlen(tempDirectory) != 0)
+	// Environment variable overrides (highest priority)
 	{
-		strcpy(alienbrainProjectName, tempDirectory);
-		SetDirectoryCommand::setDirectoryString(ALIENBRAIN_PROJECT_NAME_INDEX, alienbrainProjectName);
+		const char * envDataRoot = getenv("TITAN_DATA_ROOT");
+		if (envDataRoot && envDataRoot[0])
+		{
+			std::string baseDir = envDataRoot;
+			if (baseDir[baseDir.size()-1] != '/' && baseDir[baseDir.size()-1] != '\\')
+				baseDir.push_back('/');
+			for (std::string::size_type i = 0; i < baseDir.size(); ++i)
+				if (baseDir[i] == '\\') baseDir[i] = '/';
+			SetDirectoryCommand::setDirectoryString(DATA_ROOT_DIR_INDEX, baseDir.c_str());
+			MESSENGER_LOG(("TITAN_DATA_ROOT override: \"%s\"\n", envDataRoot));
+		}
+
+		const char * envExportRoot = getenv("TITAN_EXPORT_ROOT");
+		if (envExportRoot && envExportRoot[0])
+		{
+			std::string baseDir = envExportRoot;
+			if (baseDir[baseDir.size()-1] != '\\')
+				baseDir.push_back('\\');
+
+			std::string appearDir       = baseDir + "appearance\\";
+			std::string shaderDir       = baseDir + "shader\\";
+			std::string textureDir      = baseDir + "texture\\";
+			std::string animDir         = appearDir + "animation\\";
+			std::string skelDir         = appearDir + "skeleton\\";
+			std::string logDir          = baseDir + "log\\";
+			std::string satDir          = appearDir;
+
+			SetDirectoryCommand::setDirectoryString(APPEARANCE_WRITE_DIR_INDEX,       appearDir.c_str());
+			SetDirectoryCommand::setDirectoryString(SHADER_TEMPLATE_WRITE_DIR_INDEX,  shaderDir.c_str());
+			SetDirectoryCommand::setDirectoryString(TEXTURE_WRITE_DIR_INDEX,          textureDir.c_str());
+			SetDirectoryCommand::setDirectoryString(ANIMATION_WRITE_DIR_INDEX,        animDir.c_str());
+			SetDirectoryCommand::setDirectoryString(SKELETON_TEMPLATE_WRITE_DIR_INDEX,skelDir.c_str());
+			SetDirectoryCommand::setDirectoryString(LOG_DIR_INDEX,                    logDir.c_str());
+			SetDirectoryCommand::setDirectoryString(SAT_WRITE_DIR_INDEX,              satDir.c_str());
+			SetDirectoryCommand::setDirectoryString(ACTIVE_DRIVE_INDEX,               envExportRoot);
+			{
+				std::string dataRoot = baseDir;
+				for (std::string::size_type i = 0; i < dataRoot.size(); ++i)
+					if (dataRoot[i] == '\\') dataRoot[i] = '/';
+				SetDirectoryCommand::setDirectoryString(DATA_ROOT_DIR_INDEX, dataRoot.c_str());
+			}
+
+			MESSENGER_LOG(("TITAN_EXPORT_ROOT override: \"%s\"\n", envExportRoot));
+		}
+
+		const char * envViewer = getenv("TITAN_VIEWER");
+		if (envViewer && envViewer[0])
+		{
+			SetDirectoryCommand::setDirectoryString(VIEWER_LOCATION_INDEX, envViewer);
+			MESSENGER_LOG(("TITAN_VIEWER override: \"%s\"\n", envViewer));
+		}
 	}
-	MESSENGER_LOG (("Alienbrain Project Name: \"%s\"\n", alienbrainProjectName));
 
 	return true;
 }
@@ -969,7 +1003,7 @@ static void OnCloseCallback(void * /*data*/)
 
 // ----------------------------------------------------------------------
 
-MStatus __declspec (dllexport) initializePlugin (MObject object)
+extern "C" MStatus __declspec (dllexport) initializePlugin (MObject object)
 {
 	MStatus  status;
 
@@ -1133,16 +1167,86 @@ MStatus __declspec (dllexport) initializePlugin (MObject object)
 		return status;
 	}
 
-/*
-// JU_TODO: this guy isn't linking in maya7
-	// callback to shutdown engine on maya exit - maya doesn't unload plugins
+	status = plugin.registerCommand ("importSkeleton", ImportSkeleton::creator);
+	if (!status)
+	{
+		MESSENGER_LOG (("failed to register importSkeleton command\n"));
+		REPORT_LOG (true, ("failed to register importSkeleton command\n"));
+		StopEngine ();
+		return status;
+	}
 
-	MSceneMessage::addCallback(
-				MSceneMessage::kMayaExiting,
-				OnCloseCallback,
-				NULL,
-				&status);
-*/
+	status = plugin.registerCommand ("importShader", ImportShader::creator);
+	if (!status)
+	{
+		MESSENGER_LOG (("failed to register importShader command\n"));
+		REPORT_LOG (true, ("failed to register importShader command\n"));
+		StopEngine ();
+		return status;
+	}
+
+	status = plugin.registerCommand ("importStaticMesh", ImportStaticMesh::creator);
+	if (!status)
+	{
+		MESSENGER_LOG (("failed to register importStaticMesh command\n"));
+		REPORT_LOG (true, ("failed to register importStaticMesh command\n"));
+		StopEngine ();
+		return status;
+	}
+
+	status = plugin.registerCommand ("importSkeletalMesh", ImportSkeletalMesh::creator);
+	if (!status)
+	{
+		MESSENGER_LOG (("failed to register importSkeletalMesh command\n"));
+		REPORT_LOG (true, ("failed to register importSkeletalMesh command\n"));
+		StopEngine ();
+		return status;
+	}
+
+	status = plugin.registerCommand ("importAnimation", ImportAnimation::creator);
+	if (!status)
+	{
+		MESSENGER_LOG (("failed to register importAnimation command\n"));
+		REPORT_LOG (true, ("failed to register importAnimation command\n"));
+		StopEngine ();
+		return status;
+	}
+
+	status = plugin.registerCommand ("importLodMesh", ImportLodMesh::creator);
+	if (!status)
+	{
+		MESSENGER_LOG (("failed to register importLodMesh command\n"));
+		REPORT_LOG (true, ("failed to register importLodMesh command\n"));
+		StopEngine ();
+		return status;
+	}
+
+	status = plugin.registerCommand ("importPob", ImportPob::creator);
+	if (!status)
+	{
+		MESSENGER_LOG (("failed to register importPob command\n"));
+		REPORT_LOG (true, ("failed to register importPob command\n"));
+		StopEngine ();
+		return status;
+	}
+
+	status = plugin.registerCommand ("importSat", ImportSat::creator);
+	if (!status)
+	{
+		MESSENGER_LOG (("failed to register importSat command\n"));
+		REPORT_LOG (true, ("failed to register importSat command\n"));
+		StopEngine ();
+		return status;
+	}
+
+	status = plugin.registerCommand ("swggui", SwgGuiCommand::creator);
+	if (!status)
+	{
+		MESSENGER_LOG (("failed to register swggui command\n"));
+		REPORT_LOG (true, ("failed to register swggui command\n"));
+		StopEngine ();
+		return status;
+	}
 
 	// indicate successful initialization
 	return MS::kSuccess;
@@ -1150,7 +1254,7 @@ MStatus __declspec (dllexport) initializePlugin (MObject object)
 
 // ----------------------------------------------------------------------
 
-MStatus __declspec (dllexport) uninitializePlugin (MObject object)
+extern "C" MStatus __declspec (dllexport) uninitializePlugin (MObject object)
 {
 	MStatus  status;
 
@@ -1239,20 +1343,6 @@ MStatus __declspec (dllexport) uninitializePlugin (MObject object)
 		REPORT_LOG (true, ("failed to deregister command\n"));
 	}
 
-	status = plugin.deregisterCommand ("perforceStartMultiExport");
-	if (!status)
-	{
-		MESSENGER_LOG (("failed to deregister command\n"));
-		REPORT_LOG (true, ("failed to deregister command\n"));
-	}
-
-	status = plugin.deregisterCommand ("perforceEndMultiExport");
-	if (!status)
-	{
-		MESSENGER_LOG (("failed to deregister command\n"));
-		REPORT_LOG (true, ("failed to deregister command\n"));
-	}
-
 	status = plugin.deregisterCommand ("export");
 	if (!status)
 	{
@@ -1281,6 +1371,69 @@ MStatus __declspec (dllexport) uninitializePlugin (MObject object)
 	{
 		MESSENGER_LOG (("failed to deregister createTransformMask command\n"));
 		REPORT_LOG (true, ("failed to deregister createTransformMask command\n"));
+	}
+
+	status = plugin.deregisterCommand ("importSkeleton");
+	if (!status)
+	{
+		MESSENGER_LOG (("failed to deregister importSkeleton command\n"));
+		REPORT_LOG (true, ("failed to deregister importSkeleton command\n"));
+	}
+
+	status = plugin.deregisterCommand ("importShader");
+	if (!status)
+	{
+		MESSENGER_LOG (("failed to deregister importShader command\n"));
+		REPORT_LOG (true, ("failed to deregister importShader command\n"));
+	}
+
+	status = plugin.deregisterCommand ("importStaticMesh");
+	if (!status)
+	{
+		MESSENGER_LOG (("failed to deregister importStaticMesh command\n"));
+		REPORT_LOG (true, ("failed to deregister importStaticMesh command\n"));
+	}
+
+	status = plugin.deregisterCommand ("importSkeletalMesh");
+	if (!status)
+	{
+		MESSENGER_LOG (("failed to deregister importSkeletalMesh command\n"));
+		REPORT_LOG (true, ("failed to deregister importSkeletalMesh command\n"));
+	}
+
+	status = plugin.deregisterCommand ("importAnimation");
+	if (!status)
+	{
+		MESSENGER_LOG (("failed to deregister importAnimation command\n"));
+		REPORT_LOG (true, ("failed to deregister importAnimation command\n"));
+	}
+
+	status = plugin.deregisterCommand ("importLodMesh");
+	if (!status)
+	{
+		MESSENGER_LOG (("failed to deregister importLodMesh command\n"));
+		REPORT_LOG (true, ("failed to deregister importLodMesh command\n"));
+	}
+
+	status = plugin.deregisterCommand ("importPob");
+	if (!status)
+	{
+		MESSENGER_LOG (("failed to deregister importPob command\n"));
+		REPORT_LOG (true, ("failed to deregister importPob command\n"));
+	}
+
+	status = plugin.deregisterCommand ("importSat");
+	if (!status)
+	{
+		MESSENGER_LOG (("failed to deregister importSat command\n"));
+		REPORT_LOG (true, ("failed to deregister importSat command\n"));
+	}
+
+	status = plugin.deregisterCommand ("swggui");
+	if (!status)
+	{
+		MESSENGER_LOG (("failed to deregister swggui command\n"));
+		REPORT_LOG (true, ("failed to deregister swggui command\n"));
 	}
 
 	// delete registry key
