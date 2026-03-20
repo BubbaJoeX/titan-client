@@ -13,17 +13,25 @@
 #include "MayaSceneBuilder.h"
 #include "Messenger.h"
 
+#include "sharedCollision/BoxExtent.h"
+#include "sharedCollision/CylinderExtent.h"
+#include "sharedCollision/CompositeExtent.h"
+#include "sharedCollision/DetailExtent.h"
+#include "sharedCollision/ExtentList.h"
 #include "sharedFile/Iff.h"
 #include "sharedFoundation/Tag.h"
 #include "sharedMath/IndexedTriangleList.h"
 #include "sharedMath/Vector.h"
 
 #include "maya/MArgList.h"
+#include "maya/MFn.h"
 #include "maya/MDagPath.h"
 #include "maya/MFnDependencyNode.h"
 #include "maya/MFnTransform.h"
+#include "maya/MFnTypedAttribute.h"
 #include "maya/MGlobal.h"
 #include "maya/MObject.h"
+#include "maya/MPlug.h"
 #include "maya/MSelectionList.h"
 #include "maya/MStatus.h"
 
@@ -37,6 +45,27 @@
 namespace
 {
 	Messenger *messenger;
+
+	// Derive floor path from appearance when POB has no floor data (common for older POBs).
+	// Convention: appearance/collision/<base>_collision_floor (e.g. ply_all_emperors_spire_r0.apt -> ply_all_emperors_spire_r0_collision_floor)
+	static std::string deriveFloorFromAppearance(std::string const &appearancePath)
+	{
+		std::string base;
+		std::string::size_type lastSlash = appearancePath.find_last_of("/\\");
+		if (lastSlash != std::string::npos)
+			base = appearancePath.substr(lastSlash + 1);
+		else
+			base = appearancePath;
+		std::string::size_type dot = base.find_last_of('.');
+		if (dot != std::string::npos)
+			base = base.substr(0, dot);
+		std::string::size_type meshPos = base.find("_mesh");
+		if (meshPos != std::string::npos)
+			base = base.substr(0, meshPos) + "_collision_floor";
+		else
+			base += "_collision_floor";
+		return std::string("appearance/collision/") + base;
+	}
 
 	const Tag TAG_PRTO = TAG(P,R,T,O);
 	const Tag TAG_PRTS = TAG(P,R,T,S);
@@ -138,13 +167,16 @@ namespace
 
 		MObject shapeObj = outPath.node();
 		MFnDependencyNode shapeDepFn(shapeObj);
-		MString cmd = "addAttr -ln portal -at bool ";
-		cmd += shapeDepFn.name();
-		MGlobal::executeCommand(cmd);
-		cmd = "setAttr \"";
-		cmd += shapeDepFn.name();
-		cmd += ".portal\" 1";
-		MGlobal::executeCommand(cmd);
+		// Use full path for addAttr/setAttr to avoid "more than one object matches" when multiple cells have p0, p1, etc.
+		std::string shapeFullPath = outPath.fullPathName().asChar();
+		MString addCmd = "addAttr -ln portal -at bool \"";
+		addCmd += shapeFullPath.c_str();
+		addCmd += "\"";
+		MGlobal::executeCommand(addCmd);
+		MString setCmd = "setAttr \"";
+		setCmd += shapeFullPath.c_str();
+		setCmd += ".portal\" 1";
+		MGlobal::executeCommand(setCmd);
 
 		MDagPath transformPath = outPath;
 		transformPath.pop(1);
@@ -155,6 +187,135 @@ namespace
 		parentCmd += parentFn.fullPathName().asChar();
 		parentCmd += "\"";
 		MGlobal::executeCommand(MString(parentCmd.c_str()));
+
+		return MS::kSuccess;
+	}
+
+	static MStatus createExtentMayaNodes(Extent *extent, MObject collisionParent, int &extentIndex)
+	{
+		if (!extent)
+			return MS::kSuccess;
+
+		BoxExtent *boxExt = dynamic_cast<BoxExtent *>(extent);
+		if (boxExt)
+		{
+			const Vector &minV = boxExt->getMin();
+			const Vector &maxV = boxExt->getMax();
+			float width = maxV.x - minV.x;
+			float height = maxV.y - minV.y;
+			float depth = maxV.z - minV.z;
+			float cx = (minV.x + maxV.x) * 0.5f;
+			float cy = (minV.y + maxV.y) * 0.5f;
+			float cz = (minV.z + maxV.z) * 0.5f;
+			if (width < 0.01f) width = 0.01f;
+			if (height < 0.01f) height = 0.01f;
+			if (depth < 0.01f) depth = 0.01f;
+
+			char name[32];
+			sprintf(name, "extent%d", extentIndex++);
+			MFnDagNode collisionFn(collisionParent);
+			MString cmd = "polyCube -w ";
+			cmd += width;
+			cmd += " -h ";
+			cmd += height;
+			cmd += " -d ";
+			cmd += depth;
+			cmd += " -n \"";
+			cmd += name;
+			cmd += "\"";
+			MGlobal::executeCommand(cmd);
+			MSelectionList sel;
+			MGlobal::getActiveSelectionList(sel);
+			if (sel.length() > 0)
+			{
+				MDagPath cubePath;
+				sel.getDagPath(0, cubePath);
+				if (!cubePath.hasFn(MFn::kTransform))
+					cubePath.pop();
+				cmd = "move ";
+				cmd += (-cx);
+				cmd += " ";
+				cmd += cy;
+				cmd += " ";
+				cmd += cz;
+				cmd += " \"";
+				cmd += cubePath.fullPathName();
+				cmd += "\"";
+				MGlobal::executeCommand(cmd);
+				MString parentCmd = "parent \"";
+				parentCmd += cubePath.fullPathName();
+				parentCmd += "\" \"";
+				parentCmd += collisionFn.fullPathName();
+				parentCmd += "\"";
+				MGlobal::executeCommand(parentCmd);
+			}
+			return MS::kSuccess;
+		}
+
+		CylinderExtent *cylExt = dynamic_cast<CylinderExtent *>(extent);
+		if (cylExt)
+		{
+			const Cylinder &cyl = cylExt->getCylinder();
+			float radius = cyl.getRadius();
+			float height = cyl.getHeight();
+			const Vector &base = cyl.getBase();
+			if (radius < 0.01f) radius = 0.01f;
+			if (height < 0.01f) height = 0.01f;
+
+			char name[32];
+			sprintf(name, "extent%d", extentIndex++);
+			MFnDagNode collisionFn(collisionParent);
+			MString cmd = "polyCylinder -r ";
+			cmd += radius;
+			cmd += " -h ";
+			cmd += height;
+			cmd += " -sx 8 -n \"";
+			cmd += name;
+			cmd += "\"";
+			MGlobal::executeCommand(cmd);
+			MSelectionList sel;
+			MGlobal::getActiveSelectionList(sel);
+			if (sel.length() > 0)
+			{
+				MDagPath cylPath;
+				sel.getDagPath(0, cylPath);
+				if (!cylPath.hasFn(MFn::kTransform))
+					cylPath.pop();
+				float cx = base.x;
+				float cy = base.y + 0.5f * height;
+				float cz = base.z;
+				cmd = "move ";
+				cmd += (-cx);
+				cmd += " ";
+				cmd += cy;
+				cmd += " ";
+				cmd += cz;
+				cmd += " \"";
+				cmd += cylPath.fullPathName();
+				cmd += "\"";
+				MGlobal::executeCommand(cmd);
+				MString parentCmd = "parent \"";
+				parentCmd += cylPath.fullPathName();
+				parentCmd += "\" \"";
+				parentCmd += collisionFn.fullPathName();
+				parentCmd += "\"";
+				MGlobal::executeCommand(parentCmd);
+			}
+			return MS::kSuccess;
+		}
+
+		CompositeExtent *compExt = dynamic_cast<CompositeExtent *>(extent);
+		if (compExt)
+		{
+			for (int i = 0; i < compExt->getExtentCount(); ++i)
+			{
+				BaseExtent *child = compExt->getExtent(i);
+				Extent *childExt = dynamic_cast<Extent *>(child);
+				if (childExt)
+					createExtentMayaNodes(childExt, collisionParent, extentIndex);
+			}
+			return MS::kSuccess;
+		}
 
 		return MS::kSuccess;
 	}
@@ -311,22 +472,24 @@ MStatus ImportPob::doIt(const MArgList &args)
 
 	MESSENGER_LOG(("ImportPob: %d portals, %d cells\n", numberOfPortals, numberOfCells));
 
-	// Parse PRTS form (portal geometry)
+	// Parse PRTS form (portal geometry) - matches engine PortalPropertyTemplate format
 	std::vector<IndexedTriangleList *> portalGeometries;
 	portalGeometries.resize(static_cast<size_t>(numberOfPortals), 0);
 	iff.enterForm(TAG_PRTS);
 	{
-		for (int i = 0; i < numberOfPortals; ++i)
+		for (int i = 0; i < numberOfPortals && iff.getNumberOfBlocksLeft() > 0; ++i)
 		{
-			if (version == 4)
+			if (version >= 4)
 			{
-				if (iff.getCurrentName() == TAG_IDTL)
+				// v4+: IDTL forms (IndexedTriangleList) - matches engine load_0004
+				if (iff.isCurrentForm() && iff.getCurrentName() == TAG_IDTL)
 				{
 					portalGeometries[static_cast<size_t>(i)] = new IndexedTriangleList(iff);
 				}
 			}
 			else
 			{
+				// v0-v3: PRTL chunks with vertex list (triangle fan from center)
 				iff.enterChunk(TAG_PRTL);
 				const int numVerts = iff.read_int32();
 				std::vector<Vector> verts(static_cast<size_t>(numVerts));
@@ -397,7 +560,9 @@ MStatus ImportPob::doIt(const MArgList &args)
 
 			std::string cellName;
 			std::string appearanceName;
+			std::string floorName;
 			int32 cellPortalCount = 0;
+			Extent *cellCollisionExtent = 0;
 
 			iff.enterChunk(TAG_DATA);
 			{
@@ -417,16 +582,15 @@ MStatus ImportPob::doIt(const MArgList &args)
 				{
 					bool hasFloor = iff.read_bool8();
 					if (hasFloor)
-						iff.read_string(); // floorName
+						floorName = iff.read_string();
 				}
 			}
 			iff.exitChunk(TAG_DATA);
 
-			// Skip collision extent (NULL form or extent form) - only in 0004 and 0005
-			if (cellVersion >= 4 && iff.getNumberOfBlocksLeft() > 0 && iff.isCurrentForm())
+			// Parse collision extent - only 0005 has extent form (NULL or extent) between DATA and PRTL
+			if (cellVersion >= 5 && iff.getNumberOfBlocksLeft() > 0 && iff.isCurrentForm())
 			{
-				iff.enterForm();
-				iff.exitForm();
+				cellCollisionExtent = ExtentList::create(iff);
 			}
 
 			// Parse PRTL forms (one per portal) to get portal indices
@@ -458,16 +622,35 @@ MStatus ImportPob::doIt(const MArgList &args)
 			iff.exitForm(cellVersionTag);
 			iff.exitForm(TAG_CELL);
 
+			// When POB has no floor data, derive from appearance (common for older POBs; floor files follow naming convention)
+			if (floorName.empty() && !appearanceName.empty())
+			{
+				floorName = deriveFloorFromAppearance(appearanceName);
+				MESSENGER_LOG(("  No floor in POB, derived [%s] from appearance\n", floorName.c_str()));
+			}
+
 			if (!appearanceName.empty())
 			{
 				std::string resolvedPath = resolveTreeFilePath(appearanceName, filename);
 
-				// Use full path (root|r0) so parent resolves correctly
-				char parentCellPathBuf[128];
-				sprintf(parentCellPathBuf, "%s|r%d", rootName.c_str(), i);
-				std::string parentCellPath = parentCellPathBuf;
+				// Create "mesh" transform under cell for export parity (exporter expects cell -> mesh -> meshShape)
+				MObject cellObj = cellTransforms[static_cast<size_t>(i)];
+				MFnTransform cellFn(cellObj);
+				MString meshParentCmd = "createNode transform -n \"mesh\" -p \"";
+				meshParentCmd += cellFn.fullPathName();
+				meshParentCmd += "\"";
+				MGlobal::executeCommand(meshParentCmd);
+				// Get mesh transform from selection (createNode selects the new node)
+				MObject meshTransformObj;
+				{
+					MSelectionList sel;
+					MGlobal::getActiveSelectionList(sel);
+					if (sel.length() > 0)
+						sel.getDependNode(0, meshTransformObj);
+				}
+				std::string parentCellPath = std::string(cellFn.fullPathName().asChar()) + "|mesh";
 
-				MESSENGER_LOG(("ImportPob: cell [%s] appearance [%s] -> [%s]\n",
+				MESSENGER_LOG(("ImportPob: cell [%s] appearance [%s] -> [%s] (highest LOD)\n",
 					cellName.c_str(), appearanceName.c_str(), resolvedPath.c_str()));
 
 				MString cmd = "importStaticMesh -i \"";
@@ -477,7 +660,23 @@ MStatus ImportPob::doIt(const MArgList &args)
 				cmd += "\"";
 
 				status = MGlobal::executeCommand(cmd, true, true);
-				if (!status)
+				if (status && !meshTransformObj.isNull())
+				{
+					// Set external_reference on mesh transform for round-trip export parity (use API for reliability)
+					MFnDependencyNode meshDepFn(meshTransformObj);
+					MPlug plug = meshDepFn.findPlug("external_reference", true);
+					if (plug.isNull())
+					{
+						MFnTypedAttribute tAttr;
+						MObject attrObj = tAttr.create("external_reference", "extref", MFnData::kString);
+						tAttr.setStorable(true);
+						if (meshDepFn.addAttribute(attrObj))
+							plug = meshDepFn.findPlug("external_reference", true);
+					}
+					if (!plug.isNull())
+						plug.setValue(MString(appearanceName.c_str()));
+				}
+				else
 				{
 					MESSENGER_LOG_WARNING(("ImportPob: failed to import cell appearance [%s]\n", resolvedPath.c_str()));
 				}
@@ -514,6 +713,83 @@ MStatus ImportPob::doIt(const MArgList &args)
 						}
 					}
 				}
+			}
+
+			// Create collision group with floor and extent for this cell
+			if (!floorName.empty() || cellCollisionExtent)
+			{
+				MObject cellObj = cellTransforms[static_cast<size_t>(i)];
+				MFnTransform cellFn(cellObj);
+				MObject collisionObj;
+				{
+					MString cmd = "createNode transform -n \"collision\" -p \"";
+					cmd += cellFn.fullPathName();
+					cmd += "\"";
+					MGlobal::executeCommand(cmd);
+					MSelectionList sel;
+					MGlobal::getActiveSelectionList(sel);
+					if (sel.length() > 0)
+						sel.getDependNode(0, collisionObj);
+				}
+				if (!collisionObj.isNull())
+				{
+					MFnDagNode collisionDagFn(collisionObj);
+					std::string collisionPath = std::string(collisionDagFn.fullPathName().asChar());
+
+					if (!floorName.empty())
+					{
+						MString cmd = "polyPlane -w 1 -h 1 -sx 1 -sy 1 -n \"floor0\"";
+						status = MGlobal::executeCommand(cmd);
+						if (status)
+						{
+							MSelectionList sel;
+							MGlobal::getActiveSelectionList(sel);
+							if (sel.length() > 0)
+							{
+								MDagPath floorPath;
+								sel.getDagPath(0, floorPath);
+								if (!floorPath.hasFn(MFn::kTransform))
+									floorPath.pop();
+								// Add external_reference to shape (exporter reads from shape)
+								MDagPath shapePath = floorPath;
+								shapePath.extendToShape();
+								MFnDependencyNode shapeDepFn(shapePath.node());
+								MPlug plug = shapeDepFn.findPlug("external_reference", true);
+								if (plug.isNull())
+								{
+									MFnTypedAttribute tAttr;
+									MObject attrObj = tAttr.create("external_reference", "extref", MFnData::kString);
+									tAttr.setStorable(true);
+									if (shapeDepFn.addAttribute(attrObj))
+										plug = shapeDepFn.findPlug("external_reference", true);
+								}
+								if (!plug.isNull())
+									plug.setValue(MString(floorName.c_str()));
+								// Parent under collision
+								MString parentCmd = "parent \"";
+								parentCmd += floorPath.fullPathName();
+								parentCmd += "\" \"";
+								parentCmd += collisionPath.c_str();
+								parentCmd += "\"";
+								MGlobal::executeCommand(parentCmd);
+								MESSENGER_LOG(("  Created collision|floor0 with external_reference [%s]\n", floorName.c_str()));
+							}
+						}
+					}
+
+					if (cellCollisionExtent)
+					{
+						int extentIdx = 0;
+						createExtentMayaNodes(cellCollisionExtent, collisionObj, extentIdx);
+						ExtentList::release(cellCollisionExtent);
+						cellCollisionExtent = 0;
+						MESSENGER_LOG(("  Created %d extent primitives in collision\n", extentIdx));
+					}
+				}
+			}
+			else if (cellCollisionExtent)
+			{
+				ExtentList::release(cellCollisionExtent);
 			}
 		}
 	}

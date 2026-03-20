@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+	<TargetFramework>net8.0-windows</TargetFramework>
+	<GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <OutputPath>$(SolutionDir)..\..\build\$(Configuration)\assemblies\examples</OutputPath>
+    <IntermediateOutputPath>$(SolutionDir)..\..\build\$(Configuration)\IntDir\examples</IntermediateOutputPath>
+  </PropertyGroup>
+
+  <PropertyGroup>
+	<Platform Condition=" '$(Platform)' == '' ">x64</Platform>
+	<OutputType>Library</OutputType>
+	<RootNamespace>MayaNET_Examples</RootNamespace>
+	<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+	<EnableDynamicLoading>true</EnableDynamicLoading>
+	<EnableComHosting>true</EnableComHosting>
+	<UseWindowsForms>true</UseWindowsForms>
+	<ImportWindowsDesktopTargets>true</ImportWindowsDesktopTargets>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="openmayacs">
+      <HintPath>$(MAYA_LOCATION)\bin\openmayacs.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="NodeIdList.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
+    <PackageReference Include="System.Data.DataSetExtensions" Version="4.5.0" />
+    <PackageReference Include="Microsoft.Windows.Compatibility" Version="8.0.0" />
+  </ItemGroup>
+  <PropertyGroup />
+
+  <PropertyGroup>
+	<PostBuildEvent>if not exist "$(SolutionDir)assemblies" mkdir "$(SolutionDir)assemblies"
+	copy "$(OutputPath)\$(TargetFramework)\examples.dll" "$(SolutionDir)assemblies\examples.nll.dll"
+	copy "$(OutputPath)\$(TargetFramework)\examples.runtimeconfig.json" "$(SolutionDir)assemblies\openmayacs.runtimeconfig.json"
+	copy "$(OutputPath)\$(TargetFramework)\openmayacs.dll" "$(SolutionDir)assemblies\openmayacs.dll"
+	</PostBuildEvent>
+  </PropertyGroup>
+</Project>

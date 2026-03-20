@@ -10,6 +10,7 @@
 #include "ImportPathResolver.h"
 #include "ImportSkeletalMesh.h"
 
+#include "MayaCompoundString.h"
 #include "MayaSceneBuilder.h"
 #include "Messenger.h"
 
@@ -21,6 +22,7 @@
 #include "maya/MItDag.h"
 
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -689,41 +691,104 @@ MStatus ImportSkeletalMesh::doIt(const MArgList & args)
 	else
 		MESSENGER_LOG_WARNING(("  Failed to assign materials\n"));
 
-	//-- create skin cluster if joints exist in the scene
-	if (!transformNames.empty())
+	//-- create skin cluster and/or hardpoints when we have transforms or hardpoints
+	const bool needJoints = !transformNames.empty() || !staticHardpoints.empty() || !dynamicHardpoints.empty();
+	if (needJoints)
 	{
 		std::vector<MDagPath> jointPaths;
 
 		// Build joint name -> DAG path map by iterating joints in the scene.
-		// Keep first occurrence of each name (for SLOD, prefer highest LOD skeleton).
+		// Mesh XFNM stores transform names as short names (e.g. "lthigh", "root") - the exporter
+		// uses MayaCompoundString::getComponentString(0) to derive these from Maya joint names
+		// like "lthigh_all_b_l0" or "root__all_b_l0". We must use the same logic for matching.
+		// Include joints from ALL skeleton templates the mesh references (e.g. all_b, hum_f_face).
 		std::map<std::string, MDagPath> jointMap;
 		{
+			std::set<std::string> skeletonFilters;
+			for (size_t i = 0; i < skeletonTemplateNames.size(); ++i)
+			{
+				std::string filter = skeletonTemplateNames[i];
+				const std::string::size_type lastSlash = filter.find_last_of("/\\");
+				if (lastSlash != std::string::npos)
+					filter = filter.substr(lastSlash + 1);
+				const std::string::size_type dot = filter.find_last_of('.');
+				if (dot != std::string::npos)
+					filter = filter.substr(0, dot);
+				if (!filter.empty())
+					skeletonFilters.insert(filter);
+			}
+
 			MItDag dagIt(MItDag::kDepthFirst, MFn::kJoint, &status);
 			for (; !dagIt.isDone(); dagIt.next())
 			{
 				MDagPath dagPath;
 				dagIt.getPath(dagPath);
 				MFnDagNode dagFn(dagPath);
-				const std::string name(dagFn.name().asChar());
-				if (jointMap.find(name) == jointMap.end())
-					jointMap[name] = dagPath;
+				const MString mayaName(dagFn.name());
+
+				// If we have skeleton filters, only use joints from those skeletons' hierarchies
+				if (!skeletonFilters.empty())
+				{
+					MString fullPath = dagPath.fullPathName();
+					std::string pathStr(fullPath.asChar());
+					bool inFilter = false;
+					for (std::set<std::string>::const_iterator it = skeletonFilters.begin(); it != skeletonFilters.end(); ++it)
+					{
+						if (pathStr.find(*it) != std::string::npos)
+						{
+							inFilter = true;
+							break;
+						}
+					}
+					if (!inFilter)
+						continue;
+				}
+
+				// Use same short name as exporter: getComponentString(0) from MayaCompoundString
+				MayaCompoundString compoundName(mayaName);
+				const MString gameTransformName = (compoundName.getComponentCount() > 0) ? compoundName.getComponentString(0) : mayaName;
+				const std::string shortName(gameTransformName.asChar());
+
+				if (jointMap.find(shortName) == jointMap.end())
+					jointMap[shortName] = dagPath;
 			}
 		}
 
-		// Populate jointPaths from mesh transform names (preserve order for influence indices)
-		for (std::vector<std::string>::const_iterator it = transformNames.begin(); it != transformNames.end(); ++it)
+		// Populate jointPaths from mesh transform names - MUST preserve exact order and index
+		// so weight transform indices map correctly to skin cluster influences.
+		jointPaths.reserve(transformNames.size());
+		int missingCount = 0;
+		for (size_t i = 0; i < transformNames.size(); ++i)
 		{
-			std::map<std::string, MDagPath>::const_iterator jit = jointMap.find(*it);
+			std::map<std::string, MDagPath>::const_iterator jit = jointMap.find(transformNames[i]);
 			if (jit != jointMap.end())
 				jointPaths.push_back(jit->second);
+			else
+			{
+				++missingCount;
+				MESSENGER_LOG_WARNING(("  Skin cluster: no joint for transform [%s] (index %u)\n", transformNames[i].c_str(), static_cast<unsigned>(i)));
+			}
 		}
+		if (missingCount > 0)
+			MESSENGER_LOG_WARNING(("  Skin cluster: %d transforms have no matching joint - weights will be dropped\n", missingCount));
 
-		if (jointPaths.empty())
+		if (jointPaths.empty() && !transformNames.empty())
 		{
 			MESSENGER_LOG_WARNING(("  No matching joints found in scene for skin cluster (mesh expects %d transforms)\n", static_cast<int>(transformNames.size())));
 		}
 		else
 		{
+			// Log skeleton hierarchy for skin binding (compare with ImportAnimation output)
+			std::string skinHint;
+			if (!jointPaths.empty())
+			{
+				skinHint = jointPaths[0].fullPathName().asChar();
+				std::string::size_type p = skinHint.find('|', 1);
+				if (p != std::string::npos) skinHint = skinHint.substr(0, p);
+			}
+			MESSENGER_LOG(("  Skin cluster: skeleton [%s], %d influences\n",
+				skinHint.c_str(), static_cast<int>(jointPaths.size())));
+
 			status = MayaSceneBuilder::createSkinCluster(meshPath, jointPaths, transformNames, weightHeaders, weightData);
 			if (status)
 				MESSENGER_LOG(("  Created skin cluster with %d transforms\n", static_cast<int>(transformNames.size())));
@@ -731,14 +796,14 @@ MStatus ImportSkeletalMesh::doIt(const MArgList & args)
 				MESSENGER_LOG_WARNING(("  Could not create skin cluster via MEL\n"));
 		}
 
-		//-- create hardpoints if present
+		//-- create hardpoints if present (use jointMap for parent lookup so hardpoints can attach to any joint)
 		std::vector<MayaSceneBuilder::HardpointData> allHardpoints;
 		allHardpoints.insert(allHardpoints.end(), staticHardpoints.begin(), staticHardpoints.end());
 		allHardpoints.insert(allHardpoints.end(), dynamicHardpoints.begin(), dynamicHardpoints.end());
 
-		if (!allHardpoints.empty() && !jointPaths.empty())
+		if (!allHardpoints.empty() && !jointMap.empty())
 		{
-			status = MayaSceneBuilder::createHardpoints(allHardpoints, jointPaths, transformNames);
+			status = MayaSceneBuilder::createHardpoints(allHardpoints, jointMap, meshName);
 			if (status)
 			{
 				MESSENGER_LOG(("  Created %d hardpoints\n", static_cast<int>(allHardpoints.size())));

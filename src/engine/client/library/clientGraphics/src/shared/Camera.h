@@ -189,6 +189,7 @@ public:
 	const Volume     &getWorldFrustumVolume() const;
 
 	void               setParallelProjection(real newLeft, real newTop, real newRight, real newBottom);
+	void               setPerspectiveProjection();
 	ProjectionMode     getProjectionMode() const;
 	const GlMatrix4x4 &getProjectionMatrix() const;
 

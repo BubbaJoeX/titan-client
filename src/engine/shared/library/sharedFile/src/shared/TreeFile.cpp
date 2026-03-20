@@ -766,7 +766,8 @@ AbstractFile* TreeFile::open(const char *fileName, AbstractFile::PriorityType pr
 
 	if (!file)
 	{
-		FATAL(!allowFail, ("open '%s' not found", fixedFileName));
+		if (!allowFail)
+			WARNING(true, ("open '%s' not found", fixedFileName));
 
 #if PRODUCTION == 0
 		FileManifest::addNewManifestEntry(fixedFileName, 0);

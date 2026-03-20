@@ -338,6 +338,10 @@ GameWidget::GameWidget(QWidget* theParent, const char*theName)
         sharedFoundationData.writeMiniDumps     = ApplicationVersion::isBootlegBuild();
 	    SetupSharedFoundation::install(sharedFoundationData);
 
+		// GodClient config (paths, frame limit, optional game view resolution) — before graphics so
+		// gameScreenWidth/Height can override sizes pulled in from .include titan.cfg.
+		ConfigGodClient::install();
+
 	    SetupClientBugReporting::install();
 
         if (ApplicationVersion::isBootlegBuild())
@@ -400,6 +404,12 @@ GameWidget::GameWidget(QWidget* theParent, const char*theName)
 		SetupClientGraphics::Data setupGraphicsData;
 		SetupClientGraphics::setupDefaultGameData(setupGraphicsData);
 		SetupClientGraphics::install(setupGraphicsData);
+		{
+			int godW = 0;
+			int godH = 0;
+			if (ConfigGodClient::getUseGameScreenSize(godW, godH))
+				Graphics::resize(godW, godH);
+		}
 		Graphics::setTranslatePointFromGameToScreen(translatePointFromGameToScreen);
 
 		//-- directinput
@@ -444,7 +454,6 @@ GameWidget::GameWidget(QWidget* theParent, const char*theName)
 	setFrameRateLimit(static_cast<int>(ConfigSharedFoundation::getFrameRateLimit()));
 	Clock::noFrameRateLimit();
 
-	ConfigGodClient::install();
 	ConfigFileControl::install();
 	FileControlClient::install();
 	FileControlClient::setLogCallback(fileControlLogToConsole);

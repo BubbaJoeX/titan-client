@@ -82,6 +82,10 @@ public:
 	bool                    getWaterHeight (const Vector& position, float& height) const;
 	bool					getWaterHeight (const Vector& position, float& height, TerrainGeneratorWaterType& waterType, bool ignoreNonTransparentWater = false) const;
 	TerrainGeneratorWaterType getWaterType (const Vector& position_w) const;
+	/// True if global or any local / ribbon water should be considered for tools (map rasterizer).
+	bool                    hasAnyWaterSurface () const;
+	/// Like getWaterHeight, but also returns the winning water shader (template path basename → texture/….tga/.dds).
+	bool                    getWaterSurfaceAt (const Vector& position_w, float& height, TerrainGeneratorWaterType& waterType, const char*& shaderTemplateName, float& shaderSize) const;
 
 	// --
 
@@ -96,6 +100,8 @@ protected:
 	{
 		TerrainGeneratorWaterType waterType;
 		Vector points[4];
+		const char*               waterShaderTemplateName;
+		float                     waterShaderSize;
 	};
 
 	struct RibbonEndCap
@@ -104,6 +110,8 @@ protected:
 		Vector2d points[8];
 		Rectangle2d extent;
 		float height;
+		const char*               waterShaderTemplateName;
+		float                     waterShaderSize;
 	};
 
 	struct WaterTable

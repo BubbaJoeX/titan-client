@@ -1463,6 +1463,8 @@ BEGIN_MESSAGE_MAP(MapView, CView)
 	ON_UPDATE_COMMAND_UI(ID_VIEW_ENVIRONMENTMAP, OnUpdateViewEnvironmentmap)
 	ON_COMMAND(ID_VIEW_PASSABLEMAP, OnViewPassableMap)
 	ON_UPDATE_COMMAND_UI(ID_VIEW_PASSABLEMAP, OnUpdateViewPassableMap)
+	ON_COMMAND(ID_BUTTON_VERYHIGHRES, OnButtonVeryhighres)
+	ON_UPDATE_COMMAND_UI(ID_BUTTON_VERYHIGHRES, OnUpdateButtonVeryhighres)
 	ON_COMMAND(ID_BUTTON_HIGHRES, OnButtonHighres)
 	ON_UPDATE_COMMAND_UI(ID_BUTTON_HIGHRES, OnUpdateButtonHighres)
 	ON_COMMAND(ID_BUTTON_MEDRES, OnButtonMedres)
@@ -2655,6 +2657,22 @@ void MapView::OnUpdateModifyRibbonAffector(CCmdUI* pCmdUI)
 {
 	pCmdUI->Enable ((static_cast<ModeModifyAffectorBoundaryPoly*> (modes [MT_modifyRibbonAffector])->getAffectorBoundaryPoly () != 0) ? TRUE : FALSE);
 	pCmdUI->SetCheck (currentMode == MT_modifyRibbonAffector);
+}
+
+//-------------------------------------------------------------------
+
+void MapView::OnButtonVeryhighres()
+{
+	terrain->setResolutionType (EditorTerrain::RT_very_high);
+
+	Invalidate ();
+}
+
+//-------------------------------------------------------------------
+
+void MapView::OnUpdateButtonVeryhighres(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetCheck (terrain->getResolutionType () == EditorTerrain::RT_very_high);
 }
 
 //-------------------------------------------------------------------

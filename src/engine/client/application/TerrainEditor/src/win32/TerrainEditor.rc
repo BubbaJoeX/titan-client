@@ -402,6 +402,8 @@ BEGIN
         MENUITEM "Catalog",                     ID_VIEW_CATALOG
         MENUITEM SEPARATOR
         MENUITEM "&Preferences",                ID_VIEW_MAP_PREFERENCES
+        MENUITEM SEPARATOR
+        MENUITEM "Map &Very High Resolution (0.5m poles)", ID_BUTTON_VERYHIGHRES
     END
     POPUP "&Window"
     BEGIN
@@ -2789,6 +2791,7 @@ BEGIN
     ID_BUTTON_MEDRES        "Medium Resolution"
     ID_BUTTON_HIGHRES       "High Resolution"
     ID_BUTTON_LOWRES        "Low Resolution"
+    ID_BUTTON_VERYHIGHRES   "Very High Resolution\nHalf-meter pole spacing (8m chunk)"
     ID_BUTTON_COPY_CURRENT  "Duplicate current group"
     ID_BUTTON_DUMPCOLORRAMPS "Write .raw files for all color ramps"
 END

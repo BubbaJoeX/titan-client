@@ -107,6 +107,10 @@ public:
 		//-- internal use only
 		mutable bool                     normalsDirtyIUO;
 		mutable bool                     shadersDirtyIUO;
+		/// When true, \ref synchronizeShaders is not run (tile/LOD child alignment). Use for offline
+		/// full-resolution sampling (e.g. planet colormap) so per-pole shader stamps are not overwritten
+		/// by coarser-grid copies that often revert cells to the default shader.
+		mutable bool                     skipShaderSynchronize;
 		mutable Rectangle2d              chunkExtentIUO;
 
 	private:

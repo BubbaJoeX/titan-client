@@ -56,6 +56,8 @@ namespace ConfigClientGraphicsNamespace
 	bool  ms_loadAllAssetsRegardlessOfShaderCapability;
 
 	bool  ms_loadGpa;
+
+	bool  ms_headless;
 }
 
 using namespace ConfigClientGraphicsNamespace;
@@ -80,6 +82,8 @@ using namespace ConfigClientGraphicsNamespace;
 
 void ConfigClientGraphics::install (const Defaults &defaults)
 {
+	const bool headlessFlag = ms_headless || ConfigFile::getKeyBool("ClientGraphics", "headless", false);
+
 	KEY_INT(rasterMajor,                          defaults.rasterMajor);
 
 	KEY_SF_INT(screenWidth,                       defaults.screenWidth);
@@ -119,6 +123,8 @@ void ConfigClientGraphics::install (const Defaults &defaults)
 	KEY_BOOL(loadAllAssetsRegardlessOfShaderCapability, false);
 
 	KEY_BOOL(loadGpa,                             false);
+
+	ms_headless = headlessFlag;
 }
 
 // ----------------------------------------------------------------------
@@ -334,6 +340,20 @@ bool ConfigClientGraphics::getLoadAllAssetsRegardlessOfShaderCapability()
 bool ConfigClientGraphics::getLoadGpa()
 {
 	return ms_loadGpa;
+}
+
+// ----------------------------------------------------------------------
+
+void ConfigClientGraphics::setHeadless()
+{
+	ms_headless = true;
+}
+
+// ----------------------------------------------------------------------
+
+bool ConfigClientGraphics::getHeadless()
+{
+	return ms_headless;
 }
 
 // ----------------------------------------------------------------------

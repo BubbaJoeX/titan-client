@@ -71,6 +71,10 @@ public:
 
 	static bool           getLoadGpa();
 
+	/// Mark client as headless / minimal-window (SwgHeadlessClient, SwgCameraClient). Called before install().
+	static void           setHeadless();
+	static bool           getHeadless();
+
 private:
 
 	ConfigClientGraphics();

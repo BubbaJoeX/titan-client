@@ -260,6 +260,7 @@
     <ClCompile Include="..\..\src\win32\ExportSkeletalMeshGenerator.cpp" />
     <ClCompile Include="..\..\src\win32\ExportSkeleton.cpp" />
     <ClCompile Include="..\..\src\win32\ExportStaticMesh.cpp" />
+    <ClCompile Include="..\..\src\win32\GetDataRootDirCommand.cpp" />
     <ClCompile Include="..\..\src\win32\FirstMayaExporter.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">Create</PrecompiledHeader>
@@ -311,6 +312,7 @@
     <ClCompile Include="..\..\src\win32\SkeletonTemplateWriter.cpp" />
     <ClCompile Include="..\..\src\win32\StaticMeshBuilder.cpp" />
     <ClCompile Include="..\..\src\win32\SwgGuiCommand.cpp" />
+    <ClCompile Include="..\..\src\win32\SwgPrepCommand.cpp" />
     <ClCompile Include="..\..\src\win32\UniqueVertexSet.cpp" />
     <ClCompile Include="..\..\src\win32\VertexIndexer.cpp" />
     <ClCompile Include="..\..\src\win32\VisitAnimationCommand.cpp" />
@@ -381,6 +383,7 @@
     <ClInclude Include="..\..\src\win32\ReexportCommand.h" />
     <ClInclude Include="..\..\src\win32\resource.h" />
     <ClInclude Include="..\..\src\win32\SetAuthorCommand.h" />
+    <ClInclude Include="..\..\src\win32\GetDataRootDirCommand.h" />
     <ClInclude Include="..\..\src\win32\SetBaseDirectory.h" />
     <ClInclude Include="..\..\src\win32\SetDirectoryCommand.h" />
     <ClInclude Include="..\..\src\win32\ShaderPrimitiveSetWriter.h" />
@@ -389,6 +392,7 @@
     <ClInclude Include="..\..\src\win32\SkeletonTemplateWriter.h" />
     <ClInclude Include="..\..\src\win32\StaticMeshBuilder.h" />
     <ClInclude Include="..\..\src\win32\SwgGuiCommand.h" />
+    <ClInclude Include="..\..\src\win32\SwgPrepCommand.h" />
     <ClInclude Include="..\..\src\win32\UniqueVertexSet.h" />
     <ClInclude Include="..\..\src\win32\VersionFile.h" />
     <ClInclude Include="..\..\src\win32\VertexIndexer.h" />

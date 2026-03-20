@@ -10,6 +10,7 @@
 #include "ImportPathResolver.h"
 #include "ImportAnimation.h"
 
+#include "MayaCompoundString.h"
 #include "MayaSceneBuilder.h"
 #include "Messenger.h"
 
@@ -21,8 +22,11 @@
 #include "maya/MGlobal.h"
 #include "maya/MSelectionList.h"
 #include "maya/MDagPath.h"
+#include "maya/MDagPathArray.h"
 #include "maya/MFnDagNode.h"
+#include "maya/MFnSkinCluster.h"
 #include "maya/MItDag.h"
+#include "maya/MItDependencyNodes.h"
 #include "maya/MFnIkJoint.h"
 #include "maya/MQuaternion.h"
 #include "maya/MEulerRotation.h"
@@ -32,6 +36,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <set>
 
 // ======================================================================
 
@@ -639,12 +644,13 @@ MStatus ImportAnimation::doIt(const MArgList &args)
 {
 	MStatus status;
 
-	//-- parse arguments: -i <filename>
+	//-- parse arguments: -i <filename> [-skeleton <name>]
 	const unsigned argCount = args.length(&status);
 	MESSENGER_REJECT_STATUS(!status, ("failed to get argument count\n"));
-	MESSENGER_REJECT_STATUS(argCount < 2, ("usage: importAnimation -i <filename>\n"));
+	MESSENGER_REJECT_STATUS(argCount < 2, ("usage: importAnimation -i <filename> [-skeleton <name>]\n"));
 
 	std::string filename;
+	std::string skeletonFilter;
 
 	for (unsigned i = 0; i < argCount; ++i)
 	{
@@ -656,6 +662,13 @@ MStatus ImportAnimation::doIt(const MArgList &args)
 			MString val = args.asString(i + 1, &status);
 			MESSENGER_REJECT_STATUS(!status, ("failed to get filename argument\n"));
 			filename = val.asChar();
+			++i;
+		}
+		else if (arg == "-skeleton" && (i + 1) < argCount)
+		{
+			MString val = args.asString(i + 1, &status);
+			MESSENGER_REJECT_STATUS(!status, ("failed to get skeleton argument\n"));
+			skeletonFilter = val.asChar();
 			++i;
 		}
 	}
@@ -704,25 +717,88 @@ MStatus ImportAnimation::doIt(const MArgList &args)
 	const int staticTranslationCount  = static_cast<int>(staticTranslations.size());
 	const int transformCount          = static_cast<int>(transforms.size());
 
-	//-- build a map of joint name -> DAG path by iterating the Maya scene
+	//-- ANS format: quaternions (w,x,y,z) in IFF -> Maya (x,y,z,w). Rotations: negate Y,Z on import.
+	//   Translations: negate X for translateX. See MayaConversions and setRotationKeyframes.
+	MESSENGER_LOG(("ImportAnimation: ANS %d transforms, %d rotCh, %d transCh, fps=%.1f frames=%d\n",
+		transformCount, rotationChannelCount, translationChannelCount, fps, frameCount));
+
+	//-- build set of skin cluster influence paths (joints the mesh is bound to)
+	std::set<std::string> skinInfluencePaths;
+	{
+		MItDependencyNodes dnIt(MFn::kSkinClusterFilter, &status);
+		if (status)
+		{
+			for (; !dnIt.isDone(); dnIt.next())
+			{
+				MObject skinObj = dnIt.thisNode();
+				MFnSkinCluster skinFn(skinObj, &status);
+				if (!status) continue;
+				MDagPathArray influencePaths;
+				skinFn.influenceObjects(influencePaths, &status);
+				if (!status) continue;
+				for (unsigned int i = 0; i < influencePaths.length(); ++i)
+					skinInfluencePaths.insert(influencePaths[i].fullPathName().asChar());
+			}
+		}
+		if (!skinInfluencePaths.empty())
+			MESSENGER_LOG(("ImportAnimation: skin influences: %u joints (restricting to these)\n",
+				static_cast<unsigned>(skinInfluencePaths.size())));
+	}
+
+	//-- build joint name -> DAG path; apply -skeleton filter and/or skin influence filter
+	// ANS stores transform names as short names (e.g. "lthigh", "root") - same as mesh XFNM.
+	// Use MayaCompoundString::getComponentString(0) to match exporter/ImportSkeletalMesh logic.
 	std::map<std::string, MDagPath> jointMap;
 	{
+		std::string filter = skeletonFilter;
+		if (!filter.empty())
+		{
+			const std::string::size_type ls = filter.find_last_of("/\\");
+			if (ls != std::string::npos) filter = filter.substr(ls + 1);
+			const std::string::size_type dot = filter.find_last_of('.');
+			if (dot != std::string::npos) filter = filter.substr(0, dot);
+			skeletonFilter = filter;
+		}
+
 		MItDag dagIt(MItDag::kDepthFirst, MFn::kJoint, &status);
 		for (; !dagIt.isDone(); dagIt.next())
 		{
 			MDagPath dagPath;
 			dagIt.getPath(dagPath);
 			MFnDagNode dagFn(dagPath);
-			jointMap[std::string(dagFn.name().asChar())] = dagPath;
-		}
-	}
+			const MString mayaName(dagFn.name());
+			std::string pathStr(dagPath.fullPathName().asChar());
 
-	MESSENGER_LOG(("ImportAnimation: found %u joints in scene, %d animation messages\n",
-		static_cast<unsigned>(jointMap.size()),
-		static_cast<int>(messages.size())));
+			if (!skeletonFilter.empty() && pathStr.find(skeletonFilter) == std::string::npos)
+				continue;
+			if (!skinInfluencePaths.empty() && skinInfluencePaths.find(pathStr) == skinInfluencePaths.end())
+				continue;
+
+			// Use same short name as exporter: getComponentString(0) from MayaCompoundString
+			MayaCompoundString compoundName(mayaName);
+			const MString gameTransformName = (compoundName.getComponentCount() > 0) ? compoundName.getComponentString(0) : mayaName;
+			const std::string shortName(gameTransformName.asChar());
+
+			if (jointMap.find(shortName) == jointMap.end())
+				jointMap[shortName] = dagPath;
+		}
+
+		if (!skeletonFilter.empty())
+			MESSENGER_LOG(("ImportAnimation: skeleton [%s] -> %u joints\n",
+				skeletonFilter.c_str(), static_cast<unsigned>(jointMap.size())));
+		else if (!skinInfluencePaths.empty())
+		{
+			MESSENGER_LOG(("ImportAnimation: skin-only -> %u joints\n", static_cast<unsigned>(jointMap.size())));
+			if (jointMap.empty())
+				MESSENGER_LOG_WARNING(("ImportAnimation: skin filter yielded 0 joints - animation names may not match skin influences\n"));
+		}
+		else
+			MESSENGER_LOG(("ImportAnimation: all joints -> %u joints\n", static_cast<unsigned>(jointMap.size())));
+	}
 
 	int appliedCount = 0;
 	int skippedCount = 0;
+	std::string firstAnimatedPath;
 
 	//-- apply animation data to matching joints
 	for (int t = 0; t < transformCount; ++t)
@@ -738,49 +814,54 @@ MStatus ImportAnimation::doIt(const MArgList &args)
 		}
 
 		const MDagPath &jointPath = it->second;
+		if (firstAnimatedPath.empty())
+			firstAnimatedPath = jointPath.fullPathName().asChar();
+		MESSENGER_LOG(("  animating [%s] -> %s\n", ti.name.c_str(), jointPath.fullPathName().asChar()));
 
-		//-- animated rotation
+		// ANS stores deltas from bind pose. Read bind pose from joint (skeleton rest pose).
+		MFnIkJoint jointFn(jointPath.node());
+		MVector bindTranslation = jointFn.getTranslation(MSpace::kTransform);
+
+		//-- animated rotation (delta from bind pose: final = delta * bindPose)
 		if (ti.hasAnimatedRotation)
 		{
 			const uint32 idx = ti.rotationChannelIndex;
 			if (idx < static_cast<uint32>(rotationChannelCount))
 			{
-				status = MayaSceneBuilder::setRotationKeyframes(jointPath, rotationChannels[idx], fps);
+				status = MayaSceneBuilder::setRotationKeyframesFromDeltas(jointPath, rotationChannels[idx], fps);
 				if (!status)
 					MESSENGER_LOG_WARNING(("  failed to set rotation keyframes on [%s]\n", ti.name.c_str()));
 			}
 		}
 		else
 		{
+			// Static rotation: delta (identity = no change). final = delta * bindPose.
 			const uint32 idx = ti.rotationChannelIndex;
 			if (idx < static_cast<uint32>(staticRotationCount))
 			{
 				const size_t base = static_cast<size_t>(idx) * 4;
-				MQuaternion q(
+				MQuaternion deltaQ(
 					staticRotations[base + 0],
 					staticRotations[base + 1],
 					staticRotations[base + 2],
 					staticRotations[base + 3]);
-				MEulerRotation euler = q.asEulerRotation();
-
-				MFnIkJoint jointFn(jointPath.node());
-				// Undo the Y,Z negation from the exporter's coordinate conversion
-				MEulerRotation corrected(euler.x, -euler.y, -euler.z);
+				MQuaternion bindQuat;
+				jointFn.getRotation(bindQuat, MSpace::kTransform);
+				MQuaternion finalQ = deltaQ * bindQuat;
+				MEulerRotation finalEuler = finalQ.asEulerRotation();
+				MEulerRotation corrected(finalEuler.x, -finalEuler.y, -finalEuler.z);
 				jointFn.setRotation(corrected);
 			}
 		}
 
-		//-- animated X translation
+		//-- animated X translation (delta from bind pose: final = bindPose + delta, X negated)
 		if (ti.translationMask & MASK_X)
 		{
 			const uint32 idx = ti.xTranslationChannelIndex;
 			if (idx < static_cast<uint32>(translationChannelCount))
 			{
-				// X translation values are negated in engine coords
-				std::vector<MayaSceneBuilder::AnimKeyframe> negated = translationChannels[idx];
-				for (size_t k = 0; k < negated.size(); ++k)
-					negated[k].value = -negated[k].value;
-				status = MayaSceneBuilder::setKeyframes(jointPath, "translateX", negated, fps);
+				status = MayaSceneBuilder::setKeyframesFromDeltas(jointPath, "translateX",
+					translationChannels[idx], fps, bindTranslation.x, true);
 				if (!status)
 					MESSENGER_LOG_WARNING(("  failed to set translateX keyframes on [%s]\n", ti.name.c_str()));
 			}
@@ -790,20 +871,20 @@ MStatus ImportAnimation::doIt(const MArgList &args)
 			const uint32 idx = ti.xTranslationChannelIndex;
 			if (idx < static_cast<uint32>(staticTranslationCount))
 			{
-				MFnIkJoint jointFn(jointPath.node());
-				MVector translation = jointFn.getTranslation(MSpace::kTransform);
-				translation.x = static_cast<double>(-staticTranslations[idx]);
-				jointFn.setTranslation(translation, MSpace::kTransform);
+				MVector t = jointFn.getTranslation(MSpace::kTransform);
+				t.x = bindTranslation.x + static_cast<double>(-staticTranslations[idx]);
+				jointFn.setTranslation(t, MSpace::kTransform);
 			}
 		}
 
-		//-- animated Y translation
+		//-- animated Y translation (delta from bind pose)
 		if (ti.translationMask & MASK_Y)
 		{
 			const uint32 idx = ti.yTranslationChannelIndex;
 			if (idx < static_cast<uint32>(translationChannelCount))
 			{
-				status = MayaSceneBuilder::setKeyframes(jointPath, "translateY", translationChannels[idx], fps);
+				status = MayaSceneBuilder::setKeyframesFromDeltas(jointPath, "translateY",
+					translationChannels[idx], fps, bindTranslation.y, false);
 				if (!status)
 					MESSENGER_LOG_WARNING(("  failed to set translateY keyframes on [%s]\n", ti.name.c_str()));
 			}
@@ -813,20 +894,20 @@ MStatus ImportAnimation::doIt(const MArgList &args)
 			const uint32 idx = ti.yTranslationChannelIndex;
 			if (idx < static_cast<uint32>(staticTranslationCount))
 			{
-				MFnIkJoint jointFn(jointPath.node());
-				MVector translation = jointFn.getTranslation(MSpace::kTransform);
-				translation.y = static_cast<double>(staticTranslations[idx]);
-				jointFn.setTranslation(translation, MSpace::kTransform);
+				MVector t = jointFn.getTranslation(MSpace::kTransform);
+				t.y = bindTranslation.y + static_cast<double>(staticTranslations[idx]);
+				jointFn.setTranslation(t, MSpace::kTransform);
 			}
 		}
 
-		//-- animated Z translation
+		//-- animated Z translation (delta from bind pose)
 		if (ti.translationMask & MASK_Z)
 		{
 			const uint32 idx = ti.zTranslationChannelIndex;
 			if (idx < static_cast<uint32>(translationChannelCount))
 			{
-				status = MayaSceneBuilder::setKeyframes(jointPath, "translateZ", translationChannels[idx], fps);
+				status = MayaSceneBuilder::setKeyframesFromDeltas(jointPath, "translateZ",
+					translationChannels[idx], fps, bindTranslation.z, false);
 				if (!status)
 					MESSENGER_LOG_WARNING(("  failed to set translateZ keyframes on [%s]\n", ti.name.c_str()));
 			}
@@ -836,17 +917,24 @@ MStatus ImportAnimation::doIt(const MArgList &args)
 			const uint32 idx = ti.zTranslationChannelIndex;
 			if (idx < static_cast<uint32>(staticTranslationCount))
 			{
-				MFnIkJoint jointFn(jointPath.node());
-				MVector translation = jointFn.getTranslation(MSpace::kTransform);
-				translation.z = static_cast<double>(staticTranslations[idx]);
-				jointFn.setTranslation(translation, MSpace::kTransform);
+				MVector t = jointFn.getTranslation(MSpace::kTransform);
+				t.z = bindTranslation.z + static_cast<double>(staticTranslations[idx]);
+				jointFn.setTranslation(t, MSpace::kTransform);
 			}
 		}
 
 		++appliedCount;
 	}
 
-	MESSENGER_LOG(("ImportAnimation: done, applied %d transforms, skipped %d\n", appliedCount, skippedCount));
+	// Summary: skeleton hierarchy of animated joints (compare with "Skin cluster: skeleton" from ImportSkeletalMesh)
+	std::string animSkeletonHint;
+	if (!firstAnimatedPath.empty())
+	{
+		std::string::size_type p = firstAnimatedPath.find('|', 1);
+		animSkeletonHint = (p != std::string::npos) ? firstAnimatedPath.substr(0, p) : firstAnimatedPath;
+	}
+	MESSENGER_LOG(("ImportAnimation: done, applied %d skipped %d, skeleton [%s]\n",
+		appliedCount, skippedCount, animSkeletonHint.c_str()));
 
 	if (!messages.empty())
 	{

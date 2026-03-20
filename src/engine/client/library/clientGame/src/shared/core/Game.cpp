@@ -57,6 +57,7 @@
 #include "clientGame/TestIoWin.h"
 #include "clientGame/TimeOfDayTest.h"
 #include "clientGame/WaterTest.h"
+#include "clientGraphics/ConfigClientGraphics.h"
 #include "clientGraphics/Graphics.h"
 #include "clientGraphics/Shader.h"
 #include "clientGraphics/ShaderCapability.h"
@@ -1136,7 +1137,9 @@ void Game::runGameLoopOnce(bool presentToWindow, HWND hwnd, int width, int heigh
 			return;
 		}
 
-		if (GetActiveWindow() == Os::getWindow())
+		// Headless / camera tools must advance GameScheduler even when the window is not
+		// foreground (GetActiveWindow), or login → world transition can stall.
+		if (GetActiveWindow() == Os::getWindow() || ConfigClientGraphics::getHeadless())
 		{
 			NP_PROFILER_NAMED_AUTO_BLOCK_TRANSFER(profilerMainLoop, "GameScheduler update");
 			GameScheduler::alter(elapsedTime);

@@ -1692,6 +1692,13 @@ void EditorTerrain::setResolutionType (ResolutionType resolutionType)
 			distanceBetweenPoles_w = 1.f;
 		}
 		break;
+
+	case RT_very_high:
+		{
+			chunkWidthInMeters_w = 8.f;
+			distanceBetweenPoles_w = 0.5f;
+		}
+		break;
 	}
 
 	clearChunks ();

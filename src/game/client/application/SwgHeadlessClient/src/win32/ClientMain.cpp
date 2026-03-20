@@ -17,7 +17,6 @@
 #include "clientDirectInput/SetupClientDirectInput.h"
 #include "clientGame/Game.h"
 #include "clientGame/SetupClientGame.h"
-#include "clientGraphics/ConfigClientGraphics.h"
 #include "clientGraphics/Graphics.h"
 #include "clientGraphics/ScreenShotHelper.h"
 #include "clientGraphics/ShaderTemplate.h"
@@ -292,7 +291,13 @@ int ClientMain(
 		setupGraphicsData.alphaBufferBitDepth = 0;
 		SetupClientGraphics::setupDefaultGameData (setupGraphicsData);
 
-		ConfigClientGraphics::setHeadless();
+		{
+			ConfigFile::Section *clientGraphicsSection = ConfigFile::getSection("ClientGraphics");
+			if (!clientGraphicsSection)
+				clientGraphicsSection = ConfigFile::createSection("ClientGraphics");
+			if (clientGraphicsSection)
+				clientGraphicsSection->addKey("headless", "1", true);
+		}
 
 		if (SetupClientGraphics::install (setupGraphicsData))
 		{

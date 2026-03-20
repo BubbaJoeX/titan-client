@@ -75,6 +75,8 @@ void ConfigGodClient::install()
 	KEY_STRING2(buildoutsRoot, "");
 
 	KEY_INT2(frameRateLimit, 0);
+	KEY_INT2(gameScreenWidth, 0);
+	KEY_INT2(gameScreenHeight, 0);
 
 	KEY_STRING(serverObjectTemplateTheaterDirectory, "../../dsrc/sku.0/sys.server/compiled/game");
 	KEY_STRING(serverDataTableTheaterDirectory, "../../dsrc/sku.0/sys.server/compiled/game");
@@ -170,6 +172,22 @@ bool ConfigGodClient::getConnectToPerforce ()
 bool ConfigGodClient::getLoadServerObjects ()
 {
 	return ms_loadServerObjects;
+}
+
+//-------------------------------------------------------------------
+
+bool ConfigGodClient::getUseGameScreenSize (int &outWidth, int &outHeight)
+{
+	NOT_NULL (data);
+	const int w = data->gameScreenWidth;
+	const int h = data->gameScreenHeight;
+	if (w > 0 && h > 0)
+	{
+		outWidth = w;
+		outHeight = h;
+		return true;
+	}
+	return false;
 }
 
 //-------------------------------------------------------------------

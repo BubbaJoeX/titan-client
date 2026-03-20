@@ -70,6 +70,7 @@
 #include "clientGame/SpaceDeath.h"
 #include "clientGame/SpacePreloadedAssetManager.h"
 #include "clientGame/SpaceTargetBracketOverlay.h"
+#include "clientGame/SwgCameraMapCapture.h"
 #include "clientGame/StructurePlacementCamera.h"
 #include "clientGame/WorldSnapshot.h"
 #include "clientGraphics/DebugPrimitive.h"
@@ -426,6 +427,8 @@ void GroundScene::install ()
 
 	ExitChain::add (GroundSceneNamespace::remove, "GroundSceneNamespace::remove");
 
+	SwgCameraMapCapture::install();
+
 	ms_objectTemplateCrcStringTable.load("misc/object_template_crc_string_table.iff");
 
 	strcpy(ms_terrainName, "Terrain: none\n");
@@ -438,6 +441,8 @@ void GroundScene::install ()
 
 void GroundSceneNamespace::remove ()
 {
+	SwgCameraMapCapture::remove();
+
 	DebugFlags::unregisterFlag (ms_logCreateMessages);
 	DebugFlags::unregisterFlag (ms_testCollision);
 	DebugFlags::unregisterFlag (ms_renderDetailLevel);
@@ -2058,6 +2063,8 @@ void GroundScene::update(float elapsedTime)
 	}
 
 	updateLoading();
+
+	SwgCameraMapCapture::update(elapsedTime, this);
 }
 
 //----------------------------------------------------------------------
@@ -2351,6 +2358,8 @@ void GroundScene::draw (void) const
 	//-- allow shadow submissions (the ui will try to submit shadow volumes as well)
 	ShadowVolume::setAllowShadowSubmissions (true);
 
+	SwgCameraMapCapture::prepareDraw(const_cast<GroundScene *>(this));
+
 
 	//
 	//-- render world
@@ -2383,6 +2392,8 @@ void GroundScene::draw (void) const
 	//   on characters rendered this frame and the current camera's position.
 	if (CharacterLodManager::isEnabled ())
 		CharacterLodManager::planNextFrame (camera->getPosition_w ());
+
+	SwgCameraMapCapture::finishDraw(const_cast<GroundScene *>(this));
 }
 
 //-------------------------------------------------------------------

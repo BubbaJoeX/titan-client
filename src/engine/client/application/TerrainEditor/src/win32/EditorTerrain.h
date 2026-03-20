@@ -65,6 +65,7 @@ public:
 
 	enum ResolutionType
 	{
+		RT_very_high,
 		RT_high,
 		RT_medium,
 		RT_low

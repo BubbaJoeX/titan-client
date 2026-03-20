@@ -783,6 +783,14 @@ void Camera::setParallelProjection(real newLeft, real newTop, real newRight, rea
 }
 
 // ----------------------------------------------------------------------
+
+void Camera::setPerspectiveProjection()
+{
+	projectionMode = PM_Perspective;
+	setup();
+}
+
+// ----------------------------------------------------------------------
 /**
  * compute camera space radius in screen space at the specified position
  */

@@ -1,0 +1,94 @@
+// ===========================================================================
+// Copyright 2025 Autodesk, Inc. All rights reserved.
+//
+// Use of this software is subject to the terms of the Autodesk license
+// agreement provided at the time of installation or download, or which
+// otherwise accompanies this software in either electronic or hard copy form.
+// ===========================================================================
+//
+// Set up a simple scene to demonstrate how the viewObjectSetOverride
+// plugin can be used to:
+// 
+// * filter rendered objects based on set membership
+// * exclude specific types of geometry from MSceneRender passes
+// 
+global string $gViewport2;
+file -f -new;
+setRendererInModelPanel $gViewport2 modelPanel4;
+
+// Set up four sets:
+//		set1: polyCube,   footPrint, apiMesh
+//		set2: polyTorus,  footPrint, apiMesh
+//		set3: polySphere, footPrint, apiMesh
+//		set4: polyCone
+//
+$cube = polyCube();
+setAttr ($cube[0] + ".translate") -4 0 0;
+CreateSet;						// set1
+
+$torus = polyTorus();
+setAttr ($torus[0] + ".translate") 0 0 0;
+CreateSet;						// set2
+
+$sphere = polySphere();
+setAttr ($sphere[0] + ".translate") 4 0 0;
+CreateSet;						// set3
+
+$cone = polyCone();
+setAttr ($cone[0] + ".translate") 0 -2 0;
+CreateSet;						// set4
+
+int $skipFootprint =  catch( `loadPlugin -quiet py2FootPrintNode` );
+int $skipApiMesh   =  catch( `loadPlugin -quiet apiMeshShape` );
+if( !$skipFootprint ) {
+	$footprint1 = `createNode footPrint_py`;
+	move -r -4 2 0;
+	sets -edit -forceElement set1 $footprint1;
+
+	$footprint2 = `createNode footPrint_py`;
+	move -r 0 2 0;
+	sets -edit -forceElement set2 $footprint2;
+
+	$footprint3 = `createNode footPrint_py`;
+	move -r 4 2 0;
+	sets -edit -forceElement set3 $footprint3;
+}
+
+if( !$skipApiMesh ) {
+	$apiMesh1 = `createNode apiMesh`;
+	$apiCreator1 = `createNode apiMeshCreator`;
+	connectAttr ($apiCreator1+".outputSurface") ($apiMesh1+".inputSurface");
+	move -r -4 -2 0 $apiMesh1;
+	sets -edit -forceElement set1 $apiMesh1;
+
+	$apiMesh2 = `createNode apiMesh`;
+	$apiCreator2 = `createNode apiMeshCreator`;
+	connectAttr ($apiCreator2+".outputSurface") ($apiMesh2+".inputSurface");
+	move -r 0 -2 0 $apiMesh2;
+	sets -edit -forceElement set2 $apiMesh2;
+
+	$apiMesh3 = `createNode apiMesh`;
+	$apiCreator3 = `createNode apiMeshCreator`;
+	connectAttr ($apiCreator3+".outputSurface") ($apiMesh3+".inputSurface");
+	move -r 4 -2 0 $apiMesh3;
+	sets -edit -forceElement set3 $apiMesh3;
+}
+
+// Switch to override render viewObjectSetOverride
+//
+setRendererAndOverrideInModelPanel $gViewport2 viewObjectSetOverride modelPanel4;
+
+// Refresh the viewport.  
+//
+// The viewObjectSetOverride plugin only draws the members of the sets
+// named "set1", "set2", and "set3". Each set uses its own MSceneRender
+// to excludes one or more geometry types.  "set4" excludes no geometry
+// types but is still completely absent from the render because of its
+// name.
+//
+// 		set1: cube and footprint (apiMesh excluded)
+// 		set2: torus and apiMesh  (footPrint_py excluded)
+// 		set3: sphere only        (both apiMesh and footPrint_py excluded)
+// 		set4: set excluded       (does not contribute to the render)
+//
+refresh;

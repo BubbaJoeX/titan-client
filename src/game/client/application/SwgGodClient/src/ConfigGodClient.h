@@ -47,6 +47,9 @@ public:
 
 
 		int             frameRateLimit;
+		/** If both > 0, God Client game view uses these instead of titan.cfg / SharedFoundation screen size. */
+		int             gameScreenWidth;
+		int             gameScreenHeight;
 	};
 
 private:
@@ -70,6 +73,8 @@ public:
 
 	static bool getConnectToPerforce ();
 	static bool getLoadServerObjects ();
+
+	static bool getUseGameScreenSize (int &outWidth, int &outHeight);
 };
 
 //-------------------------------------------------------------------

@@ -11,6 +11,7 @@
 #include "clientGame/FreeCamera.h"
 #include "clientGame/FreeChaseCamera.h"
 #include "clientGame/Game.h"
+#include "clientGame/SwgCameraMapCapture.h"
 #include "clientGame/GroundScene.h"
 #include "clientGame/ConfigClientGame.h"
 #include "sharedFoundation/GameControllerMessage.h"
@@ -267,6 +268,9 @@ float FreeCamera::alter (float time)
 	m_targetInfo.distance = std::max (m_minPivotDistance, m_targetInfo.distance);
 	m_info.distance       = std::max (m_minPivotDistance, m_info.distance);
 
+	if (SwgCameraMapCapture::isBatchActive())
+		m_interpolating = false;
+
 	//-- update the interpolation if necessary
 	if (m_interpolating)
 	{
@@ -341,6 +345,8 @@ float FreeCamera::alter (float time)
 	for (i = 0; i < static_cast<int>(K_COUNT); i++)
 		m_keys [i] = false;
 
+	bool const mapCaptureDrivingCamera = SwgCameraMapCapture::isBatchActive();
+
 	//-- handle camera specific messages
 	for (i = 0; i < m_queue->getNumberOfMessages (); i++)
 	{
@@ -348,6 +354,9 @@ float FreeCamera::alter (float time)
 		real value;
 
 		m_queue->getMessage (i, &message, &value);
+
+		if (mapCaptureDrivingCamera)
+			continue;
 
 		//-- stop interpolating on inputmap messages
 		m_interpolating = false;
@@ -435,7 +444,7 @@ float FreeCamera::alter (float time)
 	const float speedFast = ConfigClientGame::getFreeCameraSpeedFast ();
 	const float speedSlow = ConfigClientGame::getFreeCameraSpeedSlow ();
 
-	if (m_mode == M_fly)
+	if (m_mode == M_fly && !mapCaptureDrivingCamera)
 	{
 		//-- move
 		real translationAmount = time;

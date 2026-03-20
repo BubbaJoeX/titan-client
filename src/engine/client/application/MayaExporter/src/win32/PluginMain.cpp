@@ -48,6 +48,7 @@
 #include "ExportSkeleton.h"
 #include "ExportStaticMesh.h"
 #include "ExporterLog.h"
+#include "GetDataRootDirCommand.h"
 #include "ExportManager.h"
 #include "ImportAnimation.h"
 #include "ImportLodMesh.h"
@@ -77,6 +78,7 @@
 #include "SetBaseDirectory.h"
 #include "SetDirectoryCommand.h"
 #include "SwgGuiCommand.h"
+#include "SwgPrepCommand.h"
 #include "VersionFile.h"
 #include "VertexIndexer.h"
 #include "VisitAnimationCommand.h"
@@ -296,6 +298,7 @@ static bool StartEngine ()
 	SimpleExtent::install();
 
 	MayaSceneBuilder::install(&theMessenger);
+	SwgPrepCommand::install(&theMessenger);
 	ImportSkeleton::install(&theMessenger);
 	ImportShader::install(&theMessenger);
 	ImportStaticMesh::install(&theMessenger);
@@ -376,6 +379,7 @@ void StopEngine(bool isCleanShutdown)
 	MayaMeshReader::remove();
 	MayaLightMeshReader::remove();	
 
+	SwgPrepCommand::remove();
 	SetDirectoryCommand::remove();
 
 	MayaUtility::remove ();
@@ -1054,6 +1058,15 @@ extern "C" MStatus __declspec (dllexport) initializePlugin (MObject object)
 		return status;
 	}
 
+	status = plugin.registerCommand ("getDataRootDir", GetDataRootDirCommand::creator);
+	if (!status)
+	{
+		MESSENGER_LOG (("failed to register getDataRootDir command\n"));
+		REPORT_LOG (true, ("failed to register getDataRootDir command\n"));
+		StopEngine ();
+		return status;
+	}
+
 	//-- register "exportSkeletonTemplate" command
 	status = plugin.registerCommand ("exportSkeleton", ExportSkeleton::creator);
 	if (!status)
@@ -1248,6 +1261,15 @@ extern "C" MStatus __declspec (dllexport) initializePlugin (MObject object)
 		return status;
 	}
 
+	status = plugin.registerCommand ("swgprep", SwgPrepCommand::creator);
+	if (!status)
+	{
+		MESSENGER_LOG (("failed to register swgprep command\n"));
+		REPORT_LOG (true, ("failed to register swgprep command\n"));
+		StopEngine ();
+		return status;
+	}
+
 	// indicate successful initialization
 	return MS::kSuccess;
 }
@@ -1278,6 +1300,7 @@ extern "C" MStatus __declspec (dllexport) uninitializePlugin (MObject object)
 	}
 
 	status = plugin.deregisterCommand ("setBaseDir");
+	status = plugin.deregisterCommand ("getDataRootDir");
 	if (!status)
 	{
 		MESSENGER_LOG (("failed to deregister setBaseDir command\n"));
@@ -1434,6 +1457,13 @@ extern "C" MStatus __declspec (dllexport) uninitializePlugin (MObject object)
 	{
 		MESSENGER_LOG (("failed to deregister swggui command\n"));
 		REPORT_LOG (true, ("failed to deregister swggui command\n"));
+	}
+
+	status = plugin.deregisterCommand ("swgprep");
+	if (!status)
+	{
+		MESSENGER_LOG (("failed to deregister swgprep command\n"));
+		REPORT_LOG (true, ("failed to deregister swgprep command\n"));
 	}
 
 	// delete registry key

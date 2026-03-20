@@ -17,6 +17,7 @@
 #include "maya/MStatus.h"
 #include "maya/MDagPath.h"
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -160,10 +161,15 @@ public:
 		const MDagPath & meshPath,
 		const std::vector<BlendTargetData> & blendTargets);
 
+	/// Create hardpoints as child transforms under skeleton joints (or defaultParent when parentJoint empty).
+	/// parentJointToPathMap: joint short name -> DAG path (use jointMap from ImportSkeletalMesh).
+	/// meshName: used for exporter-compatible naming "hp_meshname_hardpointname" for round-trip.
+	/// defaultParentForEmpty: when parentJoint is empty (e.g. static mesh), parent to this; otherwise world.
 	static MStatus createHardpoints(
 		const std::vector<HardpointData> & hardpoints,
-		const std::vector<MDagPath> & jointPaths,
-		const std::vector<std::string> & jointNames);
+		const std::map<std::string, MDagPath> & parentJointToPathMap,
+		const std::string & meshName,
+		MObject defaultParentForEmpty = MObject::kNullObj);
 
 	static MStatus createMaterial(
 		const std::string & shaderName,
@@ -185,6 +191,21 @@ public:
 		const MDagPath & jointPath,
 		const std::vector<QuatKeyframe> & keyframes,
 		float fps);
+
+	/// Apply animation deltas on top of bind pose (ANS stores deltas from bind pose).
+	/// Rotation: final = delta * bindPose. Translation: final = bindPose + delta.
+	static MStatus setRotationKeyframesFromDeltas(
+		const MDagPath & jointPath,
+		const std::vector<QuatKeyframe> & deltaKeyframes,
+		float fps);
+
+	static MStatus setKeyframesFromDeltas(
+		const MDagPath & jointPath,
+		const std::string & attribute,
+		const std::vector<AnimKeyframe> & deltaKeyframes,
+		float fps,
+		double bindPoseValue,
+		bool negateDelta = false);
 
 	// -----------------------------------------------------------------
 	// Coordinate conversion helpers (engine <-> Maya)

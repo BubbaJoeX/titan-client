@@ -526,6 +526,8 @@ void CuiManager::remove ()
 	if (!ms_installed)
 		return;
 
+	CuiManager::setRenderSuppressed (false);
+
 	REPORT_LOG_PRINT (s_debugReportInstallVerbose, ("CuiManager::remove start\n"));
 
 	if (ms_implementationRemoveFunction)
@@ -815,6 +817,9 @@ void CuiManager::update (float elapsedTime)
 void CuiManager::render ()
 {
 	DEBUG_FATAL (!ms_installed, ("not installed\n"));
+
+	if (getRenderSuppressedRef ())
+		return;
 
 #if PRODUCTION == 0
 	PerformanceTimer ptimer;

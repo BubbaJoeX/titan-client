@@ -134,6 +134,9 @@ public:
 
 	static void                         forceRender              ();
 
+	/** When true, render() is a no-op (e.g. map capture batches with no HUD). */
+	static void                         setRenderSuppressed      (bool suppress);
+
 	static void                         debugBadStringIdsFunc    (const StringId & id, bool isTableBad);
 
 	static void                         setIgnoreBadStringId     (const StringId & id);
@@ -163,6 +166,9 @@ private:
 	static ImplementationInstallFunction  ms_implementationRemoveFunction;
 	static ImplementationUpdateFunction   ms_implementationUpdateFunction;
 	static ImplementationTestFunction     ms_implementationTestFunction;
+
+	/** Single storage for render suppression (inline static local; avoids .lib ODR for ms_renderSuppressed). */
+	static bool &                       getRenderSuppressedRef ();
 };
 
 //-------------------------------------------------------------------
@@ -210,6 +216,21 @@ inline bool CuiManager::getPointerMotionCapturedByUiX ()
 inline bool CuiManager::getPointerMotionCapturedByUiY ()
 {
 	return ms_pointerMotionCapturedByUiY;
+}
+
+//-----------------------------------------------------------------
+
+inline bool & CuiManager::getRenderSuppressedRef ()
+{
+	static bool s_renderSuppressed = false;
+	return s_renderSuppressed;
+}
+
+//-----------------------------------------------------------------
+
+inline void CuiManager::setRenderSuppressed (bool const suppress)
+{
+	getRenderSuppressedRef () = suppress;
 }
 
 //-----------------------------------------------------------------

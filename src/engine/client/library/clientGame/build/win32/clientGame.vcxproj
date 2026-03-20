@@ -998,6 +998,9 @@
     <ClCompile Include="..\..\src\shared\scene\GroundScene.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
     </ClCompile>
+    <ClCompile Include="..\..\src\shared\scene\SwgCameraMapCapture.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+    </ClCompile>
     <ClCompile Include="..\..\src\shared\scene\GroundScene_DebugKeyContext.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
     </ClCompile>
@@ -1468,6 +1471,7 @@
     <ClInclude Include="..\..\src\shared\playback\WaitForBoltActionTemplate.h" />
     <ClInclude Include="..\..\src\shared\scene\GameMusicManager.h" />
     <ClInclude Include="..\..\src\shared\scene\GroundScene.h" />
+    <ClInclude Include="..\..\src\shared\scene\SwgCameraMapCapture.h" />
     <ClInclude Include="..\..\src\shared\scene\Intro.h" />
     <ClInclude Include="..\..\src\shared\scene\MatchMakingManager.h" />
     <ClInclude Include="..\..\src\shared\scene\MatchMakingResult.h" />

@@ -36,6 +36,35 @@ namespace
 		float floraTileWidthInMeters;
 		int   numberOfFloraSampled;
 	};
+
+	static void waterShaderFromBoundary (TerrainGenerator::Boundary const * const boundary, char const *& shaderName, float & shaderSize)
+	{
+		shaderName = 0;
+		shaderSize = 2.f;
+		if (!boundary)
+			return;
+
+		if (boundary->getType () == TGBT_polygon)
+		{
+			BoundaryPolygon const * const poly = safe_cast<BoundaryPolygon const *> (boundary);
+			if (poly)
+			{
+				shaderName = poly->getLocalWaterTableShaderTemplateName ();
+				shaderSize = poly->getLocalWaterTableShaderSize ();
+			}
+			return;
+		}
+
+		if (boundary->getType () == TGBT_rectangle)
+		{
+			BoundaryRectangle const * const rect = safe_cast<BoundaryRectangle const *> (boundary);
+			if (rect)
+			{
+				shaderName = rect->getLocalWaterTableShaderTemplateName ();
+				shaderSize = rect->getLocalWaterTableShaderSize ();
+			}
+		}
+	}
 }
 
 //===================================================================
@@ -424,6 +453,8 @@ void ProceduralTerrainAppearanceTemplate::createWaterTableAndRibbonQuadLists (co
 						ribbonQuad.points[1] = ribbonQuadList[j].points[1];
 						ribbonQuad.points[2] = ribbonQuadList[j].points[2];
 						ribbonQuad.points[3] = ribbonQuadList[j].points[3];
+						ribbonQuad.waterShaderTemplateName = affectorRibbon->getRibbonWaterShaderTemplateName ();
+						ribbonQuad.waterShaderSize           = affectorRibbon->getWaterShaderSize ();
 						m_ribbonQuadList->push_back(ribbonQuad);
 					}
 				}
@@ -438,6 +469,8 @@ void ProceduralTerrainAppearanceTemplate::createWaterTableAndRibbonQuadLists (co
 					endCap.waterType = affectorRibbon->getWaterType();
 					endCap.height = affectorRibbon->getHeightList()[0];
 					endCap.extent = affectorRibbon->getEndCapExtent();
+					endCap.waterShaderTemplateName = affectorRibbon->getRibbonWaterShaderTemplateName ();
+					endCap.waterShaderSize         = affectorRibbon->getWaterShaderSize ();
 					int j;
 					for(j = 0; j < endCapPointList.getNumberOfElements(); ++j)
 					{
@@ -627,6 +660,162 @@ bool ProceduralTerrainAppearanceTemplate::getWaterHeight (const Vector& position
 				{
 					result = ribbonEndCap.height;
 					waterType = ribbonEndCap.waterType;
+				}
+				valid = true;
+			}
+		}
+	}
+
+	if (valid)
+		height = result;
+
+	return valid;
+}
+
+//-------------------------------------------------------------------
+
+bool ProceduralTerrainAppearanceTemplate::hasAnyWaterSurface () const
+{
+	return m_useGlobalWaterTable
+		|| (m_waterTableList && !m_waterTableList->empty ())
+		|| (m_ribbonQuadList && !m_ribbonQuadList->empty ())
+		|| (m_ribbonEndCapList && !m_ribbonEndCapList->empty ());
+}
+
+//-------------------------------------------------------------------
+
+bool ProceduralTerrainAppearanceTemplate::getWaterSurfaceAt (const Vector& position, float& height, TerrainGeneratorWaterType& waterType, const char*& shaderTemplateName, float& shaderSize) const
+{
+	bool valid = false;
+	float result = -FLT_MAX;
+	waterType = TGWT_invalid;
+	shaderTemplateName = 0;
+	shaderSize = 2.f;
+
+	if (m_useGlobalWaterTable)
+	{
+		result = m_globalWaterTableHeight;
+		valid = true;
+		waterType = TGWT_water;
+		shaderTemplateName = m_globalWaterTableShaderTemplateName;
+		shaderSize = m_globalWaterTableShaderSize;
+	}
+
+	uint i;
+	for (i = 0; i < m_waterTableList->size (); ++i)
+	{
+		const WaterTable& waterTable = (*m_waterTableList) [i];
+
+		if (waterTable.boundary->isWithin (position.x, position.z))
+		{
+			if (waterTable.height > result)
+			{
+				result = waterTable.height;
+				waterType = waterTable.waterType;
+				waterShaderFromBoundary (waterTable.boundary, shaderTemplateName, shaderSize);
+				// Many polygon/rectangle water tables leave the per-boundary shader unset;
+				// the client still renders water using the planet global shader in practice.
+				if (!shaderTemplateName || !shaderTemplateName[0])
+				{
+					if (m_useGlobalWaterTable && m_globalWaterTableShaderTemplateName && m_globalWaterTableShaderTemplateName[0])
+					{
+						shaderTemplateName = m_globalWaterTableShaderTemplateName;
+						shaderSize         = m_globalWaterTableShaderSize;
+					}
+				}
+			}
+			valid = true;
+		}
+	}
+
+	Vector pos = position;
+	pos.y = 0.0f;
+
+	for (i = 0; i < m_ribbonQuadList->size (); ++i)
+	{
+		const RibbonQuad& ribbonQuad = (*m_ribbonQuadList) [i];
+
+		const float highHeight = std::max(ribbonQuad.points[0].y,ribbonQuad.points[2].y);
+		if(highHeight < result)
+			continue;
+
+		float x0 = std::min(std::min(std::min(ribbonQuad.points[0].x,ribbonQuad.points[1].x),ribbonQuad.points[2].x),ribbonQuad.points[3].x);
+		float z0 = std::min(std::min(std::min(ribbonQuad.points[0].z,ribbonQuad.points[1].z),ribbonQuad.points[2].z),ribbonQuad.points[3].z);
+		float x1 = std::max(std::max(std::max(ribbonQuad.points[0].x,ribbonQuad.points[1].x),ribbonQuad.points[2].x),ribbonQuad.points[3].x);
+		float z1 = std::max(std::max(std::max(ribbonQuad.points[0].z,ribbonQuad.points[1].z),ribbonQuad.points[2].z),ribbonQuad.points[3].z);
+		
+		if(pos.x < x0 || pos.x > x1 || pos.z < z0 || pos.z > z1)
+			continue;
+
+		const Vector p0 = Vector(ribbonQuad.points[0].x,0.0f,ribbonQuad.points[0].z);
+		const Vector p1 = Vector(ribbonQuad.points[1].x,0.0f,ribbonQuad.points[1].z);
+		const Vector p2 = Vector(ribbonQuad.points[2].x,0.0f,ribbonQuad.points[2].z);
+		const Vector p3 = Vector(ribbonQuad.points[3].x,0.0f,ribbonQuad.points[3].z);
+		
+		const bool inPoly1 = pos.inPolygon(p0,p1,p2);
+		const bool inPoly2 = !inPoly1 && pos.inPolygon(p0,p2,p3);
+
+		if(inPoly1 || inPoly2)
+		{
+			const Vector& v0  = ribbonQuad.points[0];
+			Vector v1; 
+			const Vector& v2 = ribbonQuad.points[2];	
+			
+			if(inPoly1)
+				v1 = ribbonQuad.points[1];
+			else
+				v1 = ribbonQuad.points[3];
+
+			const Plane plane(v0,v1,v2);
+			const float lowHeight = std::min(ribbonQuad.points[0].y,ribbonQuad.points[2].y);
+			const Vector start = Vector(pos.x,highHeight + 1.0f,pos.z);
+			const Vector end = Vector(pos.x,lowHeight - 1.0f,pos.z);
+			
+			Vector intersection;
+			if(plane.findIntersection(start,end,intersection))
+			{
+				if(intersection.y > result)
+				{
+					result = intersection.y;
+					waterType = ribbonQuad.waterType;
+					shaderTemplateName = ribbonQuad.waterShaderTemplateName;
+					shaderSize = ribbonQuad.waterShaderSize;
+				}
+				valid = true;
+			}
+		}
+	}
+
+	for(i = 0; i < m_ribbonEndCapList->size (); ++i)
+	{
+		const RibbonEndCap& ribbonEndCap = (*m_ribbonEndCapList)[i];
+
+		if(ribbonEndCap.extent.isWithin(pos.x,pos.z))
+		{
+			const Vector p0 = Vector(ribbonEndCap.points[0].x,0.0f,ribbonEndCap.points[0].y);
+			const Vector p1 = Vector(ribbonEndCap.points[1].x,0.0f,ribbonEndCap.points[1].y);
+			const Vector p2 = Vector(ribbonEndCap.points[2].x,0.0f,ribbonEndCap.points[2].y);
+			const Vector p3 = Vector(ribbonEndCap.points[3].x,0.0f,ribbonEndCap.points[3].y);
+			const Vector p4 = Vector(ribbonEndCap.points[4].x,0.0f,ribbonEndCap.points[4].y);
+			const Vector p5 = Vector(ribbonEndCap.points[5].x,0.0f,ribbonEndCap.points[5].y);
+			const Vector p6 = Vector(ribbonEndCap.points[6].x,0.0f,ribbonEndCap.points[6].y);
+			const Vector p7 = Vector(ribbonEndCap.points[7].x,0.0f,ribbonEndCap.points[7].y);
+   
+			if(
+				pos.inPolygon(p0,p1,p2)
+				|| pos.inPolygon(p0,p2,p3)
+				|| pos.inPolygon(p0,p3,p4)
+				|| pos.inPolygon(p4,p5,p6)
+				|| pos.inPolygon(p4,p6,p7)
+				|| pos.inPolygon(p4,p7,p0)
+			)
+			{
+				if(ribbonEndCap.height > result)
+				{
+					result = ribbonEndCap.height;
+					waterType = ribbonEndCap.waterType;
+					shaderTemplateName = ribbonEndCap.waterShaderTemplateName;
+					shaderSize = ribbonEndCap.waterShaderSize;
 				}
 				valid = true;
 			}

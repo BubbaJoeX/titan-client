@@ -13,6 +13,7 @@
 
 #include <stdio.h>
 #include <malloc.h>
+#include <cstring>
 
 #if defined(PLATFORM_LINUX)
 #include <alloca.h>
@@ -25,6 +26,31 @@
 #endif
 
 #define TARGA_SIGNATURE_LENGTH 18
+
+// ======================================================================
+
+namespace
+{
+	// If only a .dds exists (common for shipped assets), avoid logging a misleading
+	// "failed to open" for the legacy .tga path.
+	static bool tgaOpenFailedButDdsSiblingExists(char const *filename)
+	{
+		char const *const ext = strrchr(filename, '.');
+		if (!ext || _stricmp(ext, ".tga") != 0)
+			return false;
+		size_t const baseLen = static_cast<size_t>(ext - filename);
+		if (baseLen + 5 >= 512)
+			return false;
+		char ddsPath[512];
+		memcpy(ddsPath, filename, baseLen);
+		strcpy(ddsPath + baseLen, ".dds");
+		AbstractFile *const ddsFile = TreeFile::open(ddsPath, AbstractFile::PriorityData, true);
+		if (!ddsFile)
+			return false;
+		delete ddsFile;
+		return true;
+	}
+}
 
 // ======================================================================
 
@@ -233,7 +259,9 @@ bool TargaFormat::loadImage(const char *filename, Image **image) const
 	AbstractFile *fileInterface = TreeFile::open(filename, AbstractFile::PriorityData, true);
 	if(!fileInterface)
 	{
-		REPORT_LOG(true, ("TargaFormat failed to open file [%s]\n", filename));
+		// Missing .tga is common when assets ship as .dds only or the tree is partial; avoid release log spam.
+		if (!tgaOpenFailedButDdsSiblingExists(filename))
+			DEBUG_REPORT_LOG(true, ("TargaFormat failed to open file [%s]\n", filename));
 		return false;
 	}
 
@@ -266,7 +294,8 @@ bool TargaFormat::loadImageReformat(const char *filename, Image **image, Image::
 	AbstractFile *fileInterface = TreeFile::open(filename, AbstractFile::PriorityData, true);
 	if(!fileInterface)
 	{
-		REPORT_LOG(true, ("TargaFormat failed to open file [%s]\n", filename));
+		if (!tgaOpenFailedButDdsSiblingExists(filename))
+			DEBUG_REPORT_LOG(true, ("TargaFormat failed to open file [%s]\n", filename));
 		return false;
 	}
 

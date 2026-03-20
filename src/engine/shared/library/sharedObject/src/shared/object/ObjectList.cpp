@@ -30,6 +30,24 @@ namespace ObjectListNamespace
 }
 
 // ======================================================================
+
+ObjectList::ObjectRenderSkipPredicate ObjectList::ms_objectRenderSkipPredicate = 0;
+
+// ======================================================================
+
+void ObjectList::setObjectRenderSkipPredicate(ObjectRenderSkipPredicate predicate)
+{
+	ms_objectRenderSkipPredicate = predicate;
+}
+
+// ----------------------------------------------------------------------
+
+void ObjectList::clearObjectRenderSkipPredicate()
+{
+	ms_objectRenderSkipPredicate = 0;
+}
+
+// ======================================================================
 // Construct an ObjectList
 
 ObjectList::ObjectList(
@@ -306,6 +324,9 @@ void ObjectList::render(const Object *excludedObject) const
 		Object *const object = *i;
 		if (object && (object != excludedObject))
 		{
+			if (ms_objectRenderSkipPredicate && ms_objectRenderSkipPredicate(object))
+				continue;
+
 			const Appearance *const appearance = object->getAppearance();
 			if (appearance)
 			{

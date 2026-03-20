@@ -18,12 +18,7 @@
 #include "sharedTerrain/Filter.h"
 
 #include <algorithm>
-#include <malloc.h>
-
-#if defined(PLATFORM_LINUX)
-#include <alloca.h>
-#define _alloca alloca
-#endif
+#include <vector>
 
 //===================================================================
 // TerrainGeneratorNamespace
@@ -292,6 +287,7 @@ TerrainGenerator::GeneratorChunkData::GeneratorChunkData (bool legacyMode) :
 	m_legacyRandomGenerator(legacyMode ? new RandomGenerator : (RandomGenerator *)0),
 	normalsDirtyIUO (false),
 	shadersDirtyIUO (false),
+	skipShaderSynchronize (false),
 	chunkExtentIUO ()
 {
 }
@@ -1045,7 +1041,8 @@ void TerrainGenerator::Layer::affect (const float * previousAmountMap, const Gen
 				{
 					if (generatorChunkData.shadersDirtyIUO)
 					{
-						synchronizeShaders (generatorChunkData);
+						if (!generatorChunkData.skipShaderSynchronize)
+							synchronizeShaders (generatorChunkData);
 
 						generatorChunkData.shadersDirtyIUO = false;
 					}
@@ -1063,10 +1060,13 @@ void TerrainGenerator::Layer::affect (const float * previousAmountMap, const Gen
 
 	//-----------------------------------------------------------------------
 	//-- only allocate the amount map if we have sublayers. the amount map is used for feathering of sublayers
+	// Heap (vector): alloca scaled with n^2 and Layer::affect recurses; stack overflowed map rasterization.
 	float *amountMap=0;
+	std::vector<float> amountMapStorage;
 	if (m_hasActiveLayers && !onlyHasSubLayers)
 	{
-		amountMap=(float *)_alloca(numberOfPoles*numberOfPoles*sizeof(*amountMap));
+		amountMapStorage.resize(static_cast<size_t>(numberOfPoles * numberOfPoles));
+		amountMap = amountMapStorage.empty() ? 0 : &amountMapStorage[0];
 	}
 	//-----------------------------------------------------------------------
 
@@ -1075,6 +1075,7 @@ void TerrainGenerator::Layer::affect (const float * previousAmountMap, const Gen
 	{
 		//---------------------------------------------------------------------------------------------
 		float *boundaryMap=0;
+		std::vector<float> boundaryMapStorage;
 		if (m_hasActiveBoundaries)
 		{
 			for (int i = 0; i < m_boundaryList.getNumberOfElements(); i++)
@@ -1087,9 +1088,10 @@ void TerrainGenerator::Layer::affect (const float * previousAmountMap, const Gen
 
 				if (!boundaryMap)
 				{
-					const int boundaryMapSize=numberOfPoles*numberOfPoles*sizeof(*boundaryMap);
-					boundaryMap = (float *)_alloca(boundaryMapSize);
-					memset(boundaryMap, 0, boundaryMapSize);
+					boundaryMapStorage.resize(static_cast<size_t>(numberOfPoles * numberOfPoles));
+					boundaryMap = boundaryMapStorage.empty() ? 0 : &boundaryMapStorage[0];
+					if (boundaryMap)
+						memset(boundaryMap, 0, boundaryMapStorage.size() * sizeof(float));
 				}
 
 				b->scanConvertGT(boundaryMap, generatorChunkData.chunkExtentIUO, numberOfPoles);
@@ -1821,12 +1823,10 @@ void TerrainGenerator::affect (const GeneratorChunkData& generatorChunkData) con
 {
 	int i;
 
-	float *const amountMap = (float *)_alloca(generatorChunkData.numberOfPoles*generatorChunkData.numberOfPoles*sizeof(*amountMap));
-	const int totalPoles=generatorChunkData.numberOfPoles*generatorChunkData.numberOfPoles;
-	for (i=0;i<totalPoles;i++)
-	{
-		amountMap[i]=1.0f;
-	}
+	const int numberOfPolesPerSide = generatorChunkData.numberOfPoles;
+	const int totalPoles = numberOfPolesPerSide * numberOfPolesPerSide;
+	std::vector<float> amountMapStorage(static_cast<size_t>(totalPoles), 1.0f);
+	float *const amountMap = (totalPoles > 0) ? &amountMapStorage[0] : static_cast<float *>(0);
 
 	generatorChunkData.normalsDirtyIUO = true;
 	generatorChunkData.shadersDirtyIUO = true;
@@ -1894,7 +1894,8 @@ void TerrainGenerator::affect (const GeneratorChunkData& generatorChunkData) con
 		&& generatorChunkData.shadersDirtyIUO
 		)
 	{
-		TerrainGenerator::synchronizeShaders (generatorChunkData);
+		if (!generatorChunkData.skipShaderSynchronize)
+			TerrainGenerator::synchronizeShaders (generatorChunkData);
 
 		generatorChunkData.shadersDirtyIUO = false;
 	}

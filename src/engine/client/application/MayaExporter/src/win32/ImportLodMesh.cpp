@@ -364,8 +364,8 @@ MStatus ImportLodMesh::doIt(const MArgList &args)
 		melCmd += "\"";
 		IGNORE_RETURN(MGlobal::executeCommand(melCmd));
 
-		// Import each LOD level and parent under l0, l1, l2...
-		for (int16 i = 0; i < static_cast<int16>(detailLevelPaths.size()) && i < 10; ++i)
+		// Import only the highest detail level (l0)
+		for (int16 i = 0; i < 1 && i < static_cast<int16>(detailLevelPaths.size()); ++i)
 		{
 			const std::string &relativePath = detailLevelPaths[static_cast<size_t>(i)];
 			const std::string resolvedPath = resolveTreeFilePath(relativePath, filename);

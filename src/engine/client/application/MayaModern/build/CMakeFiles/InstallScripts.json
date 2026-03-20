@@ -1,0 +1,8 @@
+{
+	"InstallScripts" : 
+	[
+		"D:/titan/client/src/engine/client/application/MayaModern/build/cmake_install.cmake",
+		"D:/titan/client/src/engine/client/application/MayaModern/build/unicode/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

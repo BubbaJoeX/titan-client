@@ -567,8 +567,12 @@ const ShaderGroup::Info ShaderGroup::chooseShader (int familyId) const
 
 	//-- search for the shader in the family list
 	int familyIndex = findFamilyIndex (familyId);
-	if (familyIndex != -1 && familyList [familyIndex]->getNumberOfChildren () > 0)
+	if (familyIndex != -1)
 	{
+		// Always record family id + priority when the family exists. Affectors (e.g. under FilterBitmap)
+		// still choose a family even when it has zero children (single family-named template / no variants).
+		// Previously we only set family id when children > 0, which left shaderMap at default (0) and broke
+		// any consumer that keys off Info::getFamilyId() (offline map rasterizer, tooling).
 		sgi.setPriority (familyIndex);
 		sgi.setFamilyId (familyId);
 	}
@@ -589,7 +593,7 @@ const ShaderGroup::Info ShaderGroup::chooseShader (const PackedRgb& desiredColor
 
 	//-- search for the shader in the family list
 	int familyIndex = findFamilyIndex (desiredColor);
-	if (familyIndex != -1 && familyList [familyIndex]->getNumberOfChildren () > 0)
+	if (familyIndex != -1)
 	{
 		sgi.setPriority (familyIndex);
 		sgi.setFamilyId (familyList [familyIndex]->getFamilyId ());

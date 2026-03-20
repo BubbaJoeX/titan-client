@@ -1,0 +1,555 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <PreferredToolArchitecture>x64</PreferredToolArchitecture>
+  </PropertyGroup>
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="MinSizeRel|x64">
+      <Configuration>MinSizeRel</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="RelWithDebInfo|x64">
+      <Configuration>RelWithDebInfo</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{736AE3F5-0DC0-3003-AC0D-B55721C90F29}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
+    <Platform>x64</Platform>
+    <ProjectName>SwgMayaEditor</ProjectName>
+    <VCProjectUpgraderObjectName>NoUpgrade</VCProjectUpgraderObjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\titan\client\src\engine\client\application\MayaModern\build\Debug\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">SwgMayaEditor.dir\Debug\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">SwgMayaEditor</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.mll</TargetExt>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</LinkIncremental>
+    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</GenerateManifest>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\titan\client\src\engine\client\application\MayaModern\build\Release\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">SwgMayaEditor.dir\Release\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">SwgMayaEditor</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.mll</TargetExt>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkIncremental>
+    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</GenerateManifest>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\titan\client\src\engine\client\application\MayaModern\build\MinSizeRel\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">SwgMayaEditor.dir\MinSizeRel\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">SwgMayaEditor</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">.mll</TargetExt>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkIncremental>
+    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">true</GenerateManifest>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\titan\client\src\engine\client\application\MayaModern\build\RelWithDebInfo\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">SwgMayaEditor.dir\RelWithDebInfo\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">SwgMayaEditor</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">.mll</TargetExt>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">true</LinkIncremental>
+    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">true</GenerateManifest>
+  </PropertyGroup>
+  <PropertyGroup />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>D:\titan\client\src\engine\client\application\MayaModern\sharedFoundation;D:\titan\client\src\engine\client\application\MayaModern\sharedFile;D:\titan\client\src\engine\client\application\MayaModern\sharedMath;D:\titan\client\src\engine\client\application\MayaModern\unicode;D:\titan\client\src\engine\client\application\MayaModern\clientGraphics;D:\titan\client\src\engine\client\application\MayaModern\clientSkeletalAnimation;D:\titan\client\src\engine\client\application\MayaModern\sharedCollision;D:\titan\client\src\engine\client\application\MayaModern\util;D:\titan\client\src\engine\client\application\MayaModern\third;D:\titan\client\src\engine\client\application\MayaModern\utility;D:\titan\client\src\engine\client\application\MayaModern\commands;D:\titan\client\src\engine\client\application\MayaModern\translators;D:\titan\client\src\external\3rd\library\devkitBase\include;D:\titan\client\src\external\3rd\library\devkitBase\include\Python39;D:\titan\client\src\external\3rd\library\zlib-1.2.3;D:\titan\client\src\external\3rd\library\zlib\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <BufferSecurityCheck></BufferSecurityCheck>
+      <CallingConvention></CallingConvention>
+      <ExceptionHandling>Async</ExceptionHandling>
+      <FloatingPointModel></FloatingPointModel>
+      <ForceConformanceInForLoopScope></ForceConformanceInForLoopScope>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <MinimalRebuild></MinimalRebuild>
+      <Optimization></Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RemoveUnreferencedCodeData></RemoveUnreferencedCodeData>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <SupportJustMyCode></SupportJustMyCode>
+      <TreatWChar_tAsBuiltInType></TreatWChar_tAsBuiltInType>
+      <UseFullPaths>false</UseFullPaths>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);NOMINMAX;NT_PLUGIN;USERDLL;CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_CRT_SECURE_NO_WARNINGS;PARTIO_WIN32;CMAKE_INTDIR="Debug";SwgMayaEditor_EXPORTS</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <DebugInformationFormat>
+      </DebugInformationFormat>
+      <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_DEBUG;NOMINMAX;NT_PLUGIN;USERDLL;CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_CRT_SECURE_NO_WARNINGS;PARTIO_WIN32;CMAKE_INTDIR=\"Debug\";SwgMayaEditor_EXPORTS</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>D:\titan\client\src\engine\client\application\MayaModern\sharedFoundation;D:\titan\client\src\engine\client\application\MayaModern\sharedFile;D:\titan\client\src\engine\client\application\MayaModern\sharedMath;D:\titan\client\src\engine\client\application\MayaModern\unicode;D:\titan\client\src\engine\client\application\MayaModern\clientGraphics;D:\titan\client\src\engine\client\application\MayaModern\clientSkeletalAnimation;D:\titan\client\src\engine\client\application\MayaModern\sharedCollision;D:\titan\client\src\engine\client\application\MayaModern\util;D:\titan\client\src\engine\client\application\MayaModern\third;D:\titan\client\src\engine\client\application\MayaModern\utility;D:\titan\client\src\engine\client\application\MayaModern\commands;D:\titan\client\src\engine\client\application\MayaModern\translators;D:\titan\client\src\external\3rd\library\devkitBase\include;D:\titan\client\src\external\3rd\library\devkitBase\include\Python39;D:\titan\client\src\external\3rd\library\zlib-1.2.3;D:\titan\client\src\external\3rd\library\zlib\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>D:\titan\client\src\engine\client\application\MayaModern\sharedFoundation;D:\titan\client\src\engine\client\application\MayaModern\sharedFile;D:\titan\client\src\engine\client\application\MayaModern\sharedMath;D:\titan\client\src\engine\client\application\MayaModern\unicode;D:\titan\client\src\engine\client\application\MayaModern\clientGraphics;D:\titan\client\src\engine\client\application\MayaModern\clientSkeletalAnimation;D:\titan\client\src\engine\client\application\MayaModern\sharedCollision;D:\titan\client\src\engine\client\application\MayaModern\util;D:\titan\client\src\engine\client\application\MayaModern\third;D:\titan\client\src\engine\client\application\MayaModern\utility;D:\titan\client\src\engine\client\application\MayaModern\commands;D:\titan\client\src\engine\client\application\MayaModern\translators;D:\titan\client\src\external\3rd\library\devkitBase\include;D:\titan\client\src\external\3rd\library\devkitBase\include\Python39;D:\titan\client\src\external\3rd\library\zlib-1.2.3;D:\titan\client\src\external\3rd\library\zlib\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <PostBuildEvent>
+      <Message>Copying swgAssetDissector.mel to plugin directory</Message>
+      <Command>setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgAssetDissector.mel D:/titan/client/src/engine/client/application/MayaModern/build/Debug/swgAssetDissector.mel
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+    </PostBuildEvent>
+    <Link>
+      <AdditionalDependencies>D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMaya.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\Foundation.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaUI.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaAnim.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaFX.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaRender.lib;ws2_32.lib;Debug\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64 /IGNORE:4099</AdditionalOptions>
+      <DataExecutionPrevention></DataExecutionPrevention>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <ImageHasSafeExceptionHandlers></ImageHasSafeExceptionHandlers>
+      <ImportLibrary>D:/titan/client/src/engine/client/application/MayaModern/build/Debug/SwgMayaEditor.lib</ImportLibrary>
+      <LinkErrorReporting></LinkErrorReporting>
+      <ProgramDataBaseFile>D:/titan/client/src/engine/client/application/MayaModern/build/Debug/SwgMayaEditor.pdb</ProgramDataBaseFile>
+      <RandomizedBaseAddress></RandomizedBaseAddress>
+      <SubSystem>Console</SubSystem>
+    </Link>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>D:\titan\client\src\engine\client\application\MayaModern\sharedFoundation;D:\titan\client\src\engine\client\application\MayaModern\sharedFile;D:\titan\client\src\engine\client\application\MayaModern\sharedMath;D:\titan\client\src\engine\client\application\MayaModern\unicode;D:\titan\client\src\engine\client\application\MayaModern\clientGraphics;D:\titan\client\src\engine\client\application\MayaModern\clientSkeletalAnimation;D:\titan\client\src\engine\client\application\MayaModern\sharedCollision;D:\titan\client\src\engine\client\application\MayaModern\util;D:\titan\client\src\engine\client\application\MayaModern\third;D:\titan\client\src\engine\client\application\MayaModern\utility;D:\titan\client\src\engine\client\application\MayaModern\commands;D:\titan\client\src\engine\client\application\MayaModern\translators;D:\titan\client\src\external\3rd\library\devkitBase\include;D:\titan\client\src\external\3rd\library\devkitBase\include\Python39;D:\titan\client\src\external\3rd\library\zlib-1.2.3;D:\titan\client\src\external\3rd\library\zlib\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <BufferSecurityCheck></BufferSecurityCheck>
+      <CallingConvention></CallingConvention>
+      <ExceptionHandling>Async</ExceptionHandling>
+      <FloatingPointModel></FloatingPointModel>
+      <ForceConformanceInForLoopScope></ForceConformanceInForLoopScope>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <MinimalRebuild></MinimalRebuild>
+      <Optimization>MaxSpeed</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RemoveUnreferencedCodeData></RemoveUnreferencedCodeData>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <SupportJustMyCode></SupportJustMyCode>
+      <TreatWChar_tAsBuiltInType></TreatWChar_tAsBuiltInType>
+      <UseFullPaths>false</UseFullPaths>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);NOMINMAX;NDEBUG;NT_PLUGIN;USERDLL;CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_CRT_SECURE_NO_WARNINGS;PARTIO_WIN32;CMAKE_INTDIR="Release";SwgMayaEditor_EXPORTS</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <DebugInformationFormat>
+      </DebugInformationFormat>
+      <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;NOMINMAX;NDEBUG;NT_PLUGIN;USERDLL;CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_CRT_SECURE_NO_WARNINGS;PARTIO_WIN32;CMAKE_INTDIR=\"Release\";SwgMayaEditor_EXPORTS</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>D:\titan\client\src\engine\client\application\MayaModern\sharedFoundation;D:\titan\client\src\engine\client\application\MayaModern\sharedFile;D:\titan\client\src\engine\client\application\MayaModern\sharedMath;D:\titan\client\src\engine\client\application\MayaModern\unicode;D:\titan\client\src\engine\client\application\MayaModern\clientGraphics;D:\titan\client\src\engine\client\application\MayaModern\clientSkeletalAnimation;D:\titan\client\src\engine\client\application\MayaModern\sharedCollision;D:\titan\client\src\engine\client\application\MayaModern\util;D:\titan\client\src\engine\client\application\MayaModern\third;D:\titan\client\src\engine\client\application\MayaModern\utility;D:\titan\client\src\engine\client\application\MayaModern\commands;D:\titan\client\src\engine\client\application\MayaModern\translators;D:\titan\client\src\external\3rd\library\devkitBase\include;D:\titan\client\src\external\3rd\library\devkitBase\include\Python39;D:\titan\client\src\external\3rd\library\zlib-1.2.3;D:\titan\client\src\external\3rd\library\zlib\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>D:\titan\client\src\engine\client\application\MayaModern\sharedFoundation;D:\titan\client\src\engine\client\application\MayaModern\sharedFile;D:\titan\client\src\engine\client\application\MayaModern\sharedMath;D:\titan\client\src\engine\client\application\MayaModern\unicode;D:\titan\client\src\engine\client\application\MayaModern\clientGraphics;D:\titan\client\src\engine\client\application\MayaModern\clientSkeletalAnimation;D:\titan\client\src\engine\client\application\MayaModern\sharedCollision;D:\titan\client\src\engine\client\application\MayaModern\util;D:\titan\client\src\engine\client\application\MayaModern\third;D:\titan\client\src\engine\client\application\MayaModern\utility;D:\titan\client\src\engine\client\application\MayaModern\commands;D:\titan\client\src\engine\client\application\MayaModern\translators;D:\titan\client\src\external\3rd\library\devkitBase\include;D:\titan\client\src\external\3rd\library\devkitBase\include\Python39;D:\titan\client\src\external\3rd\library\zlib-1.2.3;D:\titan\client\src\external\3rd\library\zlib\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <PostBuildEvent>
+      <Message>Copying swgAssetDissector.mel to plugin directory</Message>
+      <Command>setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgAssetDissector.mel D:/titan/client/src/engine/client/application/MayaModern/build/Release/swgAssetDissector.mel
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+    </PostBuildEvent>
+    <Link>
+      <AdditionalDependencies>D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMaya.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\Foundation.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaUI.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaAnim.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaFX.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaRender.lib;ws2_32.lib;Release\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64 /IGNORE:4099</AdditionalOptions>
+      <DataExecutionPrevention></DataExecutionPrevention>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <ImageHasSafeExceptionHandlers></ImageHasSafeExceptionHandlers>
+      <ImportLibrary>D:/titan/client/src/engine/client/application/MayaModern/build/Release/SwgMayaEditor.lib</ImportLibrary>
+      <LinkErrorReporting></LinkErrorReporting>
+      <ProgramDataBaseFile>D:/titan/client/src/engine/client/application/MayaModern/build/Release/SwgMayaEditor.pdb</ProgramDataBaseFile>
+      <RandomizedBaseAddress></RandomizedBaseAddress>
+      <SubSystem>Console</SubSystem>
+    </Link>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>D:\titan\client\src\engine\client\application\MayaModern\sharedFoundation;D:\titan\client\src\engine\client\application\MayaModern\sharedFile;D:\titan\client\src\engine\client\application\MayaModern\sharedMath;D:\titan\client\src\engine\client\application\MayaModern\unicode;D:\titan\client\src\engine\client\application\MayaModern\clientGraphics;D:\titan\client\src\engine\client\application\MayaModern\clientSkeletalAnimation;D:\titan\client\src\engine\client\application\MayaModern\sharedCollision;D:\titan\client\src\engine\client\application\MayaModern\util;D:\titan\client\src\engine\client\application\MayaModern\third;D:\titan\client\src\engine\client\application\MayaModern\utility;D:\titan\client\src\engine\client\application\MayaModern\commands;D:\titan\client\src\engine\client\application\MayaModern\translators;D:\titan\client\src\external\3rd\library\devkitBase\include;D:\titan\client\src\external\3rd\library\devkitBase\include\Python39;D:\titan\client\src\external\3rd\library\zlib-1.2.3;D:\titan\client\src\external\3rd\library\zlib\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <BufferSecurityCheck></BufferSecurityCheck>
+      <CallingConvention></CallingConvention>
+      <ExceptionHandling>Async</ExceptionHandling>
+      <FloatingPointModel></FloatingPointModel>
+      <ForceConformanceInForLoopScope></ForceConformanceInForLoopScope>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <MinimalRebuild></MinimalRebuild>
+      <Optimization>MinSpace</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RemoveUnreferencedCodeData></RemoveUnreferencedCodeData>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <SupportJustMyCode></SupportJustMyCode>
+      <TreatWChar_tAsBuiltInType></TreatWChar_tAsBuiltInType>
+      <UseFullPaths>false</UseFullPaths>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);NOMINMAX;NDEBUG;NT_PLUGIN;USERDLL;CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_CRT_SECURE_NO_WARNINGS;PARTIO_WIN32;CMAKE_INTDIR="MinSizeRel";SwgMayaEditor_EXPORTS</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <DebugInformationFormat>
+      </DebugInformationFormat>
+      <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;NOMINMAX;NDEBUG;NT_PLUGIN;USERDLL;CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_CRT_SECURE_NO_WARNINGS;PARTIO_WIN32;CMAKE_INTDIR=\"MinSizeRel\";SwgMayaEditor_EXPORTS</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>D:\titan\client\src\engine\client\application\MayaModern\sharedFoundation;D:\titan\client\src\engine\client\application\MayaModern\sharedFile;D:\titan\client\src\engine\client\application\MayaModern\sharedMath;D:\titan\client\src\engine\client\application\MayaModern\unicode;D:\titan\client\src\engine\client\application\MayaModern\clientGraphics;D:\titan\client\src\engine\client\application\MayaModern\clientSkeletalAnimation;D:\titan\client\src\engine\client\application\MayaModern\sharedCollision;D:\titan\client\src\engine\client\application\MayaModern\util;D:\titan\client\src\engine\client\application\MayaModern\third;D:\titan\client\src\engine\client\application\MayaModern\utility;D:\titan\client\src\engine\client\application\MayaModern\commands;D:\titan\client\src\engine\client\application\MayaModern\translators;D:\titan\client\src\external\3rd\library\devkitBase\include;D:\titan\client\src\external\3rd\library\devkitBase\include\Python39;D:\titan\client\src\external\3rd\library\zlib-1.2.3;D:\titan\client\src\external\3rd\library\zlib\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>D:\titan\client\src\engine\client\application\MayaModern\sharedFoundation;D:\titan\client\src\engine\client\application\MayaModern\sharedFile;D:\titan\client\src\engine\client\application\MayaModern\sharedMath;D:\titan\client\src\engine\client\application\MayaModern\unicode;D:\titan\client\src\engine\client\application\MayaModern\clientGraphics;D:\titan\client\src\engine\client\application\MayaModern\clientSkeletalAnimation;D:\titan\client\src\engine\client\application\MayaModern\sharedCollision;D:\titan\client\src\engine\client\application\MayaModern\util;D:\titan\client\src\engine\client\application\MayaModern\third;D:\titan\client\src\engine\client\application\MayaModern\utility;D:\titan\client\src\engine\client\application\MayaModern\commands;D:\titan\client\src\engine\client\application\MayaModern\translators;D:\titan\client\src\external\3rd\library\devkitBase\include;D:\titan\client\src\external\3rd\library\devkitBase\include\Python39;D:\titan\client\src\external\3rd\library\zlib-1.2.3;D:\titan\client\src\external\3rd\library\zlib\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <PostBuildEvent>
+      <Message>Copying swgAssetDissector.mel to plugin directory</Message>
+      <Command>setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgAssetDissector.mel D:/titan/client/src/engine/client/application/MayaModern/build/MinSizeRel/swgAssetDissector.mel
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+    </PostBuildEvent>
+    <Link>
+      <AdditionalDependencies>D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMaya.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\Foundation.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaUI.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaAnim.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaFX.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaRender.lib;ws2_32.lib;MinSizeRel\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64 /IGNORE:4099</AdditionalOptions>
+      <DataExecutionPrevention></DataExecutionPrevention>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <ImageHasSafeExceptionHandlers></ImageHasSafeExceptionHandlers>
+      <ImportLibrary>D:/titan/client/src/engine/client/application/MayaModern/build/MinSizeRel/SwgMayaEditor.lib</ImportLibrary>
+      <LinkErrorReporting></LinkErrorReporting>
+      <ProgramDataBaseFile>D:/titan/client/src/engine/client/application/MayaModern/build/MinSizeRel/SwgMayaEditor.pdb</ProgramDataBaseFile>
+      <RandomizedBaseAddress></RandomizedBaseAddress>
+      <SubSystem>Console</SubSystem>
+    </Link>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>D:\titan\client\src\engine\client\application\MayaModern\sharedFoundation;D:\titan\client\src\engine\client\application\MayaModern\sharedFile;D:\titan\client\src\engine\client\application\MayaModern\sharedMath;D:\titan\client\src\engine\client\application\MayaModern\unicode;D:\titan\client\src\engine\client\application\MayaModern\clientGraphics;D:\titan\client\src\engine\client\application\MayaModern\clientSkeletalAnimation;D:\titan\client\src\engine\client\application\MayaModern\sharedCollision;D:\titan\client\src\engine\client\application\MayaModern\util;D:\titan\client\src\engine\client\application\MayaModern\third;D:\titan\client\src\engine\client\application\MayaModern\utility;D:\titan\client\src\engine\client\application\MayaModern\commands;D:\titan\client\src\engine\client\application\MayaModern\translators;D:\titan\client\src\external\3rd\library\devkitBase\include;D:\titan\client\src\external\3rd\library\devkitBase\include\Python39;D:\titan\client\src\external\3rd\library\zlib-1.2.3;D:\titan\client\src\external\3rd\library\zlib\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <BufferSecurityCheck></BufferSecurityCheck>
+      <CallingConvention></CallingConvention>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <ExceptionHandling>Async</ExceptionHandling>
+      <FloatingPointModel></FloatingPointModel>
+      <ForceConformanceInForLoopScope></ForceConformanceInForLoopScope>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <MinimalRebuild></MinimalRebuild>
+      <Optimization>MaxSpeed</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RemoveUnreferencedCodeData></RemoveUnreferencedCodeData>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <SupportJustMyCode></SupportJustMyCode>
+      <TreatWChar_tAsBuiltInType></TreatWChar_tAsBuiltInType>
+      <UseFullPaths>false</UseFullPaths>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);NOMINMAX;NDEBUG;NT_PLUGIN;USERDLL;CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_CRT_SECURE_NO_WARNINGS;PARTIO_WIN32;CMAKE_INTDIR="RelWithDebInfo";SwgMayaEditor_EXPORTS</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;NOMINMAX;NDEBUG;NT_PLUGIN;USERDLL;CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_CRT_SECURE_NO_WARNINGS;PARTIO_WIN32;CMAKE_INTDIR=\"RelWithDebInfo\";SwgMayaEditor_EXPORTS</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>D:\titan\client\src\engine\client\application\MayaModern\sharedFoundation;D:\titan\client\src\engine\client\application\MayaModern\sharedFile;D:\titan\client\src\engine\client\application\MayaModern\sharedMath;D:\titan\client\src\engine\client\application\MayaModern\unicode;D:\titan\client\src\engine\client\application\MayaModern\clientGraphics;D:\titan\client\src\engine\client\application\MayaModern\clientSkeletalAnimation;D:\titan\client\src\engine\client\application\MayaModern\sharedCollision;D:\titan\client\src\engine\client\application\MayaModern\util;D:\titan\client\src\engine\client\application\MayaModern\third;D:\titan\client\src\engine\client\application\MayaModern\utility;D:\titan\client\src\engine\client\application\MayaModern\commands;D:\titan\client\src\engine\client\application\MayaModern\translators;D:\titan\client\src\external\3rd\library\devkitBase\include;D:\titan\client\src\external\3rd\library\devkitBase\include\Python39;D:\titan\client\src\external\3rd\library\zlib-1.2.3;D:\titan\client\src\external\3rd\library\zlib\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>D:\titan\client\src\engine\client\application\MayaModern\sharedFoundation;D:\titan\client\src\engine\client\application\MayaModern\sharedFile;D:\titan\client\src\engine\client\application\MayaModern\sharedMath;D:\titan\client\src\engine\client\application\MayaModern\unicode;D:\titan\client\src\engine\client\application\MayaModern\clientGraphics;D:\titan\client\src\engine\client\application\MayaModern\clientSkeletalAnimation;D:\titan\client\src\engine\client\application\MayaModern\sharedCollision;D:\titan\client\src\engine\client\application\MayaModern\util;D:\titan\client\src\engine\client\application\MayaModern\third;D:\titan\client\src\engine\client\application\MayaModern\utility;D:\titan\client\src\engine\client\application\MayaModern\commands;D:\titan\client\src\engine\client\application\MayaModern\translators;D:\titan\client\src\external\3rd\library\devkitBase\include;D:\titan\client\src\external\3rd\library\devkitBase\include\Python39;D:\titan\client\src\external\3rd\library\zlib-1.2.3;D:\titan\client\src\external\3rd\library\zlib\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <PostBuildEvent>
+      <Message>Copying swgAssetDissector.mel to plugin directory</Message>
+      <Command>setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgAssetDissector.mel D:/titan/client/src/engine/client/application/MayaModern/build/RelWithDebInfo/swgAssetDissector.mel
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+    </PostBuildEvent>
+    <Link>
+      <AdditionalDependencies>D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMaya.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\Foundation.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaUI.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaAnim.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaFX.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaRender.lib;ws2_32.lib;RelWithDebInfo\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64 /IGNORE:4099</AdditionalOptions>
+      <DataExecutionPrevention></DataExecutionPrevention>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <ImageHasSafeExceptionHandlers></ImageHasSafeExceptionHandlers>
+      <ImportLibrary>D:/titan/client/src/engine/client/application/MayaModern/build/RelWithDebInfo/SwgMayaEditor.lib</ImportLibrary>
+      <LinkErrorReporting></LinkErrorReporting>
+      <ProgramDataBaseFile>D:/titan/client/src/engine/client/application/MayaModern/build/RelWithDebInfo/SwgMayaEditor.pdb</ProgramDataBaseFile>
+      <RandomizedBaseAddress></RandomizedBaseAddress>
+      <SubSystem>Console</SubSystem>
+    </Link>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\titan\client\src\engine\client\application\MayaModern\CMakeLists.txt">
+      <UseUtf8Encoding>Always</UseUtf8Encoding>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building Custom Rule D:/titan/client/src/engine/client/application/MayaModern/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SD:/titan/client/src/engine/client/application/MayaModern -BD:/titan/client/src/engine/client/application/MayaModern/build --check-stamp-file D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Program Files\CMake\share\cmake-4.3\Modules\CMakeCInformation.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CMakeCXXInformation.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CMakeCommonLanguageInclude.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CMakeGenericSystem.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CMakeInitializeConfigs.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CMakeLanguageInformation.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CMakeRCInformation.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CMakeSystemSpecificInformation.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CMakeSystemSpecificInitialize.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CheckCSourceCompiles.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CheckIncludeFile.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CheckLibraryExists.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Compiler\CMakeCommonCompilerMacros.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Compiler\MSVC-C.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Compiler\MSVC-CXX.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Compiler\MSVC.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\FindPackageHandleStandardArgs.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\FindPackageMessage.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\FindThreads.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Internal\CMakeCLinkerInformation.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Internal\CMakeCXXLinkerInformation.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Internal\CMakeCommonLinkerInformation.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Internal\CheckSourceCompiles.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Linker\MSVC-C.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Linker\MSVC-CXX.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Linker\MSVC.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Platform\Linker\Windows-MSVC-C.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Platform\Linker\Windows-MSVC-CXX.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Platform\Linker\Windows-MSVC.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Platform\Windows-Initialize.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Platform\Windows-MSVC-C.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Platform\Windows-MSVC-CXX.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Platform\Windows-MSVC.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Platform\Windows.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Platform\WindowsPaths.cmake;D:\titan\client\src\engine\client\application\MayaModern\build\CMakeFiles\4.3.0-rc3\CMakeCCompiler.cmake;D:\titan\client\src\engine\client\application\MayaModern\build\CMakeFiles\4.3.0-rc3\CMakeCXXCompiler.cmake;D:\titan\client\src\engine\client\application\MayaModern\build\CMakeFiles\4.3.0-rc3\CMakeRCCompiler.cmake;D:\titan\client\src\engine\client\application\MayaModern\build\CMakeFiles\4.3.0-rc3\CMakeSystem.cmake;D:\titan\client\src\external\3rd\library\devkitBase\cmake\devkit.cmake;D:\titan\client\src\external\3rd\library\devkitBase\cmake\pluginEntry.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\titan\client\src\engine\client\application\MayaModern\build\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Building Custom Rule D:/titan/client/src/engine/client/application/MayaModern/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SD:/titan/client/src/engine/client/application/MayaModern -BD:/titan/client/src/engine/client/application/MayaModern/build --check-stamp-file D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Program Files\CMake\share\cmake-4.3\Modules\CMakeCInformation.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CMakeCXXInformation.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CMakeCommonLanguageInclude.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CMakeGenericSystem.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CMakeInitializeConfigs.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CMakeLanguageInformation.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CMakeRCInformation.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CMakeSystemSpecificInformation.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CMakeSystemSpecificInitialize.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CheckCSourceCompiles.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CheckIncludeFile.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CheckLibraryExists.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Compiler\CMakeCommonCompilerMacros.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Compiler\MSVC-C.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Compiler\MSVC-CXX.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Compiler\MSVC.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\FindPackageHandleStandardArgs.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\FindPackageMessage.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\FindThreads.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Internal\CMakeCLinkerInformation.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Internal\CMakeCXXLinkerInformation.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Internal\CMakeCommonLinkerInformation.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Internal\CheckSourceCompiles.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Linker\MSVC-C.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Linker\MSVC-CXX.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Linker\MSVC.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Platform\Linker\Windows-MSVC-C.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Platform\Linker\Windows-MSVC-CXX.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Platform\Linker\Windows-MSVC.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Platform\Windows-Initialize.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Platform\Windows-MSVC-C.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Platform\Windows-MSVC-CXX.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Platform\Windows-MSVC.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Platform\Windows.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Platform\WindowsPaths.cmake;D:\titan\client\src\engine\client\application\MayaModern\build\CMakeFiles\4.3.0-rc3\CMakeCCompiler.cmake;D:\titan\client\src\engine\client\application\MayaModern\build\CMakeFiles\4.3.0-rc3\CMakeCXXCompiler.cmake;D:\titan\client\src\engine\client\application\MayaModern\build\CMakeFiles\4.3.0-rc3\CMakeRCCompiler.cmake;D:\titan\client\src\engine\client\application\MayaModern\build\CMakeFiles\4.3.0-rc3\CMakeSystem.cmake;D:\titan\client\src\external\3rd\library\devkitBase\cmake\devkit.cmake;D:\titan\client\src\external\3rd\library\devkitBase\cmake\pluginEntry.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\titan\client\src\engine\client\application\MayaModern\build\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Building Custom Rule D:/titan/client/src/engine/client/application/MayaModern/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SD:/titan/client/src/engine/client/application/MayaModern -BD:/titan/client/src/engine/client/application/MayaModern/build --check-stamp-file D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Program Files\CMake\share\cmake-4.3\Modules\CMakeCInformation.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CMakeCXXInformation.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CMakeCommonLanguageInclude.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CMakeGenericSystem.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CMakeInitializeConfigs.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CMakeLanguageInformation.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CMakeRCInformation.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CMakeSystemSpecificInformation.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CMakeSystemSpecificInitialize.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CheckCSourceCompiles.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CheckIncludeFile.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CheckLibraryExists.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Compiler\CMakeCommonCompilerMacros.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Compiler\MSVC-C.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Compiler\MSVC-CXX.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Compiler\MSVC.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\FindPackageHandleStandardArgs.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\FindPackageMessage.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\FindThreads.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Internal\CMakeCLinkerInformation.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Internal\CMakeCXXLinkerInformation.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Internal\CMakeCommonLinkerInformation.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Internal\CheckSourceCompiles.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Linker\MSVC-C.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Linker\MSVC-CXX.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Linker\MSVC.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Platform\Linker\Windows-MSVC-C.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Platform\Linker\Windows-MSVC-CXX.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Platform\Linker\Windows-MSVC.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Platform\Windows-Initialize.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Platform\Windows-MSVC-C.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Platform\Windows-MSVC-CXX.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Platform\Windows-MSVC.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Platform\Windows.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Platform\WindowsPaths.cmake;D:\titan\client\src\engine\client\application\MayaModern\build\CMakeFiles\4.3.0-rc3\CMakeCCompiler.cmake;D:\titan\client\src\engine\client\application\MayaModern\build\CMakeFiles\4.3.0-rc3\CMakeCXXCompiler.cmake;D:\titan\client\src\engine\client\application\MayaModern\build\CMakeFiles\4.3.0-rc3\CMakeRCCompiler.cmake;D:\titan\client\src\engine\client\application\MayaModern\build\CMakeFiles\4.3.0-rc3\CMakeSystem.cmake;D:\titan\client\src\external\3rd\library\devkitBase\cmake\devkit.cmake;D:\titan\client\src\external\3rd\library\devkitBase\cmake\pluginEntry.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">D:\titan\client\src\engine\client\application\MayaModern\build\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Building Custom Rule D:/titan/client/src/engine/client/application/MayaModern/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SD:/titan/client/src/engine/client/application/MayaModern -BD:/titan/client/src/engine/client/application/MayaModern/build --check-stamp-file D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Program Files\CMake\share\cmake-4.3\Modules\CMakeCInformation.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CMakeCXXInformation.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CMakeCommonLanguageInclude.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CMakeGenericSystem.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CMakeInitializeConfigs.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CMakeLanguageInformation.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CMakeRCInformation.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CMakeSystemSpecificInformation.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CMakeSystemSpecificInitialize.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CheckCSourceCompiles.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CheckIncludeFile.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\CheckLibraryExists.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Compiler\CMakeCommonCompilerMacros.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Compiler\MSVC-C.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Compiler\MSVC-CXX.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Compiler\MSVC.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\FindPackageHandleStandardArgs.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\FindPackageMessage.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\FindThreads.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Internal\CMakeCLinkerInformation.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Internal\CMakeCXXLinkerInformation.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Internal\CMakeCommonLinkerInformation.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Internal\CheckSourceCompiles.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Linker\MSVC-C.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Linker\MSVC-CXX.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Linker\MSVC.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Platform\Linker\Windows-MSVC-C.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Platform\Linker\Windows-MSVC-CXX.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Platform\Linker\Windows-MSVC.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Platform\Windows-Initialize.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Platform\Windows-MSVC-C.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Platform\Windows-MSVC-CXX.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Platform\Windows-MSVC.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Platform\Windows.cmake;C:\Program Files\CMake\share\cmake-4.3\Modules\Platform\WindowsPaths.cmake;D:\titan\client\src\engine\client\application\MayaModern\build\CMakeFiles\4.3.0-rc3\CMakeCCompiler.cmake;D:\titan\client\src\engine\client\application\MayaModern\build\CMakeFiles\4.3.0-rc3\CMakeCXXCompiler.cmake;D:\titan\client\src\engine\client\application\MayaModern\build\CMakeFiles\4.3.0-rc3\CMakeRCCompiler.cmake;D:\titan\client\src\engine\client\application\MayaModern\build\CMakeFiles\4.3.0-rc3\CMakeSystem.cmake;D:\titan\client\src\external\3rd\library\devkitBase\cmake\devkit.cmake;D:\titan\client\src\external\3rd\library\devkitBase\cmake\pluginEntry.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">D:\titan\client\src\engine\client\application\MayaModern\build\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\main.cpp" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\clientSkeletalAnimation\MeshConstructionHelper.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\clientSkeletalAnimation\MeshConstructionHelper.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\clientSkeletalAnimation\OcclusionZoneSet.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\clientSkeletalAnimation\OcclusionZoneSet.h" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\sharedCollision\CollisionEnums.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\sharedCollision\FloorTri.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\sharedCollision\FloorTri.h" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\sharedFoundation\Tag.h" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\sharedFoundation\Globals.h" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\sharedFoundation\Binary.h" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\sharedFoundation\Misc.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\sharedFoundation\Crc.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\sharedFoundation\Crc.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\sharedFoundation\CrcString.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\sharedFoundation\CrcString.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\sharedFoundation\TemporaryCrcString.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\sharedFoundation\TemporaryCrcString.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\sharedFoundation\PersistentCrcString.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\sharedFoundation\PersistentCrcString.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\sharedFoundation\CrcLowerString.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\sharedFoundation\CrcLowerString.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\sharedFoundation\Os.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\sharedFoundation\Os.h" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\sharedFoundation\LessPointerComparator.h" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\sharedFoundation\PointerDeleter.h" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\sharedFoundation\StringCompare.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\sharedFoundation\ConfigFile.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\sharedFoundation\ConfigFile.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\sharedFile\AbstractFile.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\sharedFile\AbstractFile.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\sharedFile\StdioFile.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\sharedFile\StdioFile.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\sharedFile\OsFile.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\sharedFile\OsFile.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\sharedFile\Iff.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\sharedFile\Iff.h" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\sharedMath\FloatMath.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\sharedMath\PackedArgb.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\sharedMath\PackedArgb.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\sharedMath\Quaternion.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\sharedMath\Quaternion.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\sharedMath\Transform.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\sharedMath\Transform.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\sharedMath\Vector.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\sharedMath\Vector.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\sharedMath\VectorArgb.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\sharedMath\VectorArgb.h" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\sharedMath\CompressedQuaternion.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\sharedMath\CompressedQuaternion.cpp" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\third\backward.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\third\backward.hpp" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\third\loguru.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\third\loguru.hpp" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\translators\ans.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\translators\ans.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\translators\flr.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\translators\flr.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\translators\mgn.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\translators\mgn.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\translators\msh.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\translators\msh.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\translators\skt.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\translators\skt.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\translators\sat.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\translators\sat.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\translators\pob.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\translators\pob.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\translators\dds.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\translators\dds.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\utility\MayaUtility.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\utility\MayaUtility.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\utility\MayaConversions.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\utility\MayaConversions.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\utility\MayaCompoundString.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\utility\MayaCompoundString.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SetDirectoryCommand.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SetDirectoryCommand.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SetBaseDirectory.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SetBaseDirectory.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\GetDataRootDirCommand.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\GetDataRootDirCommand.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportPathResolver.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportPathResolver.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\MayaSceneBuilder.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\MayaSceneBuilder.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\DdsToTgaConverter.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\DdsToTgaConverter.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\TgaToDdsConverter.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\TgaToDdsConverter.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ExportSkeleton.cpp" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportSkeleton.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ExportSkeleton.h" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportSkeleton.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportAnimation.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportAnimation.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\RevertToBindPose.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\RevertToBindPose.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportSat.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportSat.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportPob.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportPob.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ExportPob.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ExportPob.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportLodMesh.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportLodMesh.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportSkeletalMesh.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportSkeletalMesh.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportShader.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportShader.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportStaticMesh.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportStaticMesh.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgAssetDissector.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgAssetDissector.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SkeletonTemplateWriter.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SkeletonTemplateWriter.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\StaticMeshWriter.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\StaticMeshWriter.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ExportStaticMesh.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ExportStaticMesh.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ShaderExporter.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ShaderExporter.h" />
+  </ItemGroup>
+  <ItemGroup />
+  <ItemGroup>
+    <ProjectReference Include="D:\titan\client\src\engine\client\application\MayaModern\build\ZERO_CHECK.vcxproj">
+      <Project>{F35E3DBD-C5B8-3C10-9D65-F12229BF4F2D}</Project>
+      <Name>ZERO_CHECK</Name>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </ProjectReference>
+    <ProjectReference Include="D:\titan\client\src\engine\client\application\MayaModern\build\zlib.vcxproj">
+      <Project>{7F45A751-D1B9-35A2-9E12-4DFD80CB8E7B}</Project>
+      <Name>zlib</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

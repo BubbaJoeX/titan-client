@@ -54,12 +54,18 @@ public:
 	void setRegionOfInfluenceEnabled(bool enabled) const;
 	void render(const Object *omitObject) const;
 
+	typedef bool (*ObjectRenderSkipPredicate)(Object const *object);
+	static void setObjectRenderSkipPredicate(ObjectRenderSkipPredicate predicate);
+	static void clearObjectRenderSkipPredicate();
+
 private:
 	
 	typedef stdvector<Object *>::fwd ObjectVector;
 	bool                             m_altering;
 	ObjectVector *                   m_objectVector;
 	ObjectVector *                   m_alterSafeObjectVector;
+
+	static ObjectRenderSkipPredicate ms_objectRenderSkipPredicate;
 
 private:
 

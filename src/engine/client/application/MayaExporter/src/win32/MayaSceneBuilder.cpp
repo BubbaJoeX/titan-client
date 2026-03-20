@@ -36,12 +36,14 @@
 #include "maya/MItDependencyGraph.h"
 #include "maya/MDagPathArray.h"
 #include "maya/MPlug.h"
+#include "maya/MPlugArray.h"
 #include "maya/MTime.h"
 #include "maya/MVector.h"
 
 #include <map>
 #include <cmath>
 #include <cstdlib>
+#include <cstdio>
 
 // ======================================================================
 
@@ -406,11 +408,21 @@ MStatus MayaSceneBuilder::createSkinCluster(
 {
 	MStatus status;
 
+	// Mesh transformNames use raw skeleton names (e.g. "root"); Maya root joints use "nodename__filename"
 	std::map<std::string, size_t> jointNameToIndex;
 	for (size_t j = 0; j < jointPaths.size(); ++j)
 	{
 		MFnDagNode dagFn(jointPaths[j]);
-		jointNameToIndex[std::string(dagFn.name().asChar())] = j;
+		const std::string name(dagFn.name().asChar());
+		jointNameToIndex[name] = j;
+		// Alias: "root__kaadu" -> also index as "root" so mesh transform names match
+		std::string::size_type dbl = name.find("__");
+		if (dbl != std::string::npos && dbl > 0)
+		{
+			const std::string baseName = name.substr(0, dbl);
+			if (jointNameToIndex.find(baseName) == jointNameToIndex.end())
+				jointNameToIndex[baseName] = j;
+		}
 	}
 
 	std::map<int, size_t> transformToJoint;
@@ -468,6 +480,7 @@ MStatus MayaSceneBuilder::createSkinCluster(
 		const int numWeights = weightHeaders[static_cast<size_t>(v)];
 		MIntArray influenceIndices;
 		MDoubleArray weights;
+		double weightSum = 0.0;
 
 		for (int w = 0; w < numWeights; ++w)
 		{
@@ -476,12 +489,21 @@ MStatus MayaSceneBuilder::createSkinCluster(
 			if (it != transformToJoint.end())
 			{
 				influenceIndices.append(static_cast<int>(it->second));
-				weights.append(static_cast<double>(sw.weight));
+				const double wval = static_cast<double>(sw.weight);
+				weights.append(wval);
+				weightSum += wval;
 			}
 		}
 
 		if (influenceIndices.length() > 0)
 		{
+			// Normalize weights when some were dropped (missing joints) so they sum to 1
+			if (weightSum > 0.0 && std::fabs(weightSum - 1.0) > 1e-6)
+			{
+				for (unsigned int i = 0; i < weights.length(); ++i)
+					weights[i] /= weightSum;
+			}
+
 			MFnSingleIndexedComponent singleVertComp;
 			MObject singleVert = singleVertComp.create(MFn::kMeshVertComponent);
 			singleVertComp.addElement(v);
@@ -520,23 +542,27 @@ MStatus MayaSceneBuilder::createBlendShapes(
 
 MStatus MayaSceneBuilder::createHardpoints(
 	const std::vector<HardpointData> & hardpoints,
-	const std::vector<MDagPath> & jointPaths,
-	const std::vector<std::string> & jointNames)
+	const std::map<std::string, MDagPath> & parentJointToPathMap,
+	const std::string & meshName,
+	MObject defaultParentForEmpty)
 {
 	MStatus status;
-
-	std::map<std::string, size_t> nameToIndex;
-	for (size_t j = 0; j < jointNames.size(); ++j)
-		nameToIndex[jointNames[j]] = j;
 
 	for (size_t hp = 0; hp < hardpoints.size(); ++hp)
 	{
 		const HardpointData & hd = hardpoints[hp];
 
-		MObject parentObj = MObject::kNullObj;
-		std::map<std::string, size_t>::const_iterator it = nameToIndex.find(hd.parentJoint);
-		if (it != nameToIndex.end() && it->second < jointPaths.size())
-			parentObj = jointPaths[it->second].node();
+		MObject parentObj = defaultParentForEmpty;
+		if (!hd.parentJoint.empty())
+		{
+			std::map<std::string, MDagPath>::const_iterator it = parentJointToPathMap.find(hd.parentJoint);
+			if (it == parentJointToPathMap.end())
+			{
+				MESSENGER_LOG_WARNING(("  Hardpoint [%s]: parent joint [%s] not found in skeleton, skipping\n", hd.name.c_str(), hd.parentJoint.c_str()));
+				continue;
+			}
+			parentObj = it->second.node();
+		}
 
 		MFnTransform transformFn;
 		MObject hpObj = transformFn.create(parentObj, &status);
@@ -544,7 +570,12 @@ MStatus MayaSceneBuilder::createHardpoints(
 		if (!status)
 			continue;
 
-		transformFn.setName(MString(hd.name.c_str()));
+		// Use exporter-compatible naming "hp_meshname_hardpointname" for round-trip
+		std::string hpNodeName = "hp_";
+		hpNodeName += meshName;
+		hpNodeName += "_";
+		hpNodeName += hd.name;
+		transformFn.setName(MString(hpNodeName.c_str()));
 
 		// Undo engine coordinate transform for hardpoint position
 		double hx, hy, hz;
@@ -556,6 +587,43 @@ MStatus MayaSceneBuilder::createHardpoints(
 		engineQuatToMayaEuler(hd.rotation, 0, hrx, hry, hrz);
 		MEulerRotation hpEuler(hrx, hry, hrz);
 		transformFn.setRotation(hpEuler.asQuaternion(), MSpace::kTransform);
+
+		// Create a small cube as visual indicator (hpViz_ prefix so exporter ignores it)
+		{
+			std::string vizName = "hpViz_";
+			vizName += meshName;
+			vizName += "_";
+			vizName += hd.name;
+			const double cubeSize = 0.05;
+			MString melCmd = "polyCube -w ";
+			melCmd += cubeSize;
+			melCmd += " -h ";
+			melCmd += cubeSize;
+			melCmd += " -d ";
+			melCmd += cubeSize;
+			melCmd += " -n \"";
+			melCmd += vizName.c_str();
+			melCmd += "\"";
+			if (MGlobal::executeCommand(melCmd))
+			{
+				MSelectionList sel;
+				MGlobal::getActiveSelectionList(sel);
+				if (sel.length() > 0)
+				{
+					MDagPath cubePath;
+					sel.getDagPath(0, cubePath);
+					if (!cubePath.hasFn(MFn::kTransform))
+						cubePath.pop();
+					MFnDagNode hpDagFn(transformFn.object());
+					MString parentCmd = "parent \"";
+					parentCmd += cubePath.fullPathName();
+					parentCmd += "\" \"";
+					parentCmd += hpDagFn.fullPathName();
+					parentCmd += "\"";
+					IGNORE_RETURN(MGlobal::executeCommand(parentCmd));
+				}
+			}
+		}
 	}
 
 	return MS::kSuccess;
@@ -643,6 +711,29 @@ MStatus MayaSceneBuilder::createMaterial(
 }
 
 // ======================================================================
+
+static bool isMayaDefaultShader(const std::string &name)
+{
+	std::string lower;
+	lower.reserve(name.size());
+	for (size_t i = 0; i < name.size(); ++i)
+		lower += static_cast<char>(tolower(static_cast<unsigned char>(name[i])));
+	return (lower == "initialshadinggroup" || lower == "lambert1" || lower == "phong1" ||
+		lower.find("initialshadinggroup") != std::string::npos);
+}
+
+static bool shaderFileExists(const std::string &path)
+{
+	FILE *f = fopen(path.c_str(), "rb");
+	if (f) { fclose(f); return true; }
+	// Try with .sht extension (Iff/TreeFile may add it)
+	std::string withExt = path;
+	if (withExt.size() < 4 || withExt.compare(withExt.size() - 4, 4, ".sht") != 0)
+		withExt += ".sht";
+	f = fopen(withExt.c_str(), "rb");
+	if (f) { fclose(f); return true; }
+	return false;
+}
 
 static std::string resolveShaderPath(const std::string &shaderTemplateName, const std::string &inputFilePath)
 {
@@ -766,8 +857,11 @@ MStatus MayaSceneBuilder::assignMaterials(
 		if (!materialExists)
 		{
 			std::string resolvedShaderFile = resolveShaderPath(group.shaderTemplateName, inputFilePath);
+			bool useDefault = isMayaDefaultShader(group.shaderTemplateName) ||
+				resolvedShaderFile.empty() ||
+				!shaderFileExists(resolvedShaderFile);
 
-			if (!resolvedShaderFile.empty())
+			if (!useDefault)
 			{
 				MString importCmd = "importShader -i \"";
 				importCmd += resolvedShaderFile.c_str();
@@ -780,15 +874,15 @@ MStatus MayaSceneBuilder::assignMaterials(
 				}
 				else
 				{
-					MESSENGER_LOG_WARNING(("  failed to import shader [%s], creating basic material\n", resolvedShaderFile.c_str()));
-					MObject dummySG;
-					createMaterial(shaderName, std::string(), dummySG);
+					MESSENGER_LOG_WARNING(("  failed to import shader [%s], using default material\n", resolvedShaderFile.c_str()));
+					useDefault = true;
 				}
 			}
-			else
+			if (useDefault)
 			{
 				MObject dummySG;
 				createMaterial(shaderName, std::string(), dummySG);
+				MESSENGER_LOG(("  using default material for [%s]\n", group.shaderTemplateName.c_str()));
 			}
 		}
 
@@ -834,6 +928,26 @@ MStatus MayaSceneBuilder::assignMaterials(
 
 // ======================================================================
 
+namespace
+{
+	static void disconnectExistingAnimation(MPlug &plug)
+	{
+		if (!plug.isConnected())
+			return;
+		MPlugArray sources;
+		MStatus st;
+		plug.connectedTo(sources, true, false, &st);
+		if (!st || sources.length() == 0)
+			return;
+		MDGModifier modifier;
+		for (unsigned i = 0; i < sources.length(); ++i)
+			modifier.disconnect(sources[i], plug);
+		modifier.doIt();
+	}
+}
+
+// ======================================================================
+
 MStatus MayaSceneBuilder::setKeyframes(
 	const MDagPath & jointPath,
 	const std::string & attribute,
@@ -846,6 +960,8 @@ MStatus MayaSceneBuilder::setKeyframes(
 	MPlug plug = depFn.findPlug(MString(attribute.c_str()), &status);
 	if (!status)
 		return status;
+
+	disconnectExistingAnimation(plug);
 
 	MFnAnimCurve animCurveFn;
 	animCurveFn.create(plug, MFnAnimCurve::kAnimCurveTL, NULL, &status);
@@ -875,6 +991,12 @@ MStatus MayaSceneBuilder::setRotationKeyframes(
 	MPlug rxPlug = depFn.findPlug("rotateX", &status);
 	MPlug ryPlug = depFn.findPlug("rotateY", &status);
 	MPlug rzPlug = depFn.findPlug("rotateZ", &status);
+	if (!status)
+		return status;
+
+	disconnectExistingAnimation(rxPlug);
+	disconnectExistingAnimation(ryPlug);
+	disconnectExistingAnimation(rzPlug);
 
 	MFnAnimCurve rxCurve, ryCurve, rzCurve;
 	rxCurve.create(rxPlug, MFnAnimCurve::kAnimCurveTA, NULL, &status);
@@ -894,6 +1016,100 @@ MStatus MayaSceneBuilder::setRotationKeyframes(
 		rxCurve.addKeyframe(time, euler.x);
 		ryCurve.addKeyframe(time, -euler.y);
 		rzCurve.addKeyframe(time, -euler.z);
+	}
+
+	return MS::kSuccess;
+}
+
+// ======================================================================
+// ANS stores rotation as delta from bind pose: delta = current * conjugate(bindPose).
+// So current = delta * bindPose. We read bind pose from joint, multiply, then set.
+// ======================================================================
+
+MStatus MayaSceneBuilder::setRotationKeyframesFromDeltas(
+	const MDagPath & jointPath,
+	const std::vector<QuatKeyframe> & deltaKeyframes,
+	float fps)
+{
+	MStatus status;
+
+	MFnIkJoint jointFn(jointPath.node());
+	MQuaternion bindQuat;
+	jointFn.getRotation(bindQuat, MSpace::kTransform);
+
+	MFnDependencyNode depFn(jointPath.node());
+	MPlug rxPlug = depFn.findPlug("rotateX", &status);
+	MPlug ryPlug = depFn.findPlug("rotateY", &status);
+	MPlug rzPlug = depFn.findPlug("rotateZ", &status);
+	if (!status)
+		return status;
+
+	disconnectExistingAnimation(rxPlug);
+	disconnectExistingAnimation(ryPlug);
+	disconnectExistingAnimation(rzPlug);
+
+	MFnAnimCurve rxCurve, ryCurve, rzCurve;
+	rxCurve.create(rxPlug, MFnAnimCurve::kAnimCurveTA, NULL, &status);
+	ryCurve.create(ryPlug, MFnAnimCurve::kAnimCurveTA, NULL, &status);
+	rzCurve.create(rzPlug, MFnAnimCurve::kAnimCurveTA, NULL, &status);
+
+	for (size_t k = 0; k < deltaKeyframes.size(); ++k)
+	{
+		const QuatKeyframe & qk = deltaKeyframes[k];
+		double timeVal = static_cast<double>(qk.frame) / static_cast<double>(fps);
+		MTime time(timeVal, MTime::kSeconds);
+
+		// Delta from file (engine quat x,y,z,w)
+		MQuaternion deltaQ(qk.rotation[0], qk.rotation[1], qk.rotation[2], qk.rotation[3]);
+		// Final = delta * bindPose (export: delta = current * conj(bind), so current = delta * bind)
+		MQuaternion finalQ = deltaQ * bindQuat;
+		MEulerRotation euler = finalQ.asEulerRotation();
+
+		// Undo Y,Z negation from exporter's coordinate conversion
+		rxCurve.addKeyframe(time, euler.x);
+		ryCurve.addKeyframe(time, -euler.y);
+		rzCurve.addKeyframe(time, -euler.z);
+	}
+
+	return MS::kSuccess;
+}
+
+// ======================================================================
+// ANS stores translation as delta from bind pose. final = bindPose + delta.
+// negateDelta: true for translateX (engine negates X).
+// ======================================================================
+
+MStatus MayaSceneBuilder::setKeyframesFromDeltas(
+	const MDagPath & jointPath,
+	const std::string & attribute,
+	const std::vector<AnimKeyframe> & deltaKeyframes,
+	float fps,
+	double bindPoseValue,
+	bool negateDelta)
+{
+	MStatus status;
+
+	MFnDependencyNode depFn(jointPath.node());
+	MPlug plug = depFn.findPlug(MString(attribute.c_str()), &status);
+	if (!status)
+		return status;
+
+	disconnectExistingAnimation(plug);
+
+	MFnAnimCurve animCurveFn;
+	animCurveFn.create(plug, MFnAnimCurve::kAnimCurveTL, NULL, &status);
+	if (!status)
+		return status;
+
+	for (size_t k = 0; k < deltaKeyframes.size(); ++k)
+	{
+		double deltaVal = static_cast<double>(deltaKeyframes[k].value);
+		if (negateDelta)
+			deltaVal = -deltaVal;
+		double finalVal = bindPoseValue + deltaVal;
+		double timeVal = static_cast<double>(deltaKeyframes[k].frame) / static_cast<double>(fps);
+		MTime time(timeVal, MTime::kSeconds);
+		animCurveFn.addKeyframe(time, finalVal);
 	}
 
 	return MS::kSuccess;

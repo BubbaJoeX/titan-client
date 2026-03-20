@@ -580,6 +580,8 @@ protected:
 	afx_msg void OnUpdateViewEnvironmentmap(CCmdUI* pCmdUI);
 	afx_msg void OnViewPassableMap();
 	afx_msg void OnUpdateViewPassableMap(CCmdUI* pCmdUI);
+	afx_msg void OnButtonVeryhighres();
+	afx_msg void OnUpdateButtonVeryhighres(CCmdUI* pCmdUI);
 	afx_msg void OnButtonHighres();
 	afx_msg void OnUpdateButtonHighres(CCmdUI* pCmdUI);
 	afx_msg void OnButtonMedres();

@@ -483,6 +483,7 @@
 #define ID_BUTTON_MEDRES                3014
 #define ID_BUTTON_HIGHRES               3015
 #define ID_BUTTON_LOWRES                3016
+#define ID_BUTTON_VERYHIGHRES           3032
 #define ID_TOOLS_BAKETERRAIN            3017
 #define ID_TOOLS_BAKERIVERSROADS        3018
 #define ID_BUTTON_COPY_CURRENT          3019
@@ -571,7 +572,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        2003
-#define _APS_NEXT_COMMAND_VALUE         3032
+#define _APS_NEXT_COMMAND_VALUE         3033
 #define _APS_NEXT_CONTROL_VALUE         4047
 #define _APS_NEXT_SYMED_VALUE           5000
 #endif

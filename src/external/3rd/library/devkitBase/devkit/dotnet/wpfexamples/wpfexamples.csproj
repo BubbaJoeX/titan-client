@@ -1,0 +1,55 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+	<TargetFramework>net8.0-windows</TargetFramework>
+	<GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
+    <OutputPath>$(SolutionDir)..\..\build\$(Configuration)\assemblies\wpfexamples</OutputPath>
+    <IntermediateOutputPath>$(SolutionDir)..\..\build\$(Configuration)\IntDir\wpfexamples</IntermediateOutputPath>
+  </PropertyGroup>
+
+  <PropertyGroup>
+	<Platform Condition=" '$(Platform)' == '' ">x64</Platform>
+	<OutputType>Library</OutputType>
+	<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+	<UseWindowsForms>true</UseWindowsForms>
+	<UseWPF>true</UseWPF>
+	<ImportWindowsDesktopTargets>true</ImportWindowsDesktopTargets>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
+    <CodeAnalysisIgnoreBuiltInRuleSets>false</CodeAnalysisIgnoreBuiltInRuleSets>
+    <CodeAnalysisIgnoreBuiltInRules>false</CodeAnalysisIgnoreBuiltInRules>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="openmayacs">
+      <HintPath>$(MAYA_LOCATION)\bin\openmayacs.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <AppDesigner Include="Properties\" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
+    <PackageReference Include="System.Data.DataSetExtensions" Version="4.5.0" />
+    <PackageReference Include="Microsoft.Windows.Compatibility" Version="8.0.0" />
+  </ItemGroup>
+
+  <PropertyGroup>
+	<PostBuildEvent>if not exist "$(SolutionDir)assemblies" mkdir "$(SolutionDir)assemblies"
+	copy "$(OutputPath)\$(TargetFramework)\wpfexamples.dll" "$(SolutionDir)assemblies\wpfexamples.nll.dll"
+	copy "$(OutputPath)\$(TargetFramework)\wpfexamples.runtimeconfig.json" "$(SolutionDir)assemblies\openmayacs.runtimeconfig.json"
+	copy "$(OutputPath)\$(TargetFramework)\openmayacs.dll" "$(SolutionDir)assemblies\openmayacs.dll"
+	</PostBuildEvent>
+  </PropertyGroup>
+
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+
+</Project>

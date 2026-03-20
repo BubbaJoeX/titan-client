@@ -516,6 +516,8 @@ MString MayaHierarchy::Node::getReferenceName () const
 
 MString MayaHierarchy::Node::getAppearanceReferenceName () const
 {
+	if (hasExternalReferenceName ())
+		return MString (getExternalReferenceName ());
 	return MString (SetDirectoryCommand::getDirectoryString (APPEARANCE_REFERENCE_DIR_INDEX)) + getReferenceName ();
 }
 

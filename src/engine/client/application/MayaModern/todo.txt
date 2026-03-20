@@ -1,0 +1,133 @@
+# SwgMayaEditor (MayaModern) - Maya 2026
+# Full feature parity with MayaExporter (32-bit legacy) - migrated to 64-bit Maya 2026 with an Importer option.
+
+## Build Requirements
+- Maya 2026 (64-bit) - https://www.autodesk.com/developer-network/platform-technologies/maya
+- Maya 2026 Devkit - **Separate download** from Autodesk Feedback Forum (Downloads section). Extract include/ and lib/ into Maya dir or set MAYA_LOCATION to devkit root.
+- Visual Studio 2022 (17.8.3+)
+- CMake 3.13+
+- Configure: cmake -B build -A x64 (Windows 64-bit required for Maya 2026)
+- FindMaya checks: MAYA_LOCATION, C:\Program Files\Autodesk\Maya2026, D:\Program Files\Autodesk\Maya2026
+
+## Supported Use Cases (from original todo.txt)
+- Modifying hard points/collision on existing objects
+- Adding rooms to a structure that already exists
+- Changing existing animations (or animation tables?)
+- Creating a new structure/ship pob
+- Creating a new static object
+- Creating a new vehicle
+- Creating a new species/skeletal body and animations
+- Creating a new wearable/object with occlusion/form modification
+
+## Current Implementation Status
+
+### Standard Import (File > Import via translators)
+- [x] msh - Mesh import (SPS format, static mesh)
+- [x] mgn - Mesh generator import (SKMG format, skeletal mesh via MFileIO)
+- [x] skt - Skeleton import
+- [x] ans - Animation import (XFIN channel fix, swgRevertToBindPose)
+- [x] flr - Floor import
+- [x] sat - Skeletal appearance template (SAT)
+- [x] pob - Portal object
+- [x] dds - DDS texture import
+
+### MSH Import (full)
+- [x] SPS geometry (vertices, normals, UVs, indices)
+- [x] APPR form: hardpoints (HPTS/HPNT), floor reference (FLOR)
+- [x] Multi-shader per mesh, material assignment
+- [x] createHardpoints() for static mesh (parent to mesh when no joint map)
+- [x] floor_component placeholder when floor reference exists
+
+### MGN Import (SKMG via ImportSkeletalMesh command)
+- [x] Skin weighting (TWHD/TWDT, createSkinCluster)
+- [x] Hardpoints (HPTS: STAT + DYN chunks)
+- [x] Blend targets (BLTS: position/normal deltas, createBlendShapes)
+- [x] Joint matching (transform names, short names, namespace stripping)
+- [x] Single mesh from all shader groups, material assignment
+- [x] Blend shapes created before skin cluster (correct deformation order)
+
+### Special Import Commands
+- [x] importSkeleton -i path
+- [x] importAnimation -i path
+- [x] importStaticMesh
+- [x] importSkeletalMesh
+- [x] importLodMesh
+- [x] importPob
+- [x] importSat
+- [ ] Import structure - pob, msh, flr, sht, dds together
+- [ ] Import shader (ImportShader) - exists but may need verification
+- [ ] Import Components (.cmp)
+
+### Export
+- [x] exportPob
+- [x] exportStaticMesh (msh/apt + shader TGA→DDS)
+- [x] exportSkeleton
+- [x] exportShader (.sht via ShaderExporter; MEL `exportShader -i "shader/foo/bar"`)
+
+### Commands
+- [x] setBaseDir
+- [x] getDataRootDir
+- [x] swgRevertToBindPose
+- [x] swgAssetDissector
+
+---
+
+## Remaining for Complete 3D Asset Pipeline
+
+### Import Gaps
+- [ ] Import structure - combined pob, msh, flr, sht, dds in one workflow
+- [ ] Import Components (.cmp) - component appearance with hardpoints
+- [ ] Import shader - verify/fix standalone shader import
+
+### Export (Critical for Round-Trip)
+- [x] Export mesh - apt/msh/sht (exportStaticMesh)
+- [ ] Export mesh with floor - above + flr
+- [ ] Export mesh with lightsaber - above + .lsb generator
+- [ ] Export mgn - sat/mgn/lmg (skeletal mesh generator) — **not in SwgMayaEditor**; legacy MayaExporter
+- [ ] Export mgn with ship - above + cockpit/*.iff
+- [ ] Export structure - pob/flr/msh/sht/sfp (partial: exportPob + exportStaticMesh)
+- [ ] Export animation(s) — **legacy MayaExporter** Keyframe path
+- [ ] Export skeletal mesh generator (ExportSkeletalMeshGenerator) — port from MayaExporter
+- [ ] Export skeletal appearance template (ExportSkeletalAppearanceTemplate / .sat)
+- [ ] Export keyframe skeletal animation (ExportKeyframeSkeletalAnimation / .ans)
+- [ ] Reexport command
+
+### Export Pipeline Dependencies
+- [ ] ShaderPrimitiveSetWriter (SPS)
+- [ ] SkeletalMeshGeneratorWriter
+- [ ] SkeletonTemplateWriter
+- [ ] SkeletalMeshGeneratorWriter (blend targets, hardpoints, skin weights)
+- [ ] StaticMeshBuilder / MeshBuilder
+
+### Commands (MayaExporter parity)
+- [ ] SwgGui - SWG GUI
+- [ ] SwgPrep - SWG prep
+- [ ] ExportCommand
+- [ ] AddAnimationCommand
+- [ ] DeleteAnimationCommand
+- [ ] VisitAnimationCommand
+- [ ] SetAuthorCommand
+- [ ] ExporterLog
+
+### Pipeline Workflow
+1. **Import** - Load SWG assets (mesh, skeleton, animation, materials)
+2. **Edit** - Modify in Maya (hardpoints, blend shapes, geometry, materials)
+3. **Export** - Write back to SWG IFF format
+
+Current state: Import is largely complete for mesh/skeleton/animation. Export is blocked - no mesh export commands.
+
+---
+
+## Out of Scope (per original todo.txt)
+- Particles - use dedicated editor
+- Client effects - see particles
+- Lightning - see particles
+- Swoosh - see particles
+- Textures - use Photoshop, export DDS; [x] DDS import via File > Import (creates file texture node)
+- [x] TGA creation: DDS->TGA writes to textureWriteDir (editable); round-trip ready
+- [x] TgaToDdsConverter: nvtt_export.exe for TGA->DDS on export (SwgMayaEditor.cfg: nvttExporterPath)
+- [x] Shader preservation: swgShaderPath, swgTexturePath on SG for re-export
+- Building aysch loader data/customization data
+- Client buildout generation
+- .pln (planet object)
+- Component (add floors with components)
