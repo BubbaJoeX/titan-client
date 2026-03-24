@@ -16,6 +16,7 @@
 #include "clientGame/ClientTangibleDynamics.h"
 #include "clientGame/ClientTangibleObjectTemplate.h"
 #include "clientGame/ClientWorld.h"
+#include "clientGame/CreatureObject.h"
 #include "clientGame/ContainerInterface.h"
 #include "clientGame/Game.h"
 #include "clientGame/ManufactureSchematicObject.h"
@@ -444,6 +445,58 @@ namespace TangibleObjectNamespace
 			ownerAppearance->setTexture(TAG_MAIN, *runtimeData.texture);
 	}
 
+	// Worn items are baked into the creature's composite mesh; setTexture on the wearable alone does not refresh
+	// already-built shader primitives until the relevant SkeletalAppearance2 is marked dirty.
+	void markRemoteTextureMeshesDirty(TangibleObject & wearable)
+	{
+		if (Appearance * const ownApp = wearable.getAppearance())
+		{
+			if (SkeletalAppearance2 * const ownSkel = ownApp->asSkeletalAppearance2())
+				ownSkel->markAsDirty();
+		}
+
+		Object * iter = &wearable;
+		for (int depth = 0; depth < 32 && iter; ++depth)
+		{
+			Object * const parent = ContainerInterface::getContainedByObject(*iter);
+			if (!parent)
+				return;
+
+			ClientObject * const parentClient = parent->asClientObject();
+			if (!parentClient)
+				return;
+
+			if (CreatureObject * const creature = parentClient->asCreatureObject())
+			{
+				Appearance * const creatureApp = creature->getAppearance();
+				SkeletalAppearance2 * const hostSkel = creatureApp ? creatureApp->asSkeletalAppearance2() : 0;
+				if (hostSkel)
+				{
+					bool needHostRebuild = hostSkel->isWearing(&wearable);
+					if (!needHostRebuild)
+					{
+						NetworkId const wid = wearable.getNetworkId();
+						int const wc = hostSkel->getWearableCount();
+						for (int wi = 0; wi < wc; ++wi)
+						{
+							Object const * const wo = hostSkel->getWearableObject(wi);
+							if (wo && wo->getNetworkId() == wid)
+							{
+								needHostRebuild = true;
+								break;
+							}
+						}
+					}
+					if (needHostRebuild)
+						hostSkel->markAsDirty();
+				}
+				return;
+			}
+
+			iter = parent;
+		}
+	}
+
 	void createOverlayObject(TangibleObject & owner, RemoteImageRuntimeData & runtimeData, Object *& target, bool backFace, MagicPaintingDisplayMode displayMode)
 	{
 		if (target)
@@ -636,6 +689,12 @@ namespace TangibleObjectNamespace
 			delete bytes;
 			InterlockedExchange(&runtime->fetchState, RIFS_failed);
 		}
+
+		// Inventory / nested containment: alter() may not run every frame until a root object is
+		// scheduled. Waking the owner guarantees RIFS_ready / RIFS_failed is merged on the main thread.
+		TangibleObject const * const owner = runtime->owner;
+		if (owner)
+			const_cast<TangibleObject *>(owner)->scheduleForAlter();
 
 		delete threadData;
 		return 0;
@@ -1923,17 +1982,19 @@ float TangibleObject::alter(const float elapsedTime)
 				}
 			}
 
+			// Tailor PNG: worn/inventory tangibles are often not isInWorld(); still decode so skeletal wear can sample the texture.
+			if (usesTailorRemoteTextureMode())
+			{
+				updateRemoteImageTexture();
+				updateGifAnimation(elapsedTime);
+			}
+
 			if(isInWorld())
 			{
 				VerifyObjectEffects();
 
-				// Magic painting: closest-only. Tailor PNG (TAILOR_PNG mode): always decode for this object.
-				if (usesTailorRemoteTextureMode())
-				{
-					updateRemoteImageTexture();
-					updateGifAnimation(elapsedTime);
-				}
-				else if (hasCondition(C_magicPaintingUrl))
+				// Magic painting: closest-only (tailor handled above).
+				if (hasCondition(C_magicPaintingUrl) && !usesTailorRemoteTextureMode())
 				{
 					if (shouldRenderMedia(this, ms_closestPainting, ms_closestPaintingDistSq))
 					{
@@ -1981,7 +2042,7 @@ float TangibleObject::alter(const float elapsedTime)
 				for(; iter != m_objectEffects.end(); ++iter)
 					RemoveObjectEffect(iter->first);
 
-				if (usesRemoteImageTextureConsumer())
+				if (usesRemoteImageTextureConsumer() && !usesTailorRemoteTextureMode())
 					clearRemoteImageTexture();
 				if (hasCondition(C_magicVideoPlayer))
 					clearRemoteVideoStream();
@@ -2087,7 +2148,7 @@ void TangibleObject::removeFromWorld()
 		m_interestingAttachedObject = 0;
 	}
 
-	if (usesRemoteImageTextureConsumer())
+	if (usesRemoteImageTextureConsumer() && !usesTailorRemoteTextureMode())
 		clearRemoteImageTexture();
 	if (hasCondition(C_magicVideoPlayer))
 		clearRemoteVideoStream();
@@ -2320,7 +2381,7 @@ bool TangibleObject::usesRemoteImageTextureConsumer() const
 void TangibleObject::remoteTextureUrlModified(const std::string & value)
 {
 	UNREF(value);
-	if (!isInWorld())
+	if (!isInWorld() && !usesTailorRemoteTextureMode())
 		return;
 	RemoteImageRuntimeDataMap::iterator it = ms_remoteImageRuntimeDataMap.find(this);
 	if (it != ms_remoteImageRuntimeDataMap.end())
@@ -2336,8 +2397,7 @@ void TangibleObject::remoteTextureUrlModified(const std::string & value)
 void TangibleObject::remoteTextureModeModified(const std::string & value)
 {
 	UNREF(value);
-	if (!isInWorld())
-		return;
+	// Always react to mode changes (including leaving TAILOR_PNG while equipped, often !isInWorld()).
 	RemoteImageRuntimeDataMap::iterator it = ms_remoteImageRuntimeDataMap.find(this);
 	if (it != ms_remoteImageRuntimeDataMap.end())
 	{
@@ -2353,7 +2413,7 @@ void TangibleObject::remoteTextureModeModified(const std::string & value)
 void TangibleObject::remoteTextureDisplayModeModified(const std::string & value)
 {
 	UNREF(value);
-	if (!isInWorld())
+	if (!isInWorld() && !usesTailorRemoteTextureMode())
 		return;
 	RemoteImageRuntimeDataMap::iterator it = ms_remoteImageRuntimeDataMap.find(this);
 	if (it != ms_remoteImageRuntimeDataMap.end())
@@ -2369,7 +2429,7 @@ void TangibleObject::remoteTextureDisplayModeModified(const std::string & value)
 void TangibleObject::remoteTextureScrollHModified(const std::string & value)
 {
 	UNREF(value);
-	if (!isInWorld())
+	if (!isInWorld() && !usesTailorRemoteTextureMode())
 		return;
 	RemoteImageRuntimeDataMap::iterator it = ms_remoteImageRuntimeDataMap.find(this);
 	if (it != ms_remoteImageRuntimeDataMap.end())
@@ -2385,7 +2445,7 @@ void TangibleObject::remoteTextureScrollHModified(const std::string & value)
 void TangibleObject::remoteTextureScrollVModified(const std::string & value)
 {
 	UNREF(value);
-	if (!isInWorld())
+	if (!isInWorld() && !usesTailorRemoteTextureMode())
 		return;
 	RemoteImageRuntimeDataMap::iterator it = ms_remoteImageRuntimeDataMap.find(this);
 	if (it != ms_remoteImageRuntimeDataMap.end())
@@ -2400,7 +2460,16 @@ void TangibleObject::remoteTextureScrollVModified(const std::string & value)
 
 void TangibleObject::updateRemoteImageTexture()
 {
-	if (!usesRemoteImageTextureConsumer() || !isInWorld())
+	if (!usesRemoteImageTextureConsumer())
+	{
+		RemoteImageRuntimeDataMap::iterator runtimeIt = ms_remoteImageRuntimeDataMap.find(this);
+		if (runtimeIt != ms_remoteImageRuntimeDataMap.end())
+			clearRemoteImageTexture();
+		return;
+	}
+
+	// Magic painting in containers: skip decode; tailor PNG must run while equipped (often !isInWorld()).
+	if (!isInWorld() && !usesTailorRemoteTextureMode())
 	{
 		RemoteImageRuntimeDataMap::iterator runtimeIt = ms_remoteImageRuntimeDataMap.find(this);
 		if (runtimeIt != ms_remoteImageRuntimeDataMap.end())
@@ -2486,6 +2555,8 @@ void TangibleObject::updateRemoteImageTexture()
 			{
 				Appearance * const appearance = getAppearance();
 				applyCachedRuntimeTextureToSurfaces(runtimeData, appearance);
+				if (runtimeData.isPaintingTemplate)
+					markRemoteTextureMeshesDirty(*this);
 			}
 		}
 		else if (!runtimeData.overlayObject && !runtimeData.isPaintingTemplate)
@@ -2502,6 +2573,7 @@ void TangibleObject::updateRemoteImageTexture()
 			if (runtimeData.isPaintingTemplate)
 			{
 				applyTextureScrollToAppearance(getAppearance(), scrollH, scrollV);
+				markRemoteTextureMeshesDirty(*this);
 			}
 			else
 			{
@@ -2623,6 +2695,8 @@ void TangibleObject::updateRemoteImageTexture()
 
 	Appearance * const appearance = getAppearance();
 	applyCachedRuntimeTextureToSurfaces(runtimeData, appearance);
+	if (runtimeData.isPaintingTemplate)
+		markRemoteTextureMeshesDirty(*this);
 
 	if (runtimeData.scrollH != 0.0f || runtimeData.scrollV != 0.0f)
 	{
@@ -2685,6 +2759,7 @@ void TangibleObject::clearRemoteImageTexture()
 	runtimeData.appliedDisplayModeStr.clear();
 	runtimeData.settled = false;
 	runtimeData.dirty = true;
+	markRemoteTextureMeshesDirty(*this);
 	ms_remoteImageRuntimeDataMap.erase(runtimeIt);
 }
 
@@ -2735,6 +2810,7 @@ void TangibleObject::updateGifAnimation(float elapsedTime)
 		Appearance * const ownerApp = getAppearance();
 		if (ownerApp)
 			ownerApp->setTexture(TAG_MAIN, *frameTexture);
+		markRemoteTextureMeshesDirty(*this);
 	}
 	else
 	{
