@@ -149,7 +149,6 @@ m_draggingWheel(false)
 	getCodeDataObject(TUIWidget, m_text, "text", true);
 
 	// Color wheel / HTML color support (optional UI elements)
-	getCodeDataObject(TUIButton, m_buttonToggleMode, "buttonToggleMode", true);
 	getCodeDataObject(TUIPage, m_pageColorWheel, "pageColorWheel", true);
 	getCodeDataObject(TUIPage, m_pagePaletteGrid, "pagePaletteGrid", true);
 	getCodeDataObject(TUITextbox, m_textboxHtml, "textboxHtml", true);
@@ -220,7 +219,7 @@ void CuiColorPicker::performActivate()
 {
 	handleMediatorPropertiesChanged();
 
-	// Register toggle mode button callback
+	// Register toggle mode button callback (optional; GM UI may omit)
 	if (m_buttonToggleMode)
 		m_buttonToggleMode->AddCallback(this);
 

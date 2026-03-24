@@ -50,6 +50,8 @@ public:
 		/** If both > 0, God Client game view uses these instead of titan.cfg / SharedFoundation screen size. */
 		int             gameScreenWidth;
 		int             gameScreenHeight;
+		/** If > 0, scales down client-side object LOD/update ranges to this max distance (meters). */
+		int             objectUpdateRangeCap;
 	};
 
 private:
@@ -75,6 +77,7 @@ public:
 	static bool getLoadServerObjects ();
 
 	static bool getUseGameScreenSize (int &outWidth, int &outHeight);
+	static int  getObjectUpdateRangeCap ();
 };
 
 //-------------------------------------------------------------------

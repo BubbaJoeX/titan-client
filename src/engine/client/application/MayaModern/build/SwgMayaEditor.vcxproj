@@ -523,6 +523,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportSkeletalMesh.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportShader.cpp" />
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportShader.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ExportShader.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ExportShader.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportStaticMesh.cpp" />
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportStaticMesh.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgAssetDissector.cpp" />

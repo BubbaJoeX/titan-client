@@ -2372,6 +2372,9 @@ void GroundScene::draw (void) const
 	//-- disallow shadow submissions
 	ShadowVolume::setAllowShadowSubmissions (false);
 
+	bool const atmosphericTerrainVeil = Game::isShipScene() && !Game::isSpace() && (Game::getPlayerContainingShip() != NULL);
+	ShadowVolume::setAtmosphericTerrainVeilEnabled(atmosphericTerrainVeil);
+
 	//-- render shadow alpha
 	ShadowVolume::renderShadowAlpha (getCurrentCamera ());
 

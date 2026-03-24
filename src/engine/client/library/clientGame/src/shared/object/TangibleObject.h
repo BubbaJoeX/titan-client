@@ -161,6 +161,8 @@ public:
 	int                 getCount                          (void) const;
 	int                 getCondition                      (void) const;
 	bool                hasCondition                      (int condition) const;
+	bool                usesTailorRemoteTextureMode       () const;
+	bool                usesRemoteImageTextureConsumer    () const;
 	std::string const & getRemoteStreamAspect             () const;
 
 	static bool         getVideoPlaybackInfo              (TangibleObject const * obj, __int64 & outTimeMs, __int64 & outLengthMs);

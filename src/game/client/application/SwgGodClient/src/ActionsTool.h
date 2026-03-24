@@ -38,6 +38,7 @@ public:
 	ActionHack*             m_getSphereTree;
 	ActionHack*             m_grabRelativeCoordinates;
 	ActionHack*             m_sendSystemMessage;
+	ActionHack*             m_renderRangeSettings;
 	//lint -restore
 
 public:
@@ -56,6 +57,7 @@ private slots:
 	void onShowSphereTree         () const;
 	void onGrabRelativeCoordinates() const;
 	void onSendSystemMessage      () const;
+	void onRenderRangeSettings    () const;
 
 private:
 	//disabled

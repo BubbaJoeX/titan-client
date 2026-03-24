@@ -76,6 +76,7 @@ public:
 	static void          renderShadowAlpha (const Camera* camera);
 
 	static void setAllowShadowSubmissions (bool allowShadowSubmissions);
+	static void setAtmosphericTerrainVeilEnabled (bool enabled);
 
 private:
 

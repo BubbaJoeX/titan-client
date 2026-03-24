@@ -3,6 +3,7 @@
 #include "Iff.h"
 #include "Tag.h"
 #include "Globals.h"
+#include "MayaUtility.h"
 #include "Misc.h"
 #include "Quaternion.h"
 #include "CompressedQuaternion.h"
@@ -30,6 +31,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstring>
 #include <cstdio>
 #include <iostream>
 #include <limits>
@@ -40,8 +42,10 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#define STRICMP _stricmp
 #define ANS_DEBUGVIEW(s) OutputDebugStringA((s).c_str())
 #else
+#define STRICMP strcasecmp
 #define ANS_DEBUGVIEW(s) ((void)0)
 #endif
 
@@ -907,7 +911,7 @@ MString AnsTranslator::defaultExtension () const
 
 MString AnsTranslator::filter () const
 {
-    return "Animation | SWG (*.ans)";
+    return "Animation - SWG (*.ans)";
 }
 
 /**
@@ -918,18 +922,13 @@ MString AnsTranslator::filter () const
  * @param size the size of the buffer
  * @return whether or not this file type is supported by this translator
  */
-MPxFileTranslator::MFileKind AnsTranslator::identifyFile(const MFileObject& fileName, const char* buffer, short size) const
+MPxFileTranslator::MFileKind AnsTranslator::identifyFile(const MFileObject& fileName, const char* /*buffer*/, short /*size*/) const
 {
-    //todo figure out what to do with this for IFF Files
-    /*
-    if ((size >= (short)magic.length()) &&
-        (0 == strncmp(buffer, magic.asChar(), magic.length())))
-    {
-        rval = ;
-    }
-    */
-    MFileKind rval = kIsMyFileType;
-    return rval;
+    const std::string pathStr = MayaUtility::fileObjectPathForIdentify(fileName);
+    const int nameLength = static_cast<int>(pathStr.size());
+    if (nameLength > 4 && STRICMP(pathStr.c_str() + nameLength - 4, ".ans") == 0)
+        return kCouldBeMyFileType;
+    return kNotMyFileType;
 }
 
 void AnsTranslator::calculateQuaternionDistanceToNextFrame(std::vector<QuaternionKeyData> &keyDataVector)

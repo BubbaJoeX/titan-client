@@ -1237,17 +1237,27 @@ void SoftwareBlendSkeletalShaderPrimitive::buildIndexBufferAndRenderCommands(con
 
 				std::sort(tempIndexBuffer.begin(), tempIndexBuffer.end());
 
+				int triCountWritten = 0;
 				for (unsigned i=0;i<tempIndexBuffer.size();i++)
 				{
+					if ((currentIndex + 3) > indexCount)
+					{
+						DEBUG_WARNING(true, ("SoftwareBlendSkeletalShaderPrimitive: tri list index buffer overflow prevented (%d+3 > %d), truncating.", currentIndex, indexCount));
+						break;
+					}
 					const IndexedTriangle &itri = tempIndexBuffer[i];
 					indexData[currentIndex++] = static_cast<Index>(itri.indeces[0]);
 					indexData[currentIndex++] = static_cast<Index>(itri.indeces[1]);
 					indexData[currentIndex++] = static_cast<Index>(itri.indeces[2]);
+					++triCountWritten;
 				}
 
 				//-- create the primitive
-				RenderCommand *const renderCommand = RenderCommand::createTriList(static_cast<int>(minVbIndex), static_cast<int>((maxVbIndex - minVbIndex) + 1), firstTriListIndex, triCount);
-				m_renderCommands->push_back(renderCommand);
+				if (triCountWritten > 0)
+				{
+					RenderCommand *const renderCommand = RenderCommand::createTriList(static_cast<int>(minVbIndex), static_cast<int>((maxVbIndex - minVbIndex) + 1), firstTriListIndex, triCountWritten);
+					m_renderCommands->push_back(renderCommand);
+				}
 			}
 		}
 
@@ -1260,6 +1270,8 @@ void SoftwareBlendSkeletalShaderPrimitive::buildIndexBufferAndRenderCommands(con
 				DEBUG_FATAL(vertexCount < 3, ("invalid vertex count %d", vertexCount));
 
 				const int firstTriStripIndex = currentIndex;
+				bool      triStripValid      = true;
+				int       triStripVerticesWritten = 0;
 
 				//-- initialize vertex buffer index min/max
 				Index  minVbIndex;
@@ -1274,8 +1286,16 @@ void SoftwareBlendSkeletalShaderPrimitive::buildIndexBufferAndRenderCommands(con
 				for (int triStripVertexIndex = 0; triStripVertexIndex < vertexCount; ++triStripVertexIndex, ++currentIndex)
 				{
 					// copy index values
-					const Index indexValue  = static_cast<Index>(mesh.getTriStripVertexIndex(triStripHeader, triStripVertexIndex));
+					const int rawIndexValue = mesh.getTriStripVertexIndex(triStripHeader, triStripVertexIndex);
+					if (currentIndex >= indexCount)
+					{
+						DEBUG_WARNING(true, ("SoftwareBlendSkeletalShaderPrimitive: tri strip index buffer overflow prevented (currentIndex=%d, indexCount=%d), truncating.", currentIndex, indexCount));
+						triStripValid = false;
+						break;
+					}
+					const Index indexValue  = static_cast<Index>(rawIndexValue);
 					indexData[currentIndex] = indexValue;
+					++triStripVerticesWritten;
 
 					// keep track of min/max
 					minVbIndex = std::min(minVbIndex, indexValue);
@@ -1283,9 +1303,18 @@ void SoftwareBlendSkeletalShaderPrimitive::buildIndexBufferAndRenderCommands(con
 				}
 
 				//-- create the primitive
-				const bool flipCullMode            = mesh.getTriStripCullModeFlipped(triStripHeader);
-				RenderCommand *const renderCommand = RenderCommand::createTriStrip(static_cast<int>(minVbIndex), static_cast<int>((maxVbIndex - minVbIndex) + 1), firstTriStripIndex, vertexCount, flipCullMode);
-				m_renderCommands->push_back(renderCommand);
+				if (triStripValid)
+				{
+					const bool flipCullMode            = mesh.getTriStripCullModeFlipped(triStripHeader);
+					RenderCommand *const renderCommand = RenderCommand::createTriStrip(static_cast<int>(minVbIndex), static_cast<int>((maxVbIndex - minVbIndex) + 1), firstTriStripIndex, vertexCount, flipCullMode);
+					m_renderCommands->push_back(renderCommand);
+				}
+				else
+				{
+					// Roll back partially written strip indices.
+					currentIndex = firstTriStripIndex;
+					UNREF(triStripVerticesWritten);
+				}
 			}
 		}
 

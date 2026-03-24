@@ -18,10 +18,18 @@
 
 //======================================================================
 
+const size_t SwgCuiContainerProviderDraft::cms_initialDraftIconBatch    = static_cast<size_t>(DraftSchematicInfo::ms_maxDraftsFullSkeletalAppearance);
+const size_t SwgCuiContainerProviderDraft::cms_lazyDraftIconIncrement  = 40;
+
+//======================================================================
+
 SwgCuiContainerProviderDraft::SwgCuiContainerProviderDraft () :
 SwgCuiContainerProvider (),
 m_objects               (new ObjectWatcherVector),
-m_callback              (new MessageDispatch::Callback)
+m_callback              (new MessageDispatch::Callback),
+m_lazyVisibleDraftCount (cms_initialDraftIconBatch),
+m_lastDraftListSize     (0),
+m_bypassLazyLoadForSearch (false)
 {
 	m_callback->connect (*this, &SwgCuiContainerProviderDraft::onDraftsChanged,          static_cast<DraftSchematicManager::Messages::Changed*> (0));
 }
@@ -43,6 +51,7 @@ void SwgCuiContainerProviderDraft::onDraftsChanged (const DraftSchematicManager:
 {
 	if (static_cast<const Object *>(Game::getPlayer ()) == &creature)
 	{
+		m_lazyVisibleDraftCount = cms_initialDraftIconBatch;
 		setContentDirty (true);
 	}
 }
@@ -72,8 +81,23 @@ bool SwgCuiContainerProviderDraft::populateFromDrafts (const ObjectSet & current
 
 	DraftSchematicManager::getPlayerDraftSchematics (iv);
 
+	// Beyond ms_maxDraftsFullSkeletalAppearance, never build crafted skeletal previews (memory-safe icon/table rows).
+	DraftSchematicInfo::setUseMinimalClientPreviewsForDatapad (
+		iv.size () > static_cast<size_t>(DraftSchematicInfo::ms_maxDraftsFullSkeletalAppearance));
+
+	m_lastDraftListSize = iv.size ();
+	if (m_lazyVisibleDraftCount > m_lastDraftListSize)
+		m_lazyVisibleDraftCount = m_lastDraftListSize;
+
+	const size_t materializeCount = m_bypassLazyLoadForSearch ? m_lastDraftListSize : std::min (m_lastDraftListSize, m_lazyVisibleDraftCount);
+
+	size_t draftIndex = 0;
 	for (DraftSchematicManager::InfoVector::const_iterator it = iv.begin (); it != iv.end (); ++it)
 	{
+		++draftIndex;
+		if (draftIndex > materializeCount)
+			break;
+
 		const DraftSchematicInfo * const info = *it;
 		NOT_NULL (info);
 
@@ -194,6 +218,33 @@ void SwgCuiContainerProviderDraft::setObjectSorting (const IntVector & iv)
 
 	*m_objects = newObjects;
 
+	setContentDirty (true);
+}
+
+//----------------------------------------------------------------------
+
+void SwgCuiContainerProviderDraft::tickLazyContentLoad ()
+{
+	if (m_bypassLazyLoadForSearch)
+		return;
+	if (m_lazyVisibleDraftCount >= m_lastDraftListSize)
+		return;
+
+	const size_t next = std::min (m_lastDraftListSize, m_lazyVisibleDraftCount + cms_lazyDraftIconIncrement);
+	if (next != m_lazyVisibleDraftCount)
+	{
+		m_lazyVisibleDraftCount = next;
+		setContentDirty (true);
+	}
+}
+
+//----------------------------------------------------------------------
+
+void SwgCuiContainerProviderDraft::setBypassLazyLoadForSearch (bool bypass)
+{
+	if (m_bypassLazyLoadForSearch == bypass)
+		return;
+	m_bypassLazyLoadForSearch = bypass;
 	setContentDirty (true);
 }
 

@@ -28,6 +28,7 @@ public:
 		static const UILowerString CellSelectionOverlay;
 		static const UILowerString CellSelectionOverlayOpacity;
 		static const UILowerString DoNotOverrideMaximumSize;
+		static const UILowerString SelectedIndex;
 	};
 
 	//----------------------------------------------------------------------

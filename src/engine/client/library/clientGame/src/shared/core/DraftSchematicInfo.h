@@ -44,6 +44,8 @@ public:
 	typedef stdvector<AttribWeight>::fwd         AttribWeightVector;
 
 	ClientObject *                    getClientObject                  () const;
+	/// Name from draft template only (no ClientObject / 3D); used to sort schematics without loading assets.
+	Unicode::String                   getSortableNameForOrdering       () const;
 	const SlotVector &                getSlots                         () const;
 	const Unicode::String &           getLocalizedName                 () const;
 	const std::pair<uint32, uint32> & getDraftSchematicTemplate        () const;
@@ -78,6 +80,12 @@ public:
 	bool                           formatDraftAttribWeights         (Unicode::String & draftAttribs, const Unicode::String & expNameFilter, bool showWeights = true, ResourceContainerObject* considerResource = NULL) const;
 
 	float                          calculateResourceMatch           (const NetworkId &resourceTypeId, int slot) const;
+
+	/// Above this many player drafts, datapad uses a single lightweight preview template per row (no crafted skeletal mesh).
+	enum { ms_maxDraftsFullSkeletalAppearance = 80 };
+
+	static void                    setUseMinimalClientPreviewsForDatapad (bool useMinimal);
+	static bool                    getUseMinimalClientPreviewsForDatapad ();
 
 private:
 

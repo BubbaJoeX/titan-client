@@ -57,18 +57,20 @@ struct Translator
     const char* defaultOptionsString;
     bool requiresFullMel;
 };
-// Pass nullptr for optionsScriptName - no MEL option procedures; avoids "Cannot find procedure" errors
+// Pass nullptr for optionsScriptName - no MEL option procedures; avoids "Cannot find procedure" errors.
+// requiresFullMel must be false when there is no options MEL (Maya 2026 import dialog breaks otherwise).
+// Pixmap "none" — *.rgb icons are not shipped with the plugin; missing files can confuse the dialog UI.
 static Translator* TRANSLATORS[] =
         {
-            new Translator("mgn", "mgnTranslator.rgb", &MgnTranslator::creator, nullptr, "showPositions=1", true),
-            new Translator("msh", "mshTranslator.rgb", &MshTranslator::creator, nullptr, "showPositions=1", true),
-            new Translator("skt", "sktTranslator.rgb", &SktTranslator::creator, nullptr, "showPositions=1", true),
-            new Translator("ans", "ansTranslator.rgb", &AnsTranslator::creator, nullptr, "showPositions=1", true),
-            new Translator("flr", "flrTranslator.rgb", &FlrTranslator::creator, nullptr, "showPositions=1", true),
+            new Translator("mgn", "none", &MgnTranslator::creator, nullptr, "showPositions=1", false),
+            new Translator("msh", "none", &MshTranslator::creator, nullptr, "showPositions=1", false),
+            new Translator("skt", "none", &SktTranslator::creator, nullptr, "showPositions=1", false),
+            new Translator("ans", "none", &AnsTranslator::creator, nullptr, "showPositions=1", false),
+            new Translator("flr", "none", &FlrTranslator::creator, nullptr, "showPositions=1", false),
             // preserveReferences=0 avoids Maya 2026 "Invalid file type specified: -pr" error
-            new Translator("sat", "satTranslator.rgb", &SatTranslator::creator, nullptr, "preserveReferences=0", true),
-            new Translator("pob", "pobTranslator.rgb", &PobTranslator::creator, nullptr, "preserveReferences=0", true),
-            new Translator("dds", "ddsTranslator.rgb", &DdsTranslator::creator, nullptr, "", true)
+            new Translator("sat", "none", &SatTranslator::creator, nullptr, "preserveReferences=0", false),
+            new Translator("pob", "none", &PobTranslator::creator, nullptr, "preserveReferences=0", false),
+            new Translator("dds", "none", &DdsTranslator::creator, nullptr, "", false)
         };
 
 MStatus initializePlugin(MObject obj)

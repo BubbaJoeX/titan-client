@@ -37,6 +37,7 @@ const UILowerString UIVolumePage::PropertyName::CellAlignmentH       = UILowerSt
 const UILowerString UIVolumePage::PropertyName::CellSelectionOverlay = UILowerString ("CellSelectionOverlay");
 const UILowerString UIVolumePage::PropertyName::CellSelectionOverlayOpacity = UILowerString ("CellSelectionOverlayOpacity");
 const UILowerString UIVolumePage::PropertyName::DoNotOverrideMaximumSize = UILowerString ("DoNotOverrideMaximumSize");
+const UILowerString UIVolumePage::PropertyName::SelectedIndex          = UILowerString ("SelectedIndex");
 
 //======================================================================================
 #define _TYPENAME UIVolumePage
@@ -323,6 +324,16 @@ bool UIVolumePage::SetProperty( const UILowerString & Name, const UIString &Valu
 	{
 		return UIUtils::ParseBoolean (Value, mDoNotOverrideMaximumSize);
 	}
+	else if (Name == PropertyName::SelectedIndex)
+	{
+		int index = 0;
+		if (UIUtils::ParseInteger (Value, index))
+		{
+			SetSelectionIndex (index);
+			return true;
+		}
+		return false;
+	}
 
 	return UIPage::SetProperty( Name, Value );
 }
@@ -391,6 +402,10 @@ bool UIVolumePage::GetProperty( const UILowerString & Name, UIString &Value ) co
 	else if (Name == PropertyName::DoNotOverrideMaximumSize)
 	{
 		return UIUtils::FormatBoolean (Value, mDoNotOverrideMaximumSize);
+	}
+	else if (Name == PropertyName::SelectedIndex)
+	{
+		return UIUtils::FormatLong (Value, static_cast<long>(GetLastSelectedIndex ()));
 	}
 	return UIPage::GetProperty( Name, Value );
 }

@@ -7,6 +7,7 @@
 #include "Tag.h"
 #include "Vector.h"
 #include "MayaSceneBuilder.h"
+#include "MayaUtility.h"
 
 #include <maya/MDagPath.h>
 #include <maya/MFnDagNode.h>
@@ -23,6 +24,7 @@
 #include <cmath>
 #include <cstdarg>
 #include <cstdio>
+#include <cstring>
 #include <string>
 #include <vector>
 
@@ -432,7 +434,7 @@ MString FlrTranslator::defaultExtension () const
 
 MString FlrTranslator::filter () const
 {
-    return "Floor Mesh | SWG (*.flr)";
+    return "Floor Mesh - SWG (*.flr)";
 }
 
 /**
@@ -445,11 +447,9 @@ MString FlrTranslator::filter () const
  */
 MPxFileTranslator::MFileKind FlrTranslator::identifyFile(const MFileObject& fileName, const char* buffer, short size) const
 {
-    const char *name = fileName.resolvedName().asChar();
-    int nameLength = (int)strlen(name);
-    if((nameLength>4) && !strcasecmp(name+nameLength-4, ".flr"))
-    {
-        return (kIsMyFileType);
-    }
-    return (kNotMyFileType);
+    const std::string pathStr = MayaUtility::fileObjectPathForIdentify(fileName);
+    const int nameLength = static_cast<int>(pathStr.size());
+    if (nameLength > 4 && !strcasecmp(pathStr.c_str() + nameLength - 4, ".flr"))
+        return kCouldBeMyFileType;
+    return kNotMyFileType;
 }

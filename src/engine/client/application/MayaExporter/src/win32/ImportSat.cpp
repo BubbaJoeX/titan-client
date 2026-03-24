@@ -269,12 +269,12 @@ MStatus ImportSat::doIt(const MArgList &args)
 		if (iff.isCurrentForm())
 		{
 			iff.enterForm();
-			iff.exitForm();
+			iff.exitForm(true);
 		}
 		else
 		{
 			iff.enterChunk();
-			iff.exitChunk();
+			iff.exitChunk(true);
 		}
 	}
 

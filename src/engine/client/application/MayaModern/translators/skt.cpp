@@ -9,6 +9,7 @@
 #include "Misc.h"
 #include "Quaternion.h"
 #include "Vector.h"
+#include "MayaUtility.h"
 
 #include <maya/MGlobal.h>
 #include <maya/MStatus.h>
@@ -23,6 +24,8 @@
 #include <maya/MEulerRotation.h>
 
 #include <vector>
+#include <cstring>
+#include <string>
 
 // creates an instance of the SktTranslator
 void* SktTranslator::creator()
@@ -283,7 +286,7 @@ MString SktTranslator::defaultExtension () const
 
 MString SktTranslator::filter () const
 {
-    return "Skeleton Template | SWG (*.skt)";
+    return "Skeleton Template - SWG (*.skt)";
 }
 
 /**
@@ -296,12 +299,10 @@ MString SktTranslator::filter () const
  */
 MPxFileTranslator::MFileKind SktTranslator::identifyFile(const MFileObject& fileName, const char* buffer, short size) const
 {
-    const char *name = fileName.resolvedName().asChar();
-    int nameLength = (int)strlen(name);
-    if((nameLength>4) && !strcasecmp(name+nameLength-4, ".skt"))
-    {
-        return (kIsMyFileType);
-    }
-    return (kNotMyFileType);
+    const std::string pathStr = MayaUtility::fileObjectPathForIdentify(fileName);
+    const int nameLength = static_cast<int>(pathStr.size());
+    if (nameLength > 4 && !strcasecmp(pathStr.c_str() + nameLength - 4, ".skt"))
+        return kCouldBeMyFileType;
+    return kNotMyFileType;
 }
 

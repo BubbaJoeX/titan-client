@@ -1,5 +1,6 @@
 #include "sat.h"
 #include "../commands/ImportSat.h"
+#include "MayaUtility.h"
 
 #include <maya/MFileObject.h>
 #include <maya/MGlobal.h>
@@ -7,6 +8,7 @@
 #include <maya/MPxFileTranslator.h>
 
 #include <cstring>
+#include <string>
 
 #ifdef _WIN32
 #define STRICMP _stricmp
@@ -26,24 +28,37 @@ MString SatTranslator::defaultExtension() const
 
 MString SatTranslator::filter() const
 {
-    return "Skeletal Appearance Template | SWG (*.sat)";
+    return "Skeletal Appearance Template - SWG (*.sat)";
 }
 
-MPxFileTranslator::MFileKind SatTranslator::identifyFile(const MFileObject& fileName, const char* /*buffer*/, short /*size*/) const
+MPxFileTranslator::MFileKind SatTranslator::identifyFile(const MFileObject& fileName, const char* buffer, short size) const
 {
-    const char* name = fileName.resolvedName().asChar();
-    const int nameLength = static_cast<int>(strlen(name));
-    if (nameLength > 4 && STRICMP(name + nameLength - 4, ".sat") == 0)
+    const std::string pathStr = MayaUtility::fileObjectPathForIdentify(fileName);
+    const int nameLength = static_cast<int>(pathStr.size());
+    if (nameLength > 4 && STRICMP(pathStr.c_str() + nameLength - 4, ".sat") == 0)
+        return kCouldBeMyFileType;
+
+    // Maya sometimes provides no usable path while listing files; SAT is IFF FORM + SMAT.
+    if (buffer && size >= 12
+        && buffer[0] == 'F' && buffer[1] == 'O' && buffer[2] == 'R' && buffer[3] == 'M'
+        && buffer[8] == 'S' && buffer[9] == 'M' && buffer[10] == 'A' && buffer[11] == 'T')
         return kIsMyFileType;
+
     return kNotMyFileType;
 }
 
 MStatus SatTranslator::reader(const MFileObject& file, const MString& /*optionsString*/, MPxFileTranslator::FileAccessMode /*mode*/)
 {
-    const MString path = file.expandedFullName();
+    const std::string pathStd = MayaUtility::fileObjectPathForIdentify(file);
+    if (pathStd.empty())
+    {
+        MGlobal::displayError("SAT import: could not resolve file path from MFileObject.");
+        return MS::kFailure;
+    }
+    const MString path(pathStd.c_str());
     MArgList args;
-    args.add("-i");
-    args.add(path);
+    args.addArg(MString("-i"));
+    args.addArg(path);
 
     ImportSat importer;
     const MStatus status = importer.doIt(args);

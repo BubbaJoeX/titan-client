@@ -63,6 +63,9 @@ public:
 	virtual void                  tryToApplyOrdering      (stdvector<NetworkId>::fwd const &ordering);
 	virtual void                  tryToPlaceItemBefore    (const NetworkId & object, const NetworkId & before);
 
+	/// Draft datapad: materialize more icons over time; default no-op.
+	virtual void                  tickLazyContentLoad     ();
+
 private:
 
 	bool                                   m_contentDirty;

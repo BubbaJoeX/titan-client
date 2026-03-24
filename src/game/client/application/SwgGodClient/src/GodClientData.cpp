@@ -68,6 +68,7 @@
 
 #include <utility>
 #include <algorithm>
+#include <float.h>
 
 // ======================================================================
 
@@ -99,6 +100,11 @@ struct SelectedObjectDestroyer
 		delete val;
 	}
 };
+
+inline bool isFiniteVector(Vector const &v)
+{
+	return _finite(v.x) && _finite(v.y) && _finite(v.z);
+}
 
 //-----------------------------------------------------------------
 
@@ -1083,7 +1089,9 @@ Vector GodClientData::absorbPasteLocation()
 
 //-----------------------------------------------------------------
 
-/** Given a new a translation vector in world space, move the objects by that amount
+/** Apply a translation specified in world space (camera / drag / pullSelection convention).
+ *  Each ghost is moved in its parent cell frame via move_p(), so we rotate the delta from
+ *  world into parent space first (rotate_w2p). World cell leaves rotate_w2p as identity.
  */
 void GodClientData::translateGhosts(const Vector& v, bool alongGround)
 {
@@ -1101,6 +1109,8 @@ void GodClientData::translateGhosts(const Vector& v, bool alongGround)
 		if(selObj->ghost == 0)
 			selObj->ghost = NON_NULL(createGhost(*selObj->obj));
 
+		const Vector vParent = selObj->ghost->rotate_w2p(v);
+
 		const Vector objLoc = selObj->obj->getPosition_p();
 		const Vector ghostLoc = selObj->ghost->getPosition_p();
 
@@ -1108,33 +1118,39 @@ void GodClientData::translateGhosts(const Vector& v, bool alongGround)
 		Vector snappedLoc  = snapToGrid(ghostLoc);
 		Vector snappedDiff = snappedLoc - ghostLoc;
 
-		real oldHeightDiff = objLoc.y - getObjectDropCollisionHeight(*selObj->ghost);
+		// oldHeightDiff is only meaningful for world-cell terrain snap (world Y).
+		real oldHeightDiff = CONST_REAL(0);
+		{
+			CellProperty const * const ghostCell = selObj->ghost->getParentCell();
+			if (!ghostCell || ghostCell == CellProperty::getWorldCellProperty())
+				oldHeightDiff = objLoc.y - getObjectDropCollisionHeight(*selObj->ghost);
+		}
 
 		if(m_snapToHorizontalGrid || m_snapToVerticalGrid)
 		{
 			if(m_snapToHorizontalGrid)
 			{
-				if(v.x > m_snapToGridHorizontalThreshold / (10 * m_snapToGridHorizontalSize))
+				if(vParent.x > m_snapToGridHorizontalThreshold / (10 * m_snapToGridHorizontalSize))
 					snappedDiff.x += m_snapToGridHorizontalSize;
-				else if(v.x < -m_snapToGridHorizontalThreshold / (10 * m_snapToGridHorizontalSize))
+				else if(vParent.x < -m_snapToGridHorizontalThreshold / (10 * m_snapToGridHorizontalSize))
 					snappedDiff.x -= m_snapToGridHorizontalSize;
 
-				if(v.z > m_snapToGridHorizontalThreshold / (10 * m_snapToGridHorizontalSize))
+				if(vParent.z > m_snapToGridHorizontalThreshold / (10 * m_snapToGridHorizontalSize))
 					snappedDiff.z += m_snapToGridHorizontalSize;
-				else if(v.z < -m_snapToGridHorizontalThreshold / (10 * m_snapToGridHorizontalSize))
+				else if(vParent.z < -m_snapToGridHorizontalThreshold / (10 * m_snapToGridHorizontalSize))
 					snappedDiff.z -= m_snapToGridHorizontalSize;
 			}
 			if(m_snapToVerticalGrid)
 			{
-				if(v.y > m_snapToGridVerticalThreshold / (10 * m_snapToGridVerticalSize))
+				if(vParent.y > m_snapToGridVerticalThreshold / (10 * m_snapToGridVerticalSize))
 					snappedDiff.y += m_snapToGridVerticalSize;
-				else if(v.y < -m_snapToGridVerticalThreshold / (10 * m_snapToGridVerticalSize))
+				else if(vParent.y < -m_snapToGridVerticalThreshold / (10 * m_snapToGridVerticalSize))
 					snappedDiff.y -= m_snapToGridVerticalSize;
 			}
 			selObj->ghost->move_p(snappedDiff);
 		}
 		else
-			selObj->ghost->move_p(v);
+			selObj->ghost->move_p(vParent);
 
 		if(alongGround)
 			dropObjectToTerrain(*selObj->ghost, oldHeightDiff);
@@ -1413,11 +1429,55 @@ real GodClientData::getObjectDropCollisionHeight(const Object& obj) const
 
 void GodClientData::dropObjectToTerrain(Object& obj, real height) const
 {
-	// Handle interior cells properly - disable portal transitions during position change
+	// World: snap using collision below along world -Y (terrain / hulls).
+	// Interior: must adjust in parent (cell) space using the cell Floor; world-Y + setPosition_w
+	// breaks cell-local transforms and can produce invalid matrices (debug validate / fatal).
 	CellProperty::setPortalTransitionsEnabled(false);
-	Vector v = obj.getPosition_w();
-	v.y = getObjectDropCollisionHeight(obj) + height;
-	obj.setPosition_w(v);
+
+	CellProperty const * const cell = obj.getParentCell();
+	if (!cell || cell == CellProperty::getWorldCellProperty())
+	{
+		Vector v = obj.getPosition_w();
+		v.y = getObjectDropCollisionHeight(obj) + height;
+		obj.setPosition_w(v);
+	}
+	else
+	{
+		Floor const * const floor = cell->getFloor();
+		if (floor)
+		{
+			Vector const objPos_p = obj.getPosition_p();
+			if (!isFiniteVector(objPos_p))
+			{
+				CellProperty::setPortalTransitionsEnabled(true);
+				return;
+			}
+			Vector const down(0.f, -1.f, 0.f);
+			// Use a fixed offset to avoid propagating bad appearance radii into the floor test.
+			Vector const start_p = objPos_p + Vector(0.f, 2.f, 0.f);
+			Ray3d const ray(start_p, down);
+			FloorLocator loc;
+			if (const_cast<Floor *>(floor)->intersectClosest(ray, loc))
+			{
+				Vector const floorPos_p = loc.getPosition_p();
+				if (!isFiniteVector(floorPos_p))
+				{
+					CellProperty::setPortalTransitionsEnabled(true);
+					return;
+				}
+
+				Vector newPos = objPos_p;
+				newPos.y = floorPos_p.y + height;
+				if (!isFiniteVector(newPos))
+				{
+					CellProperty::setPortalTransitionsEnabled(true);
+					return;
+				}
+				obj.setPosition_p(newPos);
+			}
+		}
+	}
+
 	CellProperty::setPortalTransitionsEnabled(true);
 }
 
@@ -2000,6 +2060,7 @@ bool GodClientData::moveGhostsFollowingObject(const NetworkId& oid, const Vector
 	if(!selObj)
 		return false;
 	
+	// pt must be world space (same as getPosition_w); translateGhosts expects a world delta.
 	const Vector leaderPos = selObj->ghost ? selObj->ghost->getPosition_w() : selObj->obj->getPosition_w();
 	const Vector diff = pt - leaderPos;
 
@@ -2021,11 +2082,13 @@ void GodClientData::translateSelection(real x, real y, bool alongGround)
 
 	Vector center;
 
+	// Mouse delta is in camera local space; translateGhosts() expects a world-space delta
+	// (then rotate_w2p per object for parent/cell move_p). rotate_o2p only reached camera parent.
 	const real pitch = cam->getPitch();
 	if(pitch > -PI_OVER_4 && pitch < PI_OVER_4)
-		loc = cam->rotate_o2p(Vector(x, CONST_REAL(0), -y));
+		loc = cam->rotate_o2w(Vector(x, CONST_REAL(0), -y));
 	else
-		loc = cam->rotate_o2p(Vector(x, -y, CONST_REAL(0)));
+		loc = cam->rotate_o2w(Vector(x, -y, CONST_REAL(0)));
 
 	if(!calculateSelectionCenter(center, true))
 		return;

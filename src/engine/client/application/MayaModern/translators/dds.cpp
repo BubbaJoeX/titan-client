@@ -28,28 +28,32 @@ MString DdsTranslator::defaultExtension() const
 
 MString DdsTranslator::filter() const
 {
-    return "DDS Texture | SWG (*.dds)";
+    return "DDS Texture - SWG (*.dds)";
 }
 
 MPxFileTranslator::MFileKind DdsTranslator::identifyFile(const MFileObject& fileName, const char* /*buffer*/, short /*size*/) const
 {
-    const char* name = fileName.resolvedName().asChar();
-    const int nameLength = static_cast<int>(strlen(name));
-    if (nameLength > 4 && STRICMP(name + nameLength - 4, ".dds") == 0)
-        return kIsMyFileType;
+    const std::string pathStr = MayaUtility::fileObjectPathForIdentify(fileName);
+    const int nameLength = static_cast<int>(pathStr.size());
+    if (nameLength > 4 && STRICMP(pathStr.c_str() + nameLength - 4, ".dds") == 0)
+        return kCouldBeMyFileType;
     return kNotMyFileType;
 }
 
 MStatus DdsTranslator::reader(const MFileObject& file, const MString& /*optionsString*/, MPxFileTranslator::FileAccessMode /*mode*/)
 {
-    const MString path = file.expandedFullName();
-    MString name = file.name();
-    // Strip .dds extension for node name (substring end is exclusive)
-    if (name.length() > 4 && name.substring(name.length() - 4, name.length()) == ".dds")
-        name = name.substring(0, name.length() - 4);
-    if (name.length() == 0) name = "ddsTexture";
+    const std::string pathStd = MayaUtility::fileObjectPathForIdentify(file);
+    if (pathStd.empty())
+    {
+        MGlobal::displayError("DDS import: could not resolve file path from MFileObject.");
+        return MS::kFailure;
+    }
+    std::string baseName = MayaUtility::parseFileNameToNodeName(pathStd);
+    if (baseName.empty())
+        baseName = "ddsTexture";
+    MString name(baseName.c_str());
 
-    std::string pathToUse(path.asChar());
+    std::string pathToUse(pathStd);
     const char* textureWriteDir = SetDirectoryCommand::getDirectoryString(SetDirectoryCommand::TEXTURE_WRITE_DIR_INDEX);
     std::string outputDir;
     if (textureWriteDir && textureWriteDir[0])

@@ -87,6 +87,7 @@ namespace ShadowVolumeNamespace
 	//- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 	bool        ms_allowShadowSubmissions;
+	bool        ms_atmosphericTerrainVeilEnabled;
 	bool        ms_permanentlyDisableShadowVolumes;
 	bool        ms_viewer;
 	const float ms_shadowVolumeExtrudeDistance = 256.f;
@@ -989,6 +990,11 @@ void ShadowVolume::renderShadowAlpha (const Camera* camera)
 {
 	clearProxyLocalShaderPrimitiveList ();
 
+	// Restrict this full-screen alpha pass to world-cell rendering. This prevents
+	// cockpit/interior views from being darkened and keeps ships readable in atmo flight.
+	if (camera->getParentCell () != CellProperty::getWorldCellProperty ())
+		return;
+
 	if (ms_enabled && ms_renderShadowsThisFrame && ms_shadowVolumeScreenAlphaShader)
 	{
 		//-- draw screen poly
@@ -1008,15 +1014,22 @@ void ShadowVolume::renderShadowAlpha (const Camera* camera)
 
 			if(ms_viewer || camera->getParentCell () == CellProperty::getWorldCellProperty ())
 			{
-				float timeOfDay = ShadowManager::getTimeOfDay();
+				if (ms_atmosphericTerrainVeilEnabled)
+				{
+					color = VectorArgb(0.55f, 0.0f, 0.0f, 0.0f);
+				}
+				else
+				{
+					float timeOfDay = ShadowManager::getTimeOfDay();
 
-				timeOfDay += 0.5f;
+					timeOfDay += 0.5f;
 
-				if(timeOfDay > 1.0f)
-					timeOfDay = 1.0f;
+					if(timeOfDay > 1.0f)
+						timeOfDay = 1.0f;
 
-				float shadowValue = 0.70f;
-				color = VectorArgb(shadowValue * timeOfDay, 0.0f, 0.0f, 0.0f);
+					float shadowValue = 0.70f;
+					color = VectorArgb(shadowValue * timeOfDay, 0.0f, 0.0f, 0.0f);
+				}
 			}
 			else
 			{
@@ -1055,6 +1068,13 @@ void ShadowVolume::renderShadowAlpha (const Camera* camera)
 void ShadowVolume::setAllowShadowSubmissions (bool const allowShadowSubmissions)
 {
 	ms_allowShadowSubmissions = allowShadowSubmissions;
+}
+
+//-------------------------------------------------------------------
+
+void ShadowVolume::setAtmosphericTerrainVeilEnabled (bool const enabled)
+{
+	ms_atmosphericTerrainVeilEnabled = enabled;
 }
 
 //===================================================================

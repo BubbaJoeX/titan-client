@@ -62,7 +62,8 @@ using namespace VolumeContainerNamespace;
 VolumeContainer::VolumeContainer(Object& owner, int totalVolume) :
 Container(VolumeContainer::getClassPropertyId(), owner),
 m_currentVolume(0),
-m_totalVolume(totalVolume)
+m_totalVolume(totalVolume),
+m_warnedVolumeOverCapacity(false)
 {
 }
 
@@ -289,7 +290,20 @@ int VolumeContainer::recalculateVolume()
 	if (volumeContainer)
 		IGNORE_RETURN (volumeContainer->recalculateVolume ());
 
-	WARNING_STRICT_FATAL(m_totalVolume > 0 && m_currentVolume > m_totalVolume, ("Recalculate Volume ended up being greater than our capacity"));
+	if (m_totalVolume > 0 && m_currentVolume > m_totalVolume)
+	{
+		if (!m_warnedVolumeOverCapacity)
+		{
+			m_warnedVolumeOverCapacity = true;
+			WARNING_STRICT_FATAL(true, ("Recalculate Volume ended up being greater than our capacity (current=%d capacity=%d owner=%s). "
+				"Often datapad/inventory after many granted schematics or items; increase container volume in object template or remove items. "
+				"Further overflow warnings for this container suppressed until current volume fits.",
+				m_currentVolume, m_totalVolume, getOwner().getNetworkId().getValueString().c_str()));
+		}
+	}
+	else
+		m_warnedVolumeOverCapacity = false;
+
 	return m_currentVolume;
 }
 

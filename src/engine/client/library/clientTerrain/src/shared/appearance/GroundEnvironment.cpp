@@ -1715,14 +1715,53 @@ void GroundEnvironment::alter(float elapsedTime)
 
 //-------------------------------------------------------------------
 
+namespace
+{
+	// Height where atmospheric-flight fog begins fading out.
+	float const s_atmoFogFadeStartHeight = 50.0f;
+	// Height where atmospheric-flight fog is fully faded out.
+	float const s_atmoFogFadeEndHeight   = 120.0f;
+	// Extra haze strength while in atmospheric-flight ships.
+	float const s_atmoFogDensityBoost    = 2.75f;
+
+	// World fog is now attenuated by ship altitude instead of being hard-disabled.
+	bool suppressTerrainFogForAtmosphericShip ()
+	{
+		return false;
+	}
+}
+
+//-------------------------------------------------------------------
+
 void GroundEnvironment::draw () const
 {
-	if (m_enableFog)
+	CellProperty * const worldCellProperty = CellProperty::getWorldCellProperty ();
+
+	if (suppressTerrainFogForAtmosphericShip ())
+		worldCellProperty->setFogEnabled (false);
+	else if (m_enableFog)
 	{
-		CellProperty* const worldCellProperty = CellProperty::getWorldCellProperty ();
-		worldCellProperty->setFogEnabled (m_fogEnabled);
+		float fogDensity = m_fogDensity;
+		if (Game::isShipScene () && !Game::isSpace () && Game::getPlayerContainingShip () != NULL && m_referenceCamera)
+		{
+			fogDensity *= s_atmoFogDensityBoost;
+
+			TerrainObject const * const terrainObject = TerrainObject::getConstInstance ();
+			Vector const & cameraPos_w = m_referenceCamera->getPosition_w ();
+			float altitudeAboveTerrain = cameraPos_w.y;
+			if (terrainObject)
+			{
+				float terrainHeight = 0.0f;
+				if (terrainObject->getHeight (Vector (cameraPos_w.x, 0.0f, cameraPos_w.z), terrainHeight))
+					altitudeAboveTerrain = cameraPos_w.y - terrainHeight;
+			}
+			float fadeT = clamp (0.0f, (altitudeAboveTerrain - s_atmoFogFadeStartHeight) / (s_atmoFogFadeEndHeight - s_atmoFogFadeStartHeight), 1.0f);
+			fogDensity *= (1.0f - fadeT);
+		}
+
+		worldCellProperty->setFogEnabled (m_fogEnabled && fogDensity > 0.00001f);
 		worldCellProperty->setFogColor (m_fogColor);
-		worldCellProperty->setFogDensity (m_fogDensity);
+		worldCellProperty->setFogDensity (fogDensity);
 	}
 
 #ifdef _DEBUG

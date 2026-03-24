@@ -280,6 +280,12 @@ private:
 	ChunkRequestInfoMap* const            m_pendingChunkRequestInfoMap;
 	ChunkRequestInfoList* const           m_completedChunkRequestInfoList;
 	bool                             m_lockTerrainLevelOfDetail;
+	bool                             m_atmoLodBoostActive;
+	bool                             m_forceRenderEntireMapDone;
+	int                              m_forceRenderEntireMapCursorX;
+	int                              m_forceRenderEntireMapCursorZ;
+	mutable int                      m_lastAtmoPrewarmChunkX;
+	mutable int                      m_lastAtmoPrewarmChunkZ;
 
 #ifdef RIBBON_DEBUG_FEELERS
 	ArrayList<const AffectorRibbon*>  m_debugRibbonAffectorList;
@@ -316,6 +322,8 @@ private:
 	void                  buildLocalWaterTables ();
 
 	void                  threadRoutine();
+	void                  prewarmAtmosphericFarLodChunks (Vector const & referencePosition_w) const;
+	void                  forceCreateEntireMapChunks () const;
 
 	const TerrainQuadTree* getChunkTree () const;
 	TerrainQuadTree*       getChunkTree ();

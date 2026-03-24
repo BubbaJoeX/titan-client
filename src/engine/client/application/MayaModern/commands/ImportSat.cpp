@@ -22,6 +22,9 @@ namespace
     static const Tag TAG_SMAT = TAG(S,M,A,T);
     static const Tag TAG_MSGN = TAG(M,S,G,N);
     static const Tag TAG_SKTI = TAG(S,K,T,I);
+    static const Tag TAG_SKTM = TAG(S,K,T,M);
+    static const Tag TAG_SLOD = TAG(S,L,O,D);
+    static const Tag TAG_V000 = TAG(0,0,0,0);
     static const Tag TAG_V001 = TAG(0,0,0,1);
     static const Tag TAG_V002 = TAG(0,0,0,2);
     static const Tag TAG_V003 = TAG(0,0,0,3);
@@ -193,16 +196,123 @@ namespace
         return std::string();
     }
 
-    static std::string getSkeletonRootName(const std::string& skeletonPath)
+    static std::string fileBasenameNoExtension(std::string path)
     {
-        std::string name = skeletonPath;
-        size_t lastSlash = name.find_last_of("/\\");
+        for (auto& c : path)
+            if (c == '\\')
+                c = '/';
+        const size_t lastSlash = path.find_last_of('/');
         if (lastSlash != std::string::npos)
-            name = name.substr(lastSlash + 1);
-        size_t dot = name.find_last_of('.');
+            path = path.substr(lastSlash + 1);
+        const size_t dot = path.find_last_of('.');
         if (dot != std::string::npos)
-            name = name.substr(0, dot);
-        return "root__" + name;
+            path = path.substr(0, dot);
+        return path;
+    }
+
+    // MayaSceneBuilder::createJointHierarchy names the root joint
+    // "<rootJointFromSkt>__<basename>" or, for SLOD, "<rootJointFromSkt>__<basename>_l0".
+    // ImportSat used to assume "root__<basename>", which breaks attachment parenting when
+    // the first joint in the .skt is not literally "root" (e.g. hips, bn_root).
+    static std::string expectedRootJointShortNameFromSkeletonFile(const std::string& resolvedPath)
+    {
+        Iff skelIff;
+        if (!skelIff.open(resolvedPath.c_str(), false))
+            return std::string();
+
+        const Tag top = skelIff.getCurrentName();
+        const std::string base = fileBasenameNoExtension(resolvedPath);
+
+        auto skipRestOfForm = [](Iff& iff)
+        {
+            while (!iff.atEndOfForm())
+            {
+                if (iff.isCurrentForm())
+                {
+                    iff.enterForm();
+                    iff.exitForm(true);
+                }
+                else
+                {
+                    iff.enterChunk();
+                    iff.exitChunk(true);
+                }
+            }
+        };
+
+        if (top == TAG_SKTM)
+        {
+            skelIff.enterForm(TAG_SKTM);
+            const Tag ver = skelIff.getCurrentName();
+            skelIff.enterForm(ver);
+
+            skelIff.enterChunk(TAG_INFO);
+            const int32 jointCount = skelIff.read_int32();
+            skelIff.exitChunk(TAG_INFO);
+
+            std::string firstJoint;
+            if (jointCount > 0)
+            {
+                skelIff.enterChunk(TAG_NAME);
+                firstJoint = skelIff.read_stdstring();
+                skelIff.exitChunk(true);
+            }
+
+            skipRestOfForm(skelIff);
+            skelIff.exitForm(ver);
+            skelIff.exitForm(TAG_SKTM);
+
+            if (!firstJoint.empty())
+                return firstJoint + "__" + base;
+        }
+        else if (top == TAG_SLOD)
+        {
+            skelIff.enterForm(TAG_SLOD);
+            skelIff.enterForm(TAG_V000);
+
+            skelIff.enterChunk(TAG_INFO);
+            const int16 levelCount = skelIff.read_int16();
+            skelIff.exitChunk(TAG_INFO);
+
+            std::string firstJoint;
+            if (levelCount > 0)
+            {
+                skelIff.enterForm(TAG_SKTM);
+                const Tag ver = skelIff.getCurrentName();
+                skelIff.enterForm(ver);
+
+                skelIff.enterChunk(TAG_INFO);
+                const int32 jointCount = skelIff.read_int32();
+                skelIff.exitChunk(TAG_INFO);
+
+                if (jointCount > 0)
+                {
+                    skelIff.enterChunk(TAG_NAME);
+                    firstJoint = skelIff.read_stdstring();
+                    skelIff.exitChunk(true);
+                }
+
+                skipRestOfForm(skelIff);
+                skelIff.exitForm(ver);
+                skelIff.exitForm(TAG_SKTM);
+            }
+
+            // Remaining LOD levels (additional SKTM forms) and any other data in V000
+            skipRestOfForm(skelIff);
+            skelIff.exitForm(TAG_V000);
+            skelIff.exitForm(TAG_SLOD);
+
+            if (!firstJoint.empty())
+                return firstJoint + "__" + base + "_l0";
+        }
+
+        return std::string();
+    }
+
+    // Legacy fallback when skeleton file cannot be peeked (matches old incorrect assumption).
+    static std::string getSkeletonRootNameFallback(const std::string& skeletonPath)
+    {
+        return "root__" + fileBasenameNoExtension(skeletonPath);
     }
 }
 
@@ -306,17 +416,19 @@ MStatus ImportSat::doIt(const MArgList& args)
     }
     iff.exitChunk(TAG_SKTI);
 
+    // v0003 SAT may contain LATX, LDTB, SFSK, APAG, etc. Skip without fully parsing;
+    // use exitChunk(true)/exitForm(true) so unread chunk/form data does not trip IFF checks.
     while (iff.getNumberOfBlocksLeft() > 0)
     {
         if (iff.isCurrentForm())
         {
             iff.enterForm();
-            iff.exitForm();
+            iff.exitForm(true);
         }
         else
         {
             iff.enterChunk();
-            iff.exitChunk();
+            iff.exitChunk(true);
         }
     }
 
@@ -359,7 +471,11 @@ MStatus ImportSat::doIt(const MArgList& args)
         if (!status)
             std::cerr << "ImportSat: failed to import skeleton [" << resolvedPath << "]" << std::endl;
         else if (i == 0)
-            firstSkeletonRootName = getSkeletonRootName(relativePath);
+        {
+            firstSkeletonRootName = expectedRootJointShortNameFromSkeletonFile(resolvedPath);
+            if (firstSkeletonRootName.empty())
+                firstSkeletonRootName = getSkeletonRootNameFallback(relativePath);
+        }
     }
 
     for (size_t i = 0; i < meshGeneratorPaths.size(); ++i)

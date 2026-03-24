@@ -145,4 +145,11 @@ void SwgCuiContainerProvider::tryToApplyOrdering(stdvector<NetworkId>::fwd const
 void SwgCuiContainerProvider::tryToPlaceItemBefore(const NetworkId & , const NetworkId & )
 {
 }
+
+//----------------------------------------------------------------------
+
+void SwgCuiContainerProvider::tickLazyContentLoad ()
+{
+}
+
 //======================================================================

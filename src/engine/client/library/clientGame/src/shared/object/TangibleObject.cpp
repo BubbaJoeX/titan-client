@@ -345,6 +345,13 @@ namespace TangibleObjectNamespace
 		return MPDM_cube;
 	}
 
+	bool isTailorPngRemoteMode(std::string const & mode)
+	{
+		if (mode.empty())
+			return false;
+		return _stricmp(mode.c_str(), "TAILOR_PNG") == 0;
+	}
+
 	bool isGifUrl(std::string const & url)
 	{
 		if (url.size() < 4)
@@ -1920,8 +1927,13 @@ float TangibleObject::alter(const float elapsedTime)
 			{
 				VerifyObjectEffects();
 
-				// Magic painting - only render if we're the closest one
-				if (hasCondition(C_magicPaintingUrl))
+				// Magic painting: closest-only. Tailor PNG (TAILOR_PNG mode): always decode for this object.
+				if (usesTailorRemoteTextureMode())
+				{
+					updateRemoteImageTexture();
+					updateGifAnimation(elapsedTime);
+				}
+				else if (hasCondition(C_magicPaintingUrl))
 				{
 					if (shouldRenderMedia(this, ms_closestPainting, ms_closestPaintingDistSq))
 					{
@@ -1969,7 +1981,7 @@ float TangibleObject::alter(const float elapsedTime)
 				for(; iter != m_objectEffects.end(); ++iter)
 					RemoveObjectEffect(iter->first);
 
-				if (hasCondition(C_magicPaintingUrl))
+				if (usesRemoteImageTextureConsumer())
 					clearRemoteImageTexture();
 				if (hasCondition(C_magicVideoPlayer))
 					clearRemoteVideoStream();
@@ -2043,7 +2055,7 @@ void TangibleObject::addToWorld()
 
 	// Update the interesting attached object based upon user preferences
 	updateInterestingAttachedObject(getCondition ());
-	if (hasCondition(C_magicPaintingUrl))
+	if (usesRemoteImageTextureConsumer())
 		updateRemoteImageTexture();
 	if (hasCondition(C_magicVideoPlayer))
 		updateRemoteVideoStream();
@@ -2075,7 +2087,7 @@ void TangibleObject::removeFromWorld()
 		m_interestingAttachedObject = 0;
 	}
 
-	if (hasCondition(C_magicPaintingUrl))
+	if (usesRemoteImageTextureConsumer())
 		clearRemoteImageTexture();
 	if (hasCondition(C_magicVideoPlayer))
 		clearRemoteVideoStream();
@@ -2291,6 +2303,20 @@ void TangibleObject::appearanceDataModified(const std::string& value)
 
 //----------------------------------------------------------------------
 
+bool TangibleObject::usesTailorRemoteTextureMode() const
+{
+	return isTailorPngRemoteMode(m_remoteTextureMode.get());
+}
+
+//----------------------------------------------------------------------
+
+bool TangibleObject::usesRemoteImageTextureConsumer() const
+{
+	return hasCondition(C_magicPaintingUrl) || usesTailorRemoteTextureMode();
+}
+
+//----------------------------------------------------------------------
+
 void TangibleObject::remoteTextureUrlModified(const std::string & value)
 {
 	UNREF(value);
@@ -2317,6 +2343,7 @@ void TangibleObject::remoteTextureModeModified(const std::string & value)
 	{
 		it->second.dirty = true;
 		it->second.settled = false;
+		it->second.isPaintingTemplateResolved = false;
 	}
 	scheduleForAlter();
 }
@@ -2373,7 +2400,7 @@ void TangibleObject::remoteTextureScrollVModified(const std::string & value)
 
 void TangibleObject::updateRemoteImageTexture()
 {
-	if (!hasCondition(C_magicPaintingUrl) || !isInWorld())
+	if (!usesRemoteImageTextureConsumer() || !isInWorld())
 	{
 		RemoteImageRuntimeDataMap::iterator runtimeIt = ms_remoteImageRuntimeDataMap.find(this);
 		if (runtimeIt != ms_remoteImageRuntimeDataMap.end())
@@ -2381,20 +2408,22 @@ void TangibleObject::updateRemoteImageTexture()
 		return;
 	}
 
-	// Distance check - don't create image resources for distant objects
-	Camera const * playerCamera = Game::getCamera();
-	if (playerCamera)
+	// Distance check - don't create image resources for distant objects (magic painting only)
+	if (!usesTailorRemoteTextureMode())
 	{
-		Vector const objPos = getPosition_w();
-		Vector const camPos = playerCamera->getPosition_w();
-		float const distSq = objPos.magnitudeBetweenSquared(camPos);
-		if (distSq > cs_mediaMaxRenderDistanceSquared)
+		Camera const * playerCamera = Game::getCamera();
+		if (playerCamera)
 		{
-			// Too far away - clean up any existing resources
-			RemoteImageRuntimeDataMap::iterator runtimeIt = ms_remoteImageRuntimeDataMap.find(this);
-			if (runtimeIt != ms_remoteImageRuntimeDataMap.end())
-				clearRemoteImageTexture();
-			return;
+			Vector const objPos = getPosition_w();
+			Vector const camPos = playerCamera->getPosition_w();
+			float const distSq = objPos.magnitudeBetweenSquared(camPos);
+			if (distSq > cs_mediaMaxRenderDistanceSquared)
+			{
+				RemoteImageRuntimeDataMap::iterator runtimeIt = ms_remoteImageRuntimeDataMap.find(this);
+				if (runtimeIt != ms_remoteImageRuntimeDataMap.end())
+					clearRemoteImageTexture();
+				return;
+			}
 		}
 	}
 
@@ -2419,7 +2448,7 @@ void TangibleObject::updateRemoteImageTexture()
 
 	if (!runtimeData.isPaintingTemplateResolved)
 	{
-		runtimeData.isPaintingTemplate = templateNameContainsPainting(getObjectTemplateName());
+		runtimeData.isPaintingTemplate = usesTailorRemoteTextureMode() || templateNameContainsPainting(getObjectTemplateName());
 		runtimeData.isPaintingTemplateResolved = true;
 	}
 
@@ -2432,7 +2461,7 @@ void TangibleObject::updateRemoteImageTexture()
 		std::string const & remoteScrollHStr = m_remoteTextureScrollH.get();
 		std::string const & remoteScrollVStr = m_remoteTextureScrollV.get();
 
-		bool const pictureOnlyMode = (!remoteTextureMode.empty() && (_stricmp(remoteTextureMode.c_str(), "DEFAULT") != 0));
+		bool const pictureOnlyMode = (!remoteTextureMode.empty() && (_stricmp(remoteTextureMode.c_str(), "DEFAULT") != 0) && !isTailorPngRemoteMode(remoteTextureMode));
 		MagicPaintingDisplayMode const displayMode = parseDisplayMode(remoteDisplayModeStr);
 		float const scrollH = remoteScrollHStr.empty() ? 0.0f : static_cast<float>(atof(remoteScrollHStr.c_str()));
 		float const scrollV = remoteScrollVStr.empty() ? 0.0f : static_cast<float>(atof(remoteScrollVStr.c_str()));

@@ -33,6 +33,7 @@
 #include "clientTerrain/CityTerrainLayerManager.h"
 #include "clientTerrain/ConfigClientTerrain.h"
 #include "clientTerrain/GroundEnvironment.h"
+#include "clientGame/Game.h"
 #include "sharedCollision/CollideParameters.h"
 #include "sharedCollision/CollisionInfo.h"
 #include "sharedDebug/DebugFlags.h"
@@ -64,6 +65,9 @@
 #include <map>
 #include <set>
 #include <string>
+#include <cmath>
+#include <cstdio>
+#include <limits>
 
 //===================================================================
 
@@ -100,6 +104,9 @@ namespace
 	int   ms_maximumNumberOfInvalidatedNodes = 0;
 	bool ms_specularTerrainEnabled = true;
 	bool ms_deferredSpecularTerrainEnabled = true; // spec terrain changes are deferred until the terrain is re-created
+	bool ms_enableAtmosphericChunkDiskCache = false;
+	bool ms_enableAtmosphericChunkPrewarm = false;
+	bool ms_forceRenderEntireMapEnabled = false;
 
 	float ms_maximumThresholdHigh = 0.f;
 	float ms_maximumThreshold     = 1.0f;
@@ -107,6 +114,37 @@ namespace
 	const Tag TAG_DOT3 = TAG (D,O,T,3);
 
 	Camera const * ms_referenceCamera;
+
+	int const s_chunkCacheVersion = 1;
+
+	template <typename T>
+	bool writeArray2d(FILE * file, Array2d<T> const & array)
+	{
+		int const w = array.getWidth();
+		int const h = array.getHeight();
+		if (fwrite(&w, sizeof(w), 1, file) != 1 || fwrite(&h, sizeof(h), 1, file) != 1)
+			return false;
+		int const count = w * h;
+		if (count <= 0)
+			return true;
+		return fwrite(array.getData(), sizeof(T), static_cast<size_t>(count), file) == static_cast<size_t>(count);
+	}
+
+	template <typename T>
+	bool readArray2d(FILE * file, Array2d<T> & array, int expectedW, int expectedH)
+	{
+		int w = 0;
+		int h = 0;
+		if (fread(&w, sizeof(w), 1, file) != 1 || fread(&h, sizeof(h), 1, file) != 1)
+			return false;
+		if (w != expectedW || h != expectedH)
+			return false;
+		array.allocate(w, h);
+		int const count = w * h;
+		if (count <= 0)
+			return true;
+		return fread(const_cast<T*>(array.getData()), sizeof(T), static_cast<size_t>(count), file) == static_cast<size_t>(count);
+	}
 }
 
 //===================================================================
@@ -171,6 +209,9 @@ void ClientProceduralTerrainAppearance::install ()
 	DebugFlags::registerFlag (ms_showBadWaterLocations, "ClientTerrain", "showBadWaterLocations");
 	DebugFlags::registerFlag (ms_showBadSlopeLocations, "ClientTerrain", "showBadSlopeLocations");
 	DebugFlags::registerFlag (ms_renderClearFloraMap, "ClientTerrain", "renderClearFloraMap");
+	DebugFlags::registerFlag (ms_enableAtmosphericChunkDiskCache, "ClientTerrain", "enableAtmosphericChunkDiskCache");
+	DebugFlags::registerFlag (ms_enableAtmosphericChunkPrewarm, "ClientTerrain", "enableAtmosphericChunkPrewarm");
+	DebugFlags::registerFlag (ms_forceRenderEntireMapEnabled, "ClientTerrain", "forceRenderEntireMapEnabled");
 	ms_badLocationShader = ShaderTemplateList::fetchShader ("shader/placement_red.sht");
 #endif
 	
@@ -225,6 +266,9 @@ void ClientProceduralTerrainAppearance::install ()
 	LocalMachineOptionManager::registerOption (ms_specularTerrainEnabled, "ClientTerrain", "specularTerrainEnabled");
 	ms_deferredSpecularTerrainEnabled = ms_specularTerrainEnabled;
 	LocalMachineOptionManager::registerOption (ms_deferredSpecularTerrainEnabled, "ClientTerrain", "deferredSpecularTerrainEnabled");
+	LocalMachineOptionManager::registerOption (ms_enableAtmosphericChunkDiskCache, "ClientTerrain", "enableAtmosphericChunkDiskCache");
+	LocalMachineOptionManager::registerOption (ms_enableAtmosphericChunkPrewarm, "ClientTerrain", "enableAtmosphericChunkPrewarm");
+	LocalMachineOptionManager::registerOption (ms_forceRenderEntireMapEnabled, "ClientTerrain", "forceRenderEntireMapEnabled");
 
 	ExitChain::add (remove, "ClientProceduralTerrainAppearance::remove");
 }
@@ -241,6 +285,9 @@ void ClientProceduralTerrainAppearance::remove ()
 	DebugFlags::unregisterFlag (ms_showBadWaterLocations);
 	DebugFlags::unregisterFlag (ms_showBadSlopeLocations);
 	DebugFlags::unregisterFlag (ms_renderClearFloraMap);
+	DebugFlags::unregisterFlag (ms_enableAtmosphericChunkDiskCache);
+	DebugFlags::unregisterFlag (ms_enableAtmosphericChunkPrewarm);
+	DebugFlags::unregisterFlag (ms_forceRenderEntireMapEnabled);
 	ms_badLocationShader->release ();
 #endif
 }
@@ -375,6 +422,12 @@ ClientProceduralTerrainAppearance::ClientProceduralTerrainAppearance (const Proc
 	m_pendingChunkRequestInfoMap (NON_NULL (new ChunkRequestInfoMap)),
 	m_completedChunkRequestInfoList (NON_NULL (new ChunkRequestInfoList)),
 	m_lockTerrainLevelOfDetail (false),
+	m_atmoLodBoostActive (false),
+	m_forceRenderEntireMapDone (false),
+	m_forceRenderEntireMapCursorX (0),
+	m_forceRenderEntireMapCursorZ (0),
+	m_lastAtmoPrewarmChunkX (std::numeric_limits<int>::min()),
+	m_lastAtmoPrewarmChunkZ (std::numeric_limits<int>::min()),
 #ifdef RIBBON_DEBUG_FEELERS
 	m_debugRibbonAffectorList (),
 	m_debugRibbonPanelVerts (),
@@ -816,8 +869,68 @@ ClientProceduralTerrainAppearance::ClientChunk *ClientProceduralTerrainAppearanc
 	generatorChunkData.numberOfPoles        = numberOfPoles;
 	generatorChunkData.upperPad             = upperPad;
 	generatorChunkData.distanceBetweenPoles = distanceBetweenPoles;
+	createChunkData.createChunkBuffer->allocate(numberOfPoles);
 
-	terrainGenerator->generateChunk (generatorChunkData);
+	bool loadedFromDiskCache = false;
+	if (ms_enableAtmosphericChunkDiskCache && Game::isShipScene() && !Game::isSpace() && Game::getPlayerContainingShip() != NULL)
+	{
+		char cacheFileName[256];
+		int const chunkWidthKey = static_cast<int>(chunkWidthInMeters);
+		int const mapWidthKey = static_cast<int>(proceduralTerrainAppearanceTemplate->getMapWidthInMeters());
+		snprintf(cacheFileName, sizeof(cacheFileName), "cache/terrain_chunkcache_v%d_%d_%d_%d_%d_%d_%d.bin", s_chunkCacheVersion, mapWidthKey, chunkWidthKey, numberOfPoles, x, z, chunkSize);
+		FILE * cacheFile = fopen(cacheFileName, "rb");
+		if (cacheFile)
+		{
+			loadedFromDiskCache =
+				readArray2d(cacheFile, createChunkData.createChunkBuffer->heightMap, numberOfPoles, numberOfPoles) &&
+				readArray2d(cacheFile, createChunkData.createChunkBuffer->colorMap, numberOfPoles, numberOfPoles) &&
+				readArray2d(cacheFile, createChunkData.createChunkBuffer->shaderMap, numberOfPoles, numberOfPoles) &&
+				readArray2d(cacheFile, createChunkData.createChunkBuffer->floraStaticCollidableMap, numberOfPoles, numberOfPoles) &&
+				readArray2d(cacheFile, createChunkData.createChunkBuffer->floraStaticNonCollidableMap, numberOfPoles, numberOfPoles) &&
+				readArray2d(cacheFile, createChunkData.createChunkBuffer->floraDynamicNearMap, numberOfPoles, numberOfPoles) &&
+				readArray2d(cacheFile, createChunkData.createChunkBuffer->floraDynamicFarMap, numberOfPoles, numberOfPoles) &&
+				readArray2d(cacheFile, createChunkData.createChunkBuffer->environmentMap, numberOfPoles, numberOfPoles) &&
+				readArray2d(cacheFile, createChunkData.createChunkBuffer->vertexPositionMap, numberOfPoles, numberOfPoles) &&
+				readArray2d(cacheFile, createChunkData.createChunkBuffer->vertexNormalMap, numberOfPoles, numberOfPoles) &&
+				readArray2d(cacheFile, createChunkData.createChunkBuffer->excludeMap, numberOfPoles, numberOfPoles) &&
+				readArray2d(cacheFile, createChunkData.createChunkBuffer->passableMap, numberOfPoles, numberOfPoles);
+			fclose(cacheFile);
+		}
+	}
+
+	if (!loadedFromDiskCache)
+	{
+		terrainGenerator->generateChunk (generatorChunkData);
+		if (ms_enableAtmosphericChunkDiskCache && Game::isShipScene() && !Game::isSpace() && Game::getPlayerContainingShip() != NULL)
+		{
+			char cacheFileName[256];
+			int const chunkWidthKey = static_cast<int>(chunkWidthInMeters);
+			int const mapWidthKey = static_cast<int>(proceduralTerrainAppearanceTemplate->getMapWidthInMeters());
+			snprintf(cacheFileName, sizeof(cacheFileName), "cache/terrain_chunkcache_v%d_%d_%d_%d_%d_%d_%d.bin", s_chunkCacheVersion, mapWidthKey, chunkWidthKey, numberOfPoles, x, z, chunkSize);
+			FILE * cacheFile = fopen(cacheFileName, "wb");
+			if (cacheFile)
+			{
+				bool const wrote =
+					writeArray2d(cacheFile, createChunkData.createChunkBuffer->heightMap) &&
+					writeArray2d(cacheFile, createChunkData.createChunkBuffer->colorMap) &&
+					writeArray2d(cacheFile, createChunkData.createChunkBuffer->shaderMap) &&
+					writeArray2d(cacheFile, createChunkData.createChunkBuffer->floraStaticCollidableMap) &&
+					writeArray2d(cacheFile, createChunkData.createChunkBuffer->floraStaticNonCollidableMap) &&
+					writeArray2d(cacheFile, createChunkData.createChunkBuffer->floraDynamicNearMap) &&
+					writeArray2d(cacheFile, createChunkData.createChunkBuffer->floraDynamicFarMap) &&
+					writeArray2d(cacheFile, createChunkData.createChunkBuffer->environmentMap) &&
+					writeArray2d(cacheFile, createChunkData.createChunkBuffer->vertexPositionMap) &&
+					writeArray2d(cacheFile, createChunkData.createChunkBuffer->vertexNormalMap) &&
+					writeArray2d(cacheFile, createChunkData.createChunkBuffer->excludeMap) &&
+					writeArray2d(cacheFile, createChunkData.createChunkBuffer->passableMap);
+				fclose(cacheFile);
+				if (!wrote)
+				{
+					::remove(cacheFileName);
+				}
+			}
+		}
+	}
 
 	// Apply city terrain height modifications (for flatten regions)
 	if (CityTerrainLayerManager::isInstalled())
@@ -944,6 +1057,28 @@ void ClientProceduralTerrainAppearance::calculateLod () const
 
 	PROFILER_AUTO_BLOCK_DEFINE ("ClientProceduralTerrainAppearance::calculateLod");
 
+	if (ms_forceRenderEntireMapEnabled && !m_forceRenderEntireMapDone)
+	{
+		forceCreateEntireMapChunks();
+	}
+
+	bool const atmosphericFlight = Game::isShipScene() && !Game::isSpace() && (Game::getPlayerContainingShip() != NULL);
+	ClientProceduralTerrainAppearance * const nonConstThis = const_cast<ClientProceduralTerrainAppearance*>(this);
+	if (atmosphericFlight != m_atmoLodBoostActive)
+	{
+		nonConstThis->m_atmoLodBoostActive = atmosphericFlight;
+		if (atmosphericFlight)
+		{
+			nonConstThis->setHighLevelOfDetailThreshold(ConfigClientTerrain::getHighLevelOfDetailThreshold() * 2.5f);
+			nonConstThis->setLevelOfDetailThreshold(ConfigClientTerrain::getThreshold() * 0.75f);
+		}
+		else
+		{
+			nonConstThis->setHighLevelOfDetailThreshold(ConfigClientTerrain::getHighLevelOfDetailThreshold());
+			nonConstThis->setLevelOfDetailThreshold(ConfigClientTerrain::getThreshold());
+		}
+	}
+
 	//-- base level of detail selection on whether or not the camera has moved
 	const Transform& transform = ms_referenceCamera->getTransform_o2w ();
 
@@ -967,10 +1102,89 @@ void ClientProceduralTerrainAppearance::calculateLod () const
 		{
 			m_lastRefPosition_w = refPosition;
 
+			if (atmosphericFlight && ms_enableAtmosphericChunkPrewarm)
+			{
+				prewarmAtmosphericFarLodChunks(refPosition);
+			}
+
 			//-- m_levelOfDetailFillComplete indicates that all potentially viewable terrain, from the camera position, has been filled in
 			m_levelOfDetailFillComplete = const_cast<ClientProceduralTerrainAppearance*> (this)->selectActualLevelOfDetail (ms_referenceCamera, referenceObject, &m_worldFrustum);
 		}
 	}
+}
+
+//-------------------------------------------------------------------
+
+void ClientProceduralTerrainAppearance::prewarmAtmosphericFarLodChunks (Vector const & referencePosition_w) const
+{
+	float const chunkWidth = getChunkWidthInMeters();
+	if (chunkWidth <= 0.0f)
+		return;
+
+	int const centerChunkX = static_cast<int>(std::floor(referencePosition_w.x / chunkWidth));
+	int const centerChunkZ = static_cast<int>(std::floor(referencePosition_w.z / chunkWidth));
+	if (centerChunkX == m_lastAtmoPrewarmChunkX && centerChunkZ == m_lastAtmoPrewarmChunkZ)
+		return;
+
+	ClientProceduralTerrainAppearance * const nonConstThis = const_cast<ClientProceduralTerrainAppearance*>(this);
+	nonConstThis->m_lastAtmoPrewarmChunkX = centerChunkX;
+	nonConstThis->m_lastAtmoPrewarmChunkZ = centerChunkZ;
+
+	// Pre-generate an extended ring of high-detail chunks for atmospheric flight.
+	int const highDetailRadius = 8;
+	for (int dz = -highDetailRadius; dz <= highDetailRadius; ++dz)
+	{
+		for (int dx = -highDetailRadius; dx <= highDetailRadius; ++dx)
+		{
+			nonConstThis->createChunk(centerChunkX + dx, centerChunkZ + dz, 1, 0);
+		}
+	}
+}
+
+//-------------------------------------------------------------------
+
+void ClientProceduralTerrainAppearance::forceCreateEntireMapChunks () const
+{
+	ClientProceduralTerrainAppearance * const nonConstThis = const_cast<ClientProceduralTerrainAppearance*>(this);
+	if (nonConstThis->m_forceRenderEntireMapDone)
+		return;
+
+	float const mapWidth = proceduralTerrainAppearanceTemplate->getMapWidthInMeters();
+	float const chunkWidth = getChunkWidthInMeters();
+	if (mapWidth <= 0.0f || chunkWidth <= 0.0f)
+		return;
+
+	int const chunkCountPerAxis = static_cast<int>(std::floor(mapWidth / chunkWidth));
+	if (chunkCountPerAxis <= 0)
+		return;
+
+	// Build the map progressively to avoid long stalls on loading/first render.
+	int const chunksPerFrameBudget = 128;
+	int builtThisFrame = 0;
+	for (int z = nonConstThis->m_forceRenderEntireMapCursorZ; z < chunkCountPerAxis; ++z)
+	{
+		int startX = (z == nonConstThis->m_forceRenderEntireMapCursorZ) ? nonConstThis->m_forceRenderEntireMapCursorX : 0;
+		for (int x = startX; x < chunkCountPerAxis; ++x)
+		{
+			nonConstThis->createChunk(x, z, 1, 0);
+			++builtThisFrame;
+			if (builtThisFrame >= chunksPerFrameBudget)
+			{
+				nonConstThis->m_forceRenderEntireMapCursorX = x + 1;
+				nonConstThis->m_forceRenderEntireMapCursorZ = z;
+				if (nonConstThis->m_forceRenderEntireMapCursorX >= chunkCountPerAxis)
+				{
+					nonConstThis->m_forceRenderEntireMapCursorX = 0;
+					++nonConstThis->m_forceRenderEntireMapCursorZ;
+				}
+				return;
+			}
+		}
+		nonConstThis->m_forceRenderEntireMapCursorX = 0;
+	}
+
+	nonConstThis->m_forceRenderEntireMapDone = true;
+	nonConstThis->m_levelOfDetailFillComplete = false;
 }
 
 //-------------------------------------------------------------------

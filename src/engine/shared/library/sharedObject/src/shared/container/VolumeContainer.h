@@ -60,6 +60,8 @@ public:
 private:
 	int    m_currentVolume; 
 	int    m_totalVolume;   
+	/// Suppress repeated WARNING when contents legitimately exceed capacity (e.g. GM-granted overflow).
+	bool   m_warnedVolumeOverCapacity;
 
 public:
 	/** Called by the loader to add an item.

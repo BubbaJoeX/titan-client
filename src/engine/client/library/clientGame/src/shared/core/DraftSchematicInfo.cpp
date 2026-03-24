@@ -38,6 +38,7 @@
 #include "sharedNetworkMessages/MessageQueueDraftSlotsData.h"
 #include "sharedObject/ObjectTemplateList.h"
 
+#include <cstdio>
 #include <vector>
 #include <map>
 
@@ -84,6 +85,22 @@ namespace
 	static const int s_numTypes = 11;
 	static bool s_typesInstalled = false;
 
+}
+
+static bool s_useMinimalClientPreviewsForDatapad = false;
+
+//----------------------------------------------------------------------
+
+void DraftSchematicInfo::setUseMinimalClientPreviewsForDatapad (bool const useMinimal)
+{
+	s_useMinimalClientPreviewsForDatapad = useMinimal;
+}
+
+//----------------------------------------------------------------------
+
+bool DraftSchematicInfo::getUseMinimalClientPreviewsForDatapad ()
+{
+	return s_useMinimalClientPreviewsForDatapad;
 }
 
 //----------------------------------------------------------------------
@@ -183,10 +200,47 @@ DraftSchematicInfo::~DraftSchematicInfo ()
 
 //----------------------------------------------------------------------
 
+Unicode::String DraftSchematicInfo::getSortableNameForOrdering () const
+{
+	const ConstCharCrcString & schematicName = ObjectTemplateList::lookUp (getSharedDraftSchematicTemplate ());
+	if (schematicName.isEmpty ())
+	{
+		char buf [48];
+		snprintf (buf, sizeof (buf), "%08x_%08x", static_cast<unsigned int> (getSharedDraftSchematicTemplate ()), static_cast<unsigned int> (getServerDraftSchematicTemplate ()));
+		return Unicode::narrowToWide (buf);
+	}
+
+	const SharedDraftSchematicObjectTemplate * const sdsot = dynamic_cast<const SharedDraftSchematicObjectTemplate *> (ObjectTemplateList::fetch (schematicName));
+	if (!sdsot)
+		return Unicode::narrowToWide (schematicName.getString ());
+
+	const StringId craftedName = sdsot->getCraftedName ();
+	Unicode::String result = craftedName.isValid () ? craftedName.localize () : Unicode::narrowToWide (schematicName.getString ());
+	sdsot->releaseReference ();
+	return result;
+}
+
+//----------------------------------------------------------------------
+
 void DraftSchematicInfo::createClientObject   () const
 {
 	if (m_clientObject)
 		return;
+
+	// Large draft lists: never instantiate the crafted item's skeletal mesh per row (SoftwareBlendSkeletalShaderPrimitive / vertex heap blowups).
+	if (s_useMinimalClientPreviewsForDatapad)
+	{
+		const Unicode::String displayName = getSortableNameForOrdering ();
+		m_clientObject = safe_cast<ClientObject *>(ObjectTemplate::createObject (draft_fallbackObject.c_str ()));
+		if (m_clientObject)
+		{
+			m_clientObject->endBaselines ();
+			m_clientObject->setObjectName (displayName);
+			m_clientObject->setNetworkId (ClientObject::getNextFakeNetworkId ());
+		}
+		DEBUG_FATAL (!m_clientObject, ("DraftSchematicInfo minimal datapad preview: could not create [%s]\n", draft_fallbackObject.c_str ()));
+		return;
+	}
 	
 	const SharedDraftSchematicObjectTemplate * sdsot = NULL;
 	const ConstCharCrcString & schematicName = ObjectTemplateList::lookUp(

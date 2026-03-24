@@ -67,6 +67,7 @@
 #include "clientGraphics/ScreenShotHelper.h"
 #include "clientGraphics/SetupClientGraphics.h"
 #include "clientObject/SetupClientObject.h"
+#include "clientObject/LODManager.h"
 #include "clientParticle/SetupClientParticle.h"
 #include "clientSkeletalAnimation/SetupClientSkeletalAnimation.h"
 #include "clientTextureRenderer/SetupClientTextureRenderer.h"
@@ -133,6 +134,29 @@
 
 namespace GameWidgetNamespace
 {
+	void applyObjectUpdateRangeCapFromConfig()
+	{
+		const int capMeters = ConfigGodClient::getObjectUpdateRangeCap();
+		if (capMeters <= 0)
+			return;
+
+		const int kMaxLevels = 8;
+		float distances[kMaxLevels];
+		float maxDistance = 0.f;
+		for (int i = 0; i < kMaxLevels; ++i)
+		{
+			distances[i] = LODManager::getLODDistance(i);
+			maxDistance = std::max(maxDistance, distances[i]);
+		}
+
+		if (maxDistance <= 0.f || maxDistance <= static_cast<float>(capMeters))
+			return;
+
+		const float scale = static_cast<float>(capMeters) / maxDistance;
+		for (int i = 0; i < kMaxLevels; ++i)
+			LODManager::setLODDistance(i, std::max(1.f, distances[i] * scale));
+	}
+
 	enum MagicPaintingMenuIds
 	{
 		MPMI_setCondition = 1,
@@ -465,6 +489,7 @@ GameWidget::GameWidget(QWidget* theParent, const char*theName)
 
 	// setup the game
 	Game::install(Game::A_godClient);
+	applyObjectUpdateRangeCapFromConfig();
 
 	// turn off the mousemode being default
 	CuiPreferences::setMouseModeDefault (false);
@@ -952,9 +977,11 @@ void GameWidget::mouseMoveEvent(QMouseEvent*mouseEvent)
 		else if(hasState(mouseEvent, QWidget::RightButton))
 		{
 			const TerrainObject* const terrain = TerrainObject::getConstInstance ();
+			const Object * const playerObject = m_gs ? m_gs->getPlayer() : 0;
+			const bool inWorldCell = playerObject && playerObject->getParentCell() == CellProperty::getWorldCellProperty();
 
 			//-- translate pivot ALONG GROUND
-			if(hasState(mouseEvent, QWidget::ControlButton))
+			if(hasState(mouseEvent, QWidget::ControlButton) && inWorldCell && terrain)
 			{
 				cam->setMode(FreeCamera::M_pivot);
 				FreeCamera::Info info(cam->getInfo());
@@ -989,6 +1016,15 @@ void GameWidget::mouseMoveEvent(QMouseEvent*mouseEvent)
 				cam->setInfo(info);
 				cam->setInterpolating(false);
 			}
+			else if(hasState(mouseEvent, QWidget::ControlButton))
+			{
+				// Interior/portal-adjacent safety: avoid terrain-ground solve when we don't have a valid
+				// world-cell context. Fall back to standard pivot-plane translation.
+				if(dx)
+					q->appendMessage(static_cast<int>(CM_cameraPivotTranslateX), -dx);
+				if(dy)
+					q->appendMessage(static_cast<int>(CM_cameraPivotTranslateY), dy);
+			}
 
 			//-- translate camera parallel to VIEW PLANE, "Dolly"
 			else
@@ -1008,10 +1044,13 @@ void GameWidget::mouseMoveEvent(QMouseEvent*mouseEvent)
 		const QPoint pt(mouseEvent->pos());
 
 		const CellProperty* cellProperty = CellProperty::getWorldCellProperty ();
-		Vector result;
-		if(GodClientData::getInstance().findIntersection_p(pt.x(), pt.y(), cellProperty, result))
+		Vector intersection_p;
+		if(GodClientData::getInstance().findIntersection_p(pt.x(), pt.y(), cellProperty, intersection_p))
 		{
-			IGNORE_RETURN(GodClientData::getInstance().moveGhostsFollowingObject(*m_autoDragNetworkId, result, true));
+			Vector const worldHit = (cellProperty && cellProperty != CellProperty::getWorldCellProperty())
+				? cellProperty->getOwner().getTransform_o2w().rotateTranslate_l2p(intersection_p)
+				: intersection_p;
+			IGNORE_RETURN(GodClientData::getInstance().moveGhostsFollowingObject(*m_autoDragNetworkId, worldHit, true));
 		}
 	}
 
@@ -1406,10 +1445,6 @@ void GameWidget::mouseDoubleClickEvent(QMouseEvent* mouseEvent)
 	{
 		if(m_gs)
 		{
-			//don't allow click-moves inside other objects
-			if(m_gs->getPlayer()->getParentCell() != CellProperty::getWorldCellProperty())
-				return;
-
 			Object* const obj = m_gs->findObject(mouseEvent->x(), mouseEvent->y());
 
 			if(obj)
@@ -1421,11 +1456,14 @@ void GameWidget::mouseDoubleClickEvent(QMouseEvent* mouseEvent)
 			}
 			else
 			{
-				const CellProperty* cellProperty = CellProperty::getWorldCellProperty ();
-				Vector result;
-				if(GodClientData::getInstance().findIntersection_p(mouseEvent->x(), mouseEvent->y(), cellProperty, result))
+				const CellProperty* cellProperty = CellProperty::getWorldCellProperty();
+				Vector intersection_p;
+				if(GodClientData::getInstance().findIntersection_p(mouseEvent->x(), mouseEvent->y(), cellProperty, intersection_p))
 				{
-					ActionsView::getInstance().centerCameraOnPoint(result, true, static_cast<int>(ActionsView::Fit_point));
+					Vector worldPoint = intersection_p;
+					if(cellProperty && cellProperty != CellProperty::getWorldCellProperty())
+						worldPoint = cellProperty->getOwner().getTransform_o2w().rotateTranslate_l2p(intersection_p);
+					ActionsView::getInstance().centerCameraOnPoint(worldPoint, true, static_cast<int>(ActionsView::Fit_point));
 					QCursor::setPos(mapToGlobal(rect().center()));
 					m_rubberBandOk = false;
 					m_rubberBanding = false;

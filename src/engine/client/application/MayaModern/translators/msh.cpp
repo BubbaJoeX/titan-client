@@ -34,6 +34,7 @@
 #include <maya/MFnMesh.h>
 
 #include <ios>
+#include <cstring>
 #include <set>
 #include <string>
 #include <cstdarg>
@@ -653,7 +654,7 @@ MString MshTranslator::defaultExtension () const
  */
 MString MshTranslator::filter () const
 {
-    return "Static Mesh Redirector | SWG (*.apt *.msh)";
+    return "Static Mesh Redirector - SWG (*.apt *.msh)";
 }
 
 /**
@@ -666,13 +667,13 @@ MString MshTranslator::filter () const
  */
 MPxFileTranslator::MFileKind MshTranslator::identifyFile(const MFileObject& fileName, const char* buffer, short size) const
 {
-    const char *name = fileName.resolvedName().asChar();
-    int nameLength = (int)strlen(name);
+    const std::string pathStr = MayaUtility::fileObjectPathForIdentify(fileName);
+    const int nameLength = static_cast<int>(pathStr.size());
     if (nameLength > 4)
     {
-        const char* ext = name + nameLength - 4;
+        const char* ext = pathStr.c_str() + nameLength - 4;
         if (!strcasecmp(ext, ".msh") || !strcasecmp(ext, ".apt"))
-            return kIsMyFileType;
+            return kCouldBeMyFileType;
     }
     return kNotMyFileType;
 }

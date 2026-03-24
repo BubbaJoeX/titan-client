@@ -44,9 +44,9 @@ namespace DraftSchematicManagerNamespace
 	{
 		bool operator ()(const Info * a, const Info * b)
 		{
-			const Unicode::String & name_a = a->getLocalizedName ();
-			const Unicode::String & name_b = b->getLocalizedName ();
-
+			// Must not call getLocalizedName() here: it forces getClientObject() and loads every schematic mesh at once.
+			const Unicode::String name_a = a->getSortableNameForOrdering ();
+			const Unicode::String name_b = b->getSortableNameForOrdering ();
 			return name_a < name_b;
 		}
 	};
@@ -141,6 +141,7 @@ void DraftSchematicManager::reset   ()
 
 	s_slots.clear ();
 	s_ready = false;
+	DraftSchematicInfo::setUseMinimalClientPreviewsForDatapad (false);
 }
 
 //----------------------------------------------------------------------
@@ -156,12 +157,15 @@ void DraftSchematicManager::getPlayerDraftSchematics (InfoVector & iv)
 		const std::map<std::pair<uint32,uint32>,int> & sv = player->getDraftSchematics ();
 		for (std::map<std::pair<uint32,uint32>,int>::const_iterator it = sv.begin (); it != sv.end (); ++it)
 		{
-			const DraftSchematicInfo * const dsi = findDraftSchematic((*it).first);
+			const DraftSchematicInfo * dsi = findDraftSchematic ((*it).first);
+			// Stale cache: player map can grow without DraftSchematicAdded (e.g. bulk baseline) or refresh ran with no player.
+			if (!dsi)
+				dsi = cacheDraftSchematic ((*it).first);
 
 			if (dsi)
 				iv.push_back (dsi);
 			else
-				WARNING (true, ("DraftSchematicManager null draft for [%u]", (*it).first.first));
+				WARNING (true, ("DraftSchematicManager null draft for [%u %u]", (*it).first.first, (*it).first.second));
 		}
 	}
 }
@@ -171,7 +175,8 @@ void DraftSchematicManager::getPlayerDraftSchematics (InfoVector & iv)
 void DraftSchematicManager::refresh ()
 {
 	reset ();
-	s_ready = true;
+	// reset() leaves s_ready false. Do not set s_ready until we have built from a valid player — otherwise
+	// getPlayerDraftSchematics() skips refresh forever while the creature draft map is full (empty s_slots).
 
 	const CreatureObject * const player = Game::getPlayerCreature ();
 	if (player)
@@ -187,6 +192,7 @@ void DraftSchematicManager::refresh ()
 
 		std::sort (s_slots.begin (), s_slots.end (), SlotSorter ());
 
+		s_ready = true;
 		Transceivers::changed.emitMessage (*player);
 	}
 }

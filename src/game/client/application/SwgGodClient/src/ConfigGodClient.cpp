@@ -77,6 +77,7 @@ void ConfigGodClient::install()
 	KEY_INT2(frameRateLimit, 0);
 	KEY_INT2(gameScreenWidth, 0);
 	KEY_INT2(gameScreenHeight, 0);
+	KEY_INT2(objectUpdateRangeCap, 0);
 
 	KEY_STRING(serverObjectTemplateTheaterDirectory, "../../dsrc/sku.0/sys.server/compiled/game");
 	KEY_STRING(serverDataTableTheaterDirectory, "../../dsrc/sku.0/sys.server/compiled/game");
@@ -188,6 +189,14 @@ bool ConfigGodClient::getUseGameScreenSize (int &outWidth, int &outHeight)
 		return true;
 	}
 	return false;
+}
+
+//-------------------------------------------------------------------
+
+int ConfigGodClient::getObjectUpdateRangeCap ()
+{
+	NOT_NULL (data);
+	return data->objectUpdateRangeCap;
 }
 
 //-------------------------------------------------------------------

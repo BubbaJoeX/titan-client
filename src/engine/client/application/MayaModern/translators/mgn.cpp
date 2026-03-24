@@ -22,6 +22,7 @@
 #include <maya/MFnBlendShapeDeformer.h>
 
 #include <vector>
+#include <cstring>
 
 const int MgnTranslator::ms_blendTargetNameSize = 64;
 
@@ -1355,7 +1356,7 @@ MString MgnTranslator::defaultExtension () const
 
 MString MgnTranslator::filter () const
 {
-    return "Skeletal Mesh Generator | SWG (*.mgn)";
+    return "Skeletal Mesh Generator - SWG (*.mgn)";
 }
 
 /**
@@ -1368,12 +1369,10 @@ MString MgnTranslator::filter () const
  */
 MPxFileTranslator::MFileKind MgnTranslator::identifyFile(const MFileObject& fileName, const char* buffer, short size) const
 {
-    const char *name = fileName.resolvedName().asChar();
-    int nameLength = (int)strlen(name);
-    if((nameLength>4) && !strcasecmp(name+nameLength-4, ".mgn"))
-    {
-        return (kIsMyFileType);
-    }
-    return (kNotMyFileType);
+    const std::string pathStr = MayaUtility::fileObjectPathForIdentify(fileName);
+    const int nameLength = static_cast<int>(pathStr.size());
+    if (nameLength > 4 && !strcasecmp(pathStr.c_str() + nameLength - 4, ".mgn"))
+        return kCouldBeMyFileType;
+    return kNotMyFileType;
 }
 

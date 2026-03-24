@@ -48,6 +48,7 @@
 #include "sharedObject/NetworkIdManager.h"
 #include "sharedObject/VolumeContainer.h"
 #include "swgClientUserInterface/SwgCuiContainerProvider.h"
+#include "swgClientUserInterface/SwgCuiContainerProviderDraft.h"
 #include "swgClientUserInterface/SwgCuiInventoryContainerDetails.h"
 #include "swgClientUserInterface/SwgCuiInventoryContainerIcons.h"
 
@@ -883,6 +884,10 @@ const Unicode::String & SwgCuiInventoryContainer::getSearchFilter () const
 
 void SwgCuiInventoryContainer::updateContents ()
 {
+	SwgCuiContainerProviderDraft * const draftProvider = dynamic_cast<SwgCuiContainerProviderDraft *> (m_containerProvider);
+	if (draftProvider)
+		draftProvider->setBypassLazyLoadForSearch (!m_searchFilter.empty ());
+
 	ObjectWatcherVector owv;
 	if (m_containerProvider)
 	{
@@ -1004,6 +1009,7 @@ void SwgCuiInventoryContainer::update (float deltaTimeSecs)
 			m_capacityText->SetLocalText (Unicode::narrowToWide (buf));
 		}
 
+		m_containerProvider->tickLazyContentLoad ();
 	}
 }
 

@@ -476,6 +476,7 @@ MainFrame::MainFrame(QWidget *theParent, const char *theName)
 		{
 			IGNORE_RETURN(m_actionsTool->m_saveAsBrush->addTo                     (&m_menus.tool.menu));
 			IGNORE_RETURN(m_actionsTool->m_snapToGrid->addTo                      (&m_menus.tool.menu));
+			IGNORE_RETURN(m_actionsTool->m_renderRangeSettings->addTo             (&m_menus.tool.menu));
 			IGNORE_RETURN(m_actionsTool->m_stackObject->addTo                      (&m_menus.tool.menu));
 			IGNORE_RETURN(m_actionsTool->m_sendSystemMessage->addTo               (&m_menus.tool.menu));
 		}

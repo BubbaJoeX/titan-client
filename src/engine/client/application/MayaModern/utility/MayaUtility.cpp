@@ -3,6 +3,7 @@
 
 #include <maya/MAnimControl.h>
 #include <maya/MDagPath.h>
+#include <maya/MFileObject.h>
 #include <maya/MFn.h>
 #include <maya/MFnDagNode.h>
 #include <maya/MObject.h>
@@ -18,6 +19,25 @@
 #include <windows.h>
 #include <string.h>
 #endif
+
+std::string MayaUtility::fileObjectPathForIdentify(const MFileObject& fileObject)
+{
+	// Prefer non-deprecated MFileObject fields (Maya 2019+); dialog listing often omits resolvedName().
+	for (MString s : {
+		fileObject.resolvedFullName(),
+		fileObject.resolvedName(),
+		fileObject.expandedFullName(),
+		fileObject.rawFullName(),
+		fileObject.rawName(),
+		fileObject.fullName(),
+		fileObject.name()
+	})
+	{
+		if (s.length() > 0)
+			return std::string(s.asChar());
+	}
+	return {};
+}
 
 namespace
 {

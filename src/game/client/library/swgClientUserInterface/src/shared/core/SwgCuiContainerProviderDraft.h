@@ -35,6 +35,10 @@ public:
 	void                              onDraftsChanged             (const CreatureObject & msg);
 	void                              getObjectVector             (ObjectWatcherVector & owv);
 	virtual void                      setObjectSorting            (const IntVector & iv);
+	void                              tickLazyContentLoad         () override;
+
+	/// When true (e.g. search box in use), materialize every draft row so filtering can see all names.
+	void                              setBypassLazyLoadForSearch  (bool bypass);
 
 private:
 
@@ -44,6 +48,13 @@ private:
 
 	ObjectWatcherVector *                  m_objects;
 	MessageDispatch::Callback *            m_callback;
+
+	static const size_t                    cms_initialDraftIconBatch;
+	static const size_t                    cms_lazyDraftIconIncrement;
+
+	size_t                                 m_lazyVisibleDraftCount;
+	size_t                                 m_lastDraftListSize;
+	bool                                   m_bypassLazyLoadForSearch;
 
 };
 

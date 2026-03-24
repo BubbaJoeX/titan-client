@@ -290,6 +290,7 @@ LogicalAnimationTableTemplate *LogicalAnimationTableTemplateList::createTemplate
 #endif // _DEBUG
 
 	//-- load the LAT template from the IFF
+	REPORT_LOG(true, ("LATFILE: loading IFF LAT template [%s].\n", pathName.getString()));
 	Iff  iff(pathName.getString());
 		
 	LogicalAnimationTableTemplate *const latTemplate = new LogicalAnimationTableTemplate(pathName, iff);
