@@ -532,6 +532,10 @@ CreatureObject::CreatureObject(const SharedCreatureObjectTemplate * const newTem
 	m_performanceType            (0),
 	m_performanceStartTime       (),
 	m_performanceListenTarget    (NetworkId::cms_invalid),
+	m_turretGunnerMountTurretId  (NetworkId::cms_invalid),
+	m_turretGunnerEyeOffX        (0.0f),
+	m_turretGunnerEyeOffY        (0.0f),
+	m_turretGunnerEyeOffZ        (0.0f),
 	m_guildId                    (0),
 	m_masterId                   (NetworkId::cms_invalid),
 	m_rank                       (0),
@@ -628,6 +632,10 @@ CreatureObject::CreatureObject(const SharedCreatureObjectTemplate * const newTem
 	addClientServerVariable_np(m_movementPercent);
 	addClientServerVariable_np(m_movementScale);
 	addClientServerVariable_np(m_performanceListenTarget);
+	addClientServerVariable_np(m_turretGunnerMountTurretId);
+	addClientServerVariable_np(m_turretGunnerEyeOffX);
+	addClientServerVariable_np(m_turretGunnerEyeOffY);
+	addClientServerVariable_np(m_turretGunnerEyeOffZ);
 	addClientServerVariable_np(m_runSpeed);
 	addClientServerVariable_np(m_slopeModAngle);
 	addClientServerVariable_np(m_slopeModPercent);

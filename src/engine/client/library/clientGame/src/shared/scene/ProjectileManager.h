@@ -15,6 +15,8 @@
 #include "sharedMath/Transform.h"
 
 class Object;
+class InstallationObject;
+class TurretObject;
 
 // ======================================================================
 
@@ -29,6 +31,9 @@ public:
 
 	//-- Receive a request from the server to create a projectile on the client
 	static void createServerProjectile(Object * object, int weaponIndex, int projectileIndex, Transform const & transform_p, float speed, float expireTime);
+
+	/** Ground installation gunner: ShipProjectile + atmospheric terrain collision (same path as ship bolts in planet mode). */
+	static void createInstallationGunnerProjectile(InstallationObject *installation, TurretObject *turretObject);
 
 	static bool stopBeam(Object & object, int weaponIndex, bool notifyServer);
 

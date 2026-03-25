@@ -36,6 +36,7 @@ class MouseCursor;
 class OverheadMap;
 class Shader;
 class ShipTurretCamera;
+class InstallationTurretCamera;
 class SpaceTargetBracketOverlay;
 class StructurePlacementCamera;
 class Vector2d;
@@ -63,6 +64,7 @@ public:
 		CI_flyBy,
 		CI_debugPortal,
 		CI_structurePlacement,
+		CI_installationTurret,
 
 		CI_COUNT
 	};
@@ -92,6 +94,7 @@ private:
 	//-- cameras
 	CockpitCamera *         m_cockpitCamera;
 	ShipTurretCamera *      m_shipTurretCamera;
+	InstallationTurretCamera * m_installationTurretCamera;
 	FreeChaseCamera*        m_freeChaseCamera;
 	FreeCamera*             m_freeCamera;
 	DebugPortalCamera*      m_debugPortalCamera;
@@ -223,6 +226,9 @@ public:
 
 	Object*                   findObject (int x, int y) const;
 	int                       findObjects (real left, real top, real right, real bottom, ClientObject**& result) const;
+
+	void                      queueTurretGunnerAim(NetworkId const &turretId, Vector const &aimWorldEnd);
+	void                      queueTurretGunnerFire(NetworkId const &turretId);
 
 	void                      pivotRotate    (real x, real y);
 	void                      pivotTranslate (real x, real y);

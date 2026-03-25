@@ -127,6 +127,12 @@ public:
 	virtual void                        addToWorld();
 	virtual void                        removeFromWorld();
 
+	virtual void                        setTexture(Tag tag, const Texture &texture);
+	virtual void                        setTextureScroll(Tag tag, float scrollU, float scrollV);
+
+	/// Release client-held ref for runtime texture override (e.g. when clearing remote/tailor image on the owner tangible).
+	void                                resetRuntimeTextureOverride();
+
 	int                                 getSkeletonLodCount() const;
 	const Skeleton                     &getSkeleton(int lodIndex) const;
 	Skeleton                           &getSkeleton(int lodIndex);
@@ -363,6 +369,8 @@ private:
 
 	void                              removeDeletedWearables();
 
+	void                              applyRuntimeTextureOverrideToLod(int lodIndex);
+	void                              applyRuntimeTextureOverrideToAllLods();
 
 	void                              calculateExtentDeltas(int lodIndex, Vector &minDelta, Vector &maxDelta) const;
 	void                              getNoAttachmentExtent(BoxExtent &extent, int lodIndex) const;
@@ -475,6 +483,14 @@ private:
 	bool                                      m_isHolonet;
 	HologramType							  m_hologramType;
 	int32									  m_blackHologramFrame;
+
+	bool                                      m_runtimeOverrideActive;
+	Tag                                       m_runtimeOverrideTag;
+	Texture const                            *m_runtimeOverrideTexture;
+	bool                                      m_runtimeScrollActive;
+	Tag                                       m_runtimeScrollTag;
+	float                                     m_runtimeScrollU;
+	float                                     m_runtimeScrollV;
 
 	mutable ShaderTemplate const *            m_blueGlowieShaderTemplate;
 	mutable ShaderTemplate const *            m_blueGlowieBumpShaderTemplate;

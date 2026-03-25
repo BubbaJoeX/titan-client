@@ -13,9 +13,15 @@
 #include "clientSkeletalAnimation/MeshConstructionHelper.h"
 #include "clientSkeletalAnimation/MeshGenerator.h"
 #include "clientSkeletalAnimation/OcclusionZoneSet.h"
+#include "clientSkeletalAnimation/SoftwareBlendSkeletalShaderPrimitive.h"
+#include "clientGraphics/Shader.h"
+#include "clientGraphics/StaticShader.h"
+#include "clientGraphics/StaticShaderTemplate.h"
+#include "clientGraphics/Texture.h"
 #include "sharedFoundation/ExitChain.h"
 #include "sharedFoundation/CrcLowerString.h"
 #include "sharedFoundation/ConstCharCrcLowerString.h"
+#include "sharedObject/Object.h"
 
 #include <vector>
 
@@ -33,6 +39,7 @@
 
 namespace
 {
+	static CompositeMesh::ApplyRemoteTextureToCompositePrimitiveCallback s_applyRemoteTextureToCompositePrimitive = 0;
 	static bool                    ms_installed;
 	static MeshConstructionHelper *ms_meshConstructionHelper;
 
@@ -67,7 +74,7 @@ struct CompositeMesh::GeneratorLayer
 {
 public:
 
-	GeneratorLayer(int layer, const MeshGenerator *meshGenerator, CustomizationData *customizationData);
+	GeneratorLayer(int layer, const MeshGenerator *meshGenerator, CustomizationData *customizationData, Object const *sourceObject);
 	GeneratorLayer(const GeneratorLayer &rhs);
 	~GeneratorLayer();
 
@@ -81,6 +88,7 @@ public:
 	int                  m_layer;
 	const MeshGenerator *m_meshGenerator;
 	CustomizationData   *m_customizationData;
+	Object const        *m_sourceObject;
 
 private:
 
@@ -93,10 +101,11 @@ private:
 // class CompositeMesh::GeneratorLayer
 // ======================================================================
 
-inline CompositeMesh::GeneratorLayer::GeneratorLayer(int layer, const MeshGenerator *meshGenerator, CustomizationData *customizationData)
+inline CompositeMesh::GeneratorLayer::GeneratorLayer(int layer, const MeshGenerator *meshGenerator, CustomizationData *customizationData, Object const *sourceObject)
 :	m_layer(layer),
 	m_meshGenerator(meshGenerator),
-	m_customizationData(customizationData)
+	m_customizationData(customizationData),
+	m_sourceObject(sourceObject)
 {
 	NOT_NULL(m_meshGenerator);
 }
@@ -106,7 +115,8 @@ inline CompositeMesh::GeneratorLayer::GeneratorLayer(int layer, const MeshGenera
 inline CompositeMesh::GeneratorLayer::GeneratorLayer(const GeneratorLayer &rhs) :
 	m_layer(rhs.m_layer),
 	m_meshGenerator(rhs.m_meshGenerator),
-	m_customizationData(rhs.m_customizationData)
+	m_customizationData(rhs.m_customizationData),
+	m_sourceObject(rhs.m_sourceObject)
 {
 }
 
@@ -117,6 +127,7 @@ inline CompositeMesh::GeneratorLayer::~GeneratorLayer()
 	// we don't own these
 	m_meshGenerator     = 0;
 	m_customizationData = 0;
+	m_sourceObject      = 0;
 }
 
 // ------------------------------------------------------------------
@@ -129,6 +140,7 @@ inline CompositeMesh::GeneratorLayer &CompositeMesh::GeneratorLayer::operator =(
 	m_layer             = rhs.m_layer;
 	m_meshGenerator     = rhs.m_meshGenerator;
 	m_customizationData = rhs.m_customizationData;
+	m_sourceObject      = rhs.m_sourceObject;
 
 	return *this;
 }
@@ -211,6 +223,20 @@ void CompositeMesh::install()
 
 // ----------------------------------------------------------------------
 
+void CompositeMesh::setApplyRemoteTextureToCompositePrimitiveCallback(ApplyRemoteTextureToCompositePrimitiveCallback callback)
+{
+	s_applyRemoteTextureToCompositePrimitive = callback;
+}
+
+// ----------------------------------------------------------------------
+
+void CompositeMesh::clearApplyRemoteTextureToCompositePrimitiveCallback()
+{
+	s_applyRemoteTextureToCompositePrimitive = 0;
+}
+
+// ----------------------------------------------------------------------
+
 void CompositeMesh::remove()
 {
 	DEBUG_FATAL(!ms_installed, ("CompositeMesh not installed"));
@@ -239,7 +265,7 @@ CompositeMesh::~CompositeMesh()
 
 // ----------------------------------------------------------------------
 
-void CompositeMesh::addMeshGenerator(const MeshGenerator *meshGenerator, CustomizationData *customizationData)
+void CompositeMesh::addMeshGenerator(const MeshGenerator *meshGenerator, CustomizationData *customizationData, Object const *sourceObject)
 {
 	NOT_NULL(m_meshGenerators);
 	NOT_NULL(meshGenerator);
@@ -249,7 +275,7 @@ void CompositeMesh::addMeshGenerator(const MeshGenerator *meshGenerator, Customi
 #ifdef _DEBUG
 	// check if we're inserting the same mesh twice at the same level
 	// -TRF- might want to check globally
-	const GeneratorLayer  itemToInsert(occlusionLayer, meshGenerator, customizationData);
+	const GeneratorLayer  itemToInsert(occlusionLayer, meshGenerator, customizationData, sourceObject);
 
 	GeneratorContainer::ContainerType::const_iterator itCopy = std::find(m_meshGenerators->m_container.begin(), m_meshGenerators->m_container.end(), itemToInsert);
 	DEBUG_FATAL(itCopy != m_meshGenerators->m_container.end(), ("tried to insert duplicate mesh generator at same layer (0x%08, layer %d)", meshGenerator, occlusionLayer));
@@ -257,7 +283,7 @@ void CompositeMesh::addMeshGenerator(const MeshGenerator *meshGenerator, Customi
 
 	// Insert this mesh as first at given layer.  We order from highest layer to lowest (outer-most to inner-most).
 	GeneratorContainer::ContainerType::iterator itInsertionBefore = m_meshGenerators->findFirstAtLayer(occlusionLayer);
-	IGNORE_RETURN(m_meshGenerators->m_container.insert(itInsertionBefore, GeneratorLayer(occlusionLayer, meshGenerator, customizationData)));
+	IGNORE_RETURN(m_meshGenerators->m_container.insert(itInsertionBefore, GeneratorLayer(occlusionLayer, meshGenerator, customizationData, sourceObject)));
 
 	//-- bump up reference count for mesh generator
 	meshGenerator->fetch();
@@ -412,7 +438,15 @@ void CompositeMesh::addShaderPrimitives(Appearance &appearance, int lodIndex, co
 		const int  startShaderPrimitiveCount = static_cast<int>(shaderPrimitives.size());
 #endif
 
+		ShaderPrimitiveVector::size_type const primitiveCountBefore = shaderPrimitives.size();
 		meshGenerator->addShaderPrimitives(appearance, lodIndex, it->m_customizationData, transformNameMap, zonesCurrentlyOccluded, zonesOccludedByThisLayer, shaderPrimitives);
+		ShaderPrimitiveVector::size_type const primitiveCountAfter = shaderPrimitives.size();
+
+		if (s_applyRemoteTextureToCompositePrimitive && it->m_sourceObject && primitiveCountBefore < primitiveCountAfter)
+		{
+			for (ShaderPrimitiveVector::size_type i = primitiveCountBefore; i < primitiveCountAfter; ++i)
+				s_applyRemoteTextureToCompositePrimitive(it->m_sourceObject, shaderPrimitives[i]);
+		}
 
 #if TRACK_SHADER_PRIMITIVE_GENERATION
 		++runCount;
@@ -439,6 +473,36 @@ void CompositeMesh::addShaderPrimitives(Appearance &appearance, int lodIndex, co
 	DEBUG_REPORT_LOG(true, ("CM: total: [%d] runs, [%d] primitives produced.\n", runCount, static_cast<int>(shaderPrimitives.size())));
 	DEBUG_REPORT_LOG(true, ("CM: =====\n"));
 #endif
+}
+
+// ======================================================================
+
+void CompositeMeshApplyRemoteMainTextureToPrimitive(ShaderPrimitive *primitive, Texture const *texture, float scrollU, float scrollV)
+{
+	if (!primitive || !texture)
+		return;
+
+	SoftwareBlendSkeletalShaderPrimitive *const skelPrimitive = primitive->asSoftwareBlendSkeletalShaderPrimitive();
+	if (!skelPrimitive)
+		return;
+
+	Tag const tagMain = TAG(M,A,I,N);
+	Shader &shader = skelPrimitive->getShader();
+	StaticShader *const staticShader = shader.getStaticShader();
+	if (!staticShader || !staticShader->hasTexture(tagMain))
+		return;
+
+	staticShader->setTexture(tagMain, *texture);
+
+	if ((scrollU != 0.0f || scrollV != 0.0f) && staticShader->hasTextureScroll(tagMain))
+	{
+		StaticShaderTemplate::TextureScroll textureScroll;
+		textureScroll.u1 = scrollU;
+		textureScroll.v1 = scrollV;
+		textureScroll.u2 = 0.0f;
+		textureScroll.v2 = 0.0f;
+		staticShader->setTextureScroll(tagMain, textureScroll);
+	}
 }
 
 // ======================================================================

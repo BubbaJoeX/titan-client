@@ -43,6 +43,7 @@
 #include "clientGame/GameMusicManager.h"
 #include "clientGame/GameNetwork.h"
 #include "clientGame/HyperspaceIoWin.h"
+#include "clientGame/InstallationObject.h"
 #include "clientGame/InputScheme.h"
 #include "clientGame/LightsaberCollisionManager.h"
 #include "clientGame/MatchMakingManager.h"
@@ -66,12 +67,14 @@
 #include "clientGame/ShipObject.h"
 #include "clientGame/ShipStation.h"
 #include "clientGame/ShipTurretCamera.h"
+#include "clientGame/InstallationTurretCamera.h"
 #include "clientGame/ShipWeaponGroupManager.h"
 #include "clientGame/SpaceDeath.h"
 #include "clientGame/SpacePreloadedAssetManager.h"
 #include "clientGame/SpaceTargetBracketOverlay.h"
 #include "clientGame/SwgCameraMapCapture.h"
 #include "clientGame/StructurePlacementCamera.h"
+#include "clientGame/TurretObject.h"
 #include "clientGame/WorldSnapshot.h"
 #include "clientGraphics/DebugPrimitive.h"
 #include "clientGraphics/Graphics.h"
@@ -478,6 +481,12 @@ const Object* GroundScene::getSoundObject () const
 				return shipTurretCamera->getTarget();
 		}
 
+		if (getCurrentView() == CI_installationTurret)
+		{
+			if (getPlayer())
+				return getPlayer();
+		}
+
 		if (getPlayer())
 			return getPlayer();
 	}
@@ -715,6 +724,11 @@ void GroundScene::init (const char* const terrainFilename, CreatureObject* const
 	m_shipTurretCamera->setActive(false);
 	ClientWorld::addCamera(m_shipTurretCamera);
 
+	m_installationTurretCamera = new InstallationTurretCamera();
+	m_cameras[CI_installationTurret] = m_installationTurretCamera;
+	m_installationTurretCamera->setActive(false);
+	ClientWorld::addCamera(m_installationTurretCamera);
+
 	m_freeChaseCamera        = NON_NULL (new FreeChaseCamera ());
 	m_cameras [CI_freeChase] = m_freeChaseCamera;
 	m_freeChaseCamera->setActive (false);
@@ -801,6 +815,8 @@ void GroundScene::init (const char* const terrainFilename, CreatureObject* const
 
 	m_shipTurretCamera->setTarget(player);
 	m_shipTurretCamera->setMessageQueue(controller->getMessageQueue());
+
+	m_installationTurretCamera->setMessageQueue(controller->getMessageQueue());
 
 	m_freeChaseCamera->setTarget (player);
 	m_freeChaseCamera->setMessageQueue (controller->getMessageQueue ());
@@ -901,6 +917,7 @@ GroundScene::GroundScene(
 	m_lastYawPitchMod (new Vector2d),
 	m_cockpitCamera(0),
 	m_shipTurretCamera(0),
+	m_installationTurretCamera(0),
 	m_freeChaseCamera (0),
 	m_freeCamera (0),
 	m_debugPortalCamera (0),
@@ -1009,6 +1026,7 @@ GroundScene::GroundScene(
 	m_lastYawPitchMod (new Vector2d),
 	m_cockpitCamera(0),
 	m_shipTurretCamera(0),
+	m_installationTurretCamera(0),
 	m_freeChaseCamera (0),
 	m_freeCamera (0),
 	m_debugPortalCamera (0),
@@ -1115,6 +1133,10 @@ GroundScene::~GroundScene (void)
 	delete m_shipTurretCamera;
 	m_shipTurretCamera = 0;
 
+	ClientWorld::removeCamera(m_installationTurretCamera);
+	delete m_installationTurretCamera;
+	m_installationTurretCamera = 0;
+
 	ClientWorld::removeCamera (m_freeChaseCamera);
 	delete m_freeChaseCamera;
 	m_freeChaseCamera = 0;
@@ -1188,6 +1210,12 @@ void GroundScene::setView (int newView, float value)
 			}
 
 			if (m_currentView == CI_shipTurret)
+			{
+				if (m_inputMap)
+					m_inputMap->handleInputReset ();
+			}
+
+			if (m_currentView == CI_installationTurret)
 			{
 				if (m_inputMap)
 					m_inputMap->handleInputReset ();
@@ -1428,11 +1456,18 @@ void GroundScene::scanInputMapForSceneMessages (InputMap * inputMap)
 					CreatureObject const * const player = safe_cast<CreatureObject const *>(getPlayer());
 					if (player)
 					{
-						int const shipStation = player->getShipStation();
-						if (shipStation == ShipStation::ShipStation_Pilot || shipStation == ShipStation::ShipStation_Operations)
-							view = CI_cockpit;
-						else if (shipStation >= ShipStation::ShipStation_Gunner_First && shipStation <= ShipStation::ShipStation_Gunner_Last)
-							view = CI_shipTurret;
+						if (player->getTurretGunnerMountTurretId().isValid())
+						{
+							view = CI_installationTurret;
+						}
+						else
+						{
+							int const shipStation = player->getShipStation();
+							if (shipStation == ShipStation::ShipStation_Pilot || shipStation == ShipStation::ShipStation_Operations)
+								view = CI_cockpit;
+							else if (shipStation >= ShipStation::ShipStation_Gunner_First && shipStation <= ShipStation::ShipStation_Gunner_Last)
+								view = CI_shipTurret;
+						}
 					}
 					setView(view);
 				}
@@ -1798,6 +1833,7 @@ void GroundScene::handleInputMapUpdate (void)
 
 	case CI_cockpit:
 	case CI_shipTurret:
+	case CI_installationTurret:
 	case CI_freeChase:
 		{
 			//-- just send it to the normal player inputmap
@@ -1896,6 +1932,30 @@ void GroundScene::update(float elapsedTime)
 
 	//-- scan input map for scene messages
 	handleInputMapScan ();
+
+	//-- installation turret gunner: drive camera from replicated mount id
+	{
+		CreatureObject * const playerCreature = Game::getPlayerCreature();
+		if (playerCreature)
+		{
+			NetworkId const mountTurretId = playerCreature->getTurretGunnerMountTurretId();
+			if (mountTurretId.isValid())
+			{
+				Object * const turretObj = NetworkIdManager::getObjectById(mountTurretId);
+				m_installationTurretCamera->setTurret(turretObj);
+				PlayerCreatureController * const pcc = dynamic_cast<PlayerCreatureController *>(playerCreature->getController());
+				if (pcc)
+					m_installationTurretCamera->setMessageQueue(pcc->getMessageQueue());
+				if (m_currentView != CI_installationTurret)
+					setView(CI_installationTurret);
+			}
+			else if (m_currentView == CI_installationTurret)
+			{
+				m_installationTurretCamera->setTurret(0);
+				setView(CI_freeChase);
+			}
+		}
+	}
 
 	//-- tell the terrain which object is the reference object
 	if (TerrainObject::getInstance ())
@@ -2224,11 +2284,18 @@ void GroundScene::draw (void) const
 		{
 			int newCameraIndex = CI_freeChase;
 			CreatureObject const * const player = safe_cast<CreatureObject const *>(getPlayer());
-			int shipStation = player ? player->getShipStation() : ShipStation::ShipStation_None;
-			if (shipStation == ShipStation::ShipStation_Pilot || shipStation == ShipStation::ShipStation_Operations)
-				newCameraIndex = CI_cockpit;
-			else if (shipStation >= ShipStation::ShipStation_Gunner_First && shipStation <= ShipStation::ShipStation_Gunner_Last)
-				newCameraIndex = CI_shipTurret;
+			if (player && player->getTurretGunnerMountTurretId().isValid())
+			{
+				newCameraIndex = CI_installationTurret;
+			}
+			else
+			{
+				int shipStation = player ? player->getShipStation() : ShipStation::ShipStation_None;
+				if (shipStation == ShipStation::ShipStation_Pilot || shipStation == ShipStation::ShipStation_Operations)
+					newCameraIndex = CI_cockpit;
+				else if (shipStation >= ShipStation::ShipStation_Gunner_First && shipStation <= ShipStation::ShipStation_Gunner_Last)
+					newCameraIndex = CI_shipTurret;
+			}
 			const_cast<GroundScene*>(this)->setView(newCameraIndex);
 			ms_loadingScreenRender = false;
 
@@ -3693,6 +3760,52 @@ int GroundScene::findObjects (float left, float top, float right, float bottom, 
 }
 
 //-----------------------------------------------------------------
+
+void GroundScene::queueTurretGunnerAim(NetworkId const &turretId, Vector const &aimWorldEnd)
+{
+	char buf[192];
+	snprintf(buf, sizeof(buf), "aim %.3f %.3f %.3f", aimWorldEnd.x, aimWorldEnd.y, aimWorldEnd.z);
+	IGNORE_RETURN(ClientCommandQueue::enqueueCommand("turretGunnerAim", turretId, Unicode::narrowToWide(buf)));
+}
+
+//-----------------------------------------------------------------
+
+void GroundScene::queueTurretGunnerFire(NetworkId const &turretId)
+{
+	Unicode::String fireParams;
+	if (m_currentView == CI_installationTurret && m_installationTurretCamera && m_installationTurretCamera->isActive())
+	{
+		Transform const &camTurret = m_installationTurretCamera->getTransform_o2p();
+		Vector forward(camTurret.getLocalFrameK_p());
+		if (forward.normalize())
+		{
+			Vector const aimEnd(camTurret.getPosition_p() + forward * 256.f);
+			char buf[192];
+			snprintf(buf, sizeof(buf), "aim %.3f %.3f %.3f", aimEnd.x, aimEnd.y, aimEnd.z);
+			fireParams = Unicode::narrowToWide(buf);
+		}
+	}
+
+	IGNORE_RETURN(ClientCommandQueue::enqueueCommand("turretGunnerFire", turretId, fireParams));
+
+	Object *const obj = NetworkIdManager::getObjectById(turretId);
+	ClientObject *const co = obj ? obj->asClientObject() : 0;
+	InstallationObject *const inst = co ? dynamic_cast<InstallationObject *>(co) : 0;
+	if (!inst)
+		return;
+
+	for (int i = 0; i < inst->getNumberOfChildObjects(); ++i)
+	{
+		TurretObject *const tu = dynamic_cast<TurretObject *>(inst->getChildObject(i));
+		if (tu)
+		{
+			ProjectileManager::createInstallationGunnerProjectile(inst, tu);
+			break;
+		}
+	}
+}
+
+//-----------------------------------------------------------------
 void GroundScene::pivotRotate (const float x, const float y)
 {
 	if (m_currentView != CI_free && !m_usingGodClientInteriorCamera)
@@ -3814,7 +3927,8 @@ bool GroundScene::isFirstPerson () const
 
 	if (   m_currentView == CI_debugPortal
 	    || m_currentView == CI_free
-	    || m_currentView == CI_shipTurret)
+	    || m_currentView == CI_shipTurret
+	    || m_currentView == CI_installationTurret)
 		return true;
 
 	return false;

@@ -15,6 +15,7 @@
 #include "clientGame/Projectile.h"
 #include "sharedDebug/DebugFlags.h"
 #include "sharedDebug/InstallTimer.h"
+#include "sharedFoundation/FloatMath.h"
 #include "sharedObject/AlterResult.h"
 
 //===================================================================
@@ -131,6 +132,72 @@ const Object* TurretObject::fire (const Object* const target, const bool hit)
 		m_projectile = m_weaponObjectTemplate->createProjectile (!hit, false);
 
 	return m_projectile;
+}
+
+//-------------------------------------------------------------------
+
+bool TurretObject::getMuzzleTransform_o2Installation(Transform &out) const
+{
+	if (!m_barrel)
+		return false;
+
+	Transform muzzle_o2turret;
+	muzzle_o2turret.multiply(m_barrel->getTransform_o2p(), m_muzzleTransform_o2p);
+	out.multiply(getTransform_o2p(), muzzle_o2turret);
+	return true;
+}
+
+//-------------------------------------------------------------------
+
+float TurretObject::getWeaponProjectileSpeed() const
+{
+	return m_speed;
+}
+
+//-------------------------------------------------------------------
+
+float TurretObject::getWeaponProjectileExpireTime() const
+{
+	return m_expirationTime;
+}
+
+//-------------------------------------------------------------------
+
+void TurretObject::trackTowardWorldPosition(Vector const &worldPosition, float const elapsedTime, float const rateScale)
+{
+	if (elapsedTime <= 0.f)
+		return;
+
+	if (m_projectile)
+		return;
+
+	float const scale = rateScale < 1.f ? 1.f : rateScale;
+	float yawMax = m_yawMaximumRadiansPerSecond * scale * elapsedTime;
+	float pitchMax = m_pitchMaximumRadiansPerSecond * scale * elapsedTime;
+	// Some .cdf turrets use 0 deg/s in data; still allow responsive gunner aiming.
+	if (yawMax < 1e-6f)
+		yawMax = convertDegreesToRadians(720.f) * elapsedTime;
+	if (pitchMax < 1e-6f)
+		pitchMax = convertDegreesToRadians(720.f) * elapsedTime;
+
+	{
+		Vector const facing_o = rotateTranslate_w2o(worldPosition);
+		if (facing_o != Vector::zero)
+		{
+			float const yaw = clamp(-yawMax, facing_o.theta(), yawMax);
+			yaw_o(yaw);
+		}
+	}
+
+	if (m_barrel)
+	{
+		Vector const facing_o = m_barrel->rotateTranslate_w2o(worldPosition);
+		if (facing_o != Vector::zero)
+		{
+			float const pitch = clamp(-pitchMax, facing_o.phi(), pitchMax);
+			m_barrel->pitch_o(pitch);
+		}
+	}
 }
 
 //-------------------------------------------------------------------

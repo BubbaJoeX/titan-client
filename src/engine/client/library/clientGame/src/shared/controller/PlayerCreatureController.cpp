@@ -572,6 +572,20 @@ float PlayerCreatureController::realAlter (const float elapsedTime)
 				break;
 			case CM_primaryAttack:
 				{
+					if (value == 1.0f && creatureObject)
+					{
+						NetworkId const mountTurretId = creatureObject->getTurretGunnerMountTurretId();
+						if (mountTurretId.isValid())
+						{
+							GroundScene * const groundScene = dynamic_cast<GroundScene *>(Game::getScene());
+							if (groundScene && groundScene->getCurrentView() == GroundScene::CI_installationTurret)
+							{
+								groundScene->queueTurretGunnerFire(mountTurretId);
+								break;
+							}
+						}
+					}
+
 					GroundCombatActionManager::ActionType actionType = GroundCombatActionManager::AT_primaryAttack;
 
 					//rsmith: intentionally temporary, hack, make sure we remove "lastActionStarted", and it's use, this after testing
@@ -628,6 +642,20 @@ float PlayerCreatureController::realAlter (const float elapsedTime)
 				}
 			case CM_primaryActionAndAttack:
 				{
+					if (value == 1.0f && creatureObject)
+					{
+						NetworkId const mountTurretId = creatureObject->getTurretGunnerMountTurretId();
+						if (mountTurretId.isValid())
+						{
+							GroundScene * const groundScene = dynamic_cast<GroundScene *>(Game::getScene());
+							if (groundScene && groundScene->getCurrentView() == GroundScene::CI_installationTurret)
+							{
+								groundScene->queueTurretGunnerFire(mountTurretId);
+								break;
+							}
+						}
+					}
+
 					GroundCombatActionManager::ActionType actionType = GroundCombatActionManager::AT_primaryActionAndAttack;
 
 					if(value == 1.0f) // 1.0f for initial down
@@ -2798,6 +2826,11 @@ bool PlayerCreatureController::shouldSendUpdatedTransform() const
 	{
 		// we should not process creature movement if we're controlling a ship station.
 		if (owner->getShipStation() != ShipStation::ShipStation_None)
+		{
+			return false;
+		}
+
+		if (owner->getTurretGunnerMountTurretId().isValid())
 		{
 			return false;
 		}

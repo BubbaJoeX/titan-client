@@ -18,6 +18,7 @@
 #include "clientGraphics/ShaderPrimitiveSorter.h"
 #include "clientGraphics/ShaderTemplateList.h"
 #include "clientGraphics/StaticShader.h"
+#include "clientGraphics/StaticShaderTemplate.h"
 #include "clientGraphics/Texture.h"
 #include "clientSkeletalAnimation/AnimationEnvironment.h"
 #include "clientSkeletalAnimation/AnimationEnvironmentNames.h"
@@ -1059,6 +1060,13 @@ SkeletalAppearance2::SkeletalAppearance2(const SkeletalAppearanceTemplate *newAp
 	m_isHolonet(false),
     m_hologramType(SkeletalAppearance2::HT_none),
 	m_blackHologramFrame(0),
+	m_runtimeOverrideActive(false),
+	m_runtimeOverrideTag(),
+	m_runtimeOverrideTexture(0),
+	m_runtimeScrollActive(false),
+	m_runtimeScrollTag(),
+	m_runtimeScrollU(0.0f),
+	m_runtimeScrollV(0.0f),
 	m_blueGlowieShaderTemplate(0),
 	m_blueGlowieBumpShaderTemplate(0),
 	m_holonetShaderTemplate(0),
@@ -1253,6 +1261,8 @@ SkeletalAppearance2::~SkeletalAppearance2(void)
 		delete m_perLodShaderPrimitives;
 		m_perLodShaderPrimitives=0;
 	}
+
+	resetRuntimeTextureOverride();
 
 	m_overridingAnimationResolver = 0;
 	delete m_animationResolver;
@@ -2258,6 +2268,8 @@ void SkeletalAppearance2::rebuildMesh(int lodIndex)
 
 		//-- release the old shader primitives
 		std::for_each(workingShaderPrimitives.begin(), workingShaderPrimitives.end(), PointerDeleter());
+
+		applyRuntimeTextureOverrideToLod(lodIndex);
 	}
 
 	//-- Mark as clean.
@@ -3708,7 +3720,7 @@ void SkeletalAppearance2::buildCompositeMesh(CompositeMesh &compositeMesh, int l
 		for (MeshGeneratorVector::const_iterator it = meshGenerators.begin(); it != endIt; ++it)
 		{
 			// Add mesh generator owned by this appearance, using this appearance's customization data.
-			compositeMesh.addMeshGenerator(*it, m_customizationData);
+			compositeMesh.addMeshGenerator(*it, m_customizationData, getOwner());
 		}
 	}
 
@@ -4489,6 +4501,103 @@ SkeletalAppearance2::FadeState SkeletalAppearance2::getFadeState() const
 float SkeletalAppearance2::getFadeFraction() const
 {
 	return m_fadeFraction;
+}
+
+//----------------------------------------------------------------------
+
+void SkeletalAppearance2::setTexture(Tag tag, const Texture &texture)
+{
+	if (m_runtimeOverrideTexture)
+	{
+		m_runtimeOverrideTexture->release();
+		m_runtimeOverrideTexture = 0;
+	}
+
+	m_runtimeOverrideTexture = &texture;
+	m_runtimeOverrideTexture->fetch();
+	m_runtimeOverrideTag = tag;
+	m_runtimeOverrideActive = true;
+
+	applyRuntimeTextureOverrideToAllLods();
+}
+
+//----------------------------------------------------------------------
+
+void SkeletalAppearance2::setTextureScroll(Tag tag, float scrollU, float scrollV)
+{
+	m_runtimeScrollTag = tag;
+	m_runtimeScrollU = scrollU;
+	m_runtimeScrollV = scrollV;
+	m_runtimeScrollActive = true;
+
+	applyRuntimeTextureOverrideToAllLods();
+}
+
+//----------------------------------------------------------------------
+
+void SkeletalAppearance2::resetRuntimeTextureOverride()
+{
+	if (m_runtimeOverrideTexture)
+	{
+		m_runtimeOverrideTexture->release();
+		m_runtimeOverrideTexture = 0;
+	}
+	m_runtimeOverrideActive = false;
+	m_runtimeScrollActive = false;
+}
+
+//----------------------------------------------------------------------
+
+void SkeletalAppearance2::applyRuntimeTextureOverrideToAllLods()
+{
+	if (!m_perLodShaderPrimitives)
+		return;
+
+	int const lodCount = static_cast<int>(m_perLodShaderPrimitives->size());
+	for (int lodIndex = 0; lodIndex < lodCount; ++lodIndex)
+		applyRuntimeTextureOverrideToLod(lodIndex);
+}
+
+//----------------------------------------------------------------------
+
+void SkeletalAppearance2::applyRuntimeTextureOverrideToLod(int lodIndex)
+{
+	if (!m_perLodShaderPrimitives)
+		return;
+
+	if (lodIndex < 0 || lodIndex >= static_cast<int>(m_perLodShaderPrimitives->size()))
+		return;
+
+	ShaderPrimitiveVector &shaderPrimitives = (*m_perLodShaderPrimitives)[static_cast<ShaderPrimitiveVectorVector::size_type>(lodIndex)];
+	ShaderPrimitiveVector::iterator const endIt = shaderPrimitives.end();
+	for (ShaderPrimitiveVector::iterator it = shaderPrimitives.begin(); it != endIt; ++it)
+	{
+		ShaderPrimitive *const primitive = *it;
+		if (!primitive)
+			continue;
+
+		SoftwareBlendSkeletalShaderPrimitive *const skelPrimitive = primitive->asSoftwareBlendSkeletalShaderPrimitive();
+		if (!skelPrimitive)
+			continue;
+
+		Shader &shader = skelPrimitive->getShader();
+		StaticShader *const staticShader = shader.getStaticShader();
+		if (!staticShader)
+			continue;
+
+		if (m_runtimeOverrideActive && m_runtimeOverrideTexture && staticShader->hasTexture(m_runtimeOverrideTag))
+			staticShader->setTexture(m_runtimeOverrideTag, *m_runtimeOverrideTexture);
+
+		if (m_runtimeScrollActive && staticShader->hasTextureScroll(m_runtimeScrollTag))
+		{
+			StaticShaderTemplate::TextureScroll textureScroll;
+			textureScroll.u1 = m_runtimeScrollU;
+			textureScroll.v1 = m_runtimeScrollV;
+			textureScroll.u2 = 0.0f;
+			textureScroll.v2 = 0.0f;
+			staticShader->setTextureScroll(m_runtimeScrollTag, textureScroll);
+		}
+	}
 }
 
 //----------------------------------------------------------------------

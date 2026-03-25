@@ -13,12 +13,15 @@
 #include "clientGame/ClientEffect.h"
 #include "clientGame/ClientEffectTemplate.h"
 #include "clientGame/ClientEffectTemplateList.h"
+#include "clientGame/ClientObject.h"
 #include "clientGame/Game.h"
 #include "clientGame/GameNetwork.h"
+#include "clientGame/InstallationObject.h"
 #include "clientGame/ProjectileBeam.h"
 #include "clientGame/ShipObject.h"
 #include "clientGame/ShipObjectAttachments.h"
 #include "clientGame/ShipProjectile.h"
+#include "clientGame/TurretObject.h"
 #include "clientGraphics/RenderWorld.h"
 #include "sharedDebug/InstallTimer.h"
 #include "sharedFile/Iff.h"
@@ -130,6 +133,7 @@ namespace ProjectileManagerNamespace
 
 	void remove();
 	void createProjectile(ShipObject * ownerShip, int weaponIndex, ProjectileData const * projectileData, Transform const & transform_p, Object * attachToObject, float speed, float expireTime, bool beamWasActive);
+	void createGroundTurretProjectile(ProjectileData const * projectileData, Transform const & transform_p, float speed, float expireTime, ClientObject * fireEffectSource);
 	void findMuzzleHardpoints_o(Object * const object, Transform const & parentTransform_w, TransformObjectList & transformObjectList);
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -464,6 +468,34 @@ void ProjectileManagerNamespace::createProjectile(ShipObject *ownerShip, int wea
 	}
 }
 
+// ----------------------------------------------------------------------
+
+void ProjectileManagerNamespace::createGroundTurretProjectile(ProjectileData const * const projectileData, Transform const & transform_p, float const speed, float const expireTime, ClientObject * const fireEffectSource)
+{
+	NOT_NULL(projectileData);
+	DEBUG_FATAL(expireTime <= 0.f, ("ProjectileManager::createGroundTurretProjectile: expireTime <= 0.f"));
+
+	ShipProjectile * const projectile = new ShipProjectile(projectileData->m_appearanceTemplate, projectileData->createMissHitData());
+	projectile->setExpirationTime(expireTime);
+	projectile->setTransform_o2p(transform_p);
+	projectile->setSpeed(speed);
+	projectile->setOwnerShip(0);
+	projectile->setTravelDistance(speed * expireTime);
+	projectile->setWeaponIndex(-1);
+	projectile->addToWorld();
+
+	if (projectileData->m_fireClientEffectTemplate && fireEffectSource)
+	{
+		Transform const & muzzleTransform_o = fireEffectSource->getTransform_o2w().rotateTranslate_p2l(transform_p);
+		ClientEffect * const clientEffect = projectileData->m_fireClientEffectTemplate->createClientEffect(fireEffectSource, muzzleTransform_o);
+		if (clientEffect)
+		{
+			clientEffect->execute();
+			delete clientEffect;
+		}
+	}
+}
+
 //----------------------------------------------------------------------
 
 void ProjectileManagerNamespace::findMuzzleHardpoints_o(Object * const object, Transform const & parentTransform_w, TransformObjectList & transformObjectList)
@@ -748,6 +780,34 @@ void ProjectileManager::createServerProjectile(Object * const object, int const 
 			ProjectileManagerNamespace::createProjectile(shipObject, weaponIndex, projectileData, projectileTransform_p, attachToObject, projectileSpeed, expireTime, false);
 		}
 	}
+}
+
+// ----------------------------------------------------------------------
+
+void ProjectileManager::createInstallationGunnerProjectile(InstallationObject * const installation, TurretObject * const turretObject)
+{
+	if (!installation || !turretObject)
+		return;
+
+	ProjectileData * projectileData = ms_defaultProjectileData;
+	DEBUG_FATAL(!projectileData, ("ProjectileManager::createInstallationGunnerProjectile: no default projectile data"));
+
+	Transform muzzle_o2i(Transform::IF_none);
+	if (!turretObject->getMuzzleTransform_o2Installation(muzzle_o2i))
+		return;
+
+	Transform muzzle_o2cell(Transform::IF_none);
+	muzzle_o2cell.multiply(installation->getTransform_o2p(), muzzle_o2i);
+
+	float speed = turretObject->getWeaponProjectileSpeed();
+	float expireTime = turretObject->getWeaponProjectileExpireTime();
+	if (speed < 1e-3f)
+		speed = 120.f;
+	if (expireTime < 1e-3f)
+		expireTime = 2.f;
+
+	projectileData->preload();
+	ProjectileManagerNamespace::createGroundTurretProjectile(projectileData, muzzle_o2cell, speed, expireTime, installation);
 }
 
 // ======================================================================

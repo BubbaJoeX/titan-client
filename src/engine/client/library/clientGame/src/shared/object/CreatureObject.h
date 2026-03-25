@@ -383,6 +383,10 @@ public:
 
 	int                        getPerformanceType      () const;
 	NetworkId const &          getPerformanceListenTarget () const;
+	NetworkId const &          getTurretGunnerMountTurretId () const;
+	float                      getTurretGunnerEyeOffX () const;
+	float                      getTurretGunnerEyeOffY () const;
+	float                      getTurretGunnerEyeOffZ () const;
 	int                        getPerformanceStartTime () const;
 	int                        getGuildId              () const;
 	NetworkId const &          getMasterId             () const;
@@ -746,6 +750,10 @@ private:
 	Archive::AutoDeltaVariableCallback<int, Callbacks::PerformanceTypeChanged, CreatureObject>           m_performanceType;
 	Archive::AutoDeltaVariable<int>                                                                      m_performanceStartTime;
 	Archive::AutoDeltaVariable<NetworkId>                                                                m_performanceListenTarget;
+	Archive::AutoDeltaVariable<NetworkId>                                                                m_turretGunnerMountTurretId;
+	Archive::AutoDeltaVariable<float>                                                                    m_turretGunnerEyeOffX;
+	Archive::AutoDeltaVariable<float>                                                                    m_turretGunnerEyeOffY;
+	Archive::AutoDeltaVariable<float>                                                                    m_turretGunnerEyeOffZ;
 	Archive::AutoDeltaVariable<int>                                                                      m_guildId;
 	Archive::AutoDeltaVariable<NetworkId>                                                                m_masterId;
 
@@ -995,6 +1003,34 @@ inline int CreatureObject::getPerformanceType () const
 inline NetworkId const &CreatureObject::getPerformanceListenTarget () const
 {
 	return m_performanceListenTarget.get ();
+}
+
+// ----------------------------------------------------------------------
+
+inline NetworkId const &CreatureObject::getTurretGunnerMountTurretId () const
+{
+	return m_turretGunnerMountTurretId.get ();
+}
+
+// ----------------------------------------------------------------------
+
+inline float CreatureObject::getTurretGunnerEyeOffX () const
+{
+	return m_turretGunnerEyeOffX.get ();
+}
+
+// ----------------------------------------------------------------------
+
+inline float CreatureObject::getTurretGunnerEyeOffY () const
+{
+	return m_turretGunnerEyeOffY.get ();
+}
+
+// ----------------------------------------------------------------------
+
+inline float CreatureObject::getTurretGunnerEyeOffZ () const
+{
+	return m_turretGunnerEyeOffZ.get ();
 }
 
 // ----------------------------------------------------------------------

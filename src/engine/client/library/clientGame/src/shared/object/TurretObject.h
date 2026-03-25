@@ -15,6 +15,7 @@
 #include "clientGame/Projectile.h"
 #include "../../../../../../engine/shared/library/sharedFoundation/include/public/sharedFoundation/Timer.h"
 #include "../../../../../../engine/shared/library/sharedFoundation/include/public/sharedFoundation/Watcher.h"
+#include "sharedMath/Vector.h"
 #include "sharedObject/Object.h"
 
 class ClientWeaponObjectTemplate;
@@ -40,6 +41,15 @@ public:
 	void          setBarrel (Object* object, float pitchMinimumRadians, float pitchMaximumRadians, float pitchMaximumRadiansPerSecond);
 	void          setWeapon (const ClientWeaponObjectTemplate* weaponObjectTemplate, const Transform& muzzleTransform_o2p, const float speed, const float expirationTime);
 	const Object* fire (const Object* const target, const bool hit);
+
+	/** Slew turret + barrel toward a world point (gunner / manual aim). Skipped while a fire() projectile is being aligned. */
+	void          trackTowardWorldPosition (Vector const &worldPosition, float elapsedTime, float rateScale = 8.f);
+
+	/** Muzzle frame relative to the parent installation (turret base), from barrel hardpoint + cdf muzzle transform. */
+	bool          getMuzzleTransform_o2Installation (Transform &out) const;
+
+	float         getWeaponProjectileSpeed () const;
+	float         getWeaponProjectileExpireTime () const;
 
 public:
 

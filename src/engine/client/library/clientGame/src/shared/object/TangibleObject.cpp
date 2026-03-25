@@ -25,11 +25,11 @@
 #include "clientGame/SlotRuleManager.h"
 #include "clientGraphics/Camera.h"
 #include "clientGraphics/RenderWorld.h"
-#include "clientGraphics/StaticShader.h"
 #include "clientGraphics/Texture.h"
 #include "clientGraphics/TextureList.h"
 #include "clientParticle/ParticleEffectAppearance.h"
 #include "clientParticle/ParticleEffectAppearanceTemplate.h"
+#include "clientSkeletalAnimation/CompositeMesh.h"
 #include "clientSkeletalAnimation/SkeletalAppearance2.h"
 #include "clientUserInterface/CuiObjectTextManager.h"
 #include "clientUserInterface/CuiPreferences.h"
@@ -420,6 +420,37 @@ namespace TangibleObjectNamespace
 
 		overlayObject.setTransform_o2p(overlayTransform);
 	}
+
+	void applyRemoteTextureToCompositePrimitive(Object const *wearableObject, ShaderPrimitive *primitive)
+	{
+		if (!wearableObject || !primitive)
+			return;
+
+		ClientObject const * const co = wearableObject->asClientObject();
+		if (!co)
+			return;
+
+		TangibleObject const * const tangible = co->asTangibleObject();
+		if (!tangible)
+			return;
+
+		RemoteImageRuntimeDataMap::iterator const runtimeIt = ms_remoteImageRuntimeDataMap.find(tangible);
+		if (runtimeIt == ms_remoteImageRuntimeDataMap.end() || !runtimeIt->second.texture)
+			return;
+
+		RemoteImageRuntimeData const &runtimeData = runtimeIt->second;
+		CompositeMeshApplyRemoteMainTextureToPrimitive(primitive, runtimeData.texture, runtimeData.scrollH, runtimeData.scrollV);
+	}
+
+	struct CompositeMeshRemoteTextureHook
+	{
+		CompositeMeshRemoteTextureHook()
+		{
+			CompositeMesh::setApplyRemoteTextureToCompositePrimitiveCallback(&applyRemoteTextureToCompositePrimitive);
+		}
+	};
+
+	static CompositeMeshRemoteTextureHook s_compositeMeshRemoteTextureHook;
 
 	void applyCachedRuntimeTextureToSurfaces(RemoteImageRuntimeData & runtimeData, Appearance * ownerAppearance)
 	{
@@ -2730,6 +2761,10 @@ void TangibleObject::clearRemoteImageTexture()
 	RemoteImageRuntimeDataMap::iterator runtimeIt = ms_remoteImageRuntimeDataMap.find(this);
 	if (runtimeIt == ms_remoteImageRuntimeDataMap.end())
 		return;
+
+	if (Appearance * const appearance = getAppearance())
+		if (SkeletalAppearance2 * const skelAppearance = appearance->asSkeletalAppearance2())
+			skelAppearance->resetRuntimeTextureOverride();
 
 	RemoteImageRuntimeData & runtimeData = runtimeIt->second;
 	applyPictureOnlyPresentation(*this, runtimeData, false);

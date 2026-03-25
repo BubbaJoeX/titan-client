@@ -833,7 +833,15 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 				CuiManager::InputManager::setPointerMotionCapturedByUiX (true);
 				CuiManager::InputManager::setPointerMotionCapturedByUiY (true);
 				
-				if ( gs && !CuiPreferences::getUseModelessInterface() )
+				// Modeless UI skips the block below unless we include turret views. If pointer
+				// motion stays "captured", IoWin returns IOR_Block here and GroundScene never
+				// receives IOET_MouseMove — relative MouseCursor deltas stay zero (no mouselook).
+				const bool turretMouselookView =
+					gs &&
+					(gs->getCurrentView () == GroundScene::CI_installationTurret ||
+					 gs->getCurrentView () == GroundScene::CI_shipTurret);
+
+				if ( gs && (!CuiPreferences::getUseModelessInterface () || turretMouselookView) )
 				{
 					if ( !CuiManager::getPointerInputActive () || (CuiPreferences::getPointerModeMouseCameraEnabled () && CuiMediator::getCountPointerInputActive () <= 0) )
 					{

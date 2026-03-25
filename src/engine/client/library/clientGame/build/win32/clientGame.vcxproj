@@ -214,6 +214,9 @@
     <ClCompile Include="..\..\src\shared\camera\ShipTurretCamera.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
     </ClCompile>
+    <ClCompile Include="..\..\src\shared\camera\InstallationTurretCamera.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+    </ClCompile>
     <ClCompile Include="..\..\src\shared\camera\StructurePlacementCamera.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
     </ClCompile>
@@ -1203,6 +1206,7 @@
     <ClInclude Include="..\..\src\shared\camera\FreeCamera.h" />
     <ClInclude Include="..\..\src\shared\camera\FreeChaseCamera.h" />
     <ClInclude Include="..\..\src\shared\camera\ShipTurretCamera.h" />
+    <ClInclude Include="..\..\src\shared\camera\InstallationTurretCamera.h" />
     <ClInclude Include="..\..\src\shared\camera\StructurePlacementCamera.h" />
     <ClInclude Include="..\..\src\shared\clientEffect\ClientEffect.h" />
     <ClInclude Include="..\..\src\shared\clientEffect\ClientEffectManager.h" />
