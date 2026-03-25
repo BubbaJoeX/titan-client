@@ -1451,23 +1451,23 @@ void GroundScene::scanInputMapForSceneMessages (InputMap * inputMap)
 					setView (CI_free);
 				else
 				{
+					CreatureObject const * const player = safe_cast<CreatureObject const *>(getPlayer());
+					if (player && player->getTurretGunnerMountTurretId().isValid())
+					{
+						queueTurretGunnerExit(player->getTurretGunnerMountTurretId());
+						resetInputMap = true;
+						break;
+					}
+
 					int view = CI_freeChase;
 
-					CreatureObject const * const player = safe_cast<CreatureObject const *>(getPlayer());
 					if (player)
 					{
-						if (player->getTurretGunnerMountTurretId().isValid())
-						{
-							view = CI_installationTurret;
-						}
-						else
-						{
-							int const shipStation = player->getShipStation();
-							if (shipStation == ShipStation::ShipStation_Pilot || shipStation == ShipStation::ShipStation_Operations)
-								view = CI_cockpit;
-							else if (shipStation >= ShipStation::ShipStation_Gunner_First && shipStation <= ShipStation::ShipStation_Gunner_Last)
-								view = CI_shipTurret;
-						}
+						int const shipStation = player->getShipStation();
+						if (shipStation == ShipStation::ShipStation_Pilot || shipStation == ShipStation::ShipStation_Operations)
+							view = CI_cockpit;
+						else if (shipStation >= ShipStation::ShipStation_Gunner_First && shipStation <= ShipStation::ShipStation_Gunner_Last)
+							view = CI_shipTurret;
 					}
 					setView(view);
 				}
@@ -1744,8 +1744,40 @@ void GroundScene::handleInputMapUpdate (void)
 		return;
 
 	const Vector2d mousePos (static_cast<float> (m_mouseCursor->getX ()), static_cast<float> (m_mouseCursor->getY ()));
-	float yawMod   = (PI * mousePos.x * ms_mouseSensitivity)        / rect.getWidth ();
-	float pitchMod = (PI * mousePos.y * ms_mouseSensitivity * 0.4f) / rect.getHeight ();  // pitching is less sensitive than yaw
+
+	float yawMod = 0.f;
+	float pitchMod = 0.f;
+
+	// Installation turret: use mouse *delta* each frame. Absolute screen coords would re-apply the same
+	// yaw/pitch every frame while the cursor sits still, causing endless spin.
+	static bool s_installationTurretMouseInitialized = false;
+	static Vector2d s_installationTurretLastMousePos(0.f, 0.f);
+	if (m_currentView != CI_installationTurret)
+		s_installationTurretMouseInitialized = false;
+
+	if (m_currentView == CI_installationTurret)
+	{
+		if (!s_installationTurretMouseInitialized)
+		{
+			s_installationTurretLastMousePos = mousePos;
+			s_installationTurretMouseInitialized = true;
+			yawMod = 0.f;
+			pitchMod = 0.f;
+		}
+		else
+		{
+			float const dx = mousePos.x - s_installationTurretLastMousePos.x;
+			float const dy = mousePos.y - s_installationTurretLastMousePos.y;
+			s_installationTurretLastMousePos = mousePos;
+			yawMod   = (PI * dx * ms_mouseSensitivity)        / rect.getWidth ();
+			pitchMod = (PI * dy * ms_mouseSensitivity * 0.4f) / rect.getHeight ();
+		}
+	}
+	else
+	{
+		yawMod   = (PI * mousePos.x * ms_mouseSensitivity)        / rect.getWidth ();
+		pitchMod = (PI * mousePos.y * ms_mouseSensitivity * 0.4f) / rect.getHeight ();
+	}
 
 	const float inertia = std::max (0.0f, CuiManager::getCameraInertia ());
 	const float inertia_multiplier = RECIP (inertia + 1.0f);
@@ -3803,6 +3835,16 @@ void GroundScene::queueTurretGunnerFire(NetworkId const &turretId)
 			break;
 		}
 	}
+}
+
+//-----------------------------------------------------------------
+
+void GroundScene::queueTurretGunnerExit(NetworkId const &turretId)
+{
+	if (!turretId.isValid())
+		return;
+
+	IGNORE_RETURN(ClientCommandQueue::enqueueCommand("turretGunnerExit", turretId, Unicode::emptyString));
 }
 
 //-----------------------------------------------------------------

@@ -17,15 +17,26 @@
 #include "sharedFoundation/MessageQueue.h"
 #include "sharedObject/AlterResult.h"
 #include "sharedObject/CellProperty.h"
+#include "sharedFoundation/FloatMath.h"
 #include "sharedMath/Transform.h"
 #include "sharedMath/Vector.h"
 
 namespace InstallationTurretCameraNamespace
 {
-	float const cs_pitchLimit = PI * 0.5f; // +/- 90 degrees (180 total)
+	// 179° total vertical arc => ±89.5° from level.
+	float const cs_pitchLimitRad = 89.5f * PI_OVER_180;
 	float const cs_defaultEyeY = 1.6f;
 
-	bool findInstallationTurretParts(Object const *const installationObj, TurretObject *&outTurretObject, Object *&outBarrel)
+	float wrapYawTwoPi(float a)
+	{
+		if (a < 0.f)
+			return a + floorf(-a / PI_TIMES_2) * PI_TIMES_2 + PI_TIMES_2;
+		if (a >= PI_TIMES_2)
+			return a - floorf(a / PI_TIMES_2) * PI_TIMES_2;
+		return a;
+	}
+
+	bool findInstallationTurretParts(Object const *const installationObj, TurretObject *&outTurretObject, Object const *&outBarrel)
 	{
 		outTurretObject = 0;
 		outBarrel = 0;
@@ -44,25 +55,19 @@ namespace InstallationTurretCameraNamespace
 			if (turretObject)
 			{
 				outTurretObject = turretObject;
-				if (turretObject->getNumberOfChildObjects() > 0)
-					outBarrel = turretObject->getChildObject(0);
+				outBarrel = turretObject->getBarrelObject();
 				return true;
 			}
 		}
 		return false;
 	}
 
-	void trackChildTurretTowardAim(Object const *const installationObj, Vector const &aimWorldEnd, float const elapsedTime)
+	void trackChildTurretTowardAim(TurretObject *const turretObject, Vector const &aimWorldEnd, float const elapsedTime)
 	{
-		if (!installationObj || elapsedTime <= 0.f)
+		if (!turretObject || elapsedTime <= 0.f)
 			return;
 
-		TurretObject *turretObject = 0;
-		Object *barrel = 0;
-		if (!findInstallationTurretParts(installationObj, turretObject, barrel))
-			return;
-
-		turretObject->trackTowardWorldPosition(aimWorldEnd, elapsedTime);
+		turretObject->deferGunnerAimToward(aimWorldEnd, elapsedTime);
 	}
 }
 
@@ -186,7 +191,8 @@ float InstallationTurretCamera::alter(float const elapsedTime)
 		}
 	}
 
-	m_pitch = clamp(-cs_pitchLimit, m_pitch, cs_pitchLimit);
+	m_yaw = wrapYawTwoPi(m_yaw);
+	m_pitch = clamp(-cs_pitchLimitRad, m_pitch, cs_pitchLimitRad);
 
 	CellProperty *const cellProperty = turret->getParentCell();
 	setParentCell(cellProperty);
@@ -210,7 +216,7 @@ float InstallationTurretCamera::alter(float const elapsedTime)
 		Transform const install_o2p(turret->getTransform_o2p());
 
 		TurretObject *turretObject = 0;
-		Object *barrel = 0;
+		Object const *barrel = 0;
 		Transform camera_p(Transform::IF_none);
 
 		if (findInstallationTurretParts(turret, turretObject, barrel) && barrel)
@@ -222,7 +228,8 @@ float InstallationTurretCamera::alter(float const elapsedTime)
 			barrelChain.multiply(turretObj_o2i, barrel_o2t);
 			Transform upToEye(Transform::IF_none);
 			upToEye.multiply(barrelChain, eye_o2t);
-			Transform look(Transform::IF_none);
+			// Must be identity before yaw_l/pitch_l; IF_none leaves translation column garbage.
+			Transform look;
 			look.yaw_l(m_yaw);
 			look.pitch_l(m_pitch);
 			Transform cam_o2i(Transform::IF_none);
@@ -233,7 +240,7 @@ float InstallationTurretCamera::alter(float const elapsedTime)
 		{
 			Transform eye_p(Transform::IF_none);
 			eye_p.multiply(install_o2p, eye_o2t);
-			Transform yawPitch(Transform::IF_none);
+			Transform yawPitch;
 			yawPitch.yaw_l(m_yaw);
 			yawPitch.pitch_l(m_pitch);
 			camera_p.multiply(eye_p, yawPitch);
@@ -246,7 +253,8 @@ float InstallationTurretCamera::alter(float const elapsedTime)
 		if (forwardNorm.normalize())
 		{
 			Vector const aimEnd(camera_p.getPosition_p() + forwardNorm * s_aimDistance);
-			trackChildTurretTowardAim(turret, aimEnd, elapsedTime);
+			if (turretObject)
+				trackChildTurretTowardAim(turretObject, aimEnd, elapsedTime);
 			GroundScene *const groundScene = dynamic_cast<GroundScene *>(Game::getScene());
 			if (playerCreature && groundScene)
 				updateAimWorldPoint(groundScene, playerCreature, aimEnd, elapsedTime);

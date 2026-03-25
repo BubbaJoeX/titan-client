@@ -45,6 +45,11 @@ public:
 	/** Slew turret + barrel toward a world point (gunner / manual aim). Skipped while a fire() projectile is being aligned. */
 	void          trackTowardWorldPosition (Vector const &worldPosition, float elapsedTime, float rateScale = 8.f);
 
+	/** Queue aim for next alter(); avoids yaw/pitch during camera alter (DPVS / o2c NaNs). */
+	void          deferGunnerAimToward (Vector const &worldPosition, float elapsedTime);
+
+	Object const *getBarrelObject () const;
+
 	/** Muzzle frame relative to the parent installation (turret base), from barrel hardpoint + cdf muzzle transform. */
 	bool          getMuzzleTransform_o2Installation (Transform &out) const;
 
@@ -75,6 +80,10 @@ private:
 	Watcher<Projectile>               m_projectile;
 	ConstWatcher<Object>              m_target;
 	Timer                             m_debugFireTimer;
+
+	bool                              m_hasDeferredGunnerAim;
+	Vector                            m_deferredGunnerAimWorld;
+	float                             m_deferredGunnerAimElapsed;
 };
 
 //===================================================================

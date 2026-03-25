@@ -229,6 +229,7 @@ public:
 
 	void                      queueTurretGunnerAim(NetworkId const &turretId, Vector const &aimWorldEnd);
 	void                      queueTurretGunnerFire(NetworkId const &turretId);
+	void                      queueTurretGunnerExit(NetworkId const &turretId);
 
 	void                      pivotRotate    (real x, real y);
 	void                      pivotTranslate (real x, real y);

@@ -16,7 +16,10 @@
 #include "sharedDebug/DebugFlags.h"
 #include "sharedDebug/InstallTimer.h"
 #include "sharedFoundation/FloatMath.h"
+#include "sharedMath/Transform.h"
 #include "sharedObject/AlterResult.h"
+
+#include <float.h>
 
 //===================================================================
 // TurretObjectNamespace
@@ -25,6 +28,21 @@
 namespace TurretObjectNamespace
 {
 	bool ms_debugFire;
+
+	bool ts_finiteVec(Vector const &v)
+	{
+		return _finite(static_cast<double>(v.x)) != 0 && _finite(static_cast<double>(v.y)) != 0 && _finite(static_cast<double>(v.z)) != 0;
+	}
+
+	bool ts_finiteTransform(Transform const &t)
+	{
+		Transform::matrix_t const &m = t.getMatrix();
+		for (int r = 0; r < 3; ++r)
+			for (int c = 0; c < 4; ++c)
+				if (!_finite(static_cast<double>(m[r][c])))
+					return false;
+		return true;
+	}
 }
 
 using namespace TurretObjectNamespace;
@@ -70,7 +88,10 @@ TurretObject::TurretObject (const float yawMaximumRadiansPerSecond) :
 	m_expirationTime (0.f),
 	m_projectile (0),
 	m_target (0),
-	m_debugFireTimer (2.f)
+	m_debugFireTimer (2.f),
+	m_hasDeferredGunnerAim (false),
+	m_deferredGunnerAimWorld (Vector::zero),
+	m_deferredGunnerAimElapsed (0.f)
 {
 }
 
@@ -163,12 +184,34 @@ float TurretObject::getWeaponProjectileExpireTime() const
 
 //-------------------------------------------------------------------
 
+void TurretObject::deferGunnerAimToward(Vector const &worldPosition, float const elapsedTime)
+{
+	if (elapsedTime <= 0.f || !ts_finiteVec(worldPosition))
+		return;
+
+	m_hasDeferredGunnerAim = true;
+	m_deferredGunnerAimWorld = worldPosition;
+	m_deferredGunnerAimElapsed = elapsedTime;
+}
+
+//-------------------------------------------------------------------
+
+Object const *TurretObject::getBarrelObject() const
+{
+	return m_barrel;
+}
+
+//-------------------------------------------------------------------
+
 void TurretObject::trackTowardWorldPosition(Vector const &worldPosition, float const elapsedTime, float const rateScale)
 {
 	if (elapsedTime <= 0.f)
 		return;
 
 	if (m_projectile)
+		return;
+
+	if (!ts_finiteVec(worldPosition) || !ts_finiteTransform(getTransform_o2p()))
 		return;
 
 	float const scale = rateScale < 1.f ? 1.f : rateScale;
@@ -185,17 +228,19 @@ void TurretObject::trackTowardWorldPosition(Vector const &worldPosition, float c
 		if (facing_o != Vector::zero)
 		{
 			float const yaw = clamp(-yawMax, facing_o.theta(), yawMax);
-			yaw_o(yaw);
+			if (_finite(static_cast<double>(yaw)) != 0)
+				yaw_o(yaw);
 		}
 	}
 
-	if (m_barrel)
+	if (m_barrel && ts_finiteTransform(m_barrel->getTransform_o2p()))
 	{
 		Vector const facing_o = m_barrel->rotateTranslate_w2o(worldPosition);
 		if (facing_o != Vector::zero)
 		{
 			float const pitch = clamp(-pitchMax, facing_o.phi(), pitchMax);
-			m_barrel->pitch_o(pitch);
+			if (_finite(static_cast<double>(pitch)) != 0)
+				m_barrel->pitch_o(pitch);
 		}
 	}
 }
@@ -204,6 +249,14 @@ void TurretObject::trackTowardWorldPosition(Vector const &worldPosition, float c
 
 float TurretObject::alter (float elapsedTime)
 {
+	if (m_hasDeferredGunnerAim)
+	{
+		Vector const aimWorld = m_deferredGunnerAimWorld;
+		float const aimElapsed = m_deferredGunnerAimElapsed;
+		m_hasDeferredGunnerAim = false;
+		trackTowardWorldPosition(aimWorld, aimElapsed);
+	}
+
 	const float result = Object::alter (elapsedTime);
 	if (result == AlterResult::cms_kill) //lint !e777 // Testing floats for equality // It's okay, we're using constants.
 		return AlterResult::cms_kill;
