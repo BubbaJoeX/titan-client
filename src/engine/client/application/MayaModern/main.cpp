@@ -11,6 +11,7 @@
 #include "translators/sat.h"
 #include "translators/pob.h"
 #include "translators/dds.h"
+#include "translators/SwgTranslatorNames.h"
 
 #include "commands/SetDirectoryCommand.h"
 #include "commands/SetBaseDirectory.h"
@@ -27,6 +28,7 @@
 #include "commands/ImportShader.h"
 #include "commands/ExportShader.h"
 #include "commands/ImportStaticMesh.h"
+#include "commands/ImportStructure.h"
 #include "commands/ExportStaticMesh.h"
 #include "commands/SwgAssetDissector.h"
 
@@ -59,18 +61,19 @@ struct Translator
 };
 // Pass nullptr for optionsScriptName - no MEL option procedures; avoids "Cannot find procedure" errors.
 // requiresFullMel must be false when there is no options MEL (Maya 2026 import dialog breaks otherwise).
-// Pixmap "none" — *.rgb icons are not shipped with the plugin; missing files can confuse the dialog UI.
+// Short translator ids (kType*): required for stable MEL -type and Maya's registry; filter() supplies UI text.
+// Pixmap: pass nullptr to Maya when unused (empty std::string is not the same as no pixmap).
 static Translator* TRANSLATORS[] =
         {
-            new Translator("mgn", "none", &MgnTranslator::creator, nullptr, "showPositions=1", false),
-            new Translator("msh", "none", &MshTranslator::creator, nullptr, "showPositions=1", false),
-            new Translator("skt", "none", &SktTranslator::creator, nullptr, "showPositions=1", false),
-            new Translator("ans", "none", &AnsTranslator::creator, nullptr, "showPositions=1", false),
-            new Translator("flr", "none", &FlrTranslator::creator, nullptr, "showPositions=1", false),
+            new Translator(swg_translator::kTypeMgn, "", &MgnTranslator::creator, nullptr, "showPositions=1", false),
+            new Translator(swg_translator::kTypeMsh, "", &MshTranslator::creator, nullptr, "showPositions=1", false),
+            new Translator(swg_translator::kTypeSkt, "", &SktTranslator::creator, nullptr, "showPositions=1", false),
+            new Translator(swg_translator::kTypeAns, "", &AnsTranslator::creator, nullptr, "showPositions=1", false),
+            new Translator(swg_translator::kTypeFlr, "", &FlrTranslator::creator, nullptr, "showPositions=1", false),
             // preserveReferences=0 avoids Maya 2026 "Invalid file type specified: -pr" error
-            new Translator("sat", "none", &SatTranslator::creator, nullptr, "preserveReferences=0", false),
-            new Translator("pob", "none", &PobTranslator::creator, nullptr, "preserveReferences=0", false),
-            new Translator("dds", "none", &DdsTranslator::creator, nullptr, "", false)
+            new Translator(swg_translator::kTypeSat, "", &SatTranslator::creator, nullptr, "preserveReferences=0", false),
+            new Translator(swg_translator::kTypePob, "", &PobTranslator::creator, nullptr, "preserveReferences=0", false),
+            new Translator(swg_translator::kTypeDds, "", &DdsTranslator::creator, nullptr, "", false)
         };
 
 MStatus initializePlugin(MObject obj)
@@ -95,9 +98,10 @@ MStatus initializePlugin(MObject obj)
     MStatus status;
     for(const auto &item: TRANSLATORS)
     {
+        const char* const pixmap = item->pixmapName.empty() ? nullptr : item->pixmapName.c_str();
         status = plugin.registerFileTranslator(
                     item->translatorName.c_str(),
-                    item->pixmapName.c_str(),
+                    pixmap,
                     item->creatorFunction,
                     item->optionsScriptName,
                     item->defaultOptionsString,
@@ -149,6 +153,12 @@ MStatus initializePlugin(MObject obj)
     status = plugin.registerCommand("importStaticMesh", ImportStaticMesh::creator);
     if (!status) { std::cerr << "ERROR: Unable to register importStaticMesh" << std::endl; return status; }
 
+    status = plugin.registerCommand("importStructure", ImportStructure::creator);
+    if (!status) { std::cerr << "ERROR: Unable to register importStructure" << std::endl; return status; }
+
+    status = plugin.registerCommand("exportShader", ExportShader::creator);
+    if (!status) { std::cerr << "ERROR: Unable to register exportShader" << std::endl; return status; }
+
     status = plugin.registerCommand("exportStaticMesh", ExportStaticMesh::creator);
     if (!status) { std::cerr << "ERROR: Unable to register exportStaticMesh" << std::endl; return status; }
 
@@ -176,6 +186,8 @@ MStatus uninitializePlugin(MObject obj)
 
     plugin.deregisterCommand("swgAssetDissector");
     plugin.deregisterCommand("exportStaticMesh");
+    plugin.deregisterCommand("exportShader");
+    plugin.deregisterCommand("importStructure");
     plugin.deregisterCommand("importStaticMesh");
     plugin.deregisterCommand("exportShader");
     plugin.deregisterCommand("importShader");

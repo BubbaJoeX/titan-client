@@ -17,6 +17,7 @@
 #include "clientUserInterface/CuiActionManager.h"
 #include "clientUserInterface/CuiActions.h"
 #include "clientUserInterface/CuiChatBubbleManager.h"
+#include "clientUserInterface/CuiMediator.h"
 #include "clientUserInterface/CuiMediatorFactory.h"
 #include "clientUserInterface/CuiPreferences.h"
 #include "clientUserInterface/CuiSpatialChatManager.h"
@@ -104,6 +105,7 @@ CachedNetworkId                                         CuiConversationManager::
 CuiConversationManager::CuiConversationManagerAction    CuiConversationManager::ms_action;
 uint32                                                  CuiConversationManager::ms_appearanceOverrideSharedTemplateCrc;
 CuiConversationManager::CameraCommandHandler           CuiConversationManager::ms_cameraCommandHandler = nullptr;
+bool                                                    CuiConversationManager::ms_cinematicConversationUiActive = false;
 
 const char * const CuiConversationManager::Messages::RESPONSES_CHANGED = "CuiConversationManager::RESPONSES_CHANGED";
 const char * const CuiConversationManager::Messages::TARGET_CHANGED    = "CuiConversationManager::TARGET_CHANGED";
@@ -162,6 +164,36 @@ void CuiConversationManager::handleNpcConversationCameraCommand(MessageQueueNpcC
 	{
 		ms_cameraCommandHandler(cmd);
 	}
+}
+
+//----------------------------------------------------------------------
+
+void CuiConversationManager::setCinematicConversationUiActive(bool const active)
+{
+	ms_cinematicConversationUiActive = active;
+}
+
+//----------------------------------------------------------------------
+
+bool CuiConversationManager::isCinematicConversationUiActive()
+{
+	return ms_cinematicConversationUiActive;
+}
+
+//----------------------------------------------------------------------
+
+void CuiConversationManager::closeCinematicConversationFromInput()
+{
+	CuiMediator * const cinematic = CuiMediatorFactory::getInWorkspace("WS_CinematicConversation", false);
+	bool const uiWasUp = ms_cinematicConversationUiActive || (cinematic && cinematic->isActive());
+	if (!uiWasUp)
+		return;
+
+	if (ms_targetId.isValid())
+		IGNORE_RETURN(stop());
+
+	// stop() may not run (no player, etc.) or close may be deferred — force workspace teardown so performDeactivate restores HUD.
+	CuiMediatorFactory::deactivateInWorkspace("WS_CinematicConversation");
 }
 
 //----------------------------------------------------------------------
@@ -337,7 +369,7 @@ void CuiConversationManager::setTarget (NetworkId const & id, uint32 const appea
 	s_emitter->emitMessage(MessageDispatch::MessageBase(Messages::TARGET_CHANGED));
 	Transceivers::targetChanged.emitMessage (true);
 	
-	if (Game::isHudSceneTypeSpace()) 
+	if (Game::useSpaceConversationHud()) 
 	{
 		CuiActionManager::performAction(CuiActions::spaceConversation, Unicode::emptyString);
 	}

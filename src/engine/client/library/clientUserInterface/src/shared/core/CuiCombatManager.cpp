@@ -19,6 +19,7 @@
 #include "clientGame/ConfigClientGame.h"
 #include "clientGame/ContainerInterface.h"
 #include "clientGame/CreatureObject.h"
+#include "clientGame/ClientShipTargeting.h"
 #include "clientGame/Game.h"
 #include "clientGame/GroupObject.h"
 #include "clientGame/ProsePackageManagerClient.h"
@@ -1461,6 +1462,10 @@ bool CuiCombatManagerNamespace::isTargetCycleOk(TangibleObject const & obj)
 	
 	CreatureObject const * const creature = obj.asCreatureObject ();
 	if (creature && creature->isDead ())
+		return false;
+
+	ClientObject const * const objAsClient = obj.asClientObject ();
+	if (objAsClient && ClientShipTargeting::shouldRejectTargetWhilePilotingShip (objAsClient))
 		return false;
 	
 	if (!Game::isSpace() && !isAtmosphericFlight)

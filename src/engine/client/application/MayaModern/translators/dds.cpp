@@ -1,4 +1,5 @@
 #include "dds.h"
+#include "SwgTranslatorNames.h"
 #include "DdsToTgaConverter.h"
 #include "SetDirectoryCommand.h"
 #include "MayaUtility.h"
@@ -28,7 +29,7 @@ MString DdsTranslator::defaultExtension() const
 
 MString DdsTranslator::filter() const
 {
-    return "DDS Texture - SWG (*.dds)";
+    return MString(swg_translator::kFilterDds);
 }
 
 MPxFileTranslator::MFileKind DdsTranslator::identifyFile(const MFileObject& fileName, const char* /*buffer*/, short /*size*/) const

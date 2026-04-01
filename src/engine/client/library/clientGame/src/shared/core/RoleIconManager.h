@@ -26,6 +26,8 @@ public:
 	static void cycleToNextQualifyingIcon(bool const includeWorkingSkill);
 	static std::string const & getRoleIconName(int choice);
 	static int getPetRoleIconChoice();
+	/// Maps companion stance (0 tank, 1 healer, 2 dps) to role.iff indices; other values fall back to getPetRoleIconChoice().
+	static int getStoryCompanionStanceRoleIconChoice(int stance);
 	static bool doesQualifyForIcon(CreatureObject const * const creature, int const curChoice, bool const includeWorkingSkill);
 
 protected:	

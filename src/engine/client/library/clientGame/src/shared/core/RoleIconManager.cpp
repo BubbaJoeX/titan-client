@@ -231,4 +231,22 @@ int RoleIconManager::getPetRoleIconChoice()
 	return petIndex;
 }
 
+// ----------------------------------------------------------------------
+
+int RoleIconManager::getStoryCompanionStanceRoleIconChoice(int const stance)
+{
+	// role.iff: commando 30 (tank), medic 10 (healer), bounty_hunter 25 (dps)
+	switch (stance)
+	{
+	case 0:
+		return 30;
+	case 1:
+		return 10;
+	case 2:
+		return 25;
+	default:
+		return getPetRoleIconChoice();
+	}
+}
+
 // ======================================================================

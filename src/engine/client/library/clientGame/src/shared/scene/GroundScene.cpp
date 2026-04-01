@@ -9,6 +9,8 @@
 #include "clientGame/FirstClientGame.h"
 #include "clientGame/GroundScene.h"
 
+#include <cctype>
+
 #include "clientAnimation/PlaybackScriptManager.h"
 #include "clientAudio/Audio.h"
 #include "clientGame/AlarmManager.h"
@@ -79,6 +81,8 @@
 #include "clientGraphics/DebugPrimitive.h"
 #include "clientGraphics/Graphics.h"
 #include "clientGraphics/RenderWorld.h"
+
+#include <dinput.h>
 #include "clientGraphics/ShaderPrimitiveSetTemplate.h"
 #include "clientGraphics/ShaderPrimitiveSorter.h"
 #include "clientObject/CameraController.h"
@@ -274,6 +278,35 @@ namespace GroundSceneNamespace
 	{
 		const NewbieTutorialResponse response (cms_newbieTutorialRequestOverlayMap);
 		GameNetwork::send (response, true);
+	}
+
+	/** Paths allowed for SaveTextOnClient (server → client file write): drive letters, slashes, spaces; never "..". */
+	bool isValidSaveTextOnClientPath(std::string const &filename)
+	{
+		if (filename.empty())
+			return false;
+		if (filename.find("..") != std::string::npos)
+			return false;
+		for (size_t i = 0; i < filename.size(); ++i)
+		{
+			unsigned char const c = static_cast<unsigned char>(filename[i]);
+			if (std::isalnum(c) != 0)
+				continue;
+			switch (c)
+			{
+			case '_':
+			case '/':
+			case '\\':
+			case '.':
+			case '-':
+			case ':':
+			case ' ':
+				continue;
+			default:
+				return false;
+			}
+		}
+		return true;
 	}
 
 #if PRODUCTION == 0
@@ -1454,7 +1487,7 @@ void GroundScene::scanInputMapForSceneMessages (InputMap * inputMap)
 					CreatureObject const * const player = safe_cast<CreatureObject const *>(getPlayer());
 					if (player && player->getTurretGunnerMountTurretId().isValid())
 					{
-						queueTurretGunnerExit(player->getTurretGunnerMountTurretId());
+						queueTurretGunnerExit();
 						resetInputMap = true;
 						break;
 					}
@@ -1648,6 +1681,13 @@ void GroundScene::handleInputMapEvent (IoEvent* event)
 	//-- handle the cursor
 	m_mouseCursor->processEvent (event);
 
+	if (m_currentView == CI_installationTurret && event->type == IOET_KeyDown && event->arg2 == DIK_T)
+	{
+		CreatureObject const *const player = safe_cast<CreatureObject const *>(getPlayer());
+		if (player && player->getTurretGunnerMountTurretId().isValid())
+			queueTurretGunnerExit();
+	}
+
 	//-- handle mouse wheel
 	bool handleMouseWheel = event->type == IOET_MouseMove && event->arg2 == 2;
 
@@ -1745,60 +1785,45 @@ void GroundScene::handleInputMapUpdate (void)
 
 	const Vector2d mousePos (static_cast<float> (m_mouseCursor->getX ()), static_cast<float> (m_mouseCursor->getY ()));
 
-	float yawMod = 0.f;
-	float pitchMod = 0.f;
-
-	// Installation turret: use mouse *delta* each frame. Absolute screen coords would re-apply the same
-	// yaw/pitch every frame while the cursor sits still, causing endless spin.
-	static bool s_installationTurretMouseInitialized = false;
-	static Vector2d s_installationTurretLastMousePos(0.f, 0.f);
-	if (m_currentView != CI_installationTurret)
-		s_installationTurretMouseInitialized = false;
+	// GroundScene's MouseCursor is S_relative: getX/getY are per-frame mickey deltas (cleared at IOET_Prepare),
+	// not absolute screen coordinates — so this is already a delta-based rate, not a re-applied position.
+	float yawMod   = (PI * mousePos.x * ms_mouseSensitivity)        / rect.getWidth ();
+	float pitchMod = (PI * mousePos.y * ms_mouseSensitivity * 0.4f) / rect.getHeight ();
 
 	if (m_currentView == CI_installationTurret)
 	{
-		if (!s_installationTurretMouseInitialized)
-		{
-			s_installationTurretLastMousePos = mousePos;
-			s_installationTurretMouseInitialized = true;
-			yawMod = 0.f;
-			pitchMod = 0.f;
-		}
-		else
-		{
-			float const dx = mousePos.x - s_installationTurretLastMousePos.x;
-			float const dy = mousePos.y - s_installationTurretLastMousePos.y;
-			s_installationTurretLastMousePos = mousePos;
-			yawMod   = (PI * dx * ms_mouseSensitivity)        / rect.getWidth ();
-			pitchMod = (PI * dy * ms_mouseSensitivity * 0.4f) / rect.getHeight ();
-		}
+		// Scoped gunner view: no camera inertia (avoids drift / reticle creep with zero input).
+		if (fabs (mousePos.x) < 1.0f)
+			yawMod = 0.0f;
+		if (fabs (mousePos.y) < 1.0f)
+			pitchMod = 0.0f;
 	}
 	else
 	{
-		yawMod   = (PI * mousePos.x * ms_mouseSensitivity)        / rect.getWidth ();
-		pitchMod = (PI * mousePos.y * ms_mouseSensitivity * 0.4f) / rect.getHeight ();
+		const float inertia = std::max (0.0f, CuiManager::getCameraInertia ());
+		const float inertia_multiplier = RECIP (inertia + 1.0f);
+
+		//-- products is used to determine if the current and last mod are of the same sign.
+		//-- if they are, the product is positive, otherwise negative
+
+		const Vector2d products (yawMod * m_lastYawPitchMod->x, pitchMod * m_lastYawPitchMod->y);
+
+		if (products.x >= 0 && fabs (yawMod) > fabs (m_lastYawPitchMod->x))
+			yawMod   = (yawMod   + (m_lastYawPitchMod->x * inertia)) * inertia_multiplier;
+
+		if (products.y >= 0 && fabs (pitchMod) > fabs (m_lastYawPitchMod->y))
+			pitchMod = (pitchMod + (m_lastYawPitchMod->y * inertia)) * inertia_multiplier;
 	}
-
-	const float inertia = std::max (0.0f, CuiManager::getCameraInertia ());
-	const float inertia_multiplier = RECIP (inertia + 1.0f);
-
-	//-- products is used to determine if the current and last mod are of the same sign.
-	//-- if they are, the product is positive, otherwise negative
-
-	const Vector2d products (yawMod * m_lastYawPitchMod->x, pitchMod * m_lastYawPitchMod->y);
-
-	if (products.x >= 0 && fabs (yawMod) > fabs (m_lastYawPitchMod->x))
-		yawMod   = (yawMod   + (m_lastYawPitchMod->x * inertia)) * inertia_multiplier;
-
-	if (products.y >= 0 && fabs (pitchMod) > fabs (m_lastYawPitchMod->y))
-		pitchMod = (pitchMod + (m_lastYawPitchMod->y * inertia)) * inertia_multiplier;
 
 	if (CuiManager::getPointerMotionCapturedByUiX ())
 		yawMod = 0.0f;
 	if (CuiManager::getPointerMotionCapturedByUiY ())
 		pitchMod = 0.0f;
 
-	m_lastYawPitchMod->set (yawMod, pitchMod);
+	if (m_currentView == CI_installationTurret)
+		m_lastYawPitchMod->set (0.0f, 0.0f);
+	else
+		m_lastYawPitchMod->set (yawMod, pitchMod);
 
 	if (yawMod == 0.0f && pitchMod == 0.0f)
 		return;
@@ -3553,34 +3578,15 @@ void GroundScene::receiveMessage(const MessageDispatch::Emitter &, const Message
 		GenericValueTypeMessage<std::pair<std::string, std::string> > genericMessage(readIterator);
 		std::string const &filename = genericMessage.getValue().first;
 		std::string const &filetext = genericMessage.getValue().second;
-		// assure filename is [a-zA-Z][a-zA-Z0-9-_./]* and does not contain '..'
-		if (!filename.empty() && isalpha(filename[0]))
+		if (isValidSaveTextOnClientPath(filename))
 		{
-			bool ok = true;
-			for (unsigned int i = 1; i < filename.length(); ++i)
+			StdioFile outFile(filename.c_str(), "wb");
+			if (outFile.isOpen())
 			{
-				if (   (   !isalnum(filename[i])
-				        && filename[i] != '_'
-				        && filename[i] != '/'
-				        && filename[i] != '.'
-				        && filename[i] != '-')
-				    || (filename[i] == '.' && filename[i+1] == '.'))
-				{
-					ok = false;
-					break;
-				}
-			}
-			if (ok)
-			{
-				StdioFile outFile(filename.c_str(), "wb");
-				if (outFile.isOpen())
-				{
-					outFile.write(filetext.size(), filetext.data());
-					// tell the client about it
-					std::string messageText("Saved file on client: ");
-					messageText += filename;
-					CuiSystemMessageManager::sendFakeSystemMessage(Unicode::narrowToWide(messageText));
-				}
+				outFile.write(filetext.size(), filetext.data());
+				std::string messageText("Saved file on client: ");
+				messageText += filename;
+				CuiSystemMessageManager::sendFakeSystemMessage(Unicode::narrowToWide(messageText));
 			}
 		}
 	}
@@ -3807,11 +3813,9 @@ void GroundScene::queueTurretGunnerFire(NetworkId const &turretId)
 	Unicode::String fireParams;
 	if (m_currentView == CI_installationTurret && m_installationTurretCamera && m_installationTurretCamera->isActive())
 	{
-		Transform const &camTurret = m_installationTurretCamera->getTransform_o2p();
-		Vector forward(camTurret.getLocalFrameK_p());
-		if (forward.normalize())
+		Vector aimEnd;
+		if (m_installationTurretCamera->computeReticleAimWorldEnd(256.f, aimEnd))
 		{
-			Vector const aimEnd(camTurret.getPosition_p() + forward * 256.f);
 			char buf[192];
 			snprintf(buf, sizeof(buf), "aim %.3f %.3f %.3f", aimEnd.x, aimEnd.y, aimEnd.z);
 			fireParams = Unicode::narrowToWide(buf);
@@ -3839,12 +3843,10 @@ void GroundScene::queueTurretGunnerFire(NetworkId const &turretId)
 
 //-----------------------------------------------------------------
 
-void GroundScene::queueTurretGunnerExit(NetworkId const &turretId)
+void GroundScene::queueTurretGunnerExit()
 {
-	if (!turretId.isValid())
-		return;
-
-	IGNORE_RETURN(ClientCommandQueue::enqueueCommand("turretGunnerExit", turretId, Unicode::emptyString));
+	// Target must be cms_invalid: CTT_None rejects a set target on the client; server resolves turret from player objvar.
+	IGNORE_RETURN(ClientCommandQueue::enqueueCommand("turretGunnerExit", NetworkId::cms_invalid, Unicode::emptyString));
 }
 
 //-----------------------------------------------------------------

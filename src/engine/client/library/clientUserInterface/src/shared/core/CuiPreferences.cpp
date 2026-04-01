@@ -87,6 +87,10 @@ namespace
 	bool        ms_drawObjectNamesSigns             = false;
 	bool        ms_drawObjectNamesMyName            = false;
 	bool        ms_drawObjectNamesBeasts            = false;
+	int         ms_nameplateColorNeutralPreset      = 0;
+	int         ms_nameplateColorFriendlyPreset     = 0;
+	int         ms_nameplateColorHostilePreset      = 0;
+	int         ms_nameplateColorDangerPreset       = 0;
 
 	bool        ms_showSystemMessages               = true;
 
@@ -530,6 +534,10 @@ void CuiPreferences::install ()
 	ms_drawObjectNamesSigns             = ConfigClientUserInterface::getDrawObjectNamesSigns ();
 	ms_drawObjectNamesMyName            = ConfigClientUserInterface::getDrawObjectNamesMyName ();
 	ms_drawObjectNamesBeasts            = ConfigClientUserInterface::getDrawObjectNamesBeasts ();
+	ms_nameplateColorNeutralPreset      = 0;
+	ms_nameplateColorFriendlyPreset     = 0;
+	ms_nameplateColorHostilePreset      = 0;
+	ms_nameplateColorDangerPreset       = 0;
 	ms_showSystemMessages               = true;
 	ms_chatAutoEmote                    = true;
 	ms_confirmCrafting                  = true;
@@ -674,6 +682,10 @@ void CuiPreferences::install ()
 	REGISTER_OPTION(drawObjectNamesSigns);
 	REGISTER_OPTION(drawObjectNamesMyName);
 	REGISTER_OPTION(drawObjectNamesBeasts);
+	REGISTER_OPTION(nameplateColorNeutralPreset);
+	REGISTER_OPTION(nameplateColorFriendlyPreset);
+	REGISTER_OPTION(nameplateColorHostilePreset);
+	REGISTER_OPTION(nameplateColorDangerPreset);
 	REGISTER_OPTION(showSystemMessages);
 	REGISTER_OPTION(chatAutoEmote);
 	REGISTER_OPTION(confirmCrafting);
@@ -1075,6 +1087,62 @@ void CuiPreferences::setDrawObjectNamesBeasts (bool drawObjectNames)
 bool CuiPreferences::getDrawObjectNamesBeasts ()
 {
 	return ms_drawObjectNamesBeasts;
+}
+
+//----------------------------------------------------------------------
+
+void CuiPreferences::setNameplateColorNeutralPreset(int preset)
+{
+	ms_nameplateColorNeutralPreset = preset;
+}
+
+//----------------------------------------------------------------------
+
+int CuiPreferences::getNameplateColorNeutralPreset()
+{
+	return ms_nameplateColorNeutralPreset;
+}
+
+//----------------------------------------------------------------------
+
+void CuiPreferences::setNameplateColorFriendlyPreset(int preset)
+{
+	ms_nameplateColorFriendlyPreset = preset;
+}
+
+//----------------------------------------------------------------------
+
+int CuiPreferences::getNameplateColorFriendlyPreset()
+{
+	return ms_nameplateColorFriendlyPreset;
+}
+
+//----------------------------------------------------------------------
+
+void CuiPreferences::setNameplateColorHostilePreset(int preset)
+{
+	ms_nameplateColorHostilePreset = preset;
+}
+
+//----------------------------------------------------------------------
+
+int CuiPreferences::getNameplateColorHostilePreset()
+{
+	return ms_nameplateColorHostilePreset;
+}
+
+//----------------------------------------------------------------------
+
+void CuiPreferences::setNameplateColorDangerPreset(int preset)
+{
+	ms_nameplateColorDangerPreset = preset;
+}
+
+//----------------------------------------------------------------------
+
+int CuiPreferences::getNameplateColorDangerPreset()
+{
+	return ms_nameplateColorDangerPreset;
 }
 
 //----------------------------------------------------------------------

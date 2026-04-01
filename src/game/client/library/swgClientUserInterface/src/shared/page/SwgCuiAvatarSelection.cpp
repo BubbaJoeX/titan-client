@@ -562,10 +562,8 @@ void SwgCuiAvatarSelection::addAvatar (const CuiLoginManagerAvatarInfo & avatarI
 			}
 		}
 
-		char buffer[64];
-
 		//avatarDisplayName = color + avatarDisplayName;
-		clusterDisplayName = color + clusterDisplayName + L" [" + Unicode::narrowToWide(clusterInfo->branch) + L"." + Unicode::narrowToWide(_itoa(clusterInfo->version, buffer, 10)) +  L"]";
+		clusterDisplayName = color + clusterDisplayName + L" [Test]";
 		planetDisplayName = color + planetDisplayName;
 		statusDisplayStr = color + statusDisplayStr;
 	}

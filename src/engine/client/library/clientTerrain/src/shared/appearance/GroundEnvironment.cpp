@@ -1717,14 +1717,16 @@ void GroundEnvironment::alter(float elapsedTime)
 
 namespace
 {
-	// Height where atmospheric-flight fog begins fading out.
+	// Altitude (m above terrain) where the atmospheric veil blend starts.
 	float const s_atmoFogFadeStartHeight = 50.0f;
-	// Height where atmospheric-flight fog is fully faded out.
+	// Altitude where the blend completes (fog density floors at the fraction below).
 	float const s_atmoFogFadeEndHeight   = 120.0f;
 	// Extra haze strength while in atmospheric-flight ships.
-	float const s_atmoFogDensityBoost    = 2.75f;
+	float const s_atmoFogDensityBoost    = 3.05f;
+	// At high altitude, keep at least this fraction of fog density so terrain does not
+	// "pop" clear when viewed from above (previously faded to 0 above s_atmoFogFadeEndHeight).
+	float const s_atmoFogHighAltitudeMinFraction = 0.7f;
 
-	// World fog is now attenuated by ship altitude instead of being hard-disabled.
 	bool suppressTerrainFogForAtmosphericShip ()
 	{
 		return false;
@@ -1755,8 +1757,14 @@ void GroundEnvironment::draw () const
 				if (terrainObject->getHeight (Vector (cameraPos_w.x, 0.0f, cameraPos_w.z), terrainHeight))
 					altitudeAboveTerrain = cameraPos_w.y - terrainHeight;
 			}
-			float fadeT = clamp (0.0f, (altitudeAboveTerrain - s_atmoFogFadeStartHeight) / (s_atmoFogFadeEndHeight - s_atmoFogFadeStartHeight), 1.0f);
-			fogDensity *= (1.0f - fadeT);
+			float const heightRange = s_atmoFogFadeEndHeight - s_atmoFogFadeStartHeight;
+			float const fadeT = (heightRange > 0.001f)
+				? clamp (0.0f, (altitudeAboveTerrain - s_atmoFogFadeStartHeight) / heightRange, 1.0f)
+				: 0.0f;
+			// Keep a strong veil over terrain at all flight altitudes; do not multiply
+			// fog toward zero when high (that exposed terrain from the air).
+			float const altitudeScale = ::linearInterpolate (1.0f, s_atmoFogHighAltitudeMinFraction, fadeT);
+			fogDensity *= altitudeScale;
 		}
 
 		worldCellProperty->setFogEnabled (m_fogEnabled && fogDensity > 0.00001f);

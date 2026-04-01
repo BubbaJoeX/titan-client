@@ -20,6 +20,7 @@
 #include "../../../../../../engine/shared/library/sharedFoundation/include/public/sharedFoundation/NetworkIdArchive.h"
 #include "../../../../../../engine/shared/library/sharedFoundation/include/public/sharedFoundation/Watcher.h"
 #include "sharedGame/SharedTangibleObjectTemplate.h"
+#include "sharedMath/VectorArgb.h"
 #include "sharedMathArchive/VectorArchive.h"
 #include "sharedObject/CachedNetworkId.h"
 #include "sharedObject/CachedNetworkIdArchive.h"
@@ -113,6 +114,8 @@ public:
 		struct RtCameraFov;
 		struct RtCameraResolution;
 		struct RtCameraActive;
+		struct DynamicLightState;
+		struct DynamicHardpointsState;
 		struct DamageTaken
 		{
 			typedef std::pair<TangibleObject *, int> Payload;
@@ -259,6 +262,8 @@ private:
 		typedef DefaultCallback<Messages::RtCameraFov, std::string>         RtCameraFov;
 		typedef DefaultCallback<Messages::RtCameraResolution, std::string>  RtCameraResolution;
 		typedef DefaultCallback<Messages::RtCameraActive, std::string>      RtCameraActive;
+		typedef DefaultCallback<Messages::DynamicLightState, std::string>    DynamicLightState;
+		typedef DefaultCallback<Messages::DynamicHardpointsState, std::string> DynamicHardpointsState;
 		typedef DefaultCallback<Messages::ConditionModified, int>           ConditionModified;
 		typedef DefaultCallback<Messages::MaxHitPointsModified, int>        MaxHitPointsModified;
 	};
@@ -280,6 +285,8 @@ private:
 	friend Callbacks::RtCameraFov;
 	friend Callbacks::RtCameraResolution;
 	friend Callbacks::RtCameraActive;
+	friend Callbacks::DynamicLightState;
+	friend Callbacks::DynamicHardpointsState;
 	friend Callbacks::ConditionModified;
 	friend Callbacks::MaxHitPointsModified;
 
@@ -316,6 +323,11 @@ private:
 	void                          rtCameraFovModified(const std::string & value);
 	void                          rtCameraResolutionModified(const std::string & value);
 	void                          rtCameraActiveModified(const std::string & value);
+	void                          dynamicLightStateModified(std::string const &value);
+	void                          applyDynamicLightState(std::string const &state);
+	void                          dynamicHardpointsStateModified(std::string const &value);
+	void                          applyDynamicHardpointsState(std::string const &packed);
+	void                          clearDynamicHardpointObjects();
 	void                          updateRtCameraFeed();
 	void                          clearRtCameraFeed();
 	void                          updateRtScreenTexture();
@@ -358,6 +370,18 @@ private:
 	Archive::AutoDeltaVariableCallback<std::string, Callbacks::RtCameraFov, TangibleObject> m_rtCameraFov;
 	Archive::AutoDeltaVariableCallback<std::string, Callbacks::RtCameraResolution, TangibleObject> m_rtCameraResolution;
 	Archive::AutoDeltaVariableCallback<std::string, Callbacks::RtCameraActive, TangibleObject> m_rtCameraActive;
+	Archive::AutoDeltaVariableCallback<std::string, Callbacks::DynamicLightState, TangibleObject> m_dynamicLightState;
+	Archive::AutoDeltaVariableCallback<std::string, Callbacks::DynamicHardpointsState, TangibleObject> m_dynamicHardpointsState;
+
+	struct DynamicLightDefaults
+	{
+		VectorArgb color;
+		float      range;
+		float      diffuseColorScale;
+	};
+	bool                                   m_dynamicLightDefaultsCaptured;
+	std::vector<DynamicLightDefaults>      m_dynamicLightDefaults;
+
 	Archive::AutoDeltaVariableCallback<int,         Callbacks::DamageTaken, TangibleObject>    m_damageTaken;
 	Archive::AutoDeltaVariableCallback<int, Callbacks::MaxHitPointsModified, TangibleObject>   m_maxHitPoints;
 

@@ -29,6 +29,7 @@
 #include "sharedGame/SharedCellObjectTemplate.h"
 #include "sharedGame/SharedObjectTemplate.h"
 #include "sharedMath/Quaternion.h"
+#include "sharedMath/Vector.h"
 #include "sharedMath/SphereTree.h"
 #include "sharedObject/CellProperty.h"
 #include "sharedObject/ContainedByProperty.h"
@@ -213,6 +214,7 @@ namespace WorldSnapshotNamespace
 
 		object->setClientCached();
 		object->setTransform_o2p (node->getTransform_p ());
+		object->setScale (node->getObjectScale ());
 		object->setNetworkId (NetworkId (static_cast<NetworkId::NetworkIdType> (node->getNetworkIdInt ())));
 		object->createDefaultController();
 
@@ -506,6 +508,10 @@ void WorldSnapshot::load (char const *sceneName)
 				int const qzColumn = areaBuildoutTable.findColumnNumber("qz");
 				int const radiusColumn = areaBuildoutTable.findColumnNumber("radius");
 				int const portalLayoutCrcColumn = areaBuildoutTable.findColumnNumber("portal_layout_crc");
+				int const sxColumn = areaBuildoutTable.findColumnNumber("sx");
+				int const syColumn = areaBuildoutTable.findColumnNumber("sy");
+				int const szColumn = areaBuildoutTable.findColumnNumber("sz");
+				bool const haveScaleColumns = (sxColumn >= 0 && syColumn >= 0 && szColumn >= 0);
 				std::string const requiredEvent = buildoutArea.getRequiredEventName();
 
 				FATAL(sharedTemplateCrcColumn < 0, ("Unable to find column [shared_template_crc] in [%s]", areaFilename));
@@ -648,6 +654,15 @@ void WorldSnapshot::load (char const *sceneName)
 							areaBuildoutTable.getFloatValue(pyColumn, buildoutRow),
 							areaBuildoutTable.getFloatValue(pzColumn, buildoutRow));
 					}
+
+					Vector objectScale(Vector::xyz111);
+					if (haveScaleColumns)
+					{
+						objectScale.set(
+							areaBuildoutTable.getFloatValue(sxColumn, buildoutRow),
+							areaBuildoutTable.getFloatValue(syColumn, buildoutRow),
+							areaBuildoutTable.getFloatValue(szColumn, buildoutRow));
+					}
 			
 					if ( !containerId || buildoutObjects.find( containerId ) != buildoutObjects.end() )
 					{
@@ -659,7 +674,8 @@ void WorldSnapshot::load (char const *sceneName)
 							xform,
 							radius,
 							portalLayoutCrc,
-							requiredEvent);
+							requiredEvent,
+							objectScale);
 					}
 
 					buildoutObjects.insert( objId );
@@ -1092,7 +1108,8 @@ Object* WorldSnapshot::addObject(
 	float            radius,
 	uint32           portalLayoutCrc,
 	int              cellCount,
-	std::string const& requiredEvent)
+	std::string const& requiredEvent,
+	Vector const &   objectScale)
 {
 	WorldSnapshotReaderWriter::Node const * const node = ms_reader.addObject(
 		networkIdInt,
@@ -1102,7 +1119,8 @@ Object* WorldSnapshot::addObject(
 		transform_p,
 		radius,
 		portalLayoutCrc, 
-		requiredEvent);
+		requiredEvent,
+		objectScale);
 
 	// TODO: We probably don't want to load an object if the event required for that object isn't currently active.
 
@@ -1115,7 +1133,9 @@ Object* WorldSnapshot::addObject(
 			i+1,
 			Transform::identity,
 			0,
-			0);
+			0,
+			std::string(),
+			Vector::xyz111);
 	}
 
 
@@ -1140,6 +1160,15 @@ void WorldSnapshot::moveObject(int64 networkIdInt, Transform const &transform_p)
 		if (node->getSpatialSubdivisionHandle())
 			ms_sphereTree.move(node->getSpatialSubdivisionHandle());
 	}
+}
+
+//-------------------------------------------------------------------
+
+void WorldSnapshot::setObjectScale(int64 networkIdInt, Vector const &objectScale)
+{
+	WorldSnapshotReaderWriter::Node * const node = ms_reader.find(networkIdInt);
+	if (node)
+		node->setObjectScale(objectScale);
 }
 
 //-------------------------------------------------------------------

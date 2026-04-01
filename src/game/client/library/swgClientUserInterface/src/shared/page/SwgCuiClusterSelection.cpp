@@ -413,8 +413,7 @@ void SwgCuiClusterSelection::refreshList ()
 				}
 			}
 
-			char buffer[64];
-			name = color + name + L" [" + Unicode::narrowToWide(clusterInfo.branch) + L"." + Unicode::narrowToWide(_itoa(clusterInfo.version, buffer, 10)) + L"]";
+			name = color + name + L" [Test]";
 		}
 	}
 

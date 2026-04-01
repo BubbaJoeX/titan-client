@@ -215,6 +215,8 @@ public:
 	static void                updateHudSceneType();
 	static void                emitSceneChange();
 	static bool                isHudSceneTypeSpace();
+	/** True when the space-ship conversation UI (comm / NPC) should be used: space HUD or seated in a ship station (e.g. atmospheric flight with ground HUD). */
+	static bool                useSpaceConversationHud();
 
 	static std::string         getSceneIdFromTerrainFilename(const char *terrainFilename);
 

@@ -344,6 +344,7 @@ public:
 	NetworkId const & getPetId() const;
 	std::vector<std::string> const & getPetCommands() const;
 	std::vector<std::string> const & getPetToggledCommands() const;
+	int8 getCompanionPetStanceUi() const;
 
 	bool getCollectionSlotValue(std::string const & slotName, unsigned long & value) const;
 	bool getCollectionSlotValue(CollectionsDataTable::CollectionInfoSlot const & slotInfo, unsigned long & value) const;
@@ -610,6 +611,7 @@ private:
 	Archive::AutoDeltaVariableCallback<NetworkId, Callbacks::PetChanged, PlayerObject> m_petId;
 	Archive::AutoDeltaVector<std::string, PlayerObject> m_petCommandList;
 	Archive::AutoDeltaVector<std::string, PlayerObject> m_petToggledCommands;
+	Archive::AutoDeltaVariable<int8> m_companionPetStanceUi;
 
 	// both m_collections and m_collections2 form a "contiguous" collections bit array
 	// we only break them up into multiple members because of DB storage restrictions
@@ -871,6 +873,13 @@ inline std::vector<std::string> const & PlayerObject::getPetCommands() const
 inline std::vector<std::string> const & PlayerObject::getPetToggledCommands() const
 {
 	return m_petToggledCommands.get();
+}
+
+// ----------------------------------------------------------------------
+
+inline int8 PlayerObject::getCompanionPetStanceUi() const
+{
+	return m_companionPetStanceUi.get();
 }
 
 // ----------------------------------------------------------------------

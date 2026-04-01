@@ -160,6 +160,9 @@
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportStaticMesh.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportStructure.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgAssetDissector.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -294,6 +297,9 @@
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\translators\dds.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\translators\SwgTranslatorNames.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\utility\MayaUtility.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -358,6 +364,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportStaticMesh.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportStructure.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgAssetDissector.h">

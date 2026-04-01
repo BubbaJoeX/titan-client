@@ -11,8 +11,9 @@
 // ======================================================================
 
 #include "sharedCollision/CollisionMesh.h"
-#include "sharedFoundation/Tag.h"
-#include "sharedFoundation/DataResource.h"
+#include "../../../../../../engine/shared/library/sharedFoundation/include/public/sharedFoundation/Tag.h"
+#include "../../../../../../engine/shared/library/sharedFoundation/include/public/sharedFoundation/DataResource.h"
+#include "sharedFoundation/StlForwardDeclaration.h"
 #include "sharedCollision/CollisionEnums.h"
 
 class FloorTri;
@@ -32,7 +33,7 @@ class Appearance;
 template<class T>
 class DataResourceList;
 typedef DataResourceList<FloorMesh>	 FloorMeshList;
-typedef std::vector<FloorTri>     FloorTriVec;
+typedef stdvector<FloorTri>::fwd     FloorTriVec;
 typedef std::pair<int,int>           IntPair;
 
 class FloorEdgeId
@@ -47,9 +48,9 @@ public:
 	int           edgeId;
 };
 
-typedef std::vector<FloorEdgeId> FloorEdgeIdVec;
+typedef stdvector<FloorEdgeId>::fwd FloorEdgeIdVec;
 
-typedef std::vector<FloorLocator> FloorLocatorVec;
+typedef stdvector<FloorLocator>::fwd FloorLocatorVec;
 
 // ======================================================================
 
@@ -230,7 +231,9 @@ public:
 	
 	bool    dropTest            ( FloorLocator const & testLoc, FloorLocator & outLoc ) const;
 	bool    dropTest            ( FloorLocator const & testLoc, float hopHeight, FloorLocator & outLoc ) const;
+	bool    dropTest            ( FloorLocator const & testLoc, float hopHeight, FloorLocator & outLoc, Vector const & dropDir_l ) const;
 	bool    dropTest            ( FloorLocator const & testLoc, int triId, FloorLocator & outLoc ) const;
+	bool    dropTest            ( FloorLocator const & testLoc, int triId, FloorLocator & outLoc, Vector const & dropDir_l ) const;
 	
 	void    drawDebugShapes     ( DebugShapeRenderer * renderer, bool drawExtent ) const;
 	
@@ -281,7 +284,7 @@ protected:
 
 	typedef std::pair<int,int> EdgeId;
 
-	typedef std::vector<EdgeId> EdgeIdVec;
+	typedef stdvector<EdgeId>::fwd EdgeIdVec;
 
 	void            findAdjacentBoundaryEdges   ( VectorVector const & polyVerts, EdgeIdVec & outIds ) const;
 

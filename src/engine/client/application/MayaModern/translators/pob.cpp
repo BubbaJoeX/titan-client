@@ -1,4 +1,5 @@
 #include "pob.h"
+#include "SwgTranslatorNames.h"
 #include "MayaUtility.h"
 
 #include <maya/MFileObject.h>
@@ -26,7 +27,7 @@ MString PobTranslator::defaultExtension() const
 
 MString PobTranslator::filter() const
 {
-    return "Portal Object - SWG (*.pob)";
+    return MString(swg_translator::kFilterPob);
 }
 
 MPxFileTranslator::MFileKind PobTranslator::identifyFile(const MFileObject& fileName, const char* /*buffer*/, short /*size*/) const

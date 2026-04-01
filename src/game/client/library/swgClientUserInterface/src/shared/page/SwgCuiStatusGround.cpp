@@ -1104,7 +1104,18 @@ void SwgCuiStatusGround::updateRoleIcon()
 				{
 					if(objAsCreature->getMasterId() != NetworkId::cms_invalid)
 					{
-						setRoleIconInternal(RoleIconManager::getPetRoleIconChoice());
+						PlayerObject const * const localPo = Game::getPlayerObject();
+						if (localPo
+						    && localPo->getPetId() == objAsCreature->getNetworkId())
+						{
+							int const stanceUi = static_cast<int>(localPo->getCompanionPetStanceUi());
+							if (stanceUi >= 0 && stanceUi <= 2)
+								setRoleIconInternal(RoleIconManager::getStoryCompanionStanceRoleIconChoice(stanceUi));
+							else
+								setRoleIconInternal(RoleIconManager::getPetRoleIconChoice());
+						}
+						else
+							setRoleIconInternal(RoleIconManager::getPetRoleIconChoice());
 					}
 				}
 			}
@@ -1220,6 +1231,8 @@ void SwgCuiStatusGround::update(float deltaTimeSecs)
 					updateTargetGuild(*creature);
 					updateEliteStatus(*creature);
 
+					if (m_statusType == ST_pet && !creature->getPlayerObject())
+						updateRoleIcon();
 
 					PlayerObject const * const playerObject = creature->getPlayerObject();
 					if(playerObject)

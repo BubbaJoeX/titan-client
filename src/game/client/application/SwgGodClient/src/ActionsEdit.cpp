@@ -394,29 +394,31 @@ void ActionsEdit::internalPaste(GodClientData::ClipboardList_t& clip) const
 	float clipDelta = center.y - clipBottomY;
 
 	const CellProperty* cellProperty = CellProperty::getWorldCellProperty ();
-	Vector        intersection_p;
-	//somone may have assigned a pre-known paste location for this action, grab it if it exists
-	if(gcd->pasteLocationKnown())
+	Vector intersection_p;
+	bool havePastePoint = false;
+
+	// Someone may have assigned a pre-known paste location for this action; grab it if it exists.
+	if (gcd->pasteLocationKnown())
 	{
 		intersection_p = gcd->absorbPasteLocation();
+		havePastePoint = true;
 
 		// Use player's cell when paste location is pre-assigned
 		GroundScene const * const gs = dynamic_cast<GroundScene const *>(Game::getScene());
 		if (gs && gs->getPlayer())
-		{
 			cellProperty = gs->getPlayer()->getParentCell();
-		}
 	}
 	else
 	{
-		//find the location that we intersect with, only paste if we actually hit something
-		Vector2d  cursorPosition = gcd->getCursorScreenPosition();
-		IGNORE_RETURN(gcd->findIntersection_p(static_cast<int>(cursorPosition.x), static_cast<int>(cursorPosition.y), cellProperty, intersection_p));
+		// Ray vs terrain / interior floor from cursor — require a real hit (do not use intersection when miss).
+		Vector2d const cursorPosition = gcd->getCursorScreenPosition();
+		havePastePoint = gcd->findIntersection_p(static_cast<int>(cursorPosition.x), static_cast<int>(cursorPosition.y), cellProperty, intersection_p);
 	}
-	Transform newObjTransform;
 
-	if(intersection_p.x == 0 && intersection_p.y == 0 && intersection_p.z == 0)
+	if (!havePastePoint)
 		return;
+
+	Transform newObjTransform;
 
 	for(GodClientData::ClipboardList_t::iterator it = clip.begin(); it != clip.end(); ++it)
 	{

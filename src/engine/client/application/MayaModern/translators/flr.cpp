@@ -1,4 +1,5 @@
 #include "flr.h"
+#include "SwgTranslatorNames.h"
 
 #include "CollisionEnums.h"
 #include "Iff.h"
@@ -434,7 +435,7 @@ MString FlrTranslator::defaultExtension () const
 
 MString FlrTranslator::filter () const
 {
-    return "Floor Mesh - SWG (*.flr)";
+    return MString(swg_translator::kFilterFlr);
 }
 
 /**

@@ -51,6 +51,7 @@ D:\titan\client\src\engine\client\application\MayaModern\commands\ImportSkeletal
 D:\titan\client\src\engine\client\application\MayaModern\commands\ImportShader.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\ImportShader.obj
 D:\titan\client\src\engine\client\application\MayaModern\commands\ExportShader.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\ExportShader.obj
 D:\titan\client\src\engine\client\application\MayaModern\commands\ImportStaticMesh.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\ImportStaticMesh.obj
+D:\titan\client\src\engine\client\application\MayaModern\commands\ImportStructure.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\ImportStructure.obj
 D:\titan\client\src\engine\client\application\MayaModern\commands\SwgAssetDissector.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\SwgAssetDissector.obj
 D:\titan\client\src\engine\client\application\MayaModern\commands\SkeletonTemplateWriter.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\SkeletonTemplateWriter.obj
 D:\titan\client\src\engine\client\application\MayaModern\commands\StaticMeshWriter.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\StaticMeshWriter.obj

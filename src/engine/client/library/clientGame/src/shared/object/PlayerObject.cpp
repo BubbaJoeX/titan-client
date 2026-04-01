@@ -515,6 +515,8 @@ m_killMeter                     (0),
 m_accountNumLotsOverLimitSpam   (0),
 m_petId                         (NetworkId::cms_invalid),
 m_petCommandList                (0),
+m_petToggledCommands            (0),
+m_companionPetStanceUi          (-1),
 m_collections                   (),
 m_collections2                  (),
 m_citizenshipCity               (),
@@ -562,6 +564,7 @@ m_pgcLastRatingTime             (0)
 	addFirstParentClientServerVariable_np(m_petId);
 	addFirstParentClientServerVariable_np(m_petCommandList);
 	addFirstParentClientServerVariable_np(m_petToggledCommands);
+	addFirstParentClientServerVariable_np(m_companionPetStanceUi);
 	addFirstParentClientServerVariable_np(m_guildRank);
 	addFirstParentClientServerVariable_np(m_citizenRank);
 	addFirstParentClientServerVariable_np(m_galacticReserveDeposit);

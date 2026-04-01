@@ -168,6 +168,24 @@ importPob -i "appearance/building/cantina";
 |------|-------------|
 | `-i` | Input POB path (required). |
 
+### importStructure
+
+One-shot import for a structure basename: resolves `basename.pob`, optional `basename.flr`, shell mesh at `basename.msh` or `appearance/mesh/<basename>.(msh|apt|lod)`, and optionally a shader.
+
+```mel
+importStructure -i "appearance/building/cantina";
+importStructure -i "appearance/building/cantina" -flr;
+importStructure -i "appearance/building/cantina" -shader "shader/building/cantina_ext";
+```
+
+| Flag | Description |
+|------|-------------|
+| `-i` | Tree path without extension (required). `appearance/` is prepended if missing. |
+| `-flr` | Import standalone `.flr` even when a POB was loaded (default: skip FLR if POB exists, to avoid duplicate floors). |
+| `-shader` / `-s` | Run `importShader` on this path after geometry. |
+
+Requires `setBaseDir` / data root the same as other import commands.
+
 ---
 
 ## Export Commands
@@ -212,6 +230,7 @@ exportStaticMesh -name "custom_name";
 
 **Output**:
 - `.msh` – MESH/0005 with geometry, hardpoints, shader groups
+- APPR/FLOR – If the mesh transform has a child `floor_component` with string attribute `floorPath` (from `.msh` import), that path is written into the floor reference chunk on export.
 - `.apt` – Redirect to mesh (in `appearanceWriteDir`)
 - `.sht` – Shaders with TGA→DDS conversion (in `shaderTemplateWriteDir`)
 
@@ -244,20 +263,30 @@ Use **exportShader** and **exportStaticMesh** for shader round-trip; for skeleta
 
 ## File Translators (File > Import / Export)
 
-Use Maya's **File > Import** or **File > Export** with these file types:
+Use Maya's **File > Import** or **File > Export** with these file types. The **Files of type** list shows the **filter** labels; MEL `file -import -type` / `file -export -type` must use the **short type id** (Maya matches the registered translator name, not the dialog text).
 
-| Extension | Translator | Description |
-|-----------|------------|-------------|
-| .msh | msh | Static mesh. **Export**: Select mesh first, then File > Export. |
-| .mgn | mgn | Skeletal mesh (SKMG). |
-| .skt | skt | Skeleton template. |
-| .ans | ans | Animation. |
-| .flr | flr | Floor mesh. |
-| .sat | sat | Skeletal appearance template. |
-| .pob | pob | Portal object. |
-| .dds | dds | DDS texture (converts to TGA for editing). |
+**Do not use `SAT_ATF` for SWG `.sat` files.** In Maya, `SAT_ATF` is the **ACIS solid** SAT importer. SWG skeletal appearance templates are imported with type **`SwgSat`** (this plugin).
 
-**MESH Export**: Select a mesh, then File > Export and choose a .msh path. The msh translator calls `exportStaticMesh` internally.
+| Extension | MEL `-type` (register name) | Files of type label (`filter()`) |
+|-----------|-----------------------------|----------------------------------|
+| .mgn | `SwgMgn` | SWG skeletal mesh (*.mgn) |
+| .msh / .apt | `SwgMsh` | SWG static mesh (*.msh *.apt) |
+| .skt | `SwgSkt` | SWG skeleton (*.skt) |
+| .ans | `SwgAns` | SWG animation (*.ans) |
+| .flr | `SwgFlr` | SWG floor (*.flr) |
+| .sat | `SwgSat` | SWG skeletal appearance (*.sat) |
+| .pob | `SwgPob` | SWG portal object (*.pob) |
+| .dds | `SwgDds` | SWG DDS texture (*.dds) |
+
+Constants live in `translators/SwgTranslatorNames.h`: `swg_translator::kType*` for scripts, `swg_translator::kFilter*` for the dialog strings.
+
+Example SAT import:
+
+```mel
+file -import -type "SwgSat" -ignoreVersion -ra true -mergeNamespacesOnClash false -namespace "lom" "D:/path/to/4lom.sat";
+```
+
+**MESH export**: Select a mesh, then File > Export and choose a .msh path. The static-mesh translator calls `exportStaticMesh` internally.
 
 ---
 

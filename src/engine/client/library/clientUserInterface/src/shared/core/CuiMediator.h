@@ -187,6 +187,12 @@ public:
 	virtual void            saveSettings              () const;
 	virtual void            loadSettings              ();
 
+	// When false (default), activate() is skipped if the containing workspace is disabled (e.g. HUD hidden).
+	virtual bool            canActivateWhenWorkspaceDisabled () const;
+
+	// When true, mediator is not deactivated when the containing workspace is disabled (HUD hidden).
+	virtual bool            shouldSurviveDisabledWorkspace () const;
+
 	void                    setSettingsAutoSizeLocation (bool size, bool location);
 
 	bool                    getStartSize                (UISize & size);

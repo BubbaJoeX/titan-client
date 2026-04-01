@@ -459,6 +459,20 @@ void ComponentAppearance::getMeshGeometryForCollision (IndexedTriangleList & out
 		if (verts.empty() || inds.empty())
 			continue;
 
+		int const vcount = static_cast<int>(verts.size());
+		bool indicesOk = true;
+		for (size_t ii = 0; ii < inds.size(); ++ii)
+		{
+			int const idx = inds[ii];
+			if (idx < 0 || idx >= vcount)
+			{
+				indicesOk = false;
+				break;
+			}
+		}
+		if (!indicesOk)
+			continue;
+
 		Transform const childToParent = childObject->getTransform_o2p();
 		std::vector<Vector> transformedVerts(verts.size());
 		for (size_t v = 0; v < verts.size(); ++v)

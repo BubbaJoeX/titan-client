@@ -87,7 +87,8 @@ m_missHitMoltenClientEffectTemplate(0),
 m_missHitObsidianClientEffectTemplate(0),
 m_missHitShieldClientEffectTemplate(0),
 m_missHitShieldShellClientEffectTemplate(0),
-m_missHitFriendlyFireClientEffectTemplate(0)
+m_missHitFriendlyFireClientEffectTemplate(0),
+m_useExplosionForTerrainHits(false)
 {
 }
 
@@ -244,7 +245,7 @@ ClientEffectTemplate const * ShipProjectileMissHitData::getClientEffectTemplateF
 ShipProjectileMissHitData::HitType ShipProjectileMissHitData::findHitTypeForObject(Object const & object) const
 {
 	if (dynamic_cast<TerrainObject const *>(&object))
-		return HT_stone;
+		return m_useExplosionForTerrainHits ? HT_other : HT_stone;
 
 	SharedObjectTemplate const * const sharedObjectTemplate = dynamic_cast<SharedObjectTemplate const *>(object.getObjectTemplate());
 	if (sharedObjectTemplate)

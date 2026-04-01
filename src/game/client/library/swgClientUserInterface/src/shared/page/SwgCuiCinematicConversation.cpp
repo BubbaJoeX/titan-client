@@ -18,6 +18,8 @@
 #include "clientUserInterface/CuiConversationManager.h"
 #include "clientUserInterface/CuiManager.h"
 #include "clientUserInterface/CuiMediatorFactory.h"
+#include "swgClientUserInterface/SwgCuiHud.h"
+#include "swgClientUserInterface/SwgCuiHudFactory.h"
 #include "clientUserInterface/CuiObjectTextManager.h"
 #include "clientUserInterface/CuiPreferences.h"
 #include "clientUserInterface/CuiWidget3dObjectListViewer.h"
@@ -29,8 +31,10 @@
 #include "sharedObject/NetworkIdManager.h"
 
 #include "swgClientUserInterface/SwgCuiMediatorTypes.h"
+#include "UIBaseObject.h"
 #include "UIButton.h"
 #include "UIData.h"
+#include "UIMessage.h"
 #include "UIPage.h"
 #include "UIText.h"
 #include "UnicodeUtils.h"
@@ -156,7 +160,8 @@ m_cameraTransitionDuration(DEFAULT_CAMERA_TRANSITION_DURATION),
 m_cameraTransitioning(false),
 m_currentShotType(CST_MediumShot),
 m_shotHoldTime(SHOT_HOLD_TIME_MIN),
-m_timeSinceLastShotChange(0.0f)
+m_timeSinceLastShotChange(0.0f),
+m_savedHudEnabled(true)
 {
 	// Get UI elements
 	getCodeDataObject(TUIPage, m_letterboxTop, "letterboxTop");
@@ -218,6 +223,11 @@ m_timeSinceLastShotChange(0.0f)
 		registerMediatorObject(*m_endConversationButton, true);
 	}
 
+	if (m_dialoguePanel)
+	{
+		registerMediatorObject(*m_dialoguePanel, true);
+	}
+
 	if (m_npcNameText)
 	{
 		m_npcNameText->SetPreLocalized(true);
@@ -226,6 +236,8 @@ m_timeSinceLastShotChange(0.0f)
 	{
 		m_npcMessageText->SetPreLocalized(true);
 	}
+
+	registerMediatorObject(getPage(), true);
 
 	// Initialize letterbox to hidden
 	if (m_letterboxTop)
@@ -254,9 +266,23 @@ SwgCuiCinematicConversation::~SwgCuiCinematicConversation()
 
 void SwgCuiCinematicConversation::performActivate()
 {
+	setStickyVisible(true);
+	CuiConversationManager::setCinematicConversationUiActive(true);
+
 	CuiMediator::performActivate();
 
 	ms_active = true;
+
+	m_savedHudEnabled = true;
+	if (Game::getHudSceneType() == Game::ST_ground)
+	{
+		SwgCuiHud * const hud = SwgCuiHudFactory::findMediatorForCurrentHud();
+		if (hud)
+		{
+			m_savedHudEnabled = hud->getHudEnabled();
+			hud->setHudEnabled(false);
+		}
+	}
 
 	// Connect to conversation manager signals
 	m_callback->connect(*this, &SwgCuiCinematicConversation::onTargetChanged,
@@ -293,6 +319,15 @@ void SwgCuiCinematicConversation::performActivate()
 	CuiConversationManager::StringVector responses;
 	CuiConversationManager::getResponses(responses);
 	setResponses(responses);
+
+	// Keyboard routing: IoWin Escape handling uses isCinematicConversationUiActive(); avoid
+	// incrementKeyboardInputActiveCount here -- it forces IoWin to set retval on raw KeyDown and blocks stop().
+
+	setEnabled(true);
+	getPage().SetEnabled(true);
+	getPage().SetFocus();
+	if (m_dialoguePanel)
+		m_dialoguePanel->SetFocus();
 }
 
 //----------------------------------------------------------------------
@@ -300,6 +335,17 @@ void SwgCuiCinematicConversation::performActivate()
 void SwgCuiCinematicConversation::performDeactivate()
 {
 	ms_active = false;
+
+	CuiConversationManager::setCinematicConversationUiActive(false);
+
+	if (Game::getHudSceneType() == Game::ST_ground)
+	{
+		SwgCuiHud * const hud = SwgCuiHudFactory::findMediatorForCurrentHud();
+		if (hud)
+			hud->setHudEnabled(m_savedHudEnabled);
+	}
+
+	setStickyVisible(false);
 
 	// Restore camera control
 	restoreCameraControl();
@@ -329,6 +375,34 @@ void SwgCuiCinematicConversation::performDeactivate()
 	}
 
 	CuiMediator::performDeactivate();
+}
+
+//----------------------------------------------------------------------
+
+bool SwgCuiCinematicConversation::canActivateWhenWorkspaceDisabled () const
+{
+	return true;
+}
+
+//----------------------------------------------------------------------
+
+bool SwgCuiCinematicConversation::shouldSurviveDisabledWorkspace () const
+{
+	return isActive();
+}
+
+//----------------------------------------------------------------------
+
+bool SwgCuiCinematicConversation::OnMessage(UIWidget * /*context*/, UIMessage const & msg)
+{
+	if (!isActive())
+		return true;
+	if (msg.Type == UIMessage::KeyDown && msg.Keystroke == UIMessage::Escape)
+	{
+		CuiConversationManager::closeCinematicConversationFromInput();
+		return true;
+	}
+	return true;
 }
 
 //----------------------------------------------------------------------
@@ -936,22 +1010,21 @@ void SwgCuiCinematicConversation::setResponses(std::vector<Unicode::String> cons
 
 			m_responsePages[i]->SetVisible(true);
 
+			// Label is drawn on the UIButton; sibling UIText widgets were listed after the button in .ui and
+			// painted on top (often blank), hiding the button caption. Keep overlays off and raise the button.
 			if (m_responsePrefixTexts[i])
-			{
-				if (data.prefix != RP_None)
-				{
-					m_responsePrefixTexts[i]->SetLocalText(data.prefixText);
-					m_responsePrefixTexts[i]->SetVisible(true);
-				}
-				else
-				{
-					m_responsePrefixTexts[i]->SetVisible(false);
-				}
-			}
-
+				m_responsePrefixTexts[i]->SetVisible(false);
 			if (m_responseTexts[i])
+				m_responseTexts[i]->SetVisible(false);
+
+			if (m_responseButtons[i])
 			{
-				m_responseTexts[i]->SetLocalText(data.responseText);
+				Unicode::String caption = data.responseText;
+				if (data.prefix != RP_None)
+					caption = data.prefixText + Unicode::narrowToWide(" ") + data.responseText;
+				// UIButton::RenderText bails when mText is empty; SetLocalText only fills mLocalText.
+				m_responseButtons[i]->SetText(caption);
+				m_responsePages[i]->MoveChild(m_responseButtons[i], UIBaseObject::Top);
 			}
 		}
 		else
@@ -980,10 +1053,10 @@ void SwgCuiCinematicConversation::clearResponses()
 
 void SwgCuiCinematicConversation::OnButtonPressed(UIWidget * context)
 {
-	// Check end conversation button
+	// Check end conversation button — match Escape / IoWin: always tear down cinematic UI and restore HUD.
 	if (context == m_endConversationButton)
 	{
-		CuiConversationManager::stop();
+		CuiConversationManager::closeCinematicConversationFromInput();
 		return;
 	}
 

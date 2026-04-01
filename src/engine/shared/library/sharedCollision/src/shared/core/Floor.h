@@ -117,6 +117,9 @@ public:
 
 private:
 	
+	Vector              getScaleVector          ( void ) const;
+	Vector              getLocalDropDirection  ( void ) const;
+	
 	friend class FloorManager;
 	
 	// ----------
@@ -132,7 +135,8 @@ private:
 	
 	mutable BaseExtent *        m_extent;
 	mutable bool                m_extentDirty;
-	mutable float               m_lastScale;
+	mutable bool                m_hasLastScaleVec;
+	mutable Vector              m_lastScaleVec;
 	mutable Sphere              m_sphere_l;
 	mutable Sphere              m_sphere_w;
 	

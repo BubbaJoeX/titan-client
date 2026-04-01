@@ -103,6 +103,13 @@ public:
 	static void setCameraCommandHandler(CameraCommandHandler handler);
 	static void handleNpcConversationCameraCommand(MessageQueueNpcConversationCameraCommand const * cmd);
 
+	// True while the KOTOR-style cinematic conversation page has control (HUD hidden, movement/combat blocked).
+	static void setCinematicConversationUiActive(bool active);
+	static bool isCinematicConversationUiActive();
+
+	// Escape / client cancel: end server convo if needed and always tear down cinematic workspace (restores HUD).
+	static void closeCinematicConversationFromInput();
+
 private:
 
 	static void                              makeSinglePlayerResponses ();
@@ -114,6 +121,7 @@ private:
 	static CachedNetworkId                   ms_targetId;
 	static uint32                            ms_appearanceOverrideSharedTemplateCrc;
 	static CameraCommandHandler              ms_cameraCommandHandler;
+	static bool                              ms_cinematicConversationUiActive;
 };
 
 //----------------------------------------------------------------------

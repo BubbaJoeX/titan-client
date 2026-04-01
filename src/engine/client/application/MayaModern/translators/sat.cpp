@@ -1,4 +1,5 @@
 #include "sat.h"
+#include "SwgTranslatorNames.h"
 #include "../commands/ImportSat.h"
 #include "MayaUtility.h"
 
@@ -28,7 +29,7 @@ MString SatTranslator::defaultExtension() const
 
 MString SatTranslator::filter() const
 {
-    return "Skeletal Appearance Template - SWG (*.sat)";
+    return MString(swg_translator::kFilterSat);
 }
 
 MPxFileTranslator::MFileKind SatTranslator::identifyFile(const MFileObject& fileName, const char* buffer, short size) const
@@ -64,7 +65,7 @@ MStatus SatTranslator::reader(const MFileObject& file, const MString& /*optionsS
     const MStatus status = importer.doIt(args);
     if (!status)
     {
-        MString err = "SAT_ATF reader failed to import: ";
+        MString err = "SWG SAT import failed: ";
         err += path;
         MGlobal::displayError(err);
     }

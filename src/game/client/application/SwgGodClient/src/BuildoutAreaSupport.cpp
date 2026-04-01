@@ -20,6 +20,7 @@
 #include "sharedGame/SharedBuildoutAreaManager.h"
 #include "sharedGame/SharedObjectTemplate.h"
 #include "sharedMath/Quaternion.h"
+#include "sharedMath/Vector.h"
 #include "sharedObject/CellProperty.h"
 #include "sharedObject/ObjectTemplateList.h"
 #include "sharedObject/PortalPropertyTemplate.h"
@@ -35,6 +36,7 @@
 #include "ConfigGodClient.h"
 #include "MainFrame.h"
 #include "ServerObjectData.h"
+#include <algorithm>
 #include <hash_set>
 #include <string>
 
@@ -94,6 +96,7 @@ namespace BuildoutAreaSupportNamespace
 	// ----------------------------------------------------------------------
 
 	void getBuildoutAreaTableNames(std::string const &areaName, std::string &serverTabFilename, std::string &serverIffFilename, std::string &clientTabFilename, std::string &clientIffFilename);
+	void ensureBuildoutTabScaleColumns(std::string const &tabFilename);
 	void createDirectoriesForFiles(std::vector<std::string> const &fileList);
 	void install();
 	void preModifyBuildoutArea(std::string const &serverTabFilename, std::string const &serverIffFilename, std::string const &clientTabFilename, std::string const &clientIffFilename);
@@ -270,13 +273,13 @@ void BuildoutAreaSupport::saveBuildoutArea(std::string const &areaName)
 			// save the table headers
 			{
 				std::string const serverHeader(
-					"objid\tcontainer\tserver_template_crc\tcell_index\tpx\tpy\tpz\tqw\tqx\tqy\tqz\tscripts\tobjvars\n"
-					"i\ti\th\ti\tf\tf\tf\tf\tf\tf\tf\ts\tp\n");
+					"objid\tcontainer\tserver_template_crc\tcell_index\tpx\tpy\tpz\tqw\tqx\tqy\tqz\tsx\tsy\tsz\tscripts\tobjvars\n"
+					"i\ti\th\ti\tf\tf\tf\tf\tf\tf\tf\tf\tf\tf\ts\tp\n");
 				serverOutputFile.write(serverHeader.length(), serverHeader.c_str());
 
 				std::string const clientHeader(
-					"objid\tcontainer\ttype\tshared_template_crc\tcell_index\tpx\tpy\tpz\tqw\tqx\tqy\tqz\tradius\tportal_layout_crc\n"
-					"i\ti\ti\th\ti\tf\tf\tf\tf\tf\tf\tf\tf\ti\n");
+					"objid\tcontainer\ttype\tshared_template_crc\tcell_index\tpx\tpy\tpz\tqw\tqx\tqy\tqz\tsx\tsy\tsz\tradius\tportal_layout_crc\n"
+					"i\ti\ti\th\ti\tf\tf\tf\tf\tf\tf\tf\tf\tf\tf\ti\n");
 				clientOutputFile.write(clientHeader.length(), clientHeader.c_str());
 			}
 
@@ -286,13 +289,14 @@ void BuildoutAreaSupport::saveBuildoutArea(std::string const &areaName)
 				{
 					ConstCharCrcString const& serverTemplateName = getServerTemplateName((*i).serverTemplateCrc);
 					char buf[512];
-					IGNORE_RETURN(_snprintf(buf, sizeof(buf) - 1, "%d\t%d\t%s\t%d\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t",
+					IGNORE_RETURN(_snprintf(buf, sizeof(buf) - 1, "%d\t%d\t%s\t%d\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t",
 						(*i).id,
 						(*i).container,
 						serverTemplateName.getString(),
 						(*i).cellIndex,
 						(*i).position.x, (*i).position.y, (*i).position.z,
-						(*i).orientation.w, (*i).orientation.x, (*i).orientation.y, (*i).orientation.z));
+						(*i).orientation.w, (*i).orientation.x, (*i).orientation.y, (*i).orientation.z,
+						(*i).scale.x, (*i).scale.y, (*i).scale.z));
 					buf[sizeof(buf) - 1] = '\0';
 					std::string::size_type index = (*i).objvars.find("eventRequired");
 
@@ -350,7 +354,7 @@ void BuildoutAreaSupport::saveBuildoutArea(std::string const &areaName)
 				{
 					ConstCharCrcString const& sharedTemplateName = getSharedTemplateName((*i).sharedTemplateCrc);
 					char buf[512];
-					IGNORE_RETURN(_snprintf(buf, sizeof(buf) - 1, "%d\t%d\t%d\t%s\t%d\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%d\n",
+					IGNORE_RETURN(_snprintf(buf, sizeof(buf) - 1, "%d\t%d\t%d\t%s\t%d\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t%d\n",
 						(*i).id,
 						(*i).container,
 						(*i).type,
@@ -358,6 +362,7 @@ void BuildoutAreaSupport::saveBuildoutArea(std::string const &areaName)
 						(*i).cellIndex,
 						(*i).position.x, (*i).position.y, (*i).position.z,
 						(*i).orientation.w, (*i).orientation.x, (*i).orientation.y, (*i).orientation.z,
+						(*i).scale.x, (*i).scale.y, (*i).scale.z,
 						(*i).radius,
 						static_cast<int>((*i).portalLayoutCrc)));
 					buf[sizeof(buf) - 1] = '\0';
@@ -467,6 +472,7 @@ Object* BuildoutAreaSupport::createNewObject(CrcString const &templateName, Cell
 		serverRow.cellIndex = cellIndex;
 		serverRow.position = position;
 		serverRow.orientation = orientation;
+		serverRow.scale = Vector::xyz111;
 		if (portalLayoutCrc)
 		{
 			char buf[128];
@@ -485,6 +491,7 @@ Object* BuildoutAreaSupport::createNewObject(CrcString const &templateName, Cell
 			serverRow.container = newId;
 			serverRow.serverTemplateCrc = s_cellServerTemplateName.getCrc();
 			serverRow.cellIndex = cell+1;
+			serverRow.scale = Vector::xyz111;
 		}
 	}
 
@@ -507,6 +514,7 @@ Object* BuildoutAreaSupport::createNewObject(CrcString const &templateName, Cell
 		clientRow.cellIndex = cellIndex;
 		clientRow.position = position;
 		clientRow.orientation = orientation;
+		clientRow.scale = Vector::xyz111;
 		clientRow.radius = updateRadius;
 		clientRow.portalLayoutCrc = portalLayoutCrc;
 
@@ -521,6 +529,7 @@ Object* BuildoutAreaSupport::createNewObject(CrcString const &templateName, Cell
 			clientRow.cellIndex = cell+1;
 			clientRow.radius = 0;
 			clientRow.portalLayoutCrc = 0;
+			clientRow.scale = Vector::xyz111;
 		}
 	}
 
@@ -535,7 +544,9 @@ Object* BuildoutAreaSupport::createNewObject(CrcString const &templateName, Cell
 		transform_p,
 		updateRadius,
 		portalLayoutCrc,
-		cellCount);
+		cellCount,
+		std::string(),
+		Vector::xyz111);
 
 	BuildoutAreaSupportNamespace::unlock(newId);
 	
@@ -742,6 +753,54 @@ bool BuildoutAreaSupport::setObjectTransform(Object &obj, Transform const &trans
 	}
 
 	return movedObject;
+}
+
+// ----------------------------------------------------------------------
+
+bool BuildoutAreaSupport::setObjectScale(Object &obj, Vector const &scale)
+{
+	BuildoutArea const * const buildoutArea = getBuildoutAreaForId(obj.getNetworkId());
+
+	if (!buildoutArea)
+		return false;
+
+	CachedBuildoutArea * const cachedBuildoutArea = loadBuildoutArea(*buildoutArea);
+	if (!cachedBuildoutArea)
+		return false;
+
+	if (isLocked(*buildoutArea, obj.getNetworkId().getValue()))
+		return false;
+
+	bool updated = false;
+
+	{
+		for (std::vector<ServerBuildoutAreaRow>::iterator i = cachedBuildoutArea->serverRows.begin(); i != cachedBuildoutArea->serverRows.end(); ++i)
+		{
+			if ((*i).id == static_cast<int>(obj.getNetworkId().getValue()))
+			{
+				(*i).scale = scale;
+				updated = true;
+				break;
+			}
+		}
+	}
+
+	if (updated)
+	{
+		for (std::vector<ClientBuildoutAreaRow>::iterator i = cachedBuildoutArea->clientRows.begin(); i != cachedBuildoutArea->clientRows.end(); ++i)
+		{
+			if ((*i).id == static_cast<int>(obj.getNetworkId().getValue()))
+			{
+				(*i).scale = scale;
+				break;
+			}
+		}
+
+		WorldSnapshot::setObjectScale(static_cast<int>(obj.getNetworkId().getValue()), scale);
+		BuildoutAreaSupportNamespace::unlock(obj.getNetworkId().getValue());
+	}
+
+	return updated;
 }
 
 // ----------------------------------------------------------------------
@@ -989,7 +1048,9 @@ void BuildoutAreaSupport::addServerOnlyObjectsToWorldSnapshot()
 							transform_p,
 							getServerTemplateUpdateRadius(serverTemplateName),
 							0,
-							0 )
+							0,
+							std::string(),
+							(*i).scale)
 					);
 				}
 
@@ -1067,6 +1128,218 @@ void BuildoutAreaSupportNamespace::createDirectoriesForFiles(std::vector<std::st
 
 // ----------------------------------------------------------------------
 
+namespace
+{
+	void stripCarriageReturn(std::string &line)
+	{
+		if (!line.empty() && line[line.size() - 1] == '\r')
+			line.erase(line.size() - 1);
+	}
+
+	void splitTabRow(std::string const &line, std::vector<std::string> &out)
+	{
+		out.clear();
+		std::string::size_type start = 0;
+		for (;;)
+		{
+			std::string::size_type const tab = line.find('\t', start);
+			if (tab == std::string::npos)
+			{
+				out.push_back(line.substr(start));
+				break;
+			}
+			out.push_back(line.substr(start, tab - start));
+			start = tab + 1;
+		}
+	}
+
+	std::string joinTabRow(std::vector<std::string> const &fields)
+	{
+		std::string result;
+		for (std::vector<std::string>::size_type i = 0; i < fields.size(); ++i)
+		{
+			if (i)
+				result += '\t';
+			result += fields[i];
+		}
+		return result;
+	}
+
+	char const * const SERVER_BUILDOUT_COLUMN_ROW = "objid\tcontainer\tserver_template_crc\tcell_index\tpx\tpy\tpz\tqw\tqx\tqy\tqz\tsx\tsy\tsz\tscripts\tobjvars";
+	char const * const SERVER_BUILDOUT_TYPE_ROW = "i\ti\th\ti\tf\tf\tf\tf\tf\tf\tf\tf\tf\tf\ts\tp";
+	char const * const CLIENT_BUILDOUT_COLUMN_ROW = "objid\tcontainer\ttype\tshared_template_crc\tcell_index\tpx\tpy\tpz\tqw\tqx\tqy\tqz\tsx\tsy\tsz\tradius\tportal_layout_crc";
+	char const * const CLIENT_BUILDOUT_TYPE_ROW = "i\ti\ti\th\ti\tf\tf\tf\tf\tf\tf\tf\tf\tf\tf\ti";
+	// Pre-scale client tables (14 columns); types row must stay in sync with names row.
+	char const * const CLIENT_LEGACY_BUILDOUT_TYPE_ROW = "i\ti\ti\th\ti\tf\tf\tf\tf\tf\tf\tf\tf\tf\ti";
+}
+
+// ----------------------------------------------------------------------
+
+void BuildoutAreaSupportNamespace::ensureBuildoutTabScaleColumns(std::string const &tabFilename)
+{
+	if (!FileStreamer::exists(tabFilename.c_str()))
+		return;
+
+	StdioFile in(tabFilename.c_str(), "r");
+	if (!in.isOpen())
+		return;
+
+	int const len = in.length();
+	if (len <= 0)
+		return;
+
+	std::vector<char> buf(static_cast<size_t>(len) + 1);
+	if (in.read(&buf[0], len) != len)
+		return;
+	in.close();
+	buf[static_cast<size_t>(len)] = '\0';
+
+	std::string content(&buf[0]);
+	std::vector<std::string> lines;
+	for (std::string::size_type pos = 0; pos < content.size();)
+	{
+		std::string::size_type const nl = content.find('\n', pos);
+		if (nl == std::string::npos)
+		{
+			lines.push_back(content.substr(pos));
+			break;
+		}
+		lines.push_back(content.substr(pos, nl - pos));
+		pos = nl + 1;
+	}
+
+	if (lines.size() < 2)
+		return;
+
+	for (std::vector<std::string>::size_type i = 0; i < lines.size(); ++i)
+		stripCarriageReturn(lines[i]);
+
+	std::vector<std::string> cols;
+	std::vector<std::string> types;
+	splitTabRow(lines[0], cols);
+	splitTabRow(lines[1], types);
+
+	bool const isServer = std::find(cols.begin(), cols.end(), "server_template_crc") != cols.end();
+	bool const isClient = std::find(cols.begin(), cols.end(), "shared_template_crc") != cols.end();
+	if (!isServer && !isClient)
+		return;
+
+	bool modified = false;
+
+	if (isServer)
+	{
+		bool const hasSx = std::find(cols.begin(), cols.end(), "sx") != cols.end();
+		// Column names include scale but types row was not extended (DataTableWriter: Types != num columns).
+		if (hasSx && cols.size() == 16 && types.size() == 13)
+		{
+			types.insert(types.begin() + 11, 3, "f");
+			lines[1] = joinTabRow(types);
+			modified = true;
+		}
+		// Legacy: no sx/sy/sz — rewrite to current header/types; data rows padded below.
+		else if (!hasSx && cols.size() == 13 && types.size() == 13)
+		{
+			lines[0] = SERVER_BUILDOUT_COLUMN_ROW;
+			lines[1] = SERVER_BUILDOUT_TYPE_ROW;
+			modified = true;
+		}
+		else if (cols.size() == 16 && types.size() != cols.size()
+			&& cols.size() >= 2
+			&& cols[cols.size() - 2] == "scripts"
+			&& cols[cols.size() - 1] == "objvars")
+		{
+			// Names row matches current server layout but types row is wrong length (common after adding sx/sy/sz).
+			lines[1] = SERVER_BUILDOUT_TYPE_ROW;
+			modified = true;
+		}
+
+		splitTabRow(lines[0], cols);
+		splitTabRow(lines[1], types);
+		if (cols.size() != types.size())
+			return;
+
+		for (std::vector<std::string>::size_type r = 2; r < lines.size(); ++r)
+		{
+			if (lines[r].empty())
+				continue;
+			std::vector<std::string> fields;
+			splitTabRow(lines[r], fields);
+			if (fields.size() == 13)
+			{
+				fields.insert(fields.begin() + 11, 3, "1");
+				lines[r] = joinTabRow(fields);
+				modified = true;
+			}
+		}
+	}
+	else if (isClient)
+	{
+		bool const hasSx = std::find(cols.begin(), cols.end(), "sx") != cols.end();
+		if (hasSx && cols.size() == 17 && types.size() == 14)
+		{
+			types.insert(types.begin() + 12, 3, "f");
+			lines[1] = joinTabRow(types);
+			modified = true;
+		}
+		else if (!hasSx && cols.size() == 14 && types.size() == 14)
+		{
+			lines[0] = CLIENT_BUILDOUT_COLUMN_ROW;
+			lines[1] = CLIENT_BUILDOUT_TYPE_ROW;
+			modified = true;
+		}
+		else if (cols.size() == 17 && types.size() != cols.size()
+			&& cols.size() >= 2
+			&& cols[cols.size() - 2] == "radius"
+			&& cols[cols.size() - 1] == "portal_layout_crc")
+		{
+			// Names include scale; types row out of sync (e.g. 13 or 16 entries) — DataTableWriter FATAL.
+			lines[1] = CLIENT_BUILDOUT_TYPE_ROW;
+			modified = true;
+		}
+		else if (cols.size() == 14 && types.size() != cols.size()
+			&& cols.size() >= 1
+			&& cols.back() == "portal_layout_crc")
+		{
+			lines[1] = CLIENT_LEGACY_BUILDOUT_TYPE_ROW;
+			modified = true;
+		}
+
+		splitTabRow(lines[0], cols);
+		splitTabRow(lines[1], types);
+		if (cols.size() != types.size())
+			return;
+
+		for (std::vector<std::string>::size_type r = 2; r < lines.size(); ++r)
+		{
+			if (lines[r].empty())
+				continue;
+			std::vector<std::string> fields;
+			splitTabRow(lines[r], fields);
+			if (fields.size() == 14)
+			{
+				fields.insert(fields.begin() + 12, 3, "1");
+				lines[r] = joinTabRow(fields);
+				modified = true;
+			}
+		}
+	}
+
+	if (!modified)
+		return;
+
+	StdioFile out(tabFilename.c_str(), "w");
+	if (!out.isOpen())
+		return;
+	for (std::vector<std::string>::size_type i = 0; i < lines.size(); ++i)
+	{
+		IGNORE_RETURN(out.write(static_cast<int>(lines[i].size()), lines[i].c_str()));
+		IGNORE_RETURN(out.write(1, "\n"));
+	}
+	out.close();
+}
+
+// ----------------------------------------------------------------------
+
 void BuildoutAreaSupportNamespace::preModifyBuildoutArea(std::string const &serverTabFilename, std::string const &serverIffFilename, std::string const &clientTabFilename, std::string const &clientIffFilename)
 {
 	std::vector<std::string> perforceFiles;
@@ -1083,6 +1356,8 @@ void BuildoutAreaSupportNamespace::preModifyBuildoutArea(std::string const &serv
 
 void BuildoutAreaSupportNamespace::postModifyBuildoutArea(std::string const &serverTabFilename, std::string const &serverIffFilename, std::string const &clientTabFilename, std::string const &clientIffFilename)
 {
+	ensureBuildoutTabScaleColumns(serverTabFilename);
+	ensureBuildoutTabScaleColumns(clientTabFilename);
 	// compile the tables
 	{
 		DataTableWriter writer;
@@ -1134,6 +1409,7 @@ CachedBuildoutArea *BuildoutAreaSupportNamespace::loadBuildoutArea(BuildoutArea 
 	if (!opened && FileStreamer::exists(serverTabFilename.c_str()))
 	{
 		preModifyBuildoutArea(serverTabFilename, serverIffFilename, clientTabFilename, clientIffFilename);
+		ensureBuildoutTabScaleColumns(serverTabFilename);
 		DataTableWriter writer;
 		writer.loadFromSpreadsheet(serverTabFilename.c_str());
 		writer.save(serverIffFilename.c_str());
@@ -1161,6 +1437,10 @@ CachedBuildoutArea *BuildoutAreaSupportNamespace::loadBuildoutArea(BuildoutArea 
 			int const qzColumn                = areaBuildoutTable.findColumnNumber("qz");
 			int const scriptsColumn           = areaBuildoutTable.findColumnNumber("scripts");
 			int const objvarsColumn           = areaBuildoutTable.findColumnNumber("objvars");
+			int const sxColumn                = areaBuildoutTable.findColumnNumber("sx");
+			int const syColumn                = areaBuildoutTable.findColumnNumber("sy");
+			int const szColumn                = areaBuildoutTable.findColumnNumber("sz");
+			bool const haveScaleColumnsServer = (sxColumn >= 0 && syColumn >= 0 && szColumn >= 0);
 
 			FATAL(serverTemplateCrcColumn < 0, ("Unable to find serverTemplateCrcColumn in [%s]", serverIffFilename.c_str()));
 			FATAL(cellIndexColumn < 0, ("Unable to find cellIndexColumn in [%s]", serverIffFilename.c_str()));
@@ -1203,6 +1483,15 @@ CachedBuildoutArea *BuildoutAreaSupportNamespace::loadBuildoutArea(BuildoutArea 
 					areaBuildoutTable.getFloatValue(qxColumn, buildoutRow),
 					areaBuildoutTable.getFloatValue(qyColumn, buildoutRow),
 					areaBuildoutTable.getFloatValue(qzColumn, buildoutRow));
+				if (haveScaleColumnsServer)
+				{
+					serverBuildoutAreaRow.scale.set(
+						areaBuildoutTable.getFloatValue(sxColumn, buildoutRow),
+						areaBuildoutTable.getFloatValue(syColumn, buildoutRow),
+						areaBuildoutTable.getFloatValue(szColumn, buildoutRow));
+				}
+				else
+					serverBuildoutAreaRow.scale = Vector::xyz111;
 				serverBuildoutAreaRow.scripts = areaBuildoutTable.getStringValue(scriptsColumn, buildoutRow);
 				serverBuildoutAreaRow.objvars = areaBuildoutTable.getStringValue(objvarsColumn, buildoutRow);
 				ConstCharCrcString const &serverTemplateName = getServerTemplateName(serverBuildoutAreaRow.serverTemplateCrc);
@@ -1270,6 +1559,7 @@ CachedBuildoutArea *BuildoutAreaSupportNamespace::loadBuildoutArea(BuildoutArea 
 	bool clientOpened = clientIff.open(clientIffFilename.c_str(), true);
 	if (!clientOpened && FileStreamer::exists(clientTabFilename.c_str()))
 	{
+		ensureBuildoutTabScaleColumns(clientTabFilename);
 		DataTableWriter writer;
 		writer.loadFromSpreadsheet(clientTabFilename.c_str());
 		writer.save(clientIffFilename.c_str());
@@ -1297,6 +1587,10 @@ CachedBuildoutArea *BuildoutAreaSupportNamespace::loadBuildoutArea(BuildoutArea 
 			int const qzColumn = areaBuildoutTable.findColumnNumber("qz");
 			int const radiusColumn = areaBuildoutTable.findColumnNumber("radius");
 			int const portalLayoutCrcColumn = areaBuildoutTable.findColumnNumber("portal_layout_crc");
+			int const sxColumnClient = areaBuildoutTable.findColumnNumber("sx");
+			int const syColumnClient = areaBuildoutTable.findColumnNumber("sy");
+			int const szColumnClient = areaBuildoutTable.findColumnNumber("sz");
+			bool const haveScaleColumnsClient = (sxColumnClient >= 0 && syColumnClient >= 0 && szColumnClient >= 0);
 			int buildingObjId = buildoutArea.getSharedBaseId();
 			int objIdBase     = buildingObjId+2000;
 			int buildingId    = 0;
@@ -1332,6 +1626,15 @@ CachedBuildoutArea *BuildoutAreaSupportNamespace::loadBuildoutArea(BuildoutArea 
 					areaBuildoutTable.getFloatValue(qxColumn, buildoutRow),
 					areaBuildoutTable.getFloatValue(qyColumn, buildoutRow),
 					areaBuildoutTable.getFloatValue(qzColumn, buildoutRow));
+				if (haveScaleColumnsClient)
+				{
+					clientBuildoutAreaRow.scale.set(
+						areaBuildoutTable.getFloatValue(sxColumnClient, buildoutRow),
+						areaBuildoutTable.getFloatValue(syColumnClient, buildoutRow),
+						areaBuildoutTable.getFloatValue(szColumnClient, buildoutRow));
+				}
+				else
+					clientBuildoutAreaRow.scale = Vector::xyz111;
 				clientBuildoutAreaRow.radius = areaBuildoutTable.getFloatValue(radiusColumn, buildoutRow);
 				clientBuildoutAreaRow.portalLayoutCrc = areaBuildoutTable.getIntValue(portalLayoutCrcColumn, buildoutRow);
 
@@ -1947,8 +2250,8 @@ void BuildoutAreaSupportNamespace::writeOutServerEventArea(std::string const eve
 	{
 		// save the table headers
 		std::string const serverHeader(
-			"objid\tcontainer\tserver_template_crc\tcell_index\tpx\tpy\tpz\tqw\tqx\tqy\tqz\tscripts\tobjvars\n"
-			"i\ti\th\ti\tf\tf\tf\tf\tf\tf\tf\ts\tp\n");
+			"objid\tcontainer\tserver_template_crc\tcell_index\tpx\tpy\tpz\tqw\tqx\tqy\tqz\tsx\tsy\tsz\tscripts\tobjvars\n"
+			"i\ti\th\ti\tf\tf\tf\tf\tf\tf\tf\tf\tf\tf\ts\tp\n");
 		serverEventOutputFile.write(serverHeader.length(), serverHeader.c_str());
 
 		// Write out the actually object info.
@@ -1960,6 +2263,7 @@ void BuildoutAreaSupportNamespace::writeOutServerEventArea(std::string const eve
 
 		// compile the tables
 		{
+			ensureBuildoutTabScaleColumns(serverTabFilename);
 			DataTableWriter writer;
 			writer.loadFromSpreadsheet(serverTabFilename.c_str());
 			writer.save(serverIffFilename.c_str());

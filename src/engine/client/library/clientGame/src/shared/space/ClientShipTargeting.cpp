@@ -292,6 +292,9 @@ void ClientShipTargetingNamespace::allTargetablesInAtmosphericFlight(Object cons
 		if (!tangObj || !tangObj->isTargettable())
 			continue;
 
+		if (ClientShipTargeting::shouldRejectTargetWhilePilotingShip (clientObj))
+			continue;
+
 		CreatureObject const * const creature = tangObj->asCreatureObject();
 		if (creature && creature->isDead())
 			continue;
@@ -308,6 +311,27 @@ void ClientShipTargetingNamespace::allTargetablesInAtmosphericFlight(Object cons
 //=======================================================================
 
 using namespace ClientShipTargetingNamespace;
+
+//=======================================================================
+
+bool ClientShipTargeting::shouldRejectTargetWhilePilotingShip (ClientObject const * const clientObject)
+{
+	if (!clientObject)
+		return false;
+
+	// Only while actually piloting. getPlayerContainingShip() is true for anyone inside the hull
+	// (including on foot in the POB), which would block all interior targeting without this check.
+	ShipObject const * const pilotedShip = Game::getPlayerPilotedShip ();
+	if (!pilotedShip)
+		return false;
+
+	ShipObject const * const targetShip = ShipObject::getContainingShip (*clientObject);
+	if (targetShip != pilotedShip)
+		return false;
+
+	// Same ship interior while piloting: allow creatures; block items and other non-creature tangibles.
+	return clientObject->asCreatureObject () == 0;
+}
 
 //=======================================================================
 

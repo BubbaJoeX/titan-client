@@ -103,6 +103,7 @@ public:
 	
 	virtual bool        getExtentDirty      ( void ) const;
 	virtual void        updateExtent        ( void ) const;
+	void                invalidateExtent    ( void );
 	
 	bool                getGoodLocation     ( float radius, Vector & outLoc ) const;
 	
@@ -115,6 +116,9 @@ public:
 	bool                getDistanceUncrossable2d  ( Vector const & position_w, float maxDistance, float & outDistance, FloorEdgeId & outEdgeId ) const;
 
 private:
+	
+	Vector              getScaleVector          ( void ) const;
+	Vector              getLocalDropDirection  ( void ) const;
 	
 	friend class FloorManager;
 	
@@ -131,6 +135,8 @@ private:
 	
 	mutable BaseExtent *        m_extent;
 	mutable bool                m_extentDirty;
+	mutable bool                m_hasLastScaleVec;
+	mutable Vector              m_lastScaleVec;
 	mutable Sphere              m_sphere_l;
 	mutable Sphere              m_sphere_w;
 	

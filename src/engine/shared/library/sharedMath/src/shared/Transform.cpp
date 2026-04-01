@@ -502,6 +502,7 @@ void Transform::debugPrint(const char *header) const
 {
 	if (header)
 		DEBUG_REPORT_PRINT(true, ("%s\n", header));
+	//touch
 
 	for (int i = 0; i < 3; ++i)
 		DEBUG_REPORT_PRINT(true, ("  %-8.2f %-8.2f %-8.2f %-8.2f\n", matrix[i][0], matrix[i][1], matrix[i][2], matrix[i][3]));

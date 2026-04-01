@@ -1,4 +1,5 @@
 #include "msh.h"
+#include "SwgTranslatorNames.h"
 #include "ExportStaticMesh.h"
 #include "ImportLodMesh.h"
 
@@ -654,7 +655,7 @@ MString MshTranslator::defaultExtension () const
  */
 MString MshTranslator::filter () const
 {
-    return "Static Mesh Redirector - SWG (*.apt *.msh)";
+    return MString(swg_translator::kFilterMsh);
 }
 
 /**

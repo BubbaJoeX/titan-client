@@ -926,7 +926,28 @@ UIWidget * SwgCuiToolbar::createToolbarWidget (const CuiDragInfo & item)
 			{
 				std::string cmd(item.str);
 				cmd.erase(cmd.begin());
-				if (CuiSkillManager::localizeCmdDescription(Unicode::toLower(cmd), description))
+				// Story companion pet bar: str is companion_bar_*; cmd holds the taught command for icon — use it for tooltip.
+				if (!item.cmd.empty() && cmd.find("companion_bar_") == 0)
+				{
+					if (CuiSkillManager::localizeCmdDescription(Unicode::toLower(item.cmd), description))
+					{
+						button->SetTooltip(description);
+					}
+				}
+				else if (cmd.find("companion_bar_core_slot") == 0)
+				{
+					if (!item.cmd.empty())
+					{
+						if (CuiSkillManager::localizeCmdDescription(Unicode::toLower(item.cmd), description))
+							button->SetTooltip(description);
+					}
+					else
+					{
+						if (CuiSkillManager::localizeCmdDescription(Unicode::toLower(cmd), description))
+							button->SetTooltip(description);
+					}
+				}
+				else if (CuiSkillManager::localizeCmdDescription(Unicode::toLower(cmd), description))
 				{
 					button->SetTooltip(description);
 				}
@@ -4711,8 +4732,19 @@ void SwgCuiToolbar::onPetCommandsChanged(const PlayerObject & payload)
 				{
 					CuiDragInfo newItem;
 					newItem.type    = CuiDragInfoTypes::CDIT_command;
-					newItem.str     = "/";
-					newItem.str = newItem.str + commands[i];
+					std::string const raw = commands[i];
+					std::string execPart = raw;
+					std::string displayPart;
+					size_t const pipePos = raw.find('|');
+					if (pipePos != std::string::npos)
+					{
+						execPart = raw.substr(0, pipePos);
+						displayPart = raw.substr(pipePos + 1);
+					}
+					newItem.str = "/";
+					newItem.str += execPart;
+					if (!displayPart.empty())
+						newItem.cmd = displayPart;
 					setToolbarItem(0, i, newItem, true);
 					volumeEntry->SetColor(DEFAULT_TOOLBAR_COLOR);
 					backgroundEntry->SetColor(DEFAULT_TOOLBAR_COLOR);

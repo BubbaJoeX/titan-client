@@ -44,6 +44,25 @@
 #include "sharedObject/PortalPropertyTemplate.h"
 #include "sharedObject/World.h"
 
+#include <algorithm>
+#include <cmath>
+
+namespace
+{
+	inline float collisionUniformExtentScale( Vector const & s )
+	{
+		real const ax = std::fabs( s.x );
+		real const ay = std::fabs( s.y );
+		real const az = std::fabs( s.z );
+		return static_cast<float>( std::max( ax, std::max( ay, az ) ) );
+	}
+
+	inline bool ownerScaleComponentsDiffer( Vector const & a, Vector const & b )
+	{
+		return std::fabs( a.x - b.x ) > 1.0e-5f || std::fabs( a.y - b.y ) > 1.0e-5f || std::fabs( a.z - b.z ) > 1.0e-5f;
+	}
+}
+
 namespace CollisionPropertyNamespace
 {
 	CollisionProperty * ms_activeListHead = NULL;
@@ -176,7 +195,8 @@ CollisionProperty::CollisionProperty( Object & owner )
   m_extent_p(NULL),
   m_sphere_l(),
   m_sphere_w(),
-  m_scale(owner.getScale().x),
+  m_scale(collisionUniformExtentScale(owner.getScale())),
+  m_ownerScaleCache(owner.getScale()),
   m_spatialSubdivisionHandle(NULL),
   m_floor(NULL),
   m_footprint(NULL),
@@ -226,7 +246,8 @@ CollisionProperty::CollisionProperty( Object & owner, SharedObjectTemplate const
   m_extent_p(NULL),
   m_sphere_l(),
   m_sphere_w(),
-  m_scale(owner.getScale().x),
+  m_scale(collisionUniformExtentScale(owner.getScale())),
+  m_ownerScaleCache(owner.getScale()),
   m_spatialSubdivisionHandle(NULL),
   m_floor(NULL),
   m_footprint(NULL),
@@ -677,9 +698,9 @@ void CollisionProperty::updateExtents ( void ) const
 	// We can't get an onScaleChanged callback, so detect if it changed ourselves
 	// and if so rebuild the extents.
 
-	float newScale = getOwner().getScale().x;
+	Vector const newOwnerScale = getOwner().getScale();
 
-	if(m_scale != newScale)
+	if (ownerScaleComponentsDiffer( newOwnerScale, m_ownerScaleCache ))
 	{
 		delete m_extent_l;
 		m_extent_l = NULL;
@@ -687,7 +708,8 @@ void CollisionProperty::updateExtents ( void ) const
 		delete m_extent_p;
 		m_extent_p = NULL;
 
-		m_scale = newScale;
+		m_ownerScaleCache = newOwnerScale;
+		m_scale = collisionUniformExtentScale( newOwnerScale );
 		m_extentsDirty = true;
 
 		// Invalidate floor extent so it rebuilds with new scale
@@ -741,7 +763,9 @@ void CollisionProperty::updateExtents ( void ) const
 			}
 		}
 
-		if(!m_extent_l && appearance && ConfigSharedCollision::getUseMeshGeometryCollision())
+		// Skip mesh-soup extents for portal/POB roots (same policy as useMeshFloor): template/cell extents
+		// apply; merging component children can hit corrupt indices or huge meshes and AV inside addIndexedTriangleList.
+		if(!m_extent_l && appearance && ConfigSharedCollision::getUseMeshGeometryCollision() && !getOwner().getPortalProperty())
 		{
 			IndexedTriangleList meshTris;
 			appearance->getMeshGeometryForCollision(meshTris);

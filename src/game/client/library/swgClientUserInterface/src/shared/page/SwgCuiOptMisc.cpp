@@ -60,6 +60,75 @@ namespace SwgCuiOptMiscNamespace
 	{
 		return CuiPreferences::getCurrencyFormat();
 	}
+
+	int clampColorPreset(int index)
+	{
+		if (index < 0)
+			return 0;
+		if (index > 7)
+			return 7;
+		return index;
+	}
+
+	int onComboNameplateNeutralGet(const SwgCuiOptBase &, const UIComboBox &)
+	{
+		return clampColorPreset(CuiPreferences::getNameplateColorNeutralPreset());
+	}
+
+	void onComboNameplateNeutralSet(const SwgCuiOptBase &, const UIComboBox &, int index)
+	{
+		CuiPreferences::setNameplateColorNeutralPreset(clampColorPreset(index));
+	}
+
+	int getDefaultNameplateNeutral(const SwgCuiOptBase &, const UIComboBox &)
+	{
+		return 0;
+	}
+
+	int onComboNameplateFriendlyGet(const SwgCuiOptBase &, const UIComboBox &)
+	{
+		return clampColorPreset(CuiPreferences::getNameplateColorFriendlyPreset());
+	}
+
+	void onComboNameplateFriendlySet(const SwgCuiOptBase &, const UIComboBox &, int index)
+	{
+		CuiPreferences::setNameplateColorFriendlyPreset(clampColorPreset(index));
+	}
+
+	int getDefaultNameplateFriendly(const SwgCuiOptBase &, const UIComboBox &)
+	{
+		return 0;
+	}
+
+	int onComboNameplateHostileGet(const SwgCuiOptBase &, const UIComboBox &)
+	{
+		return clampColorPreset(CuiPreferences::getNameplateColorHostilePreset());
+	}
+
+	void onComboNameplateHostileSet(const SwgCuiOptBase &, const UIComboBox &, int index)
+	{
+		CuiPreferences::setNameplateColorHostilePreset(clampColorPreset(index));
+	}
+
+	int getDefaultNameplateHostile(const SwgCuiOptBase &, const UIComboBox &)
+	{
+		return 0;
+	}
+
+	int onComboNameplateDangerGet(const SwgCuiOptBase &, const UIComboBox &)
+	{
+		return clampColorPreset(CuiPreferences::getNameplateColorDangerPreset());
+	}
+
+	void onComboNameplateDangerSet(const SwgCuiOptBase &, const UIComboBox &, int index)
+	{
+		CuiPreferences::setNameplateColorDangerPreset(clampColorPreset(index));
+	}
+
+	int getDefaultNameplateDanger(const SwgCuiOptBase &, const UIComboBox &)
+	{
+		return 0;
+	}
 }
 
 using namespace SwgCuiOptMiscNamespace;
@@ -141,6 +210,18 @@ SwgCuiOptBase ("SwgCuiOptMisc", page)
 
 	getCodeDataObject(TUIComboBox, combobox, "currencyFormat");
 	registerComboBox  (*combobox, onComboCurrencyFormatSet, onComboCurrencyFormatGet, getDefaultCurrencyFormat);
+
+	getCodeDataObject(TUIComboBox, combobox, "nameplateNeutralColor");
+	registerComboBox(*combobox, onComboNameplateNeutralSet, onComboNameplateNeutralGet, getDefaultNameplateNeutral);
+
+	getCodeDataObject(TUIComboBox, combobox, "nameplateFriendlyColor");
+	registerComboBox(*combobox, onComboNameplateFriendlySet, onComboNameplateFriendlyGet, getDefaultNameplateFriendly);
+
+	getCodeDataObject(TUIComboBox, combobox, "nameplateHostileColor");
+	registerComboBox(*combobox, onComboNameplateHostileSet, onComboNameplateHostileGet, getDefaultNameplateHostile);
+
+	getCodeDataObject(TUIComboBox, combobox, "nameplateDangerColor");
+	registerComboBox(*combobox, onComboNameplateDangerSet, onComboNameplateDangerGet, getDefaultNameplateDanger);
 
 	getCodeDataObject(TUICheckbox, checkbox, "checkAutoLootCorpses");
 	registerCheckbox (*checkbox, CuiPreferences::setAutoLootCorpses, CuiPreferences::getAutoLootCorpses, SwgCuiOptBase::getFalse);

@@ -8,6 +8,9 @@
 
 #include "clientGame/FirstClientGame.h"
 #include "clientGame/TangibleObject.h"
+#include "clientGraphics/Light.h"
+#include "clientGame/GameLight.h"
+#include "clientObject/HardpointObject.h"
 
 #include "clientGame/ClientCollisionProperty.h"
 #include "clientGame/ClientCommandQueue.h"
@@ -69,7 +72,9 @@
 #include <vector>
 #include <cctype>
 #include <cfloat>
+#include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <string.h>
 
 #include <windows.h>
@@ -1837,6 +1842,9 @@ m_rtScreenLinkedCamera   (),
 m_rtCameraFov            (),
 m_rtCameraResolution     (),
 m_rtCameraActive         (),
+m_dynamicLightState      (),
+m_dynamicHardpointsState (),
+m_dynamicLightDefaultsCaptured(false),
 m_damageTaken            (),
 m_maxHitPoints           (),
 m_components             (),
@@ -1881,6 +1889,8 @@ m_effectsMap()
 	m_rtCameraFov.setSourceObject(this);
 	m_rtCameraResolution.setSourceObject(this);
 	m_rtCameraActive.setSourceObject(this);
+	m_dynamicLightState.setSourceObject(this);
+	m_dynamicHardpointsState.setSourceObject(this);
 	m_damageTaken.setSourceObject    (this);
 	m_condition.setSourceObject      (this);
 	m_maxHitPoints.setSourceObject   (this);
@@ -1916,6 +1926,8 @@ m_effectsMap()
 	addSharedVariable_np(m_rtCameraFov);
 	addSharedVariable_np(m_rtCameraResolution);
 	addSharedVariable_np(m_rtCameraActive);
+	addSharedVariable_np(m_dynamicLightState);
+	addSharedVariable_np(m_dynamicHardpointsState);
 
 	m_effectsMap.setOnErase(this, &TangibleObject::OnObjectEffectErased);
 	m_effectsMap.setOnInsert(this, &TangibleObject::OnObjectEffectInsert);
@@ -2137,6 +2149,9 @@ void TangibleObject::endBaselines()
 
 	m_lastOnOffStatus = (getCondition() & C_onOff) != 0;
 	setChildWingsOpened((getCondition() & C_wingsOpened) != 0);
+
+	applyDynamicLightState(m_dynamicLightState.get());
+	applyDynamicHardpointsState(m_dynamicHardpointsState.get());
 }
 
 // ----------------------------------------------------------------------
@@ -2155,12 +2170,17 @@ void TangibleObject::addToWorld()
 		updateVideoEmitterAudio();
 	if (!m_rtScreenLinkedCamera.get().empty())
 		updateRtCameraFeed();
+
+	applyDynamicLightState(m_dynamicLightState.get());
+	applyDynamicHardpointsState(m_dynamicHardpointsState.get());
 }
 
 // ----------------------------------------------------------------------
 
 void TangibleObject::removeFromWorld()
 {
+	clearDynamicHardpointObjects();
+
 	if (m_clientOnlyInteriorLayoutObjectList)
 	{
 		for (size_t i = 0; i < m_clientOnlyInteriorLayoutObjectList->size(); ++i)
@@ -2347,7 +2367,13 @@ void TangibleObject::changeAppearance(const SharedTangibleObjectTemplate & objec
 
 	//-- set the appearance.
 	if (appearance)
+	{
+		m_dynamicLightDefaultsCaptured = false;
+		m_dynamicLightDefaults.clear();
 		setAppearance(appearance);
+		applyDynamicLightState(m_dynamicLightState.get());
+		applyDynamicHardpointsState(m_dynamicHardpointsState.get());
+	}
 }	// TangibleObject::changeAppearance(const SharedObjectTemplate &)
 
 // ======================================================================
@@ -3396,6 +3422,313 @@ void TangibleObject::rtCameraActiveModified(const std::string & value)
 
 //----------------------------------------------------------------------
 
+namespace TangibleObjectDynamicLightNamespace
+{
+	void collectChildLightsRecursive(Object *const node, stdvector<Light *>::fwd &out)
+	{
+		if (!node)
+			return;
+		int const n = node->getNumberOfChildObjects();
+		for (int i = 0; i < n; ++i)
+		{
+			Object *const child = node->getChildObject(i);
+			if (Light *const asLight = dynamic_cast<Light *>(child))
+				out.push_back(asLight);
+			collectChildLightsRecursive(child, out);
+		}
+	}
+}
+
+//----------------------------------------------------------------------
+
+void TangibleObject::dynamicLightStateModified(std::string const &value)
+{
+	applyDynamicLightState(value);
+}
+
+//----------------------------------------------------------------------
+
+void TangibleObject::applyDynamicLightState(std::string const &state)
+{
+	std::vector<Light *> lights;
+	TangibleObjectDynamicLightNamespace::collectChildLightsRecursive(this, lights);
+
+	int enabled = 0;
+	float r = 1.f;
+	float g = 1.f;
+	float b = 1.f;
+	float range = 10.f;
+	float intensity = 1.f;
+	bool const parsed = !state.empty() && sscanf(state.c_str(), "%d %f %f %f %f %f", &enabled, &r, &g, &b, &range, &intensity) == 6;
+	bool const haveOverride = parsed && enabled != 0;
+
+	if (!haveOverride)
+	{
+		if (m_dynamicLightDefaultsCaptured && m_dynamicLightDefaults.size() == lights.size())
+		{
+			for (size_t i = 0; i < lights.size(); ++i)
+			{
+				Light *const L = lights[i];
+				DynamicLightDefaults const &d = m_dynamicLightDefaults[i];
+				L->setDiffuseColor(d.color);
+				L->Light::setRange(d.range);
+				L->setDiffuseColorScale(d.diffuseColorScale);
+			}
+		}
+		m_dynamicLightDefaults.clear();
+		m_dynamicLightDefaultsCaptured = false;
+		return;
+	}
+
+	if (lights.empty())
+	{
+		m_dynamicLightDefaults.clear();
+		m_dynamicLightDefaultsCaptured = false;
+		return;
+	}
+
+	if (!m_dynamicLightDefaultsCaptured || m_dynamicLightDefaults.size() != lights.size())
+	{
+		m_dynamicLightDefaults.clear();
+		m_dynamicLightDefaults.reserve(lights.size());
+		for (Light *L : lights)
+		{
+			DynamicLightDefaults d;
+			d.color = L->getDiffuseColor();
+			d.range = L->getRange();
+			d.diffuseColorScale = L->getDiffuseColorScale();
+			m_dynamicLightDefaults.push_back(d);
+		}
+		m_dynamicLightDefaultsCaptured = true;
+	}
+
+	for (size_t i = 0; i < lights.size(); ++i)
+	{
+		Light *const L = lights[i];
+		VectorArgb const c = L->getDiffuseColor();
+		L->setDiffuseColor(VectorArgb(c.a, r, g, b));
+		L->Light::setRange(range);
+		float const baseScale = m_dynamicLightDefaults[i].diffuseColorScale;
+		L->setDiffuseColorScale(baseScale * intensity);
+	}
+}
+
+//----------------------------------------------------------------------
+
+namespace TangibleObjectHpDynClientNamespace
+{
+	void collectHpDynNodesPostOrder(Object *const node, std::vector<Object *> &out)
+	{
+		if (!node)
+			return;
+		int const n = node->getNumberOfChildObjects();
+		for (int i = 0; i < n; ++i)
+			collectHpDynNodesPostOrder(node->getChildObject(i), out);
+		char const *const dbg = node->getDebugName();
+		if (dbg && std::strncmp(dbg, "HpDyn", 5) == 0)
+			out.push_back(node);
+	}
+
+	void splitTabFields(std::string const &line, std::vector<std::string> &fields)
+	{
+		fields.clear();
+		size_t start = 0;
+		for (;;)
+		{
+			size_t const tab = line.find('\t', start);
+			if (tab == std::string::npos)
+			{
+				fields.push_back(line.substr(start));
+				break;
+			}
+			fields.push_back(line.substr(start, tab - start));
+			start = tab + 1;
+		}
+	}
+
+	bool attachHpDynApp(TangibleObject &owner, std::string const &hpToken, std::string const &appearancePath, Vector const &offset_o)
+	{
+		AppearanceTemplate const *const at = AppearanceTemplateList::fetch(appearancePath.c_str());
+		if (!at)
+			return false;
+		Appearance *const appearance = at->createAppearance();
+		AppearanceTemplateList::release(at);
+		if (!appearance)
+			return false;
+
+		char const *hpStr = "";
+		if (!hpToken.empty() && hpToken != "-")
+			hpStr = hpToken.c_str();
+		HardpointObject *const ho = new HardpointObject(CrcLowerString(hpStr));
+		ho->setDebugName("HpDynApp");
+		RenderWorld::addObjectNotifications(*ho);
+
+		Object *const holder = new Object();
+		holder->setPosition_p(offset_o);
+		holder->setAppearance(appearance);
+		RenderWorld::addObjectNotifications(*holder);
+		ho->addChildObject_o(holder);
+
+		owner.addChildObject_o(ho);
+		return true;
+	}
+
+	bool attachHpDynLight(TangibleObject &owner, std::string const &hpToken, float r, float g, float b, float range, float intensity)
+	{
+		GameLight *const light = new GameLight();
+		light->setFlicker(false);
+		light->setDiffuseColor(VectorArgb(1.f, r, g, b));
+		light->Light::setRange(range);
+		light->setDiffuseColorScale(intensity);
+
+		char const *hpStr = "";
+		if (!hpToken.empty() && hpToken != "-")
+			hpStr = hpToken.c_str();
+		HardpointObject *const ho = new HardpointObject(CrcLowerString(hpStr));
+		ho->setDebugName("HpDynLight");
+		RenderWorld::addObjectNotifications(*ho);
+		ho->addChildObject_o(light);
+		owner.addChildObject_o(ho);
+		return true;
+	}
+
+	bool attachHpDynFx(TangibleObject &owner, std::string const &hpToken, std::string const &effectPath, Vector const &offset, float scale)
+	{
+		ParticleEffectAppearanceTemplate const *const particleTemplate = dynamic_cast<ParticleEffectAppearanceTemplate const *>(AppearanceTemplateList::fetch(effectPath.c_str()));
+		if (!particleTemplate)
+			return false;
+
+		Object *const fxObject = new Object();
+		fxObject->setDebugName("HpDynFx");
+		RenderWorld::addObjectNotifications(*fxObject);
+
+		ParticleEffectAppearance *const newEffect = ParticleEffectAppearance::asParticleEffectAppearance(particleTemplate->createAppearance());
+		AppearanceTemplateList::release(particleTemplate);
+		if (!newEffect)
+		{
+			delete fxObject;
+			return false;
+		}
+		newEffect->setAutoDelete(false);
+		newEffect->setOwner(fxObject);
+		newEffect->setPlayBackRate(1.0f);
+		newEffect->setScale(Vector(scale, scale, scale));
+		fxObject->setAppearance(newEffect);
+
+		if (owner.getCellProperty())
+		{
+			CellProperty::setPortalTransitionsEnabled(false);
+			fxObject->setParentCell(owner.getCellProperty());
+		}
+		fxObject->addNotification(ClientWorld::getIntangibleNotification());
+		fxObject->attachToObject_w(&owner, true);
+
+		if (hpToken.empty() || hpToken == "-")
+		{
+			Transform t(Transform::IF_none);
+			t.setPosition_p(offset);
+			fxObject->setTransform_o2p(t);
+			if (owner.getCellProperty())
+				CellProperty::setPortalTransitionsEnabled(true);
+			return true;
+		}
+
+		Appearance const *const thisApp = owner.getAppearance();
+		Transform hardpointToParent = Transform::identity;
+		if (thisApp && thisApp->findHardpoint(CrcLowerString(hpToken.c_str()), hardpointToParent))
+		{
+			Vector const finalOffset = hardpointToParent.getPosition_p() + offset;
+			hardpointToParent.setPosition_p(finalOffset);
+			fxObject->setTransform_o2p(hardpointToParent);
+		}
+		if (owner.getCellProperty())
+			CellProperty::setPortalTransitionsEnabled(true);
+		return true;
+	}
+}
+
+void TangibleObject::clearDynamicHardpointObjects()
+{
+	std::vector<Object *> toDelete;
+	TangibleObjectHpDynClientNamespace::collectHpDynNodesPostOrder(this, toDelete);
+	for (size_t i = 0; i < toDelete.size(); ++i)
+		delete toDelete[i];
+}
+
+void TangibleObject::dynamicHardpointsStateModified(std::string const &value)
+{
+	applyDynamicHardpointsState(value);
+}
+
+void TangibleObject::applyDynamicHardpointsState(std::string const &packed)
+{
+	clearDynamicHardpointObjects();
+	if (packed.empty())
+		return;
+	if (packed.size() < 2 || packed[0] != 'v' || packed[1] != '1')
+		return;
+
+	size_t pos = packed.find('\n');
+	if (pos == std::string::npos)
+		return;
+
+	for (size_t lineStart = pos + 1; lineStart < packed.size(); )
+	{
+		size_t lineEnd = packed.find('\n', lineStart);
+		std::string line = (lineEnd == std::string::npos) ? packed.substr(lineStart) : packed.substr(lineStart, lineEnd - lineStart);
+		if (!line.empty() && line[line.size() - 1] == '\r')
+			line.erase(line.size() - 1);
+		lineStart = (lineEnd == std::string::npos) ? packed.size() : lineEnd + 1;
+		if (line.empty())
+			continue;
+
+		std::vector<std::string> f;
+		TangibleObjectHpDynClientNamespace::splitTabFields(line, f);
+		if (f.empty())
+			continue;
+
+		std::string kind = f[0];
+		for (size_t c = 0; c < kind.size(); ++c)
+		{
+			if (kind[c] >= 'A' && kind[c] <= 'Z')
+				kind[c] = static_cast<char>(kind[c] - 'A' + 'a');
+		}
+
+		if (kind == "app" && f.size() >= 3)
+		{
+			float ox = 0.f;
+			float oy = 0.f;
+			float oz = 0.f;
+			if (f.size() >= 6)
+			{
+				ox = static_cast<float>(atof(f[3].c_str()));
+				oy = static_cast<float>(atof(f[4].c_str()));
+				oz = static_cast<float>(atof(f[5].c_str()));
+			}
+			IGNORE_RETURN(TangibleObjectHpDynClientNamespace::attachHpDynApp(*this, f[1], f[2], Vector(ox, oy, oz)));
+		}
+		else if (kind == "light" && f.size() >= 7)
+		{
+			float r = static_cast<float>(atof(f[2].c_str()));
+			float g = static_cast<float>(atof(f[3].c_str()));
+			float b = static_cast<float>(atof(f[4].c_str()));
+			float range = static_cast<float>(atof(f[5].c_str()));
+			float intensity = static_cast<float>(atof(f[6].c_str()));
+			IGNORE_RETURN(TangibleObjectHpDynClientNamespace::attachHpDynLight(*this, f[1], r, g, b, range, intensity));
+		}
+		else if (kind == "fx" && f.size() >= 7)
+		{
+			float ox = static_cast<float>(atof(f[3].c_str()));
+			float oy = static_cast<float>(atof(f[4].c_str()));
+			float oz = static_cast<float>(atof(f[5].c_str()));
+			float sc = static_cast<float>(atof(f[6].c_str()));
+			IGNORE_RETURN(TangibleObjectHpDynClientNamespace::attachHpDynFx(*this, f[1], f[2], Vector(ox, oy, oz), sc));
+		}
+	}
+}
+
+//----------------------------------------------------------------------
+
 void TangibleObject::updateRtCameraFeed()
 {
 	// This object is an RT Screen - check if we have a linked camera
@@ -3662,6 +3995,20 @@ void TangibleObject::Callbacks::DefaultCallback<TangibleObject::Messages::RtCame
 {
 	UNREF(oldValue);
 	target.rtCameraActiveModified(value);
+}
+
+template<>
+void TangibleObject::Callbacks::DefaultCallback<TangibleObject::Messages::DynamicLightState, std::string>::modified(TangibleObject & target, const std::string& oldValue, const std::string& value, bool) const
+{
+	UNREF(oldValue);
+	target.dynamicLightStateModified(value);
+}
+
+template<>
+void TangibleObject::Callbacks::DefaultCallback<TangibleObject::Messages::DynamicHardpointsState, std::string>::modified(TangibleObject & target, const std::string& oldValue, const std::string& value, bool) const
+{
+	UNREF(oldValue);
+	target.dynamicHardpointsStateModified(value);
 }
 
 //----------------------------------------------------------------------

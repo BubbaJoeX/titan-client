@@ -1,4 +1,5 @@
 #include "ans.h"
+#include "SwgTranslatorNames.h"
 
 #include "Iff.h"
 #include "Tag.h"
@@ -911,7 +912,7 @@ MString AnsTranslator::defaultExtension () const
 
 MString AnsTranslator::filter () const
 {
-    return "Animation - SWG (*.ans)";
+    return MString(swg_translator::kFilterAns);
 }
 
 /**

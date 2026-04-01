@@ -491,7 +491,16 @@ std::string CuiIconManager::findIconPath (const CuiDragInfo & info)
 	case CuiDragInfoTypes::CDIT_command:
 		{
 			if (!info.cmd.empty ())
+			{
+				// Pet bar pipe format: str is the executed command (e.g. /companion_bar_slot_a), cmd is the
+				// display/taught command name for icon — use command icon path, not ui styles.
+				std::string execStr = info.str;
+				if (!execStr.empty () && execStr[0] == '/')
+					execStr.erase (execStr.begin ());
+				if (execStr.compare (0, 14, "companion_bar_") == 0)
+					return GetStylePath(isl_commands) + info.cmd;
 				return GetStylePath(isl_ui) + info.cmd;
+			}
 
 			if (info.str.empty ())
 			{
@@ -510,7 +519,8 @@ std::string CuiIconManager::findIconPath (const CuiDragInfo & info)
 
 			if ((size > 2)
 					&& (cmdCopy[size - 2] == '_')
-					&& (isdigit(cmdCopy[size - 1])))
+					&& (isdigit(cmdCopy[size - 1]))
+					&& (cmdCopy.find("companion_bar_core_slot") == std::string::npos))
 			{
 				cmdCopy.resize(size - 2);
 			}
@@ -617,7 +627,10 @@ std::string CuiIconManager::findIconPath (const CuiDragInfo & info)
 				return GetStylePath(isl_space) + cmdCopy;
 			}
 			*/
-			
+			// Story companion pet bar: programmable core slots (no |displayCommand) share one generic UI icon.
+			if (cmdCopy.compare(0, 22, "companion_bar_core_slot") == 0)
+				return GetStylePath(isl_ui) + "companion_bar_core_generic";
+
 			return GetStylePath(isl_commands) + cmdCopy;
 		}
 		break;

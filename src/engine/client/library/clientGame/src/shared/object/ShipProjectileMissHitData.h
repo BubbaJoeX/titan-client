@@ -46,6 +46,8 @@ public:
 	ClientEffectTemplate const * m_missHitShieldClientEffectTemplate;
 	ClientEffectTemplate const * m_missHitShieldShellClientEffectTemplate;
 	ClientEffectTemplate const * m_missHitFriendlyFireClientEffectTemplate;
+	/// When true, terrain hits use HT_other (explosion) instead of HT_stone (rock puff).
+	bool m_useExplosionForTerrainHits;
 	
 public:
 	

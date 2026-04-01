@@ -211,7 +211,11 @@ namespace Unicode
 	
 	inline NarrowString wideToNarrow (const String & str)
 	{
-		return NarrowString (str.begin (), str.end ());
+		NarrowString out;
+		out.reserve (str.size ());
+		for (String::const_iterator i = str.begin (); i != str.end (); ++i)
+			out.push_back (static_cast<NarrowString::value_type> (*i));
+		return out;
 	}
 
 	//-----------------------------------------------------------------
@@ -222,7 +226,11 @@ namespace Unicode
 	*/
 	inline NarrowString &  wideToNarrow (const String & str, NarrowString & nstr)
 	{
-		return nstr.assign (str.begin (), str.end ());
+		nstr.clear ();
+		nstr.reserve (str.size ());
+		for (String::const_iterator i = str.begin (); i != str.end (); ++i)
+			nstr.push_back (static_cast<NarrowString::value_type> (*i));
+		return nstr;
 	}
 
 	/**

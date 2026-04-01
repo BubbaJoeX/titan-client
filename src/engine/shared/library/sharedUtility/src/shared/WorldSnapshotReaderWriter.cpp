@@ -19,6 +19,7 @@
 #include "sharedFoundation/MemoryBlockManager.h"
 #include "sharedFoundation/PointerDeleter.h"
 #include "sharedMath/Quaternion.h"
+#include "sharedMath/Vector.h"
 #include "sharedUtility/LocalMachineOptionManager.h"
 
 #include <algorithm>
@@ -101,6 +102,7 @@ WorldSnapshotReaderWriter::Node::Node () :
 	m_objectTemplateNameIndex (0),
 	m_cellIndex (0),
 	m_transform_p (),
+	m_objectScale (Vector::xyz111),
 	m_radius (0.f),
 	m_portalLayoutCrc (0),
 	m_parent (0),
@@ -175,6 +177,13 @@ void WorldSnapshotReaderWriter::Node::setTransform_p (const Transform& transform
 
 //-------------------------------------------------------------------
 
+void WorldSnapshotReaderWriter::Node::setObjectScale (Vector const &objectScale)
+{
+	m_objectScale = objectScale;
+}
+
+//-------------------------------------------------------------------
+
 void WorldSnapshotReaderWriter::Node::setRadius (const float radius)
 {
 	#ifdef _DEBUG
@@ -238,6 +247,13 @@ int WorldSnapshotReaderWriter::Node::getCellIndex () const
 const Transform& WorldSnapshotReaderWriter::Node::getTransform_p () const
 {
 	return m_transform_p;
+}
+
+//-------------------------------------------------------------------
+
+Vector const &WorldSnapshotReaderWriter::Node::getObjectScale () const
+{
+	return m_objectScale;
 }
 
 //-------------------------------------------------------------------
@@ -647,7 +663,8 @@ WorldSnapshotReaderWriter::Node const *WorldSnapshotReaderWriter::addObject (
 	const Transform& transform_p,
 	const float radius,
 	const uint32 portalLayoutCrc,
-	const std::string & eventName )
+	const std::string & eventName,
+	Vector const &objectScale )
 {
 	NOT_NULL (m_objectTemplateNameList);
 	NOT_NULL (m_networkIdNodeMap);
@@ -674,6 +691,7 @@ WorldSnapshotReaderWriter::Node const *WorldSnapshotReaderWriter::addObject (
 	node->setRadius                  (radius);
 	node->setPortalLayoutCrc         (portalLayoutCrc);
 	node->setEventName               (eventName);
+	node->setObjectScale             (objectScale);
 
 	std::pair<NetworkIdNodeMap::iterator, bool> result = m_networkIdNodeMap->insert (std::make_pair (networkIdInt, node));
 

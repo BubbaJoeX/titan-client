@@ -53,7 +53,6 @@ void CharDataMap::initSingleton ()
 {
 	explicitDestroy ();
 
-	// TODO: default blocks?
 	ms_singleton = new CharDataMap ();
 }
 

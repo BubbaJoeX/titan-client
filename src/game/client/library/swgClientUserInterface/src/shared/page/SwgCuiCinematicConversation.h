@@ -12,6 +12,7 @@
 
 #include "clientUserInterface/CuiMediator.h"
 #include "UIEventCallback.h"
+#include "UIMessage.h"
 #include "../../../../../../engine/shared/library/sharedFoundation/include/public/sharedFoundation/NetworkId.h"
 #include "sharedMath/Vector.h"
 #include "sharedMath/Transform.h"
@@ -83,6 +84,7 @@ public:
 	virtual ~SwgCuiCinematicConversation();
 
 	virtual void OnButtonPressed(UIWidget * context);
+	virtual bool OnMessage(UIWidget * context, UIMessage const & msg);
 	virtual void update(float deltaTimeSecs);
 
 	// Set the NPC message text
@@ -97,6 +99,8 @@ public:
 protected:
 	virtual void performActivate();
 	virtual void performDeactivate();
+	virtual bool canActivateWhenWorkspaceDisabled () const;
+	virtual bool shouldSurviveDisabledWorkspace () const;
 
 private:
 	// Disabled
@@ -191,6 +195,8 @@ private:
 	CameraShotType m_currentShotType;
 	float m_shotHoldTime;
 	float m_timeSinceLastShotChange;
+
+	bool m_savedHudEnabled;
 
 	// Static settings
 	static bool ms_enabled;

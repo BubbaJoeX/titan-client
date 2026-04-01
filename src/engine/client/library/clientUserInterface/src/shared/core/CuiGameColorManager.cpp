@@ -192,6 +192,50 @@ namespace CuiGameColorManagerNamespace
 
 	bool    s_installed = false;
 
+	UIColor getNameplatePresetColor(int const preset, UIColor const & fallback)
+	{
+		switch (preset)
+		{
+			case 1: return UIColor(0xff, 0xff, 0xff); // white
+			case 2: return UIColor(0x00, 0xff, 0x00); // green
+			case 3: return UIColor(0x00, 0xcc, 0xdd); // cyan
+			case 4: return UIColor(0xff, 0xdd, 0x00); // yellow
+			case 5: return UIColor(0xff, 0x99, 0x00); // orange
+			case 6: return UIColor(0xff, 0x00, 0x00); // red
+			case 7: return UIColor(0xaa, 0x00, 0xff); // purple
+			default: break;
+		}
+		return fallback;
+	}
+
+	void applyNameplateOverrides()
+	{
+		s_colors[CuiGameColorManager::T_npc] = getNameplatePresetColor(
+			CuiPreferences::getNameplateColorNeutralPreset(),
+			s_colors[CuiGameColorManager::T_npc]);
+
+		s_colors[CuiGameColorManager::T_player] = getNameplatePresetColor(
+			CuiPreferences::getNameplateColorFriendlyPreset(),
+			s_colors[CuiGameColorManager::T_player]);
+		s_colors[CuiGameColorManager::T_group] = s_colors[CuiGameColorManager::T_player];
+		s_colors[CuiGameColorManager::T_groupLeader] = s_colors[CuiGameColorManager::T_player];
+		s_colors[CuiGameColorManager::T_faction] = s_colors[CuiGameColorManager::T_player];
+		s_colors[CuiGameColorManager::T_factionNpc] = s_colors[CuiGameColorManager::T_player];
+
+		s_colors[CuiGameColorManager::T_attackable] = getNameplatePresetColor(
+			CuiPreferences::getNameplateColorHostilePreset(),
+			s_colors[CuiGameColorManager::T_attackable]);
+
+		s_colors[CuiGameColorManager::T_canAttackYou] = getNameplatePresetColor(
+			CuiPreferences::getNameplateColorDangerPreset(),
+			s_colors[CuiGameColorManager::T_canAttackYou]);
+		UIColor const danger = s_colors[CuiGameColorManager::T_canAttackYou];
+		s_colors[CuiGameColorManager::T_canAttackYouDark] = UIColor(
+			static_cast<uint8>(danger.r * 3 / 4),
+			static_cast<uint8>(danger.g * 3 / 4),
+			static_cast<uint8>(danger.b * 3 / 4));
+	}
+
 	void install ()
 	{
 		if (s_installed)
@@ -228,6 +272,8 @@ namespace CuiGameColorManagerNamespace
 		MAKE_NAME_COLOR (spaceWillBeDeclared, 1.5f, UIColor::red);
 
 #undef MAKE_NAME_COLOR
+
+		applyNameplateOverrides();
 	}
 }
 
@@ -388,6 +434,7 @@ float CuiGameColorManager::getRangeModForType (Type type)
 
 void CuiGameColorManager::update(float const deltaTimeSeconds)
 {
+	applyNameplateOverrides();
 	s_nameBlinkManager.update(deltaTimeSeconds);
 }
 

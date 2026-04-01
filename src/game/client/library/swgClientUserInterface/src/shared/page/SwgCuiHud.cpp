@@ -12,6 +12,7 @@
 #include "clientGame/CellObject.h"
 #include "clientGame/ClientCommandChecks.h"
 #include "clientGame/ClientCommandQueue.h"
+#include "clientGame/ClientShipTargeting.h"
 #include "clientGame/ClientTextManager.h"
 #include "clientGame/ClientWorld.h"
 #include "clientGame/CockpitCamera.h"
@@ -372,8 +373,15 @@ namespace SwgCuiHudNamespace
 			ClientObject * const clientPolygonObject = polygonTarget->asClientObject();
 			if ((clientPolygonObject && clientPolygonObject->isTargettable()) || allowTargetAnything)
 			{
-				ObjectWatcher watcher(polygonTarget);
-				orderedTargets.push_back(watcher);
+				if (!allowTargetAnything && clientPolygonObject && ClientShipTargeting::shouldRejectTargetWhilePilotingShip (clientPolygonObject))
+				{
+					// skip interior ship items when piloting
+				}
+				else
+				{
+					ObjectWatcher watcher(polygonTarget);
+					orderedTargets.push_back(watcher);
+				}
 			}
 		}
 
@@ -393,6 +401,8 @@ namespace SwgCuiHudNamespace
 			
 			if ((object != polygonTarget && clientObject && clientObject->isTargettable()) || allowTargetAnything)
 			{
+				if (!allowTargetAnything && clientObject && ClientShipTargeting::shouldRejectTargetWhilePilotingShip (clientObject))
+					continue;
 				ObjectWatcher watcher(object);
 				orderedTargets.push_back(watcher);
 			}
@@ -1816,13 +1826,21 @@ void SwgCuiHud::manageTargetBoxes (const Object * intendedObject, const Camera &
 
 void SwgCuiHud::startConversingWithSelectedCreature () const
 {
-	if (m_lastSelectedObject.getPointer () != 0)
-	{
-		const CreatureObject * const creature = dynamic_cast<const CreatureObject *>(m_lastSelectedObject.getPointer ());
+	Object const * const selected = m_lastSelectedObject.getPointer ();
+	if (selected == 0)
+		return;
 
-		if (creature)
-			CuiConversationManager::start (creature->getNetworkId ());
+	CreatureObject const * const creature = dynamic_cast<CreatureObject const *>(selected);
+	if (creature != 0)
+	{
+		CuiConversationManager::start (creature->getNetworkId ());
+		return;
 	}
+
+	// Guild orbit beacons and other conversable props use ShipObject (e.g. spacestation_neutral), not CreatureObject.
+	ShipObject const * const ship = dynamic_cast<ShipObject const *>(selected);
+	if (ship != 0 && Game::useSpaceConversationHud ())
+		CuiConversationManager::start (ship->getNetworkId ());
 }
 
 //----------------------------------------------------------------------

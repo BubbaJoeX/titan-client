@@ -1,4 +1,5 @@
 #include "mgn.h"
+#include "SwgTranslatorNames.h"
 
 #include "Iff.h"
 #include "Globals.h"
@@ -1356,7 +1357,7 @@ MString MgnTranslator::defaultExtension () const
 
 MString MgnTranslator::filter () const
 {
-    return "Skeletal Mesh Generator - SWG (*.mgn)";
+    return MString(swg_translator::kFilterMgn);
 }
 
 /**

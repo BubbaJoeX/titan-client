@@ -16,6 +16,7 @@ class CrcString;
 class NetworkId;
 class Object;
 class Transform;
+class Vector;
 struct ClientBuildoutAreaRow;
 struct ServerBuildoutAreaRow;
 
@@ -35,6 +36,7 @@ public:
 	static void unlockServerOnly(bool value);
 	static bool deleteBuildoutObject(Object &obj);
 	static bool setObjectTransform(Object &obj, Transform const &transform_p);
+	static bool setObjectScale(Object &obj, Vector const &scale);
 	static void attachScript(Object const &obj, std::string const &scriptName);
 	static void detachScript(Object const &obj, std::string const &scriptName);
 	static void setObjvar(Object const &obj, std::string const &objvarName, int value);

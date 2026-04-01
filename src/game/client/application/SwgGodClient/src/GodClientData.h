@@ -96,7 +96,8 @@ public:
 		NetworkId   networkId;
 
 		ClipboardObject();
-		explicit ClipboardObject(const Object& obj, bool copyTransform, bool copyScale, bool copyScripts, bool copyObjvars);
+		/// @param optionalEditGhost When non-null (God Client selection ghost), transform/scale are taken from the ghost so unsaved scale/rotate matches what you see.
+		explicit ClipboardObject(const Object& obj, bool copyTransform, bool copyScale, bool copyScripts, bool copyObjvars, Object const *optionalEditGhost = 0);
 
 		Object* findInClientWorld() const;
 	};

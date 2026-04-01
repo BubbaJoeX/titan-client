@@ -57,6 +57,7 @@ public:
 	const VectorArgb &getDiffuseColor() const;
 	void              setDiffuseColor(const VectorArgb &newColor);
 	float             getDiffuseIntensity() const;
+	float             getDiffuseColorScale() const;
 	void              setDiffuseColorScale(float diffuseColorScale);
 
 	const VectorArgb &getDiffuseBackColor() const;
@@ -204,6 +205,13 @@ inline const VectorArgb &Light::getDiffuseTangentColor() const
 inline float Light::getDiffuseIntensity() const
 {
 	return m_diffuseIntensity; 
+}
+
+// ----------------------------------------------------------------------
+
+inline float Light::getDiffuseColorScale() const
+{
+	return m_diffuseColorScale;
 }
 
 // ----------------------------------------------------------------------

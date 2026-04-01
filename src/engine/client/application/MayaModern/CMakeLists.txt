@@ -129,6 +129,7 @@ set(SOURCE_FILES
         translators/pob.h
         translators/dds.cpp
         translators/dds.h
+        translators/SwgTranslatorNames.h
 
         utility/MayaUtility.cpp
         utility/MayaUtility.h
@@ -175,6 +176,8 @@ set(SOURCE_FILES
         commands/ExportShader.h
         commands/ImportStaticMesh.cpp
         commands/ImportStaticMesh.h
+        commands/ImportStructure.cpp
+        commands/ImportStructure.h
         commands/SwgAssetDissector.cpp
         commands/SwgAssetDissector.h
         commands/SkeletonTemplateWriter.cpp

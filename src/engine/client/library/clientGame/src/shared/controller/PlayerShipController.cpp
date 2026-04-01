@@ -1254,29 +1254,27 @@ void PlayerShipController::doAutopilot(float & yawPosition, float & pitchPositio
 
 			if (!Game::isSpace())
 			{
-				float terrainHeight = 0.0f;
+				// Cruise altitude from terrain at the *waypoint* (stable). Sampling terrain at the ship
+				// every frame made the target altitude chase terrain and fight the pitch controller,
+				// causing porpoising (up/down oscillation).
+				float terrainHeightAtWaypoint = 0.0f;
 				TerrainObject const * const terrain = TerrainObject::getConstInstance();
 				if (terrain)
-					terrain->getHeight(shipPosition, terrainHeight);
+				{
+					if (!terrain->getHeight(Vector(m_autopilotTargetLocation.x, 0.0f, m_autopilotTargetLocation.z), terrainHeightAtWaypoint))
+						IGNORE_RETURN(terrain->getHeight(shipPosition, terrainHeightAtWaypoint));
+				}
 
-				float const cruiseAltitude = terrainHeight + 200.0f;
+				float const cruiseAltitude = terrainHeightAtWaypoint + 200.0f;
 
-				Vector flatTarget(m_autopilotTargetLocation.x, cruiseAltitude, m_autopilotTargetLocation.z);
+				Vector const flatTarget(m_autopilotTargetLocation.x, cruiseAltitude, m_autopilotTargetLocation.z);
 				m_autopilotTargetHeading = flatTarget - shipPosition;
-				m_autopilotTargetHeading.y = 0.0f;
+				// Full 3D heading (do not zero Y): doAutopilotTurnToHeading handles pitch toward cruise altitude.
+				// A separate bang-bang altitude pitch previously overwrote this and caused oscillation.
 
 				float const result = doAutopilotTurnToHeading(pitchPosition, yawPosition);
 
 				IGNORE_RETURN(doAutopilotRollLevel(rollPosition));
-
-				float const altitudeDelta = cruiseAltitude - shipPosition.y;
-				float const altitudeThreshold = 5.0f;
-				if (altitudeDelta > altitudeThreshold)
-					pitchPosition = -0.3f;
-				else if (altitudeDelta < -altitudeThreshold)
-					pitchPosition = 0.3f;
-				else
-					pitchPosition = 0.0f;
 
 				float const distanceToTarget = m_autopilotTargetHeading.approximateMagnitude();
 

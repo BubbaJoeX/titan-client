@@ -2,7 +2,7 @@
 //
 // InstallationTurretCamera.h
 //
-// First-person camera at a ground installation turret (no ship-style zoom).
+// Ground installation gunner: first zoom level at barrel; mouse wheel zooms out to third person (10 m max).
 //
 // ======================================================================
 
@@ -32,6 +32,9 @@ public:
 
 	Object const *getTurret() const;
 
+	/** World point along the aim ray through the screen reticle (render-target center), at the given distance from the camera. */
+	bool computeReticleAimWorldEnd(float distanceMeters, Vector &outEnd_w) const;
+
 private:
 
 	InstallationTurretCamera(InstallationTurretCamera const &);
@@ -48,6 +51,8 @@ private:
 	float m_aimSendCooldown;
 	bool m_hasLastQueuedAim;
 	Vector m_lastQueuedAimWorld;
+	int m_zoomSetting;
+	float m_smoothedPullBackM;
 };
 
 inline Object const *InstallationTurretCamera::getTurret() const

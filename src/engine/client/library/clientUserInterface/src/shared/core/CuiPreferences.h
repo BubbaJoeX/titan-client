@@ -145,6 +145,15 @@ public:
 	static void                setDrawObjectNamesBeasts (bool drawObjectNames);
 	static bool                getDrawObjectNamesBeasts ();
 
+	static void                setNameplateColorNeutralPreset(int preset);
+	static int                 getNameplateColorNeutralPreset();
+	static void                setNameplateColorFriendlyPreset(int preset);
+	static int                 getNameplateColorFriendlyPreset();
+	static void                setNameplateColorHostilePreset(int preset);
+	static int                 getNameplateColorHostilePreset();
+	static void                setNameplateColorDangerPreset(int preset);
+	static int                 getNameplateColorDangerPreset();
+
 	static bool                getAllowTargetAnything ();
 	static void                setAllowTargetAnything (bool b);
 

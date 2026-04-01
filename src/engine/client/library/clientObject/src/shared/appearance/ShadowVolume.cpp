@@ -995,6 +995,11 @@ void ShadowVolume::renderShadowAlpha (const Camera* camera)
 	if (camera->getParentCell () != CellProperty::getWorldCellProperty ())
 		return;
 
+	// Atmospheric flight: skip full-screen shadow modulation. Terrain is obscured by fog;
+	// this pass was darkening player ships and hulls unnaturally.
+	if (ms_atmosphericTerrainVeilEnabled)
+		return;
+
 	if (ms_enabled && ms_renderShadowsThisFrame && ms_shadowVolumeScreenAlphaShader)
 	{
 		//-- draw screen poly
@@ -1014,22 +1019,15 @@ void ShadowVolume::renderShadowAlpha (const Camera* camera)
 
 			if(ms_viewer || camera->getParentCell () == CellProperty::getWorldCellProperty ())
 			{
-				if (ms_atmosphericTerrainVeilEnabled)
-				{
-					color = VectorArgb(0.55f, 0.0f, 0.0f, 0.0f);
-				}
-				else
-				{
-					float timeOfDay = ShadowManager::getTimeOfDay();
+				float timeOfDay = ShadowManager::getTimeOfDay();
 
-					timeOfDay += 0.5f;
+				timeOfDay += 0.5f;
 
-					if(timeOfDay > 1.0f)
-						timeOfDay = 1.0f;
+				if(timeOfDay > 1.0f)
+					timeOfDay = 1.0f;
 
-					float shadowValue = 0.70f;
-					color = VectorArgb(shadowValue * timeOfDay, 0.0f, 0.0f, 0.0f);
-				}
+				float shadowValue = 0.70f;
+				color = VectorArgb(shadowValue * timeOfDay, 0.0f, 0.0f, 0.0f);
 			}
 			else
 			{

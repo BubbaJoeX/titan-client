@@ -32,6 +32,8 @@
 #include "UIButton.h"
 #include "UIDeformer.h"
 #include "UIEffector.h"
+#include "UIText.h"
+#include "Unicode.h"
 
 //======================================================================
 
@@ -134,6 +136,22 @@ SwgCuiHudSpace::SwgCuiHudSpace(UIPage & page) :
 	m_buttonParentPage = NON_NULL(static_cast<UIPage*>(m_exitStationButton->GetParent(TUIPage))); //lint !e1774 // Could dynamic cast.
 	m_buttonParentPage->SetVisible(true);
 	m_buttonParentPage->Link();
+	{
+		static char const * const titles[] = { "title", "lblTitle", "caption", "textTitle" };
+		Unicode::String const airlock = Unicode::narrowToWide("Airlock Controls");
+		for (size_t ti = 0; ti < sizeof(titles) / sizeof(titles[0]); ++ti)
+		{
+			UIBaseObject * const child = m_buttonParentPage->GetChild(titles[ti]);
+			if (!child)
+				continue;
+			UIText * const t = dynamic_cast<UIText *>(child);
+			if (t)
+			{
+				t->SetLocalText(airlock);
+				break;
+			}
+		}
+	}
 
 	// Missile lock on you.
 	getCodeDataObject(TUIPage, m_missileLockWidget, "missileLockOnYou");

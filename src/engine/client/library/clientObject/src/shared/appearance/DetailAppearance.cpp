@@ -1075,7 +1075,7 @@ void DetailAppearance::getMeshGeometryForCollision (IndexedTriangleList & out) c
 
 	int const lowestLodIndex = count - 1;
 	Appearance const *const lodAppearance = getAppearance(lowestLodIndex);
-	if (!lodAppearance)
+	if (!lodAppearance || !lodAppearance->isLoaded())
 		return;
 
 	lodAppearance->getMeshGeometryForCollision(out);

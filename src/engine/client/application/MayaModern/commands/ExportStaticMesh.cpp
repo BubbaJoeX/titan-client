@@ -358,6 +358,22 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
             MString hpName = childTransform.name(&status);
             if (!status) continue;
 
+            if (hpName == "floor_component")
+            {
+                MFnDependencyNode depFn(childPath.node(), &status);
+                if (status)
+                {
+                    MPlug fp = depFn.findPlug("floorPath", false);
+                    if (!fp.isNull())
+                    {
+                        MString pathVal;
+                        if (fp.getValue(pathVal) == MS::kSuccess && pathVal.length() > 0)
+                            writer.setFloorReference(pathVal.asChar());
+                    }
+                }
+                continue;
+            }
+
             MVector mayaTrans = childTransform.translation(MSpace::kTransform, &status);
             if (!status) continue;
 

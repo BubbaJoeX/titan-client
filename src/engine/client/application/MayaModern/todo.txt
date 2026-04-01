@@ -54,8 +54,8 @@
 - [x] importLodMesh
 - [x] importPob
 - [x] importSat
-- [ ] Import structure - pob, msh, flr, sht, dds together
-- [ ] Import shader (ImportShader) - exists but may need verification
+- [x] Import structure - `importStructure` (POB + optional FLR + shell MSH/APT/LOD + optional `-shader`)
+- [x] Import shader (ImportShader) - exercised via `importStructure -shader` / manual `importShader`
 - [ ] Import Components (.cmp)
 
 ### Export
@@ -75,13 +75,13 @@
 ## Remaining for Complete 3D Asset Pipeline
 
 ### Import Gaps
-- [ ] Import structure - combined pob, msh, flr, sht, dds in one workflow
+- [x] Import structure - `importStructure -i appearance/.../basename` (`-flr` to import FLR alongside POB; `-shader path`)
 - [ ] Import Components (.cmp) - component appearance with hardpoints
-- [ ] Import shader - verify/fix standalone shader import
+- [x] Import shader - standalone `importShader`; `exportShader` registered in plugin (was missing from initializePlugin)
 
 ### Export (Critical for Round-Trip)
 - [x] Export mesh - apt/msh/sht (exportStaticMesh)
-- [ ] Export mesh with floor - above + flr
+- [x] Export mesh with floor reference - `exportStaticMesh` writes APPR/FLOR from `floor_component.floorPath` (`.flr` file export still legacy)
 - [ ] Export mesh with lightsaber - above + .lsb generator
 - [ ] Export mgn - sat/mgn/lmg (skeletal mesh generator) — **not in SwgMayaEditor**; legacy MayaExporter
 - [ ] Export mgn with ship - above + cockpit/*.iff
@@ -114,7 +114,7 @@
 2. **Edit** - Modify in Maya (hardpoints, blend shapes, geometry, materials)
 3. **Export** - Write back to SWG IFF format
 
-Current state: Import is largely complete for mesh/skeleton/animation. Export is blocked - no mesh export commands.
+Current state: Import is largely complete; static mesh + POB + skeleton + shader export paths exist. Skeletal `.mgn`, `.ans`, `.sat` **binary export** remains legacy MayaExporter scope unless ported.
 
 ---
 

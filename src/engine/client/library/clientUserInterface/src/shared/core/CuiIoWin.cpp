@@ -1213,9 +1213,18 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 						}
 					}
 
-					if (!retval && msg.Type == UIMessage::KeyDown && msg.Keystroke == UIMessage::Escape)
+					if (msg.Type == UIMessage::KeyDown && msg.Keystroke == UIMessage::Escape)
 					{
-						retval = CuiConversationManager::stop () || retval;
+						CuiMediator * const cinematicMediator = CuiMediatorFactory::getInWorkspace ("WS_CinematicConversation", false);
+						bool const cinematicEsc = CuiConversationManager::isCinematicConversationUiActive ()
+							|| (cinematicMediator && cinematicMediator->isActive ());
+						if (cinematicEsc)
+						{
+							CuiConversationManager::closeCinematicConversationFromInput ();
+							retval = true;
+						}
+						else if (!retval)
+							retval = CuiConversationManager::stop () || retval;
 					}
 
 					if (msg.Type > UIMessage::IMEFirst && msg.Type < UIMessage::IMELast)

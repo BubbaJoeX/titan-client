@@ -178,6 +178,41 @@ namespace SwgCuiSpaceConversationNamespace
 			*s_lastSound = Audio::playSound(sound.c_str());
 		}
 	}
+
+	void pushConversationNodeFromManager(bool const playTargetSound)
+	{
+		CachedNetworkId const & nid = CuiConversationManager::getTarget();
+		NetworkId const n(nid.getValue());
+		if (n == NetworkId::cms_invalid)
+			return;
+		if (!Game::useSpaceConversationHud())
+			return;
+
+		CuiConversationManager::StringVector const & responses = CuiConversationManager::getResponses();
+		// Server order is setTarget (clears lists) -> issueMessage (greeting) -> setResponses (options).
+		// Do not queue until we have response buttons; otherwise we flash one or two Stop-only rows
+		// before getLastMessage() is paired with responses in a single node.
+		if (responses.empty())
+			return;
+
+		// Must set before queuePush: update() may run synchronously and would otherwise discard
+		// conversation nodes when s_conversationHasFocus && !s_conversationActive (empty comm UI).
+		s_conversationActive = true;
+
+		s_conversationNode.setType(ConversationNode::cn_conversation);
+		s_conversationNode.generateId();
+		s_conversationNode.setExpireTime(0);
+		s_conversationNode.setTarget(n);
+		uint32 const appearanceOverrideTemplateCrc = CuiConversationManager::getAppearanceOverrideTemplateCrc();
+		s_conversationNode.setOverrideAppearanceTemplate(appearanceOverrideTemplateCrc);
+		std::string const & soundEffect = CuiConversationManager::getSoundEffect();
+		s_conversationNode.setSoundEffect(soundEffect);
+		s_conversationNode.setResponses(responses);
+		s_conversationNode.setText(CuiConversationManager::getLastMessage());
+		queuePush(s_conversationNode);
+		if (playTargetSound)
+			playSound(soundEffect);
+	}
 }
 
 using namespace SwgCuiSpaceConversationNamespace;
@@ -485,44 +520,25 @@ void SwgCuiSpaceConversation::performDeactivate()
 
 void SwgCuiSpaceConversation::onTargetChanged(bool const &)
 {
-	CachedNetworkId const & nid = CuiConversationManager::getTarget();
-	NetworkId n = NetworkId(nid.getValue());
 	s_conversationActive = false;
+	CachedNetworkId const & nid = CuiConversationManager::getTarget();
+	NetworkId const n(nid.getValue());
+	if (n == NetworkId::cms_invalid)
+		return;
+	if (!Game::useSpaceConversationHud())
+		return;
+	// Do not push here: setTarget cleared responses — push would only add Stop Conversing rows.
+	// onResponsesChanged runs after issueMessage + setResponses; lastMessage is still on the manager.
+	s_conversationActive = true;
+	std::string const & soundEffect = CuiConversationManager::getSoundEffect();
+	if (!soundEffect.empty() && soundEffect != "null")
+		playSound(soundEffect);
 
-	if (Game::isHudSceneTypeSpace()) 
-	{
-		if (n != NetworkId::cms_invalid)
-		{
-			s_conversationNode.setType(ConversationNode::cn_conversation);
-			
-			s_conversationNode.generateId();
-			s_conversationNode.setExpireTime(0);
-			s_conversationNode.setTarget(n);
-			
-			uint32 const appearanceOverrideTemplateCrc = CuiConversationManager::getAppearanceOverrideTemplateCrc();
-			s_conversationNode.setOverrideAppearanceTemplate(appearanceOverrideTemplateCrc);
-			
-			std::string const & soundEffect = CuiConversationManager::getSoundEffect();
-			s_conversationNode.setSoundEffect(soundEffect);
-			
-			StringVector const & response = CuiConversationManager::getResponses();
-			s_conversationNode.setResponses(response);
-			
-			s_conversationNode.setText(CuiConversationManager::getLastMessage());
-			
-			queuePush(s_conversationNode);
-			
-			playSound(soundEffect);
-			
-			s_conversationActive = true;
-
-			// Note: Do NOT call CuiConversationManager::start(n) here.
-			// The conversation has already been started (either by the player clicking on the NPC
-			// or by the server via OnStartNpcConversation). Calling start() again would send
-			// another npcConversationStart command to the server, causing OnStartNpcConversation
-			// to trigger again and resulting in an infinite loop.
-		}
-	}
+	// Note: Do NOT call CuiConversationManager::start(n) here.
+	// The conversation has already been started (either by the player clicking on the NPC
+	// or by the server via OnStartNpcConversation). Calling start() again would send
+	// another npcConversationStart command to the server, causing OnStartNpcConversation
+	// to trigger again and resulting in an infinite loop.
 }
 
 //----------------------------------------------------------------------
@@ -536,14 +552,7 @@ void SwgCuiSpaceConversation::onConversationEnded(bool const &)
 
 void SwgCuiSpaceConversation::onResponsesChanged(const bool &)
 {
-	if (s_conversationActive)
-	{
-		s_conversationNode.setResponses(CuiConversationManager::getResponses());
-		s_conversationNode.setText(CuiConversationManager::getLastMessage());
-		s_conversationNode.generateId();
-		
-		queuePush(s_conversationNode);
-	}
+	pushConversationNodeFromManager(false);
 }
 
 //----------------------------------------------------------------------
@@ -699,7 +708,7 @@ void SwgCuiSpaceConversation::update(float deltaTimeSecs)
 	CreatureObject * const player = Game::getPlayerCreature();
 	if (player && !queueEmpty()) 
 	{
-		bool const isSpaceScene = Game::isHudSceneTypeSpace();
+		bool const useSpaceHud = Game::useSpaceConversationHud();
 
 		// update the command queue.
 		while(!queueEmpty())
@@ -707,16 +716,12 @@ void SwgCuiSpaceConversation::update(float deltaTimeSecs)
 			ConversationNode const & currentNode = queueTop();
 			s_conversationHasFocus = currentNode.getType() == ConversationNode::cn_conversation;
 
-			// special case code for conversations
-			// Skip conversation nodes if we're not in an active conversation or not in space
-			// Note: We no longer compare against s_conversationNode.getId() because onResponsesChanged
-			// generates new IDs which would cause valid conversation nodes to be incorrectly skipped
-			if (s_conversationHasFocus && (!s_conversationActive || !isSpaceScene))
+			// Skip conversation nodes only when this HUD must not show them (e.g. switched to ground HUD).
+			// Do not skip based on s_conversationActive — that flag is set in the same call as queuePush;
+			// synchronous update() would otherwise pop the node and leave the comm box empty.
+			if (s_conversationHasFocus && !useSpaceHud)
 			{
-				// set this node as the current node.
 				m_currentNodeId = currentNode.getId();
-
-				// acquire a new conversation from the queue.
 				queuePop();
 				continue;
 			}

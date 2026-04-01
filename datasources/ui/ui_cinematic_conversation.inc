@@ -1,402 +1,126 @@
-<!-- KOTOR-style Cinematic Conversation UI -->
 <Page
-	Location='0,0'
 	Name='CinematicConversation'
-	PackLocation='cfc,cfc'
-	PackSize='a,a'
+	PackSize='1,1'
 	ScrollExtent='1024,768'
 	Size='1024,768'
 	Visible='false'
-	GetsInput='false'
-	AbsorbsInput='false'
+	GetsInput='true'
+	AbsorbsInput='true'
 >
 	<Page
-		Location='0,0'
 		Name='convo'
-		PackLocation='cfc,cfc'
-		PackSize='a,a'
+		PackSize='1,1'
 		ScrollExtent='1024,768'
 		Size='1024,768'
-		Visible='true'
+		GetsInput='true'
+		AbsorbsInput='true'
 	>
-	<Data
-		Name='CodeData'
-		letterboxTop='letterboxTop'
-		letterboxBottom='letterboxBottom'
-		dialoguePanel='dialoguePanel'
-		npcName='dialoguePanel.npcName'
-		npcMessage='dialoguePanel.npcMessage'
-		responsePanel='dialoguePanel.responsePanel'
-		endConversation='dialoguePanel.endConversation'
-		response1='dialoguePanel.responsePanel.response1'
-		response2='dialoguePanel.responsePanel.response2'
-		response3='dialoguePanel.responsePanel.response3'
-		response4='dialoguePanel.responsePanel.response4'
-		response5='dialoguePanel.responsePanel.response5'
-		response6='dialoguePanel.responsePanel.response6'
-	/>
-
-	<!-- Top Letterbox Bar -->
-	<Page
-		BackgroundColor='#000000'
-		BackgroundOpacity='1.00'
-		Location='0,0'
-		Name='letterboxTop'
-		PackLocation='nfn,nfn'
-		PackSize='a,f'
-		ScrollExtent='1024,0'
-		Size='1024,0'
-	/>
-
-	<!-- Bottom Letterbox Bar -->
-	<Page
-		BackgroundColor='#000000'
-		BackgroundOpacity='1.00'
-		Location='0,768'
-		Name='letterboxBottom'
-		PackLocation='nfn,fff'
-		PackSize='a,f'
-		ScrollExtent='1024,0'
-		Size='1024,0'
-	/>
-
-	<!-- Dialogue Panel (KOTOR: bottom-anchored, no portrait) -->
-	<Page
-		BackgroundColor='#000000'
-		BackgroundOpacity='0.90'
-		Location='0,500'
-		Name='dialoguePanel'
-		PackLocation='cfc,fff'
-		PackSize='a,f'
-		ScrollExtent='1024,268'
-		Size='1024,268'
-	>
-		<!-- NPC Name -->
-		<Text
-			Color='#FFCC00'
-			Font='/fonts.Formal_Medium.medium'
-			Location='50,10'
-			Name='npcName'
-			PackLocation='nfn,nfn'
-			PackSize='f,f'
-			ScrollExtent='500,25'
-			Size='500,25'
-			Style='/Styles.New.textStyleName'
-			TextAlignment='Left'
-			TextAlignmentVertical='Center'
+		<Data
+			Name='CodeData'
+			letterboxTop='letterboxTop'
+			letterboxBottom='letterboxBottom'
+			dialoguePanel='dialoguePanel'
+			npcName='dialoguePanel.npcName'
+			npcMessage='dialoguePanel.npcMessage'
+			responsePanel='dialoguePanel.responsePanel'
+			response1='dialoguePanel.responsePanel.response1'
+			response2='dialoguePanel.responsePanel.response2'
+			response3='dialoguePanel.responsePanel.response3'
+			response4='dialoguePanel.responsePanel.response4'
+			response5='dialoguePanel.responsePanel.response5'
+			response6='dialoguePanel.responsePanel.response6'
+			endConversation='dialoguePanel.endConversation'
 		/>
 
-		<!-- NPC Message Text -->
-		<Text
-			Color='#FFFFFF'
-			Font='/fonts.Formal_Medium.medium'
-			Location='50,40'
-			Multiline='true'
-			Name='npcMessage'
-			PackLocation='nfn,nfn'
-			PackSize='a,f'
-			ScrollExtent='924,56'
-			Size='924,56'
-			Style='/Styles.New.textStyleBody'
-			TextAlignment='Left'
-			TextAlignmentVertical='Top'
-			Wrap='true'
-		/>
-
-		<!-- Response Panel -->
 		<Page
-			Location='50,100'
-			Name='responsePanel'
+			BackgroundTint='#000000'
+			BackgroundColor='#000000'
+			BackgroundOpacity='1.00'
+			GetsInput='false'
+			AbsorbsInput='false'
+			Location='0,0'
+			Name='letterboxTop'
 			PackLocation='nfn,nfn'
 			PackSize='a,f'
-			ScrollExtent='924,120'
-			Size='924,120'
-		>
-			<!-- Response 1 -->
-			<Page
-				Location='0,0'
-				Name='response1'
-				ScrollExtent='900,20'
-				Size='900,20'
-				Visible='false'
-			>
-				<Button
-					Font='/fonts.Formal_Medium.medium'
-					Location='0,0'
-					Name='button'
-					PackSize='a,a'
-					ScrollExtent='900,20'
-					Size='900,20'
-					Style='/Styles.button.listSelection'
-					TextAlignment='Left'
-					TextColor='#FFFFFF'
-					TextColorHighlight='#FFFF00'
-				/>
-				<Text
-					Color='#00FFFF'
-					Font='/fonts.Formal_Medium.medium'
-					GetsInput='false'
-					Location='5,0'
-					Name='prefix'
-					ScrollExtent='100,20'
-					Size='100,20'
-					TextAlignment='Left'
-					TextAlignmentVertical='Center'
-					Visible='false'
-				/>
-				<Text
-					Color='#FFFFFF'
-					Font='/fonts.Formal_Medium.medium'
-					GetsInput='false'
-					Location='110,0'
-					Name='text'
-					ScrollExtent='790,20'
-					Size='790,20'
-					TextAlignment='Left'
-					TextAlignmentVertical='Center'
-				/>
-			</Page>
-
-			<!-- Response 2 -->
-			<Page
-				Location='0,20'
-				Name='response2'
-				ScrollExtent='900,20'
-				Size='900,20'
-				Visible='false'
-			>
-				<Button
-					Font='/fonts.Formal_Medium.medium'
-					Location='0,0'
-					Name='button'
-					PackSize='a,a'
-					ScrollExtent='900,20'
-					Size='900,20'
-					Style='/Styles.button.listSelection'
-					TextAlignment='Left'
-					TextColor='#FFFFFF'
-					TextColorHighlight='#FFFF00'
-				/>
-				<Text
-					Color='#00FFFF'
-					Font='/fonts.Formal_Medium.medium'
-					GetsInput='false'
-					Location='5,0'
-					Name='prefix'
-					ScrollExtent='100,20'
-					Size='100,20'
-					TextAlignment='Left'
-					TextAlignmentVertical='Center'
-					Visible='false'
-				/>
-				<Text
-					Color='#FFFFFF'
-					Font='/fonts.Formal_Medium.medium'
-					GetsInput='false'
-					Location='110,0'
-					Name='text'
-					ScrollExtent='790,20'
-					Size='790,20'
-					TextAlignment='Left'
-					TextAlignmentVertical='Center'
-				/>
-			</Page>
-
-			<!-- Response 3 -->
-			<Page
-				Location='0,40'
-				Name='response3'
-				ScrollExtent='900,20'
-				Size='900,20'
-				Visible='false'
-			>
-				<Button
-					Font='/fonts.Formal_Medium.medium'
-					Location='0,0'
-					Name='button'
-					PackSize='a,a'
-					ScrollExtent='900,20'
-					Size='900,20'
-					Style='/Styles.button.listSelection'
-					TextAlignment='Left'
-					TextColor='#FFFFFF'
-					TextColorHighlight='#FFFF00'
-				/>
-				<Text
-					Color='#00FFFF'
-					Font='/fonts.Formal_Medium.medium'
-					GetsInput='false'
-					Location='5,0'
-					Name='prefix'
-					ScrollExtent='100,20'
-					Size='100,20'
-					TextAlignment='Left'
-					TextAlignmentVertical='Center'
-					Visible='false'
-				/>
-				<Text
-					Color='#FFFFFF'
-					Font='/fonts.Formal_Medium.medium'
-					GetsInput='false'
-					Location='110,0'
-					Name='text'
-					ScrollExtent='790,20'
-					Size='790,20'
-					TextAlignment='Left'
-					TextAlignmentVertical='Center'
-				/>
-			</Page>
-
-			<!-- Response 4 -->
-			<Page
-				Location='0,60'
-				Name='response4'
-				ScrollExtent='900,20'
-				Size='900,20'
-				Visible='false'
-			>
-				<Button
-					Font='/fonts.Formal_Medium.medium'
-					Location='0,0'
-					Name='button'
-					PackSize='a,a'
-					ScrollExtent='900,20'
-					Size='900,20'
-					Style='/Styles.button.listSelection'
-					TextAlignment='Left'
-					TextColor='#FFFFFF'
-					TextColorHighlight='#FFFF00'
-				/>
-				<Text
-					Color='#00FFFF'
-					Font='/fonts.Formal_Medium.medium'
-					GetsInput='false'
-					Location='5,0'
-					Name='prefix'
-					ScrollExtent='100,20'
-					Size='100,20'
-					TextAlignment='Left'
-					TextAlignmentVertical='Center'
-					Visible='false'
-				/>
-				<Text
-					Color='#FFFFFF'
-					Font='/fonts.Formal_Medium.medium'
-					GetsInput='false'
-					Location='110,0'
-					Name='text'
-					ScrollExtent='790,20'
-					Size='790,20'
-					TextAlignment='Left'
-					TextAlignmentVertical='Center'
-				/>
-			</Page>
-
-			<!-- Response 5 -->
-			<Page
-				Location='0,80'
-				Name='response5'
-				ScrollExtent='900,20'
-				Size='900,20'
-				Visible='false'
-			>
-				<Button
-					Font='/fonts.Formal_Medium.medium'
-					Location='0,0'
-					Name='button'
-					PackSize='a,a'
-					ScrollExtent='900,20'
-					Size='900,20'
-					Style='/Styles.button.listSelection'
-					TextAlignment='Left'
-					TextColor='#FFFFFF'
-					TextColorHighlight='#FFFF00'
-				/>
-				<Text
-					Color='#00FFFF'
-					Font='/fonts.Formal_Medium.medium'
-					GetsInput='false'
-					Location='5,0'
-					Name='prefix'
-					ScrollExtent='100,20'
-					Size='100,20'
-					TextAlignment='Left'
-					TextAlignmentVertical='Center'
-					Visible='false'
-				/>
-				<Text
-					Color='#FFFFFF'
-					Font='/fonts.Formal_Medium.medium'
-					GetsInput='false'
-					Location='110,0'
-					Name='text'
-					ScrollExtent='790,20'
-					Size='790,20'
-					TextAlignment='Left'
-					TextAlignmentVertical='Center'
-				/>
-			</Page>
-
-			<!-- Response 6 -->
-			<Page
-				Location='0,100'
-				Name='response6'
-				ScrollExtent='900,20'
-				Size='900,20'
-				Visible='false'
-			>
-				<Button
-					Font='/fonts.Formal_Medium.medium'
-					Location='0,0'
-					Name='button'
-					PackSize='a,a'
-					ScrollExtent='900,20'
-					Size='900,20'
-					Style='/Styles.button.listSelection'
-					TextAlignment='Left'
-					TextColor='#FFFFFF'
-					TextColorHighlight='#FFFF00'
-				/>
-				<Text
-					Color='#00FFFF'
-					Font='/fonts.Formal_Medium.medium'
-					GetsInput='false'
-					Location='5,0'
-					Name='prefix'
-					ScrollExtent='100,20'
-					Size='100,20'
-					TextAlignment='Left'
-					TextAlignmentVertical='Center'
-					Visible='false'
-				/>
-				<Text
-					Color='#FFFFFF'
-					Font='/fonts.Formal_Medium.medium'
-					GetsInput='false'
-					Location='110,0'
-					Name='text'
-					ScrollExtent='790,20'
-					Size='790,20'
-					TextAlignment='Left'
-					TextAlignmentVertical='Center'
-				/>
-			</Page>
-		</Page>
-
-		<!-- End Conversation Button -->
-		<Button
-			Font='/fonts.Formal_Medium.medium'
-			Location='824,238'
-			Name='endConversation'
-			ScrollExtent='150,25'
-			Size='150,25'
-			Style='/Styles.button.danger'
-			Text='End Conversation'
-			TextAlignment='Center'
-			TextColor='#FF6666'
-			TextColorHighlight='#FF0000'
+			ScrollExtent='1024,0'
+			Size='1024,0'
 		/>
-	</Page>
+
+		<Page
+			BackgroundTint='#000000'
+			BackgroundColor='#000000'
+			BackgroundOpacity='1.00'
+			GetsInput='false'
+			AbsorbsInput='false'
+			Location='0,768'
+			Name='letterboxBottom'
+			PackLocation='nfn,fff'
+			PackSize='a,f'
+			ScrollExtent='1024,0'
+			Size='1024,0'
+		/>
+
+		<Page
+			BackgroundColor='#0d0d12'
+			BackgroundOpacity='1.00'
+			GetsInput='true'
+			AbsorbsInput='true'
+			Location='0,486'
+			Name='dialoguePanel'
+			PackLocation='nfn,fff'
+			PackSize='a,f'
+			RStyleDefault='/Styles.New.fatFrameInside_palW.rs_default'
+			ScrollExtent='1024,282'
+			Size='1024,282'
+		>
+			<Text Font='bold_12' Location='36,14' Name='npcName' PalText='header' ScrollExtent='952,20' Size='952,20' TextColor='#FFCC55' TextAlignment='Left' TextAlignmentVertical='Center'/>
+			<Text Font='bold_12' Location='36,40' Multiline='true' Name='npcMessage' PalText='text1' ScrollExtent='952,70' Size='952,70' TextAlignment='Left' TextAlignmentVertical='Top' TextColor='#FFFFFF' Wrap='true'/>
+
+			<Page Location='36,118' Name='responsePanel' GetsInput='true' ScrollExtent='952,138' Size='952,138'>
+				<Page Location='0,0' Name='response1' ScrollExtent='952,22' Size='952,22' Visible='false'>
+					<Button Name='button' Location='0,0' ScrollExtent='952,22' Size='952,22' Style='/Styles.New.buttons.hud.style' TextAlignment='Left' TextAlignmentVertical='Center' TextColor='#FFFFFF' TextColorHighlight='#FFEB9A'/>
+					<Text Name='prefix' GetsInput='false' Location='10,1' ScrollExtent='138,20' Size='138,20' TextAlignment='Left' TextAlignmentVertical='Center' TextColor='#6CD6FF' Visible='false'/>
+					<Text Name='text' GetsInput='false' Location='152,1' ScrollExtent='792,20' Size='792,20' TextAlignment='Left' TextAlignmentVertical='Center' PalText='text1'/>
+				</Page>
+				<Page Location='0,23' Name='response2' ScrollExtent='952,22' Size='952,22' Visible='false'>
+					<Button Name='button' Location='0,0' ScrollExtent='952,22' Size='952,22' Style='/Styles.New.buttons.hud.style' TextAlignment='Left' TextAlignmentVertical='Center' TextColor='#FFFFFF' TextColorHighlight='#FFEB9A'/>
+					<Text Name='prefix' GetsInput='false' Location='10,1' ScrollExtent='138,20' Size='138,20' TextAlignment='Left' TextAlignmentVertical='Center' TextColor='#6CD6FF' Visible='false'/>
+					<Text Name='text' GetsInput='false' Location='152,1' ScrollExtent='792,20' Size='792,20' TextAlignment='Left' TextAlignmentVertical='Center' PalText='text1'/>
+				</Page>
+				<Page Location='0,46' Name='response3' ScrollExtent='952,22' Size='952,22' Visible='false'>
+					<Button Name='button' Location='0,0' ScrollExtent='952,22' Size='952,22' Style='/Styles.New.buttons.hud.style' TextAlignment='Left' TextAlignmentVertical='Center' TextColor='#FFFFFF' TextColorHighlight='#FFEB9A'/>
+					<Text Name='prefix' GetsInput='false' Location='10,1' ScrollExtent='138,20' Size='138,20' TextAlignment='Left' TextAlignmentVertical='Center' TextColor='#6CD6FF' Visible='false'/>
+					<Text Name='text' GetsInput='false' Location='152,1' ScrollExtent='792,20' Size='792,20' TextAlignment='Left' TextAlignmentVertical='Center' PalText='text1'/>
+				</Page>
+				<Page Location='0,69' Name='response4' ScrollExtent='952,22' Size='952,22' Visible='false'>
+					<Button Name='button' Location='0,0' ScrollExtent='952,22' Size='952,22' Style='/Styles.New.buttons.hud.style' TextAlignment='Left' TextAlignmentVertical='Center' TextColor='#FFFFFF' TextColorHighlight='#FFEB9A'/>
+					<Text Name='prefix' GetsInput='false' Location='10,1' ScrollExtent='138,20' Size='138,20' TextAlignment='Left' TextAlignmentVertical='Center' TextColor='#6CD6FF' Visible='false'/>
+					<Text Name='text' GetsInput='false' Location='152,1' ScrollExtent='792,20' Size='792,20' TextAlignment='Left' TextAlignmentVertical='Center' PalText='text1'/>
+				</Page>
+				<Page Location='0,92' Name='response5' ScrollExtent='952,22' Size='952,22' Visible='false'>
+					<Button Name='button' Location='0,0' ScrollExtent='952,22' Size='952,22' Style='/Styles.New.buttons.hud.style' TextAlignment='Left' TextAlignmentVertical='Center' TextColor='#FFFFFF' TextColorHighlight='#FFEB9A'/>
+					<Text Name='prefix' GetsInput='false' Location='10,1' ScrollExtent='138,20' Size='138,20' TextAlignment='Left' TextAlignmentVertical='Center' TextColor='#6CD6FF' Visible='false'/>
+					<Text Name='text' GetsInput='false' Location='152,1' ScrollExtent='792,20' Size='792,20' TextAlignment='Left' TextAlignmentVertical='Center' PalText='text1'/>
+				</Page>
+				<Page Location='0,115' Name='response6' ScrollExtent='952,22' Size='952,22' Visible='false'>
+					<Button Name='button' Location='0,0' ScrollExtent='952,22' Size='952,22' Style='/Styles.New.buttons.hud.style' TextAlignment='Left' TextAlignmentVertical='Center' TextColor='#FFFFFF' TextColorHighlight='#FFEB9A'/>
+					<Text Name='prefix' GetsInput='false' Location='10,1' ScrollExtent='138,20' Size='138,20' TextAlignment='Left' TextAlignmentVertical='Center' TextColor='#6CD6FF' Visible='false'/>
+					<Text Name='text' GetsInput='false' Location='152,1' ScrollExtent='792,20' Size='792,20' TextAlignment='Left' TextAlignmentVertical='Center' PalText='text1'/>
+				</Page>
+			</Page>
+
+			<Button
+				Location='792,246'
+				Name='endConversation'
+				ScrollExtent='196,28'
+				Size='196,28'
+				IsCancelButton='true'
+				Style='/Styles.New.buttons.hud.style'
+				Text='End Conversation'
+				TextAlignment='Center'
+				PalText='header'
+				TextAlignmentVertical='Center'
+			/>
+		</Page>
 	</Page>
 </Page>
-

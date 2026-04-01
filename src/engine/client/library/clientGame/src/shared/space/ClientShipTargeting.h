@@ -13,12 +13,17 @@
 //======================================================================
 
 class Object;
+class ClientObject;
 
 //----------------------------------------------------------------------
 
 class ClientShipTargeting : public ShipTargeting
 {
 public:
+	/// While the player is in the pilot seat, reject tangibles contained in that ship that are not creatures.
+	/// Does not apply when on foot inside a POB (walking the interior uses normal ground targeting).
+	static bool shouldRejectTargetWhilePilotingShip (ClientObject const * clientObject);
+
 	static void install();
 	static void activateVariableReticle(bool const active);
 

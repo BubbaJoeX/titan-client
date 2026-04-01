@@ -333,7 +333,7 @@ CuiMediator::~CuiMediator ()
 
 void CuiMediator::activate (const char * previousMediator)
 {
-	if (m_containingWorkspace && !m_containingWorkspace->getEnabled ())
+	if (m_containingWorkspace && !m_containingWorkspace->getEnabled () && !canActivateWhenWorkspaceDisabled ())
 	{
 		setWasVisible (true);
 		return;
@@ -570,6 +570,20 @@ void	CuiMediator::performActivate ()
 */
 void	CuiMediator::performDeactivate ()
 {
+}
+
+//-----------------------------------------------------------------
+
+bool CuiMediator::canActivateWhenWorkspaceDisabled () const
+{
+	return false;
+}
+
+//-----------------------------------------------------------------
+
+bool CuiMediator::shouldSurviveDisabledWorkspace () const
+{
+	return false;
 }
 
 //-----------------------------------------------------------------

@@ -481,6 +481,22 @@ bool CuiDragManager::handleAction (const CuiDragInfo & info)
 		}
 		break;
 	case CuiDragInfoTypes::CDIT_command:
+		// Pet toolbar: icon/tooltip use cmd (e.g. taught ability); execution uses str (companion_bar_*).
+		if (!info.str.empty () && !info.cmd.empty ())
+		{
+			std::string body = info.str;
+			if (body.size () > 1 && body[0] == '/')
+				body = body.substr (1);
+			if (body.find ("companion_bar_") == 0)
+				return CuiMessageQueueManager::executeCommandByString (info.str, true);
+		}
+		if (!info.cmd.empty ())
+			return CuiMessageQueueManager::executeCommandByName (info.cmd);
+		else if (!info.str.empty ())
+			return CuiMessageQueueManager::executeCommandByString (info.str, true);
+		else
+			WARNING (true, ("Invalid"));
+		return false;
 	case CuiDragInfoTypes::CDIT_macro:
 		if (!info.cmd.empty ())
 			return CuiMessageQueueManager::executeCommandByName (info.cmd);

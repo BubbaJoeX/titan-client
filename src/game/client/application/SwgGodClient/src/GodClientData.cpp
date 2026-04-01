@@ -155,7 +155,7 @@ GodClientData::ClipboardObject::ClipboardObject () :
 
 //-----------------------------------------------------------------
 
-GodClientData::ClipboardObject::ClipboardObject (const Object& object, bool copyTransform, bool copyScale, bool copyScripts, bool copyObjvars) : 
+GodClientData::ClipboardObject::ClipboardObject (const Object& object, bool copyTransform, bool copyScale, bool copyScripts, bool copyObjvars, Object const *optionalEditGhost) : 
 	serverObjectTemplateName (),
 	sharedObjectTemplateName (),
 	transform (),
@@ -168,11 +168,14 @@ GodClientData::ClipboardObject::ClipboardObject (const Object& object, bool copy
 
 	if (clientObject)
 	{
+		// Use the edit ghost when present so copy matches visual edits before "Apply Transform" (scale lives on the ghost while manipulating).
+		Object const * const spatialSource = optionalEditGhost ? optionalEditGhost : &object;
+
 		if (copyTransform)
-			transform = object.getTransform_o2w();
+			transform = spatialSource->getTransform_o2w();
 
 		if (copyScale)
-			scale = object.getScale();
+			scale = spatialSource->getScale();
 
 		//get the server template name(the one we need to send the server to copy and paste)
 		ServerObjectData::ObjectInfo const *serverObjectData = ServerObjectData::getInstance().getObjectInfo(networkId, false);
@@ -1630,11 +1633,12 @@ void GodClientData::copySelection()
 		const Object* const player = m_gs ? m_gs->getPlayer() : 0;
 		for(SelectedObjectList_t::iterator it = m_selectedObjects.begin(); it != m_selectedObjects.end(); ++it)
 		{    
-			ClientObject* const obj = NON_NULL((*it)->obj.getPointer());
+			SelectedObject* const sel = NON_NULL(*it);
+			ClientObject* const obj = NON_NULL(sel->obj.getPointer());
 			if(obj == player)
 				continue;
 			else
-				m_clipboard.push_back(new ClipboardObject(*obj, getCopyTransform(), getCopyScale(), getCopyScripts(), getCopyObjvars()));
+				m_clipboard.push_back(new ClipboardObject(*obj, getCopyTransform(), getCopyScale(), getCopyScripts(), getCopyObjvars(), sel->ghost));
 		}
 	}
 	
@@ -2236,13 +2240,14 @@ void GodClientData::saveCurrentSelectionAsBrush(const std::string& brushName)
 
 	for(SelectedObjectList_t::iterator itr = m_selectedObjects.begin(); itr != m_selectedObjects.end(); ++itr) 
 	{
-		ClientObject* const obj = NON_NULL((*itr)->obj.getPointer()); 
+		SelectedObject* const sel = NON_NULL(*itr);
+		ClientObject* const obj = NON_NULL(sel->obj.getPointer()); 
 		//don't store the player in a brush
 		if(obj == player)
 			continue;
 		else
 		{
-			newBrush.push_back(new ClipboardObject(*obj, getCopyTransform(), getCopyScale(), getCopyScripts(), getCopyObjvars()));
+			newBrush.push_back(new ClipboardObject(*obj, getCopyTransform(), getCopyScale(), getCopyScripts(), getCopyObjvars(), sel->ghost));
 		}
 	}
 	BrushData::getInstance().addBrush(brushName, newBrush);

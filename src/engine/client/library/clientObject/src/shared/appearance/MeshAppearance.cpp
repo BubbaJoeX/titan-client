@@ -436,6 +436,20 @@ void MeshAppearance::getMeshGeometryForCollision(IndexedTriangleList & out) cons
 		if (verts.empty() || inds.empty())
 			continue;
 
+		int const vcount = static_cast<int>(verts.size());
+		bool indicesOk = true;
+		for (size_t ii = 0; ii < inds.size(); ++ii)
+		{
+			int const idx = inds[ii];
+			if (idx < 0 || idx >= vcount)
+			{
+				indicesOk = false;
+				break;
+			}
+		}
+		if (!indicesOk)
+			continue;
+
 		out.addIndexedTriangleList(&verts[0], static_cast<int>(verts.size()), &inds[0], static_cast<int>(inds.size()));
 	}
 }

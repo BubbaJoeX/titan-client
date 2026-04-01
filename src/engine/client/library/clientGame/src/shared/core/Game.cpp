@@ -2837,6 +2837,16 @@ bool Game::isHudSceneTypeSpace()
 
 //----------------------------------------------------------------------
 
+bool Game::useSpaceConversationHud()
+{
+	if (isHudSceneTypeSpace())
+		return true;
+	CreatureObject const * const creature = getPlayerCreature();
+	return creature && creature->getShipStation() != ShipStation::ShipStation_None;
+}
+
+//----------------------------------------------------------------------
+
 void Game::resetHud()
 {
 	ms_lastHudSceneType = ST_reset;

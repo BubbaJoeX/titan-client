@@ -7,6 +7,8 @@
 #include "clientGame/FirstClientGame.h"
 #include "clientGame/InstallationTurretCamera.h"
 
+#include "clientGraphics/Graphics.h"
+
 #include "clientGame/CreatureObject.h"
 #include "clientGame/Game.h"
 #include "clientGame/GroundScene.h"
@@ -15,9 +17,13 @@
 #include "sharedFoundation/GameControllerMessage.h"
 #include "sharedFoundation/NetworkId.h"
 #include "sharedFoundation/MessageQueue.h"
+#include "clientGame/ClientWorld.h"
+#include "sharedCollision/CollideParameters.h"
+#include "sharedCollision/CollisionInfo.h"
 #include "sharedObject/AlterResult.h"
 #include "sharedObject/CellProperty.h"
 #include "sharedFoundation/FloatMath.h"
+#include "sharedFoundation/Misc.h"
 #include "sharedMath/Transform.h"
 #include "sharedMath/Vector.h"
 
@@ -26,15 +32,9 @@ namespace InstallationTurretCameraNamespace
 	// 179° total vertical arc => ±89.5° from level.
 	float const cs_pitchLimitRad = 89.5f * PI_OVER_180;
 	float const cs_defaultEyeY = 1.6f;
-
-	float wrapYawTwoPi(float a)
-	{
-		if (a < 0.f)
-			return a + floorf(-a / PI_TIMES_2) * PI_TIMES_2 + PI_TIMES_2;
-		if (a >= PI_TIMES_2)
-			return a - floorf(a / PI_TIMES_2) * PI_TIMES_2;
-		return a;
-	}
+	// Zoom: level 0 = at barrel; wheel steps out to 10 m (third person).
+	int const cs_zoomLevelMax = 10;
+	float const cs_maxPullBackM = 10.f;
 
 	bool findInstallationTurretParts(Object const *const installationObj, TurretObject *&outTurretObject, Object const *&outBarrel)
 	{
@@ -81,7 +81,9 @@ InstallationTurretCamera::InstallationTurretCamera() :
 	m_pitch(0.f),
 	m_aimSendCooldown(0.f),
 	m_hasLastQueuedAim(false),
-	m_lastQueuedAimWorld()
+	m_lastQueuedAimWorld(),
+	m_zoomSetting(0),
+	m_smoothedPullBackM(0.f)
 {
 }
 
@@ -98,6 +100,8 @@ void InstallationTurretCamera::setActive(bool const active)
 		m_pitch = 0.f;
 		m_hasLastQueuedAim = false;
 		m_aimSendCooldown = 0.f;
+		m_zoomSetting = 0;
+		m_smoothedPullBackM = 0.f;
 	}
 	GameCamera::setActive(active);
 }
@@ -105,6 +109,21 @@ void InstallationTurretCamera::setActive(bool const active)
 void InstallationTurretCamera::setMessageQueue(MessageQueue const *const queue)
 {
 	m_queue = queue;
+}
+
+bool InstallationTurretCamera::computeReticleAimWorldEnd(float const distanceMeters, Vector &outEnd_w) const
+{
+	Vector const origin_w(getPosition_w());
+	// HUD crosshair is typically at full render-target center; reverseProject accounts for camera viewport inset.
+	int const sx = Graphics::getCurrentRenderTargetWidth() / 2;
+	int const sy = Graphics::getCurrentRenderTargetHeight() / 2;
+	Vector dir_w(rotate_o2w(reverseProjectInScreenSpace(sx, sy)));
+	if (!dir_w.normalize())
+	{
+		return false;
+	}
+	outEnd_w = origin_w + dir_w * distanceMeters;
+	return true;
 }
 
 void InstallationTurretCamera::setTurret(Object const *const turret)
@@ -115,6 +134,8 @@ void InstallationTurretCamera::setTurret(Object const *const turret)
 		m_pitch = 0.f;
 		m_hasLastQueuedAim = false;
 		m_aimSendCooldown = 0.f;
+		m_zoomSetting = 0;
+		m_smoothedPullBackM = 0.f;
 	}
 	m_turret = turret;
 }
@@ -186,12 +207,19 @@ float InstallationTurretCamera::alter(float const elapsedTime)
 		case CM_cameraPitchMouse:
 			m_pitch += value;
 			break;
+		case CM_cameraZoom:
+		case CM_mouseWheel:
+			if (value > 0.f)
+				m_zoomSetting = std::max(m_zoomSetting - 1, 0);
+			else
+				m_zoomSetting = std::min(m_zoomSetting + 1, cs_zoomLevelMax);
+			break;
 		default:
 			break;
 		}
 	}
 
-	m_yaw = wrapYawTwoPi(m_yaw);
+	// Unbounded yaw (full horizontal); avoid [0,2pi) wrap — discontinuities read as spin near the seam.
 	m_pitch = clamp(-cs_pitchLimitRad, m_pitch, cs_pitchLimitRad);
 
 	CellProperty *const cellProperty = turret->getParentCell();
@@ -219,40 +247,63 @@ float InstallationTurretCamera::alter(float const elapsedTime)
 		Object const *barrel = 0;
 		Transform camera_p(Transform::IF_none);
 
+		// Scope orientation = user yaw/pitch in *installation* space only. Do not multiply look after the
+		// live turret/barrel chain — that frame slews to track aim and causes drift, gimbal spin when
+		// pitching, and reticle slide. Eye position still follows the articulated muzzle path.
+		Transform look(Transform::identity);
+		look.yaw_l(m_yaw);
+		look.pitch_l(m_pitch);
+		camera_p.multiply(install_o2p, look);
+
 		if (findInstallationTurretParts(turret, turretObject, barrel) && barrel)
 		{
-			// Eye offsets are in barrel-local space (turret at identity yaw / barrel at rest = "north" baseline).
 			Transform const turretObj_o2i(turretObject->getTransform_o2p());
 			Transform const barrel_o2t(barrel->getTransform_o2p());
 			Transform barrelChain(Transform::IF_none);
 			barrelChain.multiply(turretObj_o2i, barrel_o2t);
 			Transform upToEye(Transform::IF_none);
 			upToEye.multiply(barrelChain, eye_o2t);
-			// Must be identity before yaw_l/pitch_l; IF_none leaves translation column garbage.
-			Transform look;
-			look.yaw_l(m_yaw);
-			look.pitch_l(m_pitch);
-			Transform cam_o2i(Transform::IF_none);
-			cam_o2i.multiply(upToEye, look);
-			camera_p.multiply(install_o2p, cam_o2i);
+			Transform eyeInParent(Transform::IF_none);
+			eyeInParent.multiply(install_o2p, upToEye);
+			camera_p.setPosition_p(eyeInParent.getPosition_p());
 		}
 		else
 		{
-			Transform eye_p(Transform::IF_none);
-			eye_p.multiply(install_o2p, eye_o2t);
-			Transform yawPitch;
-			yawPitch.yaw_l(m_yaw);
-			yawPitch.pitch_l(m_pitch);
-			camera_p.multiply(eye_p, yawPitch);
+			Transform eyeInParent(Transform::IF_none);
+			eyeInParent.multiply(install_o2p, eye_o2t);
+			camera_p.setPosition_p(eyeInParent.getPosition_p());
 		}
 
-		// Aim point matches gunner yaw/pitch (same basis as the view). Drives server aim + TurretObject slew.
-		static float const s_aimDistance = 256.f;
-		Vector const forward(camera_p.getLocalFrameK_p());
-		Vector forwardNorm(forward);
-		if (forwardNorm.normalize())
+		setTransform_o2p(camera_p);
+
+		float const targetPullM = clamp(0.f, static_cast<float>(m_zoomSetting), cs_maxPullBackM);
+		m_smoothedPullBackM = linearInterpolate(m_smoothedPullBackM, targetPullM, std::min(1.f, elapsedTime * 12.f));
+
+		Vector const start_w(getPosition_w());
+		Vector forward_w(getObjectFrameK_w());
+		if (forward_w.normalize() && m_smoothedPullBackM > 0.001f)
 		{
-			Vector const aimEnd(camera_p.getPosition_p() + forwardNorm * s_aimDistance);
+			Vector const end_w(start_w - forward_w * m_smoothedPullBackM);
+			float pullM = m_smoothedPullBackM;
+			CollisionInfo collisionResult;
+			Object const *const excludeObj = m_turret.getPointer();
+			if (ClientWorld::collide(getParentCell(), start_w, end_w, CollideParameters::cms_default, collisionResult, ClientWorld::CF_allCamera, excludeObj))
+			{
+				float const lineDistance = start_w.magnitudeBetween(end_w);
+				if (lineDistance > 0.001f)
+				{
+					float const t = clamp(0.f, (start_w.magnitudeBetween(collisionResult.getPoint()) / lineDistance) - (0.25f / lineDistance), 1.f);
+					pullM = Vector::linearInterpolate(start_w, end_w, t).magnitudeBetween(start_w);
+				}
+			}
+			setPosition_w(start_w - forward_w * pullM);
+		}
+
+		// Aim through reticle (screen center); matches crosshair rather than raw camera +K (fixes vertical offset).
+		static float const s_aimDistance = 256.f;
+		Vector aimEnd;
+		if (computeReticleAimWorldEnd(s_aimDistance, aimEnd))
+		{
 			if (turretObject)
 				trackChildTurretTowardAim(turretObject, aimEnd, elapsedTime);
 			GroundScene *const groundScene = dynamic_cast<GroundScene *>(Game::getScene());
@@ -260,7 +311,6 @@ float InstallationTurretCamera::alter(float const elapsedTime)
 				updateAimWorldPoint(groundScene, playerCreature, aimEnd, elapsedTime);
 		}
 
-		setTransform_o2p(camera_p);
 	CellProperty::setPortalTransitionsEnabled(true);
 
 	float alterResult = GameCamera::alter(elapsedTime);

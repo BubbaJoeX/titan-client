@@ -3,6 +3,7 @@
  */
 
 #include "skt.h"
+#include "SwgTranslatorNames.h"
 
 #include "Iff.h"
 #include "Globals.h"
@@ -286,7 +287,7 @@ MString SktTranslator::defaultExtension () const
 
 MString SktTranslator::filter () const
 {
-    return "Skeleton Template - SWG (*.skt)";
+    return MString(swg_translator::kFilterSkt);
 }
 
 /**

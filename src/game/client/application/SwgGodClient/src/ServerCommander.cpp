@@ -401,7 +401,8 @@ void ServerCommander::setObjectScale(ClientObject* obj, const Vector& scale)
 
 	if (Game::getSinglePlayer())
 	{
-		obj->setScale(scale);
+		if (!(obj->getNetworkId() < NetworkId::cms_invalid) || BuildoutAreaSupport::setObjectScale(*obj, scale))
+			obj->setScale(scale);
 	}
 	else
 	{

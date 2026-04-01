@@ -9532,6 +9532,10 @@ parent.snapAngle.enabled=false'
 							checkShowHelmet='main.comp.checkShowHelmet'
 							checkShowSystemMessages='main.comp.checkSystemMessages'
 							currencyFormat='main.comp.currencyFormat.combo'
+							nameplateNeutralColor='main.comp.nameplateNeutralColor.combo'
+							nameplateFriendlyColor='main.comp.nameplateFriendlyColor.combo'
+							nameplateHostileColor='main.comp.nameplateHostileColor.combo'
+							nameplateDangerColor='main.comp.nameplateDangerColor.combo'
 							localPageName='[@ui_opt:page_misc]'
 							Name='CodeData'
 							PageName='@ui_opt:page_misc'
@@ -10215,6 +10219,246 @@ parent.snapAngle.enabled=false'
 										TextColor='#97FFFF'
 										Tooltip='@ui_opt:tooltip_currency_format'
 									>@ui_opt:currency_format</Text>
+								</Page>
+								<Page
+									BackgroundColor='#FFFFFF'
+									BackgroundTint='#03546B'
+									Location='6,744'
+									MaximumSize='16384,33'
+									Name='nameplateNeutralColor'
+									PackLocation='nfn,nfn'
+									PackSize='a,f'
+									PalBgTint='back3'
+									RStyleDefault='/Styles.New.whitebox_palW.rs_default'
+									ScrollExtent='466,33'
+									Size='466,33'
+								>
+									<ComboBox
+										BackgroundOpacity='0.70'
+										ButtonMargin='2,2,2,0'
+										ButtonStyle='/Styles.New.buttons.combo_arrow.style'
+										ButtonWidth='10'
+										DataSource='ds'
+										DropDownHeight='256'
+										ListStyle='/Styles.list.combo.style_all'
+										Location='0,16'
+										MinimumSize='0,19'
+										Name='combo'
+										PackSize='a'
+										RStyleDefault='/Styles.New.combo.combo1.rs_default'
+										ScrollbarStyle='/Styles.scrollbar.default.vHud3.style'
+										ScrollbarWidth='13'
+										ScrollExtent='466,19'
+										Size='466,19'
+										TextboxMargin='0,1,0,0'
+										TextboxStyle='/Styles.textbox.combo.Style_new'
+									>
+									</ComboBox>
+									<DataSource
+										Name='ds'
+									>
+										<Data Name='default' Text='Default'/>
+										<Data Name='white' Text='White'/>
+										<Data Name='green' Text='Green'/>
+										<Data Name='cyan' Text='Cyan'/>
+										<Data Name='yellow' Text='Yellow'/>
+										<Data Name='orange' Text='Orange'/>
+										<Data Name='red' Text='Red'/>
+										<Data Name='purple' Text='Purple'/>
+									</DataSource>
+									<Text
+										Font='bold_11'
+										Location='0,-3'
+										Margin='2,0,0,0'
+										MinimumSize='0,19'
+										Name='label'
+										PackLocation='nfn,nfn'
+										PackSize='h,f'
+										PalText='header'
+										ScrollExtent='360,19'
+										Size='360,19'
+										TextColor='#97FFFF'
+									>Nameplate Neutral Color</Text>
+								</Page>
+								<Page
+									BackgroundColor='#FFFFFF'
+									BackgroundTint='#03546B'
+									Location='6,782'
+									MaximumSize='16384,33'
+									Name='nameplateFriendlyColor'
+									PackLocation='nfn,nfn'
+									PackSize='a,f'
+									PalBgTint='back3'
+									RStyleDefault='/Styles.New.whitebox_palW.rs_default'
+									ScrollExtent='466,33'
+									Size='466,33'
+								>
+									<ComboBox
+										BackgroundOpacity='0.70'
+										ButtonMargin='2,2,2,0'
+										ButtonStyle='/Styles.New.buttons.combo_arrow.style'
+										ButtonWidth='10'
+										DataSource='ds'
+										DropDownHeight='256'
+										ListStyle='/Styles.list.combo.style_all'
+										Location='0,16'
+										MinimumSize='0,19'
+										Name='combo'
+										PackSize='a'
+										RStyleDefault='/Styles.New.combo.combo1.rs_default'
+										ScrollbarStyle='/Styles.scrollbar.default.vHud3.style'
+										ScrollbarWidth='13'
+										ScrollExtent='466,19'
+										Size='466,19'
+										TextboxMargin='0,1,0,0'
+										TextboxStyle='/Styles.textbox.combo.Style_new'
+									>
+									</ComboBox>
+									<DataSource
+										Name='ds'
+									>
+										<Data Name='default' Text='Default'/>
+										<Data Name='white' Text='White'/>
+										<Data Name='green' Text='Green'/>
+										<Data Name='cyan' Text='Cyan'/>
+										<Data Name='yellow' Text='Yellow'/>
+										<Data Name='orange' Text='Orange'/>
+										<Data Name='red' Text='Red'/>
+										<Data Name='purple' Text='Purple'/>
+									</DataSource>
+									<Text
+										Font='bold_11'
+										Location='0,-3'
+										Margin='2,0,0,0'
+										MinimumSize='0,19'
+										Name='label'
+										PackLocation='nfn,nfn'
+										PackSize='h,f'
+										PalText='header'
+										ScrollExtent='360,19'
+										Size='360,19'
+										TextColor='#97FFFF'
+									>Nameplate Friendly Color</Text>
+								</Page>
+								<Page
+									BackgroundColor='#FFFFFF'
+									BackgroundTint='#03546B'
+									Location='6,820'
+									MaximumSize='16384,33'
+									Name='nameplateHostileColor'
+									PackLocation='nfn,nfn'
+									PackSize='a,f'
+									PalBgTint='back3'
+									RStyleDefault='/Styles.New.whitebox_palW.rs_default'
+									ScrollExtent='466,33'
+									Size='466,33'
+								>
+									<ComboBox
+										BackgroundOpacity='0.70'
+										ButtonMargin='2,2,2,0'
+										ButtonStyle='/Styles.New.buttons.combo_arrow.style'
+										ButtonWidth='10'
+										DataSource='ds'
+										DropDownHeight='256'
+										ListStyle='/Styles.list.combo.style_all'
+										Location='0,16'
+										MinimumSize='0,19'
+										Name='combo'
+										PackSize='a'
+										RStyleDefault='/Styles.New.combo.combo1.rs_default'
+										ScrollbarStyle='/Styles.scrollbar.default.vHud3.style'
+										ScrollbarWidth='13'
+										ScrollExtent='466,19'
+										Size='466,19'
+										TextboxMargin='0,1,0,0'
+										TextboxStyle='/Styles.textbox.combo.Style_new'
+									>
+									</ComboBox>
+									<DataSource
+										Name='ds'
+									>
+										<Data Name='default' Text='Default'/>
+										<Data Name='white' Text='White'/>
+										<Data Name='green' Text='Green'/>
+										<Data Name='cyan' Text='Cyan'/>
+										<Data Name='yellow' Text='Yellow'/>
+										<Data Name='orange' Text='Orange'/>
+										<Data Name='red' Text='Red'/>
+										<Data Name='purple' Text='Purple'/>
+									</DataSource>
+									<Text
+										Font='bold_11'
+										Location='0,-3'
+										Margin='2,0,0,0'
+										MinimumSize='0,19'
+										Name='label'
+										PackLocation='nfn,nfn'
+										PackSize='h,f'
+										PalText='header'
+										ScrollExtent='360,19'
+										Size='360,19'
+										TextColor='#97FFFF'
+									>Nameplate Hostile (Yellow) Color</Text>
+								</Page>
+								<Page
+									BackgroundColor='#FFFFFF'
+									BackgroundTint='#03546B'
+									Location='6,858'
+									MaximumSize='16384,33'
+									Name='nameplateDangerColor'
+									PackLocation='nfn,nfn'
+									PackSize='a,f'
+									PalBgTint='back3'
+									RStyleDefault='/Styles.New.whitebox_palW.rs_default'
+									ScrollExtent='466,33'
+									Size='466,33'
+								>
+									<ComboBox
+										BackgroundOpacity='0.70'
+										ButtonMargin='2,2,2,0'
+										ButtonStyle='/Styles.New.buttons.combo_arrow.style'
+										ButtonWidth='10'
+										DataSource='ds'
+										DropDownHeight='256'
+										ListStyle='/Styles.list.combo.style_all'
+										Location='0,16'
+										MinimumSize='0,19'
+										Name='combo'
+										PackSize='a'
+										RStyleDefault='/Styles.New.combo.combo1.rs_default'
+										ScrollbarStyle='/Styles.scrollbar.default.vHud3.style'
+										ScrollbarWidth='13'
+										ScrollExtent='466,19'
+										Size='466,19'
+										TextboxMargin='0,1,0,0'
+										TextboxStyle='/Styles.textbox.combo.Style_new'
+									>
+									</ComboBox>
+									<DataSource
+										Name='ds'
+									>
+										<Data Name='default' Text='Default'/>
+										<Data Name='white' Text='White'/>
+										<Data Name='green' Text='Green'/>
+										<Data Name='cyan' Text='Cyan'/>
+										<Data Name='yellow' Text='Yellow'/>
+										<Data Name='orange' Text='Orange'/>
+										<Data Name='red' Text='Red'/>
+										<Data Name='purple' Text='Purple'/>
+									</DataSource>
+									<Text
+										Font='bold_11'
+										Location='0,-3'
+										Margin='2,0,0,0'
+										MinimumSize='0,19'
+										Name='label'
+										PackLocation='nfn,nfn'
+										PackSize='h,f'
+										PalText='header'
+										ScrollExtent='360,19'
+										Size='360,19'
+										TextColor='#97FFFF'
+									>Nameplate Hostile (Red) Color</Text>
 								</Page>
 							</Composite>
 							<Scrollbar

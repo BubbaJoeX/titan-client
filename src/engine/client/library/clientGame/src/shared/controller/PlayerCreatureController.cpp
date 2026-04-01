@@ -537,6 +537,9 @@ float PlayerCreatureController::realAlter (const float elapsedTime)
 
 			getMessageQueue ()->getMessage (i, &message, &value, &data);
 
+			if (CuiConversationManager::isCinematicConversationUiActive())
+				continue;
+
 			if (shipTargetReferenceObject)
 				shipControllerTargetingProcessMessage(message, shipTargetReferenceObject, creatureObject);
 
@@ -2874,6 +2877,11 @@ void PlayerCreatureController::fullStop()
 bool PlayerCreatureController::shouldProcessMovement() const
 {
 	if (!m_allowMovement)
+	{
+		return false;
+	}
+
+	if (CuiConversationManager::isCinematicConversationUiActive())
 	{
 		return false;
 	}

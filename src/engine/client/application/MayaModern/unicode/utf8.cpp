@@ -1,5 +1,7 @@
 #include "FirstUnicode.h"
 
+#include <climits>
+#include <cstring>
 #include <string>
 #include "utf8.h"
 #include "UnicodeUtils.h"
@@ -226,8 +228,11 @@ void FakeUtf8ToEnglish(char *englishDestination, char *fakeSource, int destinati
 Unicode::String UTF8ToUnicode(const char *source)
 {
 	Unicode::String s = narrowToWide("");
-	int length = strlen(source) + 1;
-	UTF16 *buffer = new UTF16[length];	
+	const size_t lenWithNull = strlen(source) + 1;
+	if (lenWithNull > static_cast<size_t>(INT_MAX))
+		return s;
+	const int length = static_cast<int>(lenWithNull);
+	UTF16 *buffer = new UTF16[lenWithNull];
 	if (buffer != NULL)
 	{
 		UTF8_convertToUTF16(const_cast<char *>(source) , buffer, length);

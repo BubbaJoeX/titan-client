@@ -33,6 +33,24 @@
 
 #include <vector>
 #include <set>
+#include <algorithm>
+#include <cmath>
+
+namespace
+{
+	inline float maxAbsScale3( Vector const & s )
+	{
+		real const ax = std::fabs( s.x );
+		real const ay = std::fabs( s.y );
+		real const az = std::fabs( s.z );
+		return static_cast<float>( std::max( ax, std::max( ay, az ) ) );
+	}
+
+	inline bool scaleVecChanged( Vector const & a, Vector const & b )
+	{
+		return std::fabs( a.x - b.x ) > 1.0e-5f || std::fabs( a.y - b.y ) > 1.0e-5f || std::fabs( a.z - b.z ) > 1.0e-5f;
+	}
+}
 
 // Need to disable this warning to make MultiListHandle work
 
@@ -52,7 +70,8 @@ Floor::Floor( FloorMesh const * pMesh, Object const * owner, Appearance const * 
   m_spatialSubdivisionHandle(NULL),
   m_extent(NULL),
   m_extentDirty(true),
-  m_lastScale(-1.0f),
+  m_hasLastScaleVec(false),
+  m_lastScaleVec(),
   m_sphere_l(),
   m_sphere_w()
 {
@@ -159,23 +178,29 @@ Transform const & Floor::getTransform_o2w ( void ) const
 
 float Floor::getScale ( void ) const
 {
-	if(isCellFloor())
-	{
-		return 1.0f;
-	}
-	else
-	{
-		Object const * pOwner = getOwner();
+	return maxAbsScale3( getScaleVector() );
+}
 
-		if(pOwner)
-		{
-			return pOwner->getScale().x;
-		}
-		else
-		{
-			return 1.0f;
-		}
-	}
+// ----------
+
+Vector Floor::getScaleVector ( void ) const
+{
+	if(isCellFloor())
+		return Vector::xyz111;
+
+	Object const * const pOwner = getOwner();
+	if(pOwner)
+		return pOwner->getScale();
+
+	return Vector::xyz111;
+}
+
+// ----------
+
+Vector Floor::getLocalDropDirection ( void ) const
+{
+	// Parent-space "down" (-Y) expressed in floor/mesh local axes (rotation only); used for drop tests and snapping on rotated object floors.
+	return rotate_p2l( Vector::negativeUnitY );
 }
 
 // ----------------------------------------------------------------------
@@ -201,8 +226,8 @@ BaseExtent const * Floor::getExtent_p ( void ) const
 
 bool Floor::getExtentDirty ( void ) const
 {
-	float const scale = getScale();
-	if (m_lastScale >= 0.0f && scale != m_lastScale)
+	Vector const s = getScaleVector();
+	if (m_hasLastScaleVec && scaleVecChanged( s, m_lastScaleVec ))
 		m_extentDirty = true;
 	return m_extentDirty;
 }
@@ -230,25 +255,30 @@ void Floor::updateExtent ( void ) const
 	
 	if(m_extent && localExtent)
 	{
-		float const scale = getScale();
-		m_extent->transform( localExtent, getTransform_o2p(), scale );
-		m_lastScale = scale;
+		Vector const s = getScaleVector();
+		float const uniformScale = maxAbsScale3( s );
+		m_extent->transform( localExtent, getTransform_o2p(), uniformScale );
+		m_lastScaleVec = s;
+		m_hasLastScaleVec = true;
 		m_extentDirty = false;
 	}
 
 	// ----------
 
 	m_sphere_l = getExtent_l()->getBoundingSphere();
-	float const scale = getScale();
-	Vector const scaledCenter(m_sphere_l.getCenter().x * scale, m_sphere_l.getCenter().y * scale, m_sphere_l.getCenter().z * scale);
-	m_sphere_w = Sphere(getTransform_o2w().rotateTranslate_l2p(scaledCenter), m_sphere_l.getRadius() * scale);
+	Vector const s = getScaleVector();
+	Vector const scaledCenter( m_sphere_l.getCenter().x * s.x, m_sphere_l.getCenter().y * s.y, m_sphere_l.getCenter().z * s.z );
+	float const rScale = maxAbsScale3( s );
+	m_sphere_w = Sphere( getTransform_o2w().rotateTranslate_l2p( scaledCenter ), m_sphere_l.getRadius() * rScale );
 }
 
 // ----------------------------------------------------------------------
 
 bool Floor::dropTestBounds ( Vector const & position_p ) const
 {
-    Line3d line_l( transform_p2l(position_p), -Vector::unitY );
+	Vector dropDir = getLocalDropDirection();
+	IGNORE_RETURN( dropDir.normalize() );
+	Line3d line_l( transform_p2l( position_p ), dropDir );
 
 	return getFloorMesh()->testBounds(line_l);
 }
@@ -387,16 +417,16 @@ bool Floor::dropTest ( Vector const & position_p, int triId, FloorLocator & outL
 
 Vector Floor::transform_p2l ( Vector const & point ) const
 {
-	float const scale = getScale();
+	Vector const s = getScaleVector();
 	Vector const local = getTransform_o2p().rotateTranslate_p2l(point);
-	return Vector(local.x / scale, local.y / scale, local.z / scale);
+	return Vector( local.x / s.x, local.y / s.y, local.z / s.z );
 }
 
 Vector Floor::transform_l2p ( Vector const & point ) const
 {
-	float const scale = getScale();
-	Vector const scaledLocal(point.x * scale, point.y * scale, point.z * scale);
-	return getTransform_o2p().rotateTranslate_l2p(scaledLocal);
+	Vector const s = getScaleVector();
+	Vector const scaledLocal( point.x * s.x, point.y * s.y, point.z * s.z );
+	return getTransform_o2p().rotateTranslate_l2p( scaledLocal );
 }
 
 Vector Floor::rotate_p2l ( Vector const & dir ) const
@@ -465,7 +495,10 @@ PathWalkResult Floor::moveLocator ( FloorLocator const & startLoc, Vector const 
 		Vector snapPoint;
 		float dummy;
 
-		if( Intersect3d::IntersectLinePlaneUnsided( Line3d(outLoc.getPosition_l(),-Vector::unitY), plane, snapPoint, dummy ) )
+		Vector snapDir = getLocalDropDirection();
+		IGNORE_RETURN( snapDir.normalize() );
+
+		if( Intersect3d::IntersectLinePlaneUnsided( Line3d( outLoc.getPosition_l(), snapDir ), plane, snapPoint, dummy ) )
 		{
 			outLoc.setPosition_l(snapPoint);
 		}
@@ -512,7 +545,9 @@ bool    Floor::findElevatorNeighbors( FloorLocator const & testLoc,
 	    FLOOR_WARNING("Floor::findElevatorNeighbors - Test location isn't on this floor\n");
 	}
 	
-	Line3d line(testLoc.getPosition_l(),-Vector::unitY);
+	Vector dropDir = getLocalDropDirection();
+	IGNORE_RETURN( dropDir.normalize() );
+	Line3d line( testLoc.getPosition_l(), dropDir );
 	int ignoreId = testLoc.getId();
 	
 	bool found = getFloorMesh()->findClosestPair(line,ignoreId,outClosestBelow,outClosestAbove);
