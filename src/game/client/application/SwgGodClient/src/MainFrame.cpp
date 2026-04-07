@@ -286,6 +286,7 @@ MainFrame::MainFrame(QWidget *theParent, const char *theName)
 			IGNORE_RETURN(m_actionsEdit->createObjectFromSelectedTemplate->addTo(m_toolbar_edit));
 			IGNORE_RETURN(m_actionsEdit->m_toggleDropToTerrain->addTo (m_toolbar_edit));
 			IGNORE_RETURN(m_actionsEdit->m_toggleAlignToTerrain->addTo (m_toolbar_edit));
+			IGNORE_RETURN(m_actionsEdit->m_toggleUnrealEngineTransformGizmo->addTo (m_toolbar_edit));
 		} 
 		
 		QToolBar* m_toolbar_game = new QToolBar("Game", this);
@@ -434,6 +435,7 @@ MainFrame::MainFrame(QWidget *theParent, const char *theName)
 
 			IGNORE_RETURN(m_actionsEdit->m_toggleDropToTerrain->addTo (&m_menus.edit.menu));
 			IGNORE_RETURN(m_actionsEdit->m_toggleAlignToTerrain->addTo (&m_menus.edit.menu));
+			IGNORE_RETURN(m_actionsEdit->m_toggleUnrealEngineTransformGizmo->addTo (&m_menus.edit.menu));
 		}
 		//-- Game menu stuff
 		{

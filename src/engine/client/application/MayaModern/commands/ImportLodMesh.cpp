@@ -18,10 +18,185 @@
 #include <iostream>
 #include <cstdio>
 #include <cstdarg>
+#include <cctype>
 
 #ifdef _WIN32
 #include <windows.h>
 #endif
+
+namespace lod_path_helpers
+{
+    static const Tag kTagMlod = TAG(M, L, O, D);
+    static const Tag kTagApt = TAG3(A, P, T);
+    static const Tag kTagSkmg = TAG(S, K, M, G);
+
+    std::string resolveTreeFilePath(const std::string& treeFilePath, const std::string& inputFilename)
+    {
+        if (treeFilePath.empty())
+            return std::string();
+
+        std::string absProbe = treeFilePath;
+        for (auto& c : absProbe)
+            if (c == '\\')
+                c = '/';
+        if (absProbe.size() >= 2 && std::isalpha(static_cast<unsigned char>(absProbe[0])) && absProbe[1] == ':')
+            return absProbe;
+        if (!absProbe.empty() && absProbe[0] == '/')
+            return absProbe;
+
+        std::string baseDir;
+
+        const char* envExportRoot = getenv("TITAN_EXPORT_ROOT");
+        if (envExportRoot && envExportRoot[0])
+        {
+            baseDir = envExportRoot;
+            if (!baseDir.empty() && baseDir.back() != '\\' && baseDir.back() != '/')
+                baseDir += '/';
+        }
+        else
+        {
+            const char* envDataRoot = getenv("TITAN_DATA_ROOT");
+            if (envDataRoot && envDataRoot[0])
+            {
+                baseDir = envDataRoot;
+                if (!baseDir.empty() && baseDir.back() != '\\' && baseDir.back() != '/')
+                    baseDir += '/';
+            }
+            else
+            {
+                std::string normalizedInput = inputFilename;
+                for (size_t i = 0; i < normalizedInput.size(); ++i)
+                    if (normalizedInput[i] == '\\') normalizedInput[i] = '/';
+
+                size_t cgPos = normalizedInput.find("compiled/game/");
+                if (cgPos != std::string::npos)
+                    baseDir = normalizedInput.substr(0, cgPos + 14);
+                else
+                {
+                    size_t firstSlash = treeFilePath.find_first_of("/\\");
+                    if (firstSlash != std::string::npos)
+                    {
+                        std::string firstComponent = "/" + treeFilePath.substr(0, firstSlash + 1);
+                        size_t pos = normalizedInput.find(firstComponent);
+                        if (pos != std::string::npos)
+                            baseDir = normalizedInput.substr(0, pos + 1);
+                    }
+                }
+
+                if (baseDir.empty())
+                {
+                    size_t lastSlash = normalizedInput.find_last_of('/');
+                    if (lastSlash != std::string::npos)
+                        baseDir = normalizedInput.substr(0, lastSlash + 1);
+                }
+            }
+        }
+
+        std::string pathToResolve = treeFilePath;
+        {
+            std::string normalizedInput = inputFilename;
+            for (size_t i = 0; i < normalizedInput.size(); ++i)
+                if (normalizedInput[i] == '\\') normalizedInput[i] = '/';
+            size_t cgPos = normalizedInput.find("compiled/game/");
+            if (cgPos != std::string::npos)
+            {
+                std::string afterCg = normalizedInput.substr(cgPos + 14);
+                if (afterCg.find("appearance/") == 0)
+                {
+                    if (pathToResolve.find("appearance/") != 0 && pathToResolve.find("appearance\\") != 0)
+                        pathToResolve = std::string("appearance/") + pathToResolve;
+                }
+            }
+        }
+        std::string resolved = baseDir + pathToResolve;
+        for (size_t i = 0; i < resolved.size(); ++i)
+            if (resolved[i] == '\\') resolved[i] = '/';
+        return resolved;
+    }
+
+    std::string resolveMeshPath(const std::string& basePath)
+    {
+        std::string path = basePath;
+        for (auto& c : path) if (c == '\\') c = '/';
+        if (path.size() >= 4)
+        {
+            const std::string ext = path.substr(path.size() - 4);
+            if (ext == ".msh" || ext == ".shp" || ext == ".mgn") return path;
+        }
+        Iff iff;
+        if (iff.open((path + ".shp").c_str(), true))
+            return path + ".shp";
+        if (iff.open((path + ".msh").c_str(), true))
+            return path + ".msh";
+        return path + ".msh";
+    }
+
+    std::string resolveSkmgPathThroughWrappers(std::string path)
+    {
+        constexpr int kMaxHops = 16;
+        for (int hop = 0; hop < kMaxHops; ++hop)
+        {
+            Iff iff;
+            if (!iff.open(path.c_str(), false))
+                return path;
+
+            const Tag root = iff.getCurrentName();
+            if (root == kTagSkmg)
+            {
+                iff.close();
+                return path;
+            }
+            if (root == kTagApt)
+            {
+                iff.enterForm(kTagApt);
+                iff.enterForm(TAG_0000);
+                iff.enterChunk(TAG_NAME);
+                std::string redirectPath = iff.read_stdstring();
+                iff.exitChunk(TAG_NAME);
+                iff.exitForm(TAG_0000);
+                iff.exitForm(kTagApt);
+                iff.close();
+                if (redirectPath.empty())
+                    return path;
+                path = resolveMeshPath(resolveTreeFilePath(redirectPath, path));
+                continue;
+            }
+            if (root == kTagMlod)
+            {
+                iff.enterForm(kTagMlod);
+                iff.enterForm(TAG_0000);
+                int16 detailLevelCount = 0;
+                iff.enterChunk(TAG_INFO);
+                detailLevelCount = iff.read_int16();
+                iff.exitChunk(TAG_INFO);
+                std::string firstRel;
+                for (int16 i = 0; i < detailLevelCount; ++i)
+                {
+                    iff.enterChunk(TAG_NAME);
+                    std::string s = iff.read_stdstring();
+                    iff.exitChunk(TAG_NAME);
+                    if (i == 0)
+                        firstRel = std::move(s);
+                }
+                iff.exitForm(TAG_0000);
+                iff.exitForm(kTagMlod);
+                iff.close();
+                if (firstRel.empty())
+                    return path;
+                path = resolveMeshPath(resolveTreeFilePath(firstRel, path));
+                continue;
+            }
+            iff.close();
+            return path;
+        }
+        return path;
+    }
+}
+
+std::string resolveSkmgPathThroughWrappers(const std::string& resolvedImportPath)
+{
+    return lod_path_helpers::resolveSkmgPathThroughWrappers(resolvedImportPath);
+}
 
 namespace
 {
@@ -127,95 +302,6 @@ namespace
         MGlobal::executeCommand(parentCmd);
         return true;
     }
-
-    static std::string resolveTreeFilePath(const std::string& treeFilePath, const std::string& inputFilename)
-    {
-        std::string baseDir;
-
-        const char* envExportRoot = getenv("TITAN_EXPORT_ROOT");
-        if (envExportRoot && envExportRoot[0])
-        {
-            baseDir = envExportRoot;
-            if (!baseDir.empty() && baseDir.back() != '\\' && baseDir.back() != '/')
-                baseDir += '/';
-        }
-        else
-        {
-            const char* envDataRoot = getenv("TITAN_DATA_ROOT");
-            if (envDataRoot && envDataRoot[0])
-            {
-                baseDir = envDataRoot;
-                if (!baseDir.empty() && baseDir.back() != '\\' && baseDir.back() != '/')
-                    baseDir += '/';
-            }
-            else
-            {
-                std::string normalizedInput = inputFilename;
-                for (size_t i = 0; i < normalizedInput.size(); ++i)
-                    if (normalizedInput[i] == '\\') normalizedInput[i] = '/';
-
-                size_t cgPos = normalizedInput.find("compiled/game/");
-                if (cgPos != std::string::npos)
-                    baseDir = normalizedInput.substr(0, cgPos + 14);
-                else
-                {
-                    size_t firstSlash = treeFilePath.find_first_of("/\\");
-                    if (firstSlash != std::string::npos)
-                    {
-                        std::string firstComponent = "/" + treeFilePath.substr(0, firstSlash + 1);
-                        size_t pos = normalizedInput.find(firstComponent);
-                        if (pos != std::string::npos)
-                            baseDir = normalizedInput.substr(0, pos + 1);
-                    }
-                }
-
-                if (baseDir.empty())
-                {
-                    size_t lastSlash = normalizedInput.find_last_of('/');
-                    if (lastSlash != std::string::npos)
-                        baseDir = normalizedInput.substr(0, lastSlash + 1);
-                }
-            }
-        }
-
-        std::string pathToResolve = treeFilePath;
-        {
-            std::string normalizedInput = inputFilename;
-            for (size_t i = 0; i < normalizedInput.size(); ++i)
-                if (normalizedInput[i] == '\\') normalizedInput[i] = '/';
-            size_t cgPos = normalizedInput.find("compiled/game/");
-            if (cgPos != std::string::npos)
-            {
-                std::string afterCg = normalizedInput.substr(cgPos + 14);
-                if (afterCg.find("appearance/") == 0)
-                {
-                    if (pathToResolve.find("appearance/") != 0 && pathToResolve.find("appearance\\") != 0)
-                        pathToResolve = std::string("appearance/") + pathToResolve;
-                }
-            }
-        }
-        std::string resolved = baseDir + pathToResolve;
-        for (size_t i = 0; i < resolved.size(); ++i)
-            if (resolved[i] == '\\') resolved[i] = '/';
-        return resolved;
-    }
-
-    static std::string resolveMeshPath(const std::string& basePath)
-    {
-        std::string path = basePath;
-        for (auto& c : path) if (c == '\\') c = '/';
-        if (path.size() >= 4)
-        {
-            const std::string ext = path.substr(path.size() - 4);
-            if (ext == ".msh" || ext == ".shp" || ext == ".mgn") return path;
-        }
-        Iff iff;
-        if (iff.open((path + ".shp").c_str(), true))
-            return path + ".shp";
-        if (iff.open((path + ".msh").c_str(), true))
-            return path + ".msh";
-        return path + ".msh";
-    }
 }
 
 std::string resolveLodOrAptPath(const std::string& baseResolvedPath)
@@ -288,7 +374,7 @@ std::string resolvePathViaApt(const std::string& filePath)
     if (redirectPath.empty())
         return path;
 
-    std::string resolvedRedirect = resolveTreeFilePath(redirectPath, path);
+    std::string resolvedRedirect = lod_path_helpers::resolveTreeFilePath(redirectPath, path);
     std::string finalPath = resolveStaticMeshPath(resolvedRedirect);
 
     if (finalPath.size() >= 4 && finalPath.substr(finalPath.size() - 4) == ".apt")
@@ -357,7 +443,7 @@ MStatus ImportLodMesh::doIt(const MArgList& args)
         iff.exitForm(TAG_APT);
         iff.close();
 
-        std::string resolvedRedirect = resolveTreeFilePath(redirectPath, filename);
+        std::string resolvedRedirect = lod_path_helpers::resolveTreeFilePath(redirectPath, filename);
         filename = resolveLodOrAptPath(resolvedRedirect);
         lodLog("APT redirect -> %s", filename.c_str());
         if (!iff.open(filename.c_str(), false))
@@ -542,8 +628,8 @@ MStatus ImportLodMesh::doIt(const MArgList& args)
     for (size_t i = lodIndex; i <= lodIndex && i < detailLevelPaths.size(); ++i)
     {
         const std::string& relativePath = detailLevelPaths[i];
-        std::string resolvedPath = resolveTreeFilePath(relativePath, filename);
-        resolvedPath = resolveMeshPath(resolvedPath);
+        std::string resolvedPath = lod_path_helpers::resolveTreeFilePath(relativePath, filename);
+        resolvedPath = lod_path_helpers::resolveMeshPath(resolvedPath);
 
         lodLog("Loading LOD[%zu]: %s -> %s", i, relativePath.c_str(), resolvedPath.c_str());
 

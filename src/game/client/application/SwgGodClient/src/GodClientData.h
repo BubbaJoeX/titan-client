@@ -269,6 +269,9 @@ public:
 	void             toggleAlignToTerrain          ();
 	bool             isToggleAlignToTerrainOn      () const;
 
+	void             toggleUnrealEngineTransformGizmo ();
+	bool             isUnrealEngineTransformGizmoOn   () const;
+
 	const Vector &   getCameraPivotPoint           ();
 
 private:
@@ -292,6 +295,7 @@ private:
 	void             cleanSelectedObjectList       ();
 
 	void             drawCrossbars                 (const Vector& point, float barSize, const VectorArgb& color);
+	void             drawGhostManipulatorGizmo     (Camera const & camera, ClientObject const * obj, Object const * ghost);
 
 private:
 
@@ -377,6 +381,8 @@ private:
 	
 	bool                          m_toggleDropToTerrainOn;
 	bool                          m_toggleAlignToTerrainOn;
+	/// When true, selection ghost draws Unreal-style translate axes plus rotation rings and scale cubes.
+	bool                          m_unrealEngineTransformGizmo;
 
 	ClipboardList_t               m_currentBrush;
 

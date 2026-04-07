@@ -15,12 +15,20 @@
 #include "sharedMath/Transform.h"
 #include "sharedObject/NetworkController.h"
 
+#include <string>
+
 // ======================================================================
 
 class ClientCombatActionInfo;
 class MessageQueueCombatAction;
 class NetworkId;
 class Object;
+
+namespace ClientControllerAnimation
+{
+	/** Server/script animation strings: logical actions, ans:/ansl:, anim:clear/bind, mannequin:strip_cdf (see ClientController.cpp). */
+	void applyServerAnimationActionString(Object *ownerObject, std::string const &actionName);
+}
 
 // ======================================================================
 /**

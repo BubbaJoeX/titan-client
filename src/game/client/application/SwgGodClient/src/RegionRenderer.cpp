@@ -13,9 +13,87 @@
 #include "sharedMath/Vector2d.h"
 
 #include <qpainter.h>
+#include <qpen.h>
 #include <qtimer.h>
 
 #include <algorithm>
+#include <cstdio>
+
+namespace RegionRendererKeyNamespace
+{
+	std::string sanitizeForKey(std::string s)
+	{
+		for (size_t i = 0; i < s.size(); ++i)
+		{
+			if (s[i] == '|' || s[i] == '\r' || s[i] == '\n')
+				s[i] = '_';
+		}
+		return s;
+	}
+
+	std::string makeRectStorageKey(std::string const &planet, std::string const &name, float llx, float llz, float urx, float urz)
+	{
+		std::string const p = sanitizeForKey(planet);
+		std::string const n = sanitizeForKey(name);
+		char buf[1024];
+		IGNORE_RETURN(_snprintf(buf, sizeof(buf), "%s|%s|R|%g|%g|%g|%g",
+			p.c_str(), n.c_str(),
+			static_cast<double>(llx), static_cast<double>(llz),
+			static_cast<double>(urx), static_cast<double>(urz)));
+		buf[sizeof(buf) - 1] = '\0';
+		return std::string(buf);
+	}
+
+	std::string makeCircleStorageKey(std::string const &planet, std::string const &name, float x, float z, float r)
+	{
+		std::string const p = sanitizeForKey(planet);
+		std::string const n = sanitizeForKey(name);
+		char buf[768];
+		IGNORE_RETURN(_snprintf(buf, sizeof(buf), "%s|%s|C|%g|%g|%g",
+			p.c_str(), n.c_str(),
+			static_cast<double>(x), static_cast<double>(z), static_cast<double>(r)));
+		buf[sizeof(buf) - 1] = '\0';
+		return std::string(buf);
+	}
+
+	RegionRenderer::RectRegionMap::iterator findRectForUpdate(RegionRenderer::RectRegionMap &m, std::string const &planet, std::string const &name, float llx, float llz, float urx, float urz)
+	{
+		std::string const k = makeRectStorageKey(planet, name, llx, llz, urx, urz);
+		RegionRenderer::RectRegionMap::iterator i = m.find(k);
+		if (i != m.end())
+			return i;
+		std::string const legacy = planet + "." + name;
+		i = m.find(legacy);
+		if (i != m.end())
+		{
+			RegionRenderer::RegionRect *const ptr = i->second;
+			m.erase(i);
+			m.insert(std::make_pair(k, ptr));
+			return m.find(k);
+		}
+		return m.end();
+	}
+
+	RegionRenderer::CircleRegionMap::iterator findCircleForUpdate(RegionRenderer::CircleRegionMap &m, std::string const &planet, std::string const &name, float x, float z, float r)
+	{
+		std::string const k = makeCircleStorageKey(planet, name, x, z, r);
+		RegionRenderer::CircleRegionMap::iterator i = m.find(k);
+		if (i != m.end())
+			return i;
+		std::string const legacy = planet + "." + name;
+		i = m.find(legacy);
+		if (i != m.end())
+		{
+			RegionRenderer::RegionCircle *const ptr = i->second;
+			m.erase(i);
+			m.insert(std::make_pair(k, ptr));
+			return m.find(k);
+		}
+		return m.end();
+	}
+}
+
+using namespace RegionRendererKeyNamespace;
 
 // ============================================================================
 //
@@ -201,7 +279,8 @@ RegionRenderer::RegionRenderer(QWidget *parent, char const *name)
   m_filterOnGeographical(false),
   m_filterOnMunicipal(false),
   m_filterOnMission(false),
-  m_filterOnSpawnable(false)
+  m_filterOnSpawnable(false),
+  m_highlightStorageKey()
 {
 	setMouseTracking(true);
 	setBackgroundMode(Qt::NoBackground);
@@ -348,12 +427,10 @@ void RegionRenderer::setWorld(float const sizeX, float const sizeY, int const ce
 		m_cellCountX = cellCountX;
 		m_cellCountY = cellCountY;
 
-		m_worldCells.reserve(m_cellCountX * m_cellCountY);
-
-		for (unsigned int i = 0; i < m_worldCells.capacity(); ++i)
-		{
+		size_t const cellTotal = static_cast<size_t>(m_cellCountX) * static_cast<size_t>(m_cellCountY);
+		m_worldCells.resize(cellTotal);
+		for (size_t i = 0; i < cellTotal; ++i)
 			m_worldCells[i].m_gameServerIds = 0;
-		}
 	}
 }
 
@@ -412,10 +489,10 @@ void RegionRenderer::paintEvent(QPaintEvent *)
 
 void RegionRenderer::updateRectRegion(float const ll_worldX, float const ll_worldZ, float const ur_worldX, float const ur_worldZ, const std::string & name, const std::string & planet, int PvP, bool buildable, int spawnable, bool municipal, int geographical, int minDifficulty, int maxDifficulty, int mission)
 {
-	RectRegionMap::iterator iterRegions = m_rectRegions.find(planet + "." + name);
+	std::string const storageKey = makeRectStorageKey(planet, name, ll_worldX, ll_worldZ, ur_worldX, ur_worldZ);
+	RectRegionMap::iterator iterRegions = findRectForUpdate(m_rectRegions, planet, name, ll_worldX, ll_worldZ, ur_worldX, ur_worldZ);
 	if (iterRegions != m_rectRegions.end())
 	{
-		// Region already exists, update its information
 		iterRegions->second->m_planet = planet.c_str();
 		iterRegions->second->m_name = name.c_str();
 		iterRegions->second->m_worldX = ll_worldX;
@@ -423,8 +500,8 @@ void RegionRenderer::updateRectRegion(float const ll_worldX, float const ll_worl
 		iterRegions->second->m_ur_worldX = ur_worldX;
 		iterRegions->second->m_ur_worldZ = ur_worldZ;
 		iterRegions->second->m_PvP = PvP;
-		iterRegions->second->m_Municipal = municipal;
-		iterRegions->second->m_Buildable = buildable;
+		iterRegions->second->m_Municipal = municipal ? 1 : 0;
+		iterRegions->second->m_Buildable = buildable ? 1 : 0;
 		iterRegions->second->m_Geographical = geographical;
 		iterRegions->second->m_MinDifficulty = minDifficulty;
 		iterRegions->second->m_MaxDifficulty = maxDifficulty;
@@ -433,7 +510,18 @@ void RegionRenderer::updateRectRegion(float const ll_worldX, float const ll_worl
 	}
 	else
 	{
-		m_rectRegions.insert(std::make_pair(planet + "." + name, new RegionRect(ll_worldX, ll_worldZ, ur_worldX, ur_worldZ, "")));
+		RegionRect *const rect = new RegionRect(ll_worldX, ll_worldZ, ur_worldX, ur_worldZ, QString(name.c_str()));
+		rect->m_planet = QString(planet.c_str());
+		rect->m_name = QString(name.c_str());
+		rect->m_PvP = PvP;
+		rect->m_Buildable = buildable ? 1 : 0;
+		rect->m_Spawnable = spawnable;
+		rect->m_Municipal = municipal ? 1 : 0;
+		rect->m_Geographical = geographical;
+		rect->m_MinDifficulty = minDifficulty;
+		rect->m_MaxDifficulty = maxDifficulty;
+		rect->m_Mission = mission;
+		m_rectRegions.insert(std::make_pair(storageKey, rect));
 	}
 }
 
@@ -441,18 +529,19 @@ void RegionRenderer::updateRectRegion(float const ll_worldX, float const ll_worl
 
 void RegionRenderer::updateCircleRegion(float const worldX, float const worldZ, int const radius, const std::string & name, const std::string & planet, int PvP, bool buildable, int spawnable, bool municipal, int geographical, int minDifficulty, int maxDifficulty, int mission)
 {
-	CircleRegionMap::iterator iterRegions = m_circleRegions.find(planet + "." + name);
+	float const rf = static_cast<float>(radius);
+	std::string const storageKey = makeCircleStorageKey(planet, name, worldX, worldZ, rf);
+	CircleRegionMap::iterator iterRegions = findCircleForUpdate(m_circleRegions, planet, name, worldX, worldZ, rf);
 	if (iterRegions != m_circleRegions.end())
 	{
-		// Region already exists, update its information
 		iterRegions->second->m_planet = planet.c_str();
 		iterRegions->second->m_name = name.c_str();
 		iterRegions->second->m_worldX = worldX;
 		iterRegions->second->m_worldZ = worldZ;
-		iterRegions->second->m_radius = radius;
+		iterRegions->second->m_radius = rf;
 		iterRegions->second->m_PvP = PvP;
-		iterRegions->second->m_Municipal = municipal;
-		iterRegions->second->m_Buildable = buildable;
+		iterRegions->second->m_Municipal = municipal ? 1 : 0;
+		iterRegions->second->m_Buildable = buildable ? 1 : 0;
 		iterRegions->second->m_Geographical = geographical;
 		iterRegions->second->m_MinDifficulty = minDifficulty;
 		iterRegions->second->m_MaxDifficulty = maxDifficulty;
@@ -461,7 +550,18 @@ void RegionRenderer::updateCircleRegion(float const worldX, float const worldZ, 
 	}
 	else
 	{
-		m_circleRegions.insert(std::make_pair(planet + "." + name, new RegionCircle(worldX, worldZ, radius, "")));
+		RegionCircle *const circle = new RegionCircle(worldX, worldZ, rf, QString(name.c_str()));
+		circle->m_planet = QString(planet.c_str());
+		circle->m_name = QString(name.c_str());
+		circle->m_PvP = PvP;
+		circle->m_Buildable = buildable ? 1 : 0;
+		circle->m_Spawnable = spawnable;
+		circle->m_Municipal = municipal ? 1 : 0;
+		circle->m_Geographical = geographical;
+		circle->m_MinDifficulty = minDifficulty;
+		circle->m_MaxDifficulty = maxDifficulty;
+		circle->m_Mission = mission;
+		m_circleRegions.insert(std::make_pair(storageKey, circle));
 	}
 }
 
@@ -544,8 +644,17 @@ void RegionRenderer::drawRegions(QPainter &painter)
 			r = g = b = 0;
 		}
 
+		bool const isHi = (!m_highlightStorageKey.empty() && m_highlightStorageKey == i1->first);
+
 		fillRect(painter, i1->second->m_worldX, i1->second->m_worldZ, i1->second->m_ur_worldX, i1->second->m_ur_worldZ, QColor(r, g, b), true);
-		if (m_zoom > regionZoom)
+		if (isHi)
+		{
+			QPen hiPen(QColor(255, 255, 0), 3);
+			painter.setPen(hiPen);
+			drawRect(painter, i1->second->m_worldX, i1->second->m_worldZ, i1->second->m_ur_worldX, i1->second->m_ur_worldZ, QColor(255, 255, 0));
+		}
+		// Map labels only for the tree selection to avoid overlapping names.
+		if (m_zoom > regionZoom && isHi)
 		{
 			worldToPixel(i1->second->m_worldX,    i1->second->m_worldZ,    ll_pixelX, ll_pixelY);
 			worldToPixel(i1->second->m_ur_worldX, i1->second->m_ur_worldZ, ur_pixelX, ur_pixelY);
@@ -633,10 +742,16 @@ void RegionRenderer::drawRegions(QPainter &painter)
 			r = g = b = 0;
 		}
 
-
+		bool const isHi = (!m_highlightStorageKey.empty() && m_highlightStorageKey == i2->first);
 
 		fillCircle(painter, i2->second->m_worldX, i2->second->m_worldZ, i2->second->m_radius, QColor(r, g, b), true);
-		if (m_zoom > regionZoom)
+		if (isHi)
+		{
+			QPen hiPen(QColor(255, 255, 0), 3);
+			painter.setPen(hiPen);
+			drawCircle(painter, i2->second->m_worldX, i2->second->m_worldZ, i2->second->m_radius, QColor(255, 255, 0));
+		}
+		if (m_zoom > regionZoom && isHi)
 		{
 			worldToPixel(i2->second->m_worldX,    i2->second->m_worldZ,    ll_pixelX, ll_pixelY);
 
@@ -2044,6 +2159,84 @@ void RegionRenderer::filterOnMunicipal(bool filter)
 {
 	m_filterOnMunicipal = filter;
 	repaint();
+}
+
+//-----------------------------------------------------------------------------
+
+void RegionRenderer::listAllRegions(std::vector<RegionListEntry> &out) const
+{
+	out.clear();
+	for (RectRegionMap::const_iterator i = m_rectRegions.begin(); i != m_rectRegions.end(); ++i)
+	{
+		RegionListEntry e;
+		e.storageKey = i->first;
+		e.planet = std::string(i->second->m_planet.latin1());
+		e.rawName = std::string(i->second->m_name.latin1());
+		e.isRect = true;
+		out.push_back(e);
+	}
+	for (CircleRegionMap::const_iterator j = m_circleRegions.begin(); j != m_circleRegions.end(); ++j)
+	{
+		RegionListEntry e;
+		e.storageKey = j->first;
+		e.planet = std::string(j->second->m_planet.latin1());
+		e.rawName = std::string(j->second->m_name.latin1());
+		e.isRect = false;
+		out.push_back(e);
+	}
+}
+
+//-----------------------------------------------------------------------------
+
+void RegionRenderer::setHighlightedStorageKey(std::string const &key)
+{
+	m_highlightStorageKey = key;
+	update();
+}
+
+//-----------------------------------------------------------------------------
+
+void RegionRenderer::focusCameraOnStorageKey(std::string const &key)
+{
+	if (key.empty())
+		return;
+	Region *base = 0;
+	RectRegionMap::iterator ir = m_rectRegions.find(key);
+	if (ir != m_rectRegions.end())
+		base = ir->second;
+	else
+	{
+		CircleRegionMap::iterator ic = m_circleRegions.find(key);
+		if (ic != m_circleRegions.end())
+			base = ic->second;
+	}
+	if (!base)
+		return;
+
+	float cx = 0.0f;
+	float cz = 0.0f;
+	RegionRect *const rr = dynamic_cast<RegionRect *>(base);
+	if (rr)
+	{
+		cx = (rr->m_worldX + rr->m_ur_worldX) * 0.5f;
+		cz = (rr->m_worldZ + rr->m_ur_worldZ) * 0.5f;
+	}
+	else
+	{
+		RegionCircle *const rc = dynamic_cast<RegionCircle *>(base);
+		if (!rc)
+			return;
+		cx = rc->m_worldX;
+		cz = rc->m_worldZ;
+	}
+
+	float const wx = (m_worldSizeX > 0.0f) ? m_worldSizeX : 1.0f;
+	float const wz = (m_worldSizeZ > 0.0f) ? m_worldSizeZ : 1.0f;
+	m_destinationCameraPositionX = 0.5f + cx / wx;
+	m_destinationCameraPositionY = 0.5f - cz / wz;
+	m_destinationCameraPositionX = (std::max)(0.0f, (std::min)(1.0f, m_destinationCameraPositionX));
+	m_destinationCameraPositionY = (std::max)(0.0f, (std::min)(1.0f, m_destinationCameraPositionY));
+	update();
 }
 
 // ============================================================================

@@ -10,8 +10,8 @@
 
 #include <qcanvas.h>
 #include <map>
-#include <vector>
 #include <string>
+#include <vector>
 #include "sharedFoundationTypes/FoundationTypes.h"
 #include "../../../../../../engine/shared/library/sharedFoundation/include/public/sharedFoundation/NetworkId.h"
 
@@ -91,6 +91,14 @@ public:
 	typedef std::map<std::string, RegionRect*>   RectRegionMap;
 	typedef std::map<std::string, RegionCircle*> CircleRegionMap;
 
+	struct RegionListEntry
+	{
+		std::string storageKey;
+		std::string planet;
+		std::string rawName;
+		bool        isRect;
+	};
+
 	RegionRenderer(QWidget *parent, char const *name);
 	~RegionRenderer();
 
@@ -133,6 +141,10 @@ public:
 	int    getCellY(float const worldZ) const;
 
 	std::map<std::string, Region*> getVisibleRegions();
+
+	void listAllRegions(std::vector<RegionListEntry> &out) const;
+	void setHighlightedStorageKey(std::string const &key);
+	void focusCameraOnStorageKey(std::string const &key);
 
 	// Cell information
 
@@ -224,6 +236,7 @@ private:
 	bool                       m_filterOnMunicipal;
 	bool                       m_filterOnMission;
 	bool                       m_filterOnSpawnable;
+	std::string                m_highlightStorageKey;
 
 //	bool                       m_gameServerConnected;
 

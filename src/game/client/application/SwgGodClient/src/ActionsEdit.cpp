@@ -103,6 +103,7 @@ createTheater (0),
 createClientDataFile (0),
 m_toggleDropToTerrain (0),
 m_toggleAlignToTerrain (0),
+m_toggleUnrealEngineTransformGizmo (0),
 m_selectedServerTemplate(),
 m_selectedClientTemplate()
 {
@@ -227,6 +228,9 @@ m_selectedClientTemplate()
 	m_toggleAlignToTerrain                    = new ActionHack("Toggle Align To Terrain", IL_PIXMAP(hi16_action_align_to_terrain), "Toggle Align to Terrain", 0, p, "toggle_align_to_terrain",true);
 	IGNORE_RETURN(connect(m_toggleAlignToTerrain, SIGNAL(toggled(bool)), this, SLOT(onToggleAlignToTerrain())));
 
+	m_toggleUnrealEngineTransformGizmo = new ActionHack("Unreal Engine Transform Gizmo", QIconSet(), "Unreal-style &Transform Gizmo", 0, p, "toggle_unreal_transform_gizmo", true);
+	IGNORE_RETURN(connect(m_toggleUnrealEngineTransformGizmo, SIGNAL(toggled(bool)), this, SLOT(onToggleUnrealEngineTransformGizmo())));
+
 	//create a group of rotation axes actions, start in Yaw mode
 	rotateModeGroup = new QActionGroup(p, "rotate mode group", true);
 	rotateModeGroup->setUsesDropDown(true);
@@ -311,6 +315,7 @@ ActionsEdit::~ActionsEdit()
 	createClientDataFile = 0;
 	m_toggleDropToTerrain = 0;
 	m_toggleAlignToTerrain = 0;
+	m_toggleUnrealEngineTransformGizmo = 0;
 }
 
 //-----------------------------------------------------------------
@@ -617,6 +622,13 @@ void ActionsEdit::onToggleDropToTerrain() const
 void ActionsEdit::onToggleAlignToTerrain() const
 {
 	GodClientData::getInstance().toggleAlignToTerrain(); 
+}
+
+//-----------------------------------------------------------------
+
+void ActionsEdit::onToggleUnrealEngineTransformGizmo() const
+{
+	GodClientData::getInstance().toggleUnrealEngineTransformGizmo();
 }
 
 //-----------------------------------------------------------------

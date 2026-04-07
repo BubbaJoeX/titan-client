@@ -94,6 +94,12 @@
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\translators\dds.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\translators\lod.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\translators\lmg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\utility\MayaUtility.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -137,6 +143,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportSat.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SatRoundTrip.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ExportSat.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportPob.cpp">
@@ -297,6 +309,12 @@
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\translators\dds.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\translators\lod.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\translators\lmg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\translators\SwgTranslatorNames.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -343,6 +361,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportSat.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SatRoundTrip.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ExportSat.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportPob.h">

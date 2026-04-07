@@ -1,5 +1,6 @@
 #include "ImportSkeletalMesh.h"
 #include "ImportPathResolver.h"
+#include "ImportLodMesh.h"
 #include "MayaSceneBuilder.h"
 #include "Iff.h"
 #include "Tag.h"
@@ -110,6 +111,84 @@ namespace
         out = jointMap.find(toLower(key));
         return out != jointMap.end();
     }
+
+    static std::string pathBasenameNoExt(const std::string& p)
+    {
+        std::string s = p;
+        const size_t ls = s.find_last_of("/\\");
+        if (ls != std::string::npos)
+            s = s.substr(ls + 1);
+        const size_t dot = s.find_last_of('.');
+        if (dot != std::string::npos)
+            s = s.substr(0, dot);
+        return s;
+    }
+
+    /** SWG LOD joint suffix on imported bindings, e.g. root_jointname_l0 */
+    static std::string stripTrailingLodSuffix(const std::string& s)
+    {
+        size_t i = s.size();
+        while (i > 0 && std::isdigit(static_cast<unsigned char>(s[i - 1])))
+            --i;
+        if (i >= 2 && s[i - 1] == 'l' && s[i - 2] == '_')
+            return s.substr(0, i - 2);
+        return s;
+    }
+
+    /**
+     * XFNM uses engine skeleton names (often short, e.g. "root"); Maya root joints are name__filebase_l0 after SLOD import.
+     * Try several aliases so SAT→skeletal mesh picks up the rig that was imported just before.
+     */
+    static bool resolveTransformToJoint(
+        const std::string& tn,
+        const std::map<std::string, MDagPath>& jointMap,
+        const std::vector<std::string>& skelBases,
+        std::map<std::string, MDagPath>::const_iterator& out)
+    {
+        if (tn.empty())
+            return false;
+        if (findJoint(jointMap, tn, out))
+            return true;
+        if (findJoint(jointMap, stripUnderscores(tn), out))
+            return true;
+        if (findJoint(jointMap, getJointShortName(tn), out))
+            return true;
+        if (findJoint(jointMap, getComponentString0(tn), out))
+            return true;
+        if (findJoint(jointMap, getComponentString0(stripNamespace(tn)), out))
+            return true;
+
+        std::string lod1 = stripTrailingLodSuffix(tn);
+        if (lod1 != tn)
+        {
+            if (findJoint(jointMap, lod1, out) ||
+                findJoint(jointMap, getJointShortName(lod1), out) ||
+                findJoint(jointMap, getComponentString0(lod1), out))
+                return true;
+            std::string lod2 = stripTrailingLodSuffix(lod1);
+            if (lod2 != lod1 &&
+                (findJoint(jointMap, lod2, out) ||
+                    findJoint(jointMap, getJointShortName(lod2), out) ||
+                    findJoint(jointMap, getComponentString0(lod2), out)))
+                return true;
+        }
+
+        for (const std::string& base : skelBases)
+        {
+            if (base.empty())
+                continue;
+            const std::string c0 = tn + std::string("__") + base;
+            if (findJoint(jointMap, c0, out))
+                return true;
+            const std::string c1 = tn + std::string("__") + base + "_l0";
+            if (findJoint(jointMap, c1, out))
+                return true;
+            const std::string c2 = tn + std::string("__") + base + "_l1";
+            if (findJoint(jointMap, c2, out))
+                return true;
+        }
+        return false;
+    }
 }
 
 void* ImportSkeletalMesh::creator()
@@ -154,13 +233,20 @@ MStatus ImportSkeletalMesh::doIt(const MArgList& args)
         return MS::kFailure;
     }
 
-    inputFilename = resolveImportPath(inputFilename);
+    {
+        const std::string rawInput = inputFilename;
+        inputFilename = resolveImportPath(inputFilename);
+        inputFilename = resolveSkmgPathThroughWrappers(inputFilename);
+        MGlobal::displayInfo(MString("ImportSkeletalMesh: input=") + rawInput.c_str()
+            + " -> resolved=" + inputFilename.c_str());
+    }
     if (!skeletonFilename.empty())
         skeletonFilename = resolveImportPath(skeletonFilename);
 
     Iff iff;
     if (!iff.open(inputFilename.c_str(), false))
     {
+        MGlobal::displayError(MString("ImportSkeletalMesh: failed to open: ") + inputFilename.c_str());
         std::cerr << "ImportSkeletalMesh: failed to open " << inputFilename << std::endl;
         return MS::kFailure;
     }
@@ -168,12 +254,26 @@ MStatus ImportSkeletalMesh::doIt(const MArgList& args)
     const Tag topFormTag = iff.getCurrentName();
     if (topFormTag != TAG_SKMG)
     {
-        std::cerr << "ImportSkeletalMesh: expected FORM SKMG but found different top-level form" << std::endl;
+        char topStr[5]; ConvertTagToString(topFormTag, topStr);
+        MGlobal::displayError(MString("ImportSkeletalMesh: expected FORM SKMG but found FORM ") + topStr
+            + " in " + inputFilename.c_str());
+        std::cerr << "ImportSkeletalMesh: expected FORM SKMG but found FORM " << topStr << std::endl;
         return MS::kFailure;
     }
 
     iff.enterForm(TAG_SKMG);
     const Tag versionTag = iff.getCurrentName();
+    if (versionTag != TAG_0002 && versionTag != TAG_0003 && versionTag != TAG_0004)
+    {
+        char formName[5];
+        ConvertTagToString(versionTag, formName);
+        MGlobal::displayError(
+            MString("ImportSkeletalMesh: unsupported SKMG version ") + formName
+            + " (expected 0002, 0003, or 0004). File may be corrupt or a newer format.");
+        std::cerr << "ImportSkeletalMesh: unsupported SKMG version " << formName << std::endl;
+        iff.exitForm(TAG_SKMG);
+        return MS::kFailure;
+    }
     iff.enterForm(versionTag);
 
     int32 maxTransformsPerVertex   = 0;
@@ -205,6 +305,19 @@ MStatus ImportSkeletalMesh::doIt(const MArgList& args)
     zonesThisOccludesCount  = iff.read_int16();
     occlusionLayer          = iff.read_int16();
     iff.exitChunk(TAG_INFO);
+
+    {
+        MString msg = "ImportSkeletalMesh: INFO pos=";
+        msg += static_cast<int>(positionCount);
+        msg += " norm="; msg += static_cast<int>(normalCount);
+        msg += " xfnm="; msg += static_cast<int>(transformNameCount);
+        msg += " shaders="; msg += static_cast<int>(perShaderDataCount);
+        msg += " blends="; msg += static_cast<int>(blendTargetCount);
+        msg += " ozn="; msg += static_cast<int>(occlusionZoneNameCount);
+        msg += " ozc="; msg += static_cast<int>(occlusionZoneCombCount);
+        msg += " zto="; msg += static_cast<int>(zonesThisOccludesCount);
+        MGlobal::displayInfo(msg);
+    }
 
     std::vector<std::string> skeletonTemplateNames;
     iff.enterChunk(TAG_SKTM);
@@ -402,16 +515,68 @@ MStatus ImportSkeletalMesh::doIt(const MArgList& args)
         iff.exitForm(TAG_BLTS);
     }
 
+    // Occlusion data — match SkeletalMeshGeneratorTemplate::load_0002 / load_0004 (between BLTS and PSDT).
+    if (occlusionZoneNameCount > 0)
+    {
+        iff.enterChunk(TAG_OZN);
+        for (int16 i = 0; i < occlusionZoneNameCount; ++i)
+            (void)iff.read_stdstring();
+        iff.exitChunk(TAG_OZN);
+    }
+    if (iff.getNumberOfBlocksLeft() > 0 && !iff.isCurrentForm() && iff.getCurrentName() == TAG_FOZC)
+    {
+        iff.enterChunk(TAG_FOZC);
+        const int foCount = static_cast<int>(iff.read_uint16());
+        for (int i = 0; i < foCount; ++i)
+            (void)iff.read_int16();
+        iff.exitChunk(TAG_FOZC);
+    }
+    if (occlusionZoneCombCount > 0)
+    {
+        iff.enterChunk(TAG_OZC);
+        for (int16 i = 0; i < occlusionZoneCombCount; ++i)
+        {
+            const int16 combN = iff.read_int16();
+            for (int16 j = 0; j < combN; ++j)
+                (void)iff.read_int16();
+        }
+        iff.exitChunk(TAG_OZC);
+    }
+    if (zonesThisOccludesCount > 0)
+    {
+        iff.enterChunk(TAG_ZTO);
+        for (int16 i = 0; i < zonesThisOccludesCount; ++i)
+            (void)iff.read_int16();
+        iff.exitChunk(TAG_ZTO);
+    }
     while (iff.getNumberOfBlocksLeft() > 0 && !iff.isCurrentForm())
     {
-        const Tag chunkTag = iff.getCurrentName();
-        if (chunkTag == TAG_OZN || chunkTag == TAG_FOZC || chunkTag == TAG_OZC || chunkTag == TAG_ZTO)
+        iff.enterChunk();
+        iff.exitChunk();
+    }
+    while (iff.getNumberOfBlocksLeft() > 0 && iff.isCurrentForm() && iff.getCurrentName() != TAG_PSDT)
+    {
+        if (iff.getCurrentName() == TAG_TRTS)
         {
-            iff.enterChunk();
-            iff.exitChunk();
+            iff.enterForm(TAG_TRTS);
+            iff.exitForm(TAG_TRTS);
+            continue;
         }
-        else
-            break;
+        iff.enterForm();
+        while (!iff.atEndOfForm())
+        {
+            if (iff.isCurrentForm())
+            {
+                iff.enterForm();
+                iff.exitForm();
+            }
+            else
+            {
+                iff.enterChunk();
+                iff.exitChunk();
+            }
+        }
+        iff.exitForm();
     }
 
     std::vector<MayaSceneBuilder::ShaderGroupData> shaderGroups;
@@ -566,6 +731,33 @@ MStatus ImportSkeletalMesh::doIt(const MArgList& args)
         iff.exitForm(TAG_PSDT);
     }
 
+    {
+        int totalTriangles = 0;
+        for (size_t sg = 0; sg < shaderGroups.size(); ++sg)
+            totalTriangles += static_cast<int>(shaderGroups[sg].triangles.size());
+        if (positionCount <= 0 || totalTriangles <= 0)
+        {
+            if (iff.getNumberOfBlocksLeft() > 0 && iff.isCurrentForm() && iff.getCurrentName() == TAG_TRTS)
+            {
+                iff.enterForm(TAG_TRTS);
+                iff.exitForm(TAG_TRTS);
+            }
+            iff.exitForm(versionTag);
+            iff.exitForm(TAG_SKMG);
+            MString err = "ImportSkeletalMesh: no mesh geometry (positions=";
+            err += static_cast<int>(positionCount);
+            err += ", shaderGroups=";
+            err += static_cast<int>(shaderGroups.size());
+            err += ", triangles=";
+            err += totalTriangles;
+            err += "). Parser may be out of sync with this .lmg/.mgn (check Script Editor / stderr).";
+            MGlobal::displayError(err);
+            std::cerr << "ImportSkeletalMesh: no geometry positions=" << positionCount << " groups=" << shaderGroups.size()
+                << " triangles=" << totalTriangles << " perShaderDataCount=" << perShaderDataCount << std::endl;
+            return MS::kFailure;
+        }
+    }
+
     if (iff.getNumberOfBlocksLeft() > 0 && iff.isCurrentForm() && iff.getCurrentName() == TAG_TRTS)
     {
         iff.enterForm(TAG_TRTS);
@@ -592,6 +784,10 @@ MStatus ImportSkeletalMesh::doIt(const MArgList& args)
         std::cerr << "ImportSkeletalMesh: failed to create mesh" << std::endl;
         return status;
     }
+    {
+        MFnDagNode meshDg(meshPath);
+        MGlobal::displayInfo(MString("ImportSkeletalMesh: created ") + meshDg.fullPathName());
+    }
 
     if (!parentPath.empty())
     {
@@ -601,9 +797,14 @@ MStatus ImportSkeletalMesh::doIt(const MArgList& args)
         {
             MDagPath parentDag;
             sel.getDagPath(0, parentDag);
-            MFnDagNode meshFn(meshPath);
+
+            MDagPath transformPath = meshPath;
+            if (transformPath.hasFn(MFn::kMesh))
+                transformPath.pop(1);
+
+            MFnDagNode transformFn(transformPath);
             MString parentCmd = "parent \"";
-            parentCmd += meshFn.fullPathName();
+            parentCmd += transformFn.fullPathName();
             parentCmd += "\" \"";
             parentCmd += parentDag.fullPathName();
             parentCmd += "\"";
@@ -612,7 +813,7 @@ MStatus ImportSkeletalMesh::doIt(const MArgList& args)
             {
                 std::string newPath = parentDag.fullPathName().asChar();
                 newPath += "|";
-                newPath += meshFn.name().asChar();
+                newPath += transformFn.name().asChar();
                 sel.clear();
                 sel.add(MString(newPath.c_str()));
                 if (sel.length() > 0)
@@ -694,28 +895,50 @@ MStatus ImportSkeletalMesh::doIt(const MArgList& args)
         // Use all scene joints - skeleton filter excludes joints when mesh references different skeleton path
         buildJointMap(false);
 
-        // MayaExporter: "MUST preserve exact order and index" - jointPaths[i] = joint for transformNames[i]
-        auto         buildJointPathsFromMap = [&]() {
-            jointPaths.clear();
-            jointPaths.reserve(transformNames.size());
-            std::map<std::string, MDagPath>::const_iterator it;
-            for (size_t i = 0; i < transformNames.size(); ++i)
-            {
-                const std::string& tn = transformNames[i];
-                if (findJoint(jointMap, tn, it) ||
-                    findJoint(jointMap, stripUnderscores(tn), it) ||
-                    findJoint(jointMap, getJointShortName(tn), it) ||
-                    findJoint(jointMap, getComponentString0(tn), it))
-                    jointPaths.push_back(it->second);
-            }
-        };
-
-        buildJointPathsFromMap();
-
-        if (jointPaths.size() < transformNames.size())
+        std::vector<std::string> skelBases;
         {
-            std::cerr << "ImportSkeletalMesh: matched " << jointPaths.size() << " of " << transformNames.size()
-                << " joints for skin cluster (mesh expects " << transformNames.size() << " transforms)" << std::endl;
+            std::set<std::string> seenBase;
+            if (!skeletonFilename.empty())
+            {
+                const std::string b = pathBasenameNoExt(skeletonFilename);
+                if (!b.empty() && seenBase.insert(toLower(b)).second)
+                    skelBases.push_back(b);
+            }
+            for (size_t si = 0; si < skeletonTemplateNames.size(); ++si)
+            {
+                const std::string b = pathBasenameNoExt(skeletonTemplateNames[si]);
+                if (!b.empty() && seenBase.insert(toLower(b)).second)
+                    skelBases.push_back(b);
+            }
+        }
+
+        jointPaths.clear();
+        std::set<std::string> seenJointPath;
+        size_t resolvedInfluences = 0;
+        std::map<std::string, MDagPath>::const_iterator jit;
+        for (size_t i = 0; i < transformNames.size(); ++i)
+        {
+            const std::string& tn = transformNames[i];
+            if (!resolveTransformToJoint(tn, jointMap, skelBases, jit))
+                continue;
+            ++resolvedInfluences;
+            MString fp = jit->second.fullPathName();
+            const std::string fps(fp.asChar());
+            if (seenJointPath.insert(fps).second)
+                jointPaths.push_back(jit->second);
+        }
+
+        if (resolvedInfluences < transformNames.size())
+        {
+            std::cerr << "ImportSkeletalMesh: resolved " << resolvedInfluences << " of " << transformNames.size()
+                << " influence transform names to scene joints (skin weights need a match per XFNM entry)" << std::endl;
+        }
+
+        if (jointPaths.empty() && transformWeightDataCount > 0)
+        {
+            MGlobal::displayWarning(MString(
+                "ImportSkeletalMesh: no joints matched mesh transform names; mesh imported without skinCluster. "
+                "Check skeleton import (LOD l0 uses root names like joint__basename_l0) vs SKMG XFNM."));
         }
 
         if (!jointPaths.empty())
@@ -738,5 +961,16 @@ MStatus ImportSkeletalMesh::doIt(const MArgList& args)
         }
     }
 
+    {
+        int totalTris = 0;
+        for (size_t sg = 0; sg < shaderGroups.size(); ++sg)
+            totalTris += static_cast<int>(shaderGroups[sg].triangles.size());
+        MString msg = "ImportSkeletalMesh: SUCCESS mesh=\"";
+        msg += meshName.c_str();
+        msg += "\" verts="; msg += static_cast<int>(positionCount);
+        msg += " tris="; msg += totalTris;
+        msg += " xfnm="; msg += static_cast<int>(transformNames.size());
+        MGlobal::displayInfo(msg);
+    }
     return MS::kSuccess;
 }

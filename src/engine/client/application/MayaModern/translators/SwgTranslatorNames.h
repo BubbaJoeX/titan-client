@@ -3,9 +3,11 @@
 
 /**
  * Maya file translators: short ASCII ids for registration (MEL/VG `file -import -type "SwgSat"`).
- * Do not use *, parentheses-only names, or Maya reserved types (e.g. SAT_ATF = ACIS solid, not SWG .sat).
+ * Do not use Maya reserved translator names (e.g. SAT_ATF = ACIS solid, not SWG .sat).
  *
- * Human-readable lines for the file dialog come from filter() using kFilter* strings.
+ * filter() must follow Maya's documented form (see MPxFileTranslator::filter): wildcard patterns like *.obj.
+ * The devkit Alembic sample returns "*.abc" only. Strings such as "Label (*.ext)" can break the Maya 2026
+ * import dialog (blank "Files of type" rows). Use plain patterns; pick the type via this name in MEL if needed.
  */
 namespace swg_translator
 {
@@ -18,16 +20,20 @@ namespace swg_translator
 	inline constexpr char const kTypeSat[] = "SwgSat";
 	inline constexpr char const kTypePob[] = "SwgPob";
 	inline constexpr char const kTypeDds[] = "SwgDds";
+	inline constexpr char const kTypeLod[] = "SwgLod";
+	inline constexpr char const kTypeLmg[] = "SwgLmg";
 
-	// MPxFileTranslator::filter() — shown in "Files of type" next to the pattern
-	inline constexpr char const kFilterMgn[] = "SWG skeletal mesh (*.mgn)";
-	inline constexpr char const kFilterMsh[] = "SWG static mesh (*.msh *.apt)";
-	inline constexpr char const kFilterSkt[] = "SWG skeleton (*.skt)";
-	inline constexpr char const kFilterAns[] = "SWG animation (*.ans)";
-	inline constexpr char const kFilterFlr[] = "SWG floor (*.flr)";
-	inline constexpr char const kFilterSat[] = "SWG skeletal appearance (*.sat)";
-	inline constexpr char const kFilterPob[] = "SWG portal object (*.pob)";
-	inline constexpr char const kFilterDds[] = "SWG DDS texture (*.dds)";
+	// MPxFileTranslator::filter() — patterns only (Maya 2026 / Qt file dialog)
+	inline constexpr char const kFilterMgn[] = "*.mgn";
+	inline constexpr char const kFilterMsh[] = "*.msh *.apt";
+	inline constexpr char const kFilterSkt[] = "*.skt *.lod";
+	inline constexpr char const kFilterAns[] = "*.ans";
+	inline constexpr char const kFilterFlr[] = "*.flr";
+	inline constexpr char const kFilterSat[] = "*.sat";
+	inline constexpr char const kFilterPob[] = "*.pob";
+	inline constexpr char const kFilterDds[] = "*.dds";
+	inline constexpr char const kFilterLod[] = "*.lod";
+	inline constexpr char const kFilterLmg[] = "*.lmg";
 }
 
 #endif

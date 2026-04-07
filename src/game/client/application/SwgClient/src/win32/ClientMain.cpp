@@ -322,8 +322,10 @@ int ClientMain(
 			// Install and render splash screen immediately after graphics initialization
 			SplashScreen::install();
 			SplashScreen::render();
-			
+			SplashScreen::preloadConfiguredAssets();
+
 			VideoList::install(Audio::getMilesDigitalDriver());
+			SplashScreen::pump();
 
 			//-- directinput
 			SetupClientDirectInput::install(hInstance, Os::getWindow(), DIK_LCONTROL, Graphics::isWindowed);
@@ -331,11 +333,13 @@ int ClientMain(
 			DirectInput::setToggleWindowedModeFunction(Graphics::toggleWindowedMode);
 			DirectInput::setRequestDebugMenuFunction(Os::requestPopupDebugMenu);
 			Os::setLostFocusHookFunction(DirectInput::unacquireAllDevices);
+			SplashScreen::pump();
 
 			//-- object
 			SetupClientObject::Data setupClientObjectData;
 			SetupClientObject::setupGameData(setupClientObjectData);
 			SetupClientObject::install(setupClientObjectData);
+			SplashScreen::pump();
 
 			//-- animation and skeletal animation
 			SetupClientAnimation::install();
@@ -343,20 +347,24 @@ int ClientMain(
 			SetupClientSkeletalAnimation::Data  saData;
 			SetupClientSkeletalAnimation::setupGameData(saData);
 			SetupClientSkeletalAnimation::install(saData);
+			SplashScreen::pump();
 
 			//-- texture renderer
 			SetupClientTextureRenderer::install();
+			SplashScreen::pump();
 
 			//-- terrain
 			SetupClientTerrain::install();
 
 			//-- particle system
 			SetupClientParticle::install();
+			SplashScreen::pump();
 
 			//-- game
 			SetupClientGame::Data data;
 			SetupClientGame::setupGameData(data);
 			SetupClientGame::install(data);
+			SplashScreen::pump();
 
 			CuiManager::setImplementationInstallFunctions(SwgCuiManager::install, SwgCuiManager::remove, SwgCuiManager::update);
 			CuiManager::setImplementationTestFunction(SwgCuiManager::test);
@@ -368,6 +376,7 @@ int ClientMain(
 
 			//-- setup the client user interface.
 			SetupSwgClientUserInterface::install();
+			SplashScreen::pump();
 
 			//-- G15 LCD
 			SwgCuiG15Lcd::initializeLcd();

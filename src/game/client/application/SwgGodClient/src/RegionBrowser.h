@@ -17,6 +17,7 @@
 // ======================================================================
 
 class QHideEvent;
+class QListViewItem;
 class QTimer;
 class QShowEvent;
 
@@ -55,8 +56,11 @@ private:
 
 private slots:
 	virtual void slotTimerTimeOut();
+	void onRegionTreeSelection(QListViewItem *item);
 
 private:
+	void rebuildRegionTree();
+
 	QTimer*      m_timer;
 	bool         m_visible;
 };

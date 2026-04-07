@@ -125,6 +125,9 @@ public:
 	int                                    playAnimation(const AnimationTrackId &trackId, SkeletalAnimation *skeletalAnimation, PlayMode playMode, bool loop, BlendMode transitionBlendMode, float blendInTime, AnimationNotification *notification);
 	void                                   stopAnimation(const AnimationTrackId &trackId);
 
+	/** If the track's current animation resolves to a keyframe leaf, freeze at frameNumber (see SkeletalAnimation::setHoldAtFrame). */
+	bool                                   holdLeafAnimationAtFrameOnTrack(const AnimationTrackId &trackId, float frameNumber);
+
 	int                                    getMostRecentlyCompletedAnimationId(const AnimationTrackId &trackId) const;
 	bool                                   getCurrentlyPlayingAnimationId(const AnimationTrackId &trackId, int &animationId) const;
 

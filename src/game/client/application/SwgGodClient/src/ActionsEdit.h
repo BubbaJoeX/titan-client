@@ -83,6 +83,7 @@ public:
 	ActionHack*             createClientDataFile;
 	ActionHack*				m_toggleDropToTerrain;
 	ActionHack*				m_toggleAlignToTerrain;
+	ActionHack*				m_toggleUnrealEngineTransformGizmo;
 	//lint -restore
 
 	void receiveMessage(const MessageDispatch::Emitter & source, const MessageDispatch::MessageBase & message);
@@ -125,6 +126,7 @@ private slots:
 	void                  onMakeGroundSpawner () const;
 	void                  onToggleDropToTerrain () const;
 	void                  onToggleAlignToTerrain () const;
+	void                  onToggleUnrealEngineTransformGizmo () const;
 
 public slots:
 	void                  onServerTemplateSelectionChanged(const std::string &);

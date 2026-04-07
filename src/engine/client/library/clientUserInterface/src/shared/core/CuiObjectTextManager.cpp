@@ -41,6 +41,7 @@
 #include "sharedFoundation/NetworkIdArchive.h"
 #include "sharedFoundation/Production.h"
 #include "sharedGame/PvpData.h"
+#include "sharedGame/StaffRankDataTable.h"
 #include "sharedGame/SharedBuildingObjectTemplate.h"
 #include "sharedGame/SharedCreatureObjectTemplate.h"
 #include "sharedMathArchive/TransformArchive.h"
@@ -259,7 +260,15 @@ namespace CuiObjectTextManagerNamespace
 			}
 
 			bool hasPriviledgedTitle = false;
-			if (playerObject->isNormalPlayer())
+			if (playerObject->isStaffRankDisplayTitle())
+			{
+				s.push_back ('\n');
+				s.push_back ('(');
+				s += Unicode::narrowToWide(StaffRankDataTable::getRankTitle(playerObject->getStaffRankDisplayLevel()));
+				s.push_back (')');
+				hasPriviledgedTitle = true;
+			}
+			else if (playerObject->isNormalPlayer())
 			{
 				hasPriviledgedTitle = false;
 			}

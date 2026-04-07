@@ -1,5 +1,6 @@
 #include "sat.h"
 #include "SwgTranslatorNames.h"
+#include "../commands/ExportSat.h"
 #include "../commands/ImportSat.h"
 #include "MayaUtility.h"
 
@@ -70,4 +71,19 @@ MStatus SatTranslator::reader(const MFileObject& file, const MString& /*optionsS
         MGlobal::displayError(err);
     }
     return status;
+}
+
+MStatus SatTranslator::writer(const MFileObject& file, const MString& /*optionsString*/, MPxFileTranslator::FileAccessMode /*mode*/)
+{
+    const std::string pathStd = MayaUtility::fileObjectPathForIdentify(file);
+    if (pathStd.empty())
+    {
+        MGlobal::displayError("SAT export: could not resolve output path from MFileObject.");
+        return MS::kFailure;
+    }
+    MArgList args;
+    args.addArg(MString("-o"));
+    args.addArg(MString(pathStd.c_str()));
+    ExportSat exporter;
+    return exporter.doIt(args);
 }

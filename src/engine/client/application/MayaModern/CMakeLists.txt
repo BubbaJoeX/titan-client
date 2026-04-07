@@ -129,6 +129,10 @@ set(SOURCE_FILES
         translators/pob.h
         translators/dds.cpp
         translators/dds.h
+        translators/lod.cpp
+        translators/lod.h
+        translators/lmg.cpp
+        translators/lmg.h
         translators/SwgTranslatorNames.h
 
         utility/MayaUtility.cpp
@@ -162,6 +166,10 @@ set(SOURCE_FILES
         commands/RevertToBindPose.h
         commands/ImportSat.cpp
         commands/ImportSat.h
+        commands/SatRoundTrip.cpp
+        commands/SatRoundTrip.h
+        commands/ExportSat.cpp
+        commands/ExportSat.h
         commands/ImportPob.cpp
         commands/ImportPob.h
         commands/ExportPob.cpp

@@ -254,6 +254,9 @@
     <ClCompile Include="..\..\src\shared\core\GuildRankDataTable.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
     </ClCompile>
+    <ClCompile Include="..\..\src\shared\core\StaffRankDataTable.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+    </ClCompile>
     <ClCompile Include="..\..\src\shared\core\HoverPlaneHelper.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
     </ClCompile>
@@ -620,6 +623,7 @@
     <ClInclude Include="..\..\src\shared\core\GameScheduler.h" />
     <ClInclude Include="..\..\src\shared\core\GroundZoneManager.h" />
     <ClInclude Include="..\..\src\shared\core\GuildRankDataTable.h" />
+    <ClInclude Include="..\..\src\shared\core\StaffRankDataTable.h" />
     <ClInclude Include="..\..\src\shared\core\HoverPlaneHelper.h" />
     <ClInclude Include="..\..\src\shared\core\HyperspaceManager.h" />
     <ClInclude Include="..\..\src\shared\core\LfgCharacterData.h" />

@@ -1,6 +1,7 @@
 # MODELING.md - Maya 8 Asset Creation Tutorial for SWG
 
 ## Table of Contents
+
 1. [Introduction](#introduction)
 2. [Prerequisites](#prerequisites)
 3. [Understanding File Types](#understanding-file-types)
@@ -21,6 +22,7 @@
 This guide provides a comprehensive walkthrough for creating game assets for Star Wars Galaxies using Maya 8 and the SWG Maya Exporter plugin. Whether you're creating static environmental props, skeletal characters, or animated creatures, this tutorial will help you understand the entire asset creation pipeline.
 
 **What You'll Learn:**
+
 - How to set up Maya 8 for SWG asset creation
 - The purpose and workflow for .sat, .mgn, and .msh files
 - Best practices for modeling, rigging, and exporting assets
@@ -31,17 +33,20 @@ This guide provides a comprehensive walkthrough for creating game assets for Sta
 ## Prerequisites
 
 ### Software Requirements
+
 - **Autodesk Maya 8** (required - this plugin is specifically built for Maya 8)
 - **Visual Studio 2013** (for building the plugin from source, if needed)
 - **Windows OS** (the plugin is Windows-only)
 
 ### Knowledge Requirements
+
 - Basic understanding of Maya interface and modeling
 - Familiarity with 3D modeling concepts (polygons, UVs, normals)
 - Understanding of skeletal rigging for character work
 - Basic knowledge of file management and directory structures
 
 ### System Setup
+
 - Ensure you have write permissions to your export directories
 - Recommended: Set up version control for your Maya scene files
 - Configure your Maya project with proper source and destination folders
@@ -53,30 +58,36 @@ This guide provides a comprehensive walkthrough for creating game assets for Sta
 The SWG Maya Exporter works with three primary file types, each serving a specific purpose in the game engine:
 
 ### .msh (Mesh Appearance - Static Mesh)
+
 **Purpose:** Static, non-deforming geometry for environmental objects and props.
 
 **Use Cases:**
+
 - Buildings and structures
 - Environmental props (rocks, trees, furniture)
 - Static decorative elements
 - Collision meshes for environments
 
 **Characteristics:**
+
 - No skeletal deformation
 - Can include multiple LOD (Level of Detail) levels
 - Supports shader assignments and textures
 - Optimized for rendering performance
 
 ### .mgn (Mesh Generator - Skeletal Mesh)
+
 **Purpose:** Deformable geometry bound to a skeleton for animated characters and objects.
 
 **Use Cases:**
+
 - Character bodies and clothing
 - Creature meshes
 - Animated objects (doors, machinery with moving parts)
 - Anything requiring skeletal animation
 
 **Characteristics:**
+
 - Bound to skeleton bones via skin weights
 - Supports up to 4 bone influences per vertex (configurable)
 - Can include blend shapes (morph targets) for facial animation
@@ -84,15 +95,18 @@ The SWG Maya Exporter works with three primary file types, each serving a specif
 - Includes LOD support via .lmg (LOD Mesh Generator)
 
 ### .sat (Skeletal Appearance Template)
+
 **Purpose:** Container file that packages together skeletons, meshes, and animation references.
 
 **Use Cases:**
+
 - Complete character definitions
 - Assembling multiple mesh parts into a single character
 - Defining which animations work with which character
 - Creating customizable character appearances
 
 **Characteristics:**
+
 - References one or more .skt (skeleton template) files
 - References one or more .mgn (mesh generator) files
 - References .asg (animation state graph) for animation control
@@ -106,6 +120,7 @@ The SWG Maya Exporter works with three primary file types, each serving a specif
 ### Step 1: Locate the Plugin
 
 After building the project (see main README.md), the Maya Exporter plugin will be located at:
+
 ```
 compile/win32/MayaExporter/Release/MayaExporter.mll
 ```
@@ -113,21 +128,19 @@ compile/win32/MayaExporter/Release/MayaExporter.mll
 ### Step 2: Install the Plugin
 
 1. **Copy the Plugin:**
-   - Copy `MayaExporter.mll` to one of Maya's plugin directories:
-     - User directory: `C:\Documents and Settings\[username]\My Documents\maya\8.0\plug-ins\`
-     - Maya installation: `C:\Program Files\Autodesk\Maya8.0\bin\plug-ins\`
-
+  - Copy `MayaExporter.mll` to one of Maya's plugin directories:
+    - User directory: `C:\Documents and Settings\[username]\My Documents\maya\8.0\plug-ins\`
+    - Maya installation: `C:\Program Files\Autodesk\Maya8.0\bin\plug-ins\`
 2. **Load the Plugin in Maya:**
-   - Open Maya 8
-   - Go to `Window > Settings/Preferences > Plug-in Manager`
-   - Locate `MayaExporter.mll` in the list
-   - Check both `Loaded` and `Auto load` boxes
-   - Click `Close`
-
+  - Open Maya 8
+  - Go to `Window > Settings/Preferences > Plug-in Manager`
+  - Locate `MayaExporter.mll` in the list
+  - Check both `Loaded` and `Auto load` boxes
+  - Click `Close`
 3. **Verify Installation:**
-   - In Maya's Script Editor, type: `exportCommand;`
-   - Press Enter
-   - If successful, an export dialog should appear
+  - In Maya's Script Editor, type: `exportCommand;`
+  - Press Enter
+  - If successful, an export dialog should appear
 
 ### Step 3: Configure Export Directories
 
@@ -171,26 +184,24 @@ MyProject/
 ### Maya Scene Setup
 
 1. **Set Project:**
-   ```
+  ```
    File > Project > Set...
-   ```
+  ```
    Navigate to your project root folder.
-
 2. **Configure Units:**
-   ```
+  ```
    Window > Settings/Preferences > Preferences > Settings
-   ```
-   - Linear: `meter` (SWG uses meters)
-   - Angular: `degree`
-   - Time: `film (24 fps)` or `NTSC (30 fps)` (check with your animation requirements)
-
+  ```
+  - Linear: `meter` (SWG uses meters)
+  - Angular: `degree`
+  - Time: `film (24 fps)` or `NTSC (30 fps)` (check with your animation requirements)
 3. **Grid Settings:**
-   ```
+  ```
    Display > Grid > Options
-   ```
-   - Length and Width: `12 meters` (or as needed)
-   - Grid lines every: `1 meter`
-   - Subdivisions: `4`
+  ```
+  - Length and Width: `12 meters` (or as needed)
+  - Grid lines every: `1 meter`
+  - Subdivisions: `4`
 
 ---
 
@@ -199,16 +210,19 @@ MyProject/
 ### Step 1: Modeling Guidelines
 
 **Polygon Count:**
+
 - Keep polygon counts reasonable for real-time rendering
 - Aim for 1,000-5,000 polys for most props
 - Use LOD (Level of Detail) for larger objects
 
 **Topology:**
+
 - Use **triangulated polygons** (the exporter converts quads to tris)
 - Ensure all faces have consistent normals
 - Avoid n-gons (polygons with more than 4 sides)
 
 **Scale:**
+
 - Work in meters (Maya units should be set to meters)
 - Average character height: ~1.8 meters
 - Check scale against reference objects
@@ -222,6 +236,7 @@ objectname_msh
 ```
 
 Example:
+
 ```
 crate_wooden_msh
 table_cantina_msh
@@ -229,6 +244,7 @@ rock_desert_01_msh
 ```
 
 **Rules:**
+
 - Use underscores `_` to separate words
 - End with `_msh` suffix
 - Avoid special characters
@@ -237,86 +253,69 @@ rock_desert_01_msh
 ### Step 3: UV Mapping
 
 1. **Create UVs:**
-   ```
+  ```
    Window > UV Texture Editor
-   ```
-   - Unwrap your model
-   - Ensure UVs are within 0-1 space
-   - Avoid overlapping UVs (unless intentional for tiling)
-
+  ```
+  - Unwrap your model
+  - Ensure UVs are within 0-1 space
+  - Avoid overlapping UVs (unless intentional for tiling)
 2. **Multiple UV Sets:**
-   - SWG supports up to 8 UV sets per mesh
-   - Create additional UV sets for detail maps or lightmaps:
-     ```
-     Create UVs > UV Set > Create UV Set > [name]
-     ```
-
+  - SWG supports up to 8 UV sets per mesh
+  - Create additional UV sets for detail maps or lightmaps:
+    ```
+    Create UVs > UV Set > Create UV Set > [name]
+    ```
 3. **Check UVs:**
-   - All faces must have UVs assigned
-   - UVs should not have gaps or extreme distortion
-   - Use Maya's `UV Texture Editor > Display > Checkerboard` to verify
+  - All faces must have UVs assigned
+  - UVs should not have gaps or extreme distortion
+  - Use Maya's `UV Texture Editor > Display > Checkerboard` to verify
 
 ### Step 4: Assign Shaders
 
 1. **Create a Lambert or Phong shader:**
-   ```
+  ```
    Window > Rendering Editors > Hypershade
-   ```
-   - Create a new `Lambert` or `Phong` shader
-   - Name it descriptively (e.g., `wood_crate_shader`)
-
+  ```
+  - Create a new `Lambert` or `Phong` shader
+  - Name it descriptively (e.g., `wood_crate_shader`)
 2. **Assign textures:**
-   - In the shader's attributes, add texture files to:
-     - Color/Diffuse channel
-     - Normal/Bump channel (if needed)
-     - Specular channel (if needed)
-
+  - In the shader's attributes, add texture files to:
+    - Color/Diffuse channel
+    - Normal/Bump channel (if needed)
+    - Specular channel (if needed)
 3. **SOE Custom Attributes:**
-   
-   The exporter uses custom attributes on shaders for special features:
-   
-   ```mel
-   // Add custom texture references (example)
-   // Select your shader, then run:
-   addAttr -ln "soe_textureName_MAIN" -dt "string" yourShaderName;
-   setAttr -type "string" yourShaderName.soe_textureName_MAIN "texture/wood_crate_d.dds";
-   ```
-
+  The exporter uses custom attributes on shaders for special features:
 4. **Assign to mesh:**
-   - Select faces or entire mesh
-   - Right-click shader in Hypershade
-   - Choose `Assign Material To Selection`
+  - Select faces or entire mesh
+  - Right-click shader in Hypershade
+  - Choose `Assign Material To Selection`
 
 ### Step 5: Export the Static Mesh
 
 1. **Select the mesh:**
-   - In the outliner or viewport, select your `objectname_msh` object
-
+  - In the outliner or viewport, select your `objectname_msh` object
 2. **Open the export dialog:**
-   ```
+  ```
    exportCommand;
-   ```
-
+  ```
 3. **Choose Export Type:**
-   - Select `Static Mesh (MSH/LOD)` radio button
-
+  - Select `Static Mesh (MSH/LOD)` radio button
 4. **Set export options:**
-   - **Branch:** `current` (or your desired data branch)
-   - **Interactive:** Checked (if you want to select the object)
-   - Click `OK`
-
+  - **Branch:** `current` (or your desired data branch)
+  - **Interactive:** Checked (if you want to select the object)
+  - Click `OK`
 5. **Result:**
-   - The mesh will export to: `exported/appearance/mesh/objectname.msh`
-   - Shader templates export to: `exported/shader/`
-   - Textures export to: `exported/texture/`
-   - A `.log` file is created for tracking reexports
+  - The mesh will export to: `exported/appearance/mesh/objectname.msh`
+  - Shader templates export to: `exported/shader/`
+  - Textures export to: `exported/texture/`
+  - A `.log` file is created for tracking reexports
 
 ### Step 6: LOD (Level of Detail) Setup
 
 For objects that need multiple detail levels:
 
 1. **Create LOD hierarchy:**
-   ```
+  ```
    objectname_lod/
    ├── objectname_l0/    # Highest detail
    │   └── objectname_msh
@@ -324,18 +323,16 @@ For objects that need multiple detail levels:
    │   └── objectname_msh
    └── objectname_l2/    # Lowest detail
        └── objectname_msh
-   ```
-
+  ```
 2. **Naming Convention:**
-   - Root node ends with `_lod`
-   - Each detail level: `_l0`, `_l1`, `_l2`, etc.
-   - Mesh nodes still end with `_msh`
-
+  - Root node ends with `_lod`
+  - Each detail level: `_l0`, `_l1`, `_l2`, etc.
+  - Mesh nodes still end with `_msh`
 3. **Export:**
-   - Select the root `_lod` node
-   - Run `exportCommand;`
-   - Choose `Static Mesh (MSH/LOD)`
-   - The exporter automatically detects and processes all LOD levels
+  - Select the root `_lod` node
+  - Run `exportCommand;`
+  - Choose `Static Mesh (MSH/LOD)`
+  - The exporter automatically detects and processes all LOD levels
 
 ---
 
@@ -346,14 +343,16 @@ For objects that need multiple detail levels:
 You need a skeleton before creating a skeletal mesh.
 
 **Import an existing skeleton:**
+
 ```mel
 // Reference an existing skeleton
 file -r -namespace "skel" "path/to/skeleton_file.mb";
 ```
 
 **Or create a new skeleton:**
+
 1. ```
-   Skeleton > Joint Tool
+  Skeleton > Joint Tool
    ```
 2. Create your bone hierarchy
 3. Name bones following SWG conventions (see Naming Conventions section)
@@ -361,6 +360,7 @@ file -r -namespace "skel" "path/to/skeleton_file.mb";
 ### Step 2: Model the Mesh
 
 **Guidelines:**
+
 - Model around the skeleton in bind pose
 - Keep topology deformation-friendly (good edge flow around joints)
 - Consider poly count:
@@ -369,11 +369,13 @@ file -r -namespace "skel" "path/to/skeleton_file.mb";
   - Clothing/attachments: 500-2,000 polys
 
 **Naming:**
+
 ```
 charactername_meshpart_msh
 ```
 
 Examples:
+
 ```
 human_male_body_msh
 human_male_head_msh
@@ -383,34 +385,31 @@ wookiee_torso_msh
 ### Step 3: Skin the Mesh to Skeleton
 
 1. **Select mesh, then skeleton root:**
-   - First: Select the mesh
-   - Shift+Select: Select the skeleton root joint
-
+  - First: Select the mesh
+  - Shift+Select: Select the skeleton root joint
 2. **Bind Skin:**
-   ```
+  ```
    Skin > Bind Skin > Smooth Bind > Options
-   ```
-   
+  ```
    **Recommended settings:**
-   - Bind to: `Selected Joints`
-   - Bind Method: `Closest distance`
-   - Max Influences: `4` (SWG engine limitation)
-   - Dropoff Rate: `4.0`
-
+  - Bind to: `Selected Joints`
+  - Bind Method: `Closest distance`
+  - Max Influences: `4` (SWG engine limitation)
+  - Dropoff Rate: `4.0`
 3. **Paint Weights:**
-   ```
+  ```
    Skin > Edit Smooth Skin > Paint Skin Weights Tool
-   ```
-   
+  ```
    **Tips:**
-   - Keep influences per vertex to 4 or fewer
-   - Smooth transitions between bone influences
-   - Test deformation by rotating joints
-   - Pay special attention to joint areas (shoulders, elbows, knees)
+  - Keep influences per vertex to 4 or fewer
+  - Smooth transitions between bone influences
+  - Test deformation by rotating joints
+  - Pay special attention to joint areas (shoulders, elbows, knees)
 
 ### Step 4: UV Mapping
 
 Follow the same UV guidelines as static meshes:
+
 - Unwrap UVs in the bind pose
 - Support for multiple UV sets
 - Ensure all faces have UVs
@@ -418,10 +417,12 @@ Follow the same UV guidelines as static meshes:
 ### Step 5: Shader Assignment
 
 Same process as static meshes, but consider:
+
 - Body parts often use different shaders
 - Clothing may use customizable shaders
 
 **Customizable Shaders (for player customization):**
+
 ```mel
 // Add customization attributes to shader
 addAttr -ln "soe_cc_name_0" -dt "string" yourShader;
@@ -446,6 +447,7 @@ setAttr -type "string" meshTransform.SOE_OCCLUDES "chest,abdomen";
 ```
 
 **Common zones:**
+
 - `head`, `face`, `hair`
 - `chest`, `abdomen`, `back`
 - `arm_upper_l`, `arm_upper_r`
@@ -460,40 +462,34 @@ setAttr -type "string" meshTransform.SOE_OCCLUDES "chest,abdomen";
 For facial animation or morphing:
 
 1. **Create blend shape targets:**
-   - Duplicate your base mesh
-   - Modify vertices to create expressions
-   - Name: `meshname_expression` (e.g., `head_smile`, `head_blink`)
-
+  - Duplicate your base mesh
+  - Modify vertices to create expressions
+  - Name: `meshname_expression` (e.g., `head_smile`, `head_blink`)
 2. **Apply Blend Shape Deformer:**
-   ```
+  ```
    // Select targets, then base mesh
    Deform > Create Blend Shape > Options
-   ```
-
+  ```
 3. **The exporter automatically detects blend shapes**
 
 ### Step 8: Export the Skeletal Mesh
 
 1. **Select the mesh:**
-   - Select your skinned mesh object
-
+  - Select your skinned mesh object
 2. **Run export command:**
-   ```
+  ```
    exportCommand;
-   ```
-
+  ```
 3. **Choose Export Type:**
-   - Select `Mesh Generator (MGN)` radio button
-
+  - Select `Mesh Generator (MGN)` radio button
 4. **Set Options:**
-   - **Node:** (auto-filled if mesh selected)
-   - **Branch:** `current`
-   - Click `OK`
-
+  - **Node:** (auto-filled if mesh selected)
+  - **Branch:** `current`
+  - Click `OK`
 5. **Result:**
-   - Exports to: `exported/appearance/mesh/meshname.mgn`
-   - Associated shader templates and textures also export
-   - Creates `.log` file
+  - Exports to: `exported/appearance/mesh/meshname.mgn`
+  - Associated shader templates and textures also export
+  - Creates `.log` file
 
 ---
 
@@ -504,6 +500,7 @@ A SAT file combines skeleton(s), mesh(es), and animation references into a compl
 ### Step 1: Prerequisites
 
 Before creating a SAT, you need:
+
 - **Skeleton file(s):** `.skt` files (from `exportSkeleton` command)
 - **Mesh Generator file(s):** `.mgn` files (from previous section)
 - **Animation State Graph (optional):** `.asg` file
@@ -511,6 +508,7 @@ Before creating a SAT, you need:
 ### Step 2: Understanding SAT Structure
 
 A typical SAT contains:
+
 ```
 charactername.sat
 ├── References skeleton: "appearance/skeleton/humanoid_m.skt"
@@ -524,34 +522,29 @@ charactername.sat
 This is the easiest method for beginners:
 
 1. **Prepare the scene:**
-   - Have all your meshes in the scene, properly skinned
-   - Meshes should reference the same skeleton
-
+  - Have all your meshes in the scene, properly skinned
+  - Meshes should reference the same skeleton
 2. **Select meshes:**
-   - In the Outliner, select all skinned meshes to include in the SAT
-   - Shift+select to select multiple
-
+  - In the Outliner, select all skinned meshes to include in the SAT
+  - Shift+select to select multiple
 3. **Run export command:**
-   ```
+  ```
    exportCommand;
-   ```
-
+  ```
 4. **Choose SAT & MGN:**
-   - Select `SAT & MGN` radio button
-   - Click `OK`
-
+  - Select `SAT & MGN` radio button
+  - Click `OK`
 5. **SAT Export Dialog appears:**
-   - **SAT File Name:** Enter the name (e.g., `human_male_01`)
-   - The exporter automatically:
-     - Detects the skeleton from skin binding
-     - Exports MGN files for each selected mesh
-     - Generates skeleton references
-     - Creates the SAT
-
+  - **SAT File Name:** Enter the name (e.g., `human_male_01`)
+  - The exporter automatically:
+    - Detects the skeleton from skin binding
+    - Exports MGN files for each selected mesh
+    - Generates skeleton references
+    - Creates the SAT
 6. **Result:**
-   - SAT file: `exported/appearance/human_male_01.sat`
-   - MGN files: `exported/appearance/mesh/[meshnames].mgn`
-   - Skeleton: `exported/appearance/skeleton/[skeletonname].skt`
+  - SAT file: `exported/appearance/human_male_01.sat`
+  - MGN files: `exported/appearance/mesh/[meshnames].mgn`
+  - Skeleton: `exported/appearance/skeleton/[skeletonname].skt`
 
 ### Step 4: Command-Line SAT Export
 
@@ -568,6 +561,7 @@ exportSatFile
 ```
 
 **Parameters:**
+
 - `-outputfile`: SAT filename (without .sat extension)
 - `-skeleton`: Skeleton template reference path
   - Format: `path/to/skeleton.skt:attachment_bone`
@@ -593,11 +587,13 @@ The `:r_hand` specifies which bone the item attaches to.
 ### Step 6: Verify the Export
 
 Check the export log:
+
 ```
 exported/appearance/human_male_01.sat.log
 ```
 
 This file contains:
+
 - Source Maya file
 - Export command used
 - Skeleton references
@@ -615,18 +611,16 @@ This file contains:
 **Quick Overview:**
 
 1. **Animation List:**
-   - Animations are managed via custom attributes on skeleton
-   - Use `addAnimation` command to register animation ranges
-
+  - Animations are managed via custom attributes on skeleton
+  - Use `addAnimation` command to register animation ranges
 2. **Export Animation:**
-   ```
+  ```
    exportKeyframeSkeletalAnimation -interactive;
-   ```
-
+  ```
 3. **Animation State Graph (.asg):**
-   - Defines how animations transition
-   - Created through separate tools
-   - Referenced by SAT files
+  - Defines how animations transition
+  - Created through separate tools
+  - Referenced by SAT files
 
 ---
 
@@ -641,19 +635,22 @@ This file contains:
 
 ### Node Type Suffixes
 
-| Node Type | Suffix | Example |
-|-----------|--------|---------|
-| Static Mesh | `_msh` | `crate_wooden_msh` |
-| Skeletal Mesh | (mesh name) | `human_male_body` |
-| LOD Group | `_lod` | `building_cantina_lod` |
+
+| Node Type      | Suffix        | Example                 |
+| -------------- | ------------- | ----------------------- |
+| Static Mesh    | `_msh`        | `crate_wooden_msh`      |
+| Skeletal Mesh  | (mesh name)   | `human_male_body`       |
+| LOD Group      | `_lod`        | `building_cantina_lod`  |
 | Skeleton Joint | (descriptive) | `r_shoulder`, `l_elbow` |
-| Collision Mesh | `_cmesh` | `wall_collision_cmesh` |
-| Floor | `_floor` | `cantina_floor_floor` |
-| Component | `_cmp` | `building_cantina_cmp` |
+| Collision Mesh | `_cmesh`      | `wall_collision_cmesh`  |
+| Floor          | `_floor`      | `cantina_floor_floor`   |
+| Component      | `_cmp`        | `building_cantina_cmp`  |
+
 
 ### File Naming Examples
 
 **Static Meshes:**
+
 ```
 prop_chair_wooden_01.msh
 building_house_small_tatooine.msh
@@ -662,6 +659,7 @@ tree_palm_tall.msh
 ```
 
 **Skeletal Meshes:**
+
 ```
 human_male_body.mgn
 human_female_head_01.mgn
@@ -671,6 +669,7 @@ clothing_shirt_formal_m.mgn
 ```
 
 **Skeletons:**
+
 ```
 humanoid_male.skt
 humanoid_female.skt
@@ -678,6 +677,7 @@ creature_quadruped.skt
 ```
 
 **SAT Files:**
+
 ```
 human_male_01.sat
 wookiee_npc_warrior.sat
@@ -711,6 +711,7 @@ root                    # Root bone
 ```
 
 **Bone naming tips:**
+
 - Prefix with `r_` for right, `l_` for left
 - Use anatomical terms when possible
 - Maintain symmetry in naming
@@ -724,6 +725,7 @@ root                    # Root bone
 **Problem:** N-gons or quads can cause export errors or unexpected results.
 
 **Solution:**
+
 ```mel
 // Select mesh, then:
 Mesh > Triangulate
@@ -734,6 +736,7 @@ Mesh > Triangulate
 **Problem:** Construction history can cause export problems.
 
 **Solution:**
+
 ```mel
 // Select mesh, then:
 Edit > Delete by Type > History
@@ -744,6 +747,7 @@ Edit > Delete by Type > History
 **Problem:** Un-frozen transforms can cause misaligned exports.
 
 **Solution:**
+
 ```mel
 // Before skinning, freeze transforms:
 Modify > Freeze Transformations
@@ -754,6 +758,7 @@ Modify > Freeze Transformations
 **Problem:** Vertices influenced by more than 4 bones cause errors.
 
 **Solution:**
+
 ```mel
 // In Paint Weights tool:
 // - Set Max Influences: 4
@@ -766,6 +771,7 @@ Skin > Edit Smooth Skin > Prune Small Weights
 **Problem:** Exporter fails if any faces lack UVs.
 
 **Solution:**
+
 ```mel
 // Check for missing UVs:
 Window > UV Texture Editor
@@ -779,6 +785,7 @@ UV Texture Editor > Create UVs > Automatic Mapping
 **Problem:** Shader references textures with absolute paths instead of relative.
 
 **Solution:**
+
 - Always use relative paths in texture file nodes
 - Textures should be in project's `sourceimages/` folder
 - Use forward slashes `/` not backslashes `\`
@@ -788,6 +795,7 @@ UV Texture Editor > Create UVs > Automatic Mapping
 **Problem:** Maya objects with duplicate names cause export confusion.
 
 **Solution:**
+
 ```mel
 // Check for duplicates:
 Window > Outliner
@@ -800,6 +808,7 @@ Window > Outliner
 **Problem:** Incorrect unit setup leads to oversized or undersized models.
 
 **Solution:**
+
 - Set Maya to meters: `Window > Settings/Preferences > Preferences > Settings`
 - Linear: `meter`
 - Verify reference scale (average human: ~1.8m tall)
@@ -811,6 +820,7 @@ Window > Outliner
 ### Export Fails Immediately
 
 **Check:**
+
 1. Plugin loaded? (`Window > Settings/Preferences > Plug-in Manager`)
 2. Export directories exist and writable?
 3. Object selected correctly?
@@ -819,13 +829,13 @@ Window > Outliner
 ### Mesh Exports but Looks Wrong In-Game
 
 **Check:**
+
 1. Normals facing correct direction?
-   ```mel
+  ```mel
    Display > Polygons > Face Normals
    // If inverted:
    Mesh > Normals > Reverse
-   ```
-
+  ```
 2. UVs in 0-1 range?
 3. Transforms frozen before skinning?
 4. Correct shader assignments?
@@ -833,6 +843,7 @@ Window > Outliner
 ### Skinning Errors on Export
 
 **Check:**
+
 1. Mesh actually bound to skeleton?
 2. Max influences per vertex ≤ 4?
 3. All bones properly named?
@@ -842,6 +853,7 @@ Window > Outliner
 ### Textures Not Exporting
 
 **Check:**
+
 1. Texture paths are relative?
 2. Source images exist in `sourceimages/` folder?
 3. Shader has texture assigned to correct channels?
@@ -850,6 +862,7 @@ Window > Outliner
 ### SAT Export Fails
 
 **Check:**
+
 1. All referenced MGN files exist?
 2. Skeleton template exists?
 3. Meshes are skinned to the same skeleton?
@@ -858,6 +871,7 @@ Window > Outliner
 ### "Unknown Node Type" Errors
 
 **Check:**
+
 1. Is the mesh named with proper suffix (`_msh`)?
 2. Does the hierarchy follow conventions?
 3. Are there any unknown/custom nodes in the hierarchy?
@@ -876,6 +890,7 @@ reexport "path/to/file.msh.log";
 ```
 
 This is useful when:
+
 - Texture files change
 - You need to batch re-export multiple assets
 - Working in a production pipeline

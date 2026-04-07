@@ -483,6 +483,10 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\translators\pob.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\translators\dds.cpp" />
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\translators\dds.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\translators\lod.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\translators\lod.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\translators\lmg.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\translators\lmg.h" />
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\translators\SwgTranslatorNames.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\utility\MayaUtility.cpp" />
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\utility\MayaUtility.h" />
@@ -514,6 +518,10 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\RevertToBindPose.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportSat.cpp" />
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportSat.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SatRoundTrip.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SatRoundTrip.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ExportSat.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ExportSat.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportPob.cpp" />
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportPob.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ExportPob.cpp" />

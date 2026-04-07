@@ -25,16 +25,26 @@
 #include "clientGame/ProsePackageManagerClient.h"
 #include "clientGame/TangibleObject.h"
 #include "clientGame/WeaponObject.h"
+#include "clientSkeletalAnimation/AnimationTrackId.h"
+#include "clientSkeletalAnimation/SkeletalAnimation.h"
 #include "clientSkeletalAnimation/SkeletalAnimationDebugging.h"
+#include "clientSkeletalAnimation/SkeletalAnimationTemplate.h"
+#include "clientSkeletalAnimation/SkeletalAnimationTemplateList.h"
 #include "clientSkeletalAnimation/SkeletalAppearance2.h"
+#include "clientSkeletalAnimation/StateHierarchyAnimationController.h"
+#include "clientSkeletalAnimation/TrackAnimationController.h"
+#include "clientSkeletalAnimation/TransformAnimationController.h"
 #include "clientSkeletalAnimation/TransformAnimationResolver.h"
+#include "sharedFile/TreeFile.h"
 #include "clientUserInterface/CuiCraftManager.h"
 #include "clientUserInterface/CuiCombatManager.h"
 #include "clientUserInterface/CuiRadialMenuManager.h"
 #include "clientUserInterface/CuiResourceManager.h"
 #include "clientUserInterface/CuiSystemMessageManager.h"
 #include "clientUserInterface/CuiTextManager.h"
+#include "sharedFoundation/ConstCharCrcLowerString.h"
 #include "sharedFoundation/Crc.h"
+#include "sharedFoundation/CrcLowerString.h"
 #include "sharedFoundation/GameControllerMessage.h"
 #include "sharedFoundation/MessageQueue.h"
 #include "sharedFoundation/Production.h"
@@ -64,6 +74,240 @@
 #include "swgSharedNetworkMessages/MessageQueueCombatDamage.h"
 
 #include <vector>
+#include <cstdlib>
+#include <algorithm>
+
+// ======================================================================
+
+namespace ClientControllerAnimation
+{
+	TrackAnimationController *getTrackAnimationControllerForObject(Object *const ownerObject)
+	{
+		SkeletalAppearance2 *const appearance = dynamic_cast<SkeletalAppearance2 *>(ownerObject->getAppearance());
+		if (!appearance)
+			return 0;
+
+		TransformAnimationController *const baseAnimationController = appearance->getAnimationController();
+		TrackAnimationController *animationController = dynamic_cast<TrackAnimationController *>(baseAnimationController);
+		if (!animationController)
+		{
+			StateHierarchyAnimationController *const shAnimationController = dynamic_cast<StateHierarchyAnimationController *>(baseAnimationController);
+			if (shAnimationController)
+				animationController = &(shAnimationController->getTrackAnimationController());
+		}
+		return animationController;
+	}
+
+	/**
+	 * Server/script reserved strings via doAnimationAction:
+	 *   anim:clear — stop the "loop" track (queues raw .ans playback from ans:/ansl:).
+	 *   anim:bind  — stop loop, action, and add tracks so the pose returns toward skeletal bind/rest.
+	 *   mannequin:strip_cdf — remove client-baked .cdf mesh wearables (after template suppression).
+	 */
+	bool trySkeletalAnimationControlCommand(Object *const ownerObject, std::string const &actionName)
+	{
+		if (_stricmp(actionName.c_str(), "anim:clear") != 0 && _stricmp(actionName.c_str(), "anim:bind") != 0)
+			return false;
+
+		TrackAnimationController *const animationController = getTrackAnimationControllerForObject(ownerObject);
+		if (!animationController)
+			return true;
+
+		if (_stricmp(actionName.c_str(), "anim:clear") == 0)
+		{
+			AnimationTrackId trackId(AnimationTrackId::cms_invalid);
+			if (TrackAnimationController::getTrackIdByName(ConstCharCrcLowerString("loop"), trackId))
+				animationController->stopAnimation(trackId);
+		}
+		else
+		{
+			static char const *const trackNames[] = { "loop", "action", "add" };
+			for (size_t i = 0; i < sizeof(trackNames) / sizeof(trackNames[0]); ++i)
+			{
+				AnimationTrackId trackId(AnimationTrackId::cms_invalid);
+				if (TrackAnimationController::getTrackIdByName(ConstCharCrcLowerString(trackNames[i]), trackId))
+					animationController->stopAnimation(trackId);
+			}
+		}
+
+		ownerObject->scheduleForAlter();
+		return true;
+	}
+
+	/**
+	 * Play a raw keyframe (.ans) template on a skeletal (.sat) appearance, bypassing the
+	 * logical animation / state hierarchy. Triggered from server script via doAnimationAction:
+	 *   ans:<path>   — play once (queued on the "loop" track, like the client animation console)
+	 *   ansl:<path>  — same path, looping
+	 *   ans:<path>#<frame> — play immediately and hold at keyframe index <frame> (loop suffix ignored).
+	 * <path> is either a full tree path starting with "appearance/" (e.g. appearance/animation/creature/foo/bar.ans)
+	 * or a path relative to appearance/animation/ (e.g. creature/foo/bar.ans).
+	 */
+	bool tryPlayRawAnsKeyframeOnObject(Object *const ownerObject, std::string const &actionName)
+	{
+		bool loopAnimation = false;
+		std::string relPath;
+		if (actionName.size() >= 5 && _strnicmp(actionName.c_str(), "ansl:", 5) == 0)
+		{
+			loopAnimation = true;
+			relPath.assign(actionName, 5, std::string::npos);
+		}
+		else if (actionName.size() >= 4 && _strnicmp(actionName.c_str(), "ans:", 4) == 0)
+		{
+			relPath.assign(actionName, 4, std::string::npos);
+		}
+		else
+			return false;
+
+		while (!relPath.empty() && (relPath[0] == ' ' || relPath[0] == '\t'))
+			relPath.erase(0, 1);
+		while (!relPath.empty())
+		{
+			char const c = relPath[relPath.length() - 1];
+			if (c != ' ' && c != '\t')
+				break;
+			relPath.erase(relPath.length() - 1);
+		}
+		if (relPath.empty())
+		{
+			DEBUG_REPORT_LOG(true, ("tryPlayRawAnsKeyframeOnObject: empty path after ans: prefix\n"));
+			return true;
+		}
+
+		float holdAtFrame = -1.0f;
+		{
+			size_t const hashPos = relPath.rfind('#');
+			if (hashPos != std::string::npos)
+			{
+				std::string const frameToken = relPath.substr(hashPos + 1);
+				relPath.erase(hashPos);
+				while (!relPath.empty() && (relPath[relPath.length() - 1] == ' ' || relPath[relPath.length() - 1] == '\t'))
+					relPath.erase(relPath.length() - 1);
+				holdAtFrame = static_cast<float>(atof(frameToken.c_str()));
+			}
+		}
+
+		if (relPath.empty())
+		{
+			DEBUG_REPORT_LOG(true, ("tryPlayRawAnsKeyframeOnObject: empty path after stripping #frame\n"));
+			return true;
+		}
+
+		std::string treePath;
+		if (relPath.size() >= 11 && _strnicmp(relPath.c_str(), "appearance/", 11) == 0)
+			treePath = relPath;
+		else
+			treePath = "appearance/animation/" + relPath;
+
+		SkeletalAppearance2 *const appearance = dynamic_cast<SkeletalAppearance2 *>(ownerObject->getAppearance());
+		if (!appearance)
+			return true;
+
+		TrackAnimationController *const animationController = getTrackAnimationControllerForObject(ownerObject);
+		if (!animationController)
+		{
+			DEBUG_REPORT_LOG(true, ("tryPlayRawAnsKeyframeOnObject: no TrackAnimationController for raw ans [%s]\n", treePath.c_str()));
+			return true;
+		}
+
+		TransformNameMap const *const transformNameMap = appearance->getAnimationResolver().getPrimarySkeletonTransformNameMap();
+		if (!transformNameMap)
+		{
+			DEBUG_REPORT_LOG(true, ("tryPlayRawAnsKeyframeOnObject: no primary skeleton transform map [%s]\n", treePath.c_str()));
+			return true;
+		}
+
+		if (!TreeFile::exists(treePath.c_str()))
+		{
+			DEBUG_REPORT_LOG(true, ("tryPlayRawAnsKeyframeOnObject: file not in tree [%s]\n", treePath.c_str()));
+			return true;
+		}
+
+		SkeletalAnimationTemplate const *skeletalAnimationTemplate = SkeletalAnimationTemplateList::fetch(CrcLowerString(treePath.c_str()));
+		if (!skeletalAnimationTemplate)
+		{
+			DEBUG_REPORT_LOG(true, ("tryPlayRawAnsKeyframeOnObject: fetch template failed [%s]\n", treePath.c_str()));
+			return true;
+		}
+
+		SkeletalAnimation *const skeletalAnimation = skeletalAnimationTemplate->fetchSkeletalAnimation(appearance->getAnimationEnvironment(), *transformNameMap);
+		skeletalAnimationTemplate->release();
+		skeletalAnimationTemplate = 0;
+		if (!skeletalAnimation)
+		{
+			DEBUG_REPORT_LOG(true, ("tryPlayRawAnsKeyframeOnObject: fetchSkeletalAnimation failed [%s]\n", treePath.c_str()));
+			return true;
+		}
+
+		AnimationTrackId primaryTrackId(AnimationTrackId::cms_invalid);
+		if (!TrackAnimationController::getTrackIdByName(ConstCharCrcLowerString("loop"), primaryTrackId))
+		{
+			skeletalAnimation->release();
+			DEBUG_REPORT_LOG(true, ("tryPlayRawAnsKeyframeOnObject: failed to resolve loop track [%s]\n", treePath.c_str()));
+			return true;
+		}
+
+		bool const freezeFrame = (holdAtFrame >= 0.0f);
+		if (freezeFrame)
+			loopAnimation = false;
+
+		float const blendTime = freezeFrame ? 0.0f : 0.25f;
+		TrackAnimationController::PlayMode const playMode = freezeFrame ? TrackAnimationController::PM_immediate : TrackAnimationController::PM_queue;
+		TrackAnimationController::BlendMode const blendMode = (blendTime > 0.0f) ? TrackAnimationController::BM_linearBlend : TrackAnimationController::BM_noBlend;
+
+		animationController->playAnimation(primaryTrackId, skeletalAnimation, playMode, loopAnimation, blendMode, blendTime, NULL);
+		skeletalAnimation->release();
+
+		if (freezeFrame)
+			IGNORE_RETURN(animationController->holdLeafAnimationAtFrameOnTrack(primaryTrackId, holdAtFrame));
+
+		ownerObject->scheduleForAlter();
+		return true;
+	}
+
+	// ----------------------------------------------------------------------
+
+	bool tryMannequinStripCdfCommand(Object *const ownerObject, std::string const &actionName)
+	{
+		if (_stricmp(actionName.c_str(), "mannequin:strip_cdf") != 0)
+			return false;
+
+		CreatureObject *const creature = CreatureObject::asCreatureObject(ownerObject);
+		if (creature)
+			creature->stripClientBakedTemplateWearables();
+
+		if (ownerObject)
+			ownerObject->scheduleForAlter();
+
+		return true;
+	}
+
+	// ----------------------------------------------------------------------
+
+	void applyServerAnimationActionString(Object *const ownerObject, std::string const &actionName)
+	{
+		if (!ownerObject)
+			return;
+
+		if (tryMannequinStripCdfCommand(ownerObject, actionName))
+			return;
+
+		if (trySkeletalAnimationControlCommand(ownerObject, actionName))
+			return;
+
+		if (tryPlayRawAnsKeyframeOnObject(ownerObject, actionName))
+			return;
+
+		SkeletalAppearance2 *const appearance = dynamic_cast<SkeletalAppearance2 *>(ownerObject->getAppearance());
+		if (!appearance)
+			return;
+
+		int   animationId;
+		bool  animationIsAdd;
+		appearance->getAnimationResolver().playAction(CrcLowerString(actionName.c_str()), animationId, animationIsAdd, NULL);
+		ownerObject->scheduleForAlter();
+	}
+}
 
 // ======================================================================
 
@@ -780,16 +1024,7 @@ void ClientController::handleMessage (const int message, const float value, cons
 			Object *const ownerObject = getOwner ();
 			NOT_NULL (ownerObject);
 
-			//-- Get the Object's skeletal Appearance.
-			SkeletalAppearance2 *const appearance = dynamic_cast<SkeletalAppearance2*> (ownerObject->getAppearance ());
-			if (!appearance)
-				return;
-
-			//-- Play the action.
-			int   animationId;
-			bool  animationIsAdd;
-			appearance->getAnimationResolver().playAction(CrcLowerString(actionName.c_str()), animationId, animationIsAdd, NULL);
-
+			ClientControllerAnimation::applyServerAnimationActionString(ownerObject, actionName);
 			return;
 		}
 

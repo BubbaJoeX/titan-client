@@ -29,6 +29,8 @@ D:\titan\client\src\engine\client\application\MayaModern\translators\skt.cpp;D:\
 D:\titan\client\src\engine\client\application\MayaModern\translators\sat.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\sat.obj
 D:\titan\client\src\engine\client\application\MayaModern\translators\pob.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\pob.obj
 D:\titan\client\src\engine\client\application\MayaModern\translators\dds.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\dds.obj
+D:\titan\client\src\engine\client\application\MayaModern\translators\lod.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\lod.obj
+D:\titan\client\src\engine\client\application\MayaModern\translators\lmg.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\lmg.obj
 D:\titan\client\src\engine\client\application\MayaModern\utility\MayaUtility.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\MayaUtility.obj
 D:\titan\client\src\engine\client\application\MayaModern\utility\MayaConversions.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\MayaConversions.obj
 D:\titan\client\src\engine\client\application\MayaModern\utility\MayaCompoundString.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\MayaCompoundString.obj
@@ -44,6 +46,8 @@ D:\titan\client\src\engine\client\application\MayaModern\commands\ImportSkeleton
 D:\titan\client\src\engine\client\application\MayaModern\commands\ImportAnimation.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\ImportAnimation.obj
 D:\titan\client\src\engine\client\application\MayaModern\commands\RevertToBindPose.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\RevertToBindPose.obj
 D:\titan\client\src\engine\client\application\MayaModern\commands\ImportSat.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\ImportSat.obj
+D:\titan\client\src\engine\client\application\MayaModern\commands\SatRoundTrip.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\SatRoundTrip.obj
+D:\titan\client\src\engine\client\application\MayaModern\commands\ExportSat.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\ExportSat.obj
 D:\titan\client\src\engine\client\application\MayaModern\commands\ImportPob.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\ImportPob.obj
 D:\titan\client\src\engine\client\application\MayaModern\commands\ExportPob.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\ExportPob.obj
 D:\titan\client\src\engine\client\application\MayaModern\commands\ImportLodMesh.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\ImportLodMesh.obj

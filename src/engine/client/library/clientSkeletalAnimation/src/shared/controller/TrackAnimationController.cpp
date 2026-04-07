@@ -690,6 +690,27 @@ void TrackAnimationController::stopAnimation(const AnimationTrackId &trackId)
 
 // ----------------------------------------------------------------------
 
+bool TrackAnimationController::holdLeafAnimationAtFrameOnTrack(const AnimationTrackId &trackId, float frameNumber)
+{
+	Track &track = getTrack(trackId);
+	SkeletalAnimation *anim = track.fetchCurrentAnimation();
+	for (int guard = 0; anim && guard < 64; ++guard)
+	{
+		if (anim->setHoldAtFrame(frameNumber))
+			return true;
+
+		SkeletalAnimation *const next = anim->resolveSkeletalAnimation();
+		if (!next || next == anim)
+			break;
+
+		anim = next;
+	}
+
+	return false;
+}
+
+// ----------------------------------------------------------------------
+
 int TrackAnimationController::getMostRecentlyCompletedAnimationId(const AnimationTrackId &trackId) const
 {
 	//-- Get the track.

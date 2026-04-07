@@ -1,5 +1,7 @@
 #include "mgn.h"
 #include "SwgTranslatorNames.h"
+#include "ImportLodMesh.h"
+#include "ImportPathResolver.h"
 
 #include "Iff.h"
 #include "Globals.h"
@@ -11,6 +13,7 @@
 #include "OcclusionZoneSet.h"
 #include "MayaUtility.h"
 
+#include <maya/MGlobal.h>
 #include <maya/MStatus.h>
 #include <maya/MVector.h>
 #include <maya/MStringArray.h>
@@ -633,8 +636,16 @@ MStatus MgnTranslator::reader (const MFileObject& file, const MString& options, 
 {
     
     LOG_F(ERROR, ("Starting MgnTranslator Import"));
-    
-    const char* fileName = file.expandedFullName().asChar();
+
+    std::string pathStd = MayaUtility::fileObjectPathForIdentify(file);
+    if (pathStd.empty())
+    {
+        MGlobal::displayError("MGN import: could not resolve file path from MFileObject.");
+        return MS::kFailure;
+    }
+    pathStd = resolveImportPath(pathStd);
+    pathStd = resolveSkmgPathThroughWrappers(pathStd);
+    const char* fileName = pathStd.c_str();
     if(!Iff::isValid(fileName))
     {
         //todo these need to convert to a FATAL()

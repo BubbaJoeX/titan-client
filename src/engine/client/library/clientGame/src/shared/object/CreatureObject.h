@@ -40,6 +40,8 @@ class MovementTable;
 template <class T>
 class Watcher;
 
+class ClientDataFile;
+
 // ======================================================================
 
 class CreatureObject : public TangibleObject
@@ -188,6 +190,10 @@ public:
 
 		struct VisibleOnMapAndRadarChanged;
 
+		struct SuppressTemplateClientDataFileChanged;
+
+		struct AuthoritativeClientAnimationActionChanged;
+
 		struct GroupMissionCriticalObjectsChanged
 		{
 			typedef CreatureObject Payload;
@@ -231,6 +237,11 @@ public:
 
 	virtual CreatureObject *       asCreatureObject();
 	virtual CreatureObject const * asCreatureObject() const;
+
+	virtual ClientDataFile const * getClientData () const;
+
+	/** Remove mesh wearables created from the template .cdf (MemoryBlockManagedObject); call after template .cdf suppression. */
+	void                       stripClientBakedTemplateWearables();
 
 	Attributes::Value          getAttribute              (Attributes::Enumerator attrib) const;
 	Attributes::Value          getMaxAttribute           (Attributes::Enumerator attrib) const;
@@ -548,6 +559,8 @@ private:
 		typedef DefaultCallback<Messages::LevelChanged, int>                        LevelChanged;
 		typedef DefaultCallback<Messages::HologramTypeChanged, int32> HologramTypeChanged;
 		typedef DefaultCallback<Messages::VisibleOnMapAndRadarChanged, bool> VisibleOnMapAndRadarChanged;
+		typedef DefaultCallback<Messages::SuppressTemplateClientDataFileChanged, bool> SuppressTemplateClientDataFileChanged;
+		typedef DefaultCallback<Messages::AuthoritativeClientAnimationActionChanged, std::string> AuthoritativeClientAnimationActionChanged;
 	};
 
 	//-----------------------------------------------------------------------
@@ -695,6 +708,8 @@ private:
 	friend Callbacks::MoodChanged;
 	friend Callbacks::ServerPostureChanged;
 	friend Callbacks::VisualPostureChanged;
+	friend Callbacks::SuppressTemplateClientDataFileChanged;
+	friend Callbacks::AuthoritativeClientAnimationActionChanged;
 
 	Archive::AutoDeltaVariableCallback<int8, Callbacks::VisualPostureChanged, CreatureObject>  m_visualPosture;        ///< The posture currently displayed for the mobile.
 	Archive::AutoDeltaVariableCallback<int8, Callbacks::ServerPostureChanged, CreatureObject>  m_serverPosture;        ///< The posture of the mobile on the server.
@@ -822,6 +837,9 @@ private:
 
 	Archive::AutoDeltaVariable<bool>										   m_isBeast;
 	Archive::AutoDeltaVariable<bool>                                           m_forceShowHam;
+	Archive::AutoDeltaVariableCallback<bool, Callbacks::SuppressTemplateClientDataFileChanged, CreatureObject> m_suppressTemplateClientDataFile;
+	/// Server-driven animation string replayed on clients (baselines + deltas); same grammar as doAnimationAction / CM_animationAction.
+	Archive::AutoDeltaVariableCallback<std::string, Callbacks::AuthoritativeClientAnimationActionChanged, CreatureObject> m_authoritativeClientAnimationAction;
 
 	Archive::AutoDeltaVector<WearableEntry, CreatureObject>                    m_wearableAppearanceData;
 

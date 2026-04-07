@@ -403,4 +403,17 @@ SkeletalAnimation::~SkeletalAnimation()
 	}
 }
 
+// ----------------------------------------------------------------------
+
+bool SkeletalAnimation::setHoldAtFrame(float)
+{
+	return false;
+}
+
+// ----------------------------------------------------------------------
+
+void SkeletalAnimation::clearHoldFrame()
+{
+}
+
 // ======================================================================

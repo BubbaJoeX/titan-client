@@ -318,12 +318,12 @@ MStatus MayaSceneBuilder::createMaterial(
     partCmd += sgName;
     partCmd += ".partition\"";
     MStringArray partConns;
-    if (!MGlobal::executeCommand(partCmd, partConns, true, true) || partConns.length() == 0)
+    if (!MGlobal::executeCommand(partCmd, partConns, false, false) || partConns.length() == 0)
     {
         cmd = "connectAttr -f ";
         cmd += sgName;
         cmd += ".partition \":renderPartition.sets\" -na";
-        MGlobal::executeCommand(cmd);
+        MGlobal::executeCommand(cmd, false, false);
     }
 
     if (!texturePath.empty())
@@ -466,7 +466,7 @@ MStatus MayaSceneBuilder::assignMaterials(
                     importCmd += resolvedShaderFile.c_str();
                     importCmd += "\"";
                     MStringArray importResult;
-                    if (MGlobal::executeCommand(importCmd, importResult, true, true) && importResult.length() > 0)
+                    if (MGlobal::executeCommand(importCmd, importResult, false, false) && importResult.length() > 0)
                     {
                         materialExists = true;
                         sgNodeName = importResult[0];

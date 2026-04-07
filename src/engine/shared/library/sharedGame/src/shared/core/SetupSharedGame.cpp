@@ -37,6 +37,7 @@
 #include "sharedGame/SharedBuildoutAreaManager.h"
 #include "sharedGame/SharedImageDesignerManager.h"
 #include "sharedGame/SharedSaddleManager.h"
+#include "sharedGame/StaffRankDataTable.h"
 #include "sharedGame/ShipChassis.h"
 #include "sharedGame/ShipComponentAttachmentManager.h"
 #include "sharedGame/ShipComponentDescriptor.h"
@@ -195,6 +196,7 @@ void SetupSharedGame::install (const SetupSharedGame::Data& data)
 	CollectionsDataTable::install();
 	LfgDataTable::install();
 	GuildRankDataTable::install();
+	StaffRankDataTable::install();
 	CitizenRankDataTable::install();
 	SharedBuildoutAreaManager::install();
 	GroundZoneManager::install();

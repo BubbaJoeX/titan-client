@@ -141,6 +141,10 @@ public:
 	 */
 	virtual SkeletalAnimation       *resolveSkeletalAnimation() = 0;
 
+	/** Hold a keyframe leaf at this frame index (no time advance). Default: unsupported. */
+	virtual bool                     setHoldAtFrame(float frameNumber);
+	virtual void                     clearHoldFrame();
+
 protected:
 
 	explicit SkeletalAnimation(const SkeletalAnimationTemplate *skeletalAnimationTemplate);

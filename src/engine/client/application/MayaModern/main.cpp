@@ -11,6 +11,8 @@
 #include "translators/sat.h"
 #include "translators/pob.h"
 #include "translators/dds.h"
+#include "translators/lod.h"
+#include "translators/lmg.h"
 #include "translators/SwgTranslatorNames.h"
 
 #include "commands/SetDirectoryCommand.h"
@@ -21,6 +23,7 @@
 #include "commands/ImportAnimation.h"
 #include "commands/RevertToBindPose.h"
 #include "commands/ImportSat.h"
+#include "commands/ExportSat.h"
 #include "commands/ImportPob.h"
 #include "commands/ExportPob.h"
 #include "commands/ImportLodMesh.h"
@@ -73,7 +76,9 @@ static Translator* TRANSLATORS[] =
             // preserveReferences=0 avoids Maya 2026 "Invalid file type specified: -pr" error
             new Translator(swg_translator::kTypeSat, "", &SatTranslator::creator, nullptr, "preserveReferences=0", false),
             new Translator(swg_translator::kTypePob, "", &PobTranslator::creator, nullptr, "preserveReferences=0", false),
-            new Translator(swg_translator::kTypeDds, "", &DdsTranslator::creator, nullptr, "", false)
+            new Translator(swg_translator::kTypeDds, "", &DdsTranslator::creator, nullptr, "", false),
+            new Translator(swg_translator::kTypeLod, "", &LodTranslator::creator, nullptr, "preserveReferences=0", false),
+            new Translator(swg_translator::kTypeLmg, "", &LmgTranslator::creator, nullptr, "preserveReferences=0", false)
         };
 
 MStatus initializePlugin(MObject obj)
@@ -136,6 +141,9 @@ MStatus initializePlugin(MObject obj)
     status = plugin.registerCommand("importSat", ImportSat::creator);
     if (!status) { std::cerr << "ERROR: Unable to register importSat" << std::endl; return status; }
 
+    status = plugin.registerCommand("exportSat", ExportSat::creator);
+    if (!status) { std::cerr << "ERROR: Unable to register exportSat" << std::endl; return status; }
+
     status = plugin.registerCommand("importPob", ImportPob::creator);
     if (!status) { std::cerr << "ERROR: Unable to register importPob" << std::endl; return status; }
     status = plugin.registerCommand("exportPob", ExportPob::creator);
@@ -189,12 +197,12 @@ MStatus uninitializePlugin(MObject obj)
     plugin.deregisterCommand("exportShader");
     plugin.deregisterCommand("importStructure");
     plugin.deregisterCommand("importStaticMesh");
-    plugin.deregisterCommand("exportShader");
     plugin.deregisterCommand("importShader");
     plugin.deregisterCommand("importSkeletalMesh");
     plugin.deregisterCommand("importLodMesh");
     plugin.deregisterCommand("exportPob");
     plugin.deregisterCommand("importPob");
+    plugin.deregisterCommand("exportSat");
     plugin.deregisterCommand("importSat");
     plugin.deregisterCommand("importAnimation");
     plugin.deregisterCommand("swgRevertToBindPose");

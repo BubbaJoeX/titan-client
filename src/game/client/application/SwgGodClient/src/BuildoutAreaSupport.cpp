@@ -1,4 +1,3 @@
-// ======================================================================
 //
 // BuildoutAreaSupport.cpp
 //
@@ -1136,6 +1135,14 @@ namespace
 			line.erase(line.size() - 1);
 	}
 
+	/** Must match DataTableWriter tab loader: skip ## comment lines for column/type rows. */
+	bool isTabCommentLine(char const *line)
+	{
+		while (*line == ' ' || *line == '\t')
+			++line;
+		return line[0] == '#' && line[1] == '#';
+	}
+
 	void splitTabRow(std::string const &line, std::vector<std::string> &out)
 	{
 		out.clear();
@@ -1169,8 +1176,8 @@ namespace
 	char const * const SERVER_BUILDOUT_TYPE_ROW = "i\ti\th\ti\tf\tf\tf\tf\tf\tf\tf\tf\tf\tf\ts\tp";
 	char const * const CLIENT_BUILDOUT_COLUMN_ROW = "objid\tcontainer\ttype\tshared_template_crc\tcell_index\tpx\tpy\tpz\tqw\tqx\tqy\tqz\tsx\tsy\tsz\tradius\tportal_layout_crc";
 	char const * const CLIENT_BUILDOUT_TYPE_ROW = "i\ti\ti\th\ti\tf\tf\tf\tf\tf\tf\tf\tf\tf\tf\ti";
-	// Pre-scale client tables (14 columns); types row must stay in sync with names row.
-	char const * const CLIENT_LEGACY_BUILDOUT_TYPE_ROW = "i\ti\ti\th\ti\tf\tf\tf\tf\tf\tf\tf\tf\tf\ti";
+	// 14 columns without sx/sy/sz: px..qz (7f) + radius + portal_layout_crc => 5 + 8f + i = 14 types (not 15).
+	char const * const CLIENT_LEGACY_BUILDOUT_TYPE_ROW       = "i\ti\ti\th\ti\tf\tf\tf\tf\tf\tf\tf\tf\tf\ti";
 }
 
 // ----------------------------------------------------------------------
@@ -1208,16 +1215,26 @@ void BuildoutAreaSupportNamespace::ensureBuildoutTabScaleColumns(std::string con
 		pos = nl + 1;
 	}
 
-	if (lines.size() < 2)
-		return;
-
 	for (std::vector<std::string>::size_type i = 0; i < lines.size(); ++i)
 		stripCarriageReturn(lines[i]);
 
+	std::vector<std::string::size_type> dataLineIndices;
+	for (std::string::size_type i = 0; i < lines.size(); ++i)
+	{
+		if (!lines[i].empty() && !isTabCommentLine(lines[i].c_str()))
+			dataLineIndices.push_back(i);
+	}
+
+	if (dataLineIndices.size() < 2)
+		return;
+
+	std::string::size_type const iCol = dataLineIndices[0];
+	std::string::size_type const iType = dataLineIndices[1];
+
 	std::vector<std::string> cols;
 	std::vector<std::string> types;
-	splitTabRow(lines[0], cols);
-	splitTabRow(lines[1], types);
+	splitTabRow(lines[iCol], cols);
+	splitTabRow(lines[iType], types);
 
 	bool const isServer = std::find(cols.begin(), cols.end(), "server_template_crc") != cols.end();
 	bool const isClient = std::find(cols.begin(), cols.end(), "shared_template_crc") != cols.end();
@@ -1233,14 +1250,14 @@ void BuildoutAreaSupportNamespace::ensureBuildoutTabScaleColumns(std::string con
 		if (hasSx && cols.size() == 16 && types.size() == 13)
 		{
 			types.insert(types.begin() + 11, 3, "f");
-			lines[1] = joinTabRow(types);
+			lines[iType] = joinTabRow(types);
 			modified = true;
 		}
 		// Legacy: no sx/sy/sz — rewrite to current header/types; data rows padded below.
 		else if (!hasSx && cols.size() == 13 && types.size() == 13)
 		{
-			lines[0] = SERVER_BUILDOUT_COLUMN_ROW;
-			lines[1] = SERVER_BUILDOUT_TYPE_ROW;
+			lines[iCol] = SERVER_BUILDOUT_COLUMN_ROW;
+			lines[iType] = SERVER_BUILDOUT_TYPE_ROW;
 			modified = true;
 		}
 		else if (cols.size() == 16 && types.size() != cols.size()
@@ -1249,17 +1266,35 @@ void BuildoutAreaSupportNamespace::ensureBuildoutTabScaleColumns(std::string con
 			&& cols[cols.size() - 1] == "objvars")
 		{
 			// Names row matches current server layout but types row is wrong length (common after adding sx/sy/sz).
-			lines[1] = SERVER_BUILDOUT_TYPE_ROW;
+			lines[iType] = SERVER_BUILDOUT_TYPE_ROW;
 			modified = true;
 		}
 
-		splitTabRow(lines[0], cols);
-		splitTabRow(lines[1], types);
+		splitTabRow(lines[iCol], cols);
+		splitTabRow(lines[iType], types);
+		if (cols.size() != types.size())
+		{
+			if (cols.size() == 16)
+			{
+				lines[iType] = SERVER_BUILDOUT_TYPE_ROW;
+				modified = true;
+				splitTabRow(lines[iType], types);
+			}
+			else if (!hasSx && cols.size() == 13)
+			{
+				lines[iCol] = SERVER_BUILDOUT_COLUMN_ROW;
+				lines[iType] = SERVER_BUILDOUT_TYPE_ROW;
+				modified = true;
+				splitTabRow(lines[iCol], cols);
+				splitTabRow(lines[iType], types);
+			}
+		}
 		if (cols.size() != types.size())
 			return;
 
-		for (std::vector<std::string>::size_type r = 2; r < lines.size(); ++r)
+		for (std::vector<std::string>::size_type k = 2; k < dataLineIndices.size(); ++k)
 		{
+			std::string::size_type const r = dataLineIndices[k];
 			if (lines[r].empty())
 				continue;
 			std::vector<std::string> fields;
@@ -1278,13 +1313,13 @@ void BuildoutAreaSupportNamespace::ensureBuildoutTabScaleColumns(std::string con
 		if (hasSx && cols.size() == 17 && types.size() == 14)
 		{
 			types.insert(types.begin() + 12, 3, "f");
-			lines[1] = joinTabRow(types);
+			lines[iType] = joinTabRow(types);
 			modified = true;
 		}
 		else if (!hasSx && cols.size() == 14 && types.size() == 14)
 		{
-			lines[0] = CLIENT_BUILDOUT_COLUMN_ROW;
-			lines[1] = CLIENT_BUILDOUT_TYPE_ROW;
+			lines[iCol] = CLIENT_BUILDOUT_COLUMN_ROW;
+			lines[iType] = CLIENT_BUILDOUT_TYPE_ROW;
 			modified = true;
 		}
 		else if (cols.size() == 17 && types.size() != cols.size()
@@ -1293,24 +1328,40 @@ void BuildoutAreaSupportNamespace::ensureBuildoutTabScaleColumns(std::string con
 			&& cols[cols.size() - 1] == "portal_layout_crc")
 		{
 			// Names include scale; types row out of sync (e.g. 13 or 16 entries) — DataTableWriter FATAL.
-			lines[1] = CLIENT_BUILDOUT_TYPE_ROW;
+			lines[iType] = CLIENT_BUILDOUT_TYPE_ROW;
 			modified = true;
 		}
 		else if (cols.size() == 14 && types.size() != cols.size()
 			&& cols.size() >= 1
 			&& cols.back() == "portal_layout_crc")
 		{
-			lines[1] = CLIENT_LEGACY_BUILDOUT_TYPE_ROW;
+			lines[iType] = CLIENT_LEGACY_BUILDOUT_TYPE_ROW;
 			modified = true;
 		}
 
-		splitTabRow(lines[0], cols);
-		splitTabRow(lines[1], types);
+		splitTabRow(lines[iCol], cols);
+		splitTabRow(lines[iType], types);
+		if (cols.size() != types.size())
+		{
+			if (cols.size() == 17)
+			{
+				lines[iType] = CLIENT_BUILDOUT_TYPE_ROW;
+				modified = true;
+				splitTabRow(lines[iType], types);
+			}
+			else if (cols.size() == 14)
+			{
+				lines[iType] = CLIENT_LEGACY_BUILDOUT_TYPE_ROW;
+				modified = true;
+				splitTabRow(lines[iType], types);
+			}
+		}
 		if (cols.size() != types.size())
 			return;
 
-		for (std::vector<std::string>::size_type r = 2; r < lines.size(); ++r)
+		for (std::vector<std::string>::size_type k = 2; k < dataLineIndices.size(); ++k)
 		{
+			std::string::size_type const r = dataLineIndices[k];
 			if (lines[r].empty())
 				continue;
 			std::vector<std::string> fields;

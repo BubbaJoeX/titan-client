@@ -291,6 +291,8 @@ public:
 	bool                    isDeveloper() const;
 	bool					isQualityAssurance() const;
 	bool                    isWarden() const;
+	bool                    isStaffRankDisplayTitle() const;
+	int                     getStaffRankDisplayLevel() const;
 	bool                    isQuestComplete(int questId) const;
 	bool                    isQuestActive(int questId) const;
 
@@ -761,6 +763,20 @@ inline bool PlayerObject::isWarden() const
 inline bool PlayerObject::isQualityAssurance() const
 {
 	return m_privledgedTitle.get() == static_cast<int8>(PlayerDataPriviledgedTitle::QualityAssurance);
+}
+
+//----------------------------------------------------------------------
+
+inline bool PlayerObject::isStaffRankDisplayTitle() const
+{
+	return PlayerDataPriviledgedTitle::isStaffRankDisplayEncodedTitle(m_privledgedTitle.get());
+}
+
+//----------------------------------------------------------------------
+
+inline int PlayerObject::getStaffRankDisplayLevel() const
+{
+	return PlayerDataPriviledgedTitle::staffRankDisplayLevelFromEncodedTitle(m_privledgedTitle.get());
 }
 
 //----------------------------------------------------------------------

@@ -264,6 +264,7 @@ GodClientData::GodClientData()
   m_objectCreationPending(false),
   m_toggleDropToTerrainOn(false),
   m_toggleAlignToTerrainOn(false),
+  m_unrealEngineTransformGizmo(false),
   m_copyTransform(true),
   m_copyScale(false),
   m_copyScripts(false),
@@ -525,70 +526,7 @@ void GodClientData::draw(const Camera& camera)
 		
 		//draw ghosts' extents and axes (ghosts always get axes) with labeled gimbal
 		if(ghost)
-		{
-			const Extent* const extent     = NON_NULL(ghost->getAppearance()->getSelectionExtent());
-			Graphics::setObjectToWorldTransformAndScale(ghost->getTransform_o2w(), ghost->getScale());
-			Graphics::drawExtent(extent, VectorArgb::solidCyan);
-
-			Graphics::setObjectToWorldTransformAndScale(Transform::identity, Vector::xyz111);
-			Graphics::drawLine(obj->getAppearanceSphereCenter_w(), ghost->getAppearanceSphereCenter_w(), VectorArgb::solidBlue);
-
-			Graphics::setObjectToWorldTransformAndScale(ghost->getTransform_o2w(), ghost->getScale());
-			const BoxExtent* const boxExtent = dynamic_cast<const BoxExtent* const>(extent);
-			real frameSize = 1;
-			if(boxExtent)
-			{
-				real h = boxExtent->getHeight();
-				real w = boxExtent->getWidth();
-				real l = boxExtent->getLength();
-				frameSize = h > w ? h : w;
-				frameSize = frameSize > l ? frameSize : l;
-			}
-			frameSize *= 2;
-
-			// Draw labeled gimbal: axis lines, colored spheres at endpoints, and text labels
-			// Scale axis lengths by object scale so they match the extent
-			Vector const scale = ghost->getScale();
-			Vector const center = ghost->getAppearanceSphereCenter_w();
-			Vector const i = ghost->getObjectFrameI_w();
-			Vector const j = ghost->getObjectFrameJ_w();
-			Vector const k = ghost->getObjectFrameK_w();
-			Vector const xEnd = center + i * (frameSize * scale.x);
-			Vector const yEnd = center + j * (frameSize * scale.y);
-			Vector const zEnd = center + k * (frameSize * scale.z);
-			real const r = frameSize * std::max(std::max(scale.x, scale.y), scale.z);
-
-			Graphics::setObjectToWorldTransformAndScale(Transform::identity, Vector::xyz111);
-			Graphics::drawLine(center, xEnd, VectorArgb::solidRed);
-			Graphics::drawLine(center, yEnd, VectorArgb::solidGreen);
-			Graphics::drawLine(center, zEnd, VectorArgb::solidBlue);
-
-			real const sphereRadius = r * 0.08f;
-			Graphics::drawSphere2(xEnd, sphereRadius, 8, 4, 8, VectorArgb::solidRed);
-			Graphics::drawSphere2(yEnd, sphereRadius, 8, 4, 8, VectorArgb::solidGreen);
-			Graphics::drawSphere2(zEnd, sphereRadius, 8, 4, 8, VectorArgb::solidBlue);
-
-			// Enqueue text labels at axis endpoints
-			CuiTextManager::TextEnqueueInfo info;
-			info.backgroundOpacity = 0.0f;
-			info.opacity = 1.0f;
-			info.textSize = 1.2f;
-			if (camera.projectInWorldSpace(xEnd, &info.screenVect.x, &info.screenVect.y, &info.screenVect.z, false))
-			{
-				info.textColor = UIColor(255, 0, 0);
-				CuiTextManager::enqueueText(Unicode::narrowToWide("X"), info);
-			}
-			if (camera.projectInWorldSpace(yEnd, &info.screenVect.x, &info.screenVect.y, &info.screenVect.z, false))
-			{
-				info.textColor = UIColor(0, 255, 0);
-				CuiTextManager::enqueueText(Unicode::narrowToWide("Z"), info);
-			}
-			if (camera.projectInWorldSpace(zEnd, &info.screenVect.x, &info.screenVect.y, &info.screenVect.z, false))
-			{
-				info.textColor = UIColor(0, 0, 255);
-				CuiTextManager::enqueueText(Unicode::narrowToWide("Y"), info);
-			}
-		}
+			drawGhostManipulatorGizmo(camera, obj, ghost);
 	}
 
 	//draw the axes on the objects we care about
@@ -917,9 +855,100 @@ void GodClientData::draw(const Camera& camera)
 			}
 			else
 			{
-				DEBUG_FATAL(true, ("Region is neither a cirlce nor a rectagle"));
+				DEBUG_FATAL(true, ("Region overlay is neither a circle nor a rectangle."));
 			}
 		}
+	}
+}
+
+//-----------------------------------------------------------------
+
+void GodClientData::drawGhostManipulatorGizmo(Camera const & camera, ClientObject const * obj, Object const * ghost)
+{
+	NOT_NULL(obj);
+	NOT_NULL(ghost);
+
+	const Extent* const extent = NON_NULL(ghost->getAppearance()->getSelectionExtent());
+	Graphics::setObjectToWorldTransformAndScale(ghost->getTransform_o2w(), ghost->getScale());
+	Graphics::drawExtent(extent, VectorArgb::solidCyan);
+
+	Graphics::setObjectToWorldTransformAndScale(Transform::identity, Vector::xyz111);
+	Graphics::drawLine(obj->getAppearanceSphereCenter_w(), ghost->getAppearanceSphereCenter_w(), VectorArgb::solidBlue);
+
+	Graphics::setObjectToWorldTransformAndScale(ghost->getTransform_o2w(), ghost->getScale());
+	const BoxExtent* const boxExtent = dynamic_cast<const BoxExtent* const>(extent);
+	real frameSize = 1;
+	if (boxExtent)
+	{
+		real h = boxExtent->getHeight();
+		real w = boxExtent->getWidth();
+		real l = boxExtent->getLength();
+		frameSize = h > w ? h : w;
+		frameSize = frameSize > l ? frameSize : l;
+	}
+	frameSize *= 2;
+
+	Vector const scale = ghost->getScale();
+	Vector const center = ghost->getAppearanceSphereCenter_w();
+	Vector const i = ghost->getObjectFrameI_w();
+	Vector const j = ghost->getObjectFrameJ_w();
+	Vector const k = ghost->getObjectFrameK_w();
+
+	Vector const xEnd = center + i * (frameSize * scale.x);
+	Vector const yEnd = center + j * (frameSize * scale.y);
+	Vector const zEnd = center + k * (frameSize * scale.z);
+	real const r = frameSize * std::max(std::max(scale.x, scale.y), scale.z);
+	real const sphereRadius = r * 0.08f;
+
+	Graphics::setObjectToWorldTransformAndScale(Transform::identity, Vector::xyz111);
+	Graphics::drawLine(center, xEnd, VectorArgb::solidRed);
+	Graphics::drawLine(center, yEnd, VectorArgb::solidGreen);
+	Graphics::drawLine(center, zEnd, VectorArgb::solidBlue);
+
+	if (m_unrealEngineTransformGizmo)
+	{
+		real const axisReach = std::max(frameSize * scale.x, std::max(frameSize * scale.y, frameSize * scale.z));
+		real const ringRadius = axisReach * 0.78f;
+		int const ringSegments = 64;
+		if (ringRadius > 1e-4f)
+		{
+			Graphics::drawCircleOutline(center, i, ringRadius, ringSegments, VectorArgb::solidRed);
+			Graphics::drawCircleOutline(center, j, ringRadius, ringSegments, VectorArgb::solidGreen);
+			Graphics::drawCircleOutline(center, k, ringRadius, ringSegments, VectorArgb::solidBlue);
+		}
+
+		real const cubeHalf = std::max(sphereRadius * 0.55f, axisReach * 0.045f);
+		Graphics::drawCube(xEnd, cubeHalf, VectorArgb::solidRed);
+		Graphics::drawCube(yEnd, cubeHalf, VectorArgb::solidGreen);
+		Graphics::drawCube(zEnd, cubeHalf, VectorArgb::solidBlue);
+
+		Graphics::drawCube(center, cubeHalf * 0.65f, VectorArgb::solidWhite);
+	}
+	else
+	{
+		Graphics::drawSphere2(xEnd, sphereRadius, 8, 4, 8, VectorArgb::solidRed);
+		Graphics::drawSphere2(yEnd, sphereRadius, 8, 4, 8, VectorArgb::solidGreen);
+		Graphics::drawSphere2(zEnd, sphereRadius, 8, 4, 8, VectorArgb::solidBlue);
+	}
+
+	CuiTextManager::TextEnqueueInfo info;
+	info.backgroundOpacity = 0.0f;
+	info.opacity = 1.0f;
+	info.textSize = 1.2f;
+	if (camera.projectInWorldSpace(xEnd, &info.screenVect.x, &info.screenVect.y, &info.screenVect.z, false))
+	{
+		info.textColor = UIColor(255, 0, 0);
+		CuiTextManager::enqueueText(Unicode::narrowToWide("X"), info);
+	}
+	if (camera.projectInWorldSpace(yEnd, &info.screenVect.x, &info.screenVect.y, &info.screenVect.z, false))
+	{
+		info.textColor = UIColor(0, 255, 0);
+		CuiTextManager::enqueueText(Unicode::narrowToWide("Z"), info);
+	}
+	if (camera.projectInWorldSpace(zEnd, &info.screenVect.x, &info.screenVect.y, &info.screenVect.z, false))
+	{
+		info.textColor = UIColor(0, 0, 255);
+		CuiTextManager::enqueueText(Unicode::narrowToWide("Y"), info);
 	}
 }
 
@@ -3138,6 +3167,20 @@ void GodClientData::toggleAlignToTerrain()
 bool GodClientData::isToggleAlignToTerrainOn() const
 {
 	return m_toggleAlignToTerrainOn;
+}
+
+//-------------------------------------------------------------
+
+void GodClientData::toggleUnrealEngineTransformGizmo()
+{
+	m_unrealEngineTransformGizmo = !m_unrealEngineTransformGizmo;
+}
+
+//-------------------------------------------------------------
+
+bool GodClientData::isUnrealEngineTransformGizmoOn() const
+{
+	return m_unrealEngineTransformGizmo;
 }
 
 //-------------------------------------------------------------

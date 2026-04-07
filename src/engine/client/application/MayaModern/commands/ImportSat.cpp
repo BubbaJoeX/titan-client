@@ -1,11 +1,16 @@
 #include "ImportSat.h"
 #include "ImportPathResolver.h"
+#include "ImportLodMesh.h"
+#include "ImportSkeleton.h"
+#include "ImportSkeletalMesh.h"
+#include "SatRoundTrip.h"
 
 #include "Iff.h"
 #include "Tag.h"
 
 #include <maya/MArgList.h>
 #include <maya/MDagPath.h>
+#include <maya/MFn.h>
 #include <maya/MFnDagNode.h>
 #include <maya/MGlobal.h>
 #include <maya/MItDag.h>
@@ -28,63 +33,6 @@ namespace
     static const Tag TAG_V001 = TAG(0,0,0,1);
     static const Tag TAG_V002 = TAG(0,0,0,2);
     static const Tag TAG_V003 = TAG(0,0,0,3);
-
-    static std::string resolveTreeFilePath(const std::string& treeFilePath, const std::string& inputFilename)
-    {
-        if (treeFilePath.empty())
-            return std::string();
-
-        std::string baseDir;
-        const char* envExportRoot = getenv("TITAN_EXPORT_ROOT");
-        if (envExportRoot && envExportRoot[0])
-        {
-            baseDir = envExportRoot;
-            if (!baseDir.empty() && baseDir.back() != '\\' && baseDir.back() != '/')
-                baseDir += '/';
-        }
-        else
-        {
-            const char* envDataRoot = getenv("TITAN_DATA_ROOT");
-            if (envDataRoot && envDataRoot[0])
-            {
-                baseDir = envDataRoot;
-                if (!baseDir.empty() && baseDir.back() != '\\' && baseDir.back() != '/')
-                    baseDir += '/';
-            }
-            else
-            {
-                std::string normalizedInput = inputFilename;
-                for (auto& c : normalizedInput) if (c == '\\') c = '/';
-                const auto cgPos = normalizedInput.find("compiled/game/");
-                if (cgPos != std::string::npos)
-                    baseDir = normalizedInput.substr(0, cgPos + 14);
-                else
-                {
-                    const auto firstSlash = treeFilePath.find_first_of("/\\");
-                    if (firstSlash != std::string::npos)
-                    {
-                        const std::string firstComponent = "/" + treeFilePath.substr(0, firstSlash + 1);
-                        const auto pos = normalizedInput.find(firstComponent);
-                        if (pos != std::string::npos)
-                            baseDir = normalizedInput.substr(0, pos + 1);
-                    }
-                }
-                if (baseDir.empty())
-                {
-                    const auto lastSlash = normalizedInput.find_last_of('/');
-                    if (lastSlash != std::string::npos)
-                        baseDir = normalizedInput.substr(0, lastSlash + 1);
-                }
-            }
-        }
-
-        if (baseDir.empty())
-            return treeFilePath;
-
-        std::string resolved = baseDir + treeFilePath;
-        for (auto& c : resolved) if (c == '\\') c = '/';
-        return resolved;
-    }
 
     static bool hasExtension(const std::string& path, const char* ext)
     {
@@ -208,6 +156,56 @@ namespace
         if (dot != std::string::npos)
             path = path.substr(0, dot);
         return path;
+    }
+
+    /** Parent transform of the root joint (master, or SLOD l0), for parenting mesh next to the rig. */
+    static std::string parentTransformOfPrimarySkeletonJoint(const std::string& skelBasenameNoExt)
+    {
+        if (skelBasenameNoExt.empty())
+            return std::string();
+
+        MStatus st;
+        MItDag it(MItDag::kDepthFirst, MFn::kJoint, &st);
+        if (!st)
+            return std::string();
+
+        const std::string sufLod = std::string("__") + skelBasenameNoExt + "_l0";
+        const std::string sufFlat = std::string("__") + skelBasenameNoExt;
+
+        MDagPath bestJoint;
+        int bestRank = 0;
+
+        for (; !it.isDone(); it.next())
+        {
+            MDagPath jp;
+            it.getPath(jp);
+            MFnDagNode jfn(jp);
+            const std::string jn = stripNamespace(std::string(jfn.name().asChar()));
+
+            int rank = 0;
+            if (jn.size() >= sufLod.size() && jn.compare(jn.size() - sufLod.size(), sufLod.size(), sufLod) == 0)
+                rank = 2;
+            else if (jn.size() >= sufFlat.size() && jn.compare(jn.size() - sufFlat.size(), sufFlat.size(), sufFlat) == 0)
+                rank = 1;
+            else
+                continue;
+
+            if (rank > bestRank)
+            {
+                bestRank = rank;
+                bestJoint = jp;
+            }
+        }
+
+        if (!bestJoint.isValid())
+            return std::string();
+
+        MDagPath parentPath = bestJoint;
+        st = parentPath.pop(1);
+        if (!st)
+            return std::string();
+
+        return std::string(parentPath.fullPathName().asChar());
     }
 
     // MayaSceneBuilder::createJointHierarchy names the root joint
@@ -378,6 +376,13 @@ MStatus ImportSat::doIt(const MArgList& args)
 
     iff.enterForm(versionTag);
 
+    SatRoundTripData satRt;
+    {
+        char verChars[8];
+        ConvertTagToString(versionTag, verChars);
+        satRt.versionTag.assign(verChars, 4);
+    }
+
     int32 meshGeneratorCount = 0;
     int32 skeletonTemplateCount = 0;
 
@@ -385,67 +390,54 @@ MStatus ImportSat::doIt(const MArgList& args)
     meshGeneratorCount = iff.read_int32();
     skeletonTemplateCount = iff.read_int32();
     if (isVersion1)
-    {
-        std::string legacyPath = iff.read_stdstring();
-        (void)legacyPath;
-    }
+        satRt.infoExtraString = iff.read_stdstring();
     else if (isVersion2)
-    {
-        std::string asgPath = iff.read_stdstring();
-        (void)asgPath;
-    }
+        satRt.infoExtraString = iff.read_stdstring();
     else if (isVersion3)
-    {
-        iff.read_int8();  // createAnimationController
-    }
+        satRt.createAnimationController = (iff.read_int8() != 0);
     iff.exitChunk(TAG_INFO);
 
-    std::vector<std::string> meshGeneratorPaths;
     iff.enterChunk(TAG_MSGN);
     for (int32 i = 0; i < meshGeneratorCount; ++i)
-        meshGeneratorPaths.push_back(iff.read_stdstring());
+        satRt.meshGenerators.push_back(iff.read_stdstring());
     iff.exitChunk(TAG_MSGN);
 
-    std::vector<std::string> skeletonTemplatePaths;
-    std::vector<std::string> attachmentTransformNames;
     iff.enterChunk(TAG_SKTI);
     for (int32 i = 0; i < skeletonTemplateCount; ++i)
     {
-        skeletonTemplatePaths.push_back(iff.read_stdstring());
-        attachmentTransformNames.push_back(iff.read_stdstring());
+        const std::string sk = iff.read_stdstring();
+        const std::string att = iff.read_stdstring();
+        satRt.skeletonTemplates.emplace_back(sk, att);
     }
     iff.exitChunk(TAG_SKTI);
 
-    // v0003 SAT may contain LATX, LDTB, SFSK, APAG, etc. Skip without fully parsing;
-    // use exitChunk(true)/exitForm(true) so unread chunk/form data does not trip IFF checks.
-    while (iff.getNumberOfBlocksLeft() > 0)
-    {
-        if (iff.isCurrentForm())
-        {
-            iff.enterForm();
-            iff.exitForm(true);
-        }
-        else
-        {
-            iff.enterChunk();
-            iff.exitChunk(true);
-        }
-    }
+    sat_round_trip::parseTailAfterSkti(iff, satRt);
 
     iff.exitForm(versionTag);
     iff.exitForm(TAG_SMAT);
+
+    const std::vector<std::string>& meshGeneratorPaths = satRt.meshGenerators;
+    std::vector<std::string> skeletonTemplatePaths;
+    std::vector<std::string> attachmentTransformNames;
+    skeletonTemplatePaths.reserve(satRt.skeletonTemplates.size());
+    attachmentTransformNames.reserve(satRt.skeletonTemplates.size());
+    for (const auto& pr : satRt.skeletonTemplates)
+    {
+        skeletonTemplatePaths.push_back(pr.first);
+        attachmentTransformNames.push_back(pr.second);
+    }
 
     // MayaExporter convention: no asset group; SKTM -> master|root__skeleton, SLOD -> baseName|l0|root__baseName_l0
     std::string firstSkeletonRootName;  // e.g. "root__all_b" - root joint of first skeleton
     for (size_t i = 0; i < skeletonTemplatePaths.size(); ++i)
     {
         const std::string& relativePath = skeletonTemplatePaths[i];
-        const std::string resolvedPath = resolveTreeFilePath(relativePath, filename);
+        const std::string resolvedPath = lod_path_helpers::resolveTreeFilePath(relativePath, filename);
         const std::string& attachmentName = (i < attachmentTransformNames.size()) ? attachmentTransformNames[i] : std::string();
 
-        MString cmd = "importSkeleton -i \"";
-        cmd += resolvedPath.c_str();
-        cmd += "\"";
+        MArgList skelArgs;
+        skelArgs.addArg(MString("-i"));
+        skelArgs.addArg(MString(resolvedPath.c_str()));
 
         if (i > 0 && !firstSkeletonRootName.empty() && !attachmentName.empty())
         {
@@ -457,9 +449,8 @@ MStatus ImportSat::doIt(const MArgList& args)
                 parentPath = findAttachmentJointPath(firstSkeletonRootName, attachmentName);
             if (!parentPath.empty())
             {
-                cmd += " -parent \"";
-                cmd += parentPath.c_str();
-                cmd += "\"";
+                skelArgs.addArg(MString("-parent"));
+                skelArgs.addArg(MString(parentPath.c_str()));
             }
             else
             {
@@ -467,7 +458,8 @@ MStatus ImportSat::doIt(const MArgList& args)
             }
         }
 
-        status = MGlobal::executeCommand(cmd, true, true);
+        ImportSkeleton skelImporter;
+        status = skelImporter.doIt(skelArgs);
         if (!status)
             std::cerr << "ImportSat: failed to import skeleton [" << resolvedPath << "]" << std::endl;
         else if (i == 0)
@@ -478,31 +470,73 @@ MStatus ImportSat::doIt(const MArgList& args)
         }
     }
 
+    std::string firstSkeletonResolved;
+    if (!skeletonTemplatePaths.empty())
+        firstSkeletonResolved = lod_path_helpers::resolveTreeFilePath(skeletonTemplatePaths[0], filename);
+
+    const std::string meshParentDag = (!firstSkeletonResolved.empty())
+        ? parentTransformOfPrimarySkeletonJoint(fileBasenameNoExtension(firstSkeletonResolved))
+        : std::string();
+
+    MGlobal::displayInfo(MString("ImportSat: meshParentDag=\"") + meshParentDag.c_str()
+        + "\" firstSkelResolved=\"" + firstSkeletonResolved.c_str() + "\"");
+
+    if (meshGeneratorPaths.empty())
+        MGlobal::displayWarning(
+            MString("ImportSat: SMAT has zero mesh generator paths (MSGN). Skeleton will import; add meshes manually or fix the SAT if this appearance should be skinned."));
+
+    bool meshImportFailed = false;
     for (size_t i = 0; i < meshGeneratorPaths.size(); ++i)
     {
         const std::string& relativePath = meshGeneratorPaths[i];
-        const std::string resolvedPath = resolveTreeFilePath(relativePath, filename);
+        const std::string resolvedPath = lod_path_helpers::resolveTreeFilePath(relativePath, filename);
 
-        if (hasExtension(relativePath, ".lmg"))
+        MGlobal::displayInfo(MString("ImportSat: MSGN[") + static_cast<int>(i) + "] rel=\""
+            + relativePath.c_str() + "\" -> \"" + resolvedPath.c_str() + "\"");
+
+        MArgList skmArgs;
+        skmArgs.addArg(MString("-i"));
+        skmArgs.addArg(MString(resolvedPath.c_str()));
+        if (!firstSkeletonResolved.empty())
         {
-            MString cmd = "importLodMesh -i \"";
-            cmd += resolvedPath.c_str();
-            cmd += "\"";
-            status = MGlobal::executeCommand(cmd, true, true);
-            if (!status)
-                std::cerr << "ImportSat: failed to import LOD mesh [" << resolvedPath << "]" << std::endl;
+            skmArgs.addArg(MString("-skeleton"));
+            skmArgs.addArg(MString(firstSkeletonResolved.c_str()));
         }
-        else
+        if (!meshParentDag.empty())
         {
-            MString cmd = "importSkeletalMesh -i \"";
-            cmd += resolvedPath.c_str();
-            cmd += "\"";
-            status = MGlobal::executeCommand(cmd, true, true);
-            if (!status)
+            skmArgs.addArg(MString("-parent"));
+            skmArgs.addArg(MString(meshParentDag.c_str()));
+        }
+
+        ImportSkeletalMesh skmImporter;
+        const MStatus skmStatus = skmImporter.doIt(skmArgs);
+        if (!skmStatus)
+        {
+            meshImportFailed = true;
+            MString err = "ImportSat: skeletal mesh import failed for ";
+            err += resolvedPath.c_str();
+            err += " (see Script Editor / stderr for ImportSkeletalMesh details).";
+            MGlobal::displayError(err);
+            if (hasExtension(relativePath, ".lmg"))
+                std::cerr << "ImportSat: failed to import mesh generator [" << resolvedPath << "]" << std::endl;
+            else
                 std::cerr << "ImportSat: failed to import skeletal mesh [" << resolvedPath << "]" << std::endl;
         }
     }
 
+    if (!meshGeneratorPaths.empty() && meshImportFailed)
+    {
+        MGlobal::displayError(
+            "ImportSat: one or more mesh generators failed to import. Fix errors above; skeleton-only scene is not sufficient for SAT round-trip.");
+        return MS::kFailure;
+    }
+
     ensureSwgLighting();
+
+    const std::string satBaseName = fileBasenameNoExtension(filename);
+    const std::string payload = sat_round_trip::serializePayload(satRt);
+    if (!sat_round_trip::createMetadataNode(satBaseName, payload))
+        std::cerr << "ImportSat: warning: failed to create SAT metadata transform (swgSmatRoundTrip) for round-trip export." << std::endl;
+
     return MS::kSuccess;
 }

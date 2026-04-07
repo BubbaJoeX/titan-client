@@ -16,6 +16,7 @@
 #include "clientGame/ClientBuffManager.h"
 #include "clientGame/ClientCommandChecks.h"
 #include "clientGame/ClientCommandQueue.h"
+#include "clientGame/ClientController.h"
 #include "clientGame/ClientDataFile.h"
 #include "clientGame/ClientEffectManager.h"
 #include "clientGame/ClientEventManager.h"
@@ -106,6 +107,7 @@
 #include "sharedObject/CustomizationData.h"
 #include "sharedObject/CustomizationDataProperty.h"
 #include "sharedObject/MovementTable.h"
+#include "sharedObject/MemoryBlockManagedObject.h"
 #include "sharedObject/NetworkIdManager.h"
 #include "sharedObject/ObjectTemplateList.h"
 #include "sharedObject/PortalProperty.h"
@@ -579,6 +581,8 @@ CreatureObject::CreatureObject(const SharedCreatureObjectTemplate * const newTem
 	m_localLookAtPositionObject(),
 	m_isBeast(false),
 	m_forceShowHam(false),
+	m_suppressTemplateClientDataFile(false),
+	m_authoritativeClientAnimationAction(),
 	m_wearableAppearanceData(),
 	m_initAppearanceWearables(false),
 	m_verifyAppearanceTimer(10.0f),
@@ -620,6 +624,8 @@ CreatureObject::CreatureObject(const SharedCreatureObjectTemplate * const newTem
 	m_totalLevelXp.setSourceObject(this);
 	m_hologramType.setSourceObject(this);
 	m_visibleOnMapAndRadar.setSourceObject(this);
+	m_suppressTemplateClientDataFile.setSourceObject(this);
+	m_authoritativeClientAnimationAction.setSourceObject(this);
 
 	// set up automagic updating
 	addClientServerVariable(m_unmodifiedMaxAttributes); //Corresponds to server side m_maxAttributes
@@ -680,6 +686,8 @@ CreatureObject::CreatureObject(const SharedCreatureObjectTemplate * const newTem
 	addSharedVariable_np(m_visibleOnMapAndRadar);
 	addSharedVariable_np(m_isBeast);
 	addSharedVariable_np(m_forceShowHam);
+	addSharedVariable_np(m_suppressTemplateClientDataFile);
+	addSharedVariable_np(m_authoritativeClientAnimationAction);
 	addSharedVariable_np(m_wearableAppearanceData);
 	addSharedVariable_np(m_decoyOrigin);
 
@@ -1522,6 +1530,57 @@ CreatureObject * CreatureObject::asCreatureObject()
 CreatureObject const * CreatureObject::asCreatureObject() const
 {
 	return this;
+}
+
+//-----------------------------------------------------------------------
+
+ClientDataFile const * CreatureObject::getClientData () const
+{
+	if (m_suppressTemplateClientDataFile.get())
+	{
+		return NULL;
+	}
+
+	return ClientObject::getClientData();
+}
+
+//-----------------------------------------------------------------------
+
+void CreatureObject::stripClientBakedTemplateWearables()
+{
+	SkeletalAppearance2 *const skel = dynamic_cast<SkeletalAppearance2 *>(getAppearance());
+	if (!skel)
+		return;
+
+	skel->unlockWearables();
+
+	for (;;)
+	{
+		int const n = skel->getWearableCount();
+		if (n <= 0)
+			break;
+
+		bool removedOne = false;
+		for (int i = n - 1; i >= 0; --i)
+		{
+			Object *const worn = skel->getWearableObject(i);
+			if (!worn)
+				continue;
+			if (!dynamic_cast<MemoryBlockManagedObject *>(worn))
+				continue;
+
+			skel->stopWearing(worn);
+			removeChildObject(worn, Object::DF_none);
+			delete worn;
+			removedOne = true;
+			break;
+		}
+
+		if (!removedOne)
+			break;
+	}
+
+	scheduleForAlter();
 }
 
 //-----------------------------------------------------------------------
@@ -2700,6 +2759,23 @@ void CreatureObject::Callbacks::CoverVisibilityChanged::modified(CreatureObject 
 	CreatureObject const * const player = Game::getPlayerCreature();
 	bool const isLocalPlayer = (player == &target);
 	target.setCoverVisibility(isVisible, isLocalPlayer);
+}
+
+// ----------------------------------------------------------------------
+
+void CreatureObject::Callbacks::SuppressTemplateClientDataFileChanged::modified(CreatureObject &target, const bool &oldValue, const bool &value, bool) const
+{
+	if (value && !oldValue)
+		target.stripClientBakedTemplateWearables();
+}
+
+// ----------------------------------------------------------------------
+
+void CreatureObject::Callbacks::AuthoritativeClientAnimationActionChanged::modified(CreatureObject &target, const std::string &oldValue, const std::string &value, bool) const
+{
+	UNREF(oldValue);
+	if (!value.empty())
+		ClientControllerAnimation::applyServerAnimationActionString(&target, value);
 }
 
 // ----------------------------------------------------------------------

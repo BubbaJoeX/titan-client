@@ -18,8 +18,11 @@
 #include "sharedXml/XmlTreeDocumentList.h"
 #include "sharedXml/XmlTreeNode.h"
 
+#include <algorithm>
 #include <cstdio>
 #include <map>
+#include <string>
+#include <vector>
 
 // ======================================================================
 
@@ -352,13 +355,263 @@ void DataTableWriter::loadFromIff(const char * filename)
 
 // ----------------------------------------------------------------------
 
+namespace BuildoutSpreadsheetTabRepairNamespace
+{
+	void stripCarriageReturn(std::string &line)
+	{
+		if (!line.empty() && line[line.size() - 1] == '\r')
+			line.erase(line.size() - 1);
+	}
+
+	void splitTabRow(std::string const &line, std::vector<std::string> &out)
+	{
+		out.clear();
+		std::string::size_type start = 0;
+		for (;;)
+		{
+			std::string::size_type const tab = line.find('\t', start);
+			if (tab == std::string::npos)
+			{
+				out.push_back(line.substr(start));
+				break;
+			}
+			out.push_back(line.substr(start, tab - start));
+			start = tab + 1;
+		}
+	}
+
+	std::string joinTabRow(std::vector<std::string> const &fields)
+	{
+		std::string result;
+		for (std::vector<std::string>::size_type i = 0; i < fields.size(); ++i)
+		{
+			if (i)
+				result += '\t';
+			result += fields[i];
+		}
+		return result;
+	}
+
+	char const * const SERVER_BUILDOUT_COLUMN_ROW = "objid\tcontainer\tserver_template_crc\tcell_index\tpx\tpy\tpz\tqw\tqx\tqy\tqz\tsx\tsy\tsz\tscripts\tobjvars";
+	char const * const SERVER_BUILDOUT_TYPE_ROW = "i\ti\th\ti\tf\tf\tf\tf\tf\tf\tf\tf\tf\tf\ts\tp";
+	char const * const CLIENT_BUILDOUT_COLUMN_ROW = "objid\tcontainer\ttype\tshared_template_crc\tcell_index\tpx\tpy\tpz\tqw\tqx\tqy\tqz\tsx\tsy\tsz\tradius\tportal_layout_crc";
+	char const * const CLIENT_BUILDOUT_TYPE_ROW = "i\ti\ti\th\ti\tf\tf\tf\tf\tf\tf\tf\tf\tf\tf\ti";
+	char const * const CLIENT_LEGACY_BUILDOUT_TYPE_ROW = "i\ti\ti\th\ti\tf\tf\tf\tf\tf\tf\tf\tf\tf\ti";
+
+	void repairIfNeeded(char const * tabFilename)
+	{
+		if (!tabFilename || !*tabFilename)
+			return;
+
+		StdioFile in(tabFilename, "r");
+		if (!in.isOpen())
+			return;
+
+		int const len = in.length();
+		if (len <= 0)
+			return;
+
+		std::vector<char> buf(static_cast<size_t>(len) + 1);
+		if (in.read(&buf[0], len) != len)
+			return;
+		in.close();
+		buf[static_cast<size_t>(len)] = '\0';
+
+		std::string content(&buf[0]);
+		std::vector<std::string> lines;
+		for (std::string::size_type pos = 0; pos < content.size();)
+		{
+			std::string::size_type const nl = content.find('\n', pos);
+			if (nl == std::string::npos)
+			{
+				lines.push_back(content.substr(pos));
+				break;
+			}
+			lines.push_back(content.substr(pos, nl - pos));
+			pos = nl + 1;
+		}
+
+		std::vector<std::string::size_type> dataLineIndices;
+		for (std::string::size_type i = 0; i < lines.size(); ++i)
+		{
+			stripCarriageReturn(lines[i]);
+			if (!lines[i].empty() && !isTabCommentLine(lines[i].c_str()))
+				dataLineIndices.push_back(i);
+		}
+
+		if (dataLineIndices.size() < 2)
+			return;
+
+		std::string::size_type const iCol = dataLineIndices[0];
+		std::string::size_type const iType = dataLineIndices[1];
+
+		std::vector<std::string> cols;
+		std::vector<std::string> types;
+		splitTabRow(lines[iCol], cols);
+		splitTabRow(lines[iType], types);
+
+		bool const isServer = std::find(cols.begin(), cols.end(), "server_template_crc") != cols.end();
+		bool const isClient = std::find(cols.begin(), cols.end(), "shared_template_crc") != cols.end();
+		if (!isServer && !isClient)
+			return;
+
+		bool modified = false;
+
+		if (isServer)
+		{
+			bool const hasSx = std::find(cols.begin(), cols.end(), "sx") != cols.end();
+			if (hasSx && cols.size() == 16 && types.size() == 13)
+			{
+				types.insert(types.begin() + 11, 3, "f");
+				lines[iType] = joinTabRow(types);
+				modified = true;
+			}
+			else if (!hasSx && cols.size() == 13 && types.size() == 13)
+			{
+				lines[iCol] = SERVER_BUILDOUT_COLUMN_ROW;
+				lines[iType] = SERVER_BUILDOUT_TYPE_ROW;
+				modified = true;
+			}
+			else if (cols.size() == 16 && types.size() != cols.size()
+				&& cols.size() >= 2
+				&& cols[cols.size() - 2] == "scripts"
+				&& cols[cols.size() - 1] == "objvars")
+			{
+				lines[iType] = SERVER_BUILDOUT_TYPE_ROW;
+				modified = true;
+			}
+
+			splitTabRow(lines[iCol], cols);
+			splitTabRow(lines[iType], types);
+			if (cols.size() != types.size())
+			{
+				if (cols.size() == 16)
+				{
+					lines[iType] = SERVER_BUILDOUT_TYPE_ROW;
+					modified = true;
+					splitTabRow(lines[iType], types);
+				}
+				else if (!hasSx && cols.size() == 13)
+				{
+					lines[iCol] = SERVER_BUILDOUT_COLUMN_ROW;
+					lines[iType] = SERVER_BUILDOUT_TYPE_ROW;
+					modified = true;
+					splitTabRow(lines[iCol], cols);
+					splitTabRow(lines[iType], types);
+				}
+			}
+			if (cols.size() != types.size())
+				return;
+
+			for (std::vector<std::string>::size_type k = 2; k < dataLineIndices.size(); ++k)
+			{
+				std::string::size_type const r = dataLineIndices[k];
+				if (lines[r].empty())
+					continue;
+				std::vector<std::string> fields;
+				splitTabRow(lines[r], fields);
+				if (fields.size() == 13)
+				{
+					fields.insert(fields.begin() + 11, 3, "1");
+					lines[r] = joinTabRow(fields);
+					modified = true;
+				}
+			}
+		}
+		else if (isClient)
+		{
+			bool const hasSx = std::find(cols.begin(), cols.end(), "sx") != cols.end();
+			if (hasSx && cols.size() == 17 && types.size() == 14)
+			{
+				types.insert(types.begin() + 12, 3, "f");
+				lines[iType] = joinTabRow(types);
+				modified = true;
+			}
+			else if (!hasSx && cols.size() == 14 && types.size() == 14)
+			{
+				lines[iCol] = CLIENT_BUILDOUT_COLUMN_ROW;
+				lines[iType] = CLIENT_BUILDOUT_TYPE_ROW;
+				modified = true;
+			}
+			else if (cols.size() == 17 && types.size() != cols.size()
+				&& cols.size() >= 2
+				&& cols[cols.size() - 2] == "radius"
+				&& cols[cols.size() - 1] == "portal_layout_crc")
+			{
+				lines[iType] = CLIENT_BUILDOUT_TYPE_ROW;
+				modified = true;
+			}
+			else if (cols.size() == 14 && types.size() != cols.size()
+				&& cols.size() >= 1
+				&& cols.back() == "portal_layout_crc")
+			{
+				lines[iType] = CLIENT_LEGACY_BUILDOUT_TYPE_ROW;
+				modified = true;
+			}
+
+			splitTabRow(lines[iCol], cols);
+			splitTabRow(lines[iType], types);
+			if (cols.size() != types.size())
+			{
+				if (cols.size() == 17)
+				{
+					lines[iType] = CLIENT_BUILDOUT_TYPE_ROW;
+					modified = true;
+					splitTabRow(lines[iType], types);
+				}
+				else if (cols.size() == 14)
+				{
+					lines[iType] = CLIENT_LEGACY_BUILDOUT_TYPE_ROW;
+					modified = true;
+					splitTabRow(lines[iType], types);
+				}
+			}
+			if (cols.size() != types.size())
+				return;
+
+			for (std::vector<std::string>::size_type k = 2; k < dataLineIndices.size(); ++k)
+			{
+				std::string::size_type const r = dataLineIndices[k];
+				if (lines[r].empty())
+					continue;
+				std::vector<std::string> fields;
+				splitTabRow(lines[r], fields);
+				if (fields.size() == 14)
+				{
+					fields.insert(fields.begin() + 12, 3, "1");
+					lines[r] = joinTabRow(fields);
+					modified = true;
+				}
+			}
+		}
+
+		if (!modified)
+			return;
+
+		StdioFile out(tabFilename, "w");
+		if (!out.isOpen())
+			return;
+		for (std::vector<std::string>::size_type i = 0; i < lines.size(); ++i)
+		{
+			static_cast<void>(out.write(static_cast<int>(lines[i].size()), lines[i].c_str()));
+			static_cast<void>(out.write(1, "\n"));
+		}
+		out.close();
+	}
+}
+
+// ----------------------------------------------------------------------
+
 void DataTableWriter::loadFromSpreadsheet(const char * filename)
 {
 	NOT_NULL(filename);
 
 	if(!isXmlFile(filename))
+	{
+		BuildoutSpreadsheetTabRepairNamespace::repairIfNeeded(filename);
 		// Original file format
 		_loadFromSpreadsheetTab(filename);
+	}
 	else
 		// XML file format
 		_loadFromSpreadsheetXml(filename);

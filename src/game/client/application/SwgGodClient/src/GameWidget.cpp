@@ -1676,6 +1676,7 @@ void GameWidget::contextMenuEvent(QContextMenuEvent* evt)
 	IGNORE_RETURN(m_pop->insertSeparator());
 	IGNORE_RETURN(ea.m_toggleDropToTerrain-> addTo(m_pop));
 	IGNORE_RETURN(ea.m_toggleAlignToTerrain-> addTo(m_pop));
+	IGNORE_RETURN(ea.m_toggleUnrealEngineTransformGizmo-> addTo(m_pop));
 
 	IGNORE_RETURN(m_pop->insertSeparator());
 	IGNORE_RETURN(ea.createObjectFromSelectedTemplate->addTo(m_pop));

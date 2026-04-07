@@ -43,6 +43,7 @@
 #include "sharedFoundation/Production.h"
 #include "sharedGame/Buff.h"
 #include "sharedGame/GameObjectTypes.h"
+#include "sharedGame/StaffRankDataTable.h"
 #include "sharedGame/GroupPickupPoint.h"
 #include "sharedGame/PvpData.h"
 #include "sharedGame/SharedCreatureObjectTemplate.h"
@@ -338,8 +339,17 @@ namespace SwgCuiStatusGroundNamespace
 		}
 		PlayerObject const* self = Game::getConstPlayerObject();
 		bool hasPriviledgedTitle = false;
-		
-		if (playerObject.isNormalPlayer())
+
+		if (playerObject.isStaffRankDisplayTitle())
+		{
+			if (!s.empty())
+				s.push_back('\n');
+			s.push_back('(');
+			s += Unicode::narrowToWide(StaffRankDataTable::getRankTitle(playerObject.getStaffRankDisplayLevel()));
+			s.push_back(')');
+			hasPriviledgedTitle = true;
+		}
+		else if (playerObject.isNormalPlayer())
 		{
 			hasPriviledgedTitle = false;
 		}

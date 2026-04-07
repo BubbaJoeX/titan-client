@@ -803,6 +803,12 @@ bool CompressedKeyframeAnimation::alterSingleCycle(float deltaTime, SkeletalAnim
 	DEBUG_WARNING(ms_testInvariants && !validateInvariantsWarn(), ("CompressedKeyframeAnimation: invariant check failure."));
 	UNREF(replacementAnimation);
 
+	if (m_holdFrame)
+	{
+		deltaTimeRemaining = 0.0f;
+		return true;
+	}
+
 	//-- Set previous frame number.
 	m_previousFrameNumber = m_currentFrameNumber;
 
@@ -879,9 +885,33 @@ int CompressedKeyframeAnimation::getLocomotionPriority() const
 
 void CompressedKeyframeAnimation::startNewCycle()
 {
+	if (m_holdFrame)
+		return;
+
 	m_currentCycleTime    = 0.0f;
 	m_previousFrameNumber = 0.0f;
 	m_currentFrameNumber  = 0.0f;
+}
+
+// ----------------------------------------------------------------------
+
+bool CompressedKeyframeAnimation::setHoldAtFrame(float frameNumber)
+{
+	if (m_playbackFramesPerSecond <= 0.0f || m_frameCount <= 0.0f)
+		return false;
+
+	m_holdFrame = true;
+	m_currentFrameNumber  = std::max(0.0f, std::min(frameNumber, m_frameCount));
+	m_previousFrameNumber = m_currentFrameNumber;
+	m_currentCycleTime    = (m_currentFrameNumber / m_frameCount) * m_cyclePeriod;
+	return true;
+}
+
+// ----------------------------------------------------------------------
+
+void CompressedKeyframeAnimation::clearHoldFrame()
+{
+	m_holdFrame = false;
 }
 
 // ----------------------------------------------------------------------
@@ -1046,7 +1076,8 @@ CompressedKeyframeAnimation::CompressedKeyframeAnimation(const CompressedKeyfram
 	m_translationOperations(static_cast<VectorOperationVector::size_type>(skeletonTransformNameMap.getTransformCount())),
 	m_rotationStartKeyIndex(0),
 	m_translationStartKeyIndex(0),
-	m_scale(animationEnvironment.getConstFloat(AnimationEnvironmentNames::cms_appearanceScale))
+	m_scale(animationEnvironment.getConstFloat(AnimationEnvironmentNames::cms_appearanceScale)),
+	m_holdFrame(false)
 {
 	DEBUG_FATAL(!ms_installed, ("CompressedKeyframeAnimation not installed"));
 	NOT_NULL(skeletalAnimationTemplate);
