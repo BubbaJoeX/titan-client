@@ -1721,11 +1721,11 @@ namespace
 	float const s_atmoFogFadeStartHeight = 50.0f;
 	// Altitude where the blend completes (fog density floors at the fraction below).
 	float const s_atmoFogFadeEndHeight   = 120.0f;
-	// Extra haze strength while in atmospheric-flight ships.
-	float const s_atmoFogDensityBoost    = 3.05f;
-	// At high altitude, keep at least this fraction of fog density so terrain does not
+	// Atmospheric flight: slight veil over baseline environment fog (was 3.05f and read as heavy).
+	float const s_atmoFogDensityBoost    = 1.25f;
+	// At high altitude, keep at least this fraction of (boosted) fog so terrain does not
 	// "pop" clear when viewed from above (previously faded to 0 above s_atmoFogFadeEndHeight).
-	float const s_atmoFogHighAltitudeMinFraction = 0.7f;
+	float const s_atmoFogHighAltitudeMinFraction = 0.5f;
 
 	bool suppressTerrainFogForAtmosphericShip ()
 	{
@@ -1761,8 +1761,7 @@ void GroundEnvironment::draw () const
 			float const fadeT = (heightRange > 0.001f)
 				? clamp (0.0f, (altitudeAboveTerrain - s_atmoFogFadeStartHeight) / heightRange, 1.0f)
 				: 0.0f;
-			// Keep a strong veil over terrain at all flight altitudes; do not multiply
-			// fog toward zero when high (that exposed terrain from the air).
+			// Ease off toward high altitude but keep some density so terrain does not snap clear.
 			float const altitudeScale = ::linearInterpolate (1.0f, s_atmoFogHighAltitudeMinFraction, fadeT);
 			fogDensity *= altitudeScale;
 		}

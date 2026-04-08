@@ -22,6 +22,7 @@
 #include "sharedFoundation/CrcLowerString.h"
 #include "sharedFoundation/ConstCharCrcLowerString.h"
 #include "sharedObject/Object.h"
+#include "sharedObject/Appearance.h"
 
 #include <vector>
 
@@ -402,7 +403,7 @@ void CompositeMesh::applySkeletonModifications(Skeleton &skeleton) const
 
 // ----------------------------------------------------------------------
 
-void CompositeMesh::addShaderPrimitives(Appearance &appearance, int lodIndex, const TransformNameMap &transformNameMap, ShaderPrimitiveVector &shaderPrimitives) const
+void CompositeMesh::addShaderPrimitives(Appearance &appearance, int lodIndex, const TransformNameMap &transformNameMap, ShaderPrimitiveVector &shaderPrimitives, bool restrictHologramShaderToOwnerMeshGenerators) const
 {
 	NOT_NULL(m_meshGenerators);
 
@@ -441,6 +442,18 @@ void CompositeMesh::addShaderPrimitives(Appearance &appearance, int lodIndex, co
 		ShaderPrimitiveVector::size_type const primitiveCountBefore = shaderPrimitives.size();
 		meshGenerator->addShaderPrimitives(appearance, lodIndex, it->m_customizationData, transformNameMap, zonesCurrentlyOccluded, zonesOccludedByThisLayer, shaderPrimitives);
 		ShaderPrimitiveVector::size_type const primitiveCountAfter = shaderPrimitives.size();
+
+		if (restrictHologramShaderToOwnerMeshGenerators && primitiveCountBefore < primitiveCountAfter)
+		{
+			Object const *const appearanceOwner = appearance.getOwner();
+			bool const layerIsOwnerBody = (it->m_sourceObject == appearanceOwner);
+			for (ShaderPrimitiveVector::size_type i = primitiveCountBefore; i < primitiveCountAfter; ++i)
+			{
+				SoftwareBlendSkeletalShaderPrimitive *const sbs = shaderPrimitives[i]->asSoftwareBlendSkeletalShaderPrimitive();
+				if (sbs)
+					sbs->setHologramShaderPrepareToViewOverrideEnabled(layerIsOwnerBody);
+			}
+		}
 
 		if (s_applyRemoteTextureToCompositePrimitive && it->m_sourceObject && primitiveCountBefore < primitiveCountAfter)
 		{

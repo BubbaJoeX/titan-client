@@ -51,6 +51,9 @@ public:
 	virtual void                setSkinningMode(SkinningMode skinningMode);
 	virtual bool                isReady() const;
 
+	/// When the skeletal hologram override is active in body-only mode, return false to keep the primitive's normal shader.
+	virtual bool                shouldApplyHologramShaderPrepareToViewOverride() const;
+
 	virtual bool                collide(const Vector &start_o, const Vector &end_o, CollisionInfo &result) const;
 
 	virtual SoftwareBlendSkeletalShaderPrimitive       *asSoftwareBlendSkeletalShaderPrimitive();

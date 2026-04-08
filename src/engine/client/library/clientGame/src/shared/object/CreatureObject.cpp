@@ -574,6 +574,7 @@ CreatureObject::CreatureObject(const SharedCreatureObjectTemplate * const newTem
 	m_difficulty(static_cast<unsigned char>(D_normal)),
 	m_commands(),
 	m_hologramType(-1),
+	m_hologramAffectsWearables(true),
 	m_visibleOnMapAndRadar(true),
 	m_isAiming(false),
 	m_lookAtYaw(0.0f),
@@ -623,6 +624,7 @@ CreatureObject::CreatureObject(const SharedCreatureObjectTemplate * const newTem
 	m_coverVisibility.setSourceObject(this);
 	m_totalLevelXp.setSourceObject(this);
 	m_hologramType.setSourceObject(this);
+	m_hologramAffectsWearables.setSourceObject(this);
 	m_visibleOnMapAndRadar.setSourceObject(this);
 	m_suppressTemplateClientDataFile.setSourceObject(this);
 	m_authoritativeClientAnimationAction.setSourceObject(this);
@@ -683,6 +685,7 @@ CreatureObject::CreatureObject(const SharedCreatureObjectTemplate * const newTem
 	addSharedVariable_np(m_clientUsesAnimationLocomotion);
 	addSharedVariable_np(m_difficulty);
 	addSharedVariable_np(m_hologramType);
+	addSharedVariable_np(m_hologramAffectsWearables);
 	addSharedVariable_np(m_visibleOnMapAndRadar);
 	addSharedVariable_np(m_isBeast);
 	addSharedVariable_np(m_forceShowHam);
@@ -2795,6 +2798,15 @@ void CreatureObject::Callbacks::HologramTypeChanged::modified(CreatureObject &ta
 		}
 		skeletalAppearance->setHologramType(static_cast<SkeletalAppearance2::HologramType>(holoType));
 	}
+}
+
+// ----------------------------------------------------------------------
+
+void CreatureObject::Callbacks::HologramAffectsWearablesChanged::modified(CreatureObject &target, const bool &, const bool &value, bool) const
+{
+	SkeletalAppearance2 *const skeletalAppearance = dynamic_cast<SkeletalAppearance2 *>(target.getAppearance());
+	if (skeletalAppearance)
+		skeletalAppearance->setHologramAffectsWearables(value);
 }
 
 void CreatureObject::Callbacks::VisibleOnMapAndRadarChanged::modified(CreatureObject &target, const bool &old, const bool &value, bool local) const 

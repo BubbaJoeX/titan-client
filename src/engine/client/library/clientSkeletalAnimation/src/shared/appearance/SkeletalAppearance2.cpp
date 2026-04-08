@@ -189,6 +189,8 @@ namespace SkeletalAppearance2Namespace
 	typedef std::map<std::pair<ShaderTemplate const *, Texture const *>, StaticShader *> OverrideShaderMap;
 	OverrideShaderMap ms_overrideShaderMap;
 
+	bool ms_restrictHologramShaderOverrideToBodyPrimitives = false;
+
 	StaticShader const & prepareToViewOverrideFunction(ShaderPrimitive const & shaderPrimitive)
 	{
 		Tag const TAG_NHOL = TAG(N,H,O,L);
@@ -202,6 +204,9 @@ namespace SkeletalAppearance2Namespace
 		// //  have these option set - nhol == no blue glowie/hologram - will cause artifacting if a swoosh goes through this
 		if (ms_currentOverrideShaderTemplate && !shaderPrimitiveShader.hasOptionTag(TAG_NHOL))
 		{
+			if (ms_restrictHologramShaderOverrideToBodyPrimitives && !shaderPrimitive.shouldApplyHologramShaderPrepareToViewOverride())
+				return shaderPrimitiveShader;
+
 			//DEBUG_WARNING(true, ("shader template %s", shaderPrimitiveShader.getStaticShaderTemplate().getName().getString()));
 			//-- Extract MAIN from the existing shader primitive and set it in the override shader
 			Tag const TAG_MAIN = TAG(M,A,I,N);
@@ -1060,6 +1065,7 @@ SkeletalAppearance2::SkeletalAppearance2(const SkeletalAppearanceTemplate *newAp
 	m_isHolonet(false),
     m_hologramType(SkeletalAppearance2::HT_none),
 	m_blackHologramFrame(0),
+	m_hologramAffectsWearables(true),
 	m_runtimeOverrideActive(false),
 	m_runtimeOverrideTag(),
 	m_runtimeOverrideTexture(0),
@@ -1579,6 +1585,8 @@ void SkeletalAppearance2::render() const
 			ms_currentOverrideShaderTemplate = m_blueGlowieShaderTemplate;
 			ms_currentOverrideBumpShaderTemplate = m_blueGlowieBumpShaderTemplate;
 
+			ms_restrictHologramShaderOverrideToBodyPrimitives = false;
+
 			//- Set up as override
 			ShaderPrimitiveSorter::setPrepareToViewOverrideFunction(prepareToViewOverrideFunction);
 		}
@@ -1604,6 +1612,8 @@ void SkeletalAppearance2::render() const
 			ms_currentOverrideShaderTemplate = m_holoShaderTemplate[holoShaderIndex];
 			ms_currentOverrideBumpShaderTemplate = m_holoShaderTemplate[holoShaderIndex];
 
+			ms_restrictHologramShaderOverrideToBodyPrimitives = !m_hologramAffectsWearables;
+
 			//- Set up as override
 			ShaderPrimitiveSorter::setPrepareToViewOverrideFunction(prepareToViewOverrideFunction);
 		}
@@ -1618,6 +1628,8 @@ void SkeletalAppearance2::render() const
 
 			ms_currentOverrideShaderTemplate = m_holonetShaderTemplate;
 			ms_currentOverrideBumpShaderTemplate = m_holonetBumpShaderTemplate;
+
+			ms_restrictHologramShaderOverrideToBodyPrimitives = false;
 
             //- Set up as override
 			ShaderPrimitiveSorter::setPrepareToViewOverrideFunction(prepareToViewOverrideFunction);
@@ -1863,6 +1875,7 @@ void SkeletalAppearance2::render() const
 		{
 			ms_currentOverrideShaderTemplate = 0;
 			ms_currentOverrideBumpShaderTemplate = 0;
+			ms_restrictHologramShaderOverrideToBodyPrimitives = false;
 			ShaderPrimitiveSorter::setPrepareToViewOverrideFunction(0);
 		}
 		//- Turn off holonet shader override
@@ -1870,6 +1883,7 @@ void SkeletalAppearance2::render() const
 		{
 			ms_currentOverrideShaderTemplate = 0;
 			ms_currentOverrideBumpShaderTemplate = 0;
+			ms_restrictHologramShaderOverrideToBodyPrimitives = false;
 			ShaderPrimitiveSorter::setPrepareToViewOverrideFunction(0);
 		}
 	}
@@ -2248,7 +2262,8 @@ void SkeletalAppearance2::rebuildMesh(int lodIndex)
 		unsigned long const spBytesAllocatedBefore = MemoryManager::getCurrentNumberOfBytesAllocated();
 #endif
 
-		compositeMesh.addShaderPrimitives(*this, lodIndex, skeleton->getTransformNameMap(), workingShaderPrimitives);
+		bool const restrictHologramShaderToOwnerMesh = (m_hologramType != HT_none) && !m_hologramAffectsWearables;
+		compositeMesh.addShaderPrimitives(*this, lodIndex, skeleton->getTransformNameMap(), workingShaderPrimitives, restrictHologramShaderToOwnerMesh);
 
 		// Stop tracking memory usage.
 #ifdef _DEBUG
@@ -4633,6 +4648,7 @@ void SkeletalAppearance2::setIsBlueGlowie(bool b)
 
 void SkeletalAppearance2::setHologramType(HologramType holoType)
 {
+	HologramType const previous = m_hologramType;
 	m_hologramType = holoType;
 	switch(m_hologramType)
 	{
@@ -4660,6 +4676,20 @@ void SkeletalAppearance2::setHologramType(HologramType holoType)
 		m_blackHologramFrame = 0;
 		break;
 	};
+
+	if (previous != m_hologramType)
+		markAsDirty();
+}
+
+//----------------------------------------------------------------------
+
+void SkeletalAppearance2::setHologramAffectsWearables(bool affectsWearables)
+{
+	if (m_hologramAffectsWearables == affectsWearables)
+		return;
+
+	m_hologramAffectsWearables = affectsWearables;
+	markAsDirty();
 }
 
 //----------------------------------------------------------------------

@@ -190,6 +190,13 @@ bool ShaderPrimitive::isReady() const
 
 // ----------------------------------------------------------------------
 
+bool ShaderPrimitive::shouldApplyHologramShaderPrepareToViewOverride() const
+{
+	return true;
+}
+
+// ----------------------------------------------------------------------
+
 bool ShaderPrimitive::collide(const Vector & /*start_o*/, const Vector & /*end_o*/, CollisionInfo & /*result*/) const
 {
 	return false;

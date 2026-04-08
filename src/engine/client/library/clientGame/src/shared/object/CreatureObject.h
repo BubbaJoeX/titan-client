@@ -188,6 +188,8 @@ public:
 
 		struct HologramTypeChanged;
 
+		struct HologramAffectsWearablesChanged;
+
 		struct VisibleOnMapAndRadarChanged;
 
 		struct SuppressTemplateClientDataFileChanged;
@@ -489,6 +491,7 @@ public:
 	Difficulty getDifficulty() const;
 	
 	int32 getHologramType() const;
+	bool getHologramAffectsWearables() const;
 
 	bool getVisibleOnMapAndRadar() const;
 
@@ -558,6 +561,7 @@ private:
 		typedef DefaultCallback<Messages::TotalLevelXpChanged, int>                 TotalLevelXpChanged;
 		typedef DefaultCallback<Messages::LevelChanged, int>                        LevelChanged;
 		typedef DefaultCallback<Messages::HologramTypeChanged, int32> HologramTypeChanged;
+		typedef DefaultCallback<Messages::HologramAffectsWearablesChanged, bool> HologramAffectsWearablesChanged;
 		typedef DefaultCallback<Messages::VisibleOnMapAndRadarChanged, bool> VisibleOnMapAndRadarChanged;
 		typedef DefaultCallback<Messages::SuppressTemplateClientDataFileChanged, bool> SuppressTemplateClientDataFileChanged;
 		typedef DefaultCallback<Messages::AuthoritativeClientAnimationActionChanged, std::string> AuthoritativeClientAnimationActionChanged;
@@ -710,6 +714,7 @@ private:
 	friend Callbacks::VisualPostureChanged;
 	friend Callbacks::SuppressTemplateClientDataFileChanged;
 	friend Callbacks::AuthoritativeClientAnimationActionChanged;
+	friend Callbacks::HologramAffectsWearablesChanged;
 
 	Archive::AutoDeltaVariableCallback<int8, Callbacks::VisualPostureChanged, CreatureObject>  m_visualPosture;        ///< The posture currently displayed for the mobile.
 	Archive::AutoDeltaVariableCallback<int8, Callbacks::ServerPostureChanged, CreatureObject>  m_serverPosture;        ///< The posture of the mobile on the server.
@@ -822,6 +827,7 @@ private:
 	Watcher<ShadowBlobObject>                                                  m_shadowBlob;
 
 	Archive::AutoDeltaVariableCallback<int32,Callbacks::HologramTypeChanged, CreatureObject> m_hologramType;
+	Archive::AutoDeltaVariableCallback<bool,Callbacks::HologramAffectsWearablesChanged, CreatureObject> m_hologramAffectsWearables;
 
 	Archive::AutoDeltaVariableCallback<bool,Callbacks::VisibleOnMapAndRadarChanged, CreatureObject> m_visibleOnMapAndRadar;
 	
@@ -1256,6 +1262,13 @@ inline unsigned long CreatureObject::getLastWaterDamageTimeMs()
 inline int32 CreatureObject::getHologramType() const
 {
 	return m_hologramType.get();
+}
+
+// ----------------------------------------------------------------------
+
+inline bool CreatureObject::getHologramAffectsWearables() const
+{
+	return m_hologramAffectsWearables.get();
 }
 
 // ----------------------------------------------------------------------

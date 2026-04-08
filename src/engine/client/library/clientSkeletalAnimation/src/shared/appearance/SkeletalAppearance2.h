@@ -303,6 +303,9 @@ public:
 	};
 	void setHologramType(HologramType holoType);
 	HologramType getHologramType() const;
+
+	void setHologramAffectsWearables(bool affectsWearables);
+	bool getHologramAffectsWearables() const;
     
     static const int m_maxShaderSize = 9;
 	bool isWearing(Object const * object);
@@ -483,6 +486,7 @@ private:
 	bool                                      m_isHolonet;
 	HologramType							  m_hologramType;
 	int32									  m_blackHologramFrame;
+	bool									  m_hologramAffectsWearables;
 
 	bool                                      m_runtimeOverrideActive;
 	Tag                                       m_runtimeOverrideTag;
@@ -667,6 +671,13 @@ inline bool SkeletalAppearance2::getIsHolonet() const
 inline SkeletalAppearance2::HologramType SkeletalAppearance2::getHologramType() const
 {
 	return m_hologramType;
+}
+
+//----------------------------------------------------------------------
+
+inline bool SkeletalAppearance2::getHologramAffectsWearables() const
+{
+	return m_hologramAffectsWearables;
 }
 
 // ==================================================================

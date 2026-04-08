@@ -378,7 +378,8 @@ SoftwareBlendSkeletalShaderPrimitive::SoftwareBlendSkeletalShaderPrimitive(class
 	m_haveRepresentativeColor(false),
 	m_representativeColor(PackedArgb::solidGray),
 	m_boxExtent(),
-	m_everyOtherFrameSkinningEnabled(false)
+	m_everyOtherFrameSkinningEnabled(false),
+	m_hologramShaderPrepareToViewOverrideEnabled(true)
 {
 	DEBUG_FATAL(!ms_installed, ("SoftwareBlendSkeletalShaderPrimitive not installed"));
 
@@ -448,6 +449,13 @@ int SoftwareBlendSkeletalShaderPrimitive::getVertexBufferSortKey() const
 const StaticShader &SoftwareBlendSkeletalShaderPrimitive::prepareToView() const
 {
 	return m_shader->prepareToView();
+}
+
+// ----------------------------------------------------------------------
+
+bool SoftwareBlendSkeletalShaderPrimitive::shouldApplyHologramShaderPrepareToViewOverride() const
+{
+	return m_hologramShaderPrepareToViewOverrideEnabled;
 }
 
 // ----------------------------------------------------------------------

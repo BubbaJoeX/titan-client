@@ -59,6 +59,7 @@ public:
 	virtual float               getDepthSquaredSortKey() const;
 	virtual int                 getVertexBufferSortKey() const;
 	virtual const StaticShader &prepareToView() const;
+	virtual bool                shouldApplyHologramShaderPrepareToViewOverride() const;
 	virtual void                prepareToDraw() const;
 	virtual void                draw() const;
 	virtual void                setCustomizationData(CustomizationData *customizationData);
@@ -79,6 +80,9 @@ public:
 
 	void                        setEveryOtherFrameSkinningEnabled(bool enabled);
 	bool                        getEveryOtherFrameSkinningEnabled() const;
+
+	void                        setHologramShaderPrepareToViewOverrideEnabled(bool enabled);
+	bool                        getHologramShaderPrepareToViewOverrideEnabled() const;
 
 public:
 
@@ -159,6 +163,7 @@ private:
 	bool                    m_hasDot3Vector;
 
 	bool                    m_everyOtherFrameSkinningEnabled;
+	bool                    m_hologramShaderPrepareToViewOverrideEnabled;
 	mutable bool            m_haveRepresentativeColor;
 	mutable PackedArgb      m_representativeColor;
 
@@ -192,6 +197,20 @@ inline const Shader &SoftwareBlendSkeletalShaderPrimitive::getShader() const
 inline float SoftwareBlendSkeletalShaderPrimitive::getRadius() const
 {
 	return m_boxExtent.getSphere().getRadius();
+}
+
+// ----------------------------------------------------------------------
+
+inline void SoftwareBlendSkeletalShaderPrimitive::setHologramShaderPrepareToViewOverrideEnabled(bool enabled)
+{
+	m_hologramShaderPrepareToViewOverrideEnabled = enabled;
+}
+
+// ----------------------------------------------------------------------
+
+inline bool SoftwareBlendSkeletalShaderPrimitive::getHologramShaderPrepareToViewOverrideEnabled() const
+{
+	return m_hologramShaderPrepareToViewOverrideEnabled;
 }
 
 // ======================================================================

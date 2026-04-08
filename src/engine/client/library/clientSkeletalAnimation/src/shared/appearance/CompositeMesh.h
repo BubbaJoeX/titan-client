@@ -72,7 +72,7 @@ public:
 
 	// mesh construction
 	void                      applySkeletonModifications(Skeleton &skeleton) const;
-	void                      addShaderPrimitives(Appearance &appearance, int lodIndex, const TransformNameMap &transformNameMap, ShaderPrimitiveVector &shaderPrimitives) const;
+	void                      addShaderPrimitives(Appearance &appearance, int lodIndex, const TransformNameMap &transformNameMap, ShaderPrimitiveVector &shaderPrimitives, bool restrictHologramShaderToOwnerMeshGenerators = false) const;
 
 private:
 
