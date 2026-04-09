@@ -32,6 +32,7 @@
 #include "clientUserInterface/CuiWidget3dObjectListViewer.h"
 #include "sharedObject/Container.h"
 #include "sharedObject/ContainedByProperty.h"
+#include "sharedObject/ObjectTemplate.h"
 #include "clientGame/ContainerInterface.h"
 #include "sharedFoundation/ConstCharCrcString.h"
 #include "sharedFoundation/CrcLowerString.h"
@@ -45,11 +46,37 @@
 
 #include <ctime>
 #include <cstdio>
+#include <cstring>
 
 //-----------------------------------------------------------------
 
 namespace SwgCuiMissionDetailsNamespace
 {
+	const char * const s_bountySilhouetteTemplates[] =
+	{
+		"object/mobile/shared_dressed_noble_human_female_01.iff",
+		"object/mobile/shared_dressed_noble_human_female_02.iff",
+		"object/mobile/shared_dressed_noble_old_human_female_02.iff"
+	};
+
+	Object * createBountySilhouette(int difficulty)
+	{
+		int index = difficulty;
+		if (index < 0)
+			index = 0;
+		index %= (sizeof(s_bountySilhouetteTemplates) / sizeof(s_bountySilhouetteTemplates[0]));
+		return ObjectTemplate::createObject(s_bountySilhouetteTemplates[index]);
+	}
+
+	bool isItemBountyAppearance(uint32 crc)
+	{
+		ConstCharCrcString ccs = ObjectTemplateList::lookUp(crc);
+		char const * const name = ccs.getString();
+		if (!name)
+			return false;
+		return (strstr(name, "object/tangible/") != 0) || (strstr(name, "object/weapon/") != 0) || (strstr(name, "object/armor/") != 0);
+	}
+
 	namespace MissionType
 	{
 		enum Id
@@ -589,7 +616,30 @@ void SwgCuiMissionDetails::setBountyDetails (const ClientMissionObject & details
 {
 	UIPage * namePage = m_pageBounty;
 	setSharedDetails(namePage, details);
-	addTargetToDetails(namePage, details, false);
+
+	bool const itemBountyVisual = SwgCuiMissionDetailsNamespace::isItemBountyAppearance(details.getTargetAppearanceCrc());
+	if (!itemBountyVisual)
+	{
+		// Player bounty terminals should present anonymized silhouettes, not rotating
+		// target icons/avatars, to preserve hunt identity progression.
+		if (m_target)
+			delete m_target;
+		Object * const silhouetteObject = SwgCuiMissionDetailsNamespace::createBountySilhouette(details.getDifficulty());
+		m_target = dynamic_cast<ClientObject *>(silhouetteObject);
+		if (!m_target)
+			delete silhouetteObject;
+		if (m_target)
+			m_target->endBaselines();
+
+		m_viewer->setRotateSpeed(0.0f);
+		addTargetToDetails(namePage, details, false);
+		namePage->SetProperty(UILowerString("target.text"), CuiStringIdsMission::unknown_target.localize());
+	}
+	else
+	{
+		m_viewer->setRotateSpeed(0.0f);
+		addTargetToDetails(namePage, details, false);
+	}
 
 	//set the location as unknown
 	namePage->SetProperty (UILowerString ("location.text"), CuiStringIdsMission::unknown_planet.localize());
@@ -692,6 +742,7 @@ void SwgCuiMissionDetails::showDetailsPage(UIPage* page)
 void SwgCuiMissionDetails::setDetails (const ClientMissionObject & details)
 {
 	SwgCuiMissionDetailsNamespace::s_detailsType = SwgCuiMissionDetailsNamespace::DT_ClientMissionObject;
+	m_viewer->setRotateSpeed(1.0f);
 
 	Container* c = ContainerInterface::getContainer(const_cast<ClientMissionObject & >(details));
 	if(!c)

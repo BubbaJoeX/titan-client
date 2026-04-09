@@ -104,6 +104,7 @@ private:
 	bool                                objectCanGoInSlot      (const ClientObject & obj, int slotNum, int & slotContents, int & slotMaxContents, int & optionIndex);
 
 	void                                updateSchematicText          ();
+	void                                exportBomToSystemMessages    (int quantity) const;
 	void                                updateQualityBar       (int i);
 
 	SwgCuiInventoryContainer *			getActiveContainer     ();

@@ -50,7 +50,12 @@
 #include "sharedObject/NetworkIdManager.h"
 #include "sharedObject/VolumeContainer.h"
 #include "sharedRandom/Random.h"
+#include "sharedUtility/CurrentUserOptionManager.h"
+#include <algorithm>
+#include <cstdlib>
+#include <sstream>
 #include <vector>
+#include <set>
 
 //- this stuff is for testing clientside hoppers
 #include "sharedObject/SlotIdManager.h"
@@ -184,8 +189,47 @@ namespace
 	bool                        s_customizationSet = false;
 	bool                        s_canManufacture = true;
 	bool                        s_isBioLinked = false;
+	std::set<uint32>            s_favoriteDraftSchematics;
+	std::string                 s_favoriteDraftSchematicsPacked;
 
 	Unicode::String             s_localizedAssemblyResult;
+	const char * const          s_optionSection = "ClientUserInterface/Crafting";
+	const char * const          s_optionFavorites = "favoriteDraftSchematics";
+
+	void loadFavoriteDraftSchematics()
+	{
+		s_favoriteDraftSchematics.clear();
+		if (s_favoriteDraftSchematicsPacked.empty())
+			return;
+
+		std::stringstream stream(s_favoriteDraftSchematicsPacked);
+		std::string token;
+		while (std::getline(stream, token, ','))
+		{
+			if (token.empty())
+				continue;
+
+			char * endptr = 0;
+			unsigned long value = strtoul(token.c_str(), &endptr, 10);
+			if (endptr && *endptr == '\0')
+				s_favoriteDraftSchematics.insert(static_cast<uint32>(value));
+		}
+	}
+
+	void storeFavoriteDraftSchematics()
+	{
+		std::ostringstream stream;
+		bool first = true;
+		for (std::set<uint32>::const_iterator it = s_favoriteDraftSchematics.begin(); it != s_favoriteDraftSchematics.end(); ++it)
+		{
+			if (!first)
+				stream << ",";
+			stream << *it;
+			first = false;
+		}
+
+		s_favoriteDraftSchematicsPacked = stream.str();
+	}
 
 	//----------------------------------------------------------------------
 
@@ -418,6 +462,8 @@ void CuiCraftManager::install ()
 {
 	DEBUG_FATAL (s_installed, ("installed"));
 	s_callback.connect (s_callback, &MyCallback::onManfSchemReady,             static_cast<ManufactureSchematicObject::Messages::Ready *>     (0));
+	CurrentUserOptionManager::registerOption(s_favoriteDraftSchematicsPacked, s_optionSection, s_optionFavorites);
+	loadFavoriteDraftSchematics();
 
 	s_listener = new Listener;
 	s_installed = true;
@@ -429,6 +475,7 @@ void CuiCraftManager::remove ()
 {
 	DEBUG_FATAL (!s_installed, ("not installed"));
 	s_callback.disconnect (s_callback, &MyCallback::onManfSchemReady,             static_cast<ManufactureSchematicObject::Messages::Ready *>     (0));
+	storeFavoriteDraftSchematics();
 
 	delete s_listener;
 	s_listener = 0;
@@ -1885,6 +1932,85 @@ bool CuiCraftManager::isCraftingStartCommand(uint32 commandHash)
 void CuiCraftManager::abortCraftingStart()
 {
 	s_listener->cancelRequest (MessageBoxes::requestStartCrafting );
+}
+
+//----------------------------------------------------------------------
+
+bool CuiCraftManager::isSchematicFavorite(uint32 serverCrc)
+{
+	return s_favoriteDraftSchematics.find(serverCrc) != s_favoriteDraftSchematics.end();
+}
+
+//----------------------------------------------------------------------
+
+bool CuiCraftManager::toggleSchematicFavorite(uint32 serverCrc)
+{
+	if (serverCrc == 0)
+		return false;
+
+	if (isSchematicFavorite(serverCrc))
+		s_favoriteDraftSchematics.erase(serverCrc);
+	else
+		s_favoriteDraftSchematics.insert(serverCrc);
+
+	storeFavoriteDraftSchematics();
+	CurrentUserOptionManager::save();
+
+	return isSchematicFavorite(serverCrc);
+}
+
+//----------------------------------------------------------------------
+
+void CuiCraftManager::getSchematicFavorites(stdvector<uint32>::fwd & outServerCrcs)
+{
+	outServerCrcs.clear();
+	outServerCrcs.reserve(s_favoriteDraftSchematics.size());
+	for (std::set<uint32>::const_iterator it = s_favoriteDraftSchematics.begin(); it != s_favoriteDraftSchematics.end(); ++it)
+		outServerCrcs.push_back(*it);
+}
+
+//----------------------------------------------------------------------
+
+bool CuiCraftManager::buildBomForCurrentDraft(int quantity, BomEntryVector & outEntries)
+{
+	outEntries.clear();
+	if (quantity < 1)
+		quantity = 1;
+
+	ManufactureSchematicObject const * const manfSchematic = getManufactureSchematic();
+	if (!manfSchematic)
+		return false;
+
+	for (SlotVector::const_iterator it = s_slotVector.begin(); it != s_slotVector.end(); ++it)
+	{
+		Slot const & slot = *it;
+		Crafting::IngredientSlot ingredientSlot;
+		if (!manfSchematic->getIngredient(slot.name, ingredientSlot))
+			continue;
+
+		int optionIndex = ingredientSlot.draftSlotOption;
+		if (optionIndex < 0 || optionIndex >= static_cast<int>(slot.options.size()))
+			continue;
+
+		Slot::Option const & option = slot.options[static_cast<size_t>(optionIndex)];
+		int requiredCount = option.amountNeeded * quantity;
+		int currentCount = 0;
+		for (Crafting::Ingredients::const_iterator ingredientIter = ingredientSlot.ingredients.begin(); ingredientIter != ingredientSlot.ingredients.end(); ++ingredientIter)
+			currentCount += (*ingredientIter)->count;
+		currentCount *= quantity;
+
+		BomEntry entry;
+		entry.slotName = slot.name;
+		entry.ingredientName = option.ingredient;
+		entry.ingredientType = option.type;
+		entry.requiredCount = requiredCount;
+		entry.currentCount = currentCount;
+		entry.missingCount = std::max(0, requiredCount - currentCount);
+		entry.optional = slot.optional;
+		outEntries.push_back(entry);
+	}
+
+	return !outEntries.empty();
 }
 
 //======================================================================

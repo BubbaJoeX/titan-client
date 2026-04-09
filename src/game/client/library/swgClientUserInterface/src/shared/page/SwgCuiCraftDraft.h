@@ -130,7 +130,7 @@ private:
 	typedef stdmap<InternalGameTypeData, SchematicDataVector>::fwd SchematicDataMap;
 	typedef stdmap<InternalCategoryData, SchematicDataMap>::fwd    SchematicCategoryMap;
 	
-	static UIDataSourceContainer * populateGameTypeDraftData (const SchematicDataVector & sdv, UIDataSourceContainer & dsc_gameType, const uint32 match_crc);
+	static UIDataSourceContainer * populateGameTypeDraftData (const SchematicDataVector & sdv, UIDataSourceContainer & dsc_gameType, const uint32 match_crc, bool showAll);
 
 	SchematicCategoryMap *      m_schematics;
 

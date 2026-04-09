@@ -44,6 +44,17 @@ public:
 	typedef stdvector<SchematicData>::fwd              SchematicVector;
 	typedef stdvector<std::pair<int, int> >::fwd       IntPairVector;
 	typedef stdvector<int>::fwd                        IntVector;
+	struct BomEntry
+	{
+		StringId                   slotName;
+		Unicode::String            ingredientName;
+		Crafting::IngredientType   ingredientType;
+		int                        requiredCount;
+		int                        currentCount;
+		int                        missingCount;
+		bool                       optional;
+	};
+	typedef stdvector<BomEntry>::fwd                   BomEntryVector;
 
 	//----------------------------------------------------------------------
 	
@@ -199,6 +210,11 @@ public:
 
 	static bool isCraftingStartCommand(uint32 commandHash);
 	static void CuiCraftManager::abortCraftingStart();
+
+	static bool                               isSchematicFavorite                    (uint32 serverCrc);
+	static bool                               toggleSchematicFavorite                (uint32 serverCrc);
+	static void                               getSchematicFavorites                  (stdvector<uint32>::fwd & outServerCrcs);
+	static bool                               buildBomForCurrentDraft                (int quantity, BomEntryVector & outEntries);
 
 
 private:

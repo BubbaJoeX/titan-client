@@ -80,6 +80,9 @@ namespace RtCameraManagerNamespace
 
 	// Helper to collect all RT screen objects for exclusion
 	void updateRtScreenExclusionList();
+
+	// Remove RT texture override from a screen appearance.
+	void clearScreenTextureOverride(NetworkId const & screenId);
 }
 
 using namespace RtCameraManagerNamespace;
@@ -296,6 +299,9 @@ bool RtCameraManager::unregisterFeed(NetworkId const& cameraId)
 	FeedMap::iterator it = s_feeds->find(cameraId);
 	if (it == s_feeds->end())
 		return false;
+
+	// Release any screen-side reference to this feed texture before destroying it.
+	clearScreenTextureOverride(it->second.screenObjectId);
 
 	// Release render texture
 	if (it->second.renderTexture)
@@ -516,16 +522,17 @@ void RtCameraManager::renderSingleFeed(RtCameraFeed& feed)
 	// Set the RT camera as active (required for renderScene to work)
 	s_rtCamera->setActive(true);
 
-	// Configure the RenderWorldCamera
-	s_rtCamera->setTransform_o2p(feed.cameraTransform);
-
-	// Set the camera to the same cell as the camera object (required for proper cell/terrain rendering)
+	// Put the render camera in the same parent cell as the RT camera object.
+	// For interior cells, transforms must be in object-to-parent(cell) space (player-style behavior).
 	CellProperty* cameraCell = cameraObject->getParentCell();
 	if (!cameraCell)
-	{
 		cameraCell = CellProperty::getWorldCellProperty();
-	}
 	s_rtCamera->setParentCell(cameraCell);
+
+	Transform const cameraTransform = (cameraCell == CellProperty::getWorldCellProperty())
+		? cameraObject->getTransform_o2w()
+		: cameraObject->getTransform_o2p();
+	s_rtCamera->setTransform_o2p(cameraTransform);
 
 	// Set camera parameters
 	float const aspectRatio = 1.0f;  // Square texture
@@ -712,6 +719,24 @@ void RtCameraManager::handleRtCameraFeedMessage(NetworkId const& cameraId, Netwo
 
 namespace RtCameraManagerNamespace
 {
+	void clearScreenTextureOverride(NetworkId const & screenId)
+	{
+		Object * const screenObject = NetworkIdManager::getObjectById(screenId);
+		if (!screenObject)
+			return;
+
+		Appearance * const appearance = screenObject->getAppearance();
+		if (!appearance)
+			return;
+
+		Tag const TAG_MAIN = TAG(M,A,I,N);
+		Texture const * const defaultTexture = TextureList::fetchDefaultTexture();
+		if (!defaultTexture)
+			return;
+
+		appearance->setTexture(TAG_MAIN, *defaultTexture);
+		defaultTexture->release();
+	}
 
 	void updateRtScreenExclusionList()
 	{
@@ -764,6 +789,9 @@ void RtCameraManager::lostDevice()
 	for (FeedMap::iterator it = s_feeds->begin(); it != s_feeds->end(); ++it)
 	{
 		RtCameraFeed& feed = it->second;
+
+		// Ensure no appearance/shader still references this render target during Reset().
+		clearScreenTextureOverride(feed.screenObjectId);
 
 		// Save info for restore
 		FeedRestoreInfo info;

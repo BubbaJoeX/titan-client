@@ -30,6 +30,7 @@
 #include "clientUserInterface/CuiMessageBox.h"
 #include "clientUserInterface/CuiStringIdsCraft.h"
 #include "clientUserInterface/CuiStringTables.h"
+#include "clientUserInterface/CuiSystemMessageManager.h"
 #include "sharedFoundation/ConstCharCrcString.h"
 #include "sharedFoundation/FormattedString.h"
 #include "sharedGame/GameObjectTypes.h"
@@ -253,6 +254,22 @@ bool SwgCuiCraftDraft::OnMessage( UIWidget * context, const UIMessage & msg)
 				}
 			}
 		}
+		else if (msg.Type == UIMessage::RightMouseUp)
+		{
+			const long row = m_treeView->GetLastSelectedRow();
+			const UIDataSourceContainer * const dsc = m_treeView->GetDataSourceContainerAtRow(row);
+			int32 serverCrc = 0;
+			if (dsc && dsc->GetPropertyLong(Properties::CrcServer, serverCrc) && serverCrc > 0)
+			{
+				bool const isNowFavorite = CuiCraftManager::toggleSchematicFavorite(static_cast<uint32>(serverCrc));
+				CuiSystemMessageManager::sendFakeSystemMessage(
+					isNowFavorite ?
+						Unicode::narrowToWide("Added draft schematic to favorites.") :
+						Unicode::narrowToWide("Removed draft schematic from favorites."));
+				resetCategory();
+				return false;
+			}
+		}
 	}
 
 	return true;
@@ -369,6 +386,7 @@ void SwgCuiCraftDraft::resetCategory ()
 	const int activeTab = m_tabs->GetActiveTab ();
 
 	UIDataSourceContainer * dsc_toSelect = 0;
+	bool const showAll = (m_checkShowAll && m_checkShowAll->IsChecked());
 
 	if (activeTab >= 0)
 	{
@@ -410,11 +428,13 @@ void SwgCuiCraftDraft::resetCategory ()
 
 					const SchematicDataVector & sdv = (*tit).second;
 
-					UIDataSourceContainer * const pop = populateGameTypeDraftData (sdv, *dsc_gameType, lastSchematicSelectedForCategory);
+					UIDataSourceContainer * const pop = populateGameTypeDraftData (sdv, *dsc_gameType, lastSchematicSelectedForCategory, showAll);
 					if (pop && !dsc_toSelect)
 						dsc_toSelect = pop;
-
-					dsc_tree->AddChild (dsc_gameType);
+					if (dsc_gameType->GetChildCount() > 0)
+						dsc_tree->AddChild (dsc_gameType);
+					else
+						dsc_gameType->Detach(0);
 				}
 			}
 		}
@@ -515,7 +535,7 @@ void SwgCuiCraftDraft::OnCheckboxUnset           (UIWidget * context)
 
 //----------------------------------------------------------------------
 
-UIDataSourceContainer * SwgCuiCraftDraft::populateGameTypeDraftData (const SchematicDataVector & sdv, UIDataSourceContainer & dsc_gameType, const uint32 match_crc)
+UIDataSourceContainer * SwgCuiCraftDraft::populateGameTypeDraftData (const SchematicDataVector & sdv, UIDataSourceContainer & dsc_gameType, const uint32 match_crc, bool showAll)
 {
 	typedef stdmultimap<Unicode::String, UIDataSourceContainer *>::fwd AlphabetizedDraftData;
 	AlphabetizedDraftData add;
@@ -525,12 +545,18 @@ UIDataSourceContainer * SwgCuiCraftDraft::populateGameTypeDraftData (const Schem
 	for (SchematicDataVector::const_iterator dit = sdv.begin (); dit != sdv.end (); ++dit)
 	{
 		const InternalSchematicData & internalSchematicData = *dit;
+		bool const isFavorite = CuiCraftManager::isSchematicFavorite(internalSchematicData.crc.first);
+		if (!showAll && !isFavorite)
+			continue;
 		
 		UIDataSourceContainer * const dsc_draft = new UIDataSourceContainer;
 		dsc_draft->SetName            (ObjectTemplateList::lookUp(internalSchematicData.crc.second).getString());
 		dsc_draft->SetPropertyLong    (Properties::CrcServer,                 internalSchematicData.crc.first);
 		dsc_draft->SetPropertyLong    (Properties::CrcShared,                 internalSchematicData.crc.second);
-		dsc_draft->SetProperty        (UITreeView::DataProperties::LocalText, internalSchematicData.displayName);
+		Unicode::String localizedName = internalSchematicData.displayName;
+		if (isFavorite)
+			localizedName = Unicode::narrowToWide("* ") + localizedName;
+		dsc_draft->SetProperty        (UITreeView::DataProperties::LocalText, localizedName);
 		dsc_draft->SetPropertyInteger (Properties::Index,                     internalSchematicData.index);
 		
 		add.insert (std::make_pair (internalSchematicData.displayName, dsc_draft));

@@ -9,6 +9,7 @@
 #include "clientUserInterface/CuiObjectTextManager.h"
 
 #include "clientGame/BuildingObject.h"
+#include "clientGame/CellObject.h"
 #include "clientGame/ClientWorld.h"
 #include "clientGame/ContainerInterface.h"
 #include "clientGame/CreatureObject.h"
@@ -49,6 +50,7 @@
 #include "sharedMessageDispatch/Receiver.h"
 #include "sharedNetworkMessages/SceneChannelMessages.h"
 #include "sharedObject/CellProperty.h"
+#include "sharedObject/Portal.h"
 #include "swgSharedUtility/States.def"
 
 #include "UIBaseObject.h"
@@ -60,6 +62,7 @@
 
 #include <algorithm>
 #include <list>
+#include <set>
 
 //======================================================================
 
@@ -67,6 +70,107 @@
 
 namespace CuiObjectTextManagerNamespace
 {
+	float const s_apartmentBarrierLabelRange = 96.0f;
+	float const s_apartmentBarrierLabelHeightOffset = 1.25f;
+	UIColor const s_apartmentBarrierLabelColor(47, 214, 214);
+
+	bool isApartmentBarrierLabel(Unicode::String const & label)
+	{
+		if (label.empty())
+			return false;
+		std::string const narrowLabel = Unicode::wideToNarrow(label);
+		return (narrowLabel == "VACANT") || (narrowLabel == "PUBLIC") || (narrowLabel.find("Owner: ") == 0);
+	}
+
+	void enqueueApartmentBarrierLabel(
+		Camera const & camera,
+		Vector const & worldPosition,
+		Unicode::String const & label)
+	{
+		Vector projected;
+		if (!camera.projectInWorldSpace(worldPosition, &projected.x, &projected.y, &projected.z, false))
+			return;
+
+		CuiTextManager::TextEnqueueInfo info;
+		info.screenVect = projected;
+		info.worldDistance = camera.getPosition_w().magnitudeBetween(worldPosition);
+		info.backgroundOpacity = 0.0f;
+		info.textColor = s_apartmentBarrierLabelColor;
+		info.opacity = 1.0f;
+		info.textWeight = CuiTextManager::TextEnqueueInfo::TW_heavy;
+		info.id = NetworkId::cms_invalid;
+		info.updateOffset = false;
+		CuiTextManager::enqueueText(label, info);
+	}
+
+	void drawApartmentBarrierLabelsForCell(
+		Camera const & camera,
+		CellProperty const & sourceCell,
+		std::set<Portal const *> & visitedPortals)
+	{
+		Vector const cameraPos = camera.getPosition_w();
+		float const maxRangeSquared = s_apartmentBarrierLabelRange * s_apartmentBarrierLabelRange;
+
+		int const portalObjectCount = sourceCell.getNumberOfPortalObjects();
+		for (int portalObjectIndex = 0; portalObjectIndex < portalObjectCount; ++portalObjectIndex)
+		{
+			CellProperty::PortalObjectEntry const & portalObject = sourceCell.getPortalObject(portalObjectIndex);
+			if (!portalObject.portalList)
+				continue;
+
+			CellProperty::PortalList const & portalList = *portalObject.portalList;
+			for (CellProperty::PortalList::const_iterator portalIt = portalList.begin(); portalIt != portalList.end(); ++portalIt)
+			{
+				Portal const * const portal = *portalIt;
+				if (!portal)
+					continue;
+
+				Portal const * const neighborPortal = portal->getNeighbor();
+				if (!neighborPortal)
+					continue;
+
+				Portal const * const canonical = (portal < neighborPortal) ? portal : neighborPortal;
+				if (visitedPortals.find(canonical) != visitedPortals.end())
+					continue;
+				visitedPortals.insert(canonical);
+
+				CellProperty const * const destinationCell = neighborPortal->getParentCell();
+				if (!destinationCell || destinationCell == CellProperty::getWorldCellProperty())
+					continue;
+
+				Object const & destinationCellObject = destinationCell->getOwner();
+				CellObject const * const destinationClientCell = dynamic_cast<CellObject const *>(&destinationCellObject);
+				if (!destinationClientCell)
+					continue;
+
+				Unicode::String const & label = destinationClientCell->getCellLabel();
+				if (!isApartmentBarrierLabel(label))
+					continue;
+
+				Object const * const doorObject = portal->getDoorObject();
+				if (!doorObject)
+					continue;
+
+				Vector labelPosition = doorObject->getPosition_w();
+				if (labelPosition.magnitudeBetweenSquared(cameraPos) > maxRangeSquared)
+					continue;
+
+				labelPosition.y += s_apartmentBarrierLabelHeightOffset;
+				enqueueApartmentBarrierLabel(camera, labelPosition, label);
+			}
+		}
+	}
+
+	void drawApartmentBarrierLabels(Camera const & camera)
+	{
+		CellProperty const * const currentCell = camera.getParentCell();
+		if (!currentCell)
+			return;
+
+		std::set<Portal const *> visitedPortals;
+		drawApartmentBarrierLabelsForCell(camera, *currentCell, visitedPortals);
+	}
+
 	class HeadFramePair
 	{
 	public:
@@ -670,6 +774,8 @@ void CuiObjectTextManager::getObjectFullName(Unicode::String & name, const Clien
 
 void CuiObjectTextManager::drawObjectLabels(Camera const & camera)
 {
+	drawApartmentBarrierLabels(camera);
+
 	// Get frame time.
 	float const frameTime = Clock::frameTime();
 

@@ -42,6 +42,7 @@
 #include "clientUserInterface/CuiMessageBox.h"
 #include "clientUserInterface/CuiStringIds.h"
 #include "clientUserInterface/CuiStringIdsCraft.h"
+#include "clientUserInterface/CuiSystemMessageManager.h"
 #include "clientUserInterface/CuiWidget3dObjectListViewer.h"
 #include "sharedGame/SharedObjectTemplate.h"
 #include "sharedMessageDispatch/Transceiver.h"
@@ -58,6 +59,7 @@
 #include "swgClientUserInterface/SwgCuiMediatorTypes.h"
 
 #include <list>
+#include <sstream>
 
 
 //======================================================================
@@ -73,6 +75,18 @@ namespace SwgCuiCraftAssemblyNamespace
 		const UILowerString IconSlotValid         = UILowerString ("IconSlotValid"); 
 		const UILowerString IconSlotValidBlocked  = UILowerString ("IconSlotValidblocked"); 
 		const UILowerString IconSlotInvalid       = UILowerString ("IconSlotInvalid"); 
+	}
+
+	Unicode::String buildBomSummaryLine(CuiCraftManager::BomEntry const & entry)
+	{
+		std::ostringstream narrow;
+		narrow << (entry.optional ? "[Opt] " : "[Req] ");
+		narrow << Unicode::wideToNarrow(entry.slotName.localize()) << ": ";
+		narrow << Unicode::wideToNarrow(entry.ingredientName) << " ";
+		narrow << entry.currentCount << "/" << entry.requiredCount;
+		if (entry.missingCount > 0)
+			narrow << " (missing " << entry.missingCount << ")";
+		return Unicode::narrowToWide(narrow.str());
 	}
 }
 
@@ -392,6 +406,7 @@ m_currentDraftSchematic         ()
 	registerMediatorObject (*m_tabs,                true);
 	registerMediatorObject (*m_buttonBack,          true);
 	registerMediatorObject (*m_buttonNext,          true);
+	registerMediatorObject (*m_textDesc,            true);
 	registerMediatorObject (*m_pageUnloadInventory, true);
 	registerMediatorObject (*m_pageUnloadHopper,    true);
 	registerMediatorObject (*m_checkFilter,         true);
@@ -956,6 +971,17 @@ bool SwgCuiCraftAssembly::OnMessage( UIWidget *context, const UIMessage & msg )
 					}
 				}
 			}
+		}
+	}
+
+	//----------------------------------------------------------------------
+
+	else if (msg.Type == UIMessage::RightMouseUp)
+	{
+		if (context == m_buttonNext || context == m_textDesc)
+		{
+			exportBomToSystemMessages(1);
+			return false;
 		}
 	}
 	
@@ -1781,11 +1807,41 @@ void SwgCuiCraftAssembly::updateSchematicText(void)
 					str += desc;
 					str.push_back ('\n');
 					str += attribs;
+
+					CuiCraftManager::BomEntryVector bomEntries;
+					if (CuiCraftManager::buildBomForCurrentDraft(1, bomEntries) && !bomEntries.empty())
+					{
+						str.push_back('\n');
+						str += Unicode::narrowToWide("\nBOM (loaded/required):");
+						for (CuiCraftManager::BomEntryVector::const_iterator it = bomEntries.begin(); it != bomEntries.end(); ++it)
+						{
+							str.push_back('\n');
+							str += buildBomSummaryLine(*it);
+						}
+					}
 					m_textDesc->SetLocalText (str);
 				}
 			}
 		}
 	}
+}
+
+//----------------------------------------------------------------------
+
+void SwgCuiCraftAssembly::exportBomToSystemMessages(int quantity) const
+{
+	CuiCraftManager::BomEntryVector bomEntries;
+	if (!CuiCraftManager::buildBomForCurrentDraft(quantity, bomEntries) || bomEntries.empty())
+	{
+		CuiSystemMessageManager::sendFakeSystemMessage(Unicode::narrowToWide("No BOM data available."));
+		return;
+	}
+
+	std::ostringstream header;
+	header << "BOM export (qty " << quantity << "):";
+	CuiSystemMessageManager::sendFakeSystemMessage(Unicode::narrowToWide(header.str()));
+	for (CuiCraftManager::BomEntryVector::const_iterator it = bomEntries.begin(); it != bomEntries.end(); ++it)
+		CuiSystemMessageManager::sendFakeSystemMessage(buildBomSummaryLine(*it));
 }
 
 //----------------------------------------------------------------------
