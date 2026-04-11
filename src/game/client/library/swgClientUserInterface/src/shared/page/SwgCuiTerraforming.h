@@ -19,8 +19,8 @@ class UIButton;
 class UICheckbox;
 class UIComboBox;
 class UIImage;
-class UIList;
 class UIPage;
+class UITreeView;
 class UISliderbar;
 class UIText;
 class UITextbox;
@@ -80,12 +80,17 @@ public:
 		float centerX;
 		float centerZ;
 		float radius;
+		bool active;
+		int32 cityId;
 	};
 
 public:
 	explicit SwgCuiTerraforming(UIPage & page);
 
 	static SwgCuiTerraforming * createInto(UIPage & parent);
+
+	// Re-register layer-manager hooks when the terrain painter reclaims the primary callback.
+	static void restoreLayerManagerHooksIfTerraformingActive();
 
 	void setCityId(int32 cityId);
 	int32 getCityId() const { return m_cityId; }
@@ -137,7 +142,10 @@ private:
 	void refreshRegionList();
 	void deleteSelectedRegion();
 	void deleteAllRegions();
+	void suspendSelectedRegion();
+	void resumeSelectedRegion();
 	void updateRegionInfo();
+	void updateRegionActionButtons();
 
 	// Reset terrain
 	void showResetTerrainConfirmation();
@@ -167,7 +175,10 @@ private:
 		float centerX, float centerZ, float radius, float endX, float endZ,
 		float width, float height, float blendDistance);
 
-	void sendTerrainRemove(const std::string & regionId);
+	void sendTerrainRemove(int32 cityId, const std::string & regionId);
+
+	int getSelectedRegionIndex() const;
+	int32 getCityIdForRegionMessage() const;
 
 	// Generate unique region ID
 	std::string generateRegionId() const;
@@ -243,7 +254,9 @@ private:
 	UIButton * m_buttonAffectorApply;
 
 	// Regions tab
-	UIList * m_listRegions;
+	UITreeView * m_treeRegions;
+	UIButton * m_buttonRegionSuspend;
+	UIButton * m_buttonRegionResume;
 	UIButton * m_buttonRegionDelete;
 	UIButton * m_buttonRegionDeleteAll;
 	UIText * m_textRegionInfo;
@@ -280,6 +293,8 @@ private:
 
 	// Static callback for region changes
 	static void onRegionChangeCallback(int32 cityId);
+	static void onServerTerrainRegionsChanged(int32 cityId);
+	static void onOpenTerraformingWhileAlreadyActive();
 	static SwgCuiTerraforming * ms_activeInstance;
 
 	// Static state preservation

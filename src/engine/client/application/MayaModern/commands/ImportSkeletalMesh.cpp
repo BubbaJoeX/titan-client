@@ -2,6 +2,7 @@
 #include "ImportPathResolver.h"
 #include "ImportLodMesh.h"
 #include "MayaSceneBuilder.h"
+#include "SwgTrtsIo.h"
 #include "Iff.h"
 #include "Tag.h"
 
@@ -306,6 +307,8 @@ MStatus ImportSkeletalMesh::doIt(const MArgList& args)
     occlusionLayer          = iff.read_int16();
     iff.exitChunk(TAG_INFO);
 
+    std::vector<SwgTrtsIo::Header> trtsAccum;
+
     {
         MString msg = "ImportSkeletalMesh: INFO pos=";
         msg += static_cast<int>(positionCount);
@@ -559,7 +562,14 @@ MStatus ImportSkeletalMesh::doIt(const MArgList& args)
         if (iff.getCurrentName() == TAG_TRTS)
         {
             iff.enterForm(TAG_TRTS);
-            iff.exitForm(TAG_TRTS);
+            std::string terr;
+            if (!SwgTrtsIo::consumeTrtsFromEnteredForm(iff, trtsAccum, terr))
+            {
+                MGlobal::displayError(MString("ImportSkeletalMesh: TRTS: ") + terr.c_str());
+                iff.exitForm(versionTag);
+                iff.exitForm(TAG_SKMG);
+                return MS::kFailure;
+            }
             continue;
         }
         iff.enterForm();
@@ -740,7 +750,14 @@ MStatus ImportSkeletalMesh::doIt(const MArgList& args)
             if (iff.getNumberOfBlocksLeft() > 0 && iff.isCurrentForm() && iff.getCurrentName() == TAG_TRTS)
             {
                 iff.enterForm(TAG_TRTS);
-                iff.exitForm(TAG_TRTS);
+                std::string terr;
+                if (!SwgTrtsIo::consumeTrtsFromEnteredForm(iff, trtsAccum, terr))
+                {
+                    MGlobal::displayError(MString("ImportSkeletalMesh: TRTS: ") + terr.c_str());
+                    iff.exitForm(versionTag);
+                    iff.exitForm(TAG_SKMG);
+                    return MS::kFailure;
+                }
             }
             iff.exitForm(versionTag);
             iff.exitForm(TAG_SKMG);
@@ -761,7 +778,14 @@ MStatus ImportSkeletalMesh::doIt(const MArgList& args)
     if (iff.getNumberOfBlocksLeft() > 0 && iff.isCurrentForm() && iff.getCurrentName() == TAG_TRTS)
     {
         iff.enterForm(TAG_TRTS);
-        iff.exitForm(TAG_TRTS);
+        std::string terr;
+        if (!SwgTrtsIo::consumeTrtsFromEnteredForm(iff, trtsAccum, terr))
+        {
+            MGlobal::displayError(MString("ImportSkeletalMesh: TRTS: ") + terr.c_str());
+            iff.exitForm(versionTag);
+            iff.exitForm(TAG_SKMG);
+            return MS::kFailure;
+        }
     }
 
     iff.exitForm(versionTag);
@@ -820,6 +844,13 @@ MStatus ImportSkeletalMesh::doIt(const MArgList& args)
                     sel.getDagPath(0, meshPath);
             }
         }
+    }
+
+    {
+        MDagPath trtsTransformPath = meshPath;
+        if (trtsTransformPath.hasFn(MFn::kMesh))
+            trtsTransformPath.pop(1);
+        SwgTrtsIo::applyBindingsToTransform(trtsTransformPath, trtsAccum, inputFilename.c_str());
     }
 
     status = MayaSceneBuilder::assignMaterials(meshPath, shaderGroups, inputFilename);

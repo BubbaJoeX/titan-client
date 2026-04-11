@@ -2972,27 +2972,34 @@ void SwgCuiChatWindow::fontSizeIncrementAllWindows(int increment)
 
 void SwgCuiChatWindow::onChatFontSizeChanged()
 {
-	Game::SceneType const sceneType = Game::getHudSceneType();
+	CuiFontSizer::SizeVector const & sv = ConfigClientUserInterface::getChatWindowFontSizes ();
+	if (sv.empty ())
+		return;
 
-	for (ChatWindowSet::iterator it = ms_activeChatWindows[sceneType].begin(); it != ms_activeChatWindows[sceneType].end(); ++it)
+	for (int st = 0; st < Game::ST_numTypes; ++st)
 	{
-		SwgCuiChatWindow * const chatWindow = NON_NULL(*it);
-		if (chatWindow && chatWindow->isRootChatWindow()) 
+		for (ChatWindowSet::iterator it = ms_activeChatWindows[st].begin (); it != ms_activeChatWindows[st].end (); ++it)
 		{
-			CuiFontSizer::SizeVector const & sv = ConfigClientUserInterface::getChatWindowFontSizes();
-			
-			const int sizeIndex = CuiChatManager::getChatWindowFontSizeDefaultIndex();
+			SwgCuiChatWindow * const chatWindow = NON_NULL (*it);
+			if (!chatWindow || !chatWindow->m_outputBox)
+				continue;
+
+			int sizeIndex = 0;
+			IGNORE_RETURN (chatWindow->m_outputBox->GetPropertyInteger (CuiFontSizer::Properties::FontIndex, sizeIndex));
+			if (sizeIndex < 0 || sizeIndex >= static_cast<int>(sv.size ()))
+				sizeIndex = std::max (0, std::min (static_cast<int>(sv.size ()) - 1, CuiChatManager::getChatWindowFontSizeDefaultIndex ()));
+
 			int size = 0;
-			UITextStyle * const textStyle = CuiFontSizer::getTextStyle(*(chatWindow->m_outputBox), sv, std::string(), sizeIndex, size);
-			
+			UITextStyle * const textStyle = CuiFontSizer::getTextStyle (*(chatWindow->m_outputBox), sv, std::string (), sizeIndex, size);
+
 			if (textStyle)
 			{
-				chatWindow->m_outputBox->SetStyle(textStyle);
-				chatWindow->m_outputBox->SetPropertyInteger(CuiFontSizer::Properties::FontIndex, sizeIndex);
-				chatWindow->m_outputBox->SetPropertyInteger(CuiFontSizer::Properties::FontSize, size);
+				chatWindow->m_outputBox->SetStyle (textStyle);
+				chatWindow->m_outputBox->SetPropertyInteger (CuiFontSizer::Properties::FontIndex, sizeIndex);
+				chatWindow->m_outputBox->SetPropertyInteger (CuiFontSizer::Properties::FontSize,  size);
 			}
 			else
-				WARNING(true,("SwgCuiChatWindow tried to default text style to null"));
+				WARNING (true, ("SwgCuiChatWindow tried to set null text style on font refresh"));
 		}
 	}
 }

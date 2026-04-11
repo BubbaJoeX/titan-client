@@ -17,8 +17,10 @@
 #include "clientUserInterface/CuiActionManager.h"
 #include "clientUserInterface/CuiActions.h"
 #include "clientUserInterface/CuiIoWin.h"
+#include "clientUserInterface/CuiDynamicUIFont.h"
 #include "clientUserInterface/CuiManager.h"
 #include "clientUserInterface/IMEManager.h"
+#include "UITextStyleManager.h"
 #include "clientUserInterface/CuiVoiceChatManager.h"
 #include "sharedFoundation/Production.h"
 #include "sharedGame/CombatDataTable.h"
@@ -54,6 +56,8 @@ namespace
 	bool        ms_autoJoinChatRoomOnCreate         = true;
 	float       ms_objectNameRange                  = 0.0f;
 	float       ms_hudOpacity                       = 0.0f;
+	int         ms_uiScalePercent                 = 100;
+	int         ms_uiFontScalePercent             = 100;
 	float       ms_flyTextSize                      = 1.0f;
 	bool        ms_confirmObjDelete                 = true;
 	float       ms_tooltipDelaySecs                 = 0.0f;
@@ -79,6 +83,7 @@ namespace
 	float       ms_firstPersonameraInertia          = 0.0f;
 	float       ms_objectNameFontSizeFactor         = 1.0f;
 	std::string ms_paletteName                      = "";
+	std::string ms_uiDefaultFontFaceUtf8            = "";
 
 	bool        ms_drawObjectNamesPlayers           = false;
 	bool        ms_drawObjectNamesGroup             = false;
@@ -489,6 +494,8 @@ void CuiPreferences::install ()
 	ms_autoJoinChatRoomOnCreate         = ConfigClientUserInterface::getAutoJoinChatRoomOnCreate ();
 	ms_objectNameRange                  = ConfigClientUserInterface::getObjectNameRange ();
 	ms_hudOpacity                       = ConfigClientUserInterface::getHudOpacity ();
+	ms_uiScalePercent                   = ConfigClientUserInterface::getUiScalePercent ();
+	ms_uiFontScalePercent               = ConfigClientUserInterface::getUiFontScalePercent ();
 	ms_flyTextSize                      = 1.0f;
 	ms_confirmObjDelete                 = ConfigClientUserInterface::getConfirmObjDelete ();
 	ms_tooltipDelaySecs                 = ConfigClientUserInterface::getTooltipDelaySecs ();
@@ -801,6 +808,9 @@ void CuiPreferences::install ()
 
 	REGISTER_OPTION_USER(paletteName);
 	REGISTER_OPTION_USER(hudOpacity);
+	REGISTER_OPTION_USER(uiScalePercent);
+	REGISTER_OPTION_USER(uiFontScalePercent);
+	REGISTER_OPTION_USER(uiDefaultFontFaceUtf8);
 	REGISTER_OPTION_USER(flyTextSize);
 	REGISTER_OPTION_USER(modalChat[Game::ST_ground]);
 	REGISTER_OPTION_USER(modalChat[Game::ST_space]);
@@ -1189,6 +1199,37 @@ void CuiPreferences::setHudOpacity (float f)
 
 //----------------------------------------------------------------------
 
+void CuiPreferences::setUiScalePercent (int percent)
+{
+	if (percent < 50)
+		percent = 50;
+	else if (percent > 300)
+		percent = 300;
+	if (percent == ms_uiScalePercent)
+		return;
+	ms_uiScalePercent = percent;
+	CuiManager::scheduleUiScaleLayoutUpdate ();
+}
+
+//----------------------------------------------------------------------
+
+void CuiPreferences::setUiFontScalePercent (int percent)
+{
+	if (percent < 50)
+		percent = 50;
+	else if (percent > 200)
+		percent = 200;
+	if (percent == ms_uiFontScalePercent)
+		return;
+	ms_uiFontScalePercent = percent;
+	if (UITextStyleManager::GetInstance ())
+		UITextStyleManager::GetInstance ()->setFontScalePercent (percent);
+	CuiDynamicUIFont::refreshAllUiText ();
+	CuiManager::scheduleUiScaleLayoutUpdate ();
+}
+
+//----------------------------------------------------------------------
+
 void CuiPreferences::setFlyTextSize (float f)
 {
 	ms_flyTextSize = f;
@@ -1564,6 +1605,46 @@ void CuiPreferences::signalKeybindingsChanged ()
 float CuiPreferences::getHudOpacity ()
 {
 	return ms_hudOpacity;
+}
+
+//----------------------------------------------------------------------
+
+int CuiPreferences::getUiScalePercent ()
+{
+	return ms_uiScalePercent;
+}
+
+//----------------------------------------------------------------------
+
+float CuiPreferences::getUiScaleFactor ()
+{
+	int p = ms_uiScalePercent;
+	if (p < 50)
+		p = 50;
+	else if (p > 300)
+		p = 300;
+	return static_cast<float>(p) / 100.0f;
+}
+
+//----------------------------------------------------------------------
+
+int CuiPreferences::getUiFontScalePercent ()
+{
+	return ms_uiFontScalePercent;
+}
+
+//----------------------------------------------------------------------
+
+std::string const & CuiPreferences::getUiDefaultFontFaceUtf8 ()
+{
+	return ms_uiDefaultFontFaceUtf8;
+}
+
+//----------------------------------------------------------------------
+
+void CuiPreferences::setUiDefaultFontFaceUtf8 (std::string const &utf8)
+{
+	ms_uiDefaultFontFaceUtf8 = utf8;
 }
 
 //----------------------------------------------------------------------

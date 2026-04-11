@@ -20,6 +20,7 @@
 #include "sharedGame/GameObjectTypes.h"
 #include "sharedGame/SharedCreatureObjectTemplate.h"
 #include "sharedObject/NetworkIdManager.h"
+#include "sharedObject/Object.h"
 
 //======================================================================
 
@@ -59,6 +60,7 @@ namespace
 		{ V_title,                     'K' },
 		{ V_digit,                     'D' },
 		{ V_networkId,                 'Z' },
+		{ V_adminTemplatePath,         'Y' },
 	};
 	
 	Variable  findVariable (Unicode::unicode_char_t c)
@@ -169,7 +171,7 @@ void CuiStringVariablesManager::process (const Unicode::String & encoded, const 
 		else if (ge != V_digit)
 			WARNING (true, ("CuiStringVariablesManager: Invalid participant code '%c' (in '%s') for message [%s]", participantCode, Unicode::wideToNarrow (code3).c_str (), Unicode::wideToNarrow (encoded).c_str ()));
 
-		if (!participant && participantNameOverride.empty () && ge != V_digit)
+		if (!participant && participantNameOverride.empty () && ge != V_digit && ge != V_networkId && ge != V_adminTemplatePath)
 		{
 			resultStr.append (code3);
 			pos = next + 3;
@@ -300,16 +302,41 @@ void CuiStringVariablesManager::process (const Unicode::String & encoded, const 
 			}
 		case V_networkId:
 			{
-			const CreatureObject* const playerCreature = dynamic_cast<const CreatureObject*> (data.source);
-				if (PlayerObject::isAdmin()) {
-					if (participantCode == 'U') {
-						resultStr.append(Unicode::narrowToWide(playerCreature->getNetworkId().getValueString().c_str()));
+				const CreatureObject * const playerCreature = dynamic_cast<const CreatureObject *> (data.source);
+				if (playerCreature && PlayerObject::isAdmin ())
+				{
+					if (participantCode == 'U')
+						resultStr.append (Unicode::narrowToWide (playerCreature->getNetworkId ().getValueString ().c_str ()));
+					else if (participantCode == 'T')
+						resultStr.append (Unicode::narrowToWide (playerCreature->getIntendedTarget ().getValueString ().c_str ()));
+				}
+			}
+			break;
+		case V_adminTemplatePath:
+			{
+				const CreatureObject * const playerCreature = dynamic_cast<const CreatureObject *> (data.source);
+				if (playerCreature && PlayerObject::isAdmin ())
+				{
+					const ClientObject * templateObject = 0;
+					if (participantCode == 'U')
+						templateObject = playerCreature;
+					else if (participantCode == 'T')
+					{
+						Object * const obj = NetworkIdManager::getObjectById (playerCreature->getIntendedTarget ());
+						templateObject = obj ? obj->asClientObject () : 0;
 					}
-					else if (participantCode == 'T') {
-						resultStr.append(Unicode::narrowToWide(playerCreature->getIntendedTarget().getValueString().c_str()));
+					else if (participantCode == 'O')
+						templateObject = data.other;
+
+					if (templateObject)
+					{
+						const char * const tn = templateObject->getTemplateName ();
+						if (tn)
+							resultStr.append (Unicode::narrowToWide (tn));
 					}
 				}
 			}
+			break;
 		}
 
 		//----------------------------------------------------------------------

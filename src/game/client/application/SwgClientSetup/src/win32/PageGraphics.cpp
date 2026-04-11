@@ -27,6 +27,7 @@ PageGraphics::PageGraphics() : CPropertyPage(PageGraphics::IDD)
 {
 	//{{AFX_DATA_INIT(PageGraphics)
 	m_lblGameResolution = _T("");
+	m_lblUiScale = _T("");
 	m_lblPixelShaderVersion = _T("");
 
 	m_lblWindowedMode = _T("");
@@ -63,6 +64,7 @@ void PageGraphics::DoDataExchange(CDataExchange* pDX)
 	//{{AFX_DATA_MAP(PageGraphics)
 
 	DDX_Text(pDX, IDC_LBL_GRAPH_GAME_RESOLUTION, m_lblGameResolution);
+	DDX_Text(pDX, IDC_LBL_GRAPH_UI_SCALE, m_lblUiScale);
 	DDX_Text(pDX, IDC_GRAPH_LBL_PIXEL_SHADER_VERSION, m_lblPixelShaderVersion);
 
 	DDX_Text(pDX, IDC_CHECK_WINDOWED_MODE, m_lblWindowedMode);
@@ -77,6 +79,7 @@ void PageGraphics::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_CHECK_USE_SAFE_RENDERER, m_lblUseSafeRenderer);
 
 	DDX_Control(pDX, IDC_RESOLUTION, m_resolution);
+	DDX_Control(pDX, IDC_UI_SCALE, m_uiScale);
 	DDX_Control(pDX, IDC_VERTEXPIXELSHADERVERSION, m_vertexPixelShaderVersion);
 	
 	DDX_Check(pDX, IDC_CHECK_WINDOWED_MODE, m_windowed);
@@ -97,6 +100,7 @@ void PageGraphics::DoDataExchange(CDataExchange* pDX)
 BEGIN_MESSAGE_MAP(PageGraphics, CPropertyPage)
 	//{{AFX_MSG_MAP(PageGraphics)
 	ON_CBN_SELCHANGE(IDC_RESOLUTION, OnSelchangeResolution)
+	ON_CBN_SELCHANGE(IDC_UI_SCALE, OnSelchangeUiScale)
 	ON_CBN_SELCHANGE(IDC_VERTEXPIXELSHADERVERSION, OnSelchangeVertexpixelshaderversion)
 
 	ON_BN_CLICKED(IDC_CHECK_WINDOWED_MODE, OnCheckWindowed)
@@ -118,6 +122,7 @@ void PageGraphics::initializeDialog()
 {
 
 	VERIFY(m_lblGameResolution.LoadString(IDS_GRAPHICS_GAME_RESOLUTION));
+	VERIFY(m_lblUiScale.LoadString(IDS_GRAPHICS_UI_SCALE));
 	VERIFY(m_lblPixelShaderVersion.LoadString(IDS_GRAPHICS_PIXEL_SHADER_VERSION));
 	VERIFY(m_lblWindowedMode.LoadString(IDS_GRAPHICS_WINDOWED_MODE));
 	VERIFY(m_lblBorderlessWindow.LoadString(IDS_GRAPHICS_BORDERLESS_WINDOW));
@@ -182,6 +187,28 @@ BOOL PageGraphics::OnInitDialog()
 
 		if (selection < ClientMachine::getNumberOfDisplayModes ())
 			m_resolution.SetCurSel (selection);
+	}
+
+	//-- UI scale (logical resolution; higher % = larger widgets)
+	{
+		static int const s_uiScalePercents[] = { 75, 100, 125, 150, 175, 200 };
+		int const configured = Options::getUiScalePercent ();
+		int selection = 0;
+		int bestDist = 100000;
+		for (int i = 0; i < sizeof(s_uiScalePercents) / sizeof(s_uiScalePercents[0]); ++i)
+		{
+			TCHAR buffer [32];
+			_stprintf (buffer, _T("%i%%"), s_uiScalePercents[i]);
+			int const item = m_uiScale.AddString (buffer);
+			m_uiScale.SetItemData (item, static_cast<DWORD>(s_uiScalePercents[i]));
+			int const d = abs (configured - s_uiScalePercents[i]);
+			if (d < bestDist)
+			{
+				bestDist = d;
+				selection = i;
+			}
+		}
+		m_uiScale.SetCurSel (selection);
 	}
 
 	//-- vertex and pixel shader version
@@ -360,6 +387,12 @@ void PageGraphics::applyOptions ()
 		Options::setFullScreenRefreshRate (ClientMachine::getDisplayModeRefreshRate (selection));
 	}
 
+	{
+		int const sel = m_uiScale.GetCurSel ();
+		if (sel != CB_ERR)
+			Options::setUiScalePercent (static_cast<int>(m_uiScale.GetItemData (sel)));
+	}
+
 	switch (m_vertexPixelShaderVersion.GetItemData (m_vertexPixelShaderVersion.GetCurSel ()))
 	{
 	case -1:  
@@ -399,6 +432,13 @@ void PageGraphics::applyOptions ()
 // ----------------------------------------------------------------------
 
 void PageGraphics::OnSelchangeResolution() 
+{
+	applyOptions ();
+}
+
+// ----------------------------------------------------------------------
+
+void PageGraphics::OnSelchangeUiScale() 
 {
 	applyOptions ();
 }

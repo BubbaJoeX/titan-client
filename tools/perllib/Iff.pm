@@ -248,16 +248,21 @@ sub fatal
 	my $self	= shift;
 	my $message = shift;
 
-	print "Iff:fatal@[";
+	my $detail = defined($message) ? $message : "<undefined>";
+
+	# Stderr only: STDOUT may be redirected (e.g. ACM collect); must not corrupt output.
+	print STDERR "Iff:fatal@[";
 
 	my $stackRef = $self->{stack};
 	foreach my $infoRef (@$stackRef)
 	{
-		print "$$infoRef[1]/";
+		print STDERR "$$infoRef[1]/";
 	}
 
-	printf "]: %s\n", defined($message) ? $message : "<undefined>";
-	exit -1;
+	printf STDERR "]: %s\n", $detail;
+
+	# Was exit -1 (255): that bypasses eval, so batch collectors cannot skip one bad asset.
+	die "Iff:fatal: $detail\n";
 }
 
 # ----------------------------------------------------------------------

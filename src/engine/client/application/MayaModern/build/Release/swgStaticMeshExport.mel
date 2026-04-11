@@ -1,0 +1,20 @@
+// SwgMayaEditor — programmatic prep for static mesh export (merged props, multi-shader, UVs).
+// Requires: loadPlugin SwgMayaEditor; setBaseDir ...
+//
+// One-shot: select two+ meshes (or transforms), then:
+//   swgStaticMeshCombineValidateExport;
+// That runs swgPrepareStaticMeshExport -combine -fixUvSet, then exportStaticMesh.
+//
+// Validate only (any selection count):
+//   swgStaticMeshValidateSelection;
+
+global proc swgStaticMeshCombineValidateExport()
+{
+    swgPrepareStaticMeshExport -combine -fixUvSet;
+    exportStaticMesh;
+}
+
+global proc swgStaticMeshValidateSelection()
+{
+    swgPrepareStaticMeshExport -validateOnly;
+}

@@ -25,6 +25,7 @@
 
 #include <cstdlib>
 #include <algorithm>
+#include <set>
 #include <string>
 #include <stdio.h>
 #include <vector>
@@ -499,6 +500,26 @@ bool TreeFile::exists(const char *fileName)
 #endif
 
 	return (find(fixedFileName) != NULL);
+}
+
+// ----------------------------------------------------------------------
+
+void TreeFile::collectVirtualPathNamesWithPrefixAndSuffix(char const * const prefix, char const * const suffix, std::vector<std::string> & out)
+{
+	DEBUG_FATAL(!ms_installed, ("TreeFile::collectVirtualPathNamesWithPrefixAndSuffix not installed"));
+
+	out.clear();
+	if (!prefix || !prefix[0] || !suffix || !suffix[0])
+		return;
+
+	char fixedPrefix[Os::MAX_PATH_LENGTH];
+	fixUpFileName(fixedPrefix, prefix, true);
+
+	std::set<std::string> seen;
+	ms_criticalSection.enter();
+	for (SearchNodes::iterator i = ms_searchNodes.begin(); i != ms_searchNodes.end(); ++i)
+		(*i)->collectVirtualPathNamesWithPrefixAndSuffix(fixedPrefix, suffix, out, seen);
+	ms_criticalSection.leave();
 }
 
 // ----------------------------------------------------------------------

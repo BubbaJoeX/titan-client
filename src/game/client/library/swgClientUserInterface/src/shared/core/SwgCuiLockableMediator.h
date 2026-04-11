@@ -35,12 +35,18 @@ public:
 	virtual void loadSizeLocation (bool doSize, bool doLocation);
 	virtual void saveSettings () const;
 
+	/// Extra content scale for this window (0.25–4). Composes after global UI scale (canvas transform).
+	void                       setWindowContentScaleFactor (float scaleFactor);
+	float                      getWindowContentScaleFactor () const;
+
 	void setDefaultWindowResizable(bool b);
 	void setDefaultWindowUserMovable(bool b);
 	void setDefaultWindowAcceptsChildMove(bool b);
 
 	void setPageToLock(UIPage * page);
 	void generateLockablePopup  (UIWidget * context, const UIMessage & msg);
+
+	void showWindowContentScaleDialog ();
 
 protected:
 	 

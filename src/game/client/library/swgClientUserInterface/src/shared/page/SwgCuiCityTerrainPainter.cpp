@@ -8,30 +8,171 @@
 
 #include "swgClientUserInterface/FirstSwgClientUserInterface.h"
 #include "swgClientUserInterface/SwgCuiCityTerrainPainter.h"
+#include "swgClientUserInterface/SwgCuiTerraforming.h"
 
 #include "clientGame/Game.h"
 #include "clientGame/GameNetwork.h"
 #include "clientTerrain/CityTerrainLayerManager.h"
+#include "clientGraphics/ShaderTemplateList.h"
+#include "clientGraphics/StaticShader.h"
+#include "clientGraphics/StaticShaderTemplate.h"
+#include "clientGraphics/Texture.h"
 #include "clientUserInterface/CuiManager.h"
 #include "clientUserInterface/CuiMessageBox.h"
 #include "sharedFile/TreeFile.h"
-#include "sharedMessageDispatch/Transceiver.h"
+#include "sharedFoundation/Tag.h"
 #include "sharedNetworkMessages/CityTerrainMessages.h"
 #include "sharedObject/Object.h"
 
+#include <cstdlib>
+#include <string>
+#include <vector>
+
 #include "UIButton.h"
+#include "UICheckbox.h"
 #include "UIComboBox.h"
 #include "UIData.h"
+#include "UIList.h"
 #include "UIImage.h"
 #include "UIMessage.h"
 #include "UIPage.h"
 #include "UISliderbar.h"
 #include "UIText.h"
 #include "UITextbox.h"
+#include "Unicode.h"
 
-#include <algorithm>
-#include <cstdlib>
-#include <ctime>
+// ======================================================================
+
+namespace
+{
+	bool syncSliderFromTextbox(UITextbox * const textbox, UISliderbar * const slider)
+	{
+		if (!textbox || !slider)
+			return false;
+
+		Unicode::String wide;
+		textbox->GetLocalText(wide);
+		std::string const narrow(Unicode::wideToNarrow(wide));
+		size_t const start = narrow.find_first_not_of(" \t");
+		if (start == std::string::npos)
+			return false;
+		size_t const end = narrow.find_last_not_of(" \t");
+		std::string const trimmed(narrow.substr(start, end - start + 1));
+		if (trimmed.empty() || trimmed == "-" || trimmed == "+")
+			return false;
+
+		char * endPtr = nullptr;
+		long const parsed = strtol(trimmed.c_str(), &endPtr, 10);
+		if (endPtr == trimmed.c_str())
+			return false;
+
+		long clamped = parsed;
+		long const lo = slider->GetLowerLimit();
+		long const hi = slider->GetUpperLimit();
+		if (clamped < lo)
+			clamped = lo;
+		if (clamped > hi)
+			clamped = hi;
+
+		slider->SetValue(clamped, false);
+
+		if (clamped != parsed)
+		{
+			char buf[32];
+			snprintf(buf, sizeof(buf), "%ld", clamped);
+			textbox->SetText(Unicode::narrowToWide(buf));
+		}
+
+		return true;
+	}
+
+	// Resolve a virtual TreeFile path suitable for UIImage::SetSourceResource (diffuse / first stage).
+	bool resolveShaderTextureForPreview(char const * const shaderTemplatePath, std::string & outTextureVirtualPath)
+	{
+		outTextureVirtualPath.clear();
+		if (!shaderTemplatePath || !shaderTemplatePath[0])
+			return false;
+
+		const Shader * const shader = ShaderTemplateList::fetchShader(shaderTemplatePath);
+		if (!shader)
+			return false;
+
+		const StaticShader & staticShader = shader->prepareToView();
+		{
+			static Tag const TAG_MAIN = TAG(M, A, I, N);
+			const Texture * tex = nullptr;
+			if (staticShader.getTexture(TAG_MAIN, tex) && tex)
+			{
+				char const * const n = tex->getName();
+				if (n && n[0])
+					outTextureVirtualPath.assign(n);
+			}
+
+			if (outTextureVirtualPath.empty())
+			{
+				std::vector<Tag> tags;
+				staticShader.getTextureTags(tags);
+				for (size_t i = 0; i < tags.size(); ++i)
+				{
+					tex = nullptr;
+					if (!staticShader.getTexture(tags[i], tex) || !tex)
+						continue;
+					char const * const n = tex->getName();
+					if (n && n[0])
+					{
+						outTextureVirtualPath.assign(n);
+						break;
+					}
+				}
+			}
+
+			if (outTextureVirtualPath.empty())
+			{
+				std::vector<Tag> tags;
+				staticShader.getTextureTags(tags);
+				for (size_t i = 0; i < tags.size(); ++i)
+				{
+					StaticShaderTemplate::TextureData td;
+					if (!staticShader.getTextureData(tags[i], td) || !td.texture)
+						continue;
+					char const * const n = td.texture->getName();
+					if (n && n[0])
+					{
+						outTextureVirtualPath.assign(n);
+						break;
+					}
+				}
+			}
+		}
+
+		shader->release();
+
+		if (!outTextureVirtualPath.empty() && TreeFile::exists(outTextureVirtualPath.c_str()))
+			return true;
+
+		outTextureVirtualPath.clear();
+		std::string base(shaderTemplatePath);
+		size_t slash = base.rfind('/');
+		if (slash != std::string::npos)
+			base = base.substr(slash + 1);
+		size_t dot = base.rfind('.');
+		if (dot != std::string::npos)
+			base = base.substr(0, dot);
+
+		static char const * const extensions[] = { ".dds", ".tga" };
+		for (int e = 0; e < 2; ++e)
+		{
+			std::string const candidate = std::string("texture/") + base + extensions[e];
+			if (TreeFile::exists(candidate.c_str()))
+			{
+				outTextureVirtualPath = candidate;
+				return true;
+			}
+		}
+
+		return false;
+	}
+}
 
 // ======================================================================
 
@@ -44,7 +185,9 @@ long SwgCuiCityTerrainPainter::ms_savedBlend = 5;
 long SwgCuiCityTerrainPainter::ms_savedWidth = 4;
 long SwgCuiCityTerrainPainter::ms_savedHeight = 0;
 long SwgCuiCityTerrainPainter::ms_savedFlattenRadius = 100;
+bool SwgCuiCityTerrainPainter::ms_savedShowTileGrid = false;
 bool SwgCuiCityTerrainPainter::ms_hasRestoredState = false;
+SwgCuiCityTerrainPainter * SwgCuiCityTerrainPainter::ms_activeInstance = 0;
 
 // ======================================================================
 
@@ -65,6 +208,7 @@ SwgCuiCityTerrainPainter::SwgCuiCityTerrainPainter(UIPage & page) :
 	m_textFlattenRadius(nullptr),
 	m_textInstructions(nullptr),
 	m_textStatus(nullptr),
+	m_listRegions(nullptr),
 	m_imagePreview(nullptr),
 	m_buttonApply(nullptr),
 	m_buttonCancel(nullptr),
@@ -73,6 +217,7 @@ SwgCuiCityTerrainPainter::SwgCuiCityTerrainPainter(UIPage & page) :
 	m_buttonClose(nullptr),
 	m_buttonUseCurrentHeight(nullptr),
 	m_buttonUseCityRadius(nullptr),
+	m_checkShowTileGrid(nullptr),
 	m_pageCircleOptions(nullptr),
 	m_pageLineOptions(nullptr),
 	m_pageFlattenOptions(nullptr),
@@ -87,7 +232,7 @@ SwgCuiCityTerrainPainter::SwgCuiCityTerrainPainter(UIPage & page) :
 	m_hasSecondMarker(false),
 	m_shaderTemplates(),
 	m_shaderNames(),
-	m_appliedRegionIds()
+	m_regionListRowIds()
 {
 	getCodeDataObject(TUIComboBox, m_comboShader, "comboShader", true);
 	getCodeDataObject(TUIComboBox, m_comboPaintMode, "comboPaintMode", true);
@@ -97,6 +242,7 @@ SwgCuiCityTerrainPainter::SwgCuiCityTerrainPainter(UIPage & page) :
 	getCodeDataObject(TUITextbox, m_textBlend, "textBlend", true);
 	getCodeDataObject(TUIText, m_textInstructions, "textInstructions", true);
 	getCodeDataObject(TUIText, m_textStatus, "textStatus", false);
+	getCodeDataObject(TUIList, m_listRegions, "listRegions", true);
 	getCodeDataObject(TUIImage, m_imagePreview, "imagePreview", false);
 	getCodeDataObject(TUIButton, m_buttonApply, "buttonApply", true);
 	getCodeDataObject(TUIButton, m_buttonCancel, "buttonCancel", true);
@@ -120,6 +266,7 @@ SwgCuiCityTerrainPainter::SwgCuiCityTerrainPainter(UIPage & page) :
 
 	// Close button
 	getCodeDataObject(TUIButton, m_buttonClose, "buttonClose", false);
+	getCodeDataObject(TUICheckbox, m_checkShowTileGrid, "checkShowTileGrid", false);
 
 	REPORT_LOG(true, ("[Titan] SwgCuiCityTerrainPainter: constructor - comboShader=%p, comboPaintMode=%p, buttonApply=%p, buttonClose=%p\n",
 		m_comboShader, m_comboPaintMode, m_buttonApply, m_buttonClose));
@@ -128,6 +275,8 @@ SwgCuiCityTerrainPainter::SwgCuiCityTerrainPainter(UIPage & page) :
 		registerMediatorObject(*m_buttonClose, true);
 	if (m_buttonUndo)
 		registerMediatorObject(*m_buttonUndo, true);
+	if (m_listRegions)
+		registerMediatorObject(*m_listRegions, true);
 
 	if (m_comboShader)
 		registerMediatorObject(*m_comboShader, true);
@@ -153,6 +302,19 @@ SwgCuiCityTerrainPainter::SwgCuiCityTerrainPainter(UIPage & page) :
 		registerMediatorObject(*m_buttonUseCurrentHeight, true);
 	if (m_buttonUseCityRadius)
 		registerMediatorObject(*m_buttonUseCityRadius, true);
+
+	if (m_textRadius)
+		registerMediatorObject(*m_textRadius, true);
+	if (m_textWidth)
+		registerMediatorObject(*m_textWidth, true);
+	if (m_textBlend)
+		registerMediatorObject(*m_textBlend, true);
+	if (m_textHeight)
+		registerMediatorObject(*m_textHeight, true);
+	if (m_textFlattenRadius)
+		registerMediatorObject(*m_textFlattenRadius, true);
+	if (m_checkShowTileGrid)
+		registerMediatorObject(*m_checkShowTileGrid, true);
 
 	// Setup paint mode combo
 	if (m_comboPaintMode)
@@ -204,6 +366,22 @@ SwgCuiCityTerrainPainter::SwgCuiCityTerrainPainter(UIPage & page) :
 		m_sliderFlattenRadius->SetUpperLimit(500);
 		m_sliderFlattenRadius->SetValue(100, false);
 	}
+
+	auto syncTextFromSlider = [](UISliderbar * const s, UITextbox * const t)
+	{
+		if (!s || !t)
+			return;
+		char buf[32];
+		snprintf(buf, sizeof(buf), "%ld", s->GetValue());
+		t->SetText(Unicode::narrowToWide(buf));
+	};
+	syncTextFromSlider(m_sliderRadius, m_textRadius);
+	syncTextFromSlider(m_sliderBlend, m_textBlend);
+	syncTextFromSlider(m_sliderWidth, m_textWidth);
+	syncTextFromSlider(m_sliderHeight, m_textHeight);
+	syncTextFromSlider(m_sliderFlattenRadius, m_textFlattenRadius);
+
+	updateRemoveRegionButtonState();
 }
 
 // ----------------------------------------------------------------------
@@ -224,6 +402,7 @@ SwgCuiCityTerrainPainter::~SwgCuiCityTerrainPainter()
 	m_textFlattenRadius = nullptr;
 	m_textInstructions = nullptr;
 	m_textStatus = nullptr;
+	m_listRegions = nullptr;
 	m_imagePreview = nullptr;
 	m_buttonApply = nullptr;
 	m_buttonCancel = nullptr;
@@ -232,6 +411,8 @@ SwgCuiCityTerrainPainter::~SwgCuiCityTerrainPainter()
 	m_buttonClose = nullptr;
 	m_buttonUseCurrentHeight = nullptr;
 	m_buttonUseCityRadius = nullptr;
+	m_checkShowTileGrid = nullptr;
+	m_pageCircleOptions = nullptr;
 	m_pageLineOptions = nullptr;
 	m_pageFlattenOptions = nullptr;
 }
@@ -241,6 +422,15 @@ SwgCuiCityTerrainPainter::~SwgCuiCityTerrainPainter()
 void SwgCuiCityTerrainPainter::performActivate()
 {
 	CuiMediator::performActivate();
+
+	ms_activeInstance = this;
+	if (CityTerrainLayerManager::isInstalled())
+	{
+		CityTerrainLayerManager::setRegionChangeCallback(&SwgCuiCityTerrainPainter::onCityRegionsChanged);
+		CityTerrainLayerManager::setPaintResponseCallback(&SwgCuiCityTerrainPainter::onPaintResponse);
+		CityTerrainLayerManager::setCityTerrainUiRefreshFn(&SwgCuiCityTerrainPainter::onServerTerrainRegionsChanged);
+		CityTerrainLayerManager::setOpenCityTerrainPainterAlreadyActiveFn(&SwgCuiCityTerrainPainter::onOpenCityTerrainPainterWhileAlreadyActive);
+	}
 
 	// Get city ID from CityTerrainLayerManager pending value
 	int32 pendingCityId = CityTerrainLayerManager::getPendingCityId();
@@ -267,6 +457,16 @@ void SwgCuiCityTerrainPainter::performActivate()
 	}
 
 	updatePreview();
+
+	// Pull authoritative regions from game server (objvars on city hall)
+	if (m_cityId != 0 && CityTerrainLayerManager::isInstalled())
+	{
+		CityTerrainSyncRequestMessage const syncMsg(m_cityId);
+		GameNetwork::send(syncMsg, true);
+	}
+
+	refreshRegionList();
+	syncPaintTileGridOverlay();
 }
 
 // ----------------------------------------------------------------------
@@ -275,6 +475,16 @@ void SwgCuiCityTerrainPainter::performDeactivate()
 {
 	// Save UI state before deactivating
 	saveUIState();
+	if (CityTerrainLayerManager::isInstalled())
+	{
+		CityTerrainLayerManager::setPaintTileGridOverlay(false, 0);
+		CityTerrainLayerManager::clearRegionChangeCallback();
+		CityTerrainLayerManager::clearPaintResponseCallback();
+		CityTerrainLayerManager::clearCityTerrainUiRefreshFn();
+		CityTerrainLayerManager::clearOpenCityTerrainPainterAlreadyActiveFn();
+	}
+	if (ms_activeInstance == this)
+		ms_activeInstance = 0;
 	CuiMediator::performDeactivate();
 }
 
@@ -292,7 +502,7 @@ void SwgCuiCityTerrainPainter::OnButtonPressed(UIWidget * context)
 	}
 	else if (context == m_buttonUndo)
 	{
-		undoLastModification();
+		removeSelectedRegion();
 	}
 	else if (context == m_buttonSetMarker)
 	{
@@ -385,6 +595,37 @@ void SwgCuiCityTerrainPainter::OnSliderbarChanged(UIWidget * context)
 
 // ----------------------------------------------------------------------
 
+void SwgCuiCityTerrainPainter::OnTextboxChanged(UIWidget * context)
+{
+	bool const didSync =
+		(context == m_textRadius && syncSliderFromTextbox(m_textRadius, m_sliderRadius)) ||
+		(context == m_textWidth && syncSliderFromTextbox(m_textWidth, m_sliderWidth)) ||
+		(context == m_textBlend && syncSliderFromTextbox(m_textBlend, m_sliderBlend)) ||
+		(context == m_textHeight && syncSliderFromTextbox(m_textHeight, m_sliderHeight)) ||
+		(context == m_textFlattenRadius && syncSliderFromTextbox(m_textFlattenRadius, m_sliderFlattenRadius));
+
+	if (didSync)
+		updatePreview();
+}
+
+// ----------------------------------------------------------------------
+
+void SwgCuiCityTerrainPainter::OnCheckboxSet(UIWidget * context)
+{
+	if (context == m_checkShowTileGrid)
+		syncPaintTileGridOverlay();
+}
+
+// ----------------------------------------------------------------------
+
+void SwgCuiCityTerrainPainter::OnCheckboxUnset(UIWidget * context)
+{
+	if (context == m_checkShowTileGrid)
+		syncPaintTileGridOverlay();
+}
+
+// ----------------------------------------------------------------------
+
 void SwgCuiCityTerrainPainter::OnGenericSelectionChanged(UIWidget * context)
 {
 	if (context == m_comboPaintMode)
@@ -400,6 +641,10 @@ void SwgCuiCityTerrainPainter::OnGenericSelectionChanged(UIWidget * context)
 			m_selectedShader = m_shaderTemplates[selectedIndex];
 			updatePreview();
 		}
+	}
+	else if (context == m_listRegions)
+	{
+		updateRemoveRegionButtonState();
 	}
 }
 
@@ -452,6 +697,18 @@ void SwgCuiCityTerrainPainter::setPaintMode(PaintMode mode)
 void SwgCuiCityTerrainPainter::setCityId(int32 cityId)
 {
 	m_cityId = cityId;
+	ms_savedCityId = cityId;
+	if (!isActive())
+		return;
+	if (cityId != 0 && CityTerrainLayerManager::isInstalled())
+	{
+		CityTerrainSyncRequestMessage const syncMsg(cityId);
+		GameNetwork::send(syncMsg, true);
+	}
+	refreshShaderList();
+	refreshRegionList();
+	updatePreview();
+	syncPaintTileGridOverlay();
 }
 
 // ----------------------------------------------------------------------
@@ -500,29 +757,20 @@ void SwgCuiCityTerrainPainter::onSecondMarkerSet(float x, float z)
 
 void SwgCuiCityTerrainPainter::updatePreview()
 {
-	// Update preview image based on selected shader
-	// This could show a preview of the shader texture
-	if (m_imagePreview && !m_selectedShader.empty())
-	{
-		// Try to extract texture name from shader template
-		std::string texturePath = m_selectedShader;
-		size_t pos = texturePath.rfind('/');
-		if (pos != std::string::npos)
-		{
-			texturePath = texturePath.substr(pos + 1);
-		}
-		pos = texturePath.rfind('.');
-		if (pos != std::string::npos)
-		{
-			texturePath = texturePath.substr(0, pos);
-		}
-		texturePath = "texture/" + texturePath + ".dds";
+	if (!m_imagePreview)
+		return;
 
-		if (TreeFile::exists(texturePath.c_str()))
-		{
-			m_imagePreview->SetSourceResource(Unicode::narrowToWide(texturePath));
-		}
+	if (m_selectedShader.empty())
+	{
+		m_imagePreview->SetSourceResource(Unicode::String());
+		return;
 	}
+
+	std::string texturePath;
+	if (resolveShaderTextureForPreview(m_selectedShader.c_str(), texturePath))
+		m_imagePreview->SetSourceResource(Unicode::narrowToWide(texturePath));
+	else
+		m_imagePreview->SetSourceResource(Unicode::String());
 }
 
 // ----------------------------------------------------------------------
@@ -555,6 +803,8 @@ void SwgCuiCityTerrainPainter::loadShaderList()
 			m_selectedShader = m_shaderTemplates[0];
 		}
 	}
+
+	updatePreview();
 }
 
 // ----------------------------------------------------------------------
@@ -573,69 +823,14 @@ void SwgCuiCityTerrainPainter::applyTerrainPaint()
 		return;
 	}
 
-	// Generate a client-side region ID for local tracking
-	// The server will generate the official one, but we need this for immediate local update
-	char localRegionId[64];
-	snprintf(localRegionId, sizeof(localRegionId), "R%ld_%d", static_cast<long>(time(0)), rand() % 10000);
-	std::string regionId(localRegionId);
-
-	// Apply locally for immediate feedback
-	Object const * const player = Game::getPlayer();
-	if (player)
+	if (m_cityId == 0)
 	{
-		Vector const & pos = player->getPosition_w();
-
-		float centerX = pos.x;
-		float centerZ = pos.z;
-		float radius = m_sliderRadius ? static_cast<float>(m_sliderRadius->GetValue()) : 10.0f;
-		float width = m_sliderWidth ? static_cast<float>(m_sliderWidth->GetValue()) : 4.0f;
-		float blendDist = m_sliderBlend ? static_cast<float>(m_sliderBlend->GetValue()) : 5.0f;
-		float height = m_sliderHeight ? static_cast<float>(m_sliderHeight->GetValue()) : 0.0f;
-		float flattenRadius = m_sliderFlattenRadius ? static_cast<float>(m_sliderFlattenRadius->GetValue()) : 100.0f;
-
-		if (m_paintMode == PM_LINE)
-		{
-			centerX = m_lineStartX;
-			centerZ = m_lineStartZ;
-		}
-		else if (m_paintMode == PM_FLATTEN)
-		{
-			radius = flattenRadius;
-		}
-
-		CityTerrainLayerManager::TerrainRegion region;
-		region.regionId = regionId;
-		region.cityId = m_cityId;
-
-		switch (m_paintMode)
-		{
-		case PM_CIRCLE:
-			region.type = CityTerrainLayerManager::RT_SHADER_CIRCLE;
-			break;
-		case PM_LINE:
-			region.type = CityTerrainLayerManager::RT_SHADER_LINE;
-			break;
-		case PM_FLATTEN:
-			region.type = CityTerrainLayerManager::RT_FLATTEN;
-			break;
-		}
-
-		region.shaderTemplate = m_selectedShader;
-		region.centerX = centerX;
-		region.centerZ = centerZ;
-		region.radius = radius;
-		region.endX = m_lineEndX;
-		region.endZ = m_lineEndZ;
-		region.width = width;
-		region.height = height;
-		region.blendDistance = blendDist;
-		region.active = true;
-		region.cachedShader = nullptr;
-
-		CityTerrainLayerManager::getInstance().addRegion(region);
-		m_appliedRegionIds.push_back(regionId);
+		CuiMessageBox::createInfoBox(Unicode::narrowToWide("No city ID — reopen the terrain painter from the city terminal."));
+		return;
 	}
 
+	// Do not apply a client-only region here: the server assigns the real region id and broadcasts
+	// CityTerrainModifyMessage. A duplicate local id prevented shaders/heights from matching saves and broke undo.
 	sendTerrainModifyToServer();
 
 	// Reset markers for next use
@@ -644,9 +839,7 @@ void SwgCuiCityTerrainPainter::applyTerrainPaint()
 
 	if (m_textStatus)
 	{
-		char buf[128];
-		snprintf(buf, sizeof(buf), "Terrain modification applied. Region: %s", regionId.c_str());
-		m_textStatus->SetText(Unicode::narrowToWide(buf));
+		m_textStatus->SetText(Unicode::narrowToWide("Sent to server — waiting for confirmation..."));
 	}
 }
 
@@ -741,6 +934,9 @@ void SwgCuiCityTerrainPainter::saveUIState()
 	if (m_sliderFlattenRadius)
 		ms_savedFlattenRadius = m_sliderFlattenRadius->GetValue();
 
+	if (m_checkShowTileGrid)
+		ms_savedShowTileGrid = m_checkShowTileGrid->IsChecked();
+
 	ms_hasRestoredState = true;
 }
 
@@ -818,40 +1014,216 @@ void SwgCuiCityTerrainPainter::restoreUIState()
 			m_textFlattenRadius->SetText(Unicode::narrowToWide(buf));
 		}
 	}
+
+	if (m_checkShowTileGrid)
+		m_checkShowTileGrid->SetChecked(ms_savedShowTileGrid, false);
+	syncPaintTileGridOverlay();
 }
 
 // ----------------------------------------------------------------------
 
-void SwgCuiCityTerrainPainter::undoLastModification()
+void SwgCuiCityTerrainPainter::updateRemoveRegionButtonState()
 {
-	if (m_appliedRegionIds.empty())
+	if (!m_buttonUndo)
+		return;
+	bool const canRemove =
+		m_listRegions != nullptr &&
+		m_listRegions->GetLastSelectedRow() >= 0 &&
+		m_listRegions->GetLastSelectedRow() < static_cast<int>(m_regionListRowIds.size());
+	m_buttonUndo->SetEnabled(canRemove);
+}
+
+// ----------------------------------------------------------------------
+
+void SwgCuiCityTerrainPainter::removeSelectedRegion()
+{
+	if (!m_listRegions || m_cityId == 0)
 	{
 		if (m_textStatus)
-		{
-			m_textStatus->SetText(Unicode::narrowToWide("No modifications to undo."));
-		}
+			m_textStatus->SetText(Unicode::narrowToWide("Select a region in the list, then click Remove."));
 		return;
 	}
 
-	std::string regionIdToRemove = m_appliedRegionIds.back();
-	m_appliedRegionIds.pop_back();
+	int const selectedRow = m_listRegions->GetLastSelectedRow();
+	if (selectedRow < 0 || selectedRow >= static_cast<int>(m_regionListRowIds.size()))
+	{
+		if (m_textStatus)
+			m_textStatus->SetText(Unicode::narrowToWide("Select a region to remove."));
+		return;
+	}
 
-	// Remove from local layer manager
+	std::string const regionIdToRemove = m_regionListRowIds[static_cast<size_t>(selectedRow)];
+
+	if (!CityTerrainLayerManager::isInstalled())
+		return;
+
 	CityTerrainLayerManager::getInstance().removeRegion(regionIdToRemove);
 
-	// Send removal request to server
 	CityTerrainRemoveRequestMessage const msg(m_cityId, regionIdToRemove);
 	GameNetwork::send(msg, true);
+
+	refreshRegionList();
 
 	if (m_textStatus)
 	{
 		char buf[128];
-		snprintf(buf, sizeof(buf), "Undone modification: %s. %d remaining.",
-				 regionIdToRemove.c_str(), static_cast<int>(m_appliedRegionIds.size()));
+		snprintf(buf, sizeof(buf), "Removed region: %s", regionIdToRemove.c_str());
 		m_textStatus->SetText(Unicode::narrowToWide(buf));
 	}
 
-	REPORT_LOG(true, ("[Titan] SwgCuiCityTerrainPainter::undoLastModification: removed region %s\n", regionIdToRemove.c_str()));
+	REPORT_LOG(true, ("[Titan] SwgCuiCityTerrainPainter::removeSelectedRegion: %s\n", regionIdToRemove.c_str()));
+}
+
+// ----------------------------------------------------------------------
+
+void SwgCuiCityTerrainPainter::refreshRegionList()
+{
+	m_regionListRowIds.clear();
+
+	if (!m_listRegions)
+		return;
+
+	m_listRegions->Clear();
+
+	if (m_cityId == 0 || !CityTerrainLayerManager::isInstalled())
+	{
+		updateRemoveRegionButtonState();
+		return;
+	}
+
+	std::vector<CityTerrainLayerManager::TerrainRegion const *> regions;
+	CityTerrainLayerManager::getInstance().getRegionsForCity(m_cityId, regions);
+
+	for (size_t i = 0; i < regions.size(); ++i)
+	{
+		CityTerrainLayerManager::TerrainRegion const * const r = regions[i];
+		if (!r)
+			continue;
+
+		char const * typeStr = "Circle";
+		std::string displaySuffix;
+		if (r->type == CityTerrainLayerManager::RT_FLATTEN)
+		{
+			typeStr = "Flatten";
+			char hbuf[48];
+			snprintf(hbuf, sizeof(hbuf), " h=%.0f", r->height);
+			displaySuffix = hbuf;
+		}
+		else if (r->type == CityTerrainLayerManager::RT_SHADER_LINE)
+			typeStr = "Line";
+
+		char rowText[384];
+		snprintf(rowText, sizeof(rowText), "%s  |  %s  |  %s  |  (%.0f, %.0f)  r=%.0f  w=%.0f  blend=%.0f%s",
+			r->regionId.c_str(),
+			typeStr,
+			r->shaderTemplate.c_str(),
+			r->centerX, r->centerZ, r->radius, r->width, r->blendDistance,
+			displaySuffix.c_str());
+
+		m_regionListRowIds.push_back(r->regionId);
+		m_listRegions->AddRow(Unicode::narrowToWide(rowText), r->regionId);
+	}
+
+	updateRemoveRegionButtonState();
+}
+
+// ----------------------------------------------------------------------
+
+void SwgCuiCityTerrainPainter::syncPaintTileGridOverlay()
+{
+	if (!CityTerrainLayerManager::isInstalled())
+		return;
+	bool const show = m_checkShowTileGrid && m_checkShowTileGrid->IsChecked();
+	CityTerrainLayerManager::setPaintTileGridOverlay(show, m_cityId);
+}
+
+// ----------------------------------------------------------------------
+
+void SwgCuiCityTerrainPainter::onCityRegionsChanged(int32 cityId)
+{
+	if (!ms_activeInstance || ms_activeInstance->m_cityId != cityId)
+		return;
+	ms_activeInstance->refreshRegionList();
+}
+
+// ----------------------------------------------------------------------
+
+void SwgCuiCityTerrainPainter::onServerTerrainRegionsChanged(int32 cityId)
+{
+	if (!ms_activeInstance || !ms_activeInstance->isActive())
+		return;
+	// cityId == 0: refresh after paint response (message has no city id)
+	if (cityId != 0 && ms_activeInstance->m_cityId != 0 && cityId != ms_activeInstance->m_cityId)
+		return;
+	ms_activeInstance->refreshRegionList();
+}
+
+// ----------------------------------------------------------------------
+
+void SwgCuiCityTerrainPainter::restoreLayerManagerRegionCallbackIfPainterActive()
+{
+	if (!ms_activeInstance || !ms_activeInstance->isActive() || !CityTerrainLayerManager::isInstalled())
+		return;
+	CityTerrainLayerManager::setRegionChangeCallback(&SwgCuiCityTerrainPainter::onCityRegionsChanged);
+	CityTerrainLayerManager::setPaintResponseCallback(&SwgCuiCityTerrainPainter::onPaintResponse);
+	CityTerrainLayerManager::setCityTerrainUiRefreshFn(&SwgCuiCityTerrainPainter::onServerTerrainRegionsChanged);
+	CityTerrainLayerManager::setOpenCityTerrainPainterAlreadyActiveFn(&SwgCuiCityTerrainPainter::onOpenCityTerrainPainterWhileAlreadyActive);
+	SwgCuiTerraforming::restoreLayerManagerHooksIfTerraformingActive();
+}
+
+// ----------------------------------------------------------------------
+
+void SwgCuiCityTerrainPainter::onOpenCityTerrainPainterWhileAlreadyActive()
+{
+	if (!ms_activeInstance || !ms_activeInstance->isActive())
+		return;
+
+	int32 const cityId = CityTerrainLayerManager::getPendingCityId();
+	if (cityId == 0)
+		return;
+
+	ms_activeInstance->m_cityId = cityId;
+	ms_savedCityId = cityId;
+
+	if (CityTerrainLayerManager::isInstalled())
+	{
+		CityTerrainSyncRequestMessage const syncMsg(cityId);
+		GameNetwork::send(syncMsg, true);
+	}
+
+	ms_activeInstance->refreshShaderList();
+	ms_activeInstance->refreshRegionList();
+	ms_activeInstance->updatePreview();
+	ms_activeInstance->syncPaintTileGridOverlay();
+}
+
+// ----------------------------------------------------------------------
+
+void SwgCuiCityTerrainPainter::onPaintResponse(bool success, std::string const & regionId, std::string const & errorMessage)
+{
+	if (!ms_activeInstance)
+		return;
+
+	if (!success)
+	{
+		if (!errorMessage.empty())
+			CuiMessageBox::createInfoBox(Unicode::narrowToWide(errorMessage));
+		else
+			CuiMessageBox::createInfoBox(Unicode::narrowToWide("Terrain modification was rejected by the server."));
+		return;
+	}
+
+	ms_activeInstance->refreshRegionList();
+
+	if (ms_activeInstance->m_textStatus)
+	{
+		char buf[256];
+		snprintf(buf, sizeof(buf), "Saved: %s", regionId.c_str());
+		ms_activeInstance->m_textStatus->SetText(Unicode::narrowToWide(buf));
+	}
+
+	if (CityTerrainLayerManager::isInstalled())
+		CityTerrainLayerManager::getInstance().flushTerrainUpdates();
 }
 
 // ======================================================================

@@ -10,6 +10,8 @@
 
 //======================================================================
 
+#include <string>
+
 class Callback;
 
 //----------------------------------------------------------------------
@@ -23,6 +25,16 @@ public:
 
 	static float               getHudOpacity ();
 	static void                setHudOpacity (float f);
+
+	static int                 getUiScalePercent ();
+	static void                setUiScalePercent (int percent);
+	static float               getUiScaleFactor ();
+
+	static int                 getUiFontScalePercent ();
+	static void                setUiFontScalePercent (int percent);
+
+	static std::string const & getUiDefaultFontFaceUtf8 ();
+	static void                setUiDefaultFontFaceUtf8 (std::string const &utf8);
 
 	static float               getTooltipDelaySecs ();
 	static void                setTooltipDelaySecs (float f);

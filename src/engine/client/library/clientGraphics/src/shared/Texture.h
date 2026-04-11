@@ -147,6 +147,7 @@ private:
 	static void           operator delete(void *pointer);
 
 	explicit Texture(CrcString const &fileName);
+	Texture(PersistentCrcString const &logicalName, const void *pixelData, TextureFormat sourceFormat, int width, int height, const TextureFormat *runtimeFormats, int numberOfRuntimeFormats);
 	Texture(int newAlpha, int newRed, int newGreen, int newBlue);
 	Texture(const void *pixelData, TextureFormat sourceFormat, int width, int height, int depth, const TextureFormat *runtimeFormats, int numberOfRuntimeFormats);
 	Texture(int textureCreationFlags, int width, int height, int numberOfMipMapLevels, const TextureFormat *runtimeTextureFormats, int textureFormatCount);

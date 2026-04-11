@@ -153,7 +153,14 @@ int ClientMain(
 		sscanf(__DATE__, "%3s %d %d", monthStr, &day, &year);
 		for (int i = 0; i < 12; ++i)
 			if (strcmp(monthStr, monthNames[i]) == 0) { month = i + 1; break; }
-		IGNORE_RETURN(snprintf(clientWindowName, sizeof(clientWindowName), "SWG: Titan (%02d%02d%04d-%s-Titan)", month, day, year, ApplicationVersion::getBranchVersion()));
+		IGNORE_RETURN(snprintf(
+			clientWindowName,
+			sizeof(clientWindowName),
+			"SWG: Titan (%d %s %d - Project: Titan)",
+			day,
+			monthStr,
+			year
+		));
 		clientWindowName[sizeof(clientWindowName) - 1] = '\0';
 	}
 

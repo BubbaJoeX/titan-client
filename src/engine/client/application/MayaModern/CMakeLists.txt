@@ -150,6 +150,8 @@ set(SOURCE_FILES
         commands/GetDataRootDirCommand.h
         commands/ImportPathResolver.cpp
         commands/ImportPathResolver.h
+        commands/SwgTrtsIo.cpp
+        commands/SwgTrtsIo.h
         commands/MayaSceneBuilder.cpp
         commands/MayaSceneBuilder.h
         commands/DdsToTgaConverter.cpp
@@ -174,6 +176,16 @@ set(SOURCE_FILES
         commands/ImportPob.h
         commands/ExportPob.cpp
         commands/ExportPob.h
+        commands/CreatePobTemplate.cpp
+        commands/CreatePobTemplate.h
+        commands/AddPobPortal.cpp
+        commands/AddPobPortal.h
+        commands/ReportPobPortals.cpp
+        commands/ReportPobPortals.h
+        commands/PobAuthoringShared.cpp
+        commands/PobAuthoringShared.h
+        commands/PobExtendedCommands.cpp
+        commands/PobExtendedCommands.h
         commands/ImportLodMesh.cpp
         commands/ImportLodMesh.h
         commands/ImportSkeletalMesh.cpp
@@ -194,6 +206,8 @@ set(SOURCE_FILES
         commands/StaticMeshWriter.h
         commands/ExportStaticMesh.cpp
         commands/ExportStaticMesh.h
+        commands/PrepareStaticMeshExport.cpp
+        commands/PrepareStaticMeshExport.h
         commands/ShaderExporter.cpp
         commands/ShaderExporter.h
         )
@@ -235,5 +249,11 @@ add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_CURRENT_SOURCE_DIR}/scripts/swgAssetDissector.mel
         $<TARGET_FILE_DIR:${CMAKE_PROJECT_NAME}>/swgAssetDissector.mel
-    COMMENT "Copying swgAssetDissector.mel to plugin directory"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_CURRENT_SOURCE_DIR}/scripts/swgStaticMeshExport.mel
+        $<TARGET_FILE_DIR:${CMAKE_PROJECT_NAME}>/swgStaticMeshExport.mel
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_CURRENT_SOURCE_DIR}/scripts/pobAuthoring.mel
+        $<TARGET_FILE_DIR:${CMAKE_PROJECT_NAME}>/pobAuthoring.mel
+    COMMENT "Copying MEL scripts to plugin directory"
 )

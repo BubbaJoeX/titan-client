@@ -77,7 +77,9 @@
 			sliderAffectorParam='content.pageAffectors.sliderParam'
 			textAffectorParam='content.pageAffectors.textParam'
 			buttonAffectorApply='content.pageAffectors.buttonApply'
-			listRegions='content.pageRegions.listRegions'
+			treeRegions='content.pageRegions.treeRegions'
+			buttonRegionSuspend='content.pageRegions.buttonRegionSuspend'
+			buttonRegionResume='content.pageRegions.buttonRegionResume'
 			buttonRegionDelete='content.pageRegions.buttonDelete'
 			buttonRegionDeleteAll='content.pageRegions.buttonDeleteAll'
 			textRegionInfo='content.pageRegions.pageSelectedInfo.textInfo'
@@ -669,30 +671,35 @@
 			<Page BackgroundColor='#000000' BackgroundOpacity='0.40' Location='0,40' Name='pageRegions' ScrollExtent='544,470' Size='544,470' Visible='false'>
 				<Text Enabled='false' Font='bold_12' LocalText='Manage existing terrain modifications in this city.' Location='8,8' Name='textDesc' ScrollExtent='528,20' Size='528,20' TextAlignment='Left' TextColor='#AAAAAA'>Manage existing terrain modifications in this city.</Text>
 
-				<Text Enabled='false' Font='bold_11' LocalText='Active Regions:' Location='8,36' Name='labelRegions' ScrollExtent='120,20' Size='120,20' TextAlignment='Left' TextColor='#FFFFFF'>Active Regions:</Text>
+				<Text Enabled='false' Font='bold_11' LocalText='Terrain rules (by type):' Location='8,36' Name='labelRegions' ScrollExtent='200,20' Size='200,20' TextAlignment='Left' TextColor='#FFFFFF'>Terrain rules (by type):</Text>
 
-				<List
+				<TreeView
 					BackgroundColor='#000000'
 					BackgroundOpacity='0.60'
-					CellHeight='28'
+					DataSourceContainer='regionsTreeData'
 					GetsInput='true'
-					Horizontal='false'
 					Location='8,60'
-					Name='listRegions'
+					Name='treeRegions'
 					RStyleDefault='/Styles.New.whiteOutline.rs_default'
 					ScrollExtent='528,260'
-					Size='528,260'
-					Style='/Styles.list.default.listbox.style'
+					SelectedRow='0'
+					SelectedRowCount='0'
 					SelectionAllowedMultiRow='false'
+					ShowIcon='false'
+					Size='528,260'
+					Style='/Styles.tree.style'
 				/>
+				<DataSourceContainer Name='regionsTreeData' />
 
 				<Page BackgroundColor='#333333' BackgroundOpacity='0.40' Location='8,328' Name='pageSelectedInfo' ScrollExtent='528,80' Size='528,80'>
 					<Text Enabled='false' Font='bold_11' LocalText='Selected Region Info:' Location='8,8' Name='labelInfo' ScrollExtent='200,20' Size='200,20' TextAlignment='Left' TextColor='#FFFF00'>Selected Region Info:</Text>
-					<Text Enabled='false' Font='bold_10' LocalText='Select a region from the list above to see details.' Location='8,32' Name='textInfo' ScrollExtent='512,40' Size='512,40' TextAlignment='Left' TextColor='#CCCCCC' TextWrap='true'>Select a region from the list above to see details.</Text>
+					<Text Enabled='false' Font='bold_10' LocalText='Select a rule in the tree above.' Location='8,32' Name='textInfo' ScrollExtent='512,40' Size='512,40' TextAlignment='Left' TextColor='#CCCCCC' TextWrap='true'>Select a rule in the tree above.</Text>
 				</Page>
 
-				<Button LocalText='Delete Selected' Location='128,420' Name='buttonDelete' ScrollExtent='140,36' Size='140,36' Style='/Styles.New.buttons.hud.style' Enabled='false'>Delete Selected</Button>
-				<Button LocalText='Delete All Regions' Location='280,420' Name='buttonDeleteAll' ScrollExtent='140,36' Size='140,36' Style='/Styles.New.buttons.hud.style'>Delete All Regions</Button>
+				<Button LocalText='Suspend' Location='8,420' Name='buttonRegionSuspend' ScrollExtent='88,36' Size='88,36' Style='/Styles.New.buttons.hud.style' Enabled='false'>Suspend</Button>
+				<Button LocalText='Resume' Location='100,420' Name='buttonRegionResume' ScrollExtent='88,36' Size='88,36' Style='/Styles.New.buttons.hud.style' Enabled='false'>Resume</Button>
+				<Button LocalText='Delete Rule' Location='192,420' Name='buttonDelete' ScrollExtent='120,36' Size='120,36' Style='/Styles.New.buttons.hud.style' Enabled='false'>Delete Rule</Button>
+				<Button LocalText='Delete All Regions' Location='318,420' Name='buttonDeleteAll' ScrollExtent='218,36' Size='218,36' Style='/Styles.New.buttons.hud.style'>Delete All Regions</Button>
 			</Page>
 
 			<Text Enabled='false' Font='bold_11' LocalText='' Location='0,520' Name='textStatus' ScrollExtent='544,24' Size='544,24' TextAlignment='Center' TextColor='#00FF00'></Text>

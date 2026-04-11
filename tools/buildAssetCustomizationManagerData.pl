@@ -19,6 +19,7 @@ my $debug							= 0;
 my $debugLinesPerOutputTick			= 100;
 my $examineProcessedData			= 0;
 my $removeEntries					= 0;
+my $pipelineOptimizeAndMif			 = 0;  # -r with -o and -m: optimize then write MIF in one process
 
 my $assetLinkLineCount				= 0;
 my $basicRangedIntVariableLineCount = 0;
@@ -69,6 +70,41 @@ my $maxNameBlockOffset = (sprintf("%u", 1 << 16) - 1);
 my $MAX_VALID_CUSTOMIZATION_ID = 127;
 
 # =====================================================================
+# Raw collect lines use ':' as delimiter. Windows absolute paths (C:/...) add
+# extra colons and break split. Strip known junk prefixes and keep game-relative tail.
+
+sub acm_normalize_collect_path
+{
+	my ($p) = @_;
+	return "" unless defined $p;
+	$p =~ s/^\s+|\s+$//g;
+	$p =~ s|\\|/|g;
+
+	my @extra = defined $ENV{SWG_ACM_STRIP_ABS_PREFIX} && length $ENV{SWG_ACM_STRIP_ABS_PREFIX}
+		? split(/;/, $ENV{SWG_ACM_STRIP_ABS_PREFIX})
+		: ();
+	for my $raw ('C:/Users/Casey/Desktop/holo_sat', @extra)
+	{
+		next unless defined $raw && length $raw;
+		my $strip = "$raw";
+		$strip =~ s/^\s+|\s+$//g;
+		$strip =~ s|\\|/|g;
+		$strip =~ s|/+\z||;
+		next unless length $strip;
+		my $q = quotemeta $strip;
+		$q =~ s|\\|/|g;
+		$p =~ s{^$q/*}{}i;
+	}
+	$p =~ s{//+}{/}g;
+
+	if ($p =~ m{((?:appearance|shader|texturerenderer|datatables|object)/.+)}i)
+	{
+		return $1;
+	}
+	return $p;
+}
+
+# =====================================================================
 
 sub printUsage
 {
@@ -82,6 +118,11 @@ sub printUsage
 	print "	   -o <outputFileName.mif> -m <customizationIdManagerMifFile.mif>\n";
 	print "	   -a <badAssetReportFile.txt> -t <treeFileLookupTable.dat>\n";
 	print "\n";
+	print "	 perl buildAssetCustomizationManagerData.pl [-d] [-e] -i <rawInfoFile.dat> -r\n";
+	print "	   -o <outputFileName.mif> -m <customizationIdManagerMifFile.mif>\n";
+	print "	   -t <treeFileLookupTable.dat>\n";
+	print "	   (single pass: optimize raw data then write ACM/CIM MIF — no second Perl invocation)\n";
+	print "\n";
 	print "Options:\n";
 	print "	 -a: specifies the filename to use to log asset error information\n";
 	print "	 -d: enable verbose debugging information\n";
@@ -90,10 +131,10 @@ sub printUsage
 	print "	 -i: the raw data output file from collectAssetCustomizationData.pl\n";
 	print "	 -m: specify the customization_id_manager filename to be updated, use only with -o.\n";
 	print "	 -o: names the output file where asset_customization_manager mif data will be written\n";
-	print "	 -r: remove unnecessary entries and output a new raw data output file\n";
-	print "		 suitable for use as input to this program with the -i option.\n";
-	print "		(Yes, you will need to run this program twice, run first with -r,\n";
-	print "		 then run the second time without -r to get a minimal-sized data file.)\n";
+	print "	 -r: remove unnecessary entries and output a new raw data output file.\n";
+	print "		 If -o and -m are also specified, optimized data is written then ACM/CIM MIF\n";
+	print "		 are generated in one run (recommended). Otherwise use a second invocation with\n";
+	print "		 -i <optimized file> -o -m to build MIF files from the optimized raw data.\n";
 	print "	 -t: specify the filename of the TreeFile lookup table file (must specify if -a is specified)\n";
 }
 
@@ -182,12 +223,17 @@ sub processCommandLine
 			}
 			print "optimizedRawFileName=$optimizedRawFileName\n" if $debug;
 
-			# User should not specify -o option if we're building an optimized raw file.
-			if ((defined $acmOutputFileName && (length($acmOutputFileName) > 0)) ||
-				(defined $customizationIdManagerMifFileName && (length($customizationIdManagerMifFileName) > 0)))
+			# -r with both -o and -m runs optimize then MIF in one process; only one of -o/-m is invalid.
+			my $hasO = (defined $acmOutputFileName && (length($acmOutputFileName) > 0));
+			my $hasM = (defined $customizationIdManagerMifFileName && (length($customizationIdManagerMifFileName) > 0));
+			if ($hasO xor $hasM)
 			{
-				print "The -o output filename and -m filename should not be specified when using -r for optimization.\n";
+				print "When using -r, specify both -o and -m for single-pass optimize+MIF, or neither for optimize-only output.\n";
 				$printHelp = 1;
+			}
+			elsif ($hasO && $hasM)
+			{
+				$pipelineOptimizeAndMif = 1;
 			}
 		}
 		elsif ((!defined($acmOutputFileName) || (length($acmOutputFileName) < 1)))
@@ -590,8 +636,19 @@ sub processRawInputData
 		if (s/^L\s+//)
 		{
 			# Process asset linkage information.  Args are the user (main) asset and the used (subordinate,dependency) asset.
-			processAssetLink(split /:/);
-			++$assetLinkLineCount;
+			# Split on first ':' only — used path may contain "C:/..." from bad SAT references.
+			my ($user, $used) = split /:/, $_, 2;
+			$user = acm_normalize_collect_path($user);
+			$used = acm_normalize_collect_path($used);
+			if (length $user && length $used)
+			{
+				processAssetLink($user, $used);
+				++$assetLinkLineCount;
+			}
+			else
+			{
+				++$skippedLineCount;
+			}
 
 		}
 		elsif (s/^I\s+//)
@@ -599,17 +656,44 @@ sub processRawInputData
 			# Copy non-link line to optimized raw output file.
 			print $outputFile $originalLine if $removeEntries;
 
-			# Process a use case of a basic ranged int variable.
-			processBasicRangedIntVariable(split /:/);
-			++$basicRangedIntVariableLineCount;
+			# Process a use case of a basic ranged int variable (at most 5 fields; asset path must not contain ':').
+			my @iargs = split /:/, $_, 5;
+			if (@iargs == 5)
+			{
+				$iargs[0] = acm_normalize_collect_path($iargs[0]);
+				processBasicRangedIntVariable(@iargs);
+				++$basicRangedIntVariableLineCount;
+			}
+			else
+			{
+				print STDERR "buildACM raw: skip malformed I line (expected 5 colon fields): [$originalLine]\n";
+				++$skippedLineCount;
+			}
 		}
 		elsif (s/^P\s+//)
 		{
 			# Copy non-link line to optimized raw output file.
 			print $outputFile $originalLine if $removeEntries;
 
-			# Process a use case of a palette color variable.
-			processPaletteColorVariable(split /:/);
+			# P asset:variable:palette path:defaultIndex — palette may be "C:/..." with extra ':'.
+			unless (m/^(.+):(\d+)\s*$/)
+			{
+				print STDERR "buildACM raw: skip malformed P line (no trailing :int): [$originalLine]\n";
+				++$skippedLineCount;
+				next;
+			}
+			my $defIdx  = $2;
+			my $rest    = $1;
+			my ($asset, $var, $pal) = split /:/, $rest, 3;
+			unless (defined $pal && length $pal)
+			{
+				print STDERR "buildACM raw: skip malformed P line (need asset:var:palette): [$originalLine]\n";
+				++$skippedLineCount;
+				next;
+			}
+			$asset = acm_normalize_collect_path($asset);
+			$pal   = acm_normalize_collect_path($pal);
+			processPaletteColorVariable($asset, $var, $pal, $defIdx);
 			++$paletteColorVariableLineCount;
 		}
 		else
@@ -988,8 +1072,8 @@ sub writeVariableUsageListingTable
 
 	foreach (@variableUsageList)
 	{
-		printf $outputFile "\t\t\tuint16 %u\n", $_;
-		die "variable usage index $_ out of valid range" if ($_ > 0xFFFF);
+		printf $outputFile "\t\t\tuint32 %u\n", $_;
+		die "variable usage id $_ out of valid range" if ($_ > 0xFFFFFFFF);
 	}
 
 	print $outputFile "\t\t}\n\n";
@@ -1013,12 +1097,12 @@ sub writeVariableUsageIndexTable
 		my @indexDataArray = split(/:/, $indexDataAsString);
 		die "invalid index data from string $indexDataAsString: should have 2 parts for asset $assetId" if (@indexDataArray != 2);
 
-		die "tfiala must update format: valid unique asset id range blown"		 if ($assetId			> 0xFFFF);
-		die "tfiala must update format: valid listing start index bitsize blown" if ($indexDataArray[0] > 0xFFFF);
+		die "tfiala must update format: valid unique asset id range blown"		 if ($assetId			> 0xFFFFFFFF);
+		die "tfiala must update format: valid listing start index bitsize blown" if ($indexDataArray[0] > 0xFFFFFFFF);
 		die "tfiala must update format: valid listing count blown"				 if ($indexDataArray[1] > 255);
 
-		printf $outputFile "\t\t\tuint16  %u\n", $assetId;
-		printf $outputFile "\t\t\tuint16  %u\n", $indexDataArray[0];
+		printf $outputFile "\t\t\tuint32  %u\n", $assetId;
+		printf $outputFile "\t\t\tuint32  %u\n", $indexDataArray[0];
 		printf $outputFile "\t\t\tuint8	  %u\n", $indexDataArray[1];
 		print  $outputFile "\n";
 	}
@@ -1059,8 +1143,8 @@ sub writeAssetLinkageListingTable
 
 	foreach (@assetLinkageList)
 	{
-		printf $outputFile "\t\t\tuint16 %u\n", $_;
-		die "asset linkage index $_ out of valid range" if ($_ > 0xFFFF);
+		printf $outputFile "\t\t\tuint32 %u\n", $_;
+		die "asset linkage id $_ out of valid range" if ($_ > 0xFFFFFFFF);
 	}
 
 	print $outputFile "\t\t}\n\n";
@@ -1084,12 +1168,12 @@ sub writeAssetLinkageIndexTable
 		my @indexDataArray = split(/:/, $indexDataAsString);
 		die "invalid index data from string $indexDataAsString: should have 2 parts for asset $assetId" if (@indexDataArray != 2);
 
-		die "tfiala must update format: valid unique asset id range blown"		 if ($assetId			> 0xFFFF);
-		die "tfiala must update format: valid listing start index bitsize blown" if ($indexDataArray[0] > 0xFFFF);
+		die "tfiala must update format: valid unique asset id range blown"		 if ($assetId			> 0xFFFFFFFF);
+		die "tfiala must update format: valid listing start index bitsize blown" if ($indexDataArray[0] > 0xFFFFFFFF);
 		die "tfiala must update format: valid listing count blown"				 if ($indexDataArray[1] > 255);
 
-		printf $outputFile "\t\t\tuint16  %u\n", $assetId;
-		printf $outputFile "\t\t\tuint16  %u\n", $indexDataArray[0];
+		printf $outputFile "\t\t\tuint32  %u\n", $assetId;
+		printf $outputFile "\t\t\tuint32  %u\n", $indexDataArray[0];
 		printf $outputFile "\t\t\tuint8	  %u\n", $indexDataArray[1];
 		print  $outputFile "\n";
 	}
@@ -1123,11 +1207,11 @@ sub writeAssetCrcToAssetIdIndexTable
 		my $assetId = $assetIdByNameMap{$assetName};
 		die "assetName [$assetName] mapped to undefined asset id" if !defined($assetId);
 
-		die "tfiala must update format: valid unique asset id range blown" if ($assetId > 0xFFFF);
+		die "tfiala must update format: valid unique asset id range blown" if ($assetId > 0xFFFFFFFF);
 
 		printf $outputFile "//name:  %s\n", $assetName;
 		printf $outputFile "\t\t\tuint32  %u\n", $assetCrc;
-		printf $outputFile "\t\t\tuint16  %u\n", $assetId;
+		printf $outputFile "\t\t\tuint32  %u\n", $assetId;
 		print  $outputFile "\n";
 	}
 
@@ -1539,6 +1623,48 @@ sub updateCustomizationIdManagerData
 	writeCustomizationIdManagerMif($cidVariableNameByIdRef);
 }
 
+# ---------------------------------------------------------------------
+
+# Reset in-memory state so we can load the optimized raw file and emit MIF in the same process.
+sub resetProcessingStateForSecondPass
+{
+	%assetIdByNameMap				= ();
+	%assetNameByCrcMap				= ();
+	%defaultIdByValueMap			= ();
+	%intRangeByIntRangeIdMap		= ();
+	%nameBlockOffsetByPaletteId		= ();
+	%nameBlockOffsetByVariableNameId = ();
+	%paletteEntryCountByName		 = ();
+	%paletteIdByNameMap			 = ();
+	%rangeIdByKeyMap				 = ();
+	%rangeTypeByIdMap				 = ();
+	%usedAssetIdByUserMap			 = ();
+	%variableIdByNameMap			 = ();
+	%variableUsageIdByAssetIdMap	 = ();
+	%variableUsageIdByKeyMap		 = ();
+
+	@nameBlockStrings				= ();
+	$nameBlockLength				= 0;
+
+	@assetLinkageList				= ();
+	%assetLinkageListingIndexData	 = ();
+	@variableUsageList				= ();
+	%variableUsageListingIndexData	 = ();
+
+	$maxAssignedAssetId			 = 0;
+	$maxAssignedDefaultId			 = 0;
+	$maxAssignedIntRangeId			= 0;
+	$maxAssignedPaletteId			= 0;
+	$maxAssignedRangeId				= 0;
+	$maxAssignedVariableId			= 0;
+	$maxAssignedVariableUsageId		= 0;
+
+	$assetLinkLineCount				= 0;
+	$basicRangedIntVariableLineCount = 0;
+	$paletteColorVariableLineCount	= 0;
+	$removedEntryCount				= 0;
+}
+
 # =====================================================================
 # Main Program
 # =====================================================================
@@ -1551,20 +1677,31 @@ installApp();
 # Process the raw input data.
 processRawInputData();
 
-# This program operates in two mutually-exclusive modes: normal output mode
-# and remove-unneeded-entries mode.
 if ($removeEntries)
 {
-	# Optimize the amount of data in the data file by removing
-	# entries that do not help us find used customization variables.
 	removeEntries();
+	if ($pipelineOptimizeAndMif)
+	{
+		print "buildAssetCustomizationManagerData: reloading optimized data and writing MIF files (single pass).\n";
+		resetProcessingStateForSecondPass();
+		$rawInputFileName = $optimizedRawFileName;
+		$removeEntries = 0;
+		processRawInputData();
+		writeOutputData();
+		if (defined($customizationIdManagerMifFileName))
+		{
+			updateCustomizationIdManagerData();
+		}
+		else
+		{
+			print STDERR "Warning: customization id manager data not updated, please use -m flag.\n";
+		}
+	}
 }
 else
 {
-	# Write out the output data.
 	writeOutputData();
 
-	# Update customization id manager data.
 	if (defined($customizationIdManagerMifFileName))
 	{
 		updateCustomizationIdManagerData();
@@ -1575,10 +1712,8 @@ else
 	}
 }
 
-# Cleanup - counterpart to initialize function.
 removeApp();
 
-# Done, success.
 exit 0;
 
 # =====================================================================

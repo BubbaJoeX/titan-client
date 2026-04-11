@@ -1330,6 +1330,9 @@ void ClientProceduralTerrainAppearance::render () const
 		std::for_each (m_waterManagerList->begin (), m_waterManagerList->end (), VoidMemberFunction (&WaterManager::draw));
 	}
 
+	if (CityTerrainLayerManager::isInstalled ())
+		CityTerrainLayerManager::getInstance ().addPaintTileGridDebugPrimitives (ShaderPrimitiveSorter::getCurrentCamera ());
+
 #ifdef _DEBUG
 	const Camera *camera = &ShaderPrimitiveSorter::getCurrentCamera();
 

@@ -28,7 +28,9 @@
 				BackgroundColor='#FFFFFF'
 				Location='19,15'
 				Name='comp'
-				OnEnable='parent.compBg.size=size
+				OnEnable='parent.compBg.size=size
+
+
 parent.compBg.location=location'
 				PackLocation='nfn,nfn'
 				PackSize='a,a'
@@ -995,4 +997,44 @@ parent.compBg.location=location'
 			TextAlignmentVertical='Center'
 			TextColor='#000000'
 		>thought</Text>
+	</Page>
+	<Page
+		BackgroundColor='#FFFFFF'
+		BackgroundTint='#03546B'
+		Name='WindowScalePopup'
+		PackSize='p,p'
+		PalBgTint='back3'
+		RStyleDefault='/Styles.New.whitebox_palW.rs_default'
+		ScrollExtent='268,88'
+		Size='268,88'
+		UserMovable='true'
+		Visible='false'
+	>
+		<Text
+			Font='bold_11'
+			LocalText='Window scale (%)'
+			Location='10,8'
+			Name='label'
+			ScrollExtent='248,18'
+			Size='248,18'
+			TextColor='#97FFFF'
+		>Window scale (%)</Text>
+		<Sliderbar
+			Location='10,28'
+			Name='slider'
+			ScrollExtent='248,14'
+			Size='248,14'
+			Style='/Styles.New.Slider.default.horizontal.style_test'
+			LowerLimit='50'
+			UpperLimit='200'
+			Value='100'
+		/>
+		<Button
+			LocalText='[@ok]'
+			Location='56,52'
+			Name='ok'
+			ScrollExtent='157,19'
+			Size='157,19'
+			Style='/Styles.New.buttons.hud.style'
+		>@ok</Button>
 	</Page>

@@ -24,6 +24,7 @@
 #include "sharedObject/CellProperty.h"
 
 static VectorArgb gs_barrierColor(0.85f,0.3f,0.02f,0.01f);
+static VectorArgb gs_barrierForceFieldColor(0.70f,0.45f,0.92f,0.92f); // light teal
 
 // ----------------------------------------------------------------------
 
@@ -178,7 +179,11 @@ void BarrierObject::createAppearance ( void )
 
 	// Create our barrier appearance
 
-	Appearance * appearance = CellProperty::createPortalBarrier(verts,gs_barrierColor);
+	Appearance * appearance = CellProperty::createForceField(verts, gs_barrierForceFieldColor);
+	if (appearance == nullptr)
+	{
+		appearance = CellProperty::createPortalBarrier(verts, gs_barrierColor);
+	}
 
 	if(appearance != nullptr)
 	{

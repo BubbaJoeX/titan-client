@@ -38,6 +38,7 @@ D:\titan\client\src\engine\client\application\MayaModern\commands\SetDirectoryCo
 D:\titan\client\src\engine\client\application\MayaModern\commands\SetBaseDirectory.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\SetBaseDirectory.obj
 D:\titan\client\src\engine\client\application\MayaModern\commands\GetDataRootDirCommand.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\GetDataRootDirCommand.obj
 D:\titan\client\src\engine\client\application\MayaModern\commands\ImportPathResolver.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\ImportPathResolver.obj
+D:\titan\client\src\engine\client\application\MayaModern\commands\SwgTrtsIo.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\SwgTrtsIo.obj
 D:\titan\client\src\engine\client\application\MayaModern\commands\MayaSceneBuilder.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\MayaSceneBuilder.obj
 D:\titan\client\src\engine\client\application\MayaModern\commands\DdsToTgaConverter.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\DdsToTgaConverter.obj
 D:\titan\client\src\engine\client\application\MayaModern\commands\TgaToDdsConverter.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\TgaToDdsConverter.obj
@@ -50,6 +51,11 @@ D:\titan\client\src\engine\client\application\MayaModern\commands\SatRoundTrip.c
 D:\titan\client\src\engine\client\application\MayaModern\commands\ExportSat.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\ExportSat.obj
 D:\titan\client\src\engine\client\application\MayaModern\commands\ImportPob.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\ImportPob.obj
 D:\titan\client\src\engine\client\application\MayaModern\commands\ExportPob.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\ExportPob.obj
+D:\titan\client\src\engine\client\application\MayaModern\commands\CreatePobTemplate.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\CreatePobTemplate.obj
+D:\titan\client\src\engine\client\application\MayaModern\commands\AddPobPortal.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\AddPobPortal.obj
+D:\titan\client\src\engine\client\application\MayaModern\commands\ReportPobPortals.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\ReportPobPortals.obj
+D:\titan\client\src\engine\client\application\MayaModern\commands\PobAuthoringShared.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\PobAuthoringShared.obj
+D:\titan\client\src\engine\client\application\MayaModern\commands\PobExtendedCommands.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\PobExtendedCommands.obj
 D:\titan\client\src\engine\client\application\MayaModern\commands\ImportLodMesh.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\ImportLodMesh.obj
 D:\titan\client\src\engine\client\application\MayaModern\commands\ImportSkeletalMesh.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\ImportSkeletalMesh.obj
 D:\titan\client\src\engine\client\application\MayaModern\commands\ImportShader.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\ImportShader.obj
@@ -60,4 +66,5 @@ D:\titan\client\src\engine\client\application\MayaModern\commands\SwgAssetDissec
 D:\titan\client\src\engine\client\application\MayaModern\commands\SkeletonTemplateWriter.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\SkeletonTemplateWriter.obj
 D:\titan\client\src\engine\client\application\MayaModern\commands\StaticMeshWriter.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\StaticMeshWriter.obj
 D:\titan\client\src\engine\client\application\MayaModern\commands\ExportStaticMesh.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\ExportStaticMesh.obj
+D:\titan\client\src\engine\client\application\MayaModern\commands\PrepareStaticMeshExport.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\PrepareStaticMeshExport.obj
 D:\titan\client\src\engine\client\application\MayaModern\commands\ShaderExporter.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\ShaderExporter.obj

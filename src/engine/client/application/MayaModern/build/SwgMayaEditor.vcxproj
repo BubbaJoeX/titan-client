@@ -123,9 +123,13 @@
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <PostBuildEvent>
-      <Message>Copying swgAssetDissector.mel to plugin directory</Message>
+      <Message>Copying MEL scripts to plugin directory</Message>
       <Command>setlocal
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgAssetDissector.mel D:/titan/client/src/engine/client/application/MayaModern/build/Debug/swgAssetDissector.mel
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgStaticMeshExport.mel D:/titan/client/src/engine/client/application/MayaModern/build/Debug/swgStaticMeshExport.mel
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/pobAuthoring.mel D:/titan/client/src/engine/client/application/MayaModern/build/Debug/pobAuthoring.mel
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -191,9 +195,13 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <PostBuildEvent>
-      <Message>Copying swgAssetDissector.mel to plugin directory</Message>
+      <Message>Copying MEL scripts to plugin directory</Message>
       <Command>setlocal
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgAssetDissector.mel D:/titan/client/src/engine/client/application/MayaModern/build/Release/swgAssetDissector.mel
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgStaticMeshExport.mel D:/titan/client/src/engine/client/application/MayaModern/build/Release/swgStaticMeshExport.mel
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/pobAuthoring.mel D:/titan/client/src/engine/client/application/MayaModern/build/Release/pobAuthoring.mel
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -259,9 +267,13 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <PostBuildEvent>
-      <Message>Copying swgAssetDissector.mel to plugin directory</Message>
+      <Message>Copying MEL scripts to plugin directory</Message>
       <Command>setlocal
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgAssetDissector.mel D:/titan/client/src/engine/client/application/MayaModern/build/MinSizeRel/swgAssetDissector.mel
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgStaticMeshExport.mel D:/titan/client/src/engine/client/application/MayaModern/build/MinSizeRel/swgStaticMeshExport.mel
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/pobAuthoring.mel D:/titan/client/src/engine/client/application/MayaModern/build/MinSizeRel/pobAuthoring.mel
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -326,9 +338,13 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <PostBuildEvent>
-      <Message>Copying swgAssetDissector.mel to plugin directory</Message>
+      <Message>Copying MEL scripts to plugin directory</Message>
       <Command>setlocal
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgAssetDissector.mel D:/titan/client/src/engine/client/application/MayaModern/build/RelWithDebInfo/swgAssetDissector.mel
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgStaticMeshExport.mel D:/titan/client/src/engine/client/application/MayaModern/build/RelWithDebInfo/swgStaticMeshExport.mel
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/pobAuthoring.mel D:/titan/client/src/engine/client/application/MayaModern/build/RelWithDebInfo/pobAuthoring.mel
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -502,6 +518,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\GetDataRootDirCommand.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportPathResolver.cpp" />
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportPathResolver.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgTrtsIo.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgTrtsIo.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\MayaSceneBuilder.cpp" />
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\MayaSceneBuilder.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\DdsToTgaConverter.cpp" />
@@ -526,6 +544,16 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportPob.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ExportPob.cpp" />
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ExportPob.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\CreatePobTemplate.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\CreatePobTemplate.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\AddPobPortal.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\AddPobPortal.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ReportPobPortals.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ReportPobPortals.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\PobAuthoringShared.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\PobAuthoringShared.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\PobExtendedCommands.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\PobExtendedCommands.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportLodMesh.cpp" />
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportLodMesh.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportSkeletalMesh.cpp" />
@@ -546,6 +574,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\StaticMeshWriter.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ExportStaticMesh.cpp" />
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ExportStaticMesh.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\PrepareStaticMeshExport.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\PrepareStaticMeshExport.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ShaderExporter.cpp" />
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ShaderExporter.h" />
   </ItemGroup>

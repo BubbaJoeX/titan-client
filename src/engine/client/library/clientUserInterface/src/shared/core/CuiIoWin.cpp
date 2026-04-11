@@ -695,18 +695,23 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 			}
 			
 			UIPoint newCoords;
-			//Add a movement multiplier
+			//Add a movement multiplier (UI space must match UIManager::GetLastMouseCoord)
 			newCoords.x = m_mouseCursor->getX ();
 			newCoords.y = m_mouseCursor->getY ();
-			UIPoint delta (newCoords - UIManager::gUIManager ().GetLastMouseCoord ());						
+			CuiManager::transformScreenPixelsToUiSpace (newCoords);
+			UIPoint delta (newCoords - UIManager::gUIManager ().GetLastMouseCoord ());
 			if((delta.x != 0) && (delta.y != 0))
 			{				
 				delta.x = static_cast<long>(delta.x * GroundScene::getMouseSensitivity());
 				delta.y = static_cast<long>(delta.y * GroundScene::getMouseSensitivity());
 				newCoords.x = UIManager::gUIManager ().GetLastMouseCoord ().x + delta.x;
 				newCoords.y = UIManager::gUIManager ().GetLastMouseCoord ().y + delta.y;
-				msg.MouseCoords = newCoords;
-				m_mouseCursor->gotoXY (msg.MouseCoords.x, msg.MouseCoords.y);					
+				UIPoint screenCoords (newCoords);
+				CuiManager::transformUiPixelsToScreen (screenCoords);
+				// Keep msg in screen space: dead-zone clamp and processUiManagerMessage
+				// both assume screen pixels and apply one screen->UI transform there.
+				msg.MouseCoords = screenCoords;
+				m_mouseCursor->gotoXY (screenCoords.x, screenCoords.y);					
 			}			
 		}
 
@@ -723,9 +728,9 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 				else
 				{
 					// If we're panning the camera around, not clicking, we wanna make sure this action is cancelled...
-					UIPoint delta;
-					delta.Set(m_mouseCursor->getX(), m_mouseCursor->getY());
-					delta -= UIManager::gUIManager().GetLastMouseCoord();
+					UIPoint uiMouse (m_mouseCursor->getX (), m_mouseCursor->getY ());
+					CuiManager::transformScreenPixelsToUiSpace (uiMouse);
+					UIPoint const delta (uiMouse - UIManager::gUIManager ().GetLastMouseCoord ());
 					if (delta.Magnitude() > UIManager::gUIManager().GetDragThreshold())
 						IGNORE_RETURN(CuiActionManager::performAction (CuiActions::setIntendedAndSummonRadialMenu, Unicode::narrowToWide ("cancel")));
 
@@ -739,9 +744,9 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 
 		if (!m_pointerInputActive && uiManager->IsContextRequestPending (false))
 		{
-			msg.MouseCoords.x = m_mouseCursor->getX ();
-			msg.MouseCoords.y = m_mouseCursor->getY ();
-			const UIPoint delta (UIManager::gUIManager ().GetLastMouseCoord ()  - msg.MouseCoords);
+			UIPoint uiMouse (m_mouseCursor->getX (), m_mouseCursor->getY ());
+			CuiManager::transformScreenPixelsToUiSpace (uiMouse);
+			const UIPoint delta (UIManager::gUIManager ().GetLastMouseCoord ()  - uiMouse);
 
 			if (delta.Magnitude () > UIManager::gUIManager ().GetDragThreshold ())
 				uiManager->ForcePendingContextRequest (false);
@@ -761,7 +766,7 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 				msg.Data          = static_cast<short>(event->arg3 * one_over_120);
 				msg.MouseCoords.x = m_mouseCursor->getX ();
 				msg.MouseCoords.y = m_mouseCursor->getY ();
-				if (uiManager->ProcessMessage (msg))
+				if (CuiManager::processUiManagerMessage (msg))
 					return IOR_Block;
 				else
 					return IOR_Pass;
@@ -828,7 +833,7 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 					m_mouseCursor->gotoXY (msg.MouseCoords.x, msg.MouseCoords.y);
 				}
 				
-				IGNORE_RETURN (uiManager->ProcessMessage (msg));
+				IGNORE_RETURN (CuiManager::processUiManagerMessage (msg));
 				
 				CuiManager::InputManager::setPointerMotionCapturedByUiX (true);
 				CuiManager::InputManager::setPointerMotionCapturedByUiY (true);
@@ -931,7 +936,7 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 			if (msg.Keystroke >= ' ')
 			{
 				//if nothing accepted this character message, make certain that it goes to chat
-				if(!uiManager->ProcessMessage (msg))
+				if(!CuiManager::processUiManagerMessage (msg))
 				{
 					UIWidget* selected = UIManager::gUIManager().GetRootPage()->GetFocusedLeafWidget();
 					//unselected the focused widgets so that chat gets the message
@@ -949,7 +954,7 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 						}
 					}
 					//reprocess the message now that chat should catch it
-					IGNORE_RETURN(uiManager->ProcessMessage (msg));
+					IGNORE_RETURN(CuiManager::processUiManagerMessage (msg));
 				}
 			}
 		}
@@ -1130,23 +1135,23 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 
 	case IOET_IMEComposition:
 		msg.Type = UIMessage::IMEComposition;
-		retval = uiManager->ProcessMessage (msg) || retval;
+		retval = CuiManager::processUiManagerMessage (msg) || retval;
 		break;
 	case IOET_IMEChangeCandidate:
 		CuiMediatorFactory::activate (CuiMediatorTypes::IMEInput);
 
 		msg.Type = UIMessage::IMEChangeCandidate;
-		retval = uiManager->ProcessMessage (msg) || retval;
+		retval = CuiManager::processUiManagerMessage (msg) || retval;
 		break;
 	case IOET_IMECloseCandidate:
 		CuiMediatorFactory::deactivate (CuiMediatorTypes::IMEInput);
 
 		msg.Type = UIMessage::IMECloseCandidate;
-		retval = uiManager->ProcessMessage (msg) || retval;
+		retval = CuiManager::processUiManagerMessage (msg) || retval;
 		break;
 	case IOET_IMEEndComposition:
 		msg.Type = UIMessage::IMEEndComposition;
-		retval = uiManager->ProcessMessage (msg) || retval;
+		retval = CuiManager::processUiManagerMessage (msg) || retval;
 		break;
 	}
 
@@ -1184,7 +1189,7 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 						continue;
 					}
 
-					retval = uiManager->ProcessMessage (msg) || retval;
+					retval = CuiManager::processUiManagerMessage (msg) || retval;
 
 					//-----------------------------------------------------------------
 					//-- send a doubleclick message if needed
@@ -1209,7 +1214,7 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 								msg.Type = UIMessage::RightMouseDoubleClick;
 							}
 
-							retval = uiManager->ProcessMessage (msg) || retval;
+							retval = CuiManager::processUiManagerMessage (msg) || retval;
 						}
 					}
 
@@ -1229,7 +1234,7 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 
 					if (msg.Type > UIMessage::IMEFirst && msg.Type < UIMessage::IMELast)
 					{
-						retval = uiManager->ProcessMessage(msg) || retval;
+						retval = CuiManager::processUiManagerMessage(msg) || retval;
 					}
 				}
 			}
@@ -1280,7 +1285,7 @@ void CuiIoWin::warpCursor (int x, int y)
 	Zero (msg.Modifiers);
 	msg.MouseCoords.x = m_mouseCursor->getX ();
 	msg.MouseCoords.y = m_mouseCursor->getY ();
-	IGNORE_RETURN (UIManager::gUIManager ().ProcessMessage (msg));
+	IGNORE_RETURN (CuiManager::processUiManagerMessage (msg));
 }
 
 //----------------------------------------------------------------------

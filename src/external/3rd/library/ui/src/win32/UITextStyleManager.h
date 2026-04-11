@@ -5,6 +5,8 @@
 #include "UIWidget.h"
 #include "UIStandardLoader.h"
 
+#include <string>
+
 class UiMemoryBlockManager;
 class UIPage;
 class UITextStyle;
@@ -59,6 +61,15 @@ public:
 
 	void                   Initialize         (UIPage *rootPage, UILoader &loader);
 
+	/// When non-empty, logical face "default" maps to generated /Fonts.cuiuif_<pt> (UTF-8 family name).
+	void                   setUserDefaultFontFaceUtf8 (std::string const &utf8);
+	void                   clearUserDefaultFontFace ();
+	std::string const &    getUserDefaultFontFaceUtf8 () const;
+
+	/// Percent of nominal point size (50–200). Affects logical font resolution for all widgets.
+	void                   setFontScalePercent (int percent);
+	int                    getFontScalePercent () const;
+
 private:
 
 	typedef ui_stdmap<UILowerString, UILowerString>::fwd LogicalFontFaceToFontFaceMap;
@@ -74,6 +85,9 @@ private:
 	LogicalFontFaceToFontFaceMap *   m_logicalToFixedFaceMap;
 	LogicalFontFaces             *   m_logicalFontFaces;
 
+	std::string                    m_userDefaultFontFaceUtf8;
+
+	int                    m_fontScalePercent;
 
 	bool                   m_initialized;
 };

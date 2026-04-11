@@ -121,6 +121,9 @@
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportPathResolver.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgTrtsIo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\MayaSceneBuilder.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -157,6 +160,21 @@
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ExportPob.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\CreatePobTemplate.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\AddPobPortal.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ReportPobPortals.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\PobAuthoringShared.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\PobExtendedCommands.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportLodMesh.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -185,6 +203,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ExportStaticMesh.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\PrepareStaticMeshExport.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ShaderExporter.cpp">
@@ -339,6 +360,9 @@
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportPathResolver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgTrtsIo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\MayaSceneBuilder.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -375,6 +399,21 @@
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ExportPob.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\CreatePobTemplate.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\AddPobPortal.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ReportPobPortals.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\PobAuthoringShared.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\PobExtendedCommands.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportLodMesh.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -403,6 +442,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ExportStaticMesh.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\PrepareStaticMeshExport.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ShaderExporter.h">

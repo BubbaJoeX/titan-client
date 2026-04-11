@@ -3,6 +3,7 @@
 
 #include "Iff.h"
 #include "Tag.h"
+#include "Transform.h"
 #include "Vector.h"
 
 #include <maya/MArgList.h>
@@ -12,6 +13,7 @@
 #include <maya/MFloatPointArray.h>
 #include <maya/MFnMesh.h>
 #include <maya/MFnTransform.h>
+#include <maya/MMatrix.h>
 #include <maya/MGlobal.h>
 #include <maya/MItDag.h>
 #include <maya/MItMeshPolygon.h>
@@ -53,6 +55,8 @@ namespace
         bool disabled;
         bool passable;
         std::string doorStyle;
+        bool hasDoorHardpoint = false;
+        Transform doorTransform = Transform::identity;
     };
 
     struct CellData
@@ -100,6 +104,30 @@ namespace
             meshPath.extendToShape();
         MFnDependencyNode fn(meshPath.node());
         return !fn.findPlug("portal", true).isNull();
+    }
+
+    static void readDoorHardpointFromPortalTransform(MObject portalTransformObj, PortalInfo& pi)
+    {
+        pi.hasDoorHardpoint = false;
+        pi.doorTransform = Transform::identity;
+        MFnDagNode pfn(portalTransformObj);
+        for (unsigned c = 0; c < pfn.childCount(); ++c)
+        {
+            MObject ch = pfn.child(c);
+            if (!ch.hasFn(MFn::kTransform)) continue;
+            MFnDagNode cfn(ch);
+            if (cfn.name() != "doorHardpoint") continue;
+            pi.hasDoorHardpoint = true;
+            MFnTransform tfn(ch);
+            const MMatrix m = tfn.transformationMatrix();
+            const Vector i(static_cast<float>(m[0][0]), static_cast<float>(m[1][0]), static_cast<float>(m[2][0]));
+            const Vector j(static_cast<float>(m[0][1]), static_cast<float>(m[1][1]), static_cast<float>(m[2][1]));
+            const Vector k(static_cast<float>(m[0][2]), static_cast<float>(m[1][2]), static_cast<float>(m[2][2]));
+            const Vector p(static_cast<float>(m[0][3]), static_cast<float>(m[1][3]), static_cast<float>(m[2][3]));
+            pi.doorTransform.setLocalFrameIJK_p(i, j, k);
+            pi.doorTransform.setPosition_p(p);
+            return;
+        }
     }
 
     static bool extractMeshGeometry(MDagPath meshPath, PortalGeometry& geom)
@@ -257,34 +285,35 @@ MStatus ExportPob::doIt(const MArgList& args)
                     MObject portalObj = childFn.child(k);
                     if (!portalObj.hasFn(MFn::kTransform)) continue;
                     MFnDagNode portalFn(portalObj);
-                    MDagPath portalPath;
-                    portalFn.getPath(portalPath);
+                    PortalInfo pi;
+                    pi.portalIndex = 0;
+                    if (!getIntAttr(portalObj, "buildingPortalIndex", pi.portalIndex))
+                        continue;
+                    pi.clockwise = false;
+                    pi.targetCell = -1;
+                    pi.disabled = false;
+                    pi.passable = true;
+                    getBoolAttr(portalObj, "portalClockwise", pi.clockwise);
+                    getIntAttr(portalObj, "portalTargetCell", pi.targetCell);
+                    getBoolAttr(portalObj, "portalDisabled", pi.disabled);
+                    getBoolAttr(portalObj, "portalPassable", pi.passable);
+                    getStringAttr(portalObj, "doorStyle", pi.doorStyle);
+                    readDoorHardpointFromPortalTransform(portalObj, pi);
+
                     for (unsigned m = 0; m < portalFn.childCount(); ++m)
                     {
+                        MObject meshChild = portalFn.child(m);
+                        if (meshChild.hasFn(MFn::kTransform) && MFnDagNode(meshChild).name() == "doorHardpoint")
+                            continue;
                         MDagPath meshPath;
-                        MFnDagNode(portalFn.child(m)).getPath(meshPath);
-                        if (hasPortalAttr(meshPath))
-                        {
-                            PortalInfo pi;
-                            pi.portalIndex = 0;
-                            pi.clockwise = false;
-                            pi.targetCell = -1;
-                            pi.disabled = false;
-                            pi.passable = true;
-                            getIntAttr(portalObj, "buildingPortalIndex", pi.portalIndex);
-                            getBoolAttr(portalObj, "portalClockwise", pi.clockwise);
-                            getIntAttr(portalObj, "portalTargetCell", pi.targetCell);
-                            getBoolAttr(portalObj, "portalDisabled", pi.disabled);
-                            getBoolAttr(portalObj, "portalPassable", pi.passable);
-                            getStringAttr(portalObj, "doorStyle", pi.doorStyle);
-
-                            PortalGeometry geom;
-                            if (extractMeshGeometry(meshPath, geom))
-                                portalGeometries[pi.portalIndex] = geom;
-                            cell.portals.push_back(pi);
-                            break;
-                        }
+                        MFnDagNode(meshChild).getPath(meshPath);
+                        if (!hasPortalAttr(meshPath)) continue;
+                        PortalGeometry geom;
+                        if (extractMeshGeometry(meshPath, geom))
+                            portalGeometries[pi.portalIndex] = geom;
+                        break;
                     }
+                    cell.portals.push_back(pi);
                 }
             }
             else if (childName == "collision")
@@ -397,9 +426,8 @@ MStatus ExportPob::doIt(const MArgList& args)
             iff.insertChunkData(static_cast<int8>(pi.clockwise ? 1 : 0));
             iff.insertChunkData(static_cast<int32>(targetCell));
             iff.insertChunkString(pi.doorStyle.empty() ? "" : pi.doorStyle.c_str());
-            iff.insertChunkData(static_cast<int8>(0));
-            for (int m = 0; m < 16; ++m)
-                iff.insertChunkData(0.0f);
+            iff.insertChunkData(static_cast<int8>(pi.hasDoorHardpoint ? 1 : 0));
+            iff.insertChunkFloatTransform(pi.hasDoorHardpoint ? pi.doorTransform : Transform::identity);
             iff.exitChunk(TAG_0005);
             iff.exitForm(TAG_PRTL);
         }

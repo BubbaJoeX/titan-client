@@ -11,10 +11,14 @@
 #include "UITextStyle.h"
 #include "UIUtils.h"
 #include "UnicodeUtils.h"
+#include <algorithm>
 #include <cassert>
+#include <cstdlib>
+#include <cstring>
 #include <map>
 #include <list>
 #include <vector>
+#include <string>
 
 const char * const UITextStyleManager::TypeName = "TextStyleManager";
 
@@ -57,6 +61,8 @@ UITextStyleManager::UITextStyleManager () :
 UIBaseObject         (),
 m_logicalToFixedFaceMap(new LogicalFontFaceToFontFaceMap),
 m_logicalFontFaces(new LogicalFontFaces),
+m_userDefaultFontFaceUtf8 (),
+m_fontScalePercent(100),
 m_initialized(false)
 {
 	if(s_theManager != 0)
@@ -250,12 +256,18 @@ UITextStyle * UITextStyleManager::GetFontForLogicalFont (const UILowerString &lo
 	std::string const & logicalFontFace = logicalFontNameAsString.substr(0, oldPos - 1);
 	std::string const & logicalFontPoint = logicalFontNameAsString.substr(oldPos, logicalFontNameAsString.length());
 	int const logicalPointSize = atoi(logicalFontPoint.c_str());
-	
-	
+
+	int scaledLogicalPoint = logicalPointSize;
+	if (m_fontScalePercent != 100)
+	{
+		scaledLogicalPoint = (logicalPointSize * m_fontScalePercent + 50) / 100;
+		scaledLogicalPoint = std::max (MIN_POINT_SIZE, std::min (MAX_POINT_SIZE, scaledLogicalPoint));
+	}
+
 	if(logicalFontName.startsWith('/'))
 	{
 		//It's already decomposed into a fixed font
-		int tryPointSize = logicalPointSize;
+		int tryPointSize = scaledLogicalPoint;
 		int dir = 0;
 		if (tryPointSize < fontSizeToMoveTowards)
 			dir = 1;
@@ -276,31 +288,39 @@ UITextStyle * UITextStyleManager::GetFontForLogicalFont (const UILowerString &lo
 	}
 	
 	//turn the font face into a fixed font face
-	LogicalFontFaceToFontFaceMap::iterator logicalIterator = m_logicalToFixedFaceMap->find(UILowerString(logicalFontFace));
-	if(logicalIterator == m_logicalToFixedFaceMap->end())
+	UILowerString fixedFontFace;
+	// Nameplates and flytext use logical "starwars_*"; route to generated user atlases when a user font is active.
+	if (!m_userDefaultFontFaceUtf8.empty () && (!_stricmp (logicalFontFace.c_str (), "default") || !_stricmp (logicalFontFace.c_str (), "bold") || !_stricmp (logicalFontFace.c_str (), "starwars")))
 	{
-		logicalIterator = m_logicalToFixedFaceMap->find(UILowerString("default"));
-		if(logicalIterator == m_logicalToFixedFaceMap->end())
-			logicalIterator = m_logicalToFixedFaceMap->begin();
+		fixedFontFace = UILowerString ("cuiuif");
+	}
+	else
+	{
+		LogicalFontFaceToFontFaceMap::iterator logicalIterator = m_logicalToFixedFaceMap->find(UILowerString(logicalFontFace));
 		if(logicalIterator == m_logicalToFixedFaceMap->end())
 		{
-			//Well, now we're really screwed
-			UITextStyle *  textStyle = static_cast<UITextStyle *>(GetObjectFromPath("/Fonts.aurabesh_12", TUITextStyle)); //lint !e740 have to cast
-			if(textStyle)
+			logicalIterator = m_logicalToFixedFaceMap->find(UILowerString("default"));
+			if(logicalIterator == m_logicalToFixedFaceMap->end())
+				logicalIterator = m_logicalToFixedFaceMap->begin();
+			if(logicalIterator == m_logicalToFixedFaceMap->end())
 			{
-				UI_REPORT_LOG_PRINT(true, ("Returned bogus aurabesh_12 font because there was no default font"));
-				textStyle->SetLogicalName(Unicode::narrowToWide(logicalFontName.c_str()));
-				return textStyle;
+				//Well, now we're really screwed
+				UITextStyle *  textStyle = static_cast<UITextStyle *>(GetObjectFromPath("/Fonts.aurabesh_12", TUITextStyle)); //lint !e740 have to cast
+				if(textStyle)
+				{
+					UI_REPORT_LOG_PRINT(true, ("Returned bogus aurabesh_12 font because there was no default font"));
+					textStyle->SetLogicalName(Unicode::narrowToWide(logicalFontName.c_str()));
+					return textStyle;
+				}
+				assert(logicalIterator != m_logicalToFixedFaceMap->end());	//This error means there's no fonts at all
 			}
-			assert(logicalIterator != m_logicalToFixedFaceMap->end());	//This error means there's no fonts at all
 		}
+		fixedFontFace = logicalIterator->second;
 	}
-	
-	UILowerString const & fixedFontFace = logicalIterator->second;
 	
 	//look for the widget start at the suggested point and head towards 14 (with 14 going down)
 	//except Japanese, which head towards the smallest font available
-	int tryPointSize = logicalPointSize;
+	int tryPointSize = scaledLogicalPoint;
 	int dir = 0;
 	if (tryPointSize < fontSizeToMoveTowards)
 		dir = 1;
@@ -309,7 +329,7 @@ UITextStyle * UITextStyleManager::GetFontForLogicalFont (const UILowerString &lo
 	while((tryPointSize >= MIN_POINT_SIZE) && (tryPointSize <= MAX_POINT_SIZE))
 	{
 		//put the font name back together and try to get the UI object
-		UI_IGNORE_RETURN(_snprintf(buffer, buffer_size, "/Fonts.%s_%d", fixedFontFace.c_str(), tryPointSize));
+		UI_IGNORE_RETURN(_snprintf(buffer, buffer_size, "/Fonts.%s_%d", fixedFontFace.c_str (), tryPointSize));
 		UIString fontWidgetPath(Unicode::narrowToWide(buffer));
 		UITextStyle *  textStyle = reinterpret_cast<UITextStyle *>(GetObjectFromPath(fontWidgetPath, TUITextStyle)); //lint !e740 have to cast
 		if(textStyle)
@@ -320,6 +340,45 @@ UITextStyle * UITextStyleManager::GetFontForLogicalFont (const UILowerString &lo
 		tryPointSize += dir;
 	}
 	return 0;	
+}
+
+//----------------------------------------------------------------------
+
+void UITextStyleManager::setUserDefaultFontFaceUtf8 (std::string const &utf8)
+{
+	m_userDefaultFontFaceUtf8 = utf8;
+}
+
+//----------------------------------------------------------------------
+
+void UITextStyleManager::clearUserDefaultFontFace ()
+{
+	m_userDefaultFontFaceUtf8.clear ();
+}
+
+//----------------------------------------------------------------------
+
+std::string const & UITextStyleManager::getUserDefaultFontFaceUtf8 () const
+{
+	return m_userDefaultFontFaceUtf8;
+}
+
+//----------------------------------------------------------------------
+
+void UITextStyleManager::setFontScalePercent (int percent)
+{
+	if (percent < 50)
+		percent = 50;
+	else if (percent > 200)
+		percent = 200;
+	m_fontScalePercent = percent;
+}
+
+//----------------------------------------------------------------------
+
+int UITextStyleManager::getFontScalePercent () const
+{
+	return m_fontScalePercent;
 }
 
 //----------------------------------------------------------------------

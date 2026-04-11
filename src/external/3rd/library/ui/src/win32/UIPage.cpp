@@ -14,8 +14,29 @@
 #include "UIText.h"
 
 #include <cassert>
+#include <cmath>
 #include <list>
 #include <map>
+
+namespace
+{
+	UILowerString const g_cuiContentScaleProperty ("CuiContentScale");
+
+	float getCuiContentScaleFactor (UIPage const *const page)
+	{
+		if (!page)
+			return 1.f;
+		UIString v;
+		if (!page->GetProperty (g_cuiContentScaleProperty, v))
+			return 1.f;
+		float f = 1.f;
+		if (!UIUtils::ParseFloat (v, f))
+			return 1.f;
+		if (f < 0.25f || f > 4.f)
+			return 1.f;
+		return f;
+	}
+}
 
 //======================================================================================
 
@@ -741,6 +762,16 @@ UIWidget *UIPage::GetWidgetFromPoint( const UIPoint &PointToTest, bool mustGetIn
 	if (HasPageAttribute(PA_PackDirty))
 		const_cast<UIPage *>(this)->Pack ();
 
+	float const contentScale = getCuiContentScaleFactor (this);
+	bool const useContentScale = (std::fabs (contentScale - 1.f) > 1.0e-3f);
+	UIPoint adjustedPoint (PointToTest);
+	if (useContentScale)
+	{
+		float const inv = 1.f / contentScale;
+		adjustedPoint.x = static_cast<long>(static_cast<float>(PointToTest.x) * inv + 0.5f);
+		adjustedPoint.y = static_cast<long>(static_cast<float>(PointToTest.y) * inv + 0.5f);
+	}
+
 	const UIPoint & ScrollLocation = GetScrollLocation();
 
 	for( UIObjectList::const_iterator i = mObjects->begin(); i != mObjects->end(); ++i )
@@ -750,7 +781,7 @@ UIWidget *UIPage::GetWidgetFromPoint( const UIPoint &PointToTest, bool mustGetIn
 		if( o->IsA( TUIWidget ) )
 		{
 			UIWidget * const w = static_cast<UIWidget *>( o );
-			const UIPoint p ((PointToTest - w->GetLocation()) + ScrollLocation);
+			const UIPoint p ((adjustedPoint - w->GetLocation()) + ScrollLocation);
 
 			if( w->WillDraw() && w->HitTest( p ) )
 			{
@@ -768,7 +799,7 @@ UIWidget *UIPage::GetWidgetFromPoint( const UIPoint &PointToTest, bool mustGetIn
 		}
 	}
 
-	return UIWidget::GetWidgetFromPoint( PointToTest, mustGetInput );
+	return UIWidget::GetWidgetFromPoint( adjustedPoint, mustGetInput );
 }
 
 //======================================================================================
@@ -1059,6 +1090,14 @@ void UIPage::Render( UICanvas &DestinationCanvas ) const
 		DestinationCanvas.ModifyOpacity( GetOpacity() );
 	}
  
+	float const contentScale = getCuiContentScaleFactor (this);
+	bool const useContentScale = (std::fabs (contentScale - 1.f) > 1.0e-3f);
+	if (useContentScale)
+	{
+		DestinationCanvas.PushState ();
+		DestinationCanvas.Scale (contentScale, contentScale);
+	}
+
 	UIWidget::Render (DestinationCanvas);
 
 	if (HasPageAttribute(PA_WidgetVectorDirty))
@@ -1083,6 +1122,9 @@ void UIPage::Render( UICanvas &DestinationCanvas ) const
 			UIRenderHelper::RenderObjects(DestinationCanvas, *mWidgets, mScratchVector);
 		}
 	}
+
+	if (useContentScale)
+		DestinationCanvas.PopState ();
 
 	if( !GetParent() )
 		DestinationCanvas.PopState();

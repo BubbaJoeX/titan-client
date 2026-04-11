@@ -197,6 +197,56 @@ Texture::Texture(CrcString const & fileName)
 
 // ----------------------------------------------------------------------
 /**
+ * Named texture built from raw pixel data (virtual path only; not loaded from TreeFile).
+ */
+
+Texture::Texture(PersistentCrcString const &logicalName, const void *newPixelData, TextureFormat newFormat, int newWidth, int newHeight, const TextureFormat *runtimeFormatArray, int runtimeFormatCount)
+:
+	m_referenceCount(0),
+	m_crcString(logicalName),
+	m_renderTarget(false),
+	m_cube(false),
+	m_volume(false),
+	m_dynamic(false),
+	m_cursorHack(false),
+	m_width(newWidth),
+	m_height(newHeight),
+	m_depth(1),
+	m_mipmapLevelCount(1),
+	m_graphicsData(0),
+	m_representativeColorComputed(0),
+	m_representativeColor()
+{
+	m_graphicsData = Graphics::createTextureData(*this, runtimeFormatArray, runtimeFormatCount);
+
+	LockData lockData(newFormat, 0, 0, 0, 0, m_width, m_height, m_depth, true);
+	lock(lockData);
+
+		const TextureFormatInfo &tfi             = TextureFormatInfo::getInfo(newFormat);
+		const int                pitch           = m_width * tfi.pixelByteCount;
+		uint8                   *lockedDataWrite = reinterpret_cast<uint8*>(lockData.getPixelData());
+		const uint8             *readData        = reinterpret_cast<const uint8*>(newPixelData);
+
+		if (lockData.getPitch() == pitch && lockData.getSlicePitch() == pitch * m_height)
+		{
+			imemcpy(lockedDataWrite, readData, pitch * m_height * m_depth);
+		}
+		else
+		{
+			uint8 *lockedSliceWrite = lockedDataWrite;
+			for (int z = 0; z < m_depth; ++z, lockedSliceWrite += lockData.getSlicePitch())
+			{
+				lockedDataWrite = lockedSliceWrite;
+				for (int y = 0; y < m_height; ++y, lockedDataWrite += lockData.getPitch(), readData += pitch)
+					imemcpy(lockedDataWrite, readData, pitch);
+			}
+		}
+
+	unlock(lockData);
+}
+
+// ----------------------------------------------------------------------
+/**
  * Construct a 1x1x1 texture with the given rgba profile.
  */
 

@@ -216,6 +216,18 @@ void CuiDataDrivenPageManager::handleSceneChange()
 
 //-----------------------------------------------------------------
 
+void CuiDataDrivenPageManager::resetLocalizedStringsForAllPages ()
+{
+	for (PageMap::iterator it = ms_pages.begin (); it != ms_pages.end (); ++it)
+	{
+		CuiDataDrivenPage *const page = (*it).second;
+		if (page)
+			page->getPage ().ResetLocalizedStrings ();
+	}
+}
+
+//-----------------------------------------------------------------
+
 void CuiDataDrivenPageManager::receiveCreatePageMessage      (SuiCreatePageMessage const &createPageMessage)
 {
 	createPage(createPageMessage.getPageData());

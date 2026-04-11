@@ -39,6 +39,9 @@ namespace CuiStringVariables
 	* These ONLY work when used in a command parser (/command) NOT in chat or macros.
 	* %ZU - The OID of your player object
 	* %ZT - The OID of the object you are targeting
+	* %YU - Object template path (getTemplateName) of your creature
+	* %YT - Object template path of your intended target (same target as %ZT)
+	* %YO - Object template path of the "other" object when that slot is set
 	*
 	*/
 
@@ -60,6 +63,7 @@ namespace CuiStringVariables
 		V_title,
 		V_digit,
 		V_networkId,
+		V_adminTemplatePath,
 		V_count,
 		V_none,
 	};

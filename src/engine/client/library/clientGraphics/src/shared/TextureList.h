@@ -51,6 +51,8 @@ public:
 	static const Texture *fetch(Iff *iff);
 	static const Texture *fetch(int alpha, int red, int green, int blue);
 	static const Texture *fetch(const void *pixelData, TextureFormat format, int width, int height, const TextureFormat *runtimeFormats, int runtimeFormatCount);
+	/// Register pixel data under a stable path (e.g. texture/foo.dds) for UI canvas fetch.
+	static const Texture *registerNamedPixelTexture(char const *fullPath, void const *pixelData, TextureFormat format, int width, int height);
 	static Texture       *fetch(int textureCreationFlags, int width, int height, int numberOfMipMapLevels, const TextureFormat *runtimeTextureFormats, int textureFormatCount);
 
 	//-- These functions are called at the beginning of TextureList::remove to clean up any existing texture resources

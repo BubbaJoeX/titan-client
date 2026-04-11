@@ -1012,6 +1012,14 @@ bool Iff::atEndOfForm(void) const
 }
 
 // ----------------------------------------------------------------------
+
+int Iff::getBytesRemainingInForm(void) const
+{
+	IFF_DEBUG_FATAL(inChunk, ("in chunk"));
+	return stack[stackDepth].length - stack[stackDepth].used;
+}
+
+// ----------------------------------------------------------------------
 /**
  * Get the number of blocks left in the current enclosing form.
  * 

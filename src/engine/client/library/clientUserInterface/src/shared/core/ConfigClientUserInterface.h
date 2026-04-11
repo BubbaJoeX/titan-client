@@ -113,6 +113,9 @@ public:
 	static bool                getShowQuestHelper();
 	static bool                getShowEnteringCombatFlyText();
 	static bool                getShowCompletedCollections();
+	static int                 getUiScalePercent ();
+	static float               getUiScaleFactor ();
+	static int                 getUiFontScalePercent ();
 };
 
 //======================================================================

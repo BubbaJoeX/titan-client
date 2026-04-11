@@ -18,6 +18,10 @@ class TitanPakEncryptionContext;
 
 #include "sharedFile/TreeFile.h"
 #include "sharedFile/FileStreamer.h"
+
+#include <set>
+#include <string>
+#include <vector>
 #include "../../../../../../engine/shared/library/sharedFoundation/include/public/sharedFoundation/LessPointerComparator.h"
 #include "../../../../../../engine/shared/library/sharedFoundation/include/public/sharedFoundation/Os.h"
 #include "../../../../../../engine/shared/library/sharedFoundation/include/public/sharedFoundation/Tag.h"
@@ -48,6 +52,8 @@ public:
 	virtual int           getFileSize(const char *fileName, bool &deleted) const = 0;
 	virtual void          getPathName(const char *fileName, char *pathName, int pathNameLength) const = 0;
 	virtual AbstractFile *open(const char *fileName, AbstractFile::PriorityType priority, bool &deleted) = 0;
+
+	virtual void          collectVirtualPathNamesWithPrefixAndSuffix(char const * prefix, char const * suffix, std::vector<std::string> & out, std::set<std::string> & seen) const;
 
 private:
 
@@ -81,6 +87,7 @@ public:
 	virtual int           getFileSize(const char *fileName, bool &deleted) const;
 	virtual void          getPathName(const char *fileName, char *pathName, int pathNameLength) const;
 	virtual AbstractFile *open(const char *fileName, AbstractFile::PriorityType priority, bool &deleted);
+	virtual void          collectVirtualPathNamesWithPrefixAndSuffix(char const * prefix, char const * suffix, std::vector<std::string> & out, std::set<std::string> & seen) const;
 
 	const char           *getPathName() const; //lint !e1411  // Warning -- member with different signature hides virtual member (bug in PC-Lint, incorrect warning)
 
@@ -152,6 +159,7 @@ public:
 	virtual int           getFileSize(const char *fileName, bool &deleted) const;
 	virtual void          getPathName(const char *fileName, char *pathName, int pathNameLength) const;
 	virtual AbstractFile *open(const char *fileName, AbstractFile::PriorityType priority, bool &deleted);
+	virtual void          collectVirtualPathNamesWithPrefixAndSuffix(char const * prefix, char const * suffix, std::vector<std::string> & out, std::set<std::string> & seen) const;
 
 private:
 
@@ -242,6 +250,7 @@ public:
 	virtual int           getFileSize(const char *fileName, bool &deleted) const;
 	virtual void          getPathName(const char *fileName, char *pathName, int pathNameLength) const;
 	virtual AbstractFile *open(const char *fileName, AbstractFile::PriorityType priority, bool &deleted);
+	virtual void          collectVirtualPathNamesWithPrefixAndSuffix(char const * prefix, char const * suffix, std::vector<std::string> & out, std::set<std::string> & seen) const;
 
 private:
 

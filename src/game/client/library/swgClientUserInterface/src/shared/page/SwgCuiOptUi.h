@@ -10,9 +10,13 @@
 
 #include "swgClientUserInterface/SwgCuiOptBase.h"
 
+#include <string>
+
 //======================================================================
 
 class UIComboBox;
+class UITextbox;
+class UIButton;
 
 class SwgCuiOptUi : 
 public SwgCuiOptBase
@@ -25,6 +29,9 @@ public:
 
 	virtual void             resetDefaults     (bool confirmed);
 
+	virtual void             OnButtonPressed   (UIWidget * context);
+	virtual void             OnTextboxChanged  (UIWidget * context);
+
 protected:
 	void           performActivate ();
 	void           performDeactivate ();
@@ -36,6 +43,14 @@ private:
 	SwgCuiOptUi            (const SwgCuiOptUi & rhs);
 
 	UIComboBox *   m_combo;
+
+	UIComboBox *   m_comboUiFont;
+	UITextbox *    m_textUiFontFilter;
+	UIButton *     m_buttonUiFontSearch;
+	UIButton *     m_buttonUiFontApply;
+
+	void           rebuildUiFontCombo ();
+	void           selectComboFaceUtf8 (std::string const &utf8Face);
 	
 	class CallbackReceiverWaypointMonitor;
 	CallbackReceiverWaypointMonitor * m_callbackReceiverWaypointMonitor;

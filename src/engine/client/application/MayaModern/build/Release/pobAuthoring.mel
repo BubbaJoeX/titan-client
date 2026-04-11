@@ -1,0 +1,428 @@
+// SwgMayaEditor — .pob (portal object) authoring helpers for large buildings / apartments.
+// After loading SwgMayaEditor.mll:  source "…/pobAuthoring.mel";
+//
+// EMPTY / BLACK VIEWPORT?
+//   New scene + no lights = black. Run:  swg_pob_defaultLight;
+//   Then start geometry:        swg_pob_apartmentPreset;   // or swg_pob_fromScratch …
+//
+// COMMAND REFERENCE (also see MayaModern README.md)
+//   createPobTemplate -n NAME -cells N [-layoutSpacing F] [-spacing F]
+//   layoutPobCells [-cols C] [-dx F] [-dz F] [-root "|building"]
+//   addPobPortal [-preset 0..4] [-w/-h] [-index i] [-clockwise 0|1] [-target n] [-doorHardpoint]
+//   connectPobCells -from rA -to rB   OR   select two cells (from, to)
+//   duplicatePobCell [-stripPortals] [-remapPortalIndices N]
+//   reportPobPortals  |  validatePob
+//   exportPob -i "path.appearance/name.pob"
+//
+// MEL helpers (this file):
+//   swg_pob_setAllMeshRefs / swg_pob_setAllFloorRefs / swg_pob_setCellRefs
+//   swg_pob_addTemplatePlaceholders       swg_pob_connectRing "r0,r1,r2,r3" …
+//   swg_pob_exportDialog   swg_pob_layoutColumnY   swg_pob_clearAllPortals
+//   swg_pob_selectAllMeshes / swg_pob_selectPortalsGroup / swg_pob_printCellPaths
+//
+// -preset: 0=default 2x2.5  1=wide 3x2.5  2=narrow 1x2.5  3=tall 2x3.2  4=garage 4x3
+
+global proc swg_pob_addPortal()
+{
+    addPobPortal -w 2.0 -h 2.5;
+}
+
+global proc swg_pob_addPortalWide()
+{
+    addPobPortal -preset 1;
+}
+
+global proc swg_pob_addPortalNarrow()
+{
+    addPobPortal -preset 2;
+}
+
+global proc swg_pob_addPortalTall()
+{
+    addPobPortal -preset 3;
+}
+
+global proc swg_pob_addPortalGarage()
+{
+    addPobPortal -preset 4;
+}
+
+global proc swg_pob_addPortalWithDoorHp()
+{
+    addPobPortal -w 2.0 -h 2.5 -doorHardpoint;
+}
+
+global proc swg_pob_report()
+{
+    reportPobPortals;
+}
+
+global proc swg_pob_validate()
+{
+    validatePob;
+}
+
+// Select two rN cells (hall first, room second) then run.
+global proc swg_pob_connectSelection()
+{
+    connectPobCells;
+}
+
+global proc swg_pob_layout8wide(float $dx)
+{
+    layoutPobCells -cols 8 -dx $dx -dz 0;
+}
+
+global proc swg_pob_layoutGrid(int $cols, float $dx, float $dz)
+{
+    string $cmd = "layoutPobCells -cols " + $cols + " -dx " + $dx + " -dz " + $dz;
+    eval $cmd;
+}
+
+global proc swg_pob_dupCellClean()
+{
+    duplicatePobCell -stripPortals;
+}
+
+// ---------------------------------------------------------------------------
+// Bootstrap (empty scene → lit viewport + POB hierarchy)
+// ---------------------------------------------------------------------------
+
+/// One directional + low ambient so new files are not a black void.
+global proc swg_pob_defaultLight()
+{
+    if (!`objExists swg_pob_sun`)
+    {
+        directionalLight -n swg_pob_sun -rgb 1 0.98 0.95 -intensity 1.15;
+        rotate -r -os -35 45 0 swg_pob_sun;
+        move 30 80 40 swg_pob_sun;
+    }
+    if (!`objExists swg_pob_fill`)
+    {
+        ambientLight -n swg_pob_fill -rgb 0.45 0.48 0.55 -intensity 0.35;
+    }
+}
+
+/// Frame the POB root in the active model panel (if any).
+global proc swg_pob_frameRoot(string $rootName)
+{
+    select -r $rootName;
+    string $panels[] = `getPanel -vis`;
+    int $i;
+    for ($i = 0; $i < size($panels); $i++)
+    {
+        if (`getPanel -typeOf $panels[$i]` == "modelPanel")
+        {
+            // Maya: fitPanel <panelName> — frames current selection in that panel (no -selected flag).
+            fitPanel $panels[$i];
+            break;
+        }
+    }
+}
+
+/// Preview geometry only: `polyCube` under each `r*\|mesh`, horizontal `polyPlane` under `r*\|collision\|floor0`.
+/// Sized from your layout bays; not read by exportPob (appearance/floor come from external_reference on the transforms).
+global proc swg_pob_addTemplatePlaceholders(string $rootName, float $roomW, float $roomH, float $roomD, float $floorW, float $floorD)
+{
+    int $i;
+    int $n = 0;
+    for ($i = 0; $i < 512; $i++)
+    {
+        string $r = $rootName + "|r" + $i;
+        if (!`objExists $r`) break;
+
+        string $meshLs[] = `ls -long ($r + "|mesh")`;
+        string $floorLs[] = `ls -long ($r + "|collision|floor0")`;
+        if (size($meshLs) < 1 || size($floorLs) < 1) continue;
+
+        string $meshParent = $meshLs[0];
+        string $floorParent = $floorLs[0];
+
+        if (!`objExists ($meshParent + "|pob_placeholder_room")`)
+        {
+            // polyCube/polyPlane have no -parent in all Maya builds; create at root then parent.
+            string $tmpRoom = "pob_ph_room_" + $i;
+            string $cube[] = `polyCube -w $roomW -h $roomH -d $roomD -sx 1 -sy 1 -sz 1 -n $tmpRoom`;
+            parent $cube[0] $meshParent;
+            string $roomPath[] = `ls -long ($meshParent + "|" + $tmpRoom)`;
+            if (size($roomPath) > 0)
+                rename $roomPath[0] pob_placeholder_room;
+            string $roomT[] = `ls -long ($meshParent + "|pob_placeholder_room")`;
+            if (size($roomT) > 0)
+            {
+                string $rt = $roomT[0];
+                setAttr ($rt + ".tx") 0;
+                setAttr ($rt + ".ty") 0;
+                setAttr ($rt + ".tz") 0;
+                setAttr ($rt + ".rx") 0;
+                setAttr ($rt + ".ry") 0;
+                setAttr ($rt + ".rz") 0;
+            }
+        }
+        if (!`objExists ($floorParent + "|pob_placeholder_floor")`)
+        {
+            string $tmpFl = "pob_ph_floor_" + $i;
+            string $pl[] = `polyPlane -w $floorW -h $floorD -sx 1 -sy 1 -n $tmpFl`;
+            parent $pl[0] $floorParent;
+            string $flPath[] = `ls -long ($floorParent + "|" + $tmpFl)`;
+            if (size($flPath) > 0)
+                rename $flPath[0] pob_placeholder_floor;
+            string $floorT[] = `ls -long ($floorParent + "|pob_placeholder_floor")`;
+            if (size($floorT) > 0)
+            {
+                string $ft = $floorT[0];
+                setAttr ($ft + ".tx") 0;
+                setAttr ($ft + ".ty") 0;
+                setAttr ($ft + ".tz") 0;
+                setAttr ($ft + ".rx") 90;
+                setAttr ($ft + ".ry") 0;
+                setAttr ($ft + ".rz") 0;
+            }
+        }
+        $n++;
+    }
+    print ("// swg_pob_addTemplatePlaceholders: " + $n
+        + " cell(s) — pob_placeholder_room + pob_placeholder_floor (viewport only; safe for exportPob)\n");
+}
+
+/// Full skeleton: N cells, grid layout, light, frame, placeholder room/floor meshes. $linearSpacing>0 spreads cells on +X before grid.
+global proc swg_pob_fromScratch(string $rootName, int $numCells, int $cols, float $dx, float $dz, float $linearSpacing)
+{
+    swg_pob_defaultLight;
+
+    string $cmd = "createPobTemplate -n " + $rootName + " -cells " + $numCells;
+    if ($linearSpacing > 0.0001)
+        $cmd += " -layoutSpacing " + $linearSpacing;
+    eval $cmd;
+
+    string $layout = "layoutPobCells -root " + $rootName + " -cols " + $cols + " -dx " + $dx + " -dz " + $dz;
+    eval $layout;
+
+    float $inset = 0.98;
+    float $roomW = $dx * $inset;
+    float $roomD = $dz * $inset;
+    float $roomH = 3.0;
+    swg_pob_addTemplatePlaceholders($rootName, $roomW, $roomH, $roomD, $dx, $dz);
+
+    swg_pob_frameRoot($rootName);
+}
+
+/// Sensible defaults for a first apartment wing (24 units, 6×4 grid, ~12m bays).
+global proc swg_pob_apartmentPreset()
+{
+    swg_pob_fromScratch("apt_wing_a", 24, 6, 12.0, 10.0, 0.0);
+    print "// Placeholder room/floor meshes are under mesh and floor0 (export uses external_reference only).\n";
+    print "// Next: setAttr on each r*|mesh.external_reference and r*|collision|floor0.external_reference\n";
+    print "// Then: connectPobCells / addPobPortal — swg_pob_connectChain \"r0,r1,r2\" for a hall spine\n";
+    print "//       validatePob;  exportPob -i \"…/apt_wing_a.pob\";\n";
+}
+
+/// Select first cell mesh transform for fast assignment (r0|mesh).
+global proc swg_pob_selectMeshR0(string $rootName)
+{
+    select -r ($rootName + "|r0|mesh");
+}
+
+// ---------------------------------------------------------------------------
+// Corridors: sequential doorways r0↔r1, r1↔r2, …  (comma-separated, no spaces)
+// ---------------------------------------------------------------------------
+
+global proc swg_pob_connectChain(string $csvCells)
+{
+    string $parts[];
+    int $n = `tokenize $csvCells "," $parts`;
+    if ($n < 2)
+    {
+        warning "swg_pob_connectChain: pass cells like \"r0,r1,r2\" (comma-separated)";
+        return;
+    }
+    int $i;
+    for ($i = 0; $i < $n - 1; $i++)
+    {
+        string $from = $parts[$i];
+        string $to = $parts[$i + 1];
+        string $one = "connectPobCells -from " + $from + " -to " + $to;
+        eval $one;
+    }
+    print ("// swg_pob_connectChain: linked " + ($n - 1) + " doorway pair(s)\n");
+}
+
+/// Closed loop: last cell connects back to first (e.g. courtyard ring).
+global proc swg_pob_connectRing(string $csvCells)
+{
+    string $parts[];
+    int $n = `tokenize $csvCells "," $parts`;
+    if ($n < 3)
+    {
+        warning "swg_pob_connectRing: need at least 3 cells, e.g. \"r0,r1,r2,r3\"";
+        return;
+    }
+    swg_pob_connectChain($csvCells);
+    string $last = $parts[$n - 1];
+    string $first = $parts[0];
+    string $close = "connectPobCells -from " + $last + " -to " + $first;
+    eval $close;
+    print "// swg_pob_connectRing: closed loop (last→first)\n";
+}
+
+// ---------------------------------------------------------------------------
+// Batch external_reference (TreeFile paths: appearance/…)
+// ---------------------------------------------------------------------------
+
+global proc swg_pob_setAllMeshRefs(string $rootName, string $appearancePath)
+{
+    int $i;
+    int $n = 0;
+    for ($i = 0; $i < 512; $i++)
+    {
+        string $mesh = $rootName + "|r" + $i + "|mesh";
+        if (!`objExists $mesh`) break;
+        string $meshPlug = $mesh + ".external_reference";
+        setAttr -type "string" $meshPlug $appearancePath;
+        $n++;
+    }
+    print ("// swg_pob_setAllMeshRefs: " + $n + " cell(s) mesh → " + $appearancePath + "\n");
+}
+
+global proc swg_pob_setAllFloorRefs(string $rootName, string $floorPath)
+{
+    int $i;
+    int $n = 0;
+    for ($i = 0; $i < 512; $i++)
+    {
+        string $fl = $rootName + "|r" + $i + "|collision|floor0";
+        if (!`objExists $fl`) break;
+        string $flPlug = $fl + ".external_reference";
+        setAttr -type "string" $flPlug $floorPath;
+        $n++;
+    }
+    print ("// swg_pob_setAllFloorRefs: " + $n + " cell(s) floor0 → " + $floorPath + "\n");
+}
+
+/// Set one cell; pass "" for $floorPath to leave floor unchanged.
+global proc swg_pob_setCellRefs(string $rootName, int $cellIndex, string $meshPath, string $floorPath)
+{
+    string $mesh = $rootName + "|r" + $cellIndex + "|mesh";
+    string $fl = $rootName + "|r" + $cellIndex + "|collision|floor0";
+    if (`objExists $mesh` && $meshPath != "")
+    {
+        string $meshPlug = $mesh + ".external_reference";
+        setAttr -type "string" $meshPlug $meshPath;
+    }
+    if (`objExists $fl` && $floorPath != "")
+    {
+        string $flPlug = $fl + ".external_reference";
+        setAttr -type "string" $flPlug $floorPath;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Audit + export
+// ---------------------------------------------------------------------------
+
+global proc swg_pob_validateFull(string $rootName)
+{
+    validatePob -root $rootName;
+    reportPobPortals -root $rootName;
+}
+
+/// Same audit using current selection to find the POB root (no name typing).
+global proc swg_pob_validateFullSelection()
+{
+    validatePob;
+    reportPobPortals;
+}
+
+global proc swg_pob_exportDialog()
+{
+    string $paths[] = `fileDialog2 -fileMode 0 -caption "Export POB" -fileFilter "POB Files (*.pob)" -dialogStyle 2`;
+    if (size($paths) < 1)
+    {
+        print "// swg_pob_exportDialog: cancelled\n";
+        return;
+    }
+    string $p = $paths[0];
+    $p = `substituteAllString $p "\\" "/"`;
+    string $cmd = "exportPob -i \"" + $p + "\"";
+    eval $cmd;
+}
+
+// ---------------------------------------------------------------------------
+// Layout: vertical stack (high-rise preview) — each rN at Y += spacing
+// ---------------------------------------------------------------------------
+
+global proc swg_pob_layoutColumnY(string $rootName, float $spacingY)
+{
+    int $i;
+    for ($i = 0; $i < 512; $i++)
+    {
+        string $cell = $rootName + "|r" + $i;
+        if (!`objExists $cell`) break;
+        xform -os -t 0 ($spacingY * $i) 0 $cell;
+    }
+    print ("// swg_pob_layoutColumnY: stacked r0… under " + $rootName + " (local Y step " + $spacingY + ")\n");
+}
+
+// ---------------------------------------------------------------------------
+// Selection helpers
+// ---------------------------------------------------------------------------
+
+global proc swg_pob_selectCell(string $rootName, int $cellIndex)
+{
+    select -r ($rootName + "|r" + $cellIndex);
+}
+
+/// Select `portals` under rN so the next `addPobPortal` applies there.
+global proc swg_pob_selectPortalsGroup(string $rootName, int $cellIndex)
+{
+    select -r ($rootName + "|r" + $cellIndex + "|portals");
+}
+
+global proc swg_pob_selectAllMeshes(string $rootName)
+{
+    select -cl;
+    int $i;
+    int $any = 0;
+    for ($i = 0; $i < 512; $i++)
+    {
+        string $mesh = $rootName + "|r" + $i + "|mesh";
+        if (!`objExists $mesh`) break;
+        select -add $mesh;
+        $any++;
+    }
+    if ($any == 0)
+        warning "swg_pob_selectAllMeshes: no r*|mesh found";
+}
+
+global proc swg_pob_printCellPaths(string $rootName)
+{
+    int $i;
+    for ($i = 0; $i < 512; $i++)
+    {
+        string $cell = $rootName + "|r" + $i;
+        if (!`objExists $cell`) break;
+        print ($cell + "\n");
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Danger zone: delete every portal transform under each cell (metadata reset)
+// ---------------------------------------------------------------------------
+
+global proc swg_pob_clearAllPortals(string $rootName)
+{
+    int $i;
+    int $total = 0;
+    for ($i = 0; $i < 512; $i++)
+    {
+        string $portals = $rootName + "|r" + $i + "|portals";
+        if (!`objExists $portals`) break;
+        string $kids[] = `listRelatives -c -typ transform $portals`;
+        for ($k in $kids)
+        {
+            delete $k;
+            $total++;
+        }
+    }
+    print ("// swg_pob_clearAllPortals: removed " + $total + " portal transform(s)\n");
+}

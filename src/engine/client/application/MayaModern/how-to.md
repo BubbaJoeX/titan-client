@@ -377,6 +377,16 @@ exportStaticMesh;
 
 ---
 
+## IFF format versions (client parity)
+
+Authoritative notes for which **FORM** versions the game client loads live in:
+
+`MayaModern/translators/SwgIffFormatVersions.h`
+
+The **`.msh`** translator (`MshTranslator`) follows **`MeshAppearanceTemplate`**, **`AppearanceTemplate`**, and **`ShaderPrimitiveSetTemplate`** for MESH / APPR / SPS versions.
+
+---
+
 ## Troubleshooting
 
 ### "No SPS form - importing APPR only"
@@ -388,6 +398,21 @@ When importing a `.msh` file without SPS (Shader Primitive Set) geometry, you ma
 ```
 
 **Behavior**: The importer creates the root transform with hardpoints and floor reference from the APPR form. No mesh geometry is created. This supports older meshes or files that contain only hardpoint/floor data.
+
+### `.msh` import fails (Script Editor / stderr)
+
+1. **Run `setBaseDir`** (or set `TITAN_DATA_ROOT` / `TITAN_EXPORT_ROOT`) so paths in the file and companion `.apt` redirects resolve on disk.
+2. Prefer **`importLodMesh -i "appearance/mesh/your_basename"`** (no extension) so the tool can pick `.lod` / `.apt` / `.msh` in a supported order. Opening a raw `.msh` via **File → Import** still works but follows the same IFF parser rules.
+3. If you see **`Cannot build mesh: missing vertex/index data`**, the **MESH/0005 → SPS** block in that asset does not match what this plug-in expects (e.g. no index buffer, or an unsupported primitive layout). Check **`[MshTranslator]`** lines in stderr / the Script Editor history.
+4. If a sibling **`.apt`** exists, the importer follows the redirect; ensure the redirected file is present and readable.
+
+### `.mgn` looked gray / no textures
+
+**Shader assignment**: After import, the plug-in resolves each per-shader **template name** from the `.mgn`, runs **`importShader`** for the matching **`.sht`** under your data root, then assigns that shading group to the mesh faces (same idea as `.msh`). If the `.sht` or textures cannot be resolved, you get a **default green** material — fix **`setBaseDir`**, tree layout (`shader/`, `texture/`), and paths inside the shader template.
+
+**UVs**: Texture coordinates are read from **PSDT → TCSF → TCSD** when present.
+
+**TRTS**: Optional **texture renderer template** bindings in `.mgn` / SKMG are parsed (FORM TRTS / CHUNK TRT) and written to the import root transform as **`swgTrtBindings`** (tab-separated lines: template name, shader index, texture tag hex). Shader assignment still comes from per-shader template names and **`importShader`**.
 
 ---
 

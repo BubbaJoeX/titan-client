@@ -45,6 +45,7 @@
 
 	[ClientUserInterface]
 		alwaysSetMouseCursor=0
+		uiScalePercent=100
 
 	[Direct3d9]
 		allowTearing=0
@@ -118,6 +119,7 @@ namespace OptionsNamespace
 	bool ms_allowTearing                 = false;
 	bool ms_disableFastMouseCursor       = false;
 	bool ms_useSafeRenderer              = false;
+	int  ms_uiScalePercent               = 100;
 	bool ms_skipL0Meshes                 = false;
 	bool ms_skipL0Characters             = false;
 	bool ms_disableFileCaching           = false;
@@ -464,6 +466,17 @@ void Options::load (int langCode)
 				{
 					if (left == _T("alwaysSetMouseCursor"))
 						ms_disableFastMouseCursor = (_ttoi (right) == 1);
+					else
+						if (left == _T("uiScalePercent"))
+						{
+							int v = _ttoi (right);
+							if (v < 50)
+								v = 50;
+							else
+								if (v > 300)
+									v = 300;
+							ms_uiScalePercent = v;
+						}
 				}
 				break;
 
@@ -695,8 +708,17 @@ bool Options::save ()
 		outfile.WriteString (_T("\n[ClientTextureRenderer]\n\tdisableTextureBaking=1\n"));
 
 	//-- ClientUserInterface
-	if (ms_disableFastMouseCursor)
-		outfile.WriteString (_T("\n[ClientUserInterface]\n\talwaysSetMouseCursor=1\n"));
+	if (ms_disableFastMouseCursor || ms_uiScalePercent != 100)
+	{
+		outfile.WriteString (_T("\n[ClientUserInterface]\n"));
+		if (ms_disableFastMouseCursor)
+			outfile.WriteString (_T("\talwaysSetMouseCursor=1\n"));
+		if (ms_uiScalePercent != 100)
+		{
+			buffer.Format (_T("\tuiScalePercent=%i\n"), ms_uiScalePercent);
+			outfile.WriteString (buffer);
+		}
+	}
 
 	//-- Direct3d9
 	if (ms_allowTearing || ms_pixelShaderMajorVersion != -1  || ms_fullScreenRefreshRate > 0)
@@ -959,6 +981,26 @@ bool Options::getDisableFastMouseCursor ()
 void Options::setDisableFastMouseCursor (bool const disableFastMouseCursor)
 {
 	ms_disableFastMouseCursor = disableFastMouseCursor;
+}
+
+// ----------------------------------------------------------------------
+
+int Options::getUiScalePercent ()
+{
+	return ms_uiScalePercent;
+}
+
+// ----------------------------------------------------------------------
+
+void Options::setUiScalePercent (int const uiScalePercent)
+{
+	int v = uiScalePercent;
+	if (v < 50)
+		v = 50;
+	else
+		if (v > 300)
+			v = 300;
+	ms_uiScalePercent = v;
 }
 
 // ----------------------------------------------------------------------

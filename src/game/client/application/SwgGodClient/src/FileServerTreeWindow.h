@@ -3,10 +3,9 @@
 // FileServerTreeWindow.h
 // copyright 2024 Sony Online Entertainment
 //
-// Lazy-loading folder tree that enumerates the local filesystem for
-// tree structure and uses the FileControl server only for file
-// operations (send/retrieve/verify).  Subdirectories are loaded
-// on-demand when expanded, keeping network and UI load minimal.
+// Lazy-loading folder tree: each level merges local directory listing with
+// FileControl directory listing. Names show (L), (R), or (L | R). Subdirectories
+// load on expand; send/retrieve/verify behave as before.
 //
 // ======================================================================
 
@@ -58,7 +57,8 @@ public:
 	{
 		CE_SEND_DONE     = 10002,
 		CE_RETRIEVE_DONE = 10003,
-		CE_VERIFY_DONE   = 10004
+		CE_VERIFY_DONE   = 10004,
+		CE_LIST_DONE     = 10005
 	};
 
 	struct SendResult
@@ -80,6 +80,15 @@ public:
 		bool          ok;
 		unsigned long size;
 		unsigned long crc;
+	};
+
+	// Used by directory listing worker in .cpp (must be public for file-scope thread structs).
+	struct LocalScanRow
+	{
+		std::string   sortKey;
+		bool          isDir;
+		unsigned long localSize;
+		bool          hasLocal;
 	};
 
 signals:
@@ -112,19 +121,28 @@ private:
 
 	std::string resolveLocalDir(const std::string & scopePath) const;
 	void populateFromLocal(QListViewItem * parentItem, const std::string & scopePath);
+	void completeMergedPopulation(unsigned token, QListViewItem * parentItem, const std::string & scopePath, bool listOk,
+		std::vector<LocalScanRow> const & localRows, std::vector<std::string> const & remotePaths, std::vector<unsigned long> const & remoteSizes);
+
+	std::string     m_activePopulateScope;
+	QListViewItem * m_activePopulateParent;
+	unsigned        m_populateToken;
 
 	struct PendingBatch
 	{
 		struct Entry
 		{
-			std::string name;
+			// Plain relative segment (e.g. "foo/" or "bar.iff") — no (L)/(R) suffix
+			std::string sortKey;
+			// Full text for QListView column 0, including availability suffix
+			std::string treeText;
 			bool        isDir;
 
 			bool operator<(const Entry & rhs) const
 			{
 				if (isDir != rhs.isDir)
 					return isDir;
-				return name < rhs.name;
+				return sortKey < rhs.sortKey;
 			}
 		};
 		QListViewItem *        parentItem;
@@ -155,6 +173,9 @@ private:
 
 	QTimer *      m_batchTimer;
 	PendingBatch  m_pendingBatch;
+
+	// Latest known sizes per asset path (from merged local/remote listing)
+	std::map<std::string, FileEntry> m_entryCache;
 };
 
 // ======================================================================

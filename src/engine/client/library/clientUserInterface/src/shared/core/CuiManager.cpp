@@ -17,6 +17,7 @@
 #include "UIClock.h"
 #include "UIEffector.h"
 #include "UILowerString.h"
+#include "UIMessage.h"
 #include "UIManager.h"
 #include "UINullIMEManager.h"
 #include "UIPage.h"
@@ -55,6 +56,7 @@
 #include "clientUserInterface/CuiMessageBox.h" // convert into manager
 #include "clientUserInterface/CuiMessageQueueManager.h"
 #include "clientUserInterface/CuiPreferences.h"
+#include "clientUserInterface/CuiDynamicUIFont.h"
 #include "clientUserInterface/CuiStringIds.h"
 #include "clientUserInterface/CuiSoundManager.h"
 #include "clientUserInterface/CuiSounds.h"
@@ -77,6 +79,7 @@
 #include "sharedObject/Object.h"
 #include "unicodeArchive/UnicodeArchive.h"
 
+#include <algorithm>
 #include <list>
 
 //lint -esym(1774, UIBaseObject)
@@ -299,6 +302,16 @@ namespace
 	//----------------------------------------------------------------------
 }
 
+static bool s_uiScaleLayoutPending = false;
+
+static void flushPendingUiScaleLayout ()
+{
+	if (!s_uiScaleLayoutPending || !CuiManager::getInstalled ())
+		return;
+	s_uiScaleLayoutPending = false;
+	CuiManager::updateRootPageLayoutForUiScale ();
+}
+
 //----------------------------------------------------------------------
 //-----------------------------------------------------------------
 //-- CuiManager
@@ -320,6 +333,13 @@ CuiManager::ImplementationUpdateFunction   CuiManager::ms_implementationUpdateFu
 bool                         CuiManager::ms_pointerMotionCapturedByUiX = false;
 bool                         CuiManager::ms_pointerMotionCapturedByUiY = false;
 float                        CuiManager::ms_cameraInertia = 0.0f;
+
+//-----------------------------------------------------------------------
+
+void CuiManager::scheduleUiScaleLayoutUpdate ()
+{
+	s_uiScaleLayoutPending = true;
+}
 
 //-----------------------------------------------------------------------
 
@@ -435,6 +455,11 @@ void CuiManager::install ()
 
 	UITextStyleManager::GetInstance()->Initialize(rootPage, theLoader);
 
+	CuiDynamicUIFont::applySavedPreferenceIfAny ();
+
+	if (UITextStyleManager::GetInstance ())
+		UITextStyleManager::GetInstance ()->setFontScalePercent (CuiPreferences::getUiFontScalePercent ());
+
 	InstallTimer installTimerLink("Link");
 	rootPage->Link ();
 	installTimerLink.manualExit();
@@ -446,7 +471,14 @@ void CuiManager::install ()
 	ms_uiStringFactory	= new CuiLayer::StringFactory;
 	uiManager->AddLocalizedStringFactory (ms_uiStringFactory);
 
-	rootPage->SetSize (UISize (Graphics::getCurrentRenderTargetWidth (), Graphics::getCurrentRenderTargetHeight ()));
+	{
+		int const rw = Graphics::getCurrentRenderTargetWidth ();
+		int const rh = Graphics::getCurrentRenderTargetHeight ();
+		float const s = ConfigClientUserInterface::getUiScaleFactor ();
+		long const lw = std::max (1L, static_cast<long>(static_cast<float>(rw) / s + 0.5f));
+		long const lh = std::max (1L, static_cast<long>(static_cast<float>(rh) / s + 0.5f));
+		rootPage->SetSize (UISize (lw, lh));
+	}
 	rootPage->ForcePackChildren ();
 
 	uiManager->SetRootPage (rootPage);
@@ -470,6 +502,9 @@ void CuiManager::install ()
 	REPORT_LOG_PRINT (s_debugReportInstallVerbose, ("CuiManager::install CuiManagerManager::install\n"));
 
 	CuiManagerManager::install           (*rootPage);
+
+	updateRootPageLayoutForUiScale ();
+	s_uiScaleLayoutPending = false;
 
 	ptimer_secondary.stop ();
 	const float ptime_manager = ptimer_secondary.getElapsedTime ();
@@ -810,6 +845,8 @@ void CuiManager::update (float elapsedTime)
 		if (ms_implementationUpdateFunction)
 			(ms_implementationUpdateFunction) (elapsedTime);
 	}
+
+	flushPendingUiScaleLayout ();
 }
 
 //-------------------------------------------------------------------
@@ -817,6 +854,8 @@ void CuiManager::update (float elapsedTime)
 void CuiManager::render ()
 {
 	DEBUG_FATAL (!ms_installed, ("not installed\n"));
+
+	flushPendingUiScaleLayout ();
 
 	if (getRenderSuppressedRef ())
 		return;
@@ -851,6 +890,12 @@ void CuiManager::render ()
 	bool wasDropShadowEnabled = UITextStyle::GetGlobalDropShadowEnabled();
 	UITextStyle::SetGlobalDropShadowEnabled (s_textDropShadow);
 
+	float const uiScale = CuiPreferences::getUiScaleFactor ();
+	if (uiScale != 1.0f)
+		ms_uiCanvas->PushState ();
+	if (uiScale != 1.0f)
+		ms_uiCanvas->Scale (uiScale, uiScale);
+
 	CuiTextManager::render (*ms_uiCanvas);
 	CuiTextManager::resetQueue ();
 
@@ -864,6 +909,9 @@ void CuiManager::render ()
 
 	UIManager::gUIManager ().Render (*ms_uiCanvas);
 	CuiLayerRenderer::flushRenderQueue ();
+
+	if (uiScale != 1.0f)
+		ms_uiCanvas->PopState ();
 
 	Graphics::setFillMode (oldFillMode);
 
@@ -1381,11 +1429,75 @@ void CuiManager::setSize (int width, int height)
 
 	NOT_NULL (rootPage);
 
-	rootPage->SetSize (UISize (width, height));
+	float const s = CuiPreferences::getUiScaleFactor ();
+	long const lw = std::max (1L, static_cast<long>(static_cast<float>(width) / s + 0.5f));
+	long const lh = std::max (1L, static_cast<long>(static_cast<float>(height) / s + 0.5f));
+	rootPage->SetSize (UISize (lw, lh));
 	rootPage->ForcePackChildren ();
+	rootPage->ResetLocalizedStrings ();
 
 	if (ms_theIoWin)
 		ms_theIoWin->resetDeadZone ();
+}
+
+//----------------------------------------------------------------------
+
+void CuiManager::updateRootPageLayoutForUiScale ()
+{
+	if (!ms_installed)
+		return;
+
+	UIPage * const rootPage = UIManager::gUIManager ().GetRootPage ();
+	if (!rootPage)
+		return;
+
+	int const w = Graphics::getCurrentRenderTargetWidth ();
+	int const h = Graphics::getCurrentRenderTargetHeight ();
+	if (w <= 0 || h <= 0)
+		return;
+
+	float const s = CuiPreferences::getUiScaleFactor ();
+	long const lw = std::max (1L, static_cast<long>(static_cast<float>(w) / s + 0.5f));
+	long const lh = std::max (1L, static_cast<long>(static_cast<float>(h) / s + 0.5f));
+	rootPage->SetSize (UISize (lw, lh));
+	rootPage->ForcePackChildren ();
+	rootPage->ResetLocalizedStrings ();
+
+	if (ms_theIoWin)
+		ms_theIoWin->resetDeadZone ();
+}
+
+//----------------------------------------------------------------------
+
+void CuiManager::transformScreenPixelsToUiSpace (UIPoint & pt)
+{
+	float const s = CuiPreferences::getUiScaleFactor ();
+	if (s == 1.0f)
+		return;
+	float const inv = 1.0f / s;
+	pt.x = static_cast<long>(static_cast<float>(pt.x) * inv + 0.5f);
+	pt.y = static_cast<long>(static_cast<float>(pt.y) * inv + 0.5f);
+}
+
+//----------------------------------------------------------------------
+
+void CuiManager::transformUiPixelsToScreen (UIPoint & pt)
+{
+	float const s = CuiPreferences::getUiScaleFactor ();
+	if (s == 1.0f)
+		return;
+	pt.x = static_cast<long>(static_cast<float>(pt.x) * s + 0.5f);
+	pt.y = static_cast<long>(static_cast<float>(pt.y) * s + 0.5f);
+}
+
+//----------------------------------------------------------------------
+
+bool CuiManager::processUiManagerMessage (UIMessage const & msgIn)
+{
+	UIMessage msg (msgIn);
+	if (msg.IsMouseMessage ())
+		transformScreenPixelsToUiSpace (msg.MouseCoords);
+	return UIManager::gUIManager ().ProcessMessage (msg);
 }
 
 //----------------------------------------------------------------------

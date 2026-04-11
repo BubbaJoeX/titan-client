@@ -30,12 +30,67 @@
 #include <windows.h>
 
 #include <algorithm>
+#include <cstring>
 
 // ======================================================================
 
 static const char * const PLACEHOLDER_TEXT = "...loading...";
 static const size_t       BATCH_SIZE       = 200;
 static const int          BATCH_INTERVAL   = 10;
+
+// ======================================================================
+// Path helpers (used before definition order elsewhere in this TU)
+// ======================================================================
+
+static std::string stripSegForPath(std::string s)
+{
+	bool const dir = !s.empty() && (s[s.size() - 1] == '/' || s[s.size() - 1] == '\\');
+	std::string core = dir ? s.substr(0, s.size() - 1) : s;
+	static char const * const pats[] = { " (L | R)", " (L)", " (R)" };
+	for (int i = 0; i < 3; ++i)
+	{
+		size_t const len = std::strlen(pats[i]);
+		if (core.size() >= len && core.compare(core.size() - len, len, pats[i]) == 0)
+		{
+			core = core.substr(0, core.size() - len);
+			break;
+		}
+	}
+	if (dir)
+		return core + "/";
+	return core;
+}
+
+static std::string normalizeRootOnly(std::string r)
+{
+	for (size_t i = 0; i < r.size(); ++i)
+	{
+		if (r[i] == '\\')
+			r[i] = '/';
+	}
+	return r;
+}
+
+static std::string buildFullPath(QListViewItem * item, const std::string & rootScope)
+{
+	if (!item)
+		return std::string();
+
+	std::string path = stripSegForPath(std::string(item->text(0).latin1()));
+
+	QListViewItem * p = item->parent();
+	while (p)
+	{
+		std::string seg = stripSegForPath(std::string(p->text(0).latin1()));
+		path = seg + path;
+		p = p->parent();
+	}
+
+	std::string root = normalizeRootOnly(rootScope);
+	if (!root.empty() && root[root.size() - 1] != '/')
+		root += '/';
+	return root + path;
+}
 
 // ======================================================================
 // Thread helpers (server operations only — send/retrieve/verify)
@@ -108,6 +163,133 @@ static unsigned __stdcall verifyThreadFunc(void * arg)
 	return 0;
 }
 
+// ----------------------------------------------------------------------
+
+namespace
+{
+std::string normalizeScopeSlashes(std::string s)
+{
+	for (size_t i = 0; i < s.size(); ++i)
+	{
+		if (s[i] == '\\')
+			s[i] = '/';
+	}
+	return s;
+}
+
+std::string ensureTrailingSlash(std::string s)
+{
+	if (!s.empty() && s[s.size() - 1] != '/')
+		s += '/';
+	return s;
+}
+
+const char * availabilitySuffix(bool hasL, bool hasR)
+{
+	if (hasL && hasR)
+		return " (L | R)";
+	if (hasL)
+		return " (L)";
+	if (hasR)
+		return " (R)";
+	return "";
+}
+
+std::string buildTreeText(std::string const & sortKey, bool hasL, bool hasR)
+{
+	std::string const suf = availabilitySuffix(hasL, hasR);
+	bool const isDir = (!sortKey.empty() && sortKey[sortKey.size() - 1] == '/');
+	if (isDir)
+	{
+		std::string const core = sortKey.substr(0, sortKey.size() - 1);
+		return core + suf + "/";
+	}
+	return sortKey + suf;
+}
+
+typedef std::map<std::string, std::pair<bool, unsigned long> > RemoteMap;
+
+void collectRemoteDirectChildren(RemoteMap & out, std::string const & scopeNorm, std::vector<std::string> const & paths, std::vector<unsigned long> const & sizes)
+{
+	if (paths.size() != sizes.size())
+		return;
+
+	for (size_t i = 0; i < paths.size(); ++i)
+	{
+		std::string p = paths[i];
+		for (size_t j = 0; j < p.size(); ++j)
+		{
+			if (p[j] == '\\')
+				p[j] = '/';
+		}
+		if (p.size() <= scopeNorm.size() || p.compare(0, scopeNorm.size(), scopeNorm) != 0)
+			continue;
+
+		std::string rest = p.substr(scopeNorm.size());
+		if (rest.empty())
+			continue;
+
+		bool isDir = (!rest.empty() && rest[rest.size() - 1] == '/');
+		if (isDir)
+			rest = rest.substr(0, rest.size() - 1);
+
+		if (rest.find('/') != std::string::npos)
+			continue;
+
+		std::string const key = isDir ? (rest + "/") : rest;
+		out[key] = std::make_pair(true, sizes[i]);
+	}
+}
+} // namespace
+
+// ----------------------------------------------------------------------
+
+struct ListThreadResult
+{
+	unsigned                                              m_token;
+	std::string                                           m_scopePath;
+	QListViewItem *                                       m_parentItem;
+	bool                                                  m_listOk;
+	std::vector<FileServerTreeWindow::LocalScanRow>       m_localRows;
+	std::vector<std::string>                              m_remotePaths;
+	std::vector<unsigned long>                            m_remoteSizes;
+};
+
+struct ListThreadArgs
+{
+	FileServerTreeWindow *                           m_window;
+	unsigned                                         m_token;
+	std::string                                      m_scopePath;
+	QListViewItem *                                  m_parentItem;
+	std::vector<FileServerTreeWindow::LocalScanRow>  m_localRows;
+};
+
+static unsigned __stdcall listThreadFunc(void * arg)
+{
+	ListThreadArgs * a = static_cast<ListThreadArgs *>(arg);
+
+	std::vector<std::string> files;
+	std::vector<unsigned long> sz;
+	std::vector<unsigned long> crc;
+	bool ok = FileControlClient::requestDirectoryListing(a->m_scopePath, files, sz, crc);
+
+	ListThreadResult * r = new ListThreadResult;
+	r->m_token = a->m_token;
+	r->m_scopePath = a->m_scopePath;
+	r->m_parentItem = a->m_parentItem;
+	r->m_listOk = ok;
+	r->m_localRows.swap(a->m_localRows);
+	r->m_remotePaths.swap(files);
+	r->m_remoteSizes.swap(sz);
+
+	QCustomEvent * ev = new QCustomEvent(FileServerTreeWindow::CE_LIST_DONE);
+	ev->setData(r);
+	QApplication::postEvent(a->m_window, ev);
+
+	delete a;
+	return 0;
+}
+
 // ======================================================================
 
 FileServerTreeWindow::FileServerTreeWindow(QWidget * parent, const char * name)
@@ -129,7 +311,9 @@ FileServerTreeWindow::FileServerTreeWindow(QWidget * parent, const char * name)
   m_rootScope("data/"),
   m_expandedDirs(),
   m_busy(false),
-  m_batchTimer(0)
+  m_batchTimer(0),
+  m_activePopulateParent(0),
+  m_populateToken(0)
 {
 	m_pendingBatch.parentItem = 0;
 	m_pendingBatch.nextIndex = 0;
@@ -289,7 +473,10 @@ void FileServerTreeWindow::setBusy(bool busy)
 
 void FileServerTreeWindow::populateFromLocal(QListViewItem * parentItem, const std::string & scopePath)
 {
-	std::string localDir = resolveLocalDir(scopePath);
+	std::string const scope = normalizeScopeSlashes(scopePath);
+	std::string const localDir = resolveLocalDir(scope);
+
+	std::vector<LocalScanRow> localRows;
 
 	std::string searchPattern = localDir;
 	if (!searchPattern.empty() && searchPattern[searchPattern.size() - 1] != '/' && searchPattern[searchPattern.size() - 1] != '\\')
@@ -303,12 +490,112 @@ void FileServerTreeWindow::populateFromLocal(QListViewItem * parentItem, const s
 	}
 
 	WIN32_FIND_DATAA fd;
-	HANDLE hFind = FindFirstFileA(searchPattern.c_str(), &fd);
+	HANDLE const hFind = FindFirstFileA(searchPattern.c_str(), &fd);
 	if (hFind == INVALID_HANDLE_VALUE)
 	{
-		m_statusLabel->setText(QString("Cannot open: %1").arg(scopePath.c_str()));
-		setBusy(false);
+		m_statusLabel->setText(QString("Local folder missing or empty; fetching remote listing: %1").arg(scope.c_str()));
+	}
+	else
+	{
+		do
+		{
+			const char * name = fd.cFileName;
+			if (name[0] == '.' && (name[1] == '\0' || (name[1] == '.' && name[2] == '\0')))
+				continue;
+
+			LocalScanRow row;
+			row.isDir = (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+			row.sortKey = name;
+			if (row.isDir)
+				row.sortKey += '/';
+			row.hasLocal = true;
+			row.localSize = row.isDir ? 0UL : static_cast<unsigned long>(fd.nFileSizeLow);
+			localRows.push_back(row);
+		}
+		while (FindNextFileA(hFind, &fd));
+
+		FindClose(hFind);
+	}
+
+	++m_populateToken;
+	m_activePopulateScope = scope;
+	m_activePopulateParent = parentItem;
+
+	setBusy(true);
+	m_statusLabel->setText(QString("Fetching remote listing for %1...").arg(scope.c_str()));
+
+	ListThreadArgs * const a = new ListThreadArgs;
+	a->m_window = this;
+	a->m_token = m_populateToken;
+	a->m_scopePath = scope;
+	a->m_parentItem = parentItem;
+	a->m_localRows.swap(localRows);
+
+	_beginthreadex(0, 0, listThreadFunc, a, 0, 0);
+}
+
+// ----------------------------------------------------------------------
+
+void FileServerTreeWindow::completeMergedPopulation(unsigned token, QListViewItem * parentItem, const std::string & scopePath, bool listOk,
+	std::vector<LocalScanRow> const & localRows, std::vector<std::string> const & remotePaths, std::vector<unsigned long> const & remoteSizes)
+{
+	if (token != m_populateToken)
 		return;
+
+	std::string const scopeNorm = ensureTrailingSlash(normalizeScopeSlashes(scopePath));
+
+	RemoteMap remoteByKey;
+	if (listOk)
+		collectRemoteDirectChildren(remoteByKey, scopeNorm, remotePaths, remoteSizes);
+
+	typedef std::map<std::string, PendingBatch::Entry> Merged;
+	Merged merged;
+
+	for (size_t i = 0; i < localRows.size(); ++i)
+	{
+		LocalScanRow const & lr = localRows[i];
+		RemoteMap::const_iterator const rit = remoteByKey.find(lr.sortKey);
+		bool const hasR = (rit != remoteByKey.end());
+
+		PendingBatch::Entry e;
+		e.sortKey = lr.sortKey;
+		e.isDir = lr.isDir;
+		e.treeText = buildTreeText(lr.sortKey, lr.hasLocal, hasR);
+		merged[lr.sortKey] = e;
+
+		std::string const fullPath = scopeNorm + lr.sortKey;
+		FileEntry fe;
+		fe.relativePath = fullPath;
+		fe.localAvailable = lr.hasLocal;
+		fe.remoteAvailable = hasR;
+		fe.localSize = lr.localSize;
+		fe.remoteSize = hasR ? rit->second.second : 0UL;
+		fe.localCrc = 0;
+		fe.remoteCrc = 0;
+		m_entryCache[fullPath] = fe;
+	}
+
+	for (RemoteMap::const_iterator it = remoteByKey.begin(); it != remoteByKey.end(); ++it)
+	{
+		if (merged.find(it->first) != merged.end())
+			continue;
+
+		PendingBatch::Entry e;
+		e.sortKey = it->first;
+		e.isDir = (!it->first.empty() && it->first[it->first.size() - 1] == '/');
+		e.treeText = buildTreeText(it->first, false, true);
+		merged[it->first] = e;
+
+		std::string const fullPath = scopeNorm + it->first;
+		FileEntry fe;
+		fe.relativePath = fullPath;
+		fe.localAvailable = false;
+		fe.remoteAvailable = true;
+		fe.localSize = 0;
+		fe.remoteSize = it->second.second;
+		fe.localCrc = 0;
+		fe.remoteCrc = 0;
+		m_entryCache[fullPath] = fe;
 	}
 
 	m_pendingBatch.entries.clear();
@@ -316,23 +603,8 @@ void FileServerTreeWindow::populateFromLocal(QListViewItem * parentItem, const s
 	m_pendingBatch.parentItem = parentItem;
 	m_pendingBatch.scopePath = scopePath;
 
-	do
-	{
-		const char * name = fd.cFileName;
-		if (name[0] == '.' && (name[1] == '\0' || (name[1] == '.' && name[2] == '\0')))
-			continue;
-
-		PendingBatch::Entry entry;
-		entry.name = name;
-		entry.isDir = (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
-		if (entry.isDir)
-			entry.name += '/';
-
-		m_pendingBatch.entries.push_back(entry);
-	}
-	while (FindNextFileA(hFind, &fd));
-
-	FindClose(hFind);
+	for (Merged::const_iterator it = merged.begin(); it != merged.end(); ++it)
+		m_pendingBatch.entries.push_back(it->second);
 
 	std::sort(m_pendingBatch.entries.begin(), m_pendingBatch.entries.end());
 
@@ -343,10 +615,11 @@ void FileServerTreeWindow::populateFromLocal(QListViewItem * parentItem, const s
 		return;
 	}
 
-	setBusy(true);
-	m_statusLabel->setText(QString("Loading %1 (%2 entries)...")
+	QString extra = listOk ? QString() : QString(" (remote list failed)");
+	m_statusLabel->setText(QString("Loading %1 (%2 entries)%3")
 		.arg(scopePath.c_str())
-		.arg(static_cast<int>(m_pendingBatch.entries.size())));
+		.arg(static_cast<int>(m_pendingBatch.entries.size()))
+		.arg(extra));
 
 	onBatchInsertTimer();
 }
@@ -375,9 +648,9 @@ void FileServerTreeWindow::onBatchInsertTimer()
 
 		QListViewItem * item = 0;
 		if (m_pendingBatch.parentItem)
-			item = new QListViewItem(m_pendingBatch.parentItem, entry.name.c_str());
+			item = new QListViewItem(m_pendingBatch.parentItem, entry.treeText.c_str());
 		else
-			item = new QListViewItem(m_treeView, entry.name.c_str());
+			item = new QListViewItem(m_treeView, entry.treeText.c_str());
 
 		if (entry.isDir)
 		{
@@ -418,6 +691,9 @@ void FileServerTreeWindow::refreshTree()
 	if (m_batchTimer)
 		m_batchTimer->stop();
 
+	++m_populateToken;
+	m_entryCache.clear();
+
 	m_treeView->clear();
 	m_expandedDirs.clear();
 	clearDetailsPane();
@@ -449,35 +725,13 @@ void FileServerTreeWindow::updateButtonStates()
 
 	if (sel && !isPlaceholder(sel))
 	{
-		std::string name = sel->text(0).latin1();
+		std::string name = stripSegForPath(std::string(sel->text(0).latin1()));
 		hasFile = (!name.empty() && name[name.size() - 1] != '/');
 	}
 
 	m_sendButton->setEnabled(hasFile && !m_busy);
 	m_retrieveButton->setEnabled(hasFile && !m_busy);
 	m_infoButton->setEnabled(hasFile && !m_busy);
-}
-
-// ======================================================================
-// Build full path from tree item
-// ======================================================================
-
-static std::string buildFullPath(QListViewItem * item, const std::string & rootScope)
-{
-	if (!item)
-		return std::string();
-
-	std::string path = item->text(0).latin1();
-
-	QListViewItem * p = item->parent();
-	while (p)
-	{
-		std::string seg = p->text(0).latin1();
-		path = seg + path;
-		p = p->parent();
-	}
-
-	return rootScope + path;
 }
 
 // ======================================================================
@@ -546,12 +800,30 @@ void FileServerTreeWindow::customEvent(QCustomEvent * event)
 					char buf[64];
 					snprintf(buf, sizeof(buf), "Remote Size: %lu bytes", r->size);
 					m_detailRemoteSize->setText(buf);
+					std::map<std::string, FileEntry>::iterator c = m_entryCache.find(r->path);
+					if (c != m_entryCache.end())
+					{
+						c->second.remoteSize = r->size;
+						c->second.remoteCrc = r->crc;
+						c->second.remoteAvailable = true;
+					}
 				}
 				else
 				{
 					m_detailRemoteStatus->setText("Remote: Available (on server)");
 					m_detailRemoteSize->setText("Remote Size: -");
 				}
+				delete r;
+			}
+		}
+		break;
+
+	case CE_LIST_DONE:
+		{
+			ListThreadResult * r = static_cast<ListThreadResult *>(event->data());
+			if (r)
+			{
+				completeMergedPopulation(r->m_token, r->m_parentItem, r->m_scopePath, r->m_listOk, r->m_localRows, r->m_remotePaths, r->m_remoteSizes);
 				delete r;
 			}
 		}
@@ -602,35 +874,87 @@ void FileServerTreeWindow::onSelectionChanged(QListViewItem * item)
 	bool isDir = (!fullPath.empty() && fullPath[fullPath.size() - 1] == '/');
 	if (isDir)
 	{
-		m_detailLocalStatus->setText("Local: (directory)");
-		m_detailRemoteStatus->setText("Remote: (directory)");
+		std::map<std::string, FileEntry>::const_iterator const dit = m_entryCache.find(fullPath);
+		if (dit != m_entryCache.end())
+		{
+			FileEntry const & fe = dit->second;
+			m_detailLocalStatus->setText(fe.localAvailable ? "Local: (directory — present)" : "Local: (directory — absent)");
+			m_detailRemoteStatus->setText(fe.remoteAvailable ? "Remote: (directory — present)" : "Remote: (directory — absent)");
+		}
+		else
+		{
+			m_detailLocalStatus->setText("Local: (directory)");
+			m_detailRemoteStatus->setText("Remote: (directory)");
+		}
 		m_detailLocalSize->setText("Local Size: -");
 		m_detailRemoteSize->setText("Remote Size: -");
 	}
 	else
 	{
-#if defined(PLATFORM_WIN32)
-		struct _stat localStat;
-		bool localExists = (_stat(fullPath.c_str(), &localStat) == 0);
-#else
-		struct stat localStat;
-		bool localExists = (stat(fullPath.c_str(), &localStat) == 0);
-#endif
-		if (localExists)
+		std::map<std::string, FileEntry>::const_iterator const cit = m_entryCache.find(fullPath);
+		if (cit != m_entryCache.end())
 		{
-			m_detailLocalStatus->setText("Local: Available");
-			char buf[64];
-			snprintf(buf, sizeof(buf), "Local Size: %lu bytes", static_cast<unsigned long>(localStat.st_size));
-			m_detailLocalSize->setText(buf);
+			FileEntry const & fe = cit->second;
+			m_detailLocalStatus->setText(fe.localAvailable ? "Local: Available" : "Local: Missing");
+			if (fe.localAvailable && fe.localSize > 0)
+			{
+				char buf[64];
+				snprintf(buf, sizeof(buf), "Local Size: %lu bytes", fe.localSize);
+				m_detailLocalSize->setText(buf);
+			}
+			else if (fe.localAvailable)
+			{
+				struct _stat localStat;
+				if (_stat(fullPath.c_str(), &localStat) == 0)
+				{
+					char buf[64];
+					snprintf(buf, sizeof(buf), "Local Size: %lu bytes", static_cast<unsigned long>(localStat.st_size));
+					m_detailLocalSize->setText(buf);
+				}
+				else
+					m_detailLocalSize->setText("Local Size: -");
+			}
+			else
+				m_detailLocalSize->setText("Local Size: -");
+
+			if (fe.remoteAvailable)
+			{
+				m_detailRemoteStatus->setText("Remote: Available");
+				char buf[64];
+				snprintf(buf, sizeof(buf), "Remote Size: %lu bytes", fe.remoteSize);
+				m_detailRemoteSize->setText(buf);
+			}
+			else
+			{
+				m_detailRemoteStatus->setText("Remote: not in listing");
+				m_detailRemoteSize->setText("Remote Size: -");
+			}
 		}
 		else
 		{
-			m_detailLocalStatus->setText("Local: Missing");
-			m_detailLocalSize->setText("Local Size: -");
-		}
+#if defined(PLATFORM_WIN32)
+			struct _stat localStat;
+			bool localExists = (_stat(fullPath.c_str(), &localStat) == 0);
+#else
+			struct stat localStat;
+			bool localExists = (stat(fullPath.c_str(), &localStat) == 0);
+#endif
+			if (localExists)
+			{
+				m_detailLocalStatus->setText("Local: Available");
+				char buf[64];
+				snprintf(buf, sizeof(buf), "Local Size: %lu bytes", static_cast<unsigned long>(localStat.st_size));
+				m_detailLocalSize->setText(buf);
+			}
+			else
+			{
+				m_detailLocalStatus->setText("Local: Missing");
+				m_detailLocalSize->setText("Local Size: -");
+			}
 
-		m_detailRemoteStatus->setText("Remote: checking...");
-		m_detailRemoteSize->setText("Remote Size: ...");
+			m_detailRemoteStatus->setText("Remote: checking...");
+			m_detailRemoteSize->setText("Remote Size: ...");
+		}
 
 		VerifyResult * vr = new VerifyResult;
 		vr->path = fullPath;
@@ -656,7 +980,7 @@ void FileServerTreeWindow::onItemExpanded(QListViewItem * item)
 	if (!item || m_busy)
 		return;
 
-	std::string name = item->text(0).latin1();
+	std::string name = stripSegForPath(std::string(item->text(0).latin1()));
 	bool isDir = (!name.empty() && name[name.size() - 1] == '/');
 	if (!isDir)
 		return;

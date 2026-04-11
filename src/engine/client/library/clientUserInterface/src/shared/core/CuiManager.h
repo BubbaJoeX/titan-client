@@ -20,6 +20,8 @@ class StringId;
 class UICanvas;
 class UIManager;
 class UIPage;
+struct UIMessage;
+struct UIPoint;
 
 //-------------------------------------------------------------------
 
@@ -127,6 +129,14 @@ public:
 	static bool                         test                     (std::string & result);
 
 	static void                         setSize                  (int width, int height);
+
+	static void                         updateRootPageLayoutForUiScale ();
+	/// Coalesce root repack when ui scale changes (e.g. options slider drag).
+	static void                         scheduleUiScaleLayoutUpdate ();
+
+	static bool                         processUiManagerMessage  (UIMessage const & msgIn);
+	static void                         transformScreenPixelsToUiSpace (UIPoint & pt);
+	static void                         transformUiPixelsToScreen (UIPoint & pt);
 
 	static void                         generateStringList       ();
 

@@ -35,6 +35,9 @@ public:
 	static void closePage         (int pageId);
 	static void handleSceneChange ();
 
+	/// Re-resolve text styles for every open server-driven UI page.
+	static void resetLocalizedStringsForAllPages ();
+
 	static void receiveCreatePageMessage      (SuiCreatePageMessage const &);
 	static void receiveForceCloseMessage      (SuiForceClosePage const &);
 	static void receiveUpdatePageMessage      (SuiUpdatePageMessage const &);

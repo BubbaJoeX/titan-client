@@ -6,6 +6,7 @@
 
 #include "Iff.h"
 #include "Tag.h"
+#include "Transform.h"
 #include "Vector.h"
 
 #include <maya/MArgList.h>
@@ -14,6 +15,7 @@
 #include <maya/MFnDagNode.h>
 #include <maya/MFnDependencyNode.h>
 #include <maya/MFnTransform.h>
+#include <maya/MMatrix.h>
 #include <maya/MFnNumericAttribute.h>
 #include <maya/MFnTypedAttribute.h>
 #include <maya/MGlobal.h>
@@ -157,8 +159,11 @@ namespace
         bool disabled = false;
         bool passable = true;
         std::string doorStyle;
+        bool hasDoorHardpoint = false;
+        Transform doorTransform = Transform::identity;
     };
 
+    /// PRTL chunk field order matches PortalPropertyTemplateCellPortal::load_0001..0005.
     static PortalData readPortalDataFromPrtl(Iff& iff)
     {
         PortalData pd;
@@ -172,41 +177,42 @@ namespace
             pd.clockwise = iff.read_bool8();
             pd.targetCell = iff.read_int32();
             pd.doorStyle = iff.read_stdstring();
-            iff.read_bool8();
-            for (int m = 0; m < 16; ++m) iff.read_float();
+            pd.hasDoorHardpoint = iff.read_bool8();
+            pd.doorTransform = iff.read_floatTransform();
         }
         else if (chunkTag == TAG_0004)
         {
-            pd.disabled = iff.read_bool8();
-            pd.portalIndex = iff.read_int32();
+            pd.disabled = false;
             pd.passable = iff.read_bool8();
+            pd.portalIndex = iff.read_int32();
             pd.clockwise = iff.read_bool8();
             pd.targetCell = iff.read_int32();
             pd.doorStyle = iff.read_stdstring();
-            iff.read_bool8();
-            for (int m = 0; m < 16; ++m) iff.read_float();
+            pd.hasDoorHardpoint = iff.read_bool8();
+            pd.doorTransform = iff.read_floatTransform();
         }
         else if (chunkTag == TAG_0003)
         {
-            pd.disabled = iff.read_bool8();
-            pd.portalIndex = iff.read_int32();
+            pd.disabled = false;
             pd.passable = iff.read_bool8();
+            pd.portalIndex = iff.read_int32();
             pd.clockwise = iff.read_bool8();
             pd.targetCell = iff.read_int32();
             pd.doorStyle = iff.read_stdstring();
         }
         else if (chunkTag == TAG_0002)
         {
-            pd.disabled = iff.read_bool8();
-            pd.portalIndex = iff.read_int32();
+            pd.disabled = false;
             pd.passable = iff.read_bool8();
+            pd.portalIndex = iff.read_int32();
             pd.clockwise = iff.read_bool8();
             pd.targetCell = iff.read_int32();
         }
         else if (chunkTag == TAG_0001)
         {
+            pd.disabled = false;
+            pd.passable = true;
             pd.portalIndex = iff.read_int32();
-            pd.passable = iff.read_bool8();
             pd.clockwise = iff.read_bool8();
             pd.targetCell = iff.read_int32();
         }
@@ -214,51 +220,20 @@ namespace
         return pd;
     }
 
-    static MStatus createPortalMesh(const PortalGeometry& geom, const char* portalName, MObject parentObj, const PortalData& pd, MDagPath& outPath)
+    static void engineTransformToMayaMatrix(const Transform& t, MMatrix& out)
     {
-        if (geom.vertices.empty() || geom.indices.size() < 3)
-            return MS::kFailure;
+        const Transform::matrix_t& mm = t.getMatrix();
+        for (int row = 0; row < 3; ++row)
+            for (int col = 0; col < 4; ++col)
+                out[row][col] = static_cast<double>(mm[row][col]);
+        out[3][0] = 0.0;
+        out[3][1] = 0.0;
+        out[3][2] = 0.0;
+        out[3][3] = 1.0;
+    }
 
-        std::vector<float> positions;
-        positions.reserve(geom.vertices.size() * 3);
-        for (size_t i = 0; i < geom.vertices.size(); ++i)
-        {
-            positions.push_back(geom.vertices[i].x);
-            positions.push_back(geom.vertices[i].y);
-            positions.push_back(geom.vertices[i].z);
-        }
-        std::vector<float> normals(positions.size(), 0.0f);
-
-        MayaSceneBuilder::ShaderGroupData sg;
-        sg.shaderTemplateName = "shader/placeholder";
-        for (size_t t = 0; t + 2 < geom.indices.size(); t += 3)
-        {
-            MayaSceneBuilder::TriangleData tri;
-            tri.indices[0] = geom.indices[t];
-            tri.indices[1] = geom.indices[t + 1];
-            tri.indices[2] = geom.indices[t + 2];
-            sg.triangles.push_back(tri);
-        }
-
-        std::vector<MayaSceneBuilder::ShaderGroupData> groups(1, sg);
-        MStatus st = MayaSceneBuilder::createMesh(positions, normals, groups, portalName, outPath);
-        if (!st) return st;
-
-        MObject shapeObj = outPath.node();
-        MFnDependencyNode shapeDepFn(shapeObj);
-        std::string shapeFullPath = outPath.fullPathName().asChar();
-        MString addCmd = "addAttr -ln portal -at bool \"";
-        addCmd += shapeFullPath.c_str();
-        addCmd += "\"";
-        MGlobal::executeCommand(addCmd);
-        MString setCmd = "setAttr \"";
-        setCmd += shapeFullPath.c_str();
-        setCmd += ".portal\" 1";
-        MGlobal::executeCommand(setCmd);
-
-        MDagPath transformPath = outPath;
-        transformPath.pop(1);
-        MFnDependencyNode transformDepFn(transformPath.node());
+    static void addPortalAuthoringAttrs(MFnDependencyNode& transformDepFn, const PortalData& pd)
+    {
         auto addIntAttr = [&](const char* name, int val) {
             MPlug p = transformDepFn.findPlug(name, true);
             if (p.isNull()) {
@@ -295,15 +270,94 @@ namespace
         addBoolAttr("portalDisabled", pd.disabled);
         addBoolAttr("portalPassable", pd.passable);
         addStrAttr("doorStyle", pd.doorStyle);
+    }
 
-        MFnDagNode parentFn(parentObj);
-        MString parentCmd = "parent \"";
-        parentCmd += transformPath.fullPathName();
-        parentCmd += "\" \"";
-        parentCmd += parentFn.fullPathName();
-        parentCmd += "\"";
-        MGlobal::executeCommand(parentCmd);
-        return MS::kSuccess;
+    static MStatus attachDoorHardpoint(MObject portalTransformObj, const PortalData& pd)
+    {
+        if (!pd.hasDoorHardpoint)
+            return MS::kSuccess;
+        MStatus st;
+        MFnTransform doorFn;
+        MObject doorObj = doorFn.create(portalTransformObj, &st);
+        if (!st) return st;
+        doorFn.setName("doorHardpoint");
+        MMatrix dm;
+        engineTransformToMayaMatrix(pd.doorTransform, dm);
+        return doorFn.set(dm);
+    }
+
+    /// Creates portal transform under `parentObj`: mesh (if geometry exists) plus POB authoring attrs and optional `doorHardpoint` child.
+    static MStatus createPortalRepresentation(
+        const PortalGeometry* geom,
+        const char* portalName,
+        MObject parentObj,
+        const PortalData& pd,
+        MDagPath& outPortalTransformPath)
+    {
+        const bool hasMesh = geom && !geom->vertices.empty() && geom->indices.size() >= 3;
+        MStatus st;
+        if (hasMesh)
+        {
+            std::vector<float> positions;
+            positions.reserve(geom->vertices.size() * 3);
+            for (size_t i = 0; i < geom->vertices.size(); ++i)
+            {
+                positions.push_back(geom->vertices[i].x);
+                positions.push_back(geom->vertices[i].y);
+                positions.push_back(geom->vertices[i].z);
+            }
+            std::vector<float> normals(positions.size(), 0.0f);
+
+            MayaSceneBuilder::ShaderGroupData sg;
+            sg.shaderTemplateName = "shader/placeholder";
+            for (size_t t = 0; t + 2 < geom->indices.size(); t += 3)
+            {
+                MayaSceneBuilder::TriangleData tri;
+                tri.indices[0] = geom->indices[t];
+                tri.indices[1] = geom->indices[t + 1];
+                tri.indices[2] = geom->indices[t + 2];
+                sg.triangles.push_back(tri);
+            }
+
+            std::vector<MayaSceneBuilder::ShaderGroupData> groups(1, sg);
+            MDagPath meshShapePath;
+            st = MayaSceneBuilder::createMesh(positions, normals, groups, portalName, meshShapePath);
+            if (!st) return st;
+
+            MObject shapeObj = meshShapePath.node();
+            std::string shapeFullPath = meshShapePath.fullPathName().asChar();
+            MString addCmd = "addAttr -ln portal -at bool \"";
+            addCmd += shapeFullPath.c_str();
+            addCmd += "\"";
+            MGlobal::executeCommand(addCmd);
+            MString setCmd = "setAttr \"";
+            setCmd += shapeFullPath.c_str();
+            setCmd += ".portal\" 1";
+            MGlobal::executeCommand(setCmd);
+
+            meshShapePath.pop(1);
+            outPortalTransformPath = meshShapePath;
+            MFnDependencyNode transformDepFn(outPortalTransformPath.node());
+            addPortalAuthoringAttrs(transformDepFn, pd);
+
+            MFnDagNode parentFn(parentObj);
+            MString parentCmd = "parent \"";
+            parentCmd += outPortalTransformPath.fullPathName();
+            parentCmd += "\" \"";
+            parentCmd += parentFn.fullPathName();
+            parentCmd += "\"";
+            MGlobal::executeCommand(parentCmd);
+            return attachDoorHardpoint(outPortalTransformPath.node(), pd);
+        }
+
+        MFnTransform portalFn;
+        MObject portalObj = portalFn.create(parentObj, &st);
+        if (!st) return st;
+        portalFn.setName(MString(portalName));
+        portalFn.getPath(outPortalTransformPath);
+        MFnDependencyNode depFn(portalObj);
+        addPortalAuthoringAttrs(depFn, pd);
+        return attachDoorHardpoint(portalObj, pd);
     }
 }
 
@@ -561,13 +615,15 @@ MStatus ImportPob::doIt(const MArgList& args)
                 for (size_t p = 0; p < cellPortalData.size(); ++p)
                 {
                     int geomIdx = cellPortalData[p].portalIndex;
-                    if (geomIdx >= 0 && geomIdx < numberOfPortals && !portalGeometries[static_cast<size_t>(geomIdx)].vertices.empty())
-                    {
-                        char portalName[32];
-                        sprintf(portalName, "p%d", static_cast<int>(p));
-                        MDagPath meshPath;
-                        createPortalMesh(portalGeometries[static_cast<size_t>(geomIdx)], portalName, portalsObj, cellPortalData[p], meshPath);
-                    }
+                    const PortalGeometry* pg = nullptr;
+                    if (geomIdx >= 0 && geomIdx < numberOfPortals)
+                        pg = &portalGeometries[static_cast<size_t>(geomIdx)];
+                    char portalName[32];
+                    sprintf(portalName, "p%zu", p);
+                    MDagPath portalXformPath;
+                    status = createPortalRepresentation(pg, portalName, portalsObj, cellPortalData[p], portalXformPath);
+                    if (!status)
+                        pobLog("  Portal p%zu: createPortalRepresentation failed", p);
                 }
             }
         }

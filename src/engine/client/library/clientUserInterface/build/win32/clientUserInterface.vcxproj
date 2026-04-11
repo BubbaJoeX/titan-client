@@ -257,6 +257,7 @@
     <ClCompile Include="..\..\src\shared\core\CuiPopupHelp.cpp" />
     <ClCompile Include="..\..\src\shared\core\CuiPopupHelpData.cpp" />
     <ClCompile Include="..\..\src\shared\core\CuiPreferences.cpp" />
+    <ClCompile Include="..\..\src\shared\core\CuiDynamicUIFont.cpp" />
     <ClCompile Include="..\..\src\shared\core\CuiPrelocalizedChatMessage.cpp" />
     <ClCompile Include="..\..\src\shared\core\CuiRadialMenuManager.cpp" />
     <ClCompile Include="..\..\src\shared\core\CuiRecipeManager.cpp" />

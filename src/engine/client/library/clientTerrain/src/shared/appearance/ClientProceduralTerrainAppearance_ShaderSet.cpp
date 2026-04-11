@@ -608,7 +608,8 @@ void ClientProceduralTerrainAppearance::ShaderSet::render (const Camera* camera,
 			Vector const & center = primitiveSphere.getCenter();
 			if (CityTerrainLayerManager::getShaderOverride(center.x, center.z, overrideShader, blendWeight))
 			{
-				if (blendWeight >= 0.5f && overrideShader)
+				// Use any non-zero blend so edge falloff and city shader paints remain visible (was 0.5f).
+				if (blendWeight > 0.001f && overrideShader)
 				{
 					effectiveShader = overrideShader;
 					static bool s_loggedOnce = false;

@@ -5,22 +5,12 @@
 # ======================================================================
 
 use strict;
+use warnings;
 
-use AppearanceTemplate;
-use BlueprintTextureRendererTemplate;
-use ComponentAppearanceTemplate;
-use CustomizableShaderTemplate;
-use CustomizationVariableCollector;
-use DetailAppearanceTemplate;
-use LightsaberAppearanceTemplate;
-use LodMeshGeneratorTemplate;
-use MeshAppearanceTemplate;
-use PortalAppearanceTemplate;
-use SkeletalAppearanceTemplate;
-use SkeletalMeshGeneratorTemplate;
-use SwitchShaderTemplate;
-use TreeFile;
-use VehicleCustomizationVariableGenerator;
+use FindBin;
+use lib "$FindBin::Bin/perllib";
+
+use CollectAcmInfo;
 
 # ======================================================================
 
@@ -44,15 +34,14 @@ sub printUsage
 
 sub processCommandLineArgs
 {
-	my $printHelp = 0;
+	my $printHelp   = 0;
 	my $requestedHelp = 0;
 
-	# Grab options from commandline.
 	while ((scalar @_) && !$printHelp)
 	{
 		if ($_[0] =~ m/^-h/)
 		{
-			$printHelp	   = 1;
+			$printHelp     = 1;
 			$requestedHelp = 1;
 		}
 		elsif ($_[0] =~ m/^-b/)
@@ -61,7 +50,7 @@ sub processCommandLineArgs
 			$branch = $_[0];
 			if (!defined($branch))
 			{
-				print "User must specify a branch name after the -t option, printing help.\n";
+				print "User must specify a branch name after the -b option, printing help.\n";
 				$printHelp = 1;
 			}
 			else
@@ -93,11 +82,9 @@ sub processCommandLineArgs
 			$printHelp = 1;
 		}
 
-		# Shift past current argument.
 		shift;
 	}
 
-	# Check if we're missing anything required.
 	if (!$requestedHelp)
 	{
 		if (!defined($treeFileLookupDataFile))
@@ -110,74 +97,20 @@ sub processCommandLineArgs
 	if ($printHelp)
 	{
 		printUsage();
-		exit ($requestedHelp ? 0 : -1);
+		exit($requestedHelp ? 0 : -1);
 	}
-}
-
-# ----------------------------------------------------------------------
-
-sub initialize
-{
-	# Initialize data handlers.
-	&AppearanceTemplate::install();
-	&BlueprintTextureRendererTemplate::install();
-	&ComponentAppearanceTemplate::install();
-	&CustomizableShaderTemplate::install();
-	&DetailAppearanceTemplate::install();
-	&LightsaberAppearanceTemplate::install();
-	&LodMeshGeneratorTemplate::install();
-	&MeshAppearanceTemplate::install();
-	&PortalAppearanceTemplate::install();
-	&SkeletalAppearanceTemplate::install();
-	&SkeletalMeshGeneratorTemplate::install();
-	&SwitchShaderTemplate::install();
-	&VehicleCustomizationVariableGenerator::install();
-
-	# Open the TreeFile lookup datafile.
-	my $dataFileHandle;
-	die "Failed to open [$treeFileLookupDataFile]: $!" unless open($dataFileHandle, "< " . $treeFileLookupDataFile);
-
-	# Initialize the treefile.
-	TreeFile::loadFileLookupTable($dataFileHandle);
-
-	# Close the TreeFile lookup datafile.
-	die "Failed to close [$treeFileLookupDataFile]: $!" unless close($dataFileHandle);
 }
 
 # ======================================================================
 # Main Program
 # ======================================================================
 
-# Handle command line.
 processCommandLineArgs(@ARGV);
 
-# Initialize subsystems (e.g. TreeFile)
-initialize();
+CollectAcmInfo::collect_acm_info_to_fh(
+	lookup => $treeFileLookupDataFile,
+	fh     => \*STDOUT,
+	branch => $branch,
+);
 
-# Setup the list of patterns to match against
-# TreeFile-relative filenames.	Any files in the TreeFile system 
-# that match one of these patterns will be processed by the
-# CustomizationVariableCollector.
-
-my @processFilePatterns =
-	(
-	 '^texturerenderer/.+\.trt$', '^shader/.+\.sht$',
-	 '^appearance/.+\.(apt|cmp|lmg|lod|lsb|mgn|msh|sat|pob)$'
-# ---
-# TEST ENTRIES: don't include these for real processing, used to test formats one-at-a-time.
-# ---
-#	 '^appearance/.+\.sat$'
-#	 '^appearance/.+\.mgn$'
-#	  '^shader/.+\.sht$'
-#	  '^appearance/.+\.lsb$'
-#	  '^appearance/.+\.lod$'
-#	  '^appearance/.+\.apt$'
-#	 '^appearance/.+\.msh$'
-#	 '^appearance/.+\.cmp$'
-# ---
-	 );
-
-CustomizationVariableCollector::collectData(@processFilePatterns);
-
-# Handle vehicle customization steps that cannot be handled by analyzing IFF file contents.
-VehicleCustomizationVariableGenerator::collectData($branch);
+exit 0;

@@ -137,7 +137,8 @@ CityTerrainModifyMessage::CityTerrainModifyMessage(
 	float endZ,
 	float width,
 	float height,
-	float blendDistance
+	float blendDistance,
+	bool regionActive
 ) :
 	GameNetworkMessage(MessageType),
 	m_cityId(cityId),
@@ -151,7 +152,8 @@ CityTerrainModifyMessage::CityTerrainModifyMessage(
 	m_endZ(endZ),
 	m_width(width),
 	m_height(height),
-	m_blendDistance(blendDistance)
+	m_blendDistance(blendDistance),
+	m_regionActive(regionActive)
 {
 	addVariable(m_cityId);
 	addVariable(m_modificationType);
@@ -165,6 +167,7 @@ CityTerrainModifyMessage::CityTerrainModifyMessage(
 	addVariable(m_width);
 	addVariable(m_height);
 	addVariable(m_blendDistance);
+	addVariable(m_regionActive);
 }
 
 CityTerrainModifyMessage::CityTerrainModifyMessage(Archive::ReadIterator & source) :
@@ -180,7 +183,8 @@ CityTerrainModifyMessage::CityTerrainModifyMessage(Archive::ReadIterator & sourc
 	m_endZ(),
 	m_width(),
 	m_height(),
-	m_blendDistance()
+	m_blendDistance(),
+	m_regionActive()
 {
 	addVariable(m_cityId);
 	addVariable(m_modificationType);
@@ -194,6 +198,7 @@ CityTerrainModifyMessage::CityTerrainModifyMessage(Archive::ReadIterator & sourc
 	addVariable(m_width);
 	addVariable(m_height);
 	addVariable(m_blendDistance);
+	addVariable(m_regionActive);
 	unpack(source);
 }
 

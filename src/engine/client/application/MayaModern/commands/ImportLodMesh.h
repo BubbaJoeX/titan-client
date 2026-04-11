@@ -29,6 +29,13 @@ std::string resolveStaticMeshPath(const std::string& basePath);
 std::string resolvePathViaApt(const std::string& filePath);
 
 /**
+ * Full static mesh path resolution for MshTranslator: APT redirect(s), then unwrap FORM DTLA / FORM MLOD
+ * (same chain as legacy ImportStaticMesh) until the file root is FORM MESH.
+ * @param contextAnchor path used to resolve relative tree paths (typically the same as userPath).
+ */
+std::string resolveStaticMeshFilePathForImport(const std::string& userPath, const std::string& contextAnchor);
+
+/**
  * If the file is a wrapper (FORM MLOD as used by .lmg, or FORM APT redirect) whose first child is a
  * skeletal mesh, returns the resolved path to that .mgn (SKMG). Otherwise returns the input path.
  * Call with a path already passed through resolveImportPath.

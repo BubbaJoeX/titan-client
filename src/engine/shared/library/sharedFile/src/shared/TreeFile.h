@@ -18,6 +18,9 @@ class Compressor;
 class Mutex;
 #include "fileInterface/AbstractFile.h"
 
+#include <string>
+#include <vector>
+
 /*NOTE: TreeFile_SearchNode.h is included AFTER TreeFile is defined to allow
   the subclasses to be broken out into a separate file module without creating
 	additional include dependencies on the modules that use TreeFile.
@@ -101,6 +104,9 @@ public:
 	static int           getSizeOfFilesOpenedTotal();
 
 	static int           cacheFile(char const * fileName);
+
+	// Virtual paths under search trees/TOCs (and loose files on search paths where supported)
+	static void          collectVirtualPathNamesWithPrefixAndSuffix(char const * prefix, char const * suffix, std::vector<std::string> & out);
 
 private:
 

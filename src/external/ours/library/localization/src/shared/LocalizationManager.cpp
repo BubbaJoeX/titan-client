@@ -460,20 +460,18 @@ LocalizationManager::StringValueCode LocalizationManager::getLocalizedStringValu
 {
 	value.clear ();
 
-	// Handle server-side conversation responses: format is "responseId|displayText"
-	// Only the displayText portion is shown to the player
-	if (id.getTable() == "convo_response")
+	// Virtual tables: "internalKey|displayText" — only displayText is shown (client UI).
+	// convo_response: server-side conversation option ids; quest_pipe: quest journal/task strings in datatables.
+	if (id.getTable() == "convo_response" || id.getTable() == "quest_pipe")
 	{
 		std::string const & text = id.getText();
 		size_t const pipePos = text.find('|');
 		if (pipePos != std::string::npos)
 		{
-			// Display only the text after the pipe
 			value = Unicode::narrowToWide(text.substr(pipePos + 1));
 		}
 		else
 		{
-			// No pipe found - just display the text as-is (fallback)
 			value = Unicode::narrowToWide(text);
 		}
 		return SVC_ok;

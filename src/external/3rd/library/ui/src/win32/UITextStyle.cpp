@@ -982,7 +982,7 @@ long UITextStyle::RenderPrewrappedLine(RenderLineData const & rld, UIRectangleSt
 					{
 						if (rld.canvas)
 						{
-							rld.canvas->BltFromNoScaleOrRotate (elipsisCh->GetCanvas(), elipsisCh->GetLocation(), outdest, elipsisSize );
+							rld.canvas->BltFrom (elipsisCh->GetCanvas(), elipsisCh->GetLocation(), outdest, elipsisSize );
 						}
 
 						outdest.x += elipsisCh->GetAdvance();
@@ -998,7 +998,7 @@ long UITextStyle::RenderPrewrappedLine(RenderLineData const & rld, UIRectangleSt
 						if (index >= rld.mark && index < rld.point)
 						{
 							UISize const textSize(ch->GetAdvance(), mLeading);
-							rld.canvas->BltFromNoScaleOrRotate (0, ch->GetLocation(), outdest, textSize);
+							rld.canvas->BltFrom (0, ch->GetLocation(), outdest, textSize);
 						}
 					}
 					else
@@ -1018,7 +1018,7 @@ long UITextStyle::RenderPrewrappedLine(RenderLineData const & rld, UIRectangleSt
 							rld.canvas->Translate(-newDest);
 						}
 
-						rld.canvas->BltFromNoScaleOrRotate (ch->GetCanvas(), ch->GetLocation(), outdest, textSize);
+						rld.canvas->BltFrom (ch->GetCanvas(), ch->GetLocation(), outdest, textSize);
 						outdest.x -= ch->GetAdvancePre();
 					}
 

@@ -68,6 +68,9 @@ public:
 	static Callback &                    getChatFontSizeCallback    ();
 	static Callback &                    getChatBoxKeyClickCallback ();
 
+	/// No-op if install() has not run yet. Used when UI font face or scale changes globally.
+	static void                          refreshChatWindowStylesIfInstalled ();
+
 private:
 
 	static int         ms_chatStyle;

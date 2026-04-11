@@ -78,6 +78,7 @@ protected:
 
 	static bool  getTrue  ()  { return true; }
 	static bool  getFalse ()  { return false; }
+	static int   getOneHundred ()  { return 100; }
 	static float getOne   ()  { return 1.0f; }
 	static float getZero  ()  { return 0.0f; }
 

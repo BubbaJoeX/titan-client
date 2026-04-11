@@ -20,12 +20,19 @@
 #include "clientGame/PlayerObject.h"
 #include "clientGame/ShipObject.h"
 #include "clientGraphics/Camera.h"
+#include "clientGraphics/DynamicVertexBuffer.h"
 #include "clientGraphics/Graphics.h"
+#include "clientGraphics/ShaderTemplate.h"
+#include "clientGraphics/ShaderTemplateList.h"
+#include "clientGraphics/StaticShader.h"
+#include "clientGraphics/Texture.h"
+#include "clientGraphics/TextureList.h"
 #include "clientObject/RibbonAppearance.h"
 #include "clientParticle/ParticleEffectAppearance.h"
 #include "clientSkeletalAnimation/SkeletalAppearance2.h"
 #include "clientSkeletalAnimation/Skeleton.h"
 #include "clientUserInterface/CuiGameColorManager.h"
+#include "clientUserInterface/CuiLayer_TextureCanvas.h"
 #include "clientUserInterface/CuiPreferences.h"
 #include "clientUserInterface/CuiStringIdsWho.h"
 #include "clientUserInterface/CuiTextManager.h"
@@ -45,6 +52,7 @@
 #include "sharedGame/StaffRankDataTable.h"
 #include "sharedGame/SharedBuildingObjectTemplate.h"
 #include "sharedGame/SharedCreatureObjectTemplate.h"
+#include "sharedMath/VectorArgb.h"
 #include "sharedMathArchive/TransformArchive.h"
 #include "sharedMessageDispatch/Message.h"
 #include "sharedMessageDispatch/Receiver.h"
@@ -54,14 +62,18 @@
 #include "swgSharedUtility/States.def"
 
 #include "UIBaseObject.h"
+#include "UIFontCharacter.h"
 #include "UIImageStyle.h"
 #include "UIManager.h"
 #include "UIPage.h"
+#include "UITextStyle.h"
 
 #include "UnicodeUtils.h"
 
 #include <algorithm>
+#include <cctype>
 #include <list>
+#include <map>
 #include <set>
 
 //======================================================================
@@ -72,7 +84,10 @@ namespace CuiObjectTextManagerNamespace
 {
 	float const s_apartmentBarrierLabelRange = 96.0f;
 	float const s_apartmentBarrierLabelHeightOffset = 1.25f;
-	UIColor const s_apartmentBarrierLabelColor(47, 214, 214);
+	float const s_apartmentBarrierLabelDoorOffset = 0.35f;
+	VectorArgb const s_apartmentBarrierLabelColor(1.0f, 0.45f, 0.92f, 0.92f);
+	typedef std::map<Portal const *, Vector> ApartmentPortalAnchorMap;
+	ApartmentPortalAnchorMap s_apartmentPortalAnchors;
 
 	bool isApartmentBarrierLabel(Unicode::String const & label)
 	{
@@ -95,12 +110,37 @@ namespace CuiObjectTextManagerNamespace
 		info.screenVect = projected;
 		info.worldDistance = camera.getPosition_w().magnitudeBetween(worldPosition);
 		info.backgroundOpacity = 0.0f;
-		info.textColor = s_apartmentBarrierLabelColor;
+		info.textColor = UIColor(47, 214, 214);
 		info.opacity = 1.0f;
-		info.textWeight = CuiTextManager::TextEnqueueInfo::TW_heavy;
+		info.textWeight = CuiTextManager::TextEnqueueInfo::TW_starwars;
 		info.id = NetworkId::cms_invalid;
 		info.updateOffset = false;
 		CuiTextManager::enqueueText(label, info);
+	}
+
+	void drawApartmentBarrierLabelStable(
+		Camera const & camera,
+		Vector const & worldPosition,
+		Unicode::String const & label)
+	{
+		enqueueApartmentBarrierLabel(camera, worldPosition, label);
+	}
+
+	Vector const & getApartmentPortalAnchor(
+		Portal const * const canonicalPortal,
+		Object const & sourceCellObject,
+		Transform const & doorTransform_p)
+	{
+		ApartmentPortalAnchorMap::iterator const found = s_apartmentPortalAnchors.find(canonicalPortal);
+		if (found != s_apartmentPortalAnchors.end())
+			return (*found).second;
+
+		Vector const doorPosition = sourceCellObject.rotateTranslate_o2w(doorTransform_p.getPosition_p());
+		Transform const & sourceCellTransform = sourceCellObject.getTransform_o2w();
+		Vector const doorForward = sourceCellTransform.rotate_l2p(doorTransform_p.getLocalFrameK_p());
+		Vector const doorUp = sourceCellTransform.rotate_l2p(doorTransform_p.getLocalFrameJ_p());
+		Vector const labelPosition = doorPosition + (doorForward * s_apartmentBarrierLabelDoorOffset) + (doorUp * s_apartmentBarrierLabelHeightOffset);
+		return s_apartmentPortalAnchors.insert(std::make_pair(canonicalPortal, labelPosition)).first->second;
 	}
 
 	void drawApartmentBarrierLabelsForCell(
@@ -121,11 +161,11 @@ namespace CuiObjectTextManagerNamespace
 			CellProperty::PortalList const & portalList = *portalObject.portalList;
 			for (CellProperty::PortalList::const_iterator portalIt = portalList.begin(); portalIt != portalList.end(); ++portalIt)
 			{
-				Portal const * const portal = *portalIt;
+				Portal * const portal = *portalIt;
 				if (!portal)
 					continue;
 
-				Portal const * const neighborPortal = portal->getNeighbor();
+				Portal * const neighborPortal = portal->getNeighbor();
 				if (!neighborPortal)
 					continue;
 
@@ -134,7 +174,7 @@ namespace CuiObjectTextManagerNamespace
 					continue;
 				visitedPortals.insert(canonical);
 
-				CellProperty const * const destinationCell = neighborPortal->getParentCell();
+				CellProperty * const destinationCell = neighborPortal->getParentCell();
 				if (!destinationCell || destinationCell == CellProperty::getWorldCellProperty())
 					continue;
 
@@ -147,16 +187,12 @@ namespace CuiObjectTextManagerNamespace
 				if (!isApartmentBarrierLabel(label))
 					continue;
 
-				Object const * const doorObject = portal->getDoorObject();
-				if (!doorObject)
-					continue;
-
-				Vector labelPosition = doorObject->getPosition_w();
+				Transform const doorTransform_p = portal->getDoorTransform();
+				Object const & sourceCellObject = sourceCell.getOwner();
+				Vector const & labelPosition = getApartmentPortalAnchor(canonical, sourceCellObject, doorTransform_p);
 				if (labelPosition.magnitudeBetweenSquared(cameraPos) > maxRangeSquared)
 					continue;
-
-				labelPosition.y += s_apartmentBarrierLabelHeightOffset;
-				enqueueApartmentBarrierLabel(camera, labelPosition, label);
+				drawApartmentBarrierLabelStable(camera, labelPosition, label);
 			}
 		}
 	}
@@ -205,6 +241,7 @@ namespace CuiObjectTextManagerNamespace
 			if (message.isType (Game::Messages::SCENE_CHANGED))
 			{
 				s_headMap.clear ();
+				s_apartmentPortalAnchors.clear ();
 			}
 		}
 	};

@@ -12,6 +12,8 @@
 #include "Quaternion.h"
 #include "OcclusionZoneSet.h"
 #include "MayaUtility.h"
+#include "MayaSceneBuilder.h"
+#include "SwgTrtsIo.h"
 
 #include <maya/MGlobal.h>
 #include <maya/MStatus.h>
@@ -24,6 +26,8 @@
 #include <maya/MFnIkJoint.h>
 #include <maya/MFnMesh.h>
 #include <maya/MFnBlendShapeDeformer.h>
+#include <maya/MDagPath.h>
+#include <maya/MFloatArray.h>
 
 #include <vector>
 #include <cstring>
@@ -50,12 +54,10 @@ const Tag TAG_TXCI = TAG(T,X,C,I);
 const Tag TAG_TCSF = TAG(T,C,S,F);
 const Tag TAG_TCSD = TAG(T,C,S,D);
 const Tag TAG_PRIM = TAG(P,R,I,M);
-const Tag TAG_TRTS = TAG(T,R,T,S);
 const Tag TAG_OZN = TAG3(O,Z,N);
 const Tag TAG_OZC = TAG3(O,Z,C);
 const Tag TAG_ZTO = TAG3(Z,T,O);
 const Tag TAG_DYN = TAG3(D,Y,N);
-const Tag TAG_TRT = TAG3(T,R,T);
 const Tag TAG_BLT = TAG3(B,L,T);
 
 struct MgnTranslator::Dot3Vector
@@ -1066,28 +1068,22 @@ MStatus MgnTranslator::reader (const MFileObject& file, const MString& options, 
                             //---- texture coordinate sets (optional)
                             if(iff.enterForm(TAG_TCSF, true))
                             {
-                                std::vector<std::vector<float>> textureCoordinateSetData = psd->getTextureCoordinateSetData();
-                                std::vector<int> textureCoordinateSetDimensionality = psd->getTextureCoordinateSetDimensionality();
+                                std::vector<std::vector<float>> textureCoordinateSetData;
                                 textureCoordinateSetData.resize(static_cast<size_t>(textureCoordinateSetCount));
-                                // load up each texture coordinate set's data
+                                std::vector<int> texDim = psd->getTextureCoordinateSetDimensionality();
                                 for(int t = 0; t < textureCoordinateSetCount; ++t)
                                 {
-                                    //---- Start TCSD Chunk [SKMG -> XXXX -> PSDT -> TCSF -> TCSD]
                                     iff.enterChunk(TAG_TCSD);
-                                    /*
-                                        std::vector<float> &tcSetData = textureCoordinateSetData[static_cast<size_t>(i)];
-                                    
-                                        const auto arraySize = static_cast<size_t>(vertexCount * textureCoordinateSetDimensionality[static_cast<size_t>(i)]);
-                                        tcSetData.reserve(arraySize);
-                                    
-                                        for (size_t j = 0; j < arraySize; ++j)
-                                        {
-                                            tcSetData.push_back(iff.read_float());
-                                        }
-                                        psd->setTextureCoordinateSetData(textureCoordinateSetData);
-                                     */
+                                    std::vector<float>& tcSetData = textureCoordinateSetData[static_cast<size_t>(t)];
+                                    const int dimForSet = (static_cast<size_t>(t) < texDim.size())
+                                        ? texDim[static_cast<size_t>(t)] : 2;
+                                    const auto arraySize = static_cast<size_t>(vertexCount * dimForSet);
+                                    tcSetData.resize(arraySize);
+                                    for (size_t j = 0; j < arraySize; ++j)
+                                        tcSetData[j] = iff.read_float();
                                     iff.exitChunk(TAG_TCSD);
                                 }
+                                psd->setTextureCoordinateSetData(textureCoordinateSetData);
                                 iff.exitForm(TAG_TCSF);
                             }
 
@@ -1253,6 +1249,67 @@ MStatus MgnTranslator::reader (const MFileObject& file, const MString& options, 
                         //---- Begin Maya Import Operations
                         mesh.create(totalVerticesInMesh, totalPolygonsInMesh, vertexArray, polygonCounts, polygonConnects, parentTransform.object(), &createStatus);
                         mesh.setName(MayaUtility::parseFileNameToNodeName(psd->getShaderTemplateName()).c_str());
+
+                        if (createStatus == MS::kSuccess)
+                        {
+                            const std::vector<std::vector<float>>& tcAll = psd->getTextureCoordinateSetData();
+                            std::vector<int> texDim = psd->getTextureCoordinateSetDimensionality();
+                            if (textureCoordinateSetCount > 0 && !tcAll.empty() && !texDim.empty()
+                                && tcAll[0].size() >= static_cast<size_t>(vertexCount * texDim[0]))
+                            {
+                                const int dim0 = texDim[0];
+                                if (dim0 >= 1)
+                                {
+                                    const std::vector<float>& tc0 = tcAll[0];
+                                    MFloatArray uArr, vArr;
+                                    uArr.setLength(totalVerticesInMesh);
+                                    vArr.setLength(totalVerticesInMesh);
+                                    for (unsigned uu = 0; uu < static_cast<unsigned>(totalVerticesInMesh); ++uu)
+                                    {
+                                        uArr.set(0.f, uu);
+                                        vArr.set(0.f, uu);
+                                    }
+                                    for (int j = 0; j < vertexCount; ++j)
+                                    {
+                                        const int pi = positionIndexLookup[static_cast<size_t>(j)];
+                                        if (pi >= 0 && pi < totalVerticesInMesh)
+                                        {
+                                            const float uu = tc0[static_cast<size_t>(j * dim0)];
+                                            const float vv = (dim0 >= 2) ? tc0[static_cast<size_t>(j * dim0 + 1)] : 0.f;
+                                            uArr.set(uu, static_cast<unsigned>(pi));
+                                            vArr.set(1.0f - vv, static_cast<unsigned>(pi));
+                                        }
+                                    }
+                                    mesh.setUVs(uArr, vArr);
+                                    for (int faceId = 0; faceId < totalPolygonsInMesh; ++faceId)
+                                    {
+                                        mesh.assignUV(faceId, 0, polygonConnects[faceId * 3 + 0]);
+                                        mesh.assignUV(faceId, 1, polygonConnects[faceId * 3 + 1]);
+                                        mesh.assignUV(faceId, 2, polygonConnects[faceId * 3 + 2]);
+                                    }
+                                }
+                            }
+
+                            MDagPath meshDag;
+                            if (mesh.getPath(meshDag) == MS::kSuccess)
+                            {
+                                MayaSceneBuilder::ShaderGroupData sg;
+                                sg.shaderTemplateName = psd->getShaderTemplateName();
+                                for (int idx = 0; idx + 2 < polygonConnects.length(); idx += 3)
+                                {
+                                    MayaSceneBuilder::TriangleData tri;
+                                    tri.indices[0] = polygonConnects[idx];
+                                    tri.indices[1] = polygonConnects[idx + 1];
+                                    tri.indices[2] = polygonConnects[idx + 2];
+                                    sg.triangles.push_back(tri);
+                                }
+                                if (!sg.triangles.empty())
+                                {
+                                    std::vector<MayaSceneBuilder::ShaderGroupData> groups(1, sg);
+                                    MayaSceneBuilder::assignMaterials(meshDag, groups, pathStd);
+                                }
+                            }
+                        }
                         
                         // when we create this mesh, we need to iterate through its position and normal indices
                         // to see if we have any blend targets that cross through, because if so, that blend
@@ -1312,17 +1369,22 @@ MStatus MgnTranslator::reader (const MFileObject& file, const MString& options, 
                     } // end for each shader data (PSDT FORM)
                 }
 
-                //---- Start TRTS Form [SKMG -> XXXX -> TRTS]
-                //Note: 0002 has slight code difference, but should not matter
-                //---- load texture renderer templates (optional)
-                if(iff.enterForm(TAG_TRTS, true))
+                // Texture renderer template bindings (SkeletalMeshGeneratorTemplate TRTS / TRT chunks).
+                std::vector<SwgTrtsIo::Header> trtsHeaders;
+                std::string trtsErr;
+                if (!SwgTrtsIo::tryConsumeOptionalTrtsForm(iff, trtsHeaders, trtsErr))
                 {
-                    iff.enterChunk(TAG_INFO);
-                    const int headerCount = iff.read_int32();
-                    const int entryCount = iff.read_int32();
-                    iff.exitChunk(TAG_INFO);
-
-                    //todo need to wait to see an example of this to implement it properly
+                    MGlobal::displayError(MString("[MgnTranslator] TRTS parse error: ") + trtsErr.c_str());
+                    iff.close();
+                    return MS::kFailure;
+                }
+                if (!trtsHeaders.empty())
+                {
+                    MDagPath rootPath;
+                    if (MDagPath::getAPathTo(parentTransform.object(), rootPath))
+                    {
+                        SwgTrtsIo::applyBindingsToTransform(rootPath, trtsHeaders, file.expandedFullName().asChar());
+                    }
                 }
                 
                 // join all children of the mesh

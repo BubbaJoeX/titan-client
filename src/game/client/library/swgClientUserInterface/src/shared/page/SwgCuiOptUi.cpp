@@ -13,13 +13,19 @@
 #include "UIPage.h"
 #include "UISliderbar.h"
 #include "UIComboBox.h"
+#include "UIButton.h"
+#include "UITextbox.h"
 #include "clientDirectInput/DirectInput.h"
 #include "clientUserInterface/ConfigClientUserInterface.h"
+#include "clientUserInterface/CuiDynamicUIFont.h"
 #include "clientUserInterface/CuiIconManager.h"
 #include "clientUserInterface/CuiPreferences.h"
 #include "clientUserInterface/CuiWorkspace.h"
 #include "sharedUtility/Callback.h"
 #include "sharedUtility/CallbackReceiver.h"
+#include <algorithm>
+#include <cwctype>
+#include <string>
 #include <vector>
 
 
@@ -108,6 +114,58 @@ namespace SwgCuiOptUiNamespace
 
 using namespace SwgCuiOptUiNamespace;
 
+namespace
+{
+	void trimAsciiInPlace (std::string &s)
+	{
+		size_t a = 0;
+		while (a < s.size () && static_cast<unsigned char>(s[a]) <= ' ')
+			++a;
+		size_t b = s.size ();
+		while (b > a && static_cast<unsigned char>(s[b - 1]) <= ' ')
+			--b;
+		if (a > 0 || b < s.size ())
+			s = s.substr (a, b - a);
+	}
+
+	bool wideContainsSubstringI (Unicode::String const &haystack, Unicode::String const &needle)
+	{
+		if (needle.empty ())
+			return true;
+		if (haystack.size () < needle.size ())
+			return false;
+		for (size_t i = 0; i + needle.size () <= haystack.size (); ++i)
+		{
+			bool ok = true;
+			for (size_t j = 0; j < needle.size (); ++j)
+			{
+				wint_t const a = static_cast<wint_t>(haystack[i + j]);
+				wint_t const b = static_cast<wint_t>(needle[j]);
+				if (std::towlower (a) != std::towlower (b))
+				{
+					ok = false;
+					break;
+				}
+			}
+			if (ok)
+				return true;
+		}
+		return false;
+	}
+
+	std::vector<std::string> s_allFontFacesCache;
+	bool                     s_allFontFacesCachePopulated = false;
+
+	void ensureAllFontFacesCached ()
+	{
+		if (s_allFontFacesCachePopulated)
+			return;
+		CuiDynamicUIFont::enumFontFacesUtf8 (s_allFontFacesCache);
+		std::sort (s_allFontFacesCache.begin (), s_allFontFacesCache.end ());
+		s_allFontFacesCachePopulated = true;
+	}
+}
+
 class SwgCuiOptUi::CallbackReceiverWaypointMonitor : public CallbackReceiver 
 {
 public:
@@ -176,6 +234,10 @@ public:
 SwgCuiOptUi::SwgCuiOptUi (UIPage & page) :
 SwgCuiOptBase ("SwgCuiOptUi", page),
 m_combo       (0),
+m_comboUiFont (0),
+m_textUiFontFilter (0),
+m_buttonUiFontSearch (0),
+m_buttonUiFontApply (0),
 m_callbackReceiverWaypointMonitor (0),
 m_callbackReceiverExpMonitor (0)
 {
@@ -194,6 +256,23 @@ m_callbackReceiverExpMonitor (0)
 
 	getCodeDataObject (TUISliderbar, slider, "sliderHudOpacity");
 	registerSlider (*slider, CuiPreferences::setHudOpacity, CuiPreferences::getHudOpacity, ConfigClientUserInterface::getHudOpacity, 0.1f, 1.0f);
+
+	getCodeDataObject (TUISliderbar, slider, "sliderUiScale");
+	registerSlider (*slider, CuiPreferences::setUiScalePercent, CuiPreferences::getUiScalePercent, SwgCuiOptBase::getOneHundred, 75, 200, 200);
+
+	getCodeDataObject (TUISliderbar, slider, "sliderUiFontScale");
+	registerSlider (*slider, CuiPreferences::setUiFontScalePercent, CuiPreferences::getUiFontScalePercent, ConfigClientUserInterface::getUiFontScalePercent, 50, 200, 200);
+
+	getCodeDataObject (TUITextbox, m_textUiFontFilter, "textUiFontFilter");
+	getCodeDataObject (TUIButton, m_buttonUiFontSearch, "buttonUiFontSearch");
+	getCodeDataObject (TUIComboBox, m_comboUiFont, "comboUiDefaultFont");
+	getCodeDataObject (TUIButton, m_buttonUiFontApply, "buttonUiFontApply");
+	if (m_buttonUiFontSearch)
+		registerMediatorObject (*m_buttonUiFontSearch, true);
+	if (m_buttonUiFontApply)
+		registerMediatorObject (*m_buttonUiFontApply, true);
+	if (m_textUiFontFilter)
+		registerMediatorObject (*m_textUiFontFilter, true);
 
 	getCodeDataObject (TUISliderbar, slider, "sliderOverheadMapOpacity");
 	registerSlider (*slider, CuiPreferences::setOverheadMapOpacity, CuiPreferences::getOverheadMapOpacity, SwgCuiOptBase::getOne, 0.1f, 1.0f);
@@ -405,6 +484,17 @@ void SwgCuiOptUi::performActivate ()
 {
 	setupPaletteCombo (*m_combo);
 	SwgCuiOptBase::performActivate ();
+
+	if (m_textUiFontFilter && m_comboUiFont)
+	{
+		std::string const saved = CuiPreferences::getUiDefaultFontFaceUtf8 ();
+		if (!saved.empty ())
+			m_textUiFontFilter->SetText (Unicode::utf8ToWide (saved));
+		else
+			m_textUiFontFilter->SetText (Unicode::emptyString);
+		rebuildUiFontCombo ();
+		selectComboFaceUtf8 (saved);
+	}
 }
 
 //----------------------------------------------------------------------
@@ -449,7 +539,117 @@ void SwgCuiOptUi::resetDefaults   (bool confirmed)
 	{
 		if(CuiWorkspace::getGameWorkspace())
 			CuiWorkspace::getGameWorkspace()->resetAllToDefaultSizeAndLocation();	
+		CuiPreferences::setUiDefaultFontFaceUtf8 ("");
+		CuiDynamicUIFont::clearUserFont ();
+		if (m_textUiFontFilter)
+			m_textUiFontFilter->SetText (Unicode::emptyString);
+		if (m_comboUiFont)
+		{
+			rebuildUiFontCombo ();
+			selectComboFaceUtf8 ("");
+		}
 	}
+}
+
+//----------------------------------------------------------------------
+
+void SwgCuiOptUi::OnButtonPressed (UIWidget * context)
+{
+	if (context == m_buttonUiFontSearch)
+	{
+		s_allFontFacesCachePopulated = false;
+		rebuildUiFontCombo ();
+		selectComboFaceUtf8 (CuiPreferences::getUiDefaultFontFaceUtf8 ());
+		return;
+	}
+	if (context == m_buttonUiFontApply)
+	{
+		if (!m_comboUiFont)
+			return;
+		std::string name;
+		if (m_comboUiFont->GetSelectedIndex () >= 0)
+			m_comboUiFont->GetSelectedIndexName (name);
+		if (name.empty ())
+		{
+			CuiPreferences::setUiDefaultFontFaceUtf8 ("");
+			CuiDynamicUIFont::clearUserFont ();
+		}
+		else
+		{
+			if (!CuiDynamicUIFont::applyFontFaceUtf8 (name))
+				return;
+			CuiPreferences::setUiDefaultFontFaceUtf8 (name);
+		}
+		return;
+	}
+	SwgCuiOptBase::OnButtonPressed (context);
+}
+
+//----------------------------------------------------------------------
+
+void SwgCuiOptUi::OnTextboxChanged (UIWidget * context)
+{
+	if (context == m_textUiFontFilter && isActive ())
+	{
+		rebuildUiFontCombo ();
+		selectComboFaceUtf8 (CuiPreferences::getUiDefaultFontFaceUtf8 ());
+		return;
+	}
+	UIEventCallback::OnTextboxChanged (context);
+}
+
+//----------------------------------------------------------------------
+
+void SwgCuiOptUi::rebuildUiFontCombo ()
+{
+	if (!m_comboUiFont || !m_textUiFontFilter)
+		return;
+
+	Unicode::String filterWide;
+	m_textUiFontFilter->GetText (filterWide);
+	if (filterWide.empty ())
+		m_textUiFontFilter->GetLocalText (filterWide);
+	std::string filterUtf8 = Unicode::wideToUTF8 (filterWide);
+	trimAsciiInPlace (filterUtf8);
+
+	m_comboUiFont->Clear ();
+	m_comboUiFont->AddItem (Unicode::narrowToWide ("(Game default)"), "");
+
+	if (filterUtf8.empty ())
+		return;
+
+	Unicode::String const filterW = Unicode::utf8ToWide (filterUtf8);
+
+	ensureAllFontFacesCached ();
+
+	for (size_t i = 0; i < s_allFontFacesCache.size (); ++i)
+	{
+		Unicode::String const faceW = Unicode::utf8ToWide (s_allFontFacesCache[i]);
+		if (!wideContainsSubstringI (faceW, filterW))
+			continue;
+		m_comboUiFont->AddItem (faceW, s_allFontFacesCache[i]);
+	}
+}
+
+//----------------------------------------------------------------------
+
+void SwgCuiOptUi::selectComboFaceUtf8 (std::string const &utf8Face)
+{
+	if (!m_comboUiFont)
+		return;
+	int const n = m_comboUiFont->GetItemCount ();
+	for (int i = 0; i < n; ++i)
+	{
+		std::string name;
+		if (!m_comboUiFont->GetIndexName (i, name))
+			continue;
+		if (!_stricmp (name.c_str (), utf8Face.c_str ()))
+		{
+			m_comboUiFont->SetSelectedIndex (i, true);
+			return;
+		}
+	}
+	m_comboUiFont->SetSelectedIndex (0, true);
 }
 
 //----------------------------------------------------------------------

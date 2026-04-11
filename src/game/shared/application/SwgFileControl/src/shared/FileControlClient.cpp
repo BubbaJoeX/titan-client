@@ -272,7 +272,7 @@ void FileControlClient::handleIncomingMessage(const std::vector<unsigned char> &
 		}
 		break;
 
-	case 0x41: // MT_ERROR
+	case 0xFF: // MT_ERROR (must match FileControlConnection::MT_ERROR)
 		{
 			std::string message;
 			Archive::get(ri, message);
@@ -420,13 +420,15 @@ bool FileControlClient::connect()
 	const char * key = ConfigFileControl::getClientFileServerKey();
 	logMessage("FileControl: authKey=%s", (key && key[0]) ? key : "(empty)");
 
-	if (key && key[0] != '\0')
+	// Server starts unauthenticated; always send MT_AUTH_REQUEST so empty keys can match
+	// and the server can respond (skipping auth left connections rejected for all file ops).
 	{
+		std::string const authKeyStr = (key && key[0]) ? std::string(key) : std::string();
 		std::string machineId = getMachineId();
 
 		Archive::ByteStream bs;
 		Archive::put(bs, static_cast<uint8>(0x01));
-		Archive::put(bs, std::string(key));
+		Archive::put(bs, authKeyStr);
 		Archive::put(bs, machineId);
 
 		std::vector<unsigned char> authMsg(bs.getBuffer(), bs.getBuffer() + bs.getSize());
@@ -449,10 +451,6 @@ bool FileControlClient::connect()
 		{
 			logMessage("FileControl: No auth response (timeout)");
 		}
-	}
-	else
-	{
-		logMessage("FileControl: No auth key, skipping auth");
 	}
 
 	logMessage("FileControl: Connected successfully");

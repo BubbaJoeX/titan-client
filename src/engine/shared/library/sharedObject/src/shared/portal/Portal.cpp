@@ -299,6 +299,19 @@ void Portal::createDoor ()
 		info.m_alwaysOpen       = false;
 	}
 
+	// No door mesh: show a forcefield when this portal's cell is private (access denied).
+	{
+		bool const hasDoorAppearance =
+			(info.m_doorAppearance && info.m_doorAppearance[0]) ||
+			(info.m_doorAppearance2 && info.m_doorAppearance2[0]);
+		bool const cellIsPrivate = (m_parentCell && !m_parentCell->getAccessAllowed());
+		if (!info.m_forceField && !hasDoorAppearance && cellIsPrivate)
+		{
+			info.m_forceField  = true;
+			info.m_alwaysOpen = false;
+		}
+	}
+
 	m_door = new DoorObject(info, this);
 	m_door->setTransform_o2p(getDoorTransform());
 

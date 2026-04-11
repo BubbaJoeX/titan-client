@@ -57,6 +57,7 @@ BEGIN
     IDS_GRAPHICS_DISABLE_MULTIPASS_RENDERING "??????????????"
     IDS_GRAPHICS_DISABLE_VSYNC "Vsync??(???????)"
     IDS_GRAPHICS_DISABLE_FAST_MOUSE_CURSOR "??????????????"
+    IDS_GRAPHICS_UI_SCALE "UI Scale"
 END
 
 STRINGTABLE
@@ -319,32 +320,34 @@ BEGIN
     LTEXT           "x",IDC_STATIC_DIRECTXVERSION,88,140,95,8
 END
 
-IDD_PROPPAGE_GRAPHICS DIALOG 0, 0, 162, 186
+IDD_PROPPAGE_GRAPHICS DIALOG 0, 0, 162, 204
 STYLE DS_SETFONT | WS_CHILD | WS_DISABLED | WS_CAPTION
 CAPTION "Graphics"
 FONT 8, "MS Sans Serif"
 BEGIN
     COMBOBOX        IDC_RESOLUTION,68,6,87,62,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    COMBOBOX        IDC_VERTEXPIXELSHADERVERSION,68,24,87,62,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    CONTROL         "Windowed Mode",IDC_CHECK_WINDOWED_MODE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,42,70,10
-    CONTROL         "Borderless Window",IDC_CHECK_BORDERLESSWINDOW,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,56,77,10
-    CONTROL         "Disable Bump Mapping",IDC_CHECK_DISABLEBUMP,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,70,114,10
+    COMBOBOX        IDC_UI_SCALE,68,24,87,62,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    COMBOBOX        IDC_VERTEXPIXELSHADERVERSION,68,42,87,62,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    CONTROL         "Windowed Mode",IDC_CHECK_WINDOWED_MODE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,60,70,10
+    CONTROL         "Borderless Window",IDC_CHECK_BORDERLESSWINDOW,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,74,77,10
+    CONTROL         "Disable Bump Mapping",IDC_CHECK_DISABLEBUMP,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,88,114,10
     CONTROL         "Disable Hardware Mouse Cursor",IDC_CHECK_DISABLEHARDWAREMOUSECURSOR,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,84,114,10
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,102,114,10
     CONTROL         "Use Low Detail Textures",IDC_CHECK_USE_LOW_DETAIL_TEXTURES,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,98,114,10
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,116,114,10
     CONTROL         "Use Low Detail Normal Maps",IDC_CHECK_USE_LOW_DETAIL_NORMAL_MAPS,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,112,114,10
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,130,114,10
     CONTROL         "Disable Multi-Pass Rendering",IDC_CHECK_DISABLE_MULTIPASS_RENDERING,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,126,114,10
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,144,114,10
     CONTROL         "Disable Vsync (Allow Tearing)",IDC_CHECK_DISABLE_VSYNC,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,140,114,10
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,158,114,10
     CONTROL         "Disable Fast Mouse Cursor",IDC_CHECK_DISABLE_FAST_MOUSE_CURSOR,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,154,100,10
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,172,100,10
     CONTROL         "Use Safe Renderer (slower)",IDC_CHECK_USE_SAFE_RENDERER,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,168,103,10
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,186,103,10
     RTEXT           "Game Resolution",IDC_LBL_GRAPH_GAME_RESOLUTION,7,9,55,8
-    RTEXT           "Vertex/Pixel\nShader Version",IDC_GRAPH_LBL_PIXEL_SHADER_VERSION,7,22,56,16
+    RTEXT           "UI Scale",IDC_LBL_GRAPH_UI_SCALE,7,27,55,8
+    RTEXT           "Vertex/Pixel\nShader Version",IDC_GRAPH_LBL_PIXEL_SHADER_VERSION,7,40,56,16
 END
 
 IDD_PROPPAGE_SOUND DIALOG 0, 0, 192, 90
@@ -599,7 +602,7 @@ BEGIN
         LEFTMARGIN, 7
         RIGHTMARGIN, 155
         TOPMARGIN, 7
-        BOTTOMMARGIN, 179
+        BOTTOMMARGIN, 197
     END
 
     IDD_PROPPAGE_SOUND, DIALOG
@@ -739,6 +742,7 @@ BEGIN
     IDS_INFO_PIXEL_SHADER_VERSION "Pixel Shader Version"
     IDS_INFO_OPERATING_SYSTEM "Operating System"
     IDS_GRAPHICS_GAME_RESOLUTION "Game Resolution"
+    IDS_GRAPHICS_UI_SCALE "UI Scale"
     IDS_GRAPHICS_PIXEL_SHADER_VERSION "Vertex/Pixel Shader Version"
     IDS_GRAPHICS_WINDOWED_MODE "Windowed Mode"
     IDS_GRAPHICS_BORDERLESS_WINDOW "Borderless Window"
@@ -866,10 +870,10 @@ BEGIN
     IDS_ENABLE_JOYSTICKS    "Enable Joystick"
     IDS_JOYSTICK            "Joystick"
     IDS_ENABLE_FORCE_FEEDBACK "Enable Force Feedback"
-    IDS_DETECTED_CRASH      "We have detected a client crash.  If you have not recently done so, we recommend that you click ""Full Scan"" from the LaunchPad to check the integrity of the game's files.\n"
-    IDS_CANT_SAVE           "%s could not be saved.  Is it read-only?\n"
-    IDS_NO_DIRECTX          "DirectX is not installed.  Please install the latest version of DirectX.  You can find DirectX 9 in the DirectX folder on CD 3.\n"
-    IDS_FAILED_START        "Failed to start %s.  Please contact Technical Support.\n"
+    IDS_DETECTED_CRASH      "We have detected a client crash.ï¿½ If you have not recently done so, we recommend that you click ""Full Scan"" from the LaunchPad to check the integrity of the game's files.\n"
+    IDS_CANT_SAVE           "%s could not be saved.ï¿½ Is it read-only?\n"
+    IDS_NO_DIRECTX          "DirectX is not installed.ï¿½ Please install the latest version of DirectX.ï¿½ You can find DirectX 9 in the DirectX folder on CD 3.\n"
+    IDS_FAILED_START        "Failed to start %s.ï¿½ Please contact Technical Support.\n"
     IDS_NICE_MINIMUM        "Your computer meets the minimum requirements necessary in order to run Star Wars Galaxies, but in order to get the best experience, we strongly recommend that you upgrade your system to at least:\n\n"
 END
 

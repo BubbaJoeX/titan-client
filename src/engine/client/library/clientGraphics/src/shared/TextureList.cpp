@@ -20,6 +20,7 @@
 #include "sharedFoundation/ConstCharCrcString.h"
 #include "sharedFoundation/ExitChain.h"
 #include "sharedFoundation/LessPointerComparator.h"
+#include "sharedFoundation/PersistentCrcString.h"
 #include "sharedFoundation/TemporaryCrcString.h"
 #include "sharedFoundation/PointerDeleter.h"
 #include "sharedSynchronization/Mutex.h"
@@ -388,6 +389,44 @@ const Texture *TextureList::fetch(const void *pixelData, TextureFormat format, i
 	texture->fetch();
 
 	return texture;
+}
+
+// ----------------------------------------------------------------------
+
+const Texture *TextureList::registerNamedPixelTexture(char const *fullPath, void const *pixelData, TextureFormat format, int width, int height)
+{
+	DEBUG_FATAL(!ms_installed, ("TextureList::registerNamedPixelTexture: not installed"));
+	NOT_NULL(fullPath);
+	NOT_NULL(pixelData);
+
+	static TextureFormat const runtimeFormats[] = { TF_ARGB_8888, TF_XRGB_8888 };
+	static int const runtimeFormatCount = sizeof(runtimeFormats) / sizeof(runtimeFormats[0]);
+
+	ms_criticalSection.enter();
+
+		for (NamedContainer::iterator it = ms_namedTextures->begin(); it != ms_namedTextures->end(); ++it)
+		{
+			if ((*it).first && !strcmp((*it).first->getString(), fullPath))
+			{
+				Texture *const oldTexture = (*it).second;
+				ms_namedTextures->erase(it);
+				oldTexture->release();
+				break;
+			}
+		}
+
+		PersistentCrcString const logicalName(fullPath, true);
+		Texture *const newTexture = new Texture(logicalName, pixelData, format, width, height, runtimeFormats, runtimeFormatCount);
+
+		NamedContainer::value_type newValue(&(newTexture->getCrcString()), newTexture);
+		std::pair<NamedContainer::iterator, bool> insertResult = ms_namedTextures->insert(newValue);
+		DEBUG_FATAL(!insertResult.second, ("registerNamedPixelTexture insert failed for [%s]", fullPath));
+
+		newTexture->fetch();
+
+	ms_criticalSection.leave();
+
+	return newTexture;
 }
 
 // ----------------------------------------------------------------------

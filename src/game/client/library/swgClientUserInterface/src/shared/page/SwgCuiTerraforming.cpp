@@ -7,14 +7,21 @@
 // ======================================================================
 
 #include "swgClientUserInterface/FirstSwgClientUserInterface.h"
+#include "swgClientUserInterface/SwgCuiCityTerrainPainter.h"
 #include "swgClientUserInterface/SwgCuiTerraforming.h"
 
 #include "clientGame/Game.h"
 #include "clientGame/GameNetwork.h"
+#include "clientGraphics/ShaderTemplateList.h"
+#include "clientGraphics/StaticShader.h"
+#include "clientGraphics/StaticShaderTemplate.h"
+#include "clientGraphics/Texture.h"
 #include "clientTerrain/CityTerrainLayerManager.h"
 #include "clientUserInterface/CuiManager.h"
 #include "clientUserInterface/CuiMessageBox.h"
 #include "sharedFile/TreeFile.h"
+#include "sharedFoundation/FormattedString.h"
+#include "sharedFoundation/Tag.h"
 #include "sharedMath/Vector.h"
 #include "sharedMessageDispatch/Transceiver.h"
 #include "sharedNetworkMessages/CityTerrainMessages.h"
@@ -23,11 +30,13 @@
 
 #include "UIButton.h"
 #include "UICheckbox.h"
+#include "UILowerString.h"
 #include "UIComboBox.h"
 #include "UIData.h"
 #include "UIDataSource.h"
 #include "UIImage.h"
-#include "UIList.h"
+#include "UIDataSourceContainer.h"
+#include "UITreeView.h"
 #include "UIMessage.h"
 #include "UIPage.h"
 #include "UISliderbar.h"
@@ -37,6 +46,8 @@
 #include <algorithm>
 #include <cstdlib>
 #include <ctime>
+#include <string>
+#include <vector>
 
 // ======================================================================
 
@@ -50,7 +61,95 @@ namespace
 	const int32 MODIFICATION_TYPE_HEIGHT_SMOOTH = 5;
 	const int32 MODIFICATION_TYPE_HEIGHT_NOISE = 6;
 	const int32 MODIFICATION_TYPE_AFFECTOR = 10;
+
+	bool resolveShaderTextureForPreview(char const * const shaderTemplatePath, std::string & outTextureVirtualPath)
+	{
+		outTextureVirtualPath.clear();
+		if (!shaderTemplatePath || !shaderTemplatePath[0])
+			return false;
+
+		const Shader * const shader = ShaderTemplateList::fetchShader(shaderTemplatePath);
+		if (!shader)
+			return false;
+
+		const StaticShader & staticShader = shader->prepareToView();
+		{
+			static Tag const TAG_MAIN = TAG(M, A, I, N);
+			const Texture * tex = nullptr;
+			if (staticShader.getTexture(TAG_MAIN, tex) && tex)
+			{
+				char const * const n = tex->getName();
+				if (n && n[0])
+					outTextureVirtualPath.assign(n);
+			}
+
+			if (outTextureVirtualPath.empty())
+			{
+				std::vector<Tag> tags;
+				staticShader.getTextureTags(tags);
+				for (size_t i = 0; i < tags.size(); ++i)
+				{
+					tex = nullptr;
+					if (!staticShader.getTexture(tags[i], tex) || !tex)
+						continue;
+					char const * const n = tex->getName();
+					if (n && n[0])
+					{
+						outTextureVirtualPath.assign(n);
+						break;
+					}
+				}
+			}
+
+			if (outTextureVirtualPath.empty())
+			{
+				std::vector<Tag> tags;
+				staticShader.getTextureTags(tags);
+				for (size_t i = 0; i < tags.size(); ++i)
+				{
+					StaticShaderTemplate::TextureData td;
+					if (!staticShader.getTextureData(tags[i], td) || !td.texture)
+						continue;
+					char const * const n = td.texture->getName();
+					if (n && n[0])
+					{
+						outTextureVirtualPath.assign(n);
+						break;
+					}
+				}
+			}
+		}
+
+		shader->release();
+
+		if (!outTextureVirtualPath.empty() && TreeFile::exists(outTextureVirtualPath.c_str()))
+			return true;
+
+		outTextureVirtualPath.clear();
+		std::string base(shaderTemplatePath);
+		size_t slash = base.rfind('/');
+		if (slash != std::string::npos)
+			base = base.substr(slash + 1);
+		size_t dot = base.rfind('.');
+		if (dot != std::string::npos)
+			base = base.substr(0, dot);
+
+		static char const * const extensions[] = { ".dds", ".tga" };
+		for (int e = 0; e < 2; ++e)
+		{
+			std::string const candidate = std::string("texture/") + base + extensions[e];
+			if (TreeFile::exists(candidate.c_str()))
+			{
+				outTextureVirtualPath = candidate;
+				return true;
+			}
+		}
+
+		return false;
+	}
 }
+
+static UILowerString const s_titanRegionIndexProp("titan_ri");
 
 // ======================================================================
 
@@ -135,7 +234,9 @@ SwgCuiTerraforming::SwgCuiTerraforming(UIPage & page) :
 	m_sliderAffectorParam(nullptr),
 	m_textAffectorParam(nullptr),
 	m_buttonAffectorApply(nullptr),
-	m_listRegions(nullptr),
+	m_treeRegions(nullptr),
+	m_buttonRegionSuspend(nullptr),
+	m_buttonRegionResume(nullptr),
 	m_buttonRegionDelete(nullptr),
 	m_buttonRegionDeleteAll(nullptr),
 	m_textRegionInfo(nullptr),
@@ -226,7 +327,9 @@ SwgCuiTerraforming::SwgCuiTerraforming(UIPage & page) :
 	getCodeDataObject(TUIButton, m_buttonAffectorApply, "buttonAffectorApply", true);
 
 	// Regions tab
-	getCodeDataObject(TUIList, m_listRegions, "listRegions", true);
+	getCodeDataObject(TUITreeView, m_treeRegions, "treeRegions", true);
+	getCodeDataObject(TUIButton, m_buttonRegionSuspend, "buttonRegionSuspend", true);
+	getCodeDataObject(TUIButton, m_buttonRegionResume, "buttonRegionResume", true);
 	getCodeDataObject(TUIButton, m_buttonRegionDelete, "buttonRegionDelete", true);
 	getCodeDataObject(TUIButton, m_buttonRegionDeleteAll, "buttonRegionDeleteAll", true);
 	getCodeDataObject(TUIText, m_textRegionInfo, "textRegionInfo", false);
@@ -317,8 +420,12 @@ SwgCuiTerraforming::SwgCuiTerraforming(UIPage & page) :
 		registerMediatorObject(*m_buttonAffectorApply, true);
 
 	// Regions controls
-	if (m_listRegions)
-		registerMediatorObject(*m_listRegions, true);
+	if (m_treeRegions)
+		registerMediatorObject(*m_treeRegions, true);
+	if (m_buttonRegionSuspend)
+		registerMediatorObject(*m_buttonRegionSuspend, true);
+	if (m_buttonRegionResume)
+		registerMediatorObject(*m_buttonRegionResume, true);
 	if (m_buttonRegionDelete)
 		registerMediatorObject(*m_buttonRegionDelete, true);
 	if (m_buttonRegionDeleteAll)
@@ -356,29 +463,44 @@ SwgCuiTerraforming * SwgCuiTerraforming::createInto(UIPage & parent)
 
 // ----------------------------------------------------------------------
 
+void SwgCuiTerraforming::restoreLayerManagerHooksIfTerraformingActive()
+{
+	if (!ms_activeInstance || !ms_activeInstance->isActive() || !CityTerrainLayerManager::isInstalled())
+		return;
+	CityTerrainLayerManager::setCityTerrainUiRefreshSecondaryFn(&SwgCuiTerraforming::onServerTerrainRegionsChanged);
+	CityTerrainLayerManager::setOpenTerraformingAlreadyActiveFn(&SwgCuiTerraforming::onOpenTerraformingWhileAlreadyActive);
+}
+
+// ----------------------------------------------------------------------
+
 void SwgCuiTerraforming::performActivate()
 {
 	REPORT_LOG(true, ("[Titan] SwgCuiTerraforming::performActivate\n"));
 
-	// Register for region change callbacks
 	ms_activeInstance = this;
 	if (CityTerrainLayerManager::isInstalled())
 	{
 		CityTerrainLayerManager::setRegionChangeCallback(&SwgCuiTerraforming::onRegionChangeCallback);
+		CityTerrainLayerManager::setCityTerrainUiRefreshSecondaryFn(&SwgCuiTerraforming::onServerTerrainRegionsChanged);
+		CityTerrainLayerManager::setOpenTerraformingAlreadyActiveFn(&SwgCuiTerraforming::onOpenTerraformingWhileAlreadyActive);
 	}
 
-	// Get pending city ID
 	if (CityTerrainLayerManager::isInstalled())
 	{
 		int32 pendingCityId = CityTerrainLayerManager::getPendingCityId();
 		if (pendingCityId != 0)
 		{
 			m_cityId = pendingCityId;
+			ms_savedCityId = pendingCityId;
+			m_cityRadius = CityTerrainLayerManager::getCityRadius(m_cityId);
+		}
+		else if (ms_savedCityId != 0)
+		{
+			m_cityId = ms_savedCityId;
 			m_cityRadius = CityTerrainLayerManager::getCityRadius(m_cityId);
 		}
 	}
 
-	// Request terrain regions sync from server
 	if (m_cityId != 0)
 	{
 		REPORT_LOG(true, ("[Titan] SwgCuiTerraforming::performActivate - requesting sync for city %d\n", m_cityId));
@@ -401,12 +523,14 @@ void SwgCuiTerraforming::performDeactivate()
 	REPORT_LOG(true, ("[Titan] SwgCuiTerraforming::performDeactivate\n"));
 	saveUIState();
 
-	// Unregister callback
 	ms_activeInstance = 0;
 	if (CityTerrainLayerManager::isInstalled())
 	{
 		CityTerrainLayerManager::clearRegionChangeCallback();
+		CityTerrainLayerManager::clearCityTerrainUiRefreshSecondaryFn();
+		CityTerrainLayerManager::clearOpenTerraformingAlreadyActiveFn();
 	}
+	SwgCuiCityTerrainPainter::restoreLayerManagerRegionCallbackIfPainterActive();
 }
 
 // ----------------------------------------------------------------------
@@ -424,12 +548,55 @@ void SwgCuiTerraforming::onRegionChangeCallback(int32 cityId)
 
 // ----------------------------------------------------------------------
 
+void SwgCuiTerraforming::onServerTerrainRegionsChanged(int32 cityId)
+{
+	if (!ms_activeInstance || !ms_activeInstance->isActive())
+		return;
+	if (cityId != 0 && ms_activeInstance->m_cityId != 0 && cityId != ms_activeInstance->m_cityId)
+		return;
+	ms_activeInstance->refreshRegionList();
+}
+
+// ----------------------------------------------------------------------
+
+void SwgCuiTerraforming::onOpenTerraformingWhileAlreadyActive()
+{
+	if (!ms_activeInstance || !ms_activeInstance->isActive())
+		return;
+
+	int32 const cityId = CityTerrainLayerManager::getPendingCityId();
+	if (cityId == 0)
+		return;
+
+	ms_activeInstance->m_cityId = cityId;
+	ms_savedCityId = cityId;
+	if (CityTerrainLayerManager::isInstalled())
+		ms_activeInstance->m_cityRadius = CityTerrainLayerManager::getCityRadius(cityId);
+
+	if (CityTerrainLayerManager::isInstalled())
+	{
+		CityTerrainSyncRequestMessage const syncMsg(cityId);
+		GameNetwork::send(syncMsg, true);
+	}
+
+	ms_activeInstance->refreshRegionList();
+}
+
+// ----------------------------------------------------------------------
+
 void SwgCuiTerraforming::setCityId(int32 cityId)
 {
 	m_cityId = cityId;
+	ms_savedCityId = cityId;
 	if (CityTerrainLayerManager::isInstalled())
 	{
 		m_cityRadius = CityTerrainLayerManager::getCityRadius(cityId);
+		if (cityId != 0 && isActive())
+		{
+			CityTerrainSyncRequestMessage const syncMsg(cityId);
+			GameNetwork::send(syncMsg, true);
+			refreshRegionList();
+		}
 	}
 }
 
@@ -542,6 +709,16 @@ void SwgCuiTerraforming::OnButtonPressed(UIWidget * context)
 	}
 
 	// Region management
+	if (context == m_buttonRegionSuspend)
+	{
+		suspendSelectedRegion();
+		return;
+	}
+	if (context == m_buttonRegionResume)
+	{
+		resumeSelectedRegion();
+		return;
+	}
 	if (context == m_buttonRegionDelete)
 	{
 		deleteSelectedRegion();
@@ -663,13 +840,10 @@ void SwgCuiTerraforming::OnGenericSelectionChanged(UIWidget * context)
 		updateShaderPreview();
 		return;
 	}
-	if (context == m_listRegions)
+	if (context == m_treeRegions)
 	{
 		updateRegionInfo();
-		if (m_buttonRegionDelete)
-		{
-			m_buttonRegionDelete->SetEnabled(m_listRegions && m_listRegions->GetLastSelectedRow() >= 0);
-		}
+		updateRegionActionButtons();
 		return;
 	}
 }
@@ -732,6 +906,9 @@ void SwgCuiTerraforming::updateTabVisuals()
 		m_tabRegions->SetProperty(textColorProp,
 			m_currentTab == TAB_REGIONS ? selectedColorStr : normalColorStr);
 	}
+
+	if (m_currentTab == TAB_SHADER_PAINT)
+		updateShaderPreview();
 }
 
 // ----------------------------------------------------------------------
@@ -787,13 +964,29 @@ void SwgCuiTerraforming::loadShaderList()
 	}
 
 	REPORT_LOG(true, ("[Titan] SwgCuiTerraforming::loadShaderList - loaded %d shaders\n", static_cast<int>(m_shaderNames.size())));
+
+	updateShaderPreview();
 }
 
 // ----------------------------------------------------------------------
 
 void SwgCuiTerraforming::updateShaderPreview()
 {
-	// Preview functionality - could show shader texture preview
+	if (!m_imageShaderPreview || m_shaderTemplates.empty())
+		return;
+
+	int const idx = m_comboShader ? m_comboShader->GetSelectedIndex() : 0;
+	if (idx < 0 || idx >= static_cast<int>(m_shaderTemplates.size()))
+	{
+		m_imageShaderPreview->SetSourceResource(Unicode::String());
+		return;
+	}
+
+	std::string texturePath;
+	if (resolveShaderTextureForPreview(m_shaderTemplates[static_cast<size_t>(idx)].c_str(), texturePath))
+		m_imageShaderPreview->SetSourceResource(Unicode::narrowToWide(texturePath));
+	else
+		m_imageShaderPreview->SetSourceResource(Unicode::String());
 }
 
 // ----------------------------------------------------------------------
@@ -1186,99 +1379,220 @@ void SwgCuiTerraforming::refreshRegionList()
 
 	REPORT_LOG(true, ("[Titan] SwgCuiTerraforming::refreshRegionList: cityId=%d\n", m_cityId));
 
-	if (!m_listRegions)
+	if (!m_treeRegions)
 	{
-		REPORT_LOG(true, ("[Titan] SwgCuiTerraforming::refreshRegionList: m_listRegions is null\n"));
+		REPORT_LOG(true, ("[Titan] SwgCuiTerraforming::refreshRegionList: m_treeRegions is null\n"));
 		return;
 	}
 
-	m_listRegions->Clear();
+	UIDataSourceContainer * dsc_tree = m_treeRegions->GetDataSourceContainer();
+	if (!dsc_tree)
+		return;
+
+	dsc_tree->Clear();
+	dsc_tree->Attach(0);
+	m_treeRegions->SetDataSourceContainer(0);
 
 	if (!CityTerrainLayerManager::isInstalled())
 	{
 		REPORT_LOG(true, ("[Titan] SwgCuiTerraforming::refreshRegionList: CityTerrainLayerManager not installed\n"));
+		UIDataSourceContainer * const msg = new UIDataSourceContainer;
+		msg->SetProperty(UITreeView::DataProperties::LocalText, Unicode::narrowToWide("Terrain system not ready."));
+		msg->SetPropertyBoolean(UITreeView::DataProperties::Selectable, false);
+		dsc_tree->AddChild(msg);
+		m_treeRegions->SetDataSourceContainer(dsc_tree);
+		dsc_tree->Detach(0);
+		m_treeRegions->SetAllRowsExpanded(true);
+		updateRegionActionButtons();
+		updateRegionInfo();
 		return;
 	}
 
 	std::vector<const CityTerrainLayerManager::TerrainRegion *> cityRegions;
-	CityTerrainLayerManager::getInstance().getRegionsForCity(m_cityId, cityRegions);
+	CityTerrainLayerManager::getInstance().getRegionsForUiList(m_cityId, cityRegions);
 
-	REPORT_LOG(true, ("[Titan] SwgCuiTerraforming::refreshRegionList: found %d regions for city %d\n",
+	REPORT_LOG(true, ("[Titan] SwgCuiTerraforming::refreshRegionList: found %d regions (ui filter cityId=%d)\n",
 		static_cast<int>(cityRegions.size()), m_cityId));
 
-	for (size_t i = 0; i < cityRegions.size(); ++i)
+	if (cityRegions.empty())
 	{
-		const CityTerrainLayerManager::TerrainRegion * region = cityRegions[i];
-		if (!region)
-			continue;
-
-		RegionInfo info;
-		info.regionId = region->regionId;
-		info.centerX = region->centerX;
-		info.centerZ = region->centerZ;
-		info.radius = region->radius;
-
-		switch (region->type)
+		char buf[384];
+		snprintf(buf, sizeof(buf),
+			"No terrain rules loaded (window city id %d). Open from the city terminal, or wait for terrain sync after login.",
+			static_cast<int>(m_cityId));
+		UIDataSourceContainer * const msg = new UIDataSourceContainer;
+		msg->SetProperty(UITreeView::DataProperties::LocalText, Unicode::narrowToWide(buf));
+		msg->SetPropertyBoolean(UITreeView::DataProperties::Selectable, false);
+		dsc_tree->AddChild(msg);
+	}
+	else
+	{
+		struct CatEntry
 		{
-		case CityTerrainLayerManager::RT_SHADER_CIRCLE:
-			info.type = "Shader Circle";
-			info.displayName = "Shader: " + region->shaderTemplate;
-			break;
-		case CityTerrainLayerManager::RT_SHADER_LINE:
-			info.type = "Road/Line";
-			info.displayName = "Road: " + region->shaderTemplate;
-			break;
-		case CityTerrainLayerManager::RT_FLATTEN:
-			info.type = "Height Mod";
+			char const * title;
+			CityTerrainLayerManager::RegionType rt;
+		};
+		static CatEntry const cats[] =
+		{
+			{ "Shader (circle)", CityTerrainLayerManager::RT_SHADER_CIRCLE },
+			{ "Roads / lines", CityTerrainLayerManager::RT_SHADER_LINE },
+			{ "Height (flatten)", CityTerrainLayerManager::RT_FLATTEN },
+		};
+
+		for (size_t c = 0; c < sizeof(cats) / sizeof(cats[0]); ++c)
+		{
+			UIDataSourceContainer * catNode = 0;
+
+			for (size_t i = 0; i < cityRegions.size(); ++i)
 			{
-				char buf[64];
-				snprintf(buf, sizeof(buf), "Flatten: height=%.1f", region->height);
-				info.displayName = buf;
+				CityTerrainLayerManager::TerrainRegion const * const region = cityRegions[i];
+				if (!region || region->type != cats[c].rt)
+					continue;
+
+				if (!catNode)
+				{
+					catNode = new UIDataSourceContainer;
+					catNode->SetName(FormattedString<64>().sprintf("cat_%zu", c));
+					catNode->SetProperty(UITreeView::DataProperties::LocalText, Unicode::narrowToWide(cats[c].title));
+					catNode->SetPropertyBoolean(UITreeView::DataProperties::Selectable, false);
+					dsc_tree->AddChild(catNode);
+				}
+
+				RegionInfo info;
+				info.regionId = region->regionId;
+				info.centerX = region->centerX;
+				info.centerZ = region->centerZ;
+				info.radius = region->radius;
+				info.active = region->active;
+				info.cityId = region->cityId;
+
+				switch (region->type)
+				{
+				case CityTerrainLayerManager::RT_SHADER_CIRCLE:
+					info.type = "Shader Circle";
+					info.displayName = "Shader: " + region->shaderTemplate;
+					break;
+				case CityTerrainLayerManager::RT_SHADER_LINE:
+					info.type = "Road/Line";
+					info.displayName = "Road: " + region->shaderTemplate;
+					break;
+				case CityTerrainLayerManager::RT_FLATTEN:
+					info.type = "Height Mod";
+					{
+						char hbuf[64];
+						snprintf(hbuf, sizeof(hbuf), "Flatten: height=%.1f", region->height);
+						info.displayName = hbuf;
+					}
+					break;
+				default:
+					info.type = "Unknown";
+					info.displayName = region->regionId;
+					break;
+				}
+
+				m_regions.push_back(info);
+				int const idx = static_cast<int>(m_regions.size()) - 1;
+
+				char rowText[320];
+				if (m_cityId == 0 && region->cityId != 0)
+				{
+					snprintf(rowText, sizeof(rowText), "City %d | %s%s | (%.0f, %.0f) | r=%.0f",
+						static_cast<int>(region->cityId),
+						info.active ? "" : "[Suspended] ",
+						info.displayName.c_str(), info.centerX, info.centerZ, info.radius);
+				}
+				else
+				{
+					snprintf(rowText, sizeof(rowText), "%s%s | (%.0f, %.0f) | r=%.0f",
+						info.active ? "" : "[Suspended] ",
+						info.displayName.c_str(), info.centerX, info.centerZ, info.radius);
+				}
+
+				UIDataSourceContainer * const leaf = new UIDataSourceContainer;
+				leaf->SetName(FormattedString<64>().sprintf("r_%d", idx));
+				leaf->SetProperty(UITreeView::DataProperties::LocalText, Unicode::narrowToWide(rowText));
+				leaf->SetPropertyInteger(s_titanRegionIndexProp, idx);
+				catNode->AddChild(leaf);
 			}
-			break;
-		default:
-			info.type = "Unknown";
-			info.displayName = region->regionId;
-			break;
 		}
-
-		m_regions.push_back(info);
-
-		char rowText[256];
-		snprintf(rowText, sizeof(rowText), "%s  |  (%.0f, %.0f)  |  r=%.0f",
-			info.displayName.c_str(), info.centerX, info.centerZ, info.radius);
-
-		m_listRegions->AddRow(Unicode::narrowToWide(rowText), info.regionId);
 	}
 
-	if (m_buttonRegionDelete)
-		m_buttonRegionDelete->SetEnabled(false);
+	m_treeRegions->SetDataSourceContainer(dsc_tree);
+	dsc_tree->Detach(0);
+	m_treeRegions->SetAllRowsExpanded(true);
+	if (!m_regions.empty())
+		m_treeRegions->SelectRow(1);
+	else if (m_treeRegions->GetRowCount() > 0)
+		m_treeRegions->SelectRow(0);
+
+	updateRegionActionButtons();
+	updateRegionInfo();
 
 	REPORT_LOG(true, ("[Titan] SwgCuiTerraforming::refreshRegionList - found %d regions\n", static_cast<int>(m_regions.size())));
 }
 
 // ----------------------------------------------------------------------
 
+int SwgCuiTerraforming::getSelectedRegionIndex() const
+{
+	if (!m_treeRegions)
+		return -1;
+
+	long const row = m_treeRegions->GetLastSelectedRow();
+	if (row < 0)
+		return -1;
+
+	UIDataSourceContainer * const dsc = m_treeRegions->GetDataSourceContainerAtRow(row);
+	if (!dsc)
+		return -1;
+
+	int idx = -1;
+	if (dsc->GetPropertyInteger(s_titanRegionIndexProp, idx))
+		return idx;
+	return -1;
+}
+
+// ----------------------------------------------------------------------
+
+int32 SwgCuiTerraforming::getCityIdForRegionMessage() const
+{
+	int const idx = getSelectedRegionIndex();
+	if (idx >= 0 && idx < static_cast<int>(m_regions.size()))
+	{
+		int32 const c = m_regions[static_cast<size_t>(idx)].cityId;
+		if (c > 0)
+			return c;
+	}
+	return m_cityId;
+}
+
+// ----------------------------------------------------------------------
+
 void SwgCuiTerraforming::deleteSelectedRegion()
 {
-	if (!m_listRegions)
+	if (!m_treeRegions)
 		return;
 
-	int selectedRow = m_listRegions->GetLastSelectedRow();
-	if (selectedRow < 0 || selectedRow >= static_cast<int>(m_regions.size()))
-		return;
-
-	std::string regionId = m_regions[selectedRow].regionId;
-
-	sendTerrainRemove(regionId);
-
-	if (CityTerrainLayerManager::isInstalled())
+	int32 const cityOp = getCityIdForRegionMessage();
+	if (cityOp <= 0)
 	{
-		CityTerrainLayerManager::getInstance().removeRegion(regionId);
+		setStatus("Cannot determine city for this rule. Reopen terraform from the city terminal.", true);
+		return;
 	}
 
+	int const idx = getSelectedRegionIndex();
+	if (idx < 0 || idx >= static_cast<int>(m_regions.size()))
+		return;
+
+	std::string const regionId = m_regions[static_cast<size_t>(idx)].regionId;
+
+	sendTerrainRemove(cityOp, regionId);
+
+	if (CityTerrainLayerManager::isInstalled())
+		CityTerrainLayerManager::getInstance().removeRegion(regionId);
+
 	refreshRegionList();
-	setStatus("Region deleted.");
+	setStatus("Rule removed.");
 }
 
 // ----------------------------------------------------------------------
@@ -1291,18 +1605,92 @@ void SwgCuiTerraforming::deleteAllRegions()
 		return;
 	}
 
+	if (m_cityId <= 0)
+	{
+		setStatus("City id unknown. Remove rules individually, or reopen tools from the city terminal.", true);
+		return;
+	}
+
 	for (size_t i = 0; i < m_regions.size(); ++i)
 	{
-		sendTerrainRemove(m_regions[i].regionId);
+		int32 const c = m_regions[i].cityId > 0 ? m_regions[i].cityId : m_cityId;
+		sendTerrainRemove(c, m_regions[i].regionId);
 	}
 
 	if (CityTerrainLayerManager::isInstalled())
-	{
 		CityTerrainLayerManager::getInstance().removeAllRegionsForCity(m_cityId);
-	}
 
 	refreshRegionList();
-	setStatus("All regions deleted.");
+	setStatus("All rules removed.");
+}
+
+// ----------------------------------------------------------------------
+
+void SwgCuiTerraforming::suspendSelectedRegion()
+{
+	int32 const cityOp = getCityIdForRegionMessage();
+	if (!m_treeRegions || cityOp <= 0)
+		return;
+
+	int const idx = getSelectedRegionIndex();
+	if (idx < 0 || idx >= static_cast<int>(m_regions.size()))
+		return;
+
+	RegionInfo const & sel = m_regions[static_cast<size_t>(idx)];
+	if (!sel.active)
+		return;
+
+	CityTerrainPaintRequestMessage const msg(
+		cityOp,
+		CityTerrainModificationType::MT_SUSPEND,
+		sel.regionId,
+		0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+	GameNetwork::send(msg, true);
+	setStatus("Suspend request sent.");
+}
+
+// ----------------------------------------------------------------------
+
+void SwgCuiTerraforming::resumeSelectedRegion()
+{
+	int32 const cityOp = getCityIdForRegionMessage();
+	if (!m_treeRegions || cityOp <= 0)
+		return;
+
+	int const idx = getSelectedRegionIndex();
+	if (idx < 0 || idx >= static_cast<int>(m_regions.size()))
+		return;
+
+	RegionInfo const & sel = m_regions[static_cast<size_t>(idx)];
+	if (sel.active)
+		return;
+
+	CityTerrainPaintRequestMessage const msg(
+		cityOp,
+		CityTerrainModificationType::MT_RESUME,
+		sel.regionId,
+		0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+	GameNetwork::send(msg, true);
+	setStatus("Resume request sent.");
+}
+
+// ----------------------------------------------------------------------
+
+void SwgCuiTerraforming::updateRegionActionButtons()
+{
+	int const idx = getSelectedRegionIndex();
+	bool const ok = idx >= 0 && idx < static_cast<int>(m_regions.size());
+	bool const active = ok ? m_regions[static_cast<size_t>(idx)].active : false;
+	bool const cityOk = ok && getCityIdForRegionMessage() > 0;
+
+	if (m_buttonRegionSuspend)
+		m_buttonRegionSuspend->SetEnabled(ok && active && cityOk);
+	if (m_buttonRegionResume)
+		m_buttonRegionResume->SetEnabled(ok && !active && cityOk);
+	if (m_buttonRegionDelete)
+		m_buttonRegionDelete->SetEnabled(ok && cityOk);
+	if (m_buttonRegionDeleteAll)
+		m_buttonRegionDeleteAll->SetEnabled(m_cityId > 0 && !m_regions.empty());
 }
 
 // ----------------------------------------------------------------------
@@ -1375,21 +1763,24 @@ void SwgCuiTerraforming::resetTerrain()
 
 void SwgCuiTerraforming::updateRegionInfo()
 {
-	if (!m_textRegionInfo || !m_listRegions)
+	if (!m_textRegionInfo || !m_treeRegions)
 		return;
 
-	int selectedRow = m_listRegions->GetLastSelectedRow();
-	if (selectedRow < 0 || selectedRow >= static_cast<int>(m_regions.size()))
+	int const idx = getSelectedRegionIndex();
+	if (idx < 0 || idx >= static_cast<int>(m_regions.size()))
 	{
-		m_textRegionInfo->SetLocalText(Unicode::narrowToWide("Select a region from the list above to see details."));
+		m_textRegionInfo->SetLocalText(Unicode::narrowToWide("Select a terrain rule in the tree above."));
 		return;
 	}
 
-	const RegionInfo & info = m_regions[selectedRow];
+	RegionInfo const & info = m_regions[static_cast<size_t>(idx)];
 	char buf[512];
 	snprintf(buf, sizeof(buf),
-		"Type: %s\nLocation: (%.1f, %.1f)\nRadius: %.1f m\nID: %s",
-		info.type.c_str(), info.centerX, info.centerZ, info.radius, info.regionId.c_str());
+		"Type: %s\nState: %s\nCity id: %d\nLocation: (%.1f, %.1f)\nRadius: %.1f m\nID: %s",
+		info.type.c_str(),
+		info.active ? "Active" : "Suspended",
+		static_cast<int>(info.cityId),
+		info.centerX, info.centerZ, info.radius, info.regionId.c_str());
 
 	m_textRegionInfo->SetLocalText(Unicode::narrowToWide(buf));
 }
@@ -1407,12 +1798,16 @@ void SwgCuiTerraforming::undoLastModification()
 	std::string regionId = m_appliedRegionIds.back();
 	m_appliedRegionIds.pop_back();
 
-	sendTerrainRemove(regionId);
+	if (m_cityId <= 0)
+	{
+		setStatus("Cannot undo without a valid city id.", true);
+		return;
+	}
+
+	sendTerrainRemove(m_cityId, regionId);
 
 	if (CityTerrainLayerManager::isInstalled())
-	{
 		CityTerrainLayerManager::getInstance().removeRegion(regionId);
-	}
 
 	refreshRegionList();
 	setStatus("Last modification undone.");
@@ -1620,6 +2015,8 @@ void SwgCuiTerraforming::restoreUIState()
 		m_sliderAffectorFeather->SetValue(ms_savedAffectorFeather, false);
 		syncSliderToText(m_sliderAffectorFeather, m_textAffectorFeather);
 	}
+
+	updateShaderPreview();
 }
 
 // ----------------------------------------------------------------------
@@ -1647,9 +2044,11 @@ void SwgCuiTerraforming::sendTerrainModification(int32 modType, const std::strin
 
 // ----------------------------------------------------------------------
 
-void SwgCuiTerraforming::sendTerrainRemove(const std::string & regionId)
+void SwgCuiTerraforming::sendTerrainRemove(int32 cityId, const std::string & regionId)
 {
-	CityTerrainRemoveRequestMessage msg(m_cityId, regionId);
+	if (cityId <= 0)
+		return;
+	CityTerrainRemoveRequestMessage msg(cityId, regionId);
 	GameNetwork::send(msg, true);
 }
 

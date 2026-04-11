@@ -12,13 +12,21 @@
 #include "clientUserInterface/CuiMenuInfoTypes.h"
 #include "clientUserInterface/CuiSettings.h"
 
+#include "UIButton.h"
 #include "UIManager.h"
 #include "UIMessage.h"
 #include "UIPage.h"
 #include "UIPopupMenu.h"
 #include "UIPopupMenustyle.h"
+#include "UISliderbar.h"
+#include "UILowerString.h"
 #include "UIUtils.h"
 #include "UIWidget.h"
+#include "UnicodeUtils.h"
+
+#include <algorithm>
+#include <cstdio>
+#include <cstdlib>
 
 
 namespace SwgCuiLockableMediatorNameSpace
@@ -27,13 +35,55 @@ namespace SwgCuiLockableMediatorNameSpace
 	{
 		const std::string lock_window   = "window_lock";
 		const std::string unlock_window = "window_unlock";
+		const std::string window_scale  = "window_scale";
 	}
 	namespace Settings
 	{
 		const std::string popupHelpEnabled = "popupHelpEnabled";
 		const std::string userMovable      = "UserMovable";
+		const std::string windowContentScale = "windowContentScale";
 		const UILowerString unlockedStateFlags("unlockedflags");
 	}
+
+	// Client-only synthetic menu type for radial/helper menus (must not collide with real Cui::MenuInfoTypes values).
+	int const WINDOW_SCALE_MENU_TYPE = 55502;
+
+	UILowerString const g_cuiContentScaleProperty ("CuiContentScale");
+
+	struct WindowScaleDialogCallback : UIEventCallback
+	{
+		SwgCuiLockableMediator *target;
+		UIPage *dialog;
+		UISliderbar *slider;
+
+		WindowScaleDialogCallback () : target (0), dialog (0), slider (0) {}
+
+		void OnSliderbarChanged (UIWidget *context)
+		{
+			if (target && slider && context == slider)
+			{
+				long const v = slider->GetValue ();
+				float const f = static_cast<float>(v) * 0.01f;
+				target->setWindowContentScaleFactor (f);
+			}
+		}
+
+		void OnButtonPressed (UIWidget *context)
+		{
+			if (!target || !dialog || !context)
+				return;
+			if (context->GetName () != "ok")
+				return;
+			target->saveSettings ();
+			UIManager::gUIManager ().PopContextWidgets (dialog);
+			dialog->Destroy ();
+			dialog = 0;
+			slider = 0;
+			target = 0;
+		}
+	};
+
+	WindowScaleDialogCallback s_windowScaleDialogCb;
 
 	inline void setFlag(uint32 & field, uint32 flag, bool onOff)
 	{
@@ -85,6 +135,8 @@ void SwgCuiLockableMediator::generateLockablePopup  (UIWidget * context, const U
 
 	pop->SetStyle(m_pageToLock->FindPopupStyle());
 
+	pop->AddItem(PopupIds::window_scale, Unicode::narrowToWide ("Scale"));
+
 	if (!getPageIsLocked())
 	{
 		pop->AddItem(PopupIds::lock_window, Cui::MenuInfoTypes::getLocalizedLabel(Cui::MenuInfoTypes::WINDOW_LOCK, 0));
@@ -114,7 +166,15 @@ void SwgCuiLockableMediator::OnPopupMenuSelection (UIWidget * context)
 	const std::string & selection = pop->GetSelectedName();
 	const int menuSelection = atoi(selection.c_str());
 
-	if (selection == PopupIds::lock_window || menuSelection == Cui::MenuInfoTypes::WINDOW_LOCK)
+	if (selection == PopupIds::window_scale)
+	{
+		showWindowContentScaleDialog ();
+	}
+	else if (menuSelection == WINDOW_SCALE_MENU_TYPE)
+	{
+		showWindowContentScaleDialog ();
+	}
+	else if (selection == PopupIds::lock_window || menuSelection == Cui::MenuInfoTypes::WINDOW_LOCK)
 	{
 		setPageLocked(true);
 	}
@@ -147,6 +207,8 @@ void SwgCuiLockableMediator::appendPopupOptions (UIPopupMenu * pop)
 	if (!pop || !m_pageToLock)
 		return;
 
+	pop->AddItem(PopupIds::window_scale, Unicode::narrowToWide ("Scale"));
+
 	if (!getPageIsLocked())
 	{
 		pop->AddItem(PopupIds::lock_window, Cui::MenuInfoTypes::getLocalizedLabel(Cui::MenuInfoTypes::WINDOW_LOCK, 0));
@@ -163,6 +225,8 @@ void SwgCuiLockableMediator::appendHelperPopupOptions (CuiMenuInfoHelper * menuH
 {
 	if (!menuHelper || !m_pageToLock)
 		return;
+
+	IGNORE_RETURN (menuHelper->addRootMenu (static_cast<Cui::MenuInfoTypes::Type>(WINDOW_SCALE_MENU_TYPE), Unicode::narrowToWide ("Scale")));
 
 	if (!getPageIsLocked())
 	{
@@ -290,6 +354,14 @@ void SwgCuiLockableMediator::loadSizeLocation (bool doSize, bool doLocation)
 		CuiSettings::loadBoolean(getMediatorDebugName(), Settings::userMovable, isMovable);
 
 		setPageLocked(!isMovable);
+
+		std::string scaleData;
+		if (CuiSettings::loadData (getMediatorDebugName (), Settings::windowContentScale, scaleData))
+		{
+			float const f = static_cast<float>(atof (scaleData.c_str ()));
+			if (f >= 0.25f && f <= 4.f)
+				setWindowContentScaleFactor (f);
+		}
  	}
 
 	UIRect rect (loc, size);	
@@ -320,7 +392,80 @@ void SwgCuiLockableMediator::saveSettings () const
 	{
 		bool const isMovable = !getPageIsLocked();
 		CuiSettings::saveBoolean(getMediatorDebugName(), Settings::userMovable, isMovable);
+
+		char buf [64];
+		_snprintf (buf, sizeof (buf), "%.4f", getWindowContentScaleFactor ());
+		buf[sizeof (buf) - 1] = 0;
+		CuiSettings::saveData (getMediatorDebugName (), Settings::windowContentScale, buf);
 	}
+}
+
+//----------------------------------------------------------------------
+
+void SwgCuiLockableMediator::setWindowContentScaleFactor (float scaleFactor)
+{
+	if (!m_pageToLock)
+		return;
+	if (scaleFactor < 0.25f)
+		scaleFactor = 0.25f;
+	else if (scaleFactor > 4.f)
+		scaleFactor = 4.f;
+	m_pageToLock->SetPropertyFloat (g_cuiContentScaleProperty, scaleFactor);
+}
+
+//----------------------------------------------------------------------
+
+float SwgCuiLockableMediator::getWindowContentScaleFactor () const
+{
+	if (!m_pageToLock)
+		return 1.f;
+	float f = 1.f;
+	if (!m_pageToLock->GetPropertyFloat (g_cuiContentScaleProperty, f))
+		return 1.f;
+	return f;
+}
+
+//----------------------------------------------------------------------
+
+void SwgCuiLockableMediator::showWindowContentScaleDialog ()
+{
+	if (s_windowScaleDialogCb.dialog)
+	{
+		UIManager::gUIManager ().PopContextWidgets (s_windowScaleDialogCb.dialog);
+		s_windowScaleDialogCb.dialog->Destroy ();
+		s_windowScaleDialogCb.dialog = 0;
+		s_windowScaleDialogCb.slider = 0;
+		s_windowScaleDialogCb.target = 0;
+	}
+
+	UIPage const *const proto = safe_cast<UIPage const *>(UIManager::gUIManager ().GetObjectFromPath ("/WindowScalePopup", TUIPage));
+	if (!proto)
+		return;
+
+	UIPage *const dlg = safe_cast<UIPage *>(proto->DuplicateObject ());
+	if (!dlg)
+		return;
+
+	UISliderbar *const slider = safe_cast<UISliderbar *>(dlg->GetChild ("slider"));
+	UIButton *const okBtn    = safe_cast<UIButton *>(dlg->GetChild ("ok"));
+	if (!slider || !okBtn)
+	{
+		dlg->Destroy ();
+		return;
+	}
+
+	s_windowScaleDialogCb.target = this;
+	s_windowScaleDialogCb.dialog = dlg;
+	s_windowScaleDialogCb.slider = slider;
+
+	long const v = static_cast<long>(getWindowContentScaleFactor () * 100.f + 0.5f);
+	slider->SetValue (std::max (50L, std::min (200L, v)), false);
+
+	dlg->AddCallback (&s_windowScaleDialogCb);
+	okBtn->AddCallback (&s_windowScaleDialogCb);
+	slider->AddCallback (&s_windowScaleDialogCb);
+
+	UIManager::gUIManager ().PushContextWidget (*dlg, UIManager::CWA_Center, true);
 }
 
 //======================================================================

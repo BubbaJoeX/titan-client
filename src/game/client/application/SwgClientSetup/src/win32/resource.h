@@ -25,6 +25,7 @@
 #define IDS_GRAPHICS_DISABLE_VSYNC      30
 #define IDS_GRAPHICS_DISABLE_FAST_MOUSE_CURSOR 31
 #define IDS_GRAPHICS_USE_SAFE_RENDERER  32
+#define IDS_GRAPHICS_UI_SCALE           1190
 #define IDS_SOUND_DISABLE_AUDIO         33
 #define IDS_SOUND_MILES_VERSION         34
 #define IDS_SOUND_MILES_PROVIDER        35
@@ -278,6 +279,8 @@
 #define IDS_NO_SOUND_CARD               1187
 #define IDC_BUTTON_TEMPLATE7            1188
 #define IDC_SLIDER1                     1189
+#define IDC_LBL_GRAPH_UI_SCALE          1200
+#define IDC_UI_SCALE                    1201
 
 // Next default values for new objects
 // 
@@ -285,7 +288,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        95
 #define _APS_NEXT_COMMAND_VALUE         32900
-#define _APS_NEXT_CONTROL_VALUE         1200
+#define _APS_NEXT_CONTROL_VALUE         1202
 #define _APS_NEXT_SYMED_VALUE           130
 #endif
 #endif

@@ -161,6 +161,9 @@ public:
 	bool isCurrentForm(void) const;
 	bool atEndOfForm(void) const;
 
+	// Unconsumed bytes in the current enclosing form (do not call while inside a chunk).
+	int getBytesRemainingInForm(void) const;
+
 	// get the number of blocks left in the current enclosing form	
 	int getNumberOfBlocksLeft(void) const;
 

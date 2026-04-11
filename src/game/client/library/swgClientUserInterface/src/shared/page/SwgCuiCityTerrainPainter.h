@@ -16,7 +16,9 @@
 #include <string>
 
 class UIButton;
+class UICheckbox;
 class UIComboBox;
+class UIList;
 class UISliderbar;
 class UIText;
 class UITextbox;
@@ -38,6 +40,9 @@ public:
 
 	virtual void OnButtonPressed(UIWidget * context);
 	virtual void OnSliderbarChanged(UIWidget * context);
+	virtual void OnTextboxChanged(UIWidget * context);
+	virtual void OnCheckboxSet(UIWidget * context);
+	virtual void OnCheckboxUnset(UIWidget * context);
 	virtual void OnGenericSelectionChanged(UIWidget * context);
 
 	// Paint modes
@@ -59,8 +64,14 @@ public:
 	// Preview
 	void updatePreview();
 
-	// Undo support
-	void undoLastModification();
+	// Remove the region selected in the list (any order — not LIFO).
+	void removeSelectedRegion();
+
+	// LayerManager allows only one region-change callback; Terraforming clears it on close.
+	// GameNetwork calls this after CityTerrainModifyMessage so the list stays in sync.
+	static void onServerTerrainRegionsChanged(int32 cityId);
+	// Re-register our callback if this window is still open after another UI cleared it.
+	static void restoreLayerManagerRegionCallbackIfPainterActive();
 
 private:
 	SwgCuiCityTerrainPainter(const SwgCuiCityTerrainPainter &);
@@ -72,8 +83,14 @@ private:
 	void sendTerrainModifyToServer();
 	void restoreUIState();
 	void saveUIState();
+	void refreshRegionList();
+	void updateRemoveRegionButtonState();
+	void syncPaintTileGridOverlay();
 
-private:
+	static void onCityRegionsChanged(int32 cityId);
+	static void onPaintResponse(bool success, std::string const & regionId, std::string const & errorMessage);
+	static void onOpenCityTerrainPainterWhileAlreadyActive();
+
 	UIComboBox * m_comboShader;
 	UIComboBox * m_comboPaintMode;
 	UISliderbar * m_sliderRadius;
@@ -88,6 +105,7 @@ private:
 	UITextbox * m_textFlattenRadius;
 	UIText * m_textInstructions;
 	UIText * m_textStatus;
+	UIList * m_listRegions;
 	UIImage * m_imagePreview;
 	UIButton * m_buttonApply;
 	UIButton * m_buttonCancel;
@@ -96,6 +114,7 @@ private:
 	UIButton * m_buttonClose;
 	UIButton * m_buttonUseCurrentHeight;
 	UIButton * m_buttonUseCityRadius;
+	UICheckbox * m_checkShowTileGrid;
 	UIPage * m_pageCircleOptions;
 	UIPage * m_pageLineOptions;
 	UIPage * m_pageFlattenOptions;
@@ -116,8 +135,10 @@ private:
 	std::vector<std::string> m_shaderTemplates;
 	std::vector<std::string> m_shaderNames;
 
-	// Undo stack - stores region IDs in order of application
-	std::vector<std::string> m_appliedRegionIds;
+	// Parallel to m_listRegions row order (for delete by selection)
+	std::vector<std::string> m_regionListRowIds;
+
+	static SwgCuiCityTerrainPainter * ms_activeInstance;
 
 	// State preservation (to survive Alt toggle)
 	static int32 ms_savedCityId;
@@ -128,6 +149,7 @@ private:
 	static long ms_savedWidth;
 	static long ms_savedHeight;
 	static long ms_savedFlattenRadius;
+	static bool ms_savedShowTileGrid;
 	static bool ms_hasRestoredState;
 };
 

@@ -266,7 +266,8 @@ sub collectData
 	my $branch = shift;
 	$branch = "current" if !defined($branch);
 
-	# Auto-detect build root for Windows/Linux
+	# Base dir: .../sys.shared/compiled/game/ (contains customization/, datatables/).
+	# Prefer SWG_DATATABLES_PATH; else derive repo root from this file (.../tools/perllib or .../client/tools/perllib).
 	my $buildRoot = $ENV{SWG_DATATABLES_PATH};
 	if (!defined($buildRoot) || $buildRoot eq "")
 	{
@@ -274,15 +275,47 @@ sub collectData
 		use Cwd 'abs_path';
 		my $scriptDir = dirname(abs_path(__FILE__));
 		$scriptDir =~ s/\\/\//g;
-		my $rootDir = $scriptDir;
-		$rootDir =~ s/\/client\/tools\/perllib.*//i;
-		$buildRoot = $rootDir . "/dsrc/sku.0/sys.shared/compiled/game/";
-		$buildRoot = "//home/swg/swg-main/build/" unless -d $buildRoot;
+		my $repoRoot = $scriptDir;
+		if ($repoRoot =~ m{^(.+)/client/tools/perllib$}i)
+		{
+			$repoRoot = $1;
+		}
+		elsif ($repoRoot =~ m{^(.+)/tools/perllib$}i)
+		{
+			$repoRoot = $1;
+		}
+		else
+		{
+			$repoRoot =~ s{/client/tools/perllib.*}{}i;
+			$repoRoot =~ s{/tools/perllib.*}{}i;
+		}
+		$buildRoot = $repoRoot . "/dsrc/sku.0/sys.shared/compiled/game/";
 	}
 	$buildRoot =~ s/\\/\//g;
 	$buildRoot .= "/" unless $buildRoot =~ /\/$/;
-	
-	my $customizationsFileName = $buildRoot."customization/vehicle_customizations.tab";
+	print STDERR "VehicleCustomizationVariableGenerator: game/datatables root [$buildRoot]\n";
+	unless (-d $buildRoot)
+	{
+		die "VehicleCustomizationVariableGenerator: game data directory not found [$buildRoot]. "
+			. "Set SWG_DATATABLES_PATH to your sys.shared/compiled/game path (same as buildACM --dsrc), or fix the repo layout.\n";
+	}
+
+	my $customizationsFileName = $buildRoot . "customization/vehicle_customizations.tab";
+	# Tabs are often authored under dsrc/ while data/.../sys.shared holds baked assets only.
+	if (!-f $customizationsFileName && $buildRoot =~ m{/data/sku\.0/sys\.shared/compiled/game/?\z}i)
+	{
+		(my $alt_root = $buildRoot) =~ s{/data/sku\.0/}{/dsrc/sku.0/}i;
+		$alt_root =~ s/\\/\//g;
+		$alt_root .= "/" unless $alt_root =~ /\/$/;
+		my $alt_tab = $alt_root . "customization/vehicle_customizations.tab";
+		if (-d $alt_root && -f $alt_tab)
+		{
+			print STDERR "VehicleCustomizationVariableGenerator: using dsrc parallel tree for vehicle .tab files [$alt_root]\n";
+			$buildRoot              = $alt_root;
+			$customizationsFileName = $alt_tab;
+		}
+	}
+
 	loadVehicleCustomizations($customizationsFileName);
 
 	my $logicalSaddleNameMapFileName = $buildRoot."datatables/mount/logical_saddle_name_map.tab";

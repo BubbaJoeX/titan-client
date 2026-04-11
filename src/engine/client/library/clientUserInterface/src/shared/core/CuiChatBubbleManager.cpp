@@ -27,6 +27,7 @@
 #include "clientGraphics/Graphics.h"
 #include "clientUserInterface/ConfigClientUserInterface.h"
 #include "clientUserInterface/CuiObjectTextManager.h"
+#include "clientUserInterface/CuiPreferences.h"
 #include "clientUserInterface/CuiTextManager.h"
 #include "sharedGame/SharedObjectTemplate.h"
 #include "sharedGame/SpatialChatManager.h"
@@ -34,6 +35,8 @@
 #include "sharedObject/CachedNetworkId.h"
 #include "sharedObject/CellProperty.h"
 #include "sharedUtility/LocalMachineOptionManager.h"
+
+#include <algorithm>
 
 //----------------------------------------------------------------------
 
@@ -708,6 +711,13 @@ void CuiChatBubbleManager::render (UICanvas & canvas, const Camera & camera)
 	s_screenRadius    = sqrt (sqr(s_screenCenter.x) + sqr (s_screenCenter.y));
 
 	initBubbles ();
+
+	float const uiInv = 1.0f / std::max (1.0e-6f, CuiPreferences::getUiScaleFactor ());
+	const UISize savedLayoutScreenSize = s_screenSize;
+	s_screenSize.x = static_cast<long>(savedLayoutScreenSize.x * uiInv + 0.5f);
+	s_screenSize.y = static_cast<long>(savedLayoutScreenSize.y * uiInv + 0.5f);
+	s_maxBubbleSize.x = s_screenSize.x / 2;
+	s_maxBubbleSize.y = s_screenSize.y / 4;
 	
 	//----------------------------------------------------------------------
 	//-- sort the stack map
@@ -810,8 +820,9 @@ void CuiChatBubbleManager::render (UICanvas & canvas, const Camera & camera)
 		const BubbleStack::ElementList & elementList = bubbleStack.getElements ();
 
 		UIScalar nameOffset = CuiObjectTextManager::getNameWidgetHeight(bubbleStack.getId());
+		nameOffset = static_cast<long>(nameOffset * uiInv + 0.5f);
 
-		UIPoint screenPt(static_cast<long>(screenVect.x), static_cast<long>(screenVect.y) - nameOffset);
+		UIPoint screenPt(static_cast<long>(screenVect.x * uiInv + 0.5f), static_cast<long>(screenVect.y * uiInv + 0.5f) - nameOffset);
 		
 		const float oldOpacity = canvas.GetOpacity ();
 		
@@ -863,6 +874,8 @@ void CuiChatBubbleManager::render (UICanvas & canvas, const Camera & camera)
 		
 		canvas.SetOpacity (oldOpacity);
 	}
+
+	s_screenSize = savedLayoutScreenSize;
 }
 
 //-----------------------------------------------------------------

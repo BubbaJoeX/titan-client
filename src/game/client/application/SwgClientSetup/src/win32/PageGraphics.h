@@ -31,6 +31,7 @@ public:
 	enum { IDD = IDD_PROPPAGE_GRAPHICS };
 
 	CString	m_lblGameResolution;
+	CString	m_lblUiScale;
 	CString	m_lblPixelShaderVersion;
 	
 	CString m_lblWindowedMode;
@@ -52,6 +53,7 @@ public:
 
 	CComboBox	m_vertexPixelShaderVersion;
 	CComboBox	m_resolution;
+	CComboBox	m_uiScale;
 	BOOL	m_windowed;
 	BOOL	m_borderlessWindow;
 	BOOL	m_disableBumpMapping;
@@ -80,6 +82,7 @@ protected:
 	virtual BOOL OnSetActive( );
 	virtual BOOL OnInitDialog();
 	afx_msg void OnSelchangeResolution();
+	afx_msg void OnSelchangeUiScale();
 	afx_msg void OnSelchangeVertexpixelshaderversion();
 	afx_msg void OnCheckWindowed();
 	afx_msg void OnCheckBorderlesswindow();

@@ -32,6 +32,33 @@
 #include <map>
 #include <vector>
 
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#endif
+
+// ======================================================================
+
+namespace
+{
+	bool virtualPathMatchesPrefixAndSuffix(char const * const path, char const * const prefix, char const * const suffix)
+	{
+		if (!path || !prefix || !suffix)
+			return false;
+
+		size_t const prefixLen = strlen(prefix);
+		if (_strnicmp(path, prefix, static_cast<int>(prefixLen)) != 0)
+			return false;
+
+		size_t const pathLen = strlen(path);
+		size_t const suffixLen = strlen(suffix);
+		if (pathLen < prefixLen + suffixLen)
+			return false;
+
+		return _stricmp(path + pathLen - suffixLen, suffix) == 0;
+	}
+}
+
 // ======================================================================
 
 const Tag TAG_NUNA = TAG(N, U, N, A);
@@ -52,6 +79,13 @@ TreeFile::SearchNode::SearchNode(int priority)
 TreeFile::SearchNode::~SearchNode(void)
 {
 }
+
+// ----------------------------------------------------------------------
+
+void TreeFile::SearchNode::collectVirtualPathNamesWithPrefixAndSuffix(char const *, char const *, std::vector<std::string> &, std::set<std::string> &) const
+{
+}
+
 // ======================================================================
 
 TreeFile::SearchPath::SearchPath(int priority, const char *path)
@@ -150,6 +184,46 @@ AbstractFile *TreeFile::SearchPath::open(const char *fileName, AbstractFile::Pri
 	if (!file)
 		return NULL;
 	return new FileStreamerFile(priority, *file);
+}
+
+// ----------------------------------------------------------------------
+
+void TreeFile::SearchPath::collectVirtualPathNamesWithPrefixAndSuffix(char const * prefix, char const * suffix, std::vector<std::string> & out, std::set<std::string> & seen) const
+{
+#ifdef _WIN32
+	if (!prefix || !suffix || _stricmp(suffix, ".trn") != 0)
+		return;
+
+	std::string terrainDir(m_pathName);
+	terrainDir += "\\terrain";
+	std::string pattern = terrainDir + "\\*.trn";
+
+	WIN32_FIND_DATAA fd;
+	HANDLE const h = FindFirstFileA(pattern.c_str(), &fd);
+	if (h == INVALID_HANDLE_VALUE)
+		return;
+
+	do
+	{
+		if ((fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
+			continue;
+
+		std::string virt("terrain/");
+		virt += fd.cFileName;
+		if (!virtualPathMatchesPrefixAndSuffix(virt.c_str(), prefix, suffix))
+			continue;
+
+		if (seen.insert(virt).second)
+			out.push_back(virt);
+	} while (FindNextFileA(h, &fd) != 0);
+
+	FindClose(h);
+#else
+	UNREF(prefix);
+	UNREF(suffix);
+	UNREF(out);
+	UNREF(seen);
+#endif
 }
 
 // ======================================================================
@@ -614,6 +688,25 @@ AbstractFile *TreeFile::SearchTree::open(const char *fileName, AbstractFile::Pri
 	}
 
 	return NULL;
+}
+
+// ----------------------------------------------------------------------
+
+void TreeFile::SearchTree::collectVirtualPathNamesWithPrefixAndSuffix(char const * prefix, char const * suffix, std::vector<std::string> & out, std::set<std::string> & seen) const
+{
+	for (int i = 0; i < m_numberOfFiles; ++i)
+	{
+		TableOfContentsEntry const & entry = m_tableOfContents[i];
+		if (entry.length == 0 || entry.offset == 0)
+			continue;
+
+		char const * const name = m_fileNames + entry.fileNameOffset;
+		if (!virtualPathMatchesPrefixAndSuffix(name, prefix, suffix))
+			continue;
+
+		if (seen.insert(name).second)
+			out.push_back(std::string(name));
+	}
 }
 
 // ======================================================================
@@ -1107,6 +1200,25 @@ AbstractFile *TreeFile::SearchTOC::open(const char *fileName, AbstractFile::Prio
 
 	return NULL;
 	}
+
+// ----------------------------------------------------------------------
+
+void TreeFile::SearchTOC::collectVirtualPathNamesWithPrefixAndSuffix(char const * prefix, char const * suffix, std::vector<std::string> & out, std::set<std::string> & seen) const
+{
+	for (uint32 i = 0; i < m_numberOfFiles; ++i)
+	{
+		TableOfContentsEntry const & entry = m_tableOfContents[i];
+		if (entry.length == 0 || entry.offset == 0)
+			continue;
+
+		char const * const name = m_fileNames + entry.fileNameOffset;
+		if (!virtualPathMatchesPrefixAndSuffix(name, prefix, suffix))
+			continue;
+
+		if (seen.insert(name).second)
+			out.push_back(std::string(name));
+	}
+}
 
 // ======================================================================
 

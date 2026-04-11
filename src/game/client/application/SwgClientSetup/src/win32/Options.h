@@ -50,6 +50,9 @@ public:
 	static bool getUseSafeRenderer ();
 	static void setUseSafeRenderer (bool useSafeRenderer);
 
+	static int  getUiScalePercent ();
+	static void setUiScalePercent (int uiScalePercent);
+
 	static bool getWindowed ();
 	static void setWindowed (bool windowed);
 	static bool getBorderlessWindow ();

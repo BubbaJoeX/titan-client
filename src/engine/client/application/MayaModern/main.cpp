@@ -26,6 +26,10 @@
 #include "commands/ExportSat.h"
 #include "commands/ImportPob.h"
 #include "commands/ExportPob.h"
+#include "commands/CreatePobTemplate.h"
+#include "commands/AddPobPortal.h"
+#include "commands/ReportPobPortals.h"
+#include "commands/PobExtendedCommands.h"
 #include "commands/ImportLodMesh.h"
 #include "commands/ImportSkeletalMesh.h"
 #include "commands/ImportShader.h"
@@ -33,6 +37,7 @@
 #include "commands/ImportStaticMesh.h"
 #include "commands/ImportStructure.h"
 #include "commands/ExportStaticMesh.h"
+#include "commands/PrepareStaticMeshExport.h"
 #include "commands/SwgAssetDissector.h"
 
 #include "ConfigFile.h"
@@ -149,6 +154,27 @@ MStatus initializePlugin(MObject obj)
     status = plugin.registerCommand("exportPob", ExportPob::creator);
     if (!status) { std::cerr << "ERROR: Unable to register exportPob" << std::endl; return status; }
 
+    status = plugin.registerCommand("createPobTemplate", CreatePobTemplate::creator);
+    if (!status) { std::cerr << "ERROR: Unable to register createPobTemplate" << std::endl; return status; }
+
+    status = plugin.registerCommand("addPobPortal", AddPobPortal::creator);
+    if (!status) { std::cerr << "ERROR: Unable to register addPobPortal" << std::endl; return status; }
+
+    status = plugin.registerCommand("reportPobPortals", ReportPobPortals::creator);
+    if (!status) { std::cerr << "ERROR: Unable to register reportPobPortals" << std::endl; return status; }
+
+    status = plugin.registerCommand("validatePob", ValidatePob::creator);
+    if (!status) { std::cerr << "ERROR: Unable to register validatePob" << std::endl; return status; }
+
+    status = plugin.registerCommand("connectPobCells", ConnectPobCells::creator);
+    if (!status) { std::cerr << "ERROR: Unable to register connectPobCells" << std::endl; return status; }
+
+    status = plugin.registerCommand("layoutPobCells", LayoutPobCells::creator);
+    if (!status) { std::cerr << "ERROR: Unable to register layoutPobCells" << std::endl; return status; }
+
+    status = plugin.registerCommand("duplicatePobCell", DuplicatePobCell::creator);
+    if (!status) { std::cerr << "ERROR: Unable to register duplicatePobCell" << std::endl; return status; }
+
     status = plugin.registerCommand("importLodMesh", ImportLodMesh::creator);
     if (!status) { std::cerr << "ERROR: Unable to register importLodMesh" << std::endl; return status; }
 
@@ -169,6 +195,9 @@ MStatus initializePlugin(MObject obj)
 
     status = plugin.registerCommand("exportStaticMesh", ExportStaticMesh::creator);
     if (!status) { std::cerr << "ERROR: Unable to register exportStaticMesh" << std::endl; return status; }
+
+    status = plugin.registerCommand("swgPrepareStaticMeshExport", PrepareStaticMeshExport::creator);
+    if (!status) { std::cerr << "ERROR: Unable to register swgPrepareStaticMeshExport" << std::endl; return status; }
 
     status = plugin.registerCommand("swgAssetDissector", SwgAssetDissector::creator);
     if (!status) { std::cerr << "ERROR: Unable to register swgAssetDissector" << std::endl; return status; }
@@ -193,6 +222,7 @@ MStatus uninitializePlugin(MObject obj)
     }
 
     plugin.deregisterCommand("swgAssetDissector");
+    plugin.deregisterCommand("swgPrepareStaticMeshExport");
     plugin.deregisterCommand("exportStaticMesh");
     plugin.deregisterCommand("exportShader");
     plugin.deregisterCommand("importStructure");
@@ -201,6 +231,13 @@ MStatus uninitializePlugin(MObject obj)
     plugin.deregisterCommand("importSkeletalMesh");
     plugin.deregisterCommand("importLodMesh");
     plugin.deregisterCommand("exportPob");
+    plugin.deregisterCommand("duplicatePobCell");
+    plugin.deregisterCommand("layoutPobCells");
+    plugin.deregisterCommand("connectPobCells");
+    plugin.deregisterCommand("validatePob");
+    plugin.deregisterCommand("reportPobPortals");
+    plugin.deregisterCommand("addPobPortal");
+    plugin.deregisterCommand("createPobTemplate");
     plugin.deregisterCommand("importPob");
     plugin.deregisterCommand("exportSat");
     plugin.deregisterCommand("importSat");

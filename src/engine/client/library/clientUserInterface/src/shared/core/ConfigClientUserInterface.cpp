@@ -117,6 +117,8 @@ namespace
 	bool              ms_showQuestHelper;
 	bool              ms_showEnteringCombatFlyText;
 	bool              ms_showCompletedCollections;
+	int               ms_uiScalePercent;
+	int               ms_uiFontScalePercent;
 }
 
 //----------------------------------------------------------------------
@@ -256,6 +258,8 @@ void ConfigClientUserInterface::install ()
 	KEY_BOOL   (showQuestHelper,     			  true);
 	KEY_BOOL   (showEnteringCombatFlyText,     	  true);
 	KEY_BOOL   (showCompletedCollections,         true);
+	KEY_INT    (uiScalePercent,                   100);
+	KEY_INT    (uiFontScalePercent,               100);
 }
 
 //----------------------------------------------------------------------
@@ -915,6 +919,33 @@ bool ConfigClientUserInterface::getShowEnteringCombatFlyText()
 bool ConfigClientUserInterface::getShowCompletedCollections()
 {
 	return ms_showCompletedCollections;
+}
+
+//----------------------------------------------------------------------
+
+int ConfigClientUserInterface::getUiScalePercent ()
+{
+	return ms_uiScalePercent;
+}
+
+//----------------------------------------------------------------------
+
+float ConfigClientUserInterface::getUiScaleFactor ()
+{
+	int p = ms_uiScalePercent;
+	if (p < 50)
+		p = 50;
+	else
+		if (p > 300)
+			p = 300;
+	return static_cast<float>(p) / 100.0f;
+}
+
+//----------------------------------------------------------------------
+
+int ConfigClientUserInterface::getUiFontScalePercent ()
+{
+	return ms_uiFontScalePercent;
 }
 
 //======================================================================

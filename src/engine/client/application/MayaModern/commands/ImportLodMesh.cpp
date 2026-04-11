@@ -337,6 +337,8 @@ std::string resolveStaticMeshPath(const std::string& basePath)
         return path + ".apt";
     if (iff.open((path + ".msh").c_str(), true))
         return path + ".msh";
+    if (iff.open((path + ".lod").c_str(), true))
+        return path + ".lod";
     return path + ".msh";
 }
 
@@ -380,6 +382,200 @@ std::string resolvePathViaApt(const std::string& filePath)
     if (finalPath.size() >= 4 && finalPath.substr(finalPath.size() - 4) == ".apt")
         return resolvePathViaApt(finalPath);
     return finalPath;
+}
+
+namespace
+{
+    static void normalizeHighestLodSuffixInPath(std::string& meshFilename)
+    {
+        const std::string::size_type lp = meshFilename.rfind("_l");
+        if (lp == std::string::npos || lp + 2 >= meshFilename.size())
+            return;
+        std::string::size_type end = lp + 2;
+        while (end < meshFilename.size() && meshFilename[end] >= '0' && meshFilename[end] <= '9')
+            ++end;
+        const char next = (end < meshFilename.size()) ? meshFilename[end] : '\0';
+        if (next != '_' && next != '.' && next != '\0')
+            return;
+        const std::string lodSuffix = meshFilename.substr(lp + 2, end - (lp + 2));
+        if (lodSuffix != "0")
+            meshFilename = meshFilename.substr(0, lp + 2) + "0" + meshFilename.substr(end);
+    }
+
+    static void consumeOneBlock(Iff& iff)
+    {
+        if (iff.isCurrentForm())
+        {
+            iff.enterForm();
+            while (iff.getNumberOfBlocksLeft() > 0)
+                consumeOneBlock(iff);
+            iff.exitForm();
+        }
+        else
+        {
+            iff.enterChunk();
+            iff.exitChunk();
+        }
+    }
+
+    static bool extractDtlaL0Path(Iff& iff, std::string& outPath)
+    {
+        static const Tag TAG_DTLA_LOCAL = TAG(D, T, L, A);
+        static const Tag TAG_DATA_LOCAL = TAG(D, A, T, A);
+        static const Tag TAG_CHLD_LOCAL = TAG(C, H, L, D);
+
+        iff.enterForm(TAG_DTLA_LOCAL);
+        const Tag versionTag = iff.getCurrentName();
+        iff.enterForm(versionTag);
+        while (iff.getNumberOfBlocksLeft() > 0)
+        {
+            if (iff.isCurrentForm() && iff.getCurrentName() == TAG_DATA_LOCAL)
+                break;
+            consumeOneBlock(iff);
+        }
+        if (iff.getNumberOfBlocksLeft() == 0 || !iff.isCurrentForm() || iff.getCurrentName() != TAG_DATA_LOCAL)
+        {
+            iff.exitForm(versionTag);
+            iff.exitForm(TAG_DTLA_LOCAL);
+            return false;
+        }
+        std::string l0Path;
+        std::string firstPath;
+        iff.enterForm(TAG_DATA_LOCAL);
+        while (iff.getNumberOfBlocksLeft() > 0)
+        {
+            if (!iff.isCurrentForm() && iff.getCurrentName() == TAG_CHLD_LOCAL)
+            {
+                iff.enterChunk(TAG_CHLD_LOCAL);
+                const int32 childId = iff.read_int32();
+                std::string childName = iff.read_stdstring();
+                iff.exitChunk(TAG_CHLD_LOCAL);
+                std::string childPath = childName;
+                if (childPath.find("appearance/") != 0 && childPath.find("appearance\\") != 0)
+                    childPath = std::string("appearance/") + childPath;
+                if (firstPath.empty())
+                    firstPath = childPath;
+                if (childId == 0)
+                    l0Path = std::move(childPath);
+            }
+            else
+                consumeOneBlock(iff);
+        }
+        iff.exitForm(TAG_DATA_LOCAL);
+        iff.exitForm(versionTag);
+        iff.exitForm(TAG_DTLA_LOCAL);
+        outPath = !l0Path.empty() ? l0Path : firstPath;
+        return !outPath.empty();
+    }
+}
+
+std::string resolveStaticMeshFilePathForImport(const std::string& userPath, const std::string& contextAnchor)
+{
+    static const Tag kMesh = TAG(M, E, S, H);
+    static const Tag kApt = TAG3(A, P, T);
+    static const Tag kMlod = TAG(M, L, O, D);
+    static const Tag kDtla = TAG(D, T, L, A);
+
+    std::string path = userPath;
+    for (auto& c : path)
+        if (c == '\\')
+            c = '/';
+
+    std::string ctx = contextAnchor.empty() ? path : contextAnchor;
+    for (auto& c : ctx)
+        if (c == '\\')
+            c = '/';
+
+    path = resolvePathViaApt(path);
+    normalizeHighestLodSuffixInPath(path);
+
+    constexpr int kMaxHops = 24;
+    for (int hop = 0; hop < kMaxHops; ++hop)
+    {
+        Iff iff;
+        if (!iff.open(path.c_str(), true))
+            return path;
+
+        const Tag root = iff.getCurrentName();
+        if (root == kMesh)
+        {
+            iff.close();
+            return path;
+        }
+
+        if (root == kApt)
+        {
+            iff.enterForm(kApt);
+            iff.enterForm(TAG_0000);
+            iff.enterChunk(TAG_NAME);
+            std::string redirect = iff.read_stdstring();
+            iff.exitChunk(TAG_NAME);
+            iff.exitForm(TAG_0000);
+            iff.exitForm(kApt);
+            iff.close();
+            if (redirect.empty())
+                return path;
+            const std::string prev = path;
+            path = resolveStaticMeshPath(lod_path_helpers::resolveTreeFilePath(redirect, ctx));
+            ctx = prev;
+            path = resolvePathViaApt(path);
+            normalizeHighestLodSuffixInPath(path);
+            continue;
+        }
+
+        if (root == kMlod)
+        {
+            iff.enterForm(kMlod);
+            iff.enterForm(TAG_0000);
+            iff.enterChunk(TAG_INFO);
+            const int16 detailLevelCount = static_cast<int16>(iff.read_int16());
+            iff.exitChunk(TAG_INFO);
+            std::string firstRel;
+            for (int16 i = 0; i < detailLevelCount; ++i)
+            {
+                iff.enterChunk(TAG_NAME);
+                std::string s = iff.read_stdstring();
+                iff.exitChunk(TAG_NAME);
+                if (i == 0)
+                    firstRel = std::move(s);
+            }
+            iff.exitForm(TAG_0000);
+            iff.exitForm(kMlod);
+            iff.close();
+            if (firstRel.empty())
+                return path;
+            std::string rel = firstRel;
+            if (rel.find("appearance/") != 0 && rel.find("appearance\\") != 0)
+                rel = std::string("appearance/") + rel;
+            const std::string prev = path;
+            path = resolveStaticMeshPath(lod_path_helpers::resolveTreeFilePath(rel, ctx));
+            ctx = prev;
+            path = resolvePathViaApt(path);
+            normalizeHighestLodSuffixInPath(path);
+            continue;
+        }
+
+        if (root == kDtla)
+        {
+            std::string rel;
+            if (!extractDtlaL0Path(iff, rel))
+            {
+                iff.close();
+                return path;
+            }
+            iff.close();
+            const std::string prev = path;
+            path = resolveStaticMeshPath(lod_path_helpers::resolveTreeFilePath(rel, ctx));
+            ctx = prev;
+            path = resolvePathViaApt(path);
+            normalizeHighestLodSuffixInPath(path);
+            continue;
+        }
+
+        iff.close();
+        return path;
+    }
+    return path;
 }
 
 void* ImportLodMesh::creator()

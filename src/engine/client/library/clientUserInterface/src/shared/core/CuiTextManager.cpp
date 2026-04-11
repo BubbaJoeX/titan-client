@@ -62,40 +62,55 @@ bool                                      CuiTextManager::ms_installed;
 
 //-----------------------------------------------------------------
 
+namespace
+{
+	void rebuildWorldTextFontMaps ()
+	{
+		const Unicode::String fontPrefixes [CuiTextManagerTextEnqueueInfo::TW_count] =
+		{
+			Unicode::narrowToWide ("default_"),
+			Unicode::narrowToWide ("bold_"),
+			Unicode::narrowToWide ("starwars_")
+		};
+
+		for (int weight = 0; weight < CuiTextManagerTextEnqueueInfo::TW_count; ++weight)
+		{
+			FontMap_t * const fontMap = s_fontMaps [weight];
+			if (!fontMap)
+				continue;
+			fontMap->clear ();
+
+			for (int i = 12; i < 35; ++i)
+			{
+				char buf [32];
+				IGNORE_RETURN (_itoa (i, buf, 10));
+
+				const Unicode::String suffix (Unicode::narrowToWide (buf));
+
+				UITextStyle * const textStyle = UITextStyleManager::GetInstance ()->GetFontForLogicalFont (fontPrefixes [weight] + suffix);
+
+				if (textStyle)
+					fontMap->insert (std::make_pair (i, textStyle));
+			}
+
+			DEBUG_FATAL (fontMap->empty (), ("No fonts found for weight %d: %s.", weight, Unicode::wideToNarrow (fontPrefixes [weight]).c_str ()));
+		}
+	}
+}
+
+//-----------------------------------------------------------------
+
 void CuiTextManager::install (const UIBaseObject & rootPage)
 {
-	UNREF(rootPage);
+	UNREF (rootPage);
 	DEBUG_FATAL (ms_installed, ("already installed.\n"));
 
 	s_textMap = new TextMap_t;
 
-	const Unicode::String fontPrefixes [CuiTextManagerTextEnqueueInfo::TW_count] = 
-	{
-		Unicode::narrowToWide ("default_"),
-		Unicode::narrowToWide ("bold_"),
-		Unicode::narrowToWide ("starwars_")
-	};
-
 	for (int weight = 0; weight < CuiTextManagerTextEnqueueInfo::TW_count; ++weight)
-	{		
-		FontMap_t * const fontMap = s_fontMaps [weight] = new FontMap_t;
+		s_fontMaps [weight] = new FontMap_t;
 
-		for (int i = 12; i < 35; ++i)
-		{
-			char buf [32];
-			IGNORE_RETURN (_itoa (i, buf, 10));
-			
-			const Unicode::String suffix (Unicode::narrowToWide (buf));
-
-			UITextStyle * const textStyle = UITextStyleManager::GetInstance()->GetFontForLogicalFont (fontPrefixes [weight] + suffix);
-			
-			if (textStyle)
-				fontMap->insert (std::make_pair (i, textStyle));
-		}
-
-		DEBUG_FATAL (fontMap->empty (), ("No fonts found for weight %d: %s.", weight, Unicode::wideToNarrow(fontPrefixes [weight]).c_str()));
-	}
-	
+	rebuildWorldTextFontMaps ();
 
 	s_text = new UIText;
 	s_text->SetTextAlignment (UITextStyle::Center);
@@ -107,6 +122,15 @@ void CuiTextManager::install (const UIBaseObject & rootPage)
 	s_image2->Attach (0);
 
 	ms_installed = true;
+}
+
+//-----------------------------------------------------------------
+
+void CuiTextManager::refreshFontStyleCache ()
+{
+	if (!ms_installed)
+		return;
+	rebuildWorldTextFontMaps ();
 }
 
 //-----------------------------------------------------------------
@@ -177,12 +201,17 @@ void CuiTextManager::showSystemStatusString (const Unicode::String & str)
 
 //-----------------------------------------------------------------
 
-void CuiTextManager::renderPlainText (UICanvas & canvas, const TextInfo & ti, UITextStyle & style, const UISize & maxBubbleSize)
+void CuiTextManager::renderPlainText (UICanvas & canvas, const TextInfo & ti, UITextStyle & style, const UISize & maxBubbleSize, float logicalFromScreenScaleInv)
 {
 	UNREF (canvas);
 	UNREF (ti);
 	UNREF (maxBubbleSize);
 	UNREF (style); 
+
+	float const inv = (logicalFromScreenScaleInv > 1.0e-6f) ? logicalFromScreenScaleInv : 1.0f;
+	long const lx = static_cast<long>(ti.m_pt.x * inv + 0.5f);
+	long const ly = static_cast<long>(ti.m_pt.y * inv + 0.5f);
+	long const headOffset = static_cast<long>(CuiObjectTextManager::getObjectHeadPointOffset (ti.m_info.id, 0) * inv + 0.5f);
 
 	s_text->SetTextColor (ti.m_info.textColor);
 	s_text->SetBackgroundOpacity (ti.m_info.backgroundOpacity);
@@ -207,16 +236,14 @@ void CuiTextManager::renderPlainText (UICanvas & canvas, const TextInfo & ti, UI
 	else
 		s_image2->SetStyle (0);
 
-	const int headOffset = CuiObjectTextManager::getObjectHeadPointOffset (ti.m_info.id, 0);
-
 	const UISize & newSize = s_text->GetSize();
 	const UISize & imgSize = s_image->GetSize();
-	const UIPoint upperLeft       (ti.m_pt.x   - (newSize.x + imgSize.x) / 2L, ti.m_pt.y - newSize.y + headOffset);
+	const UIPoint upperLeft       (lx   - (newSize.x + imgSize.x) / 2L, ly - newSize.y + headOffset);
 	const UIPoint actualTextPoint (upperLeft.x + imgSize.x, upperLeft.y);
 	const UIPoint upperRight      (actualTextPoint + UIPoint (newSize.x, 0L));
 
 	if (ti.m_info.updateOffset)
-		CuiObjectTextManager::setObjectHeadPointOffset (ti.m_info.id, actualTextPoint.y - static_cast<int>(ti.m_pt.y));
+		CuiObjectTextManager::setObjectHeadPointOffset (ti.m_info.id, actualTextPoint.y - ly);
 		
 	//-----------------------------------------------------------------
 	//- coordinates are relative to bubble origin  (actualTextPoint)
@@ -269,6 +296,11 @@ void  CuiTextManager::render (UICanvas & canvas)
 	s_screenSize.x = Graphics::getCurrentRenderTargetWidth  ();
 	s_screenSize.y = Graphics::getCurrentRenderTargetHeight ();
 
+	float const uiScale = CuiPreferences::getUiScaleFactor ();
+	float const inv = (uiScale > 1.0e-6f) ? (1.0f / uiScale) : 1.0f;
+	int const logicalW = static_cast<int>(s_screenSize.x * inv + 0.5f);
+	int const logicalH = static_cast<int>(s_screenSize.y * inv + 0.5f);
+
 	//-- display "GOD MODE" text if necessary
 	if (PlayerObject::isAdmin ())
 	{
@@ -287,10 +319,10 @@ void  CuiTextManager::render (UICanvas & canvas)
 			
 		static TextInfo godinfo (Unicode::narrowToWide ("GAME MASTER"), 0.6f, TextChatInfo (), godinfo_tq);
 
-		godinfo.m_pt.x = s_screenSize.x / 2;
+		godinfo.m_pt.x = logicalW / 2;
 		godinfo.m_info.screenVect.x = static_cast<float>(godinfo.m_pt.x);
 
-		godinfo.m_pt.y = Game::isSpace() ? 200 : 222;
+		godinfo.m_pt.y = static_cast<long>((Game::isSpace() ? 200 : 222) * inv + 0.5f);
 		godinfo.m_info.screenVect.y = static_cast<float>(godinfo.m_pt.y);
 
 		UITextStyle * const style = getTextStyle (20, godinfo.m_info);
@@ -298,7 +330,7 @@ void  CuiTextManager::render (UICanvas & canvas)
 		if (style)
 		{
 			canvas.SetOpacity (1.0f);
-			renderPlainText (canvas, godinfo, *style, UISize (1000, 1000));
+			renderPlainText (canvas, godinfo, *style, UISize (1000, 1000), inv);
 		}
 	}
 
@@ -306,9 +338,9 @@ void  CuiTextManager::render (UICanvas & canvas)
 
 	if (s_textMap->size ())
 	{
-		canvas.SetClip(UIRect (0, (s_screenSize.y / 10), s_screenSize.x, s_screenSize.y));
+		canvas.SetClip(UIRect (0, (logicalH / 10), logicalW, logicalH));
 
-		const UISize maxBubbleSize (s_screenSize.x / 2, s_screenSize.y / 4);
+		const UISize maxBubbleSize (logicalW / 2, logicalH / 4);
 
 		const float preferenceFontSizeFactor = CuiPreferences::getObjectNameFontSizeFactor ();
 		
@@ -339,10 +371,10 @@ void  CuiTextManager::render (UICanvas & canvas)
 			if (ti.m_chatInfo.isChatBubble)
 				renderBubble (canvas, ti, *style, maxBubbleSize);
 			else
-				renderPlainText (canvas, ti, *style, maxBubbleSize);
+				renderPlainText (canvas, ti, *style, maxBubbleSize, inv);
 		}
 
-		canvas.SetClip(UIRect (0, 0, s_screenSize.x, s_screenSize.y));
+		canvas.SetClip(UIRect (0, 0, logicalW, logicalH));
 	}
 
 	canvas.SetOpacity (oldOpacity); 

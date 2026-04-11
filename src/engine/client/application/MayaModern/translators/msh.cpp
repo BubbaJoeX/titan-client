@@ -2,6 +2,7 @@
 #include "SwgTranslatorNames.h"
 #include "ExportStaticMesh.h"
 #include "ImportLodMesh.h"
+#include "SwgIffFormatVersions.h"
 
 #include "Iff.h"
 #include "Globals.h"
@@ -68,6 +69,94 @@ namespace
     static const Tag TAG_HPTS = TAG(H,P,T,S);
     static const Tag TAG_HPNT = TAG(H,P,N,T);
     static const Tag TAG_FLOR = TAG(F,L,O,R);
+    static const Tag TAG_CNTR = TAG(C,N,T,R);
+    static const Tag TAG_RADI = TAG(R,A,D,I);
+    static const Tag TAG_SPS_NS = TAG3(S,P,S);
+
+    /// APPR/0001–0003 inner body, or MESH/0002–0003 tail after exiting inner form (AppearanceTemplate order).
+    static void mshConsumeApprLikeHardpointsAndFloor(
+        Iff& iff,
+        std::vector<MayaSceneBuilder::HardpointData>& hardpoints,
+        std::string& floorReferencePath,
+        bool parseFlorForms)
+    {
+        while (iff.getNumberOfBlocksLeft() > 0)
+        {
+            if (iff.isCurrentForm())
+            {
+                const Tag formTag = iff.getCurrentName();
+                if (formTag == TAG_HPTS)
+                {
+                    iff.enterForm(TAG_HPTS);
+                    while (iff.getNumberOfBlocksLeft() > 0)
+                    {
+                        if (!iff.isCurrentForm() && iff.getCurrentName() == TAG_HPNT)
+                        {
+                            iff.enterChunk(TAG_HPNT);
+                            MayaSceneBuilder::HardpointData hp;
+                            const Transform hpTransform = iff.read_floatTransform();
+                            std::string hpName;
+                            iff.read_string(hpName);
+                            hp.name = hpName;
+                            hp.parentJoint = "";
+                            const Vector& pos = hpTransform.getPosition_p();
+                            hp.position[0] = pos.x;
+                            hp.position[1] = pos.y;
+                            hp.position[2] = pos.z;
+                            const Quaternion q(hpTransform);
+                            hp.rotation[0] = static_cast<float>(q.x);
+                            hp.rotation[1] = static_cast<float>(q.y);
+                            hp.rotation[2] = static_cast<float>(q.z);
+                            hp.rotation[3] = static_cast<float>(q.w);
+                            hardpoints.push_back(hp);
+                            iff.exitChunk(TAG_HPNT);
+                        }
+                        else if (iff.isCurrentForm())
+                        {
+                            iff.enterForm();
+                            iff.exitForm();
+                        }
+                        else
+                        {
+                            iff.enterChunk();
+                            iff.exitChunk();
+                        }
+                    }
+                    iff.exitForm(TAG_HPTS);
+                }
+                else if (formTag == TAG_FLOR)
+                {
+                    if (parseFlorForms)
+                    {
+                        iff.enterForm(TAG_FLOR);
+                        if (iff.getNumberOfBlocksLeft() > 0 && !iff.isCurrentForm() && iff.getCurrentName() == ::TAG_DATA)
+                        {
+                            iff.enterChunk(::TAG_DATA);
+                            if (iff.read_bool8())
+                                iff.read_string(floorReferencePath);
+                            iff.exitChunk(::TAG_DATA);
+                        }
+                        iff.exitForm(TAG_FLOR);
+                    }
+                    else
+                    {
+                        iff.enterForm(TAG_FLOR);
+                        iff.exitForm(TAG_FLOR);
+                    }
+                }
+                else
+                {
+                    iff.enterForm(formTag);
+                    iff.exitForm(formTag);
+                }
+            }
+            else
+            {
+                iff.enterChunk();
+                iff.exitChunk();
+            }
+        }
+    }
 }
 
 MStatus MshTranslator::createMeshFromMsh(const char* mshPath, MString& outRootPath, const MString& parentPath)
@@ -134,11 +223,11 @@ MStatus MshTranslator::reader (const MFileObject& file, const MString& options, 
     const char* fileName = file.expandedFullName().asChar();
     mshLog("reader: %s", fileName);
 
-    // APT is the entry point for static meshes. Open APT first, get redirect, load that.
-    // Never load .msh when .apt exists.
-    std::string pathToLoad = resolvePathViaApt(fileName);
-    if (pathToLoad != fileName)
-        mshLog("  APT redirect -> %s", pathToLoad.c_str());
+    // APT redirect + DTLA/MLOD unwrapping (parity with legacy ImportStaticMesh / importLodMesh).
+    const std::string pathRaw(fileName);
+    std::string pathToLoad = resolveStaticMeshFilePathForImport(pathRaw, pathRaw);
+    if (pathToLoad != pathRaw)
+        mshLog("  Resolved mesh path -> %s", pathToLoad.c_str());
 
     if(!Iff::isValid(pathToLoad.c_str()))
     {
@@ -163,96 +252,83 @@ MStatus MshTranslator::reader (const MFileObject& file, const MString& options, 
         int totalVerticesInMesh = 0;
         int totalPolygonsInMesh = 0;
 
+        MObject meshImportRootObj = MObject::kNullObj;
+
+        const Tag meshTopTag = iff.getCurrentName();
+        if (meshTopTag != TAG_MESH)
+        {
+            char topTn[5];
+            ConvertTagToString(meshTopTag, topTn);
+            mshLog("Top form is [%s], not MESH — wrong file type or incomplete DTLA/MLOD resolve. Path: %s", topTn, pathToLoad.c_str());
+            MGlobal::displayError(MString("[MshTranslator] Expected FORM MESH at file root, found ") + topTn + ". Path: " + pathToLoad.c_str());
+            iff.close();
+            return MS::kFailure;
+        }
+
         iff.enterForm(TAG_MESH);
-        iff.enterForm(TAG_0005); //todo handle version variation here
-        mshLog("  Entered MESH/0005");
+        const Tag meshInnerTag = iff.getCurrentName();
+        if (meshInnerTag != ::TAG_0002 && meshInnerTag != ::TAG_0003 && meshInnerTag != ::TAG_0004 && meshInnerTag != ::TAG_0005)
+        {
+            char tn[5];
+            ConvertTagToString(meshInnerTag, tn);
+            mshLog("Unsupported MESH inner [%s] — client MeshAppearanceTemplate supports 0002..0005 (see SwgIffFormatVersions.h)", tn);
+            MGlobal::displayError(MString("[MshTranslator] Unsupported MESH inner FORM ") + tn
+                + " (expected 0002..0005). File: " + pathToLoad.c_str()
+                + " — try importLodMesh if this is a .lod/DTLA appearance chain.");
+            iff.close();
+            return MS::kFailure;
+        }
+        iff.enterForm(meshInnerTag);
+        {
+            char tn[5];
+            ConvertTagToString(meshInnerTag, tn);
+            mshLog("  Entered MESH/%s", tn);
+        }
 
         std::vector<MayaSceneBuilder::HardpointData> hardpoints;
         std::string floorReferencePath;
 
-        if (iff.getNumberOfBlocksLeft() > 0 && iff.isCurrentForm() && iff.getCurrentName() == TAG_APPR)
+        if ((meshInnerTag == ::TAG_0004 || meshInnerTag == ::TAG_0005)
+            && iff.getNumberOfBlocksLeft() > 0 && iff.isCurrentForm() && iff.getCurrentName() == TAG_APPR)
         {
             iff.enterForm(TAG_APPR);
-            iff.enterForm(::TAG_0003);
-
-            while (iff.getNumberOfBlocksLeft() > 0)
+            const Tag apprInnerTag = iff.getCurrentName();
+            if (apprInnerTag != ::TAG_0001 && apprInnerTag != ::TAG_0002 && apprInnerTag != ::TAG_0003)
             {
-                if (iff.isCurrentForm())
-                {
-                    const Tag formTag = iff.getCurrentName();
-                    if (formTag == TAG_HPTS)
-                    {
-                        iff.enterForm(TAG_HPTS);
-                        while (iff.getNumberOfBlocksLeft() > 0)
-                        {
-                            if (!iff.isCurrentForm() && iff.getCurrentName() == TAG_HPNT)
-                            {
-                                iff.enterChunk(TAG_HPNT);
-                                MayaSceneBuilder::HardpointData hp;
-                                const Transform hpTransform = iff.read_floatTransform();
-                                std::string hpName;
-                                iff.read_string(hpName);
-                                hp.name = hpName;
-                                hp.parentJoint = "";
-                                const Vector& pos = hpTransform.getPosition_p();
-                                hp.position[0] = pos.x;
-                                hp.position[1] = pos.y;
-                                hp.position[2] = pos.z;
-                                const Quaternion q(hpTransform);
-                                hp.rotation[0] = static_cast<float>(q.x);
-                                hp.rotation[1] = static_cast<float>(q.y);
-                                hp.rotation[2] = static_cast<float>(q.z);
-                                hp.rotation[3] = static_cast<float>(q.w);
-                                hardpoints.push_back(hp);
-                                iff.exitChunk(TAG_HPNT);
-                            }
-                            else if (iff.isCurrentForm())
-                            {
-                                iff.enterForm();
-                                iff.exitForm();
-                            }
-                            else
-                            {
-                                iff.enterChunk();
-                                iff.exitChunk();
-                            }
-                        }
-                        iff.exitForm(TAG_HPTS);
-                    }
-                    else if (formTag == TAG_FLOR)
-                    {
-                        iff.enterForm(TAG_FLOR);
-                        if (iff.getNumberOfBlocksLeft() > 0 && !iff.isCurrentForm() && iff.getCurrentName() == ::TAG_DATA)
-                        {
-                            iff.enterChunk(::TAG_DATA);
-                            if (iff.read_bool8())
-                                iff.read_string(floorReferencePath);
-                            iff.exitChunk(::TAG_DATA);
-                        }
-                        iff.exitForm(TAG_FLOR);
-                    }
-                    else
-                    {
-                        iff.enterForm();
-                        iff.exitForm();
-                    }
-                }
-                else
-                {
-                    iff.enterChunk();
-                    iff.exitChunk();
-                }
+                char tn[5];
+                ConvertTagToString(apprInnerTag, tn);
+                mshLog("Unsupported APPR inner [%s] — client AppearanceTemplate supports 0001..0003", tn);
+                MGlobal::displayError(MString("[MshTranslator] Unsupported APPR block in .msh (expected 0001..0003). "));
+                iff.close();
+                return MS::kFailure;
             }
-            iff.exitForm(::TAG_0003);
+            iff.enterForm(apprInnerTag);
+            const bool parseFlor = (apprInnerTag != ::TAG_0001);
+            mshConsumeApprLikeHardpointsAndFloor(iff, hardpoints, floorReferencePath, parseFlor);
+            iff.exitForm(apprInnerTag);
             iff.exitForm(TAG_APPR);
             mshLog("  APPR: %zu hardpoints, floor=%s", hardpoints.size(), floorReferencePath.c_str());
         }
 
-        if(iff.seekForm(TAG_SPS))
+        Tag spsInnerTag = ::TAG_0001;
+
+        if (iff.seekForm(TAG_SPS_NS))
         {
             mshLog("  Found SPS form");
-            iff.enterForm(TAG_SPS);
-            iff.enterForm(TAG_0001); //todo validate version compatibility
+            iff.enterForm(TAG_SPS_NS);
+            spsInnerTag = iff.getCurrentName();
+            if (spsInnerTag != ::TAG_0000 && spsInnerTag != ::TAG_0001)
+            {
+                char tn[5];
+                ConvertTagToString(spsInnerTag, tn);
+                mshLog("Unsupported SPS inner [%s] — client ShaderPrimitiveSetTemplate supports 0000 (u32 INDX) and 0001 (u16)", tn);
+                MGlobal::displayError(MString("[MshTranslator] Unsupported SPS version in .msh (expected 0000 or 0001). "));
+                iff.close();
+                return MS::kFailure;
+            }
+            iff.enterForm(spsInnerTag);
+            const bool useIndicesU32 = (spsInnerTag == ::TAG_0000);
+            mshLog("  SPS inner: %s indices", useIndicesU32 ? "uint32" : "uint16");
             iff.enterChunk(TAG_CNT);
             const int32 numberOfShaders = iff.read_int32();
             iff.exitChunk(TAG_CNT);
@@ -276,6 +352,7 @@ MStatus MshTranslator::reader (const MFileObject& file, const MString& options, 
             else
                 parentTransform.create();
             parentTransform.setName(file.rawName());
+            meshImportRootObj = parentTransform.object();
             if (!parentObj.isNull())
             {
                 MDagPath createdPath;
@@ -306,7 +383,6 @@ MStatus MshTranslator::reader (const MFileObject& file, const MString& options, 
                             // todo VALIDATE_RANGE_INCLUSIVE_INCLUSIVE here against SPSPT:: list
                             const bool hasIndices = iff.read_bool8();
                             const bool hasSortedIndices = iff.read_bool8();
-                            cout << "has sorted indices: " << hasSortedIndices << std::endl;
                         iff.exitChunk(TAG_INFO);
 
 
@@ -412,14 +488,34 @@ MStatus MshTranslator::reader (const MFileObject& file, const MString& options, 
                                 totalPolygonsInMesh += numberOfIndices;
                                 for(int m = 0; m < numberOfIndices; m++)
                                 {
-                                    polygonConnects.append(iff.read_uint16());
+                                    if (useIndicesU32)
+                                        polygonConnects.append(static_cast<int>(iff.read_int32()));
+                                    else
+                                        polygonConnects.append(static_cast<int>(iff.read_uint16()));
                                 }
                             iff.exitChunk(TAG_INDX);
                         }
-                        // load directional index buffers
-                        if(hasSortedIndices) //todo do we need to do this ?
+                        // Directional sorted index arrays (ShaderPrimitiveSetTemplate::LocalShaderPrimitiveTemplate SIDX).
+                        // Client may skip loading when RAM-limited but still skips the chunk; we always consume bytes.
+                        if (hasSortedIndices)
                         {
-                            cout << "has sorted indices was true " << std::endl;
+                            iff.enterChunk(TAG_SIDX);
+                            const int nArrays = iff.read_int32();
+                            for (int si = 0; si < nArrays; ++si)
+                            {
+                                IGNORE_RETURN(iff.read_floatVector());
+                                const int nSortedIdx = iff.read_int32();
+                                for (int k = 0; k < nSortedIdx; ++k)
+                                {
+                                    if (useIndicesU32)
+                                        IGNORE_RETURN(iff.read_int32());
+                                    else
+                                        IGNORE_RETURN(iff.read_uint16());
+                                }
+                            }
+                            iff.exitChunk(TAG_SIDX);
+                            if (nArrays > 0)
+                                mshLog("    SIDX: %d directional index array(s) consumed", nArrays);
                         }
                     iff.exitForm(); // this exits the LocalShaderPrimitiveTemplate form
                 iff.exitForm(); // this should exit the # of the shader form (end for loop)
@@ -427,6 +523,16 @@ MStatus MshTranslator::reader (const MFileObject& file, const MString& options, 
                 for(int p = 0; p < (totalPolygonsInMesh / 3); p++)
                 {
                     polygonCounts.append(3); // mesh is made of triangles, so the vertex count of each polygon is 3
+                }
+
+                if (totalVerticesInMesh < 1 || polygonConnects.length() < 3 || (totalPolygonsInMesh % 3) != 0)
+                {
+                    mshLog("  Shader %d: no valid indexed geometry (hasIndices=%s verts=%d indices=%d) — check MESH/SPS version",
+                            i + 1, hasIndices ? "true" : "false", totalVerticesInMesh, polygonConnects.length());
+                    MGlobal::displayError(MString("[MshTranslator] Cannot build mesh: missing vertex/index data for shader primitive. ")
+                        + "Try importLodMesh with the .apt path, setBaseDir to your tree root, or verify the .msh MESH/0005 SPS matches this plug-in.");
+                    iff.close();
+                    return MS::kFailure;
                 }
 
                 MStatus createStatus;
@@ -503,36 +609,41 @@ MStatus MshTranslator::reader (const MFileObject& file, const MString& options, 
                 vArray.clear();
             }
 
-            if (!hardpoints.empty())
-            {
-                std::string meshBaseName = MayaUtility::parseFileNameToNodeName(file.rawName().asChar());
-                std::map<std::string, MDagPath> emptyJointMap;
-                MStatus hpStatus = MayaSceneBuilder::createHardpoints(hardpoints, emptyJointMap, meshBaseName, parentTransform.object());
-                if (hpStatus)
-                    mshLog("  Created %zu hardpoints", hardpoints.size());
-            }
+            iff.exitForm(spsInnerTag);
+            iff.exitForm(TAG_SPS_NS);
 
-            if (!floorReferencePath.empty())
+            if (meshInnerTag == ::TAG_0002 || meshInnerTag == ::TAG_0003)
             {
-                MStatus floorStatus;
-                MFnTransform floorFn;
-                MObject floorObj = floorFn.create(parentTransform.object(), &floorStatus);
-                if (floorStatus)
+                if (iff.getNumberOfBlocksLeft() > 0 && !iff.isCurrentForm() && iff.getCurrentName() == TAG_CNTR)
                 {
-                    floorFn.setName("floor_component");
-                    MGlobal::executeCommand(MString("addAttr -ln \"floorPath\" -dt \"string\" ") + floorFn.name());
-                    MPlug pathPlug = floorFn.findPlug("floorPath", false);
-                    if (!pathPlug.isNull())
-                        pathPlug.setValue(MString(floorReferencePath.c_str()));
-                    mshLog("  Created floor component placeholder: %s", floorReferencePath.c_str());
+                    iff.enterChunk(TAG_CNTR);
+                    IGNORE_RETURN(iff.read_floatVector());
+                    iff.exitChunk(TAG_CNTR);
+                }
+                if (iff.getNumberOfBlocksLeft() > 0 && !iff.isCurrentForm() && iff.getCurrentName() == TAG_RADI)
+                {
+                    iff.enterChunk(TAG_RADI);
+                    IGNORE_RETURN(iff.read_float());
+                    iff.exitChunk(TAG_RADI);
                 }
             }
 
-            iff.close();
+            iff.exitForm(meshInnerTag);
+
+            if (meshInnerTag == ::TAG_0002 || meshInnerTag == ::TAG_0003)
+            {
+                mshLog("  MESH 0002/0003: post-inner tail (extents / HPTS / FLOR per client)");
+                mshConsumeApprLikeHardpointsAndFloor(iff, hardpoints, floorReferencePath, true);
+            }
+
+            iff.exitForm(TAG_MESH);
         }
         else
         {
             mshLog("  No SPS form - importing APPR only (hardpoints, floor)");
+            iff.exitForm(meshInnerTag);
+            iff.exitForm(TAG_MESH);
+
             MObject parentObj = MObject::kNullObj;
             if (s_parentPathForMshImport.length() > 0)
             {
@@ -550,25 +661,30 @@ MStatus MshTranslator::reader (const MFileObject& file, const MString& options, 
             else
                 parentTransform.create();
             parentTransform.setName(file.rawName());
+            meshImportRootObj = parentTransform.object();
             if (!parentObj.isNull())
             {
                 MDagPath createdPath;
                 if (MDagPath::getAPathTo(parentTransform.object(), createdPath))
                     s_createdRootPathForMshImport = createdPath.fullPathName();
             }
+        }
+
+        if (!meshImportRootObj.isNull())
+        {
             if (!hardpoints.empty())
             {
                 std::string meshBaseName = MayaUtility::parseFileNameToNodeName(file.rawName().asChar());
                 std::map<std::string, MDagPath> emptyJointMap;
-                MStatus hpStatus = MayaSceneBuilder::createHardpoints(hardpoints, emptyJointMap, meshBaseName, parentTransform.object());
+                MStatus hpStatus = MayaSceneBuilder::createHardpoints(hardpoints, emptyJointMap, meshBaseName, meshImportRootObj);
                 if (hpStatus)
-                    mshLog("  Created %zu hardpoints (no geometry)", hardpoints.size());
+                    mshLog("  Created %zu hardpoints", hardpoints.size());
             }
             if (!floorReferencePath.empty())
             {
                 MStatus floorStatus;
                 MFnTransform floorFn;
-                MObject floorObj = floorFn.create(parentTransform.object(), &floorStatus);
+                MObject floorObj = floorFn.create(meshImportRootObj, &floorStatus);
                 if (floorStatus)
                 {
                     floorFn.setName("floor_component");
@@ -579,11 +695,9 @@ MStatus MshTranslator::reader (const MFileObject& file, const MString& options, 
                     mshLog("  Created floor component placeholder: %s", floorReferencePath.c_str());
                 }
             }
-            iff.close();
         }
 
-
-
+        iff.close();
 
         return MS::kSuccess;
 

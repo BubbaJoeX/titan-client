@@ -9,19 +9,150 @@
 #include "clientTerrain/FirstClientTerrain.h"
 #include "clientTerrain/CityTerrainLayerManager.h"
 
+#include "clientGraphics/Camera.h"
+#include "clientGraphics/DebugPrimitive.h"
 #include "clientGraphics/Shader.h"
 #include "clientGraphics/ShaderTemplateList.h"
+#include "sharedFile/Iff.h"
 #include "sharedFile/TreeFile.h"
 #include "sharedFoundation/ExitChain.h"
+#include "sharedFoundation/Tag.h"
 #include "sharedMath/Rectangle2d.h"
+#include "sharedMath/Transform.h"
+#include "sharedMath/Vector.h"
+#include "sharedMath/VectorArgb.h"
+#include "sharedObject/Appearance.h"
+#include "sharedTerrain/ProceduralTerrainAppearance.h"
+#include "sharedTerrain/ProceduralTerrainAppearanceTemplate.h"
+#include "sharedTerrain/ShaderGroup.h"
 #include "sharedTerrain/TerrainGenerator.h"
 #include "sharedTerrain/TerrainObject.h"
 
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <cstring>
 #include <ctime>
 #include <set>
+#include <vector>
+
+namespace
+{
+	// Values must match CityTerrainModificationType in shared network messages (clientTerrain cannot include that header).
+	int32 const kTerrainModRemove = 3;
+	int32 const kTerrainModClearAll = 4;
+	int32 const kTerrainModSuspend = 5;
+	int32 const kTerrainModResume = 6;
+
+	void appendShaderGroupToRows(ShaderGroup const & shaderGroup, std::set<std::string> & seenPaths, std::vector<std::pair<std::string, std::string> > & rows)
+	{
+		int const familyCount = shaderGroup.getNumberOfFamilies();
+		for (int familyIndex = 0; familyIndex < familyCount; ++familyIndex)
+		{
+			int const familyId = shaderGroup.getFamilyId(familyIndex);
+			char const * const familyNameCStr = shaderGroup.getFamilyName(familyId);
+			std::string const familyDisplay =
+				(familyNameCStr && *familyNameCStr) ? std::string(familyNameCStr) : std::string("Family");
+
+			int const childCount = shaderGroup.getNumberOfChildren(familyIndex);
+			for (int childIndex = 0; childIndex < childCount; ++childIndex)
+			{
+				ShaderGroup::FamilyChildData const childData = shaderGroup.getChild(familyIndex, childIndex);
+				if (!childData.shaderTemplateName || !*childData.shaderTemplateName)
+					continue;
+
+				std::string const path(childData.shaderTemplateName);
+				if (!TreeFile::exists(path.c_str()))
+					continue;
+
+				if (!seenPaths.insert(path).second)
+					continue;
+
+				char const * base = std::strrchr(childData.shaderTemplateName, '/');
+				base = base ? base + 1 : childData.shaderTemplateName;
+				std::string const display = familyDisplay + std::string(" - ") + std::string(base);
+				rows.push_back(std::make_pair(display, path));
+			}
+		}
+	}
+
+	void collectShaderGroupsFromIffRecursive(Iff & iff, std::set<std::string> & seenPaths, std::vector<std::pair<std::string, std::string> > & rows)
+	{
+		// IFF forms may end with alignment padding: length-used is small but non-zero. Never read a
+		// partial block header (getFirstTag needs 8 bytes; getCurrentName on a form needs 12).
+		int const kMinChunkHeader = static_cast<int>(sizeof(Tag) + sizeof(uint32));
+		int const kMinFormHeader = static_cast<int>(sizeof(Tag) + sizeof(uint32) + sizeof(Tag));
+
+		while (!iff.atEndOfForm())
+		{
+			int const rem = iff.getBytesRemainingInForm();
+			if (rem < kMinChunkHeader)
+				break;
+
+			if (iff.isCurrentChunk())
+			{
+				iff.enterChunk();
+				iff.exitChunk(true);
+				continue;
+			}
+
+			if (rem < kMinFormHeader)
+				break;
+
+			if (!iff.isCurrentForm())
+				return;
+
+			Tag const formTag = iff.getCurrentName();
+			if (formTag == TAG(S,G,R,P))
+			{
+				ShaderGroup group;
+				group.load(iff);
+				appendShaderGroupToRows(group, seenPaths, rows);
+				continue;
+			}
+
+			iff.enterForm();
+			collectShaderGroupsFromIffRecursive(iff, seenPaths, rows);
+			// Lenient exit if trailing padding left unconsumed inside the child form.
+			iff.exitForm(!iff.atEndOfForm());
+		}
+	}
+
+	void addTerrainHeightLineStrip(
+		TerrainObject const & terrain,
+		Camera const & camera,
+		float const x0,
+		float const z0,
+		float const x1,
+		float const z1,
+		VectorArgb const & color)
+	{
+		float const dx = x1 - x0;
+		float const dz = z1 - z0;
+		float const len = std::sqrt(dx * dx + dz * dz);
+		if (len < 0.01f)
+			return;
+
+		int const steps = std::max(2, std::min(96, static_cast<int>(std::ceil(len / 6.f))));
+
+		Vector prev(x0, 0.f, z0);
+		if (!terrain.getHeight(prev, prev.y))
+			return;
+
+		for (int s = 1; s <= steps; ++s)
+		{
+			float const t = static_cast<float>(s) / static_cast<float>(steps);
+			Vector cur(x0 + dx * t, 0.f, z0 + dz * t);
+			if (!terrain.getHeight(cur, cur.y))
+				continue;
+#ifdef _DEBUG
+			camera.addDebugPrimitive(
+				new Line3dDebugPrimitive(Line3dDebugPrimitive::S_none, Transform::identity, prev, cur, color));
+#endif
+			prev = cur;
+		}
+	}
+}
 
 // ======================================================================
 
@@ -29,6 +160,13 @@ CityTerrainLayerManager * CityTerrainLayerManager::ms_instance = 0;
 int32 CityTerrainLayerManager::ms_pendingCityId = 0;
 std::map<int32, int32> CityTerrainLayerManager::ms_cityRadii;
 CityTerrainLayerManager::RegionChangeCallback CityTerrainLayerManager::ms_regionChangeCallback = 0;
+CityTerrainLayerManager::PaintResponseCallback CityTerrainLayerManager::ms_paintResponseCallback = 0;
+CityTerrainLayerManager::CityTerrainUiRefreshFn CityTerrainLayerManager::ms_cityTerrainUiRefreshFn = 0;
+CityTerrainLayerManager::CityTerrainUiRefreshFn CityTerrainLayerManager::ms_cityTerrainUiRefreshSecondaryFn = 0;
+CityTerrainLayerManager::OpenCityTerrainPainterAlreadyActiveFn CityTerrainLayerManager::ms_openCityTerrainPainterAlreadyActiveFn = 0;
+CityTerrainLayerManager::OpenTerraformingAlreadyActiveFn CityTerrainLayerManager::ms_openTerraformingAlreadyActiveFn = 0;
+bool CityTerrainLayerManager::ms_paintTileGridVisible = false;
+int32 CityTerrainLayerManager::ms_paintTileGridCityId = 0;
 
 namespace
 {
@@ -50,6 +188,14 @@ void CityTerrainLayerManager::install()
 void CityTerrainLayerManager::remove()
 {
 	DEBUG_FATAL(ms_instance == 0, ("CityTerrainLayerManager not installed"));
+	ms_regionChangeCallback = 0;
+	ms_paintResponseCallback = 0;
+	ms_cityTerrainUiRefreshFn = 0;
+	ms_cityTerrainUiRefreshSecondaryFn = 0;
+	ms_openCityTerrainPainterAlreadyActiveFn = 0;
+	ms_openTerraformingAlreadyActiveFn = 0;
+	ms_paintTileGridVisible = false;
+	ms_paintTileGridCityId = 0;
 	delete ms_instance;
 	ms_instance = 0;
 }
@@ -87,6 +233,52 @@ int32 CityTerrainLayerManager::getPendingCityId()
 
 // ----------------------------------------------------------------------
 
+void CityTerrainLayerManager::notifyOpenCityTerrainPainterRequested(int32 cityId)
+{
+	ms_pendingCityId = cityId;
+	if (ms_openCityTerrainPainterAlreadyActiveFn)
+		ms_openCityTerrainPainterAlreadyActiveFn();
+}
+
+// ----------------------------------------------------------------------
+
+void CityTerrainLayerManager::setOpenCityTerrainPainterAlreadyActiveFn(OpenCityTerrainPainterAlreadyActiveFn fn)
+{
+	ms_openCityTerrainPainterAlreadyActiveFn = fn;
+}
+
+// ----------------------------------------------------------------------
+
+void CityTerrainLayerManager::clearOpenCityTerrainPainterAlreadyActiveFn()
+{
+	ms_openCityTerrainPainterAlreadyActiveFn = 0;
+}
+
+// ----------------------------------------------------------------------
+
+void CityTerrainLayerManager::notifyOpenTerraformingRequested(int32 cityId)
+{
+	ms_pendingCityId = cityId;
+	if (ms_openTerraformingAlreadyActiveFn)
+		ms_openTerraformingAlreadyActiveFn();
+}
+
+// ----------------------------------------------------------------------
+
+void CityTerrainLayerManager::setOpenTerraformingAlreadyActiveFn(OpenTerraformingAlreadyActiveFn fn)
+{
+	ms_openTerraformingAlreadyActiveFn = fn;
+}
+
+// ----------------------------------------------------------------------
+
+void CityTerrainLayerManager::clearOpenTerraformingAlreadyActiveFn()
+{
+	ms_openTerraformingAlreadyActiveFn = 0;
+}
+
+// ----------------------------------------------------------------------
+
 void CityTerrainLayerManager::setCityRadius(int32 cityId, int32 radius)
 {
 	ms_cityRadii[cityId] = radius;
@@ -116,6 +308,66 @@ void CityTerrainLayerManager::setRegionChangeCallback(RegionChangeCallback callb
 void CityTerrainLayerManager::clearRegionChangeCallback()
 {
 	ms_regionChangeCallback = 0;
+}
+
+// ----------------------------------------------------------------------
+
+void CityTerrainLayerManager::setPaintResponseCallback(PaintResponseCallback callback)
+{
+	ms_paintResponseCallback = callback;
+}
+
+// ----------------------------------------------------------------------
+
+void CityTerrainLayerManager::clearPaintResponseCallback()
+{
+	ms_paintResponseCallback = 0;
+}
+
+// ----------------------------------------------------------------------
+
+void CityTerrainLayerManager::dispatchPaintResponse(bool success, std::string const & regionId, std::string const & errorMessage)
+{
+	if (ms_paintResponseCallback)
+		ms_paintResponseCallback(success, regionId, errorMessage);
+}
+
+// ----------------------------------------------------------------------
+
+void CityTerrainLayerManager::setCityTerrainUiRefreshFn(CityTerrainUiRefreshFn fn)
+{
+	ms_cityTerrainUiRefreshFn = fn;
+}
+
+// ----------------------------------------------------------------------
+
+void CityTerrainLayerManager::clearCityTerrainUiRefreshFn()
+{
+	ms_cityTerrainUiRefreshFn = 0;
+}
+
+// ----------------------------------------------------------------------
+
+void CityTerrainLayerManager::setCityTerrainUiRefreshSecondaryFn(CityTerrainUiRefreshFn fn)
+{
+	ms_cityTerrainUiRefreshSecondaryFn = fn;
+}
+
+// ----------------------------------------------------------------------
+
+void CityTerrainLayerManager::clearCityTerrainUiRefreshSecondaryFn()
+{
+	ms_cityTerrainUiRefreshSecondaryFn = 0;
+}
+
+// ----------------------------------------------------------------------
+
+void CityTerrainLayerManager::notifyCityTerrainUiRefresh(int32 cityId)
+{
+	if (ms_cityTerrainUiRefreshFn)
+		ms_cityTerrainUiRefreshFn(cityId);
+	if (ms_cityTerrainUiRefreshSecondaryFn)
+		ms_cityTerrainUiRefreshSecondaryFn(cityId);
 }
 
 // ----------------------------------------------------------------------
@@ -150,7 +402,7 @@ CityTerrainLayerManager::CityTerrainLayerManager() :
 	m_cityRegions(),
 	m_cachedShaderTemplates(),
 	m_cachedShaderNames(),
-	m_shaderListDirty(true)
+	m_terrainShaderCacheDirty(true)
 {
 }
 
@@ -168,7 +420,7 @@ void CityTerrainLayerManager::addRegion(const TerrainRegion & region)
 	removeRegion(region.regionId);
 
 	TerrainRegion newRegion = region;
-	newRegion.active = true;
+	newRegion.active = region.active;
 	newRegion.timestamp = static_cast<int64>(time(0));
 	newRegion.priority = ++s_regionPriorityCounter;
 	loadShaderForRegion(newRegion);
@@ -287,6 +539,9 @@ void CityTerrainLayerManager::removeRegion(const std::string & regionId)
 			}
 			REPORT_LOG(true, ("[Titan] CityTerrainLayerManager::removeRegion: invalidated terrain for removed region %s\n", regionId.c_str()));
 		}
+
+		if (ms_regionChangeCallback)
+			ms_regionChangeCallback(cityId);
 	}
 }
 
@@ -309,6 +564,16 @@ void CityTerrainLayerManager::removeAllRegionsForCity(int32 cityId)
 	}
 
 	m_cityRegions.erase(range.first, range.second);
+
+	if (ms_regionChangeCallback)
+		ms_regionChangeCallback(cityId);
+
+	TerrainObject * const terrainObject = TerrainObject::getInstance();
+	if (terrainObject)
+	{
+		Rectangle2d const huge(-25000.f, -25000.f, 25000.f, 25000.f);
+		terrainObject->invalidateRegion(huge);
+	}
 }
 
 // ----------------------------------------------------------------------
@@ -391,16 +656,86 @@ void CityTerrainLayerManager::getRegionsForCity(int32 cityId, std::vector<const 
 
 // ----------------------------------------------------------------------
 
-void CityTerrainLayerManager::enumerateAvailableShaders(std::vector<std::string> & outTemplates, std::vector<std::string> & outNames) const
+void CityTerrainLayerManager::getRegionsForUiList(int32 preferredCityId, std::vector<const TerrainRegion *> & outRegions) const
 {
-	if (m_shaderListDirty)
-	{
-		m_cachedShaderTemplates.clear();
-		m_cachedShaderNames.clear();
+	outRegions.clear();
 
-		// Static list of ground/terrain shaders available for city painting
-		// Using actual shader paths that exist in the game archives
-		static const char * const shaderList[] = {
+	if (preferredCityId != 0)
+	{
+		getRegionsForCity(preferredCityId, outRegions);
+		return;
+	}
+
+	outRegions.reserve(m_regions.size());
+	for (RegionMap::const_iterator it = m_regions.begin(); it != m_regions.end(); ++it)
+		outRegions.push_back(&it->second);
+
+	struct
+	{
+		bool operator()(TerrainRegion const * a, TerrainRegion const * b) const
+		{
+			if (a->type != b->type)
+				return a->type < b->type;
+			if (a->cityId != b->cityId)
+				return a->cityId < b->cityId;
+			return a->regionId < b->regionId;
+		}
+	} cmpLess;
+
+	std::sort(outRegions.begin(), outRegions.end(), cmpLess);
+}
+
+// ----------------------------------------------------------------------
+
+void CityTerrainLayerManager::invalidateCachedTerrainShaderList()
+{
+	if (ms_instance)
+		ms_instance->m_terrainShaderCacheDirty = true;
+}
+
+// ----------------------------------------------------------------------
+
+void CityTerrainLayerManager::rebuildCachedTerrainShaderList() const
+{
+	m_cachedShaderTemplates.clear();
+	m_cachedShaderNames.clear();
+
+	std::vector<std::string> trnPaths;
+	TreeFile::collectVirtualPathNamesWithPrefixAndSuffix("terrain/", ".trn", trnPaths);
+
+	typedef std::pair<std::string, std::string> DisplayAndPath;
+	std::vector<DisplayAndPath> rows;
+	std::set<std::string> seenPaths;
+
+	for (size_t i = 0; i < trnPaths.size(); ++i)
+	{
+		Iff iff;
+		if (!iff.open(trnPaths[i].c_str(), true))
+			continue;
+
+		collectShaderGroupsFromIffRecursive(iff, seenPaths, rows);
+		iff.close();
+	}
+
+	struct SortByDisplay
+	{
+		bool operator()(DisplayAndPath const & a, DisplayAndPath const & b) const
+		{
+			return _stricmp(a.first.c_str(), b.first.c_str()) < 0;
+		}
+	};
+
+	std::sort(rows.begin(), rows.end(), SortByDisplay());
+
+	for (size_t r = 0; r < rows.size(); ++r)
+	{
+		m_cachedShaderNames.push_back(rows[r].first);
+		m_cachedShaderTemplates.push_back(rows[r].second);
+	}
+
+	if (m_cachedShaderTemplates.empty())
+	{
+		static char const * const shaderList[] = {
 			"shader/floor_carpet_red.sht",
 			"shader/floor_carpet_blue.sht",
 			"shader/floor_carpet_green.sht",
@@ -422,11 +757,11 @@ void CityTerrainLayerManager::enumerateAvailableShaders(std::vector<std::string>
 			"shader/dirt_forced_earth_cir2.sht",
 			"shader/dirt_forced_earth_cir3.sht",
 			"shader/dark_vip_red_floor.sht",
-			"shader/wter_lava.sht"
+			"shader/wter_lava.sht",
 			"shader/wter_aqua.sht"
 		};
 
-		static const char * const nameList[] = {
+		static char const * const nameList[] = {
 			"Carpet (Red)",
 			"Carpet (Blue)",
 			"Carpet (Green)",
@@ -452,18 +787,27 @@ void CityTerrainLayerManager::enumerateAvailableShaders(std::vector<std::string>
 			"Water",
 		};
 
-		int const numShaders = sizeof(shaderList) / sizeof(shaderList[0]);
+		int const numShaders = static_cast<int>(sizeof(shaderList) / sizeof(shaderList[0]));
 
-		for (int i = 0; i < numShaders; ++i)
+		for (int s = 0; s < numShaders; ++s)
 		{
-			if (TreeFile::exists(shaderList[i]))
+			if (TreeFile::exists(shaderList[s]))
 			{
-				m_cachedShaderTemplates.push_back(shaderList[i]);
-				m_cachedShaderNames.push_back(nameList[i]);
+				m_cachedShaderTemplates.push_back(shaderList[s]);
+				m_cachedShaderNames.push_back(nameList[s]);
 			}
 		}
+	}
+}
 
-		m_shaderListDirty = false;
+// ----------------------------------------------------------------------
+
+void CityTerrainLayerManager::enumerateAvailableShaders(std::vector<std::string> & outTemplates, std::vector<std::string> & outNames) const
+{
+	if (m_terrainShaderCacheDirty)
+	{
+		rebuildCachedTerrainShaderList();
+		m_terrainShaderCacheDirty = false;
 	}
 
 	outTemplates = m_cachedShaderTemplates;
@@ -686,6 +1030,100 @@ void CityTerrainLayerManager::update(float /*elapsedTime*/)
 
 // ----------------------------------------------------------------------
 
+void CityTerrainLayerManager::setPaintTileGridOverlay(bool const visible, int32 const cityIdForSpan)
+{
+	ms_paintTileGridVisible = visible;
+	ms_paintTileGridCityId = visible ? cityIdForSpan : 0;
+}
+
+// ----------------------------------------------------------------------
+
+void CityTerrainLayerManager::addPaintTileGridDebugPrimitives(Camera const & camera) const
+{
+	if (!ms_paintTileGridVisible)
+		return;
+
+#ifndef _DEBUG
+	(void)camera;
+	return;
+#else
+
+	TerrainObject const * const terrainObject = TerrainObject::getConstInstance();
+	if (!terrainObject)
+		return;
+
+	Appearance const * const appearance = terrainObject->getAppearance();
+	if (!appearance)
+		return;
+
+	ProceduralTerrainAppearance const * const proceduralAppearance =
+		dynamic_cast<ProceduralTerrainAppearance const *>(appearance);
+	if (!proceduralAppearance || !proceduralAppearance->getAppearanceTemplate())
+		return;
+
+	float const tileW = proceduralAppearance->getAppearanceTemplate()->getTileWidthInMeters();
+	if (tileW < 0.01f)
+		return;
+
+	Vector const centerW = camera.getPosition_w();
+	float const cx = centerW.x;
+	float const cz = centerW.z;
+
+	float halfSpan = 96.f;
+	if (ms_paintTileGridCityId > 0)
+	{
+		int32 const r = getCityRadius(ms_paintTileGridCityId);
+		if (r > 0)
+			halfSpan = static_cast<float>(r) + tileW * 2.f;
+	}
+
+	float const maxHalf = tileW * 48.f;
+	if (halfSpan > maxHalf)
+		halfSpan = maxHalf;
+
+	float const x0 = cx - halfSpan;
+	float const x1 = cx + halfSpan;
+	float const z0 = cz - halfSpan;
+	float const z1 = cz + halfSpan;
+
+	VectorArgb color;
+	color.set(0.55f, 0.35f, 0.95f, 1.f);
+
+	int iMin = static_cast<int>(floor(x0 / tileW));
+	int iMax = static_cast<int>(ceil(x1 / tileW));
+	int kMin = static_cast<int>(floor(z0 / tileW));
+	int kMax = static_cast<int>(ceil(z1 / tileW));
+
+	int const maxLines = 65;
+	if (iMax - iMin > maxLines)
+	{
+		int const mid = (iMin + iMax) / 2;
+		iMin = mid - maxLines / 2;
+		iMax = mid + maxLines / 2;
+	}
+	if (kMax - kMin > maxLines)
+	{
+		int const mid = (kMin + kMax) / 2;
+		kMin = mid - maxLines / 2;
+		kMax = mid + maxLines / 2;
+	}
+
+	for (int i = iMin; i <= iMax; ++i)
+	{
+		float const x = static_cast<float>(i) * tileW;
+		addTerrainHeightLineStrip(*terrainObject, camera, x, z0, x, z1, color);
+	}
+
+	for (int k = kMin; k <= kMax; ++k)
+	{
+		float const z = static_cast<float>(k) * tileW;
+		addTerrainHeightLineStrip(*terrainObject, camera, x0, z, x1, z, color);
+	}
+#endif // _DEBUG
+}
+
+// ----------------------------------------------------------------------
+
 void CityTerrainLayerManager::handleTerrainModifyMessage(
 	int32 cityId,
 	int32 modificationType,
@@ -698,20 +1136,36 @@ void CityTerrainLayerManager::handleTerrainModifyMessage(
 	float endZ,
 	float width,
 	float height,
-	float blendDistance)
+	float blendDistance,
+	bool regionActive)
 {
 	REPORT_LOG(true, ("[Titan] CityTerrainLayerManager::handleTerrainModifyMessage: cityId=%d type=%d regionId=%s shader=%s center=(%.1f,%.1f) radius=%.1f height=%.1f\n",
 		cityId, modificationType, regionId.c_str(), shaderTemplate.c_str(), centerX, centerZ, radius, height));
 
-	if (modificationType == 3)
+	if (modificationType == kTerrainModRemove)
 	{
 		removeRegion(regionId);
 		return;
 	}
 
-	if (modificationType == 4)
+	if (modificationType == kTerrainModClearAll)
 	{
 		removeAllRegionsForCity(cityId);
+		return;
+	}
+
+	if (modificationType == kTerrainModSuspend ||
+		modificationType == kTerrainModResume)
+	{
+		RegionMap::iterator it = m_regions.find(regionId);
+		if (it != m_regions.end())
+		{
+			it->second.active = (modificationType == kTerrainModResume);
+			loadShaderForRegion(it->second);
+		}
+		flushTerrainUpdates();
+		if (ms_regionChangeCallback)
+			ms_regionChangeCallback(cityId);
 		return;
 	}
 
@@ -729,7 +1183,7 @@ void CityTerrainLayerManager::handleTerrainModifyMessage(
 	region.height = height;
 	region.blendDistance = blendDistance;
 	region.cachedShader = 0;
-	region.active = true;
+	region.active = regionActive;
 	region.timestamp = 0;  // Will be set by addRegion
 	region.priority = 0;   // Will be set by addRegion
 

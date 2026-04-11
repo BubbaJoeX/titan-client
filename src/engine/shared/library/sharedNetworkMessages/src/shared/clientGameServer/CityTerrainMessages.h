@@ -24,7 +24,9 @@ namespace CityTerrainModificationType
 		MT_SHADER_LINE = 1,
 		MT_FLATTEN = 2,
 		MT_REMOVE = 3,
-		MT_CLEAR_ALL = 4
+		MT_CLEAR_ALL = 4,
+		MT_SUSPEND = 5,
+		MT_RESUME = 6
 	};
 }
 
@@ -130,7 +132,8 @@ public:
 		float endZ,
 		float width,
 		float height,
-		float blendDistance
+		float blendDistance,
+		bool regionActive = true
 	);
 
 	explicit CityTerrainModifyMessage(Archive::ReadIterator & source);
@@ -148,6 +151,7 @@ public:
 	float getWidth() const { return m_width.get(); }
 	float getHeight() const { return m_height.get(); }
 	float getBlendDistance() const { return m_blendDistance.get(); }
+	bool getRegionActive() const { return m_regionActive.get(); }
 
 private:
 	Archive::AutoVariable<int32> m_cityId;
@@ -162,6 +166,7 @@ private:
 	Archive::AutoVariable<float> m_width;
 	Archive::AutoVariable<float> m_height;
 	Archive::AutoVariable<float> m_blendDistance;
+	Archive::AutoVariable<bool> m_regionActive;
 
 	CityTerrainModifyMessage(const CityTerrainModifyMessage &);
 	CityTerrainModifyMessage & operator=(const CityTerrainModifyMessage &);

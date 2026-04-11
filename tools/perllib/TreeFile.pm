@@ -31,7 +31,7 @@ $VERSION = 1.00;
 
 # These symbols are okay to export if specifically requested.
 # @EXPORT_OK = qw(&buildFileLookupTable &saveFileLookupTable &loadFileLookupTable &getFullPathName $relativePathName $fullPathName);
-@EXPORT_OK = qw(&buildFileLookupTable &saveFileLookupTable &loadFileLookupTable &getFullPathName &findRelative &findRelativeRegexMatch);
+@EXPORT_OK = qw(&buildFileLookupTable &saveFileLookupTable &loadFileLookupTable &getFullPathName &findRelative &findRelativeRegexMatch &findRelativeRegexMatchAllowSet &countRelativeRegexMatch &countRelativeRegexMatchAllowSet);
 
 # ======================================================================
 # TreeFile private variables.
@@ -357,7 +357,8 @@ sub findRelative
 		# Test all treefile-relative names against this regex.
 		# @todo optimize this by building a TreeFile-relative directory structure
 		# so that we don't need to test against everything.
-		foreach $relativePathName (keys %directoryIndexByRelativeName)
+		# Sort keys: Perl randomizes hash iteration order; stable order yields reproducible walks.
+		foreach $relativePathName (sort keys %directoryIndexByRelativeName)
 		{
 			if ($relativePathName =~ m/$matchRegex/)
 			{
@@ -392,6 +393,56 @@ sub findRelative
 #							 callback will be made for the file.
 # ----------------------------------------------------------------------
 
+sub countRelativeRegexMatch
+{
+	my $regexCount = @_;
+	die "Caller must specify at least one regex to match against treefile-relative pathnames" if !$regexCount;
+
+	my $n = 0;
+	foreach my $relativePathName (sort keys %directoryIndexByRelativeName)
+	{
+		for (my $i = 0; $i < $regexCount; ++$i)
+		{
+			if ($relativePathName =~ m/$_[$i]/)
+			{
+				++$n;
+				last;
+			}
+		}
+	}
+	return $n;
+}
+
+# ----------------------------------------------------------------------
+# Like countRelativeRegexMatch but only considers paths allowed by $allow
+# (hash: relative path => truthy). Used for batched ACM collect with a full lookup.
+# ----------------------------------------------------------------------
+
+sub countRelativeRegexMatchAllowSet
+{
+	my ($allow, @regexes) = @_;
+	die "TreeFile::countRelativeRegexMatchAllowSet: allow hash required" unless $allow && ref($allow) eq 'HASH';
+	my $regexCount = @regexes;
+	die "Caller must specify at least one regex" if !$regexCount;
+
+	my $n = 0;
+	foreach my $relativePathName (sort keys %directoryIndexByRelativeName)
+	{
+		next unless $allow->{$relativePathName};
+		for (my $i = 0; $i < $regexCount; ++$i)
+		{
+			if ($relativePathName =~ m/$regexes[$i]/)
+			{
+				++$n;
+				last;
+			}
+		}
+	}
+	return $n;
+}
+
+# ----------------------------------------------------------------------
+
 sub findRelativeRegexMatch
 {
 	# Process args.
@@ -401,8 +452,8 @@ sub findRelativeRegexMatch
 	my $regexCount = @_;
 	die "Caller must specify at least one regex to match against treefile-relative pathnames" if !$regexCount;
 
-	# Process each TreeFile-relative pathname.
-	foreach $relativePathName (keys %directoryIndexByRelativeName)
+	# Deterministic order (sort keys): hash key order is random per process in modern Perl.
+	foreach $relativePathName (sort keys %directoryIndexByRelativeName)
 	{
 		my $matchCount = 0;
 		
@@ -422,6 +473,40 @@ sub findRelativeRegexMatch
 			$_ =~ s!.*/!!;
 
 			# Call callback.
+			&$callbackRef();
+		}
+	}
+}
+
+# ----------------------------------------------------------------------
+# Same as findRelativeRegexMatch but only visits relatives in $allow.
+# ----------------------------------------------------------------------
+
+sub findRelativeRegexMatchAllowSet
+{
+	my $callbackRef = shift;
+	my $allow       = shift;
+	die "TreeFile::findRelativeRegexMatchAllowSet: callback required" if !defined($callbackRef);
+	die "TreeFile::findRelativeRegexMatchAllowSet: allow hash required" unless $allow && ref($allow) eq 'HASH';
+
+	my $regexCount = @_;
+	die "Caller must specify at least one regex" if !$regexCount;
+
+	foreach $relativePathName (sort keys %directoryIndexByRelativeName)
+	{
+		next unless $allow->{$relativePathName};
+
+		my $matchCount = 0;
+		for (my $i = 0; ($i < $regexCount) && ($matchCount < 1); ++$i)
+		{
+			++$matchCount if $relativePathName =~ m/$_[$i]/;
+		}
+
+		if ($matchCount > 0)
+		{
+			$fullPathName = getFullPathName($relativePathName);
+			$_ = $relativePathName;
+			$_ =~ s!.*/!!;
 			&$callbackRef();
 		}
 	}
