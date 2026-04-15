@@ -8,6 +8,7 @@
 #include "Tag.h"
 #include "Transform.h"
 #include "Vector.h"
+#include "VectorArgb.h"
 
 #include <maya/MArgList.h>
 #include <maya/MFn.h>
@@ -22,6 +23,12 @@
 #include <maya/MObject.h>
 #include <maya/MPlug.h>
 #include <maya/MSelectionList.h>
+#include <maya/MStringArray.h>
+#include <maya/MColor.h>
+#include <maya/MFnAmbientLight.h>
+#include <maya/MFnDirectionalLight.h>
+#include <maya/MFnLight.h>
+#include <maya/MFnPointLight.h>
 
 #include <string>
 #include <vector>
@@ -60,6 +67,26 @@ namespace
     static const Tag TAG_CELL = TAG(C,E,L,L);
     static const Tag TAG_CRC = TAG3(C,R,C);
     static const Tag TAG_PGRF = TAG(P,G,R,F);
+    static const Tag TAG_LGHT = TAG(L,G,H,T);
+
+    /// Matches `PortalPropertyTemplateCellLight::Type` / LGHT chunk int8.
+    enum PobCellLightType
+    {
+        PobLight_ambient = 0,
+        PobLight_parallel = 1,
+        PobLight_point = 2
+    };
+
+    struct PobCellLight
+    {
+        int type = PobLight_ambient;
+        VectorArgb diffuse;
+        VectorArgb specular;
+        Transform transform = Transform::identity;
+        float constantAttenuation = 1.f;
+        float linearAttenuation = 0.f;
+        float quadraticAttenuation = 0.f;
+    };
 
     struct PortalGeometry
     {
@@ -359,6 +386,153 @@ namespace
         addPortalAuthoringAttrs(depFn, pd);
         return attachDoorHardpoint(portalObj, pd);
     }
+
+    static void readCellLightsChunk(Iff& iff, std::vector<PobCellLight>& out)
+    {
+        const int n = iff.read_int32();
+        out.clear();
+        if (n <= 0)
+            return;
+        out.reserve(static_cast<size_t>(n));
+        for (int j = 0; j < n; ++j)
+        {
+            PobCellLight L;
+            L.type = static_cast<int>(iff.read_int8());
+            L.diffuse = iff.read_floatVectorArgb();
+            L.specular = iff.read_floatVectorArgb();
+            L.transform = iff.read_floatTransform();
+            L.constantAttenuation = iff.read_float();
+            L.linearAttenuation = iff.read_float();
+            L.quadraticAttenuation = iff.read_float();
+            out.push_back(L);
+        }
+    }
+
+    static void trySetFloatPlug(MObject node, const char* plugName, float v)
+    {
+        MFnDependencyNode dep(node);
+        MPlug p = dep.findPlug(plugName, true);
+        if (!p.isNull())
+            p.setFloat(v);
+    }
+
+    static void trySetBoolPlug(MObject node, const char* plugName, bool v)
+    {
+        MFnDependencyNode dep(node);
+        MPlug p = dep.findPlug(plugName, true);
+        if (!p.isNull())
+            p.setBool(v);
+    }
+
+    /// Maya 2026+ removed `MFnLight::setSpecularColor`; drive the `specularColor` compound (or R/G/B plugs) instead.
+    static void trySetSpecularRgb(MObject lightShape, float r, float g, float b)
+    {
+        MFnDependencyNode dep(lightShape);
+        MPlug sc = dep.findPlug("specularColor", true);
+        if (!sc.isNull() && sc.isCompound() && sc.numChildren() >= 3)
+        {
+            sc.child(0).setFloat(r);
+            sc.child(1).setFloat(g);
+            sc.child(2).setFloat(b);
+            return;
+        }
+        trySetFloatPlug(lightShape, "specularColorR", r);
+        trySetFloatPlug(lightShape, "specularColorG", g);
+        trySetFloatPlug(lightShape, "specularColorB", b);
+    }
+
+    static void applyPobLightColors(MFnLight& lightFn, const PobCellLight& L)
+    {
+        lightFn.setColor(MColor(L.diffuse.r, L.diffuse.g, L.diffuse.b));
+        lightFn.setIntensity(1.0f);
+        if (L.type != PobLight_ambient)
+        {
+            trySetSpecularRgb(lightFn.object(), L.specular.r, L.specular.g, L.specular.b);
+            trySetBoolPlug(lightFn.object(), "emitSpecular", true);
+        }
+    }
+
+    /// Parents cell LGHT under `lights` group (like engine `PortalPropertyTemplateCell` LGHT). Does not apply engine `yaw_l(PI)` (that is a runtime load fix for legacy Maya exports).
+    static MStatus createCellLightRepresentations(MObject cellObj, const std::vector<PobCellLight>& lights)
+    {
+        if (lights.empty())
+            return MS::kSuccess;
+        MStatus st;
+        MFnTransform cellFn(cellObj);
+        MString cmd = "createNode transform -n \"lights\" -p \"" + cellFn.fullPathName() + "\"";
+        MStringArray result;
+        MGlobal::executeCommand(cmd, result);
+        MObject lightsGroup;
+        if (result.length() > 0)
+        {
+            MSelectionList sel;
+            if (sel.add(result[0]) == MS::kSuccess)
+                sel.getDependNode(0, lightsGroup);
+        }
+        if (lightsGroup.isNull())
+            return MS::kFailure;
+
+        for (size_t i = 0; i < lights.size(); ++i)
+        {
+            const PobCellLight& L = lights[i];
+            char nameBuf[48];
+            sprintf(nameBuf, "cellLight_%zu", i);
+
+            if (L.type == PobLight_ambient)
+            {
+                MFnAmbientLight fn;
+                MObject shape = fn.create(lightsGroup, true, false, &st);
+                if (!st)
+                    continue;
+                applyPobLightColors(fn, L);
+                MFnDagNode dag(shape);
+                MDagPath path;
+                dag.getPath(path);
+                path.pop(1);
+                MFnTransform(path).setName(MString(nameBuf));
+            }
+            else if (L.type == PobLight_parallel)
+            {
+                MFnDirectionalLight fn;
+                MObject shape = fn.create(lightsGroup, true, false, &st);
+                if (!st)
+                    continue;
+                applyPobLightColors(fn, L);
+                MFnDagNode dag(shape);
+                MDagPath path;
+                dag.getPath(path);
+                path.pop(1);
+                MFnTransform tf(path);
+                tf.setName(MString(nameBuf));
+                MMatrix m;
+                engineTransformToMayaMatrix(L.transform, m);
+                tf.set(m);
+            }
+            else if (L.type == PobLight_point)
+            {
+                MFnPointLight fn;
+                MObject shape = fn.create(lightsGroup, true, false, &st);
+                if (!st)
+                    continue;
+                applyPobLightColors(fn, L);
+                trySetFloatPlug(shape, "constantAttenuation", L.constantAttenuation);
+                trySetFloatPlug(shape, "linearAttenuation", L.linearAttenuation);
+                trySetFloatPlug(shape, "quadraticAttenuation", L.quadraticAttenuation);
+                MFnDagNode dag(shape);
+                MDagPath path;
+                dag.getPath(path);
+                path.pop(1);
+                MFnTransform tf(path);
+                tf.setName(MString(nameBuf));
+                MMatrix m;
+                engineTransformToMayaMatrix(L.transform, m);
+                tf.set(m);
+            }
+            else
+                pobLog("  Unknown cell light type %d, skipped", L.type);
+        }
+        return MS::kSuccess;
+    }
 }
 
 void* ImportPob::creator()
@@ -535,10 +709,21 @@ MStatus ImportPob::doIt(const MArgList& args)
             }
         }
 
+        std::vector<PobCellLight> cellLights;
         if (cellVersion >= 3 && iff.getNumberOfBlocksLeft() > 0 && !iff.isCurrentForm())
         {
-            iff.enterChunk();
-            iff.exitChunk();
+            const Tag nextChunk = iff.getCurrentName();
+            if (nextChunk == TAG_LGHT)
+            {
+                iff.enterChunk(TAG_LGHT);
+                readCellLightsChunk(iff, cellLights);
+                iff.exitChunk(TAG_LGHT);
+            }
+            else
+            {
+                iff.enterChunk(nextChunk);
+                iff.exitChunk(nextChunk);
+            }
         }
 
         iff.exitForm(cellVersionTag);
@@ -626,6 +811,14 @@ MStatus ImportPob::doIt(const MArgList& args)
                         pobLog("  Portal p%zu: createPortalRepresentation failed", p);
                 }
             }
+        }
+
+        if (!cellLights.empty())
+        {
+            pobLog("  Creating %zu cell light(s)", cellLights.size());
+            status = createCellLightRepresentations(cellTransforms[static_cast<size_t>(i)], cellLights);
+            if (!status)
+                pobLog("  cell lights: createCellLightRepresentations failed");
         }
 
         if (!floorName.empty())

@@ -19,6 +19,12 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ZERO_CHECK", "ZERO_CHECK.vc
 	ProjectSection(ProjectDependencies) = postProject
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "swgDeployMayaPlugins", "swgDeployMayaPlugins.vcxproj", "{B6C98D6F-CBF0-3B5E-B952-BC02CD1E97A3}"
+	ProjectSection(ProjectDependencies) = postProject
+		{736AE3F5-0DC0-3003-AC0D-B55721C90F29} = {736AE3F5-0DC0-3003-AC0D-B55721C90F29}
+		{F35E3DBD-C5B8-3C10-9D65-F12229BF4F2D} = {F35E3DBD-C5B8-3C10-9D65-F12229BF4F2D}
+	EndProjectSection
+EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "unicode", "unicode\unicode.vcxproj", "{C2D99672-5341-3E94-B771-152469C4871E}"
 	ProjectSection(ProjectDependencies) = postProject
 		{F35E3DBD-C5B8-3C10-9D65-F12229BF4F2D} = {F35E3DBD-C5B8-3C10-9D65-F12229BF4F2D}
@@ -57,6 +63,10 @@ Global
 		{F35E3DBD-C5B8-3C10-9D65-F12229BF4F2D}.MinSizeRel|x64.Build.0 = MinSizeRel|x64
 		{F35E3DBD-C5B8-3C10-9D65-F12229BF4F2D}.RelWithDebInfo|x64.ActiveCfg = RelWithDebInfo|x64
 		{F35E3DBD-C5B8-3C10-9D65-F12229BF4F2D}.RelWithDebInfo|x64.Build.0 = RelWithDebInfo|x64
+		{B6C98D6F-CBF0-3B5E-B952-BC02CD1E97A3}.Debug|x64.ActiveCfg = Debug|x64
+		{B6C98D6F-CBF0-3B5E-B952-BC02CD1E97A3}.Release|x64.ActiveCfg = Release|x64
+		{B6C98D6F-CBF0-3B5E-B952-BC02CD1E97A3}.MinSizeRel|x64.ActiveCfg = MinSizeRel|x64
+		{B6C98D6F-CBF0-3B5E-B952-BC02CD1E97A3}.RelWithDebInfo|x64.ActiveCfg = RelWithDebInfo|x64
 		{C2D99672-5341-3E94-B771-152469C4871E}.Debug|x64.ActiveCfg = Debug|x64
 		{C2D99672-5341-3E94-B771-152469C4871E}.Debug|x64.Build.0 = Debug|x64
 		{C2D99672-5341-3E94-B771-152469C4871E}.Release|x64.ActiveCfg = Release|x64

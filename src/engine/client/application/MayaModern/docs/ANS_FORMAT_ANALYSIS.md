@@ -3,12 +3,14 @@
 ## Overview
 
 ANS files are SWG animation files in IFF format. Two variants exist:
+
 - **KFAT** (Keyframe Animation Template): Uncompressed, version 0003
 - **CKAT** (Compressed Keyframe Animation Template): Compressed, version 0001
 
 ## File Structure
 
 ### KFAT (0003)
+
 ```
 KFAT
   0003
@@ -26,6 +28,7 @@ KFAT
 ```
 
 ### CKAT (0001)
+
 ```
 CKAT
   0001
@@ -73,3 +76,4 @@ When mask bit is SET = animated (use channel). When CLEAR = static (use static v
 2. **Multiple instances**: Scene may have kaadu:kaadu and kaadu:kaadu1. Joint map keeps first match; only one skeleton gets animated.
 3. **Empty Graph Editor**: Select the actual joint (e.g. root__kaadu), not the parent group, to see curves.
 4. **Only vertical movement**: If only translateY animates, check: translationMask has MASK_X/MASK_Z for root, rotation has hasAnimatedRotations=true, joint names match.
+

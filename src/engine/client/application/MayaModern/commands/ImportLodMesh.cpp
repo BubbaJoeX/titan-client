@@ -13,6 +13,7 @@
 #include <maya/MGlobal.h>
 #include <maya/MSelectionList.h>
 
+#include <map>
 #include <string>
 #include <vector>
 #include <iostream>
@@ -652,6 +653,7 @@ MStatus ImportLodMesh::doIt(const MArgList& args)
     }
 
     lodLog("Top form: %s", (topForm == TAG_MLOD) ? "MLOD" : (topForm == TAG_DTLA) ? "DTLA" : (topForm == TAG_MESH) ? "MESH" : (topForm == TAG_APT) ? "APT" : "UNKNOWN");
+    std::vector<MayaSceneBuilder::HardpointData> dtlaAppearanceHardpoints;
     std::vector<std::string> detailLevelPaths;
     std::vector<Vector> radarVerts, testVerts;
     std::vector<int> radarIndices, testIndices;
@@ -669,7 +671,12 @@ MStatus ImportLodMesh::doIt(const MArgList& args)
             {
                 Tag formTag = iff.getCurrentName();
                 if (formTag == TAG_APPR)
-                    skipForm(iff);
+                {
+                    std::string apprFloorScratch;
+                    const size_t hpBefore = dtlaAppearanceHardpoints.size();
+                    if (SwgMshImport::parseFullApprFormForHardpoints(iff, dtlaAppearanceHardpoints, apprFloorScratch))
+                        lodLog("  APPR: +%zu hardpoint(s)", dtlaAppearanceHardpoints.size() - hpBefore);
+                }
                 else if (formTag == TAG_RADR)
                 {
                     iff.enterForm(TAG_RADR);
@@ -904,6 +911,23 @@ MStatus ImportLodMesh::doIt(const MArgList& args)
                 createShapeMesh(radarVerts, radarIndices, "radar", lodPath);
             if (!testVerts.empty())
                 createShapeMesh(testVerts, testIndices, "test", lodPath);
+        }
+    }
+
+    if (!dtlaAppearanceHardpoints.empty() && lodGroupResult.length() > 0)
+    {
+        MString l0Path = lodGroupResult[0] + "|l0";
+        MSelectionList hpSel;
+        if (hpSel.add(l0Path) == MS::kSuccess)
+        {
+            MDagPath l0Dag;
+            if (hpSel.getDagPath(0, l0Dag) == MS::kSuccess)
+            {
+                std::map<std::string, MDagPath> emptyJointMap;
+                const std::string hpMeshName = baseName + std::string("_appearance");
+                MStatus hpSt = MayaSceneBuilder::createHardpoints(dtlaAppearanceHardpoints, emptyJointMap, hpMeshName, l0Dag.node());
+                lodLog("DTLA appearance hardpoints on l0: count=%zu %s", dtlaAppearanceHardpoints.size(), hpSt ? "OK" : "FAILED");
+            }
         }
     }
 

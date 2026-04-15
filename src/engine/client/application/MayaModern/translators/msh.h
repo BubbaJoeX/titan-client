@@ -1,9 +1,29 @@
 #ifndef SWGMAYAEDITOR_MSH_H
 #define SWGMAYAEDITOR_MSH_H
 
+#include "Iff.h"
+#include "MayaSceneBuilder.h"
 #include "Tag.h"
 
 #include <maya/MPxFileTranslator.h>
+
+#include <string>
+#include <vector>
+
+namespace SwgMshImport
+{
+    void consumeApprInnerForHardpointsAndFloor(
+        Iff& iff,
+        std::vector<MayaSceneBuilder::HardpointData>& hardpoints,
+        std::string& floorReferencePath,
+        bool parseFlorForms);
+
+    /// iff must be positioned on FORM APPR. Consumes the entire APPR. Appends HPNT data to `hardpoints`.
+    bool parseFullApprFormForHardpoints(
+        Iff& iff,
+        std::vector<MayaSceneBuilder::HardpointData>& hardpoints,
+        std::string& floorReferencePath);
+}
 
 class MshTranslator : public MPxFileTranslator
 {

@@ -127,6 +127,8 @@
       <Command>setlocal
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgAssetDissector.mel D:/titan/client/src/engine/client/application/MayaModern/build/Debug/swgAssetDissector.mel
 if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgAnimationBrowser.mel D:/titan/client/src/engine/client/application/MayaModern/build/Debug/swgAnimationBrowser.mel
+if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgStaticMeshExport.mel D:/titan/client/src/engine/client/application/MayaModern/build/Debug/swgStaticMeshExport.mel
 if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/pobAuthoring.mel D:/titan/client/src/engine/client/application/MayaModern/build/Debug/pobAuthoring.mel
@@ -198,6 +200,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <Message>Copying MEL scripts to plugin directory</Message>
       <Command>setlocal
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgAssetDissector.mel D:/titan/client/src/engine/client/application/MayaModern/build/Release/swgAssetDissector.mel
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgAnimationBrowser.mel D:/titan/client/src/engine/client/application/MayaModern/build/Release/swgAnimationBrowser.mel
 if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgStaticMeshExport.mel D:/titan/client/src/engine/client/application/MayaModern/build/Release/swgStaticMeshExport.mel
 if %errorlevel% neq 0 goto :cmEnd
@@ -271,6 +275,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <Command>setlocal
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgAssetDissector.mel D:/titan/client/src/engine/client/application/MayaModern/build/MinSizeRel/swgAssetDissector.mel
 if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgAnimationBrowser.mel D:/titan/client/src/engine/client/application/MayaModern/build/MinSizeRel/swgAnimationBrowser.mel
+if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgStaticMeshExport.mel D:/titan/client/src/engine/client/application/MayaModern/build/MinSizeRel/swgStaticMeshExport.mel
 if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/pobAuthoring.mel D:/titan/client/src/engine/client/application/MayaModern/build/MinSizeRel/pobAuthoring.mel
@@ -341,6 +347,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <Message>Copying MEL scripts to plugin directory</Message>
       <Command>setlocal
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgAssetDissector.mel D:/titan/client/src/engine/client/application/MayaModern/build/RelWithDebInfo/swgAssetDissector.mel
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgAnimationBrowser.mel D:/titan/client/src/engine/client/application/MayaModern/build/RelWithDebInfo/swgAnimationBrowser.mel
 if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgStaticMeshExport.mel D:/titan/client/src/engine/client/application/MayaModern/build/RelWithDebInfo/swgStaticMeshExport.mel
 if %errorlevel% neq 0 goto :cmEnd
@@ -568,6 +576,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportStructure.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgAssetDissector.cpp" />
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgAssetDissector.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgAnimationBrowser.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgAnimationBrowser.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SkeletonTemplateWriter.cpp" />
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SkeletonTemplateWriter.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\StaticMeshWriter.cpp" />

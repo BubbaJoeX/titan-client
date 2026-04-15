@@ -1,0 +1,231 @@
+// SwgMayaEditor — premade single-cell POB with two exterior portals (entry / exit) and optional viewport room mesh.
+//
+// Requires: loadPlugin SwgMayaEditor;
+// Room placeholders (same idea as pobAuthoring.mel): polyCube under rN|mesh, polyPlane under rN|collision|floor0.
+//   Not read by exportPob — only external_reference on mesh/floor0 matters for the game.
+// Default room: 8m x 8m footprint (X x Z), 12m tall (Y) — polyCube -w 8 -h 12 -d 8.
+//
+// Usage (re-source after edits:  source "/path/pobSingleCellPreset.mel";  — MEL allows only one arity per proc name).
+//   swg_pob_singleCellEntryExitDefault;
+//   swg_pob_singleCellEntryExit "my_hut" 3.0 2.5 8.0 1;   // 5 args: default 8x12x8 room
+//   swg_pob_singleCellEntryExitFull "my_hut" 3.0 2.5 8.0 1 10.0 10.0 10.0;  // 8 args: custom W,H,D (0 0 0 = no room mesh)
+//   swg_pob_singleCellEntryExitPreset "garage" 4 8.0 1;   // 4 args: preset doors + default room
+//   swg_pob_singleCellEntryExitPresetFull "garage" 4 8.0 1 8.0 12.0 8.0; // 7 args: custom room
+//
+// Next: setAttr ...|r0|mesh.external_reference / ...|floor0.external_reference, validatePob, exportPob -i "..."
+
+/// Viewport-only room box + floor (matches pobAuthoring swg_pob_addTemplatePlaceholders layout).
+global proc swg_pob_addRoomPlaceholders(string $pobBaseLong, int $cellIndex, float $roomW, float $roomH, float $roomD)
+{
+    if ($roomW <= 0 || $roomH <= 0 || $roomD <= 0)
+        return;
+
+    string $meshP = $pobBaseLong + "|r" + $cellIndex + "|mesh";
+    string $floorP = $pobBaseLong + "|r" + $cellIndex + "|collision|floor0";
+    if (!`objExists $meshP` || !`objExists $floorP`)
+    {
+        warning "swg_pob_addRoomPlaceholders: missing mesh or floor0 transform";
+        return;
+    }
+
+    if (!`objExists ($meshP + "|pob_placeholder_room")`)
+    {
+        string $tmp = "pob_ph_room_" + $cellIndex;
+        string $cube[] = `polyCube -w $roomW -h $roomH -d $roomD -sx 1 -sy 1 -sz 1 -n $tmp`;
+        parent $cube[0] $meshP;
+        string $roomPath[] = `ls -long ($meshP + "|" + $tmp)`;
+        if (size($roomPath) > 0)
+            rename $roomPath[0] pob_placeholder_room;
+        string $roomT[] = `ls -long ($meshP + "|pob_placeholder_room")`;
+        if (size($roomT) > 0)
+        {
+            string $rt = $roomT[0];
+            setAttr ($rt + ".tx") 0;
+            setAttr ($rt + ".ty") 0;
+            setAttr ($rt + ".tz") 0;
+            setAttr ($rt + ".rx") 0;
+            setAttr ($rt + ".ry") 0;
+            setAttr ($rt + ".rz") 0;
+        }
+    }
+
+    if (!`objExists ($floorP + "|pob_placeholder_floor")`)
+    {
+        string $tmpf = "pob_ph_floor_" + $cellIndex;
+        string $pl[] = `polyPlane -w $roomW -h $roomD -sx 1 -sy 1 -n $tmpf`;
+        parent $pl[0] $floorP;
+        string $flPath[] = `ls -long ($floorP + "|" + $tmpf)`;
+        if (size($flPath) > 0)
+            rename $flPath[0] pob_placeholder_floor;
+        string $floorT[] = `ls -long ($floorP + "|pob_placeholder_floor")`;
+        if (size($floorT) > 0)
+        {
+            string $ft = $floorT[0];
+            setAttr ($ft + ".tx") 0;
+            setAttr ($ft + ".ty") 0;
+            setAttr ($ft + ".tz") 0;
+            setAttr ($ft + ".rx") 90;
+            setAttr ($ft + ".ry") 0;
+            setAttr ($ft + ".rz") 0;
+        }
+    }
+}
+
+/// Short form: same as Full with 8×12×8 m room (8×8 footprint, 12 m tall). MEL cannot overload proc names — use Full for custom room.
+global proc swg_pob_singleCellEntryExit(string $rootName, float $doorW, float $doorH, float $bayDepthZ, int $addLights)
+{
+    swg_pob_singleCellEntryExitFull($rootName, $doorW, $doorH, $bayDepthZ, $addLights, 8.0, 12.0, 8.0);
+}
+
+global proc swg_pob_singleCellEntryExitFull(string $rootName, float $doorW, float $doorH, float $bayDepthZ, int $addLights,
+ float $roomW, float $roomH, float $roomD)
+{
+    if (`pluginInfo -q -loaded SwgMayaEditor` != 1)
+    {
+        loadPlugin SwgMayaEditor;
+    }
+
+    if (size($rootName) < 1)
+        $rootName = "pob_single_cell";
+
+    if ($addLights != 0)
+    {
+        if (!`objExists swg_pob_sun`)
+        {
+            directionalLight -n swg_pob_sun -rgb 1 0.98 0.95 -intensity 1.15;
+            rotate -r -os -35 45 0 swg_pob_sun;
+            move 30 80 40 swg_pob_sun;
+        }
+        if (!`objExists swg_pob_fill`)
+            ambientLight -n swg_pob_fill -rgb 0.45 0.48 0.55 -intensity 0.35;
+    }
+
+    if ($doorW <= 0 || $doorH <= 0)
+    {
+        warning "swg_pob_singleCellEntryExitFull: door width/height must be positive";
+        return;
+    }
+    if ($bayDepthZ <= 0)
+    {
+        warning "swg_pob_singleCellEntryExitFull: bayDepthZ should be > 0 (full Z span; portals sit at half from center)";
+        return;
+    }
+
+    string $cmd = "createPobTemplate -n " + $rootName + " -cells 1";
+    eval $cmd;
+
+    string $rootLong[] = `ls -long $rootName`;
+    if (size($rootLong) < 1)
+    {
+        warning "swg_pob_singleCellEntryExitFull: could not resolve root transform";
+        return;
+    }
+    string $base = $rootLong[0];
+    string $portalsPath = $base + "|r0|portals";
+
+    if (!`objExists $portalsPath`)
+    {
+        warning "swg_pob_singleCellEntryExitFull: missing portals group (createPobTemplate failed?)";
+        return;
+    }
+
+    if ($roomW > 0 && $roomH > 0 && $roomD > 0)
+        swg_pob_addRoomPlaceholders($base, 0, $roomW, $roomH, $roomD);
+
+    // Entry: building portal 0, cw=0, exterior target
+    string $a0 = "addPobPortal -parent \"" + $portalsPath + "\" -n portal_entry -index 0 -clockwise 0 -target -1 -w " + $doorW + " -h " + $doorH;
+    eval $a0;
+
+    // Exit: building portal 1, cw=1
+    string $a1 = "addPobPortal -parent \"" + $portalsPath + "\" -n portal_exit -index 1 -clockwise 1 -target -1 -w " + $doorW + " -h " + $doorH;
+    eval $a1;
+
+    string $e[] = `ls -long ($base + "|r0|portals|portal_entry")`;
+    string $x[] = `ls -long ($base + "|r0|portals|portal_exit")`;
+    if (size($e) < 1 || size($x) < 1)
+    {
+        warning "swg_pob_singleCellEntryExitFull: portal transforms not found after addPobPortal";
+        return;
+    }
+
+    float $hz = $bayDepthZ * -0.5;
+    float $fz = $bayDepthZ * 0.5;
+    xform -os -t 0 0 $hz $e[0];
+    xform -os -t 0 0 $fz $x[0];
+    xform -os -r 0 180 0 $x[0];
+
+    select -r $base;
+    print ("// swg_pob_singleCellEntryExitFull: " + $base + " — portals on +/-Z; room placeholder " + $roomW + "x" + $roomH + "x" + $roomD + " (W x H x D) if enabled.\n");
+}
+
+global proc swg_pob_singleCellEntryExitDefault()
+{
+    // 8m x 8m footprint, 12m height; portal separation matches 8m Z depth (doors at z = +/-4m).
+    swg_pob_singleCellEntryExit("pob_single_cell", 2.0, 2.5, 8.0, 1);
+}
+
+/// Short form: preset doors + default 8×12×8 room.
+global proc swg_pob_singleCellEntryExitPreset(string $rootName, int $preset, float $bayDepthZ, int $addLights)
+{
+    swg_pob_singleCellEntryExitPresetFull($rootName, $preset, $bayDepthZ, $addLights, 8.0, 12.0, 8.0);
+}
+
+/// Use addPobPortal -preset (0=default 2x2.5, 1=wide, 2=narrow, 3=tall, 4=garage) for both doors.
+global proc swg_pob_singleCellEntryExitPresetFull(string $rootName, int $preset, float $bayDepthZ, int $addLights,
+                                              float $roomW, float $roomH, float $roomD)
+{
+    if (`pluginInfo -q -loaded SwgMayaEditor` != 1)
+        loadPlugin SwgMayaEditor;
+
+    if (size($rootName) < 1)
+        $rootName = "pob_single_cell_garage";
+
+    if ($preset < 0 || $preset > 4)
+    {
+        warning "swg_pob_singleCellEntryExitPresetFull: preset must be 0..4 (see addPobPortal -preset)";
+        return;
+    }
+
+    if ($addLights != 0)
+    {
+        if (!`objExists swg_pob_sun`)
+        {
+            directionalLight -n swg_pob_sun -rgb 1 0.98 0.95 -intensity 1.15;
+            rotate -r -os -35 45 0 swg_pob_sun;
+            move 30 80 40 swg_pob_sun;
+        }
+        if (!`objExists swg_pob_fill`)
+            ambientLight -n swg_pob_fill -rgb 0.45 0.48 0.55 -intensity 0.35;
+    }
+
+    if ($bayDepthZ <= 0)
+    {
+        warning "swg_pob_singleCellEntryExitPresetFull: bayDepthZ must be > 0";
+        return;
+    }
+
+    eval ("createPobTemplate -n " + $rootName + " -cells 1");
+    string $rootLong[] = `ls -long $rootName`;
+    if (size($rootLong) < 1) return;
+    string $base = $rootLong[0];
+    string $portalsPath = $base + "|r0|portals";
+
+    if ($roomW > 0 && $roomH > 0 && $roomD > 0)
+        swg_pob_addRoomPlaceholders($base, 0, $roomW, $roomH, $roomD);
+
+    eval ("addPobPortal -parent \"" + $portalsPath + "\" -n portal_entry -index 0 -clockwise 0 -target -1 -preset " + $preset);
+    eval ("addPobPortal -parent \"" + $portalsPath + "\" -n portal_exit -index 1 -clockwise 1 -target -1 -preset " + $preset);
+
+    string $e[] = `ls -long ($base + "|r0|portals|portal_entry")`;
+    string $x[] = `ls -long ($base + "|r0|portals|portal_exit")`;
+    if (size($e) < 1 || size($x) < 1) return;
+
+    float $hz = $bayDepthZ * -0.5;
+    float $fz = $bayDepthZ * 0.5;
+    xform -os -t 0 0 $hz $e[0];
+    xform -os -t 0 0 $fz $x[0];
+    xform -os -r 0 180 0 $x[0];
+
+    select -r $base;
+    print ("// swg_pob_singleCellEntryExitPresetFull: preset " + $preset + " on " + $base + "\n");
+}

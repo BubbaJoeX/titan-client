@@ -1,5 +1,7 @@
 #include "DdsToTgaConverter.h"
 
+#include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <iostream>
@@ -47,7 +49,24 @@ namespace
         unsigned long dwCaps4;
         unsigned long dwReserved2;
     };
+
+    struct DdsHeaderDxt10
+    {
+        unsigned long dxgiFormat;
+        unsigned long resourceDimension;
+        unsigned long miscFlag;
+        unsigned long arraySize;
+        unsigned long miscFlags2;
+    };
 #pragma pack(pop)
+
+    // DXGI_FORMAT (subset). BC5 = two-channel normals (common for *_n.dds as FourCC ATI2 or DX10).
+    const unsigned long DXGI_FORMAT_BC5_TYPELESS = 80;
+    const unsigned long DXGI_FORMAT_BC5_UNORM = 83;
+    const unsigned long DXGI_FORMAT_BC5_SNORM = 84;
+
+    const unsigned long DDSD_PITCH = 0x00000008;
+    const unsigned long DDSD_LINEARSIZE = 0x00080000;
 
     inline unsigned long MakeFourCC(char a, char b, char c, char d)
     {
@@ -114,6 +133,40 @@ namespace
         r = static_cast<unsigned char>((packed >> 11) * 255 / 31);
         g = static_cast<unsigned char>(((packed >> 5) & 0x3F) * 255 / 63);
         b = static_cast<unsigned char>((packed & 0x1F) * 255 / 31);
+    }
+
+    /// Expand a masked DDS field to 8-bit (handles A8R8G8B8, A8B8G8R8, X8R8G8B8, etc.).
+    unsigned char expandMaskTo8(unsigned long pixel, unsigned long mask)
+    {
+        if (!mask)
+            return 0;
+        int rshift = 0;
+        for (unsigned long t = mask; t && (t & 1u) == 0; t >>= 1)
+            ++rshift;
+        unsigned bits = 0;
+        for (unsigned long t = mask >> rshift; t; t >>= 1)
+            ++bits;
+        unsigned long v = (pixel & mask) >> rshift;
+        if (bits == 0)
+            return 0;
+        if (bits >= 8)
+            return static_cast<unsigned char>(v & 0xFF);
+        const unsigned long maxVal = (1u << bits) - 1;
+        return static_cast<unsigned char>((v * 255 + maxVal / 2) / maxVal);
+    }
+
+    void unpackDdsPixelToBgra(
+        unsigned long pixel,
+        unsigned long rMask,
+        unsigned long gMask,
+        unsigned long bMask,
+        unsigned long aMask,
+        unsigned char* bgra)
+    {
+        bgra[2] = expandMaskTo8(pixel, rMask);
+        bgra[1] = expandMaskTo8(pixel, gMask);
+        bgra[0] = expandMaskTo8(pixel, bMask);
+        bgra[3] = aMask ? expandMaskTo8(pixel, aMask) : 255;
     }
 
     void decompressDxt1Block(const unsigned char* block, unsigned char* outPixels, int outStride)
@@ -208,6 +261,31 @@ namespace
                 outPixels[y * outStride + x * 4 + 3] = alpha[y * 4 + x];
     }
 
+    /// BC5 / ATI2: two DXT5-style alpha blocks = R and G (tangent normal). Output BGRA, A=255 for GIMP/Maya.
+    void decompressBc5Block(const unsigned char* block, unsigned char* outPixels, int outStride)
+    {
+        unsigned char red[16];
+        unsigned char green[16];
+        decompressDxt5AlphaBlock(block, red);
+        decompressDxt5AlphaBlock(block + 8, green);
+        for (int y = 0; y < 4; ++y)
+        {
+            for (int x = 0; x < 4; ++x)
+            {
+                const int idx = y * 4 + x;
+                const float nx = red[idx] * (1.0f / 255.0f) * 2.0f - 1.0f;
+                const float ny = green[idx] * (1.0f / 255.0f) * 2.0f - 1.0f;
+                const float sq = 1.0f - nx * nx - ny * ny;
+                const float nz = sq > 0.f ? std::sqrt(sq) : 0.f;
+                const int o = y * outStride + x * 4;
+                outPixels[o + 0] = static_cast<unsigned char>(std::min(255.f, (nz * 0.5f + 0.5f) * 255.f + 0.5f));
+                outPixels[o + 1] = static_cast<unsigned char>(std::min(255.f, (ny * 0.5f + 0.5f) * 255.f + 0.5f));
+                outPixels[o + 2] = static_cast<unsigned char>(std::min(255.f, (nx * 0.5f + 0.5f) * 255.f + 0.5f));
+                outPixels[o + 3] = 255;
+            }
+        }
+    }
+
     void decompressDxt3Block(const unsigned char* block, unsigned char* outPixels, int outStride)
     {
         decompressDxt1Block(block + 8, outPixels, outStride);
@@ -231,7 +309,8 @@ namespace
         header[14] = height & 0xFF;
         header[15] = (height >> 8) & 0xFF;
         header[16] = 32;  // 32 bpp
-        header[17] = 40;  // 8-bit alpha (bits 0-3) + top-left origin (bit 5) for Maya compatibility
+        // 8 alpha attribute bits (0-3) + top-left origin (bit 5): matches prior MayaModern behavior and most viewers.
+        header[17] = 40;
 
         if (fwrite(header, 1, 18, f) != 18)
         {
@@ -239,7 +318,7 @@ namespace
             return false;
         }
 
-        int rowSize = width * 4;
+        const int rowSize = width * 4;
         for (int y = 0; y < height; ++y)
         {
             if (fwrite(bgraPixels + y * rowSize, 1, static_cast<size_t>(rowSize), f) != static_cast<size_t>(rowSize))
@@ -299,68 +378,123 @@ std::string DdsToTgaConverter::convertToTga(const std::string& ddsPath, const st
         return std::string();
     }
 
+    unsigned long dxgiFormat = 0;
+    if ((header.ddspf.dwFlags & 4) && header.ddspf.dwFourCC == MakeFourCC('D', 'X', '1', '0'))
+    {
+        DdsHeaderDxt10 d10;
+        if (fread(&d10, sizeof(d10), 1, f) != 1)
+        {
+            std::cerr << "[DdsToTga] Failed to read DX10 header: " << ddsPath << "\n";
+            fclose(f);
+            return std::string();
+        }
+        dxgiFormat = d10.dxgiFormat;
+        if (d10.arraySize > 1)
+            std::cerr << "[DdsToTga] Warning: texture array size " << d10.arraySize << " - decoding first slice only.\n";
+    }
+
     const int width = static_cast<int>(header.dwWidth);
     const int height = static_cast<int>(header.dwHeight);
     const int outStride = width * 4;
     std::vector<unsigned char> outPixels(static_cast<size_t>(width * height * 4));
 
-    int format = 0;  // 0=unsupported, 1=DXT1, 2=DXT3, 3=DXT5, 4=uncompressed RGBA
+    // 0=unsupported, 1=DXT1, 2=DXT3/BC2, 3=DXT5/BC3, 4=uncompressed RGBA, 5=BC5/ATI2
+    int format = 0;
     if (header.ddspf.dwFlags & 4)  // DDS_FOURCC
     {
         if (header.ddspf.dwFourCC == MakeFourCC('D', 'X', 'T', '1'))
             format = 1;
-        else if (header.ddspf.dwFourCC == MakeFourCC('D', 'X', 'T', '3'))
+        else if (header.ddspf.dwFourCC == MakeFourCC('D', 'X', 'T', '2') ||
+                 header.ddspf.dwFourCC == MakeFourCC('D', 'X', 'T', '3'))
             format = 2;
-        else if (header.ddspf.dwFourCC == MakeFourCC('D', 'X', 'T', '5'))
+        else if (header.ddspf.dwFourCC == MakeFourCC('D', 'X', 'T', '4') ||
+                 header.ddspf.dwFourCC == MakeFourCC('D', 'X', 'T', '5'))
             format = 3;
+        else if (header.ddspf.dwFourCC == MakeFourCC('A', 'T', 'I', '2'))
+            format = 5;
+        else if (header.ddspf.dwFourCC == MakeFourCC('D', 'X', '1', '0'))
+        {
+            if (dxgiFormat == DXGI_FORMAT_BC5_TYPELESS || dxgiFormat == DXGI_FORMAT_BC5_UNORM ||
+                dxgiFormat == DXGI_FORMAT_BC5_SNORM)
+                format = 5;
+        }
     }
-    else if ((header.ddspf.dwFlags & 0x40) != 0 && header.ddspf.dwRGBBitCount == 32)  // DDPF_RGB, 32-bit
+    else if (header.ddspf.dwRGBBitCount == 32)
     {
-        // A8R8G8B8 or X8R8G8B8: masks R=0xff0000, G=0xff00, B=0xff, A=0xff000000 (or 0)
-        const unsigned long rMask = header.ddspf.dwRBitMask;
-        const unsigned long gMask = header.ddspf.dwGBitMask;
-        const unsigned long bMask = header.ddspf.dwBBitMask;
-        const unsigned long aMask = header.ddspf.dwABitMask;
-        if (rMask && gMask && bMask)
-            format = 4;
+        //32-bit packed: require RGB masks (DDPF_RGB and/or DDPF_ALPHAPIXELS).
+        const bool hasRgbFlag = (header.ddspf.dwFlags & 0x40) != 0;
+        const bool hasAlphaFlag = (header.ddspf.dwFlags & 0x1) != 0;
+        if (hasRgbFlag || hasAlphaFlag)
+        {
+            const unsigned long rMask = header.ddspf.dwRBitMask;
+            const unsigned long gMask = header.ddspf.dwGBitMask;
+            const unsigned long bMask = header.ddspf.dwBBitMask;
+            if (rMask && gMask && bMask)
+                format = 4;
+        }
     }
 
     if (format == 0)
     {
-        std::cerr << "[DdsToTga] Unsupported DDS format: " << ddsPath << "\n";
+        if (dxgiFormat)
+            std::cerr << "[DdsToTga] Unsupported DDS (DX10 DXGI format " << dxgiFormat << "): " << ddsPath << "\n";
+        else
+            std::cerr << "[DdsToTga] Unsupported DDS format: " << ddsPath << "\n";
         fclose(f);
         return std::string();
     }
 
-    const char* formatName = (format == 1) ? "DXT1" : (format == 2) ? "DXT3" : (format == 3) ? "DXT5" : "RGBA";
+    const char* formatName = (format == 1)   ? "DXT1"
+                             : (format == 2) ? "DXT3"
+                             : (format == 3) ? "DXT5"
+                             : (format == 4) ? "RGBA"
+                             : (format == 5) ? "BC5/ATI2"
+                                             : "?";
     std::cerr << "[DdsToTga] Format: " << formatName << ", " << width << "x" << height << "\n";
 
     if (format == 4)
     {
-        // Uncompressed 32-bit: read raw pixels, preserve alpha (A8R8G8B8 / X8R8G8B8)
-        const unsigned long pitch = header.dwPitchOrLinearSize ? header.dwPitchOrLinearSize : width * 4;
-        const size_t rowSize = width * 4;
+        const unsigned long rMask = header.ddspf.dwRBitMask;
+        const unsigned long gMask = header.ddspf.dwGBitMask;
+        const unsigned long bMask = header.ddspf.dwBBitMask;
+        const unsigned long aMask = header.ddspf.dwABitMask;
+
+        const size_t rowBytes = static_cast<size_t>(width) * 4;
+        unsigned long pitch = static_cast<unsigned long>(rowBytes);
+        if ((header.dwFlags & DDSD_PITCH) && header.dwPitchOrLinearSize)
+            pitch = header.dwPitchOrLinearSize;
+        else if ((header.dwFlags & DDSD_LINEARSIZE) && header.dwPitchOrLinearSize && height > 0)
+        {
+            const unsigned long ls = header.dwPitchOrLinearSize;
+            if (ls >= rowBytes && ls % rowBytes == 0)
+                pitch = ls / static_cast<unsigned long>(height);
+        }
+        else if (header.dwPitchOrLinearSize >= rowBytes)
+            pitch = header.dwPitchOrLinearSize;
+
+        if (pitch < rowBytes)
+        {
+            std::cerr << "[DdsToTga] Invalid pitch for uncompressed DDS: " << ddsPath << "\n";
+            fclose(f);
+            return std::string();
+        }
+        std::vector<unsigned char> rowBuf(pitch);
         for (int y = 0; y < height; ++y)
         {
-            if (fread(outPixels.data() + static_cast<size_t>(y) * rowSize, 1, rowSize, f) != rowSize)
+            if (fread(rowBuf.data(), 1, pitch, f) != pitch)
             {
                 fclose(f);
                 return std::string();
             }
-            if (pitch > rowSize && fseek(f, static_cast<long>(pitch - rowSize), SEEK_CUR) != 0)
+            unsigned char* dstRow = outPixels.data() + static_cast<size_t>(y) * rowBytes;
+            for (int x = 0; x < width; ++x)
             {
-                fclose(f);
-                return std::string();
+                unsigned long pixel = 0;
+                std::memcpy(&pixel, rowBuf.data() + static_cast<size_t>(x) * 4, 4);
+                unpackDdsPixelToBgra(pixel, rMask, gMask, bMask, aMask, dstRow + static_cast<size_t>(x) * 4);
             }
         }
         fclose(f);
-
-        const unsigned long aMask = header.ddspf.dwABitMask;
-        if (!aMask)
-        {
-            for (size_t i = 3; i < outPixels.size(); i += 4)
-                outPixels[i] = 255;
-        }
     }
     else
     {
@@ -381,7 +515,8 @@ std::string DdsToTgaConverter::convertToTga(const std::string& ddsPath, const st
         {
             for (int bx = 0; bx < blocksX; ++bx)
             {
-                size_t blockOffset = (by * blocksX + bx) * (dxt1 ? 8 : 16);
+                const size_t bytesPerBlock = dxt1 ? 8u : 16u;
+                const size_t blockOffset = (by * blocksX + bx) * bytesPerBlock;
                 int outX = bx * 4;
                 int outY = by * 4;
 
@@ -390,6 +525,8 @@ std::string DdsToTgaConverter::convertToTga(const std::string& ddsPath, const st
                     decompressDxt1Block(dxtData.data() + blockOffset, blockPixels, 16);
                 else if (format == 2)
                     decompressDxt3Block(dxtData.data() + blockOffset, blockPixels, 16);
+                else if (format == 5)
+                    decompressBc5Block(dxtData.data() + blockOffset, blockPixels, 16);
                 else
                     decompressDxt5Block(dxtData.data() + blockOffset, blockPixels, 16);
 
@@ -407,6 +544,13 @@ std::string DdsToTgaConverter::convertToTga(const std::string& ddsPath, const st
                 }
             }
         }
+    }
+
+    {
+        const std::string base = getBaseNameNoExt(ddsPath);
+        if (base.find("_n") != std::string::npos && (format == 3 || format == 4))
+            std::cerr << "[DdsToTga] Note: \"" << base << "\" looks like a normal map. In GIMP, DXT5/uncompressed alpha is often data (e.g. Y), not "
+                         "opacity; checkerboard means low alpha values, not missing RGB.\n";
     }
 
     if (!writeTga(tgaPath.c_str(), width, height, outPixels.data()))

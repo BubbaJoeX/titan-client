@@ -89,6 +89,7 @@
 
 #include <map>
 #include <algorithm>
+#include <cctype>
 #include <afxcoll.h>
 //#include <mmsystem.h>
 #include <vector>
@@ -118,6 +119,43 @@ namespace
 	std::string ms_workingDirectory;
 	FileNameVector ms_appearanceFiles;
 	int const ms_maxHardpointAttachDepth = 8;
+
+	// When opening e.g. D:/export/appearance/foo.apt, AppearanceTemplateList follows NAME to
+	// appearance/mesh/foo.msh (virtual path). Add the tree root (parent of the appearance folder)
+	// so SearchPath resolves that file without requiring a matching tools.cfg entry.
+	void addTreeSearchRootForOpenedAsset(LPCTSTR path)
+	{
+		if (!path || !path[0])
+			return;
+
+#ifdef _UNICODE
+		CStringA pathA(path);
+		const char* utf8Path = pathA.GetString();
+#else
+		const char* utf8Path = path;
+#endif
+		std::string p(utf8Path);
+		for (char& c : p)
+			if (c == '\\')
+				c = '/';
+
+		std::string lower;
+		lower.reserve(p.size());
+		for (unsigned char uc : p)
+			lower += static_cast<char>(std::tolower(uc));
+
+		static const char needle[] = "/appearance/";
+		const size_t pos = lower.find(needle);
+		if (pos == std::string::npos)
+			return;
+
+		const std::string root = p.substr(0, pos);
+		if (root.empty())
+			return;
+
+		// Higher than SharedFile maxSearchPriority (default 20) so export / opened-asset wins.
+		TreeFile::addSearchPath(root.c_str(), 100);
+	}
 }
 
 // ======================================================================
@@ -1180,6 +1218,8 @@ BOOL CViewerDoc::load (LPCTSTR lpszPathName)
 		AsynchronousLoader::disable();
 
 	unsigned long const startTime = Clock::timeMs();
+
+	addTreeSearchRootForOpenedAsset(lpszPathName);
 
 	//-- go ahead and load the file
 	FatalSetThrowExceptions (m_fatalThrowsExceptionsOnLoad);

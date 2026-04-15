@@ -14,10 +14,10 @@ class TgaToDdsConverter
 public:
     /// Converts TGA to DDS. Returns the DDS path on success, empty string on failure.
     /// Output path defaults to same dir as input with .dds extension.
-    /// Format: bc7 (default), bc3, bc1, etc. Quality: normal (1), production (2), highest (3).
+    /// Format: bc3/DXT5 (default — Swg client loads DXT1/DXT3/DXT5 only, not BC7). bc1, bc7, etc. Quality: 1..3.
     static std::string convertToDds(const std::string& tgaPath,
         const std::string& outputPath = std::string(),
-        const std::string& format = "bc7",
+        const std::string& format = "bc3",
         int quality = 1);
 
     /// Returns the configured nvtt_export.exe path, or default install location.

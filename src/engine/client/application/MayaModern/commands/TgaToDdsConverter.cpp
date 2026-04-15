@@ -14,7 +14,7 @@
 
 namespace
 {
-    bool isTgaPath(const std::string& path)
+    bool isSupportedImagePath(const std::string& path)
     {
         size_t dot = path.find_last_of('.');
         if (dot == std::string::npos || dot >= path.size() - 1)
@@ -23,7 +23,7 @@ namespace
         for (size_t i = 0; i < ext.size(); ++i)
             if (ext[i] >= 'A' && ext[i] <= 'Z')
                 ext[i] = static_cast<char>(ext[i] + ('a' - 'A'));
-        return ext == "tga";
+        return ext == "tga" || ext == "png" || ext == "jpg" || ext == "jpeg" || ext == "bmp" || ext == "tif" || ext == "tiff";
     }
 
     std::string replaceExtension(const std::string& path, const std::string& newExt)
@@ -56,9 +56,9 @@ std::string TgaToDdsConverter::convertToDds(const std::string& tgaPath,
     const std::string& format,
     int quality)
 {
-    if (!isTgaPath(tgaPath))
+    if (!isSupportedImagePath(tgaPath))
     {
-        std::cerr << "[TgaToDds] Not a TGA path: " << tgaPath << "\n";
+        std::cerr << "[TgaToDds] Unsupported image extension (use tga/png/jpg/bmp): " << tgaPath << "\n";
         return std::string();
     }
 
@@ -73,11 +73,12 @@ std::string TgaToDdsConverter::convertToDds(const std::string& tgaPath,
         return std::string();
     }
 
-    // nvtt_export format mapping: bc7->23, bc3->18, bc1->15
-    int formatId = 23;
-    if (format == "bc3" || format == "bc3n") formatId = 18;
+    // nvtt_export -f ids; BC3 -> DDS DXT5 FourCC (client Texture.cpp supports DXT1/DXT3/DXT5 only).
+    int formatId = 18;
+    if (format == "bc7") formatId = 23;
     else if (format == "bc1") formatId = 15;
     else if (format == "bc2") formatId = 17;
+    else if (format == "bc3" || format == "bc3n") formatId = 18;
     else if (format == "bgra8") formatId = 25;
 
     std::cerr << "[TgaToDds] Converting: " << tgaPath << " -> " << outPath << "\n";

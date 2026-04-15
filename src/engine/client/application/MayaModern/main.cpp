@@ -39,6 +39,7 @@
 #include "commands/ExportStaticMesh.h"
 #include "commands/PrepareStaticMeshExport.h"
 #include "commands/SwgAssetDissector.h"
+#include "commands/SwgAnimationBrowser.h"
 
 #include "ConfigFile.h"
 #include "Globals.h"
@@ -202,6 +203,9 @@ MStatus initializePlugin(MObject obj)
     status = plugin.registerCommand("swgAssetDissector", SwgAssetDissector::creator);
     if (!status) { std::cerr << "ERROR: Unable to register swgAssetDissector" << std::endl; return status; }
 
+    status = plugin.registerCommand("swgAnimationBrowser", SwgAnimationBrowser::creator);
+    if (!status) { std::cerr << "ERROR: Unable to register swgAnimationBrowser" << std::endl; return status; }
+
     return MS::kSuccess;
 }
 
@@ -221,6 +225,7 @@ MStatus uninitializePlugin(MObject obj)
         }
     }
 
+    plugin.deregisterCommand("swgAnimationBrowser");
     plugin.deregisterCommand("swgAssetDissector");
     plugin.deregisterCommand("swgPrepareStaticMeshExport");
     plugin.deregisterCommand("exportStaticMesh");

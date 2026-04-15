@@ -368,7 +368,7 @@ events:
       The output was:
       0
       MSBuild version 17.14.40+3e7442088 for .NET Framework
-      Build started 4/11/2026 1:17:54 .
+      Build started 4/13/2026 8:23:59 .
       
       Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\4.3.0-rc3\\CompilerIdC\\CompilerIdC.vcxproj" on node 1 (default targets).
       PrepareForBuild:
@@ -397,7 +397,7 @@ events:
           0 Warning(s)
           0 Error(s)
       
-      Time Elapsed 00:00:00.59
+      Time Elapsed 00:00:00.62
       
       
       Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "CompilerIdC.exe"
@@ -1088,7 +1088,7 @@ events:
       The output was:
       0
       MSBuild version 17.14.40+3e7442088 for .NET Framework
-      Build started 4/11/2026 1:17:55 .
+      Build started 4/13/2026 8:24:00 .
       
       Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\4.3.0-rc3\\CompilerIdCXX\\CompilerIdCXX.vcxproj" on node 1 (default targets).
       PrepareForBuild:
@@ -1117,7 +1117,7 @@ events:
           0 Warning(s)
           0 Error(s)
       
-      Time Elapsed 00:00:00.49
+      Time Elapsed 00:00:00.55
       
       
       Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "CompilerIdCXX.exe"
@@ -1539,8 +1539,8 @@ events:
     checks:
       - "Detecting C compiler ABI info"
     directories:
-      source: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-p9tnvc"
-      binary: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-p9tnvc"
+      source: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-47z0np"
+      binary: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-47z0np"
     cmakeVariables:
       CMAKE_CXX_STDLIB_MODULES_JSON: ""
       CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS /W3"
@@ -1552,39 +1552,39 @@ events:
       variable: "CMAKE_C_ABI_COMPILED"
       cached: true
       stdout: |
-        Change Dir: 'D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-p9tnvc'
+        Change Dir: 'D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-47z0np'
         
-        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_9ceb5.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_1aba4.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         MSBuild version 17.14.40+3e7442088 for .NET Framework
-        Build started 4/11/2026 1:17:56 .
+        Build started 4/13/2026 8:24:01 .
         
-        Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-p9tnvc\\cmTC_9ceb5.vcxproj" on node 1 (default targets).
+        Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-47z0np\\cmTC_1aba4.vcxproj" on node 1 (default targets).
         PrepareForBuild:
           Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-p9tnvc\\Debug\\".
-          Creating directory "cmTC_9ceb5.dir\\Debug\\cmTC_9ceb5.tlog\\".
+          Creating directory "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-47z0np\\Debug\\".
+          Creating directory "cmTC_1aba4.dir\\Debug\\cmTC_1aba4.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_9ceb5.dir\\Debug\\cmTC_9ceb5.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_9ceb5.dir\\Debug\\cmTC_9ceb5.tlog\\unsuccessfulbuild".
+          Creating "cmTC_1aba4.dir\\Debug\\cmTC_1aba4.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_1aba4.dir\\Debug\\cmTC_1aba4.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_9ceb5.dir\\Debug\\\\" /Fd"cmTC_9ceb5.dir\\Debug\\vc143.pdb" /external:W3 /TC /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCCompilerABI.c"
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_1aba4.dir\\Debug\\\\" /Fd"cmTC_1aba4.dir\\Debug\\vc143.pdb" /external:W3 /TC /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCCompilerABI.c"
           Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_9ceb5.dir\\Debug\\\\" /Fd"cmTC_9ceb5.dir\\Debug\\vc143.pdb" /external:W3 /TC /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCCompilerABI.c"
+          cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_1aba4.dir\\Debug\\\\" /Fd"cmTC_1aba4.dir\\Debug\\vc143.pdb" /external:W3 /TC /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCCompilerABI.c"
           CMakeCCompilerABI.c
         Link:
-          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-p9tnvc\\Debug\\cmTC_9ceb5.exe" /INCREMENTAL /ILK:"cmTC_9ceb5.dir\\Debug\\cmTC_9ceb5.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-p9tnvc/Debug/cmTC_9ceb5.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-p9tnvc/Debug/cmTC_9ceb5.lib" /MACHINE:X64  /IGNORE:4099 cmTC_9ceb5.dir\\Debug\\CMakeCCompilerABI.obj
-          cmTC_9ceb5.vcxproj -> D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-p9tnvc\\Debug\\cmTC_9ceb5.exe
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-47z0np\\Debug\\cmTC_1aba4.exe" /INCREMENTAL /ILK:"cmTC_1aba4.dir\\Debug\\cmTC_1aba4.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-47z0np/Debug/cmTC_1aba4.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-47z0np/Debug/cmTC_1aba4.lib" /MACHINE:X64  /IGNORE:4099 cmTC_1aba4.dir\\Debug\\CMakeCCompilerABI.obj
+          cmTC_1aba4.vcxproj -> D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-47z0np\\Debug\\cmTC_1aba4.exe
         FinalizeBuildStatus:
-          Deleting file "cmTC_9ceb5.dir\\Debug\\cmTC_9ceb5.tlog\\unsuccessfulbuild".
-          Touching "cmTC_9ceb5.dir\\Debug\\cmTC_9ceb5.tlog\\cmTC_9ceb5.lastbuildstate".
-        Done Building Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-p9tnvc\\cmTC_9ceb5.vcxproj" (default targets).
+          Deleting file "cmTC_1aba4.dir\\Debug\\cmTC_1aba4.tlog\\unsuccessfulbuild".
+          Touching "cmTC_1aba4.dir\\Debug\\cmTC_1aba4.tlog\\cmTC_1aba4.lastbuildstate".
+        Done Building Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-47z0np\\cmTC_1aba4.vcxproj" (default targets).
         
         Build succeeded.
             0 Warning(s)
             0 Error(s)
         
-        Time Elapsed 00:00:00.52
+        Time Elapsed 00:00:00.56
         
       exitCode: 0
   -
@@ -1624,8 +1624,8 @@ events:
     checks:
       - "Detecting CXX compiler ABI info"
     directories:
-      source: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-xao4zo"
-      binary: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-xao4zo"
+      source: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-xw7cea"
+      binary: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-xw7cea"
     cmakeVariables:
       CMAKE_CXX_FLAGS: " /Zi /wd4996"
       CMAKE_CXX_FLAGS_DEBUG: "/MD"
@@ -1638,33 +1638,33 @@ events:
       variable: "CMAKE_CXX_ABI_COMPILED"
       cached: true
       stdout: |
-        Change Dir: 'D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-xao4zo'
+        Change Dir: 'D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-xw7cea'
         
-        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_f2671.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_2d1dd.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         MSBuild version 17.14.40+3e7442088 for .NET Framework
-        Build started 4/11/2026 1:17:57 .
+        Build started 4/13/2026 8:24:02 .
         
-        Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xao4zo\\cmTC_f2671.vcxproj" on node 1 (default targets).
+        Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xw7cea\\cmTC_2d1dd.vcxproj" on node 1 (default targets).
         PrepareForBuild:
           Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xao4zo\\Debug\\".
-          Creating directory "cmTC_f2671.dir\\Debug\\cmTC_f2671.tlog\\".
+          Creating directory "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xw7cea\\Debug\\".
+          Creating directory "cmTC_2d1dd.dir\\Debug\\cmTC_2d1dd.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_f2671.dir\\Debug\\cmTC_f2671.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_f2671.dir\\Debug\\cmTC_f2671.tlog\\unsuccessfulbuild".
+          Creating "cmTC_2d1dd.dir\\Debug\\cmTC_2d1dd.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_2d1dd.dir\\Debug\\cmTC_2d1dd.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /D _MBCS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /MD /std:c++17 /Fo"cmTC_f2671.dir\\Debug\\\\" /Fd"cmTC_f2671.dir\\Debug\\vc143.pdb" /external:W1 /TP /wd4996 /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCXXCompilerABI.cpp"
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /D _MBCS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /MD /std:c++17 /Fo"cmTC_2d1dd.dir\\Debug\\\\" /Fd"cmTC_2d1dd.dir\\Debug\\vc143.pdb" /external:W1 /TP /wd4996 /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCXXCompilerABI.cpp"
           Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W1 /WX- /diagnostics:column /D _MBCS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /MD /std:c++17 /Fo"cmTC_f2671.dir\\Debug\\\\" /Fd"cmTC_f2671.dir\\Debug\\vc143.pdb" /external:W1 /TP /wd4996 /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCXXCompilerABI.cpp"
+          cl /c /Zi /W1 /WX- /diagnostics:column /D _MBCS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /MD /std:c++17 /Fo"cmTC_2d1dd.dir\\Debug\\\\" /Fd"cmTC_2d1dd.dir\\Debug\\vc143.pdb" /external:W1 /TP /wd4996 /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCXXCompilerABI.cpp"
           CMakeCXXCompilerABI.cpp
         Link:
-          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xao4zo\\Debug\\cmTC_f2671.exe" /INCREMENTAL /ILK:"cmTC_f2671.dir\\Debug\\cmTC_f2671.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-xao4zo/Debug/cmTC_f2671.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-xao4zo/Debug/cmTC_f2671.lib" /MACHINE:X64  /IGNORE:4099 cmTC_f2671.dir\\Debug\\CMakeCXXCompilerABI.obj
-          cmTC_f2671.vcxproj -> D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xao4zo\\Debug\\cmTC_f2671.exe
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xw7cea\\Debug\\cmTC_2d1dd.exe" /INCREMENTAL /ILK:"cmTC_2d1dd.dir\\Debug\\cmTC_2d1dd.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-xw7cea/Debug/cmTC_2d1dd.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-xw7cea/Debug/cmTC_2d1dd.lib" /MACHINE:X64  /IGNORE:4099 cmTC_2d1dd.dir\\Debug\\CMakeCXXCompilerABI.obj
+          cmTC_2d1dd.vcxproj -> D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xw7cea\\Debug\\cmTC_2d1dd.exe
         FinalizeBuildStatus:
-          Deleting file "cmTC_f2671.dir\\Debug\\cmTC_f2671.tlog\\unsuccessfulbuild".
-          Touching "cmTC_f2671.dir\\Debug\\cmTC_f2671.tlog\\cmTC_f2671.lastbuildstate".
-        Done Building Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xao4zo\\cmTC_f2671.vcxproj" (default targets).
+          Deleting file "cmTC_2d1dd.dir\\Debug\\cmTC_2d1dd.tlog\\unsuccessfulbuild".
+          Touching "cmTC_2d1dd.dir\\Debug\\cmTC_2d1dd.tlog\\cmTC_2d1dd.lastbuildstate".
+        Done Building Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xw7cea\\cmTC_2d1dd.vcxproj" (default targets).
         
         Build succeeded.
             0 Warning(s)
@@ -1708,12 +1708,12 @@ events:
       - "C:/Program Files/CMake/share/cmake-4.3/Modules/CheckCSourceCompiles.cmake:103 (cmake_check_source_compiles)"
       - "C:/Program Files/CMake/share/cmake-4.3/Modules/FindThreads.cmake:160 (check_c_source_compiles)"
       - "C:/Program Files/CMake/share/cmake-4.3/Modules/FindThreads.cmake:226 (_threads_check_libc)"
-      - "CMakeLists.txt:220 (find_package)"
+      - "CMakeLists.txt:224 (find_package)"
     checks:
       - "Performing Test CMAKE_HAVE_LIBC_PTHREAD"
     directories:
-      source: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-cpvzlp"
-      binary: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-cpvzlp"
+      source: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-44klmy"
+      binary: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-44klmy"
     cmakeVariables:
       CMAKE_CXX_STDLIB_MODULES_JSON: ""
       CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS /W3"
@@ -1725,39 +1725,39 @@ events:
       variable: "CMAKE_HAVE_LIBC_PTHREAD"
       cached: true
       stdout: |
-        Change Dir: 'D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-cpvzlp'
+        Change Dir: 'D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-44klmy'
         
-        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_306af.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_5ef63.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         MSBuild version 17.14.40+3e7442088 for .NET Framework
-        Build started 4/11/2026 1:17:58 .
+        Build started 4/13/2026 8:24:03 .
         
-        Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-cpvzlp\\cmTC_306af.vcxproj" on node 1 (default targets).
+        Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-44klmy\\cmTC_5ef63.vcxproj" on node 1 (default targets).
         PrepareForBuild:
           Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-cpvzlp\\Debug\\".
-          Creating directory "cmTC_306af.dir\\Debug\\cmTC_306af.tlog\\".
+          Creating directory "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-44klmy\\Debug\\".
+          Creating directory "cmTC_5ef63.dir\\Debug\\cmTC_5ef63.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_306af.dir\\Debug\\cmTC_306af.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_306af.dir\\Debug\\cmTC_306af.tlog\\unsuccessfulbuild".
+          Creating "cmTC_5ef63.dir\\Debug\\cmTC_5ef63.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_5ef63.dir\\Debug\\cmTC_5ef63.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CMAKE_HAVE_LIBC_PTHREAD /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_306af.dir\\Debug\\\\" /Fd"cmTC_306af.dir\\Debug\\vc143.pdb" /external:W3 /TC /errorReport:queue "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-cpvzlp\\src.c"
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CMAKE_HAVE_LIBC_PTHREAD /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_5ef63.dir\\Debug\\\\" /Fd"cmTC_5ef63.dir\\Debug\\vc143.pdb" /external:W3 /TC /errorReport:queue "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-44klmy\\src.c"
           Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CMAKE_HAVE_LIBC_PTHREAD /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_306af.dir\\Debug\\\\" /Fd"cmTC_306af.dir\\Debug\\vc143.pdb" /external:W3 /TC /errorReport:queue "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-cpvzlp\\src.c"
+          cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CMAKE_HAVE_LIBC_PTHREAD /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_5ef63.dir\\Debug\\\\" /Fd"cmTC_5ef63.dir\\Debug\\vc143.pdb" /external:W3 /TC /errorReport:queue "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-44klmy\\src.c"
           src.c
-        D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-cpvzlp\\src.c(1,10): error C1083: Cannot open include file: 'pthread.h': No such file or directory [D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-cpvzlp\\cmTC_306af.vcxproj]
-        Done Building Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-cpvzlp\\cmTC_306af.vcxproj" (default targets) -- FAILED.
+        D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-44klmy\\src.c(1,10): error C1083: Cannot open include file: 'pthread.h': No such file or directory [D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-44klmy\\cmTC_5ef63.vcxproj]
+        Done Building Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-44klmy\\cmTC_5ef63.vcxproj" (default targets) -- FAILED.
         
         Build FAILED.
         
-        "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-cpvzlp\\cmTC_306af.vcxproj" (default target) (1) ->
+        "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-44klmy\\cmTC_5ef63.vcxproj" (default target) (1) ->
         (ClCompile target) -> 
-          D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-cpvzlp\\src.c(1,10): error C1083: Cannot open include file: 'pthread.h': No such file or directory [D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-cpvzlp\\cmTC_306af.vcxproj]
+          D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-44klmy\\src.c(1,10): error C1083: Cannot open include file: 'pthread.h': No such file or directory [D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-44klmy\\cmTC_5ef63.vcxproj]
         
             0 Warning(s)
             1 Error(s)
         
-        Time Elapsed 00:00:00.36
+        Time Elapsed 00:00:00.39
         
       exitCode: 1
   -
@@ -1766,12 +1766,12 @@ events:
       - "C:/Program Files/CMake/share/cmake-4.3/Modules/CheckLibraryExists.cmake:154 (try_compile)"
       - "C:/Program Files/CMake/share/cmake-4.3/Modules/FindThreads.cmake:175 (check_library_exists)"
       - "C:/Program Files/CMake/share/cmake-4.3/Modules/FindThreads.cmake:238 (_threads_check_lib)"
-      - "CMakeLists.txt:220 (find_package)"
+      - "CMakeLists.txt:224 (find_package)"
     checks:
       - "Looking for pthread_create in pthreads"
     directories:
-      source: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-9n8eym"
-      binary: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-9n8eym"
+      source: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-7ctkt9"
+      binary: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-7ctkt9"
     cmakeVariables:
       CMAKE_CXX_STDLIB_MODULES_JSON: ""
       CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS /W3"
@@ -1783,41 +1783,41 @@ events:
       variable: "CMAKE_HAVE_PTHREADS_CREATE"
       cached: true
       stdout: |
-        Change Dir: 'D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-9n8eym'
+        Change Dir: 'D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-7ctkt9'
         
-        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_fbccd.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_91aef.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         MSBuild version 17.14.40+3e7442088 for .NET Framework
-        Build started 4/11/2026 1:17:58 .
+        Build started 4/13/2026 8:24:03 .
         
-        Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9n8eym\\cmTC_fbccd.vcxproj" on node 1 (default targets).
+        Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-7ctkt9\\cmTC_91aef.vcxproj" on node 1 (default targets).
         PrepareForBuild:
           Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9n8eym\\Debug\\".
-          Creating directory "cmTC_fbccd.dir\\Debug\\cmTC_fbccd.tlog\\".
+          Creating directory "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-7ctkt9\\Debug\\".
+          Creating directory "cmTC_91aef.dir\\Debug\\cmTC_91aef.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_fbccd.dir\\Debug\\cmTC_fbccd.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_fbccd.dir\\Debug\\cmTC_fbccd.tlog\\unsuccessfulbuild".
+          Creating "cmTC_91aef.dir\\Debug\\cmTC_91aef.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_91aef.dir\\Debug\\cmTC_91aef.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_fbccd.dir\\Debug\\\\" /Fd"cmTC_fbccd.dir\\Debug\\vc143.pdb" /external:W3 /TC /errorReport:queue "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9n8eym\\CheckFunctionExists.c"
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_91aef.dir\\Debug\\\\" /Fd"cmTC_91aef.dir\\Debug\\vc143.pdb" /external:W3 /TC /errorReport:queue "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-7ctkt9\\CheckFunctionExists.c"
           Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_fbccd.dir\\Debug\\\\" /Fd"cmTC_fbccd.dir\\Debug\\vc143.pdb" /external:W3 /TC /errorReport:queue "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9n8eym\\CheckFunctionExists.c"
+          cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_91aef.dir\\Debug\\\\" /Fd"cmTC_91aef.dir\\Debug\\vc143.pdb" /external:W3 /TC /errorReport:queue "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-7ctkt9\\CheckFunctionExists.c"
           CheckFunctionExists.c
         Link:
-          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9n8eym\\Debug\\cmTC_fbccd.exe" /INCREMENTAL /ILK:"cmTC_fbccd.dir\\Debug\\cmTC_fbccd.ilk" /NOLOGO pthreads.lib kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-9n8eym/Debug/cmTC_fbccd.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-9n8eym/Debug/cmTC_fbccd.lib" /MACHINE:X64  /IGNORE:4099 cmTC_fbccd.dir\\Debug\\CheckFunctionExists.obj
-        LINK : fatal error LNK1104: cannot open file 'pthreads.lib' [D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9n8eym\\cmTC_fbccd.vcxproj]
-        Done Building Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9n8eym\\cmTC_fbccd.vcxproj" (default targets) -- FAILED.
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-7ctkt9\\Debug\\cmTC_91aef.exe" /INCREMENTAL /ILK:"cmTC_91aef.dir\\Debug\\cmTC_91aef.ilk" /NOLOGO pthreads.lib kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-7ctkt9/Debug/cmTC_91aef.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-7ctkt9/Debug/cmTC_91aef.lib" /MACHINE:X64  /IGNORE:4099 cmTC_91aef.dir\\Debug\\CheckFunctionExists.obj
+        LINK : fatal error LNK1104: cannot open file 'pthreads.lib' [D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-7ctkt9\\cmTC_91aef.vcxproj]
+        Done Building Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-7ctkt9\\cmTC_91aef.vcxproj" (default targets) -- FAILED.
         
         Build FAILED.
         
-        "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9n8eym\\cmTC_fbccd.vcxproj" (default target) (1) ->
+        "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-7ctkt9\\cmTC_91aef.vcxproj" (default target) (1) ->
         (Link target) -> 
-          LINK : fatal error LNK1104: cannot open file 'pthreads.lib' [D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9n8eym\\cmTC_fbccd.vcxproj]
+          LINK : fatal error LNK1104: cannot open file 'pthreads.lib' [D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-7ctkt9\\cmTC_91aef.vcxproj]
         
             0 Warning(s)
             1 Error(s)
         
-        Time Elapsed 00:00:00.36
+        Time Elapsed 00:00:00.43
         
       exitCode: 1
   -
@@ -1826,12 +1826,12 @@ events:
       - "C:/Program Files/CMake/share/cmake-4.3/Modules/CheckLibraryExists.cmake:154 (try_compile)"
       - "C:/Program Files/CMake/share/cmake-4.3/Modules/FindThreads.cmake:175 (check_library_exists)"
       - "C:/Program Files/CMake/share/cmake-4.3/Modules/FindThreads.cmake:239 (_threads_check_lib)"
-      - "CMakeLists.txt:220 (find_package)"
+      - "CMakeLists.txt:224 (find_package)"
     checks:
       - "Looking for pthread_create in pthread"
     directories:
-      source: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-zb6rrr"
-      binary: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-zb6rrr"
+      source: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-fst9yj"
+      binary: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-fst9yj"
     cmakeVariables:
       CMAKE_CXX_STDLIB_MODULES_JSON: ""
       CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS /W3"
@@ -1843,48 +1843,48 @@ events:
       variable: "CMAKE_HAVE_PTHREAD_CREATE"
       cached: true
       stdout: |
-        Change Dir: 'D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-zb6rrr'
+        Change Dir: 'D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-fst9yj'
         
-        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_613ec.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_04717.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         MSBuild version 17.14.40+3e7442088 for .NET Framework
-        Build started 4/11/2026 1:17:59 .
+        Build started 4/13/2026 8:24:04 .
         
-        Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-zb6rrr\\cmTC_613ec.vcxproj" on node 1 (default targets).
+        Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-fst9yj\\cmTC_04717.vcxproj" on node 1 (default targets).
         PrepareForBuild:
           Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-zb6rrr\\Debug\\".
-          Creating directory "cmTC_613ec.dir\\Debug\\cmTC_613ec.tlog\\".
+          Creating directory "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-fst9yj\\Debug\\".
+          Creating directory "cmTC_04717.dir\\Debug\\cmTC_04717.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_613ec.dir\\Debug\\cmTC_613ec.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_613ec.dir\\Debug\\cmTC_613ec.tlog\\unsuccessfulbuild".
+          Creating "cmTC_04717.dir\\Debug\\cmTC_04717.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_04717.dir\\Debug\\cmTC_04717.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_613ec.dir\\Debug\\\\" /Fd"cmTC_613ec.dir\\Debug\\vc143.pdb" /external:W3 /TC /errorReport:queue "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-zb6rrr\\CheckFunctionExists.c"
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_04717.dir\\Debug\\\\" /Fd"cmTC_04717.dir\\Debug\\vc143.pdb" /external:W3 /TC /errorReport:queue "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-fst9yj\\CheckFunctionExists.c"
           Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_613ec.dir\\Debug\\\\" /Fd"cmTC_613ec.dir\\Debug\\vc143.pdb" /external:W3 /TC /errorReport:queue "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-zb6rrr\\CheckFunctionExists.c"
+          cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_04717.dir\\Debug\\\\" /Fd"cmTC_04717.dir\\Debug\\vc143.pdb" /external:W3 /TC /errorReport:queue "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-fst9yj\\CheckFunctionExists.c"
           CheckFunctionExists.c
         Link:
-          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-zb6rrr\\Debug\\cmTC_613ec.exe" /INCREMENTAL /ILK:"cmTC_613ec.dir\\Debug\\cmTC_613ec.ilk" /NOLOGO pthread.lib kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-zb6rrr/Debug/cmTC_613ec.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-zb6rrr/Debug/cmTC_613ec.lib" /MACHINE:X64  /IGNORE:4099 cmTC_613ec.dir\\Debug\\CheckFunctionExists.obj
-        LINK : fatal error LNK1104: cannot open file 'pthread.lib' [D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-zb6rrr\\cmTC_613ec.vcxproj]
-        Done Building Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-zb6rrr\\cmTC_613ec.vcxproj" (default targets) -- FAILED.
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-fst9yj\\Debug\\cmTC_04717.exe" /INCREMENTAL /ILK:"cmTC_04717.dir\\Debug\\cmTC_04717.ilk" /NOLOGO pthread.lib kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-fst9yj/Debug/cmTC_04717.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-fst9yj/Debug/cmTC_04717.lib" /MACHINE:X64  /IGNORE:4099 cmTC_04717.dir\\Debug\\CheckFunctionExists.obj
+        LINK : fatal error LNK1104: cannot open file 'pthread.lib' [D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-fst9yj\\cmTC_04717.vcxproj]
+        Done Building Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-fst9yj\\cmTC_04717.vcxproj" (default targets) -- FAILED.
         
         Build FAILED.
         
-        "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-zb6rrr\\cmTC_613ec.vcxproj" (default target) (1) ->
+        "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-fst9yj\\cmTC_04717.vcxproj" (default target) (1) ->
         (Link target) -> 
-          LINK : fatal error LNK1104: cannot open file 'pthread.lib' [D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-zb6rrr\\cmTC_613ec.vcxproj]
+          LINK : fatal error LNK1104: cannot open file 'pthread.lib' [D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-fst9yj\\cmTC_04717.vcxproj]
         
             0 Warning(s)
             1 Error(s)
         
-        Time Elapsed 00:00:00.34
+        Time Elapsed 00:00:00.38
         
       exitCode: 1
   -
     kind: "find-v1"
     backtrace:
       - "D:/titan/client/src/external/3rd/library/devkitBase/cmake/pluginEntry.cmake:257 (find_library)"
-      - "CMakeLists.txt:242 (build_plugin)"
+      - "CMakeLists.txt:246 (build_plugin)"
     mode: "library"
     variable: "OpenMaya_PATH"
     description: "Path to a library."
@@ -1947,7 +1947,7 @@ events:
     kind: "find-v1"
     backtrace:
       - "D:/titan/client/src/external/3rd/library/devkitBase/cmake/pluginEntry.cmake:257 (find_library)"
-      - "CMakeLists.txt:242 (build_plugin)"
+      - "CMakeLists.txt:246 (build_plugin)"
     mode: "library"
     variable: "Foundation_PATH"
     description: "Path to a library."
@@ -2010,7 +2010,7 @@ events:
     kind: "find-v1"
     backtrace:
       - "D:/titan/client/src/external/3rd/library/devkitBase/cmake/pluginEntry.cmake:257 (find_library)"
-      - "CMakeLists.txt:242 (build_plugin)"
+      - "CMakeLists.txt:246 (build_plugin)"
     mode: "library"
     variable: "OpenMayaUI_PATH"
     description: "Path to a library."
@@ -2073,7 +2073,7 @@ events:
     kind: "find-v1"
     backtrace:
       - "D:/titan/client/src/external/3rd/library/devkitBase/cmake/pluginEntry.cmake:257 (find_library)"
-      - "CMakeLists.txt:242 (build_plugin)"
+      - "CMakeLists.txt:246 (build_plugin)"
     mode: "library"
     variable: "OpenMayaAnim_PATH"
     description: "Path to a library."
@@ -2136,7 +2136,7 @@ events:
     kind: "find-v1"
     backtrace:
       - "D:/titan/client/src/external/3rd/library/devkitBase/cmake/pluginEntry.cmake:257 (find_library)"
-      - "CMakeLists.txt:242 (build_plugin)"
+      - "CMakeLists.txt:246 (build_plugin)"
     mode: "library"
     variable: "OpenMayaFX_PATH"
     description: "Path to a library."
@@ -2199,7 +2199,7 @@ events:
     kind: "find-v1"
     backtrace:
       - "D:/titan/client/src/external/3rd/library/devkitBase/cmake/pluginEntry.cmake:257 (find_library)"
-      - "CMakeLists.txt:242 (build_plugin)"
+      - "CMakeLists.txt:246 (build_plugin)"
     mode: "library"
     variable: "OpenMayaRender_PATH"
     description: "Path to a library."

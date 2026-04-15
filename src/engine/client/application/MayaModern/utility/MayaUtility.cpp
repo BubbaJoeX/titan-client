@@ -6,7 +6,10 @@
 #include <maya/MFileObject.h>
 #include <maya/MFn.h>
 #include <maya/MFnDagNode.h>
+#include <maya/MFnMesh.h>
+#include <maya/MIntArray.h>
 #include <maya/MObject.h>
+#include <maya/MObjectArray.h>
 #include <maya/MGlobal.h>
 #include <maya/MStatus.h>
 #include <maya/MTime.h>
@@ -152,6 +155,93 @@ bool MayaUtility::hasNodeTypeInHierarchy(const MDagPath& hierarchyRoot, int node
 {
     bool found = false;
     return hasNodeTypeInHierarchyHelper(hierarchyRoot, nodeType, &found) && found;
+}
+
+namespace
+{
+    static bool meshShapeHasConnectedShaders(const MDagPath& meshPath)
+    {
+        MStatus st;
+        MFnMesh meshFn(meshPath, &st);
+        if (!st)
+            return false;
+        MObjectArray shaderObjs;
+        MIntArray faceToShader;
+        st = meshFn.getConnectedShaders(meshPath.instanceNumber(), shaderObjs, faceToShader);
+        return st && shaderObjs.length() > 0;
+    }
+
+    static bool findFirstMeshShapeInHierarchyRecursive(const MDagPath& curr, MDagPath& outMeshPath)
+    {
+        MStatus st;
+        if (curr.hasFn(MFn::kMesh))
+        {
+            outMeshPath = curr;
+            return true;
+        }
+        MFnDagNode fn(curr, &st);
+        if (!st)
+            return false;
+        const unsigned n = fn.childCount(&st);
+        if (!st)
+            return false;
+        for (unsigned i = 0; i < n; ++i)
+        {
+            MObject childObj = fn.child(i, &st);
+            if (!st)
+                continue;
+            MDagPath childPath = curr;
+            st = childPath.push(childObj);
+            if (!st)
+                continue;
+            if (findFirstMeshShapeInHierarchyRecursive(childPath, outMeshPath))
+                return true;
+        }
+        return false;
+    }
+
+    static bool findFirstMeshShapeWithShadersInHierarchyRecursive(const MDagPath& curr, MDagPath& outMeshPath)
+    {
+        MStatus st;
+        if (curr.hasFn(MFn::kMesh))
+        {
+            if (meshShapeHasConnectedShaders(curr))
+            {
+                outMeshPath = curr;
+                return true;
+            }
+            return false;
+        }
+        MFnDagNode fn(curr, &st);
+        if (!st)
+            return false;
+        const unsigned n = fn.childCount(&st);
+        if (!st)
+            return false;
+        for (unsigned i = 0; i < n; ++i)
+        {
+            MObject childObj = fn.child(i, &st);
+            if (!st)
+                continue;
+            MDagPath childPath = curr;
+            st = childPath.push(childObj);
+            if (!st)
+                continue;
+            if (findFirstMeshShapeWithShadersInHierarchyRecursive(childPath, outMeshPath))
+                return true;
+        }
+        return false;
+    }
+}
+
+bool MayaUtility::findFirstMeshShapeInHierarchy(const MDagPath& root, MDagPath& outMeshPath)
+{
+    return findFirstMeshShapeInHierarchyRecursive(root, outMeshPath);
+}
+
+bool MayaUtility::findFirstMeshShapeWithShadersInHierarchy(const MDagPath& root, MDagPath& outMeshPath)
+{
+    return findFirstMeshShapeWithShadersInHierarchyRecursive(root, outMeshPath);
 }
 
 bool MayaUtility::createDirectory(const char* directory)

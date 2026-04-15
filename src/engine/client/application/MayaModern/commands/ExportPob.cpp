@@ -5,6 +5,7 @@
 #include "Tag.h"
 #include "Transform.h"
 #include "Vector.h"
+#include "VectorArgb.h"
 
 #include <maya/MArgList.h>
 #include <maya/MDagPath.h>
@@ -20,6 +21,7 @@
 #include <maya/MObject.h>
 #include <maya/MPlug.h>
 #include <maya/MSelectionList.h>
+#include <maya/MFnLight.h>
 
 #include <algorithm>
 #include <map>
@@ -59,6 +61,17 @@ namespace
         Transform doorTransform = Transform::identity;
     };
 
+    struct PobCellLightOut
+    {
+        int type = 0;
+        VectorArgb diffuse;
+        VectorArgb specular;
+        Transform transform = Transform::identity;
+        float constantAttenuation = 1.f;
+        float linearAttenuation = 0.f;
+        float quadraticAttenuation = 0.f;
+    };
+
     struct CellData
     {
         std::string name;
@@ -66,6 +79,7 @@ namespace
         std::string floorName;
         bool canSeeWorldCell = false;
         std::vector<PortalInfo> portals;
+        std::vector<PobCellLightOut> lights;
     };
 
     static bool getStringAttr(MObject node, const char* attrName, std::string& out)
@@ -106,6 +120,38 @@ namespace
         return !fn.findPlug("portal", true).isNull();
     }
 
+    static Transform mayaMatrixToEngineTransform(const MMatrix& m)
+    {
+        Transform t = Transform::identity;
+        const Vector i(static_cast<float>(m[0][0]), static_cast<float>(m[1][0]), static_cast<float>(m[2][0]));
+        const Vector j(static_cast<float>(m[0][1]), static_cast<float>(m[1][1]), static_cast<float>(m[2][1]));
+        const Vector k(static_cast<float>(m[0][2]), static_cast<float>(m[1][2]), static_cast<float>(m[2][2]));
+        const Vector p(static_cast<float>(m[0][3]), static_cast<float>(m[1][3]), static_cast<float>(m[2][3]));
+        t.setLocalFrameIJK_p(i, j, k);
+        t.setPosition_p(p);
+        return t;
+    }
+
+    static void tryGetSpecularRgb(MObject lightShape, float& r, float& g, float& b)
+    {
+        r = g = b = 0.f;
+        MFnDependencyNode dep(lightShape);
+        MPlug sc = dep.findPlug("specularColor", true);
+        if (!sc.isNull() && sc.isCompound() && sc.numChildren() >= 3)
+        {
+            sc.child(0).getValue(r);
+            sc.child(1).getValue(g);
+            sc.child(2).getValue(b);
+            return;
+        }
+        MPlug pr = dep.findPlug("specularColorR", true);
+        if (!pr.isNull()) pr.getValue(r);
+        MPlug pg = dep.findPlug("specularColorG", true);
+        if (!pg.isNull()) pg.getValue(g);
+        MPlug pb = dep.findPlug("specularColorB", true);
+        if (!pb.isNull()) pb.getValue(b);
+    }
+
     static void readDoorHardpointFromPortalTransform(MObject portalTransformObj, PortalInfo& pi)
     {
         pi.hasDoorHardpoint = false;
@@ -119,13 +165,7 @@ namespace
             if (cfn.name() != "doorHardpoint") continue;
             pi.hasDoorHardpoint = true;
             MFnTransform tfn(ch);
-            const MMatrix m = tfn.transformationMatrix();
-            const Vector i(static_cast<float>(m[0][0]), static_cast<float>(m[1][0]), static_cast<float>(m[2][0]));
-            const Vector j(static_cast<float>(m[0][1]), static_cast<float>(m[1][1]), static_cast<float>(m[2][1]));
-            const Vector k(static_cast<float>(m[0][2]), static_cast<float>(m[1][2]), static_cast<float>(m[2][2]));
-            const Vector p(static_cast<float>(m[0][3]), static_cast<float>(m[1][3]), static_cast<float>(m[2][3]));
-            pi.doorTransform.setLocalFrameIJK_p(i, j, k);
-            pi.doorTransform.setPosition_p(p);
+            pi.doorTransform = mayaMatrixToEngineTransform(tfn.transformationMatrix());
             return;
         }
     }
@@ -316,6 +356,66 @@ MStatus ExportPob::doIt(const MArgList& args)
                     cell.portals.push_back(pi);
                 }
             }
+            else if (childName == "lights")
+            {
+                for (unsigned k = 0; k < childFn.childCount(); ++k)
+                {
+                    MObject xfmObj = childFn.child(k);
+                    if (!xfmObj.hasFn(MFn::kTransform)) continue;
+                    MFnDagNode xfn(xfmObj);
+                    MObject shapeObj;
+                    for (unsigned m = 0; m < xfn.childCount(); ++m)
+                    {
+                        MObject ch = xfn.child(m);
+                        if (ch.hasFn(MFn::kLight))
+                        {
+                            shapeObj = ch;
+                            break;
+                        }
+                    }
+                    if (shapeObj.isNull()) continue;
+
+                    PobCellLightOut L;
+                    if (shapeObj.hasFn(MFn::kAmbientLight))
+                        L.type = 0;
+                    else if (shapeObj.hasFn(MFn::kDirectionalLight))
+                        L.type = 1;
+                    else if (shapeObj.hasFn(MFn::kPointLight) || shapeObj.hasFn(MFn::kSpotLight))
+                        L.type = 2;
+                    else
+                        continue;
+
+                    MFnLight lfn(shapeObj);
+                    MStatus lstat;
+                    const MColor c = lfn.color(&lstat);
+                    const float intens = lfn.intensity(&lstat);
+                    L.diffuse.set(1.f, c.r * intens, c.g * intens, c.b * intens);
+                    float sr = 0.f, sg = 0.f, sb = 0.f;
+                    tryGetSpecularRgb(shapeObj, sr, sg, sb);
+                    L.specular.set(1.f, sr, sg, sb);
+
+                    if (L.type == 0)
+                        L.transform = Transform::identity;
+                    else
+                    {
+                        MFnTransform tfn(xfmObj);
+                        L.transform = mayaMatrixToEngineTransform(tfn.transformationMatrix());
+                    }
+
+                    if (L.type == 2)
+                    {
+                        MFnDependencyNode dep(shapeObj);
+                        MPlug plug = dep.findPlug("constantAttenuation", true);
+                        if (!plug.isNull()) plug.getValue(L.constantAttenuation);
+                        plug = dep.findPlug("linearAttenuation", true);
+                        if (!plug.isNull()) plug.getValue(L.linearAttenuation);
+                        plug = dep.findPlug("quadraticAttenuation", true);
+                        if (!plug.isNull()) plug.getValue(L.quadraticAttenuation);
+                    }
+
+                    cell.lights.push_back(L);
+                }
+            }
             else if (childName == "collision")
             {
                 for (unsigned k = 0; k < childFn.childCount(); ++k)
@@ -433,7 +533,17 @@ MStatus ExportPob::doIt(const MArgList& args)
         }
 
         iff.insertChunk(TAG_LGHT);
-        iff.insertChunkData(static_cast<int32>(0));
+        iff.insertChunkData(static_cast<int32>(static_cast<int>(cell.lights.size())));
+        for (const auto& L : cell.lights)
+        {
+            iff.insertChunkData(static_cast<int8>(L.type));
+            iff.insertChunkFloatVectorArgb(L.diffuse);
+            iff.insertChunkFloatVectorArgb(L.specular);
+            iff.insertChunkFloatTransform(L.transform);
+            iff.insertChunkData(L.constantAttenuation);
+            iff.insertChunkData(L.linearAttenuation);
+            iff.insertChunkData(L.quadraticAttenuation);
+        }
         iff.exitChunk(TAG_LGHT);
 
         iff.exitForm(TAG_0005);

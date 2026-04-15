@@ -46,35 +46,32 @@
 #include <windows.h>
 #endif
 
-namespace
+namespace SwgMshImport
 {
-    static void mshLog(const char* fmt, ...)
+    namespace
     {
-        char buf[1024];
-        va_list args;
-        va_start(args, fmt);
-        vsnprintf(buf, sizeof(buf), fmt, args);
-        va_end(args);
-        std::string msg = std::string("[MshTranslator] ") + buf + "\n";
-        std::cerr << msg;
-#ifdef _WIN32
-        OutputDebugStringA(msg.c_str());
-#endif
+        const Tag TAG_HPTS = TAG(H, P, T, S);
+        const Tag TAG_HPNT = TAG(H, P, N, T);
+        const Tag TAG_FLOR = TAG(F, L, O, R);
     }
 
-    MString s_parentPathForMshImport;
-    MString s_createdRootPathForMshImport;
+    static void skipArbitraryFormContents(Iff& iff)
+    {
+        iff.enterForm();
+        while (iff.getNumberOfBlocksLeft() > 0)
+        {
+            if (iff.isCurrentForm())
+                skipArbitraryFormContents(iff);
+            else
+            {
+                iff.enterChunk();
+                iff.exitChunk();
+            }
+        }
+        iff.exitForm();
+    }
 
-    static const Tag TAG_APPR = TAG(A,P,P,R);
-    static const Tag TAG_HPTS = TAG(H,P,T,S);
-    static const Tag TAG_HPNT = TAG(H,P,N,T);
-    static const Tag TAG_FLOR = TAG(F,L,O,R);
-    static const Tag TAG_CNTR = TAG(C,N,T,R);
-    static const Tag TAG_RADI = TAG(R,A,D,I);
-    static const Tag TAG_SPS_NS = TAG3(S,P,S);
-
-    /// APPR/0001–0003 inner body, or MESH/0002–0003 tail after exiting inner form (AppearanceTemplate order).
-    static void mshConsumeApprLikeHardpointsAndFloor(
+    void consumeApprInnerForHardpointsAndFloor(
         Iff& iff,
         std::vector<MayaSceneBuilder::HardpointData>& hardpoints,
         std::string& floorReferencePath,
@@ -157,6 +154,66 @@ namespace
             }
         }
     }
+
+    bool parseFullApprFormForHardpoints(
+        Iff& iff,
+        std::vector<MayaSceneBuilder::HardpointData>& hardpoints,
+        std::string& floorReferencePath)
+    {
+        static const Tag kAppr = TAG(A, P, P, R);
+        if (iff.getCurrentName() != kAppr)
+            return false;
+        iff.enterForm(kAppr);
+        const Tag inner = iff.getCurrentName();
+        if (inner != ::TAG_0001 && inner != ::TAG_0002 && inner != ::TAG_0003)
+        {
+            iff.enterForm(inner);
+            while (iff.getNumberOfBlocksLeft() > 0)
+            {
+                if (iff.isCurrentForm())
+                    skipArbitraryFormContents(iff);
+                else
+                {
+                    iff.enterChunk();
+                    iff.exitChunk();
+                }
+            }
+            iff.exitForm(inner);
+            iff.exitForm(kAppr);
+            return false;
+        }
+        iff.enterForm(inner);
+        const bool parseFlor = (inner != ::TAG_0001);
+        consumeApprInnerForHardpointsAndFloor(iff, hardpoints, floorReferencePath, parseFlor);
+        iff.exitForm(inner);
+        iff.exitForm(kAppr);
+        return true;
+    }
+}
+
+namespace
+{
+    static void mshLog(const char* fmt, ...)
+    {
+        char buf[1024];
+        va_list args;
+        va_start(args, fmt);
+        vsnprintf(buf, sizeof(buf), fmt, args);
+        va_end(args);
+        std::string msg = std::string("[MshTranslator] ") + buf + "\n";
+        std::cerr << msg;
+#ifdef _WIN32
+        OutputDebugStringA(msg.c_str());
+#endif
+    }
+
+    MString s_parentPathForMshImport;
+    MString s_createdRootPathForMshImport;
+
+    static const Tag TAG_APPR = TAG(A,P,P,R);
+    static const Tag TAG_CNTR = TAG(C,N,T,R);
+    static const Tag TAG_RADI = TAG(R,A,D,I);
+    static const Tag TAG_SPS_NS = TAG3(S,P,S);
 }
 
 MStatus MshTranslator::createMeshFromMsh(const char* mshPath, MString& outRootPath, const MString& parentPath)
@@ -304,7 +361,7 @@ MStatus MshTranslator::reader (const MFileObject& file, const MString& options, 
             }
             iff.enterForm(apprInnerTag);
             const bool parseFlor = (apprInnerTag != ::TAG_0001);
-            mshConsumeApprLikeHardpointsAndFloor(iff, hardpoints, floorReferencePath, parseFlor);
+            SwgMshImport::consumeApprInnerForHardpointsAndFloor(iff, hardpoints, floorReferencePath, parseFlor);
             iff.exitForm(apprInnerTag);
             iff.exitForm(TAG_APPR);
             mshLog("  APPR: %zu hardpoints, floor=%s", hardpoints.size(), floorReferencePath.c_str());
@@ -633,7 +690,7 @@ MStatus MshTranslator::reader (const MFileObject& file, const MString& options, 
             if (meshInnerTag == ::TAG_0002 || meshInnerTag == ::TAG_0003)
             {
                 mshLog("  MESH 0002/0003: post-inner tail (extents / HPTS / FLOR per client)");
-                mshConsumeApprLikeHardpointsAndFloor(iff, hardpoints, floorReferencePath, true);
+                SwgMshImport::consumeApprInnerForHardpointsAndFloor(iff, hardpoints, floorReferencePath, true);
             }
 
             iff.exitForm(TAG_MESH);
@@ -725,22 +782,43 @@ MStatus MshTranslator::writer (const MFileObject& file, const MString& options, 
     if (!status || sel.length() == 0)
     {
         std::cerr << "[MshTranslator] Export: select a mesh first" << std::endl;
+        MGlobal::displayError("SwgMsh export: nothing selected. Select a mesh, then export.");
         return MS::kFailure;
     }
 
     MDagPath dagPath;
-    status = sel.getDagPath(0, dagPath);
-    if (!status)
+    bool foundMesh = false;
+    bool meshWithoutShader = false;
+    for (unsigned si = 0; si < sel.length(); ++si)
     {
-        std::cerr << "[MshTranslator] Export: failed to get DAG path" << std::endl;
-        return MS::kFailure;
+        status = sel.getDagPath(si, dagPath);
+        if (!status) continue;
+        MDagPath meshPath;
+        if (MayaUtility::findFirstMeshShapeWithShadersInHierarchy(dagPath, meshPath))
+        {
+            dagPath = meshPath;
+            foundMesh = true;
+            break;
+        }
+        if (MayaUtility::findFirstMeshShapeInHierarchy(dagPath, meshPath))
+            meshWithoutShader = true;
     }
-
-    if (!dagPath.hasFn(MFn::kMesh))
-        dagPath.extendToShape();
-    if (!dagPath.hasFn(MFn::kMesh))
+    if (!foundMesh)
     {
-        std::cerr << "[MshTranslator] Export: selection is not a mesh" << std::endl;
+        if (meshWithoutShader)
+        {
+            std::cerr << "[MshTranslator] Export: mesh has no shading group" << std::endl;
+            MGlobal::displayError(
+                "SwgMsh export: mesh has no shader assignment. Found geometry but no material on the mesh "
+                "that would be exported. After combining, assign a material to the combined mesh, delete "
+                "hidden leftover shapes, or select the combined mesh shape directly.");
+            return MS::kFailure;
+        }
+        std::cerr << "[MshTranslator] Export: no mesh under selection (need a mesh anywhere under selected transforms)"
+                  << std::endl;
+        MGlobal::displayError(
+            "SwgMsh export: no mesh found under the selection. Select a group or transform that contains a mesh "
+            "(nested geo is OK), or the mesh shape.");
         return MS::kFailure;
     }
 
@@ -750,6 +828,9 @@ MStatus MshTranslator::writer (const MFileObject& file, const MString& options, 
     if (!cmd.performExport(dagPath, filePath, outMeshPath, outAptPath))
     {
         std::cerr << "[MshTranslator] Export: performExport failed" << std::endl;
+        MGlobal::displayError(
+            "SwgMsh export failed. Open Script Editor for lines starting with [ExportStaticMesh] or [ShaderExporter]. "
+            "Often: setBaseDir <export root>, assign a material, or fix write permission on the export folder.");
         return MS::kFailure;
     }
 

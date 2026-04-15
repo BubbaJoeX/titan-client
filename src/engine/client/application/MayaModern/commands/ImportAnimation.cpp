@@ -47,7 +47,7 @@ MStatus ImportAnimation::doIt(const MArgList& args)
 
     filename = resolveImportPath(filename);
 
-    status = MFileIO::import(filename.c_str(), "", true);
+    status = MFileIO::import(filename.c_str(), "SwgAns", true);
     if (!status)
     {
         std::cerr << "ImportAnimation: failed to import " << filename << std::endl;

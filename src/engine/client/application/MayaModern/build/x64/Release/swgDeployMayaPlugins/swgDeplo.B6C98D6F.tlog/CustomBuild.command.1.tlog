@@ -1,0 +1,28 @@
+^D:\TITAN\CLIENT\SRC\ENGINE\CLIENT\APPLICATION\MAYAMODERN\BUILD\CMAKEFILES\44CEB83DD427A22E08343FCB82220C70\SWGDEPLOYMAYAPLUGINS.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/build/Release/SwgMayaEditor.mll "D:/Program Files/Autodesk/Maya2026/bin/plug-ins"
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgAssetDissector.mel "D:/Program Files/Autodesk/Maya2026/bin/plug-ins"
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgAnimationBrowser.mel "D:/Program Files/Autodesk/Maya2026/bin/plug-ins"
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgStaticMeshExport.mel "D:/Program Files/Autodesk/Maya2026/bin/plug-ins"
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/pobAuthoring.mel "D:/Program Files/Autodesk/Maya2026/bin/plug-ins"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^D:\TITAN\CLIENT\SRC\ENGINE\CLIENT\APPLICATION\MAYAMODERN\CMAKELISTS.TXT
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SD:/titan/client/src/engine/client/application/MayaModern -BD:/titan/client/src/engine/client/application/MayaModern/build --check-stamp-file D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

@@ -196,6 +196,9 @@
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgAssetDissector.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgAnimationBrowser.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SkeletonTemplateWriter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -433,6 +436,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgAssetDissector.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgAnimationBrowser.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SkeletonTemplateWriter.h">

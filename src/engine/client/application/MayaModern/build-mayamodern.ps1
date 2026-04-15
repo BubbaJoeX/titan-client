@@ -1,11 +1,12 @@
 #requires -Version 5.1
 <#
 .SYNOPSIS
-    Clean-configure and build SwgMayaEditor (MayaModern) for Windows x64.
+    Configure and build SwgMayaEditor (MayaModern) for Windows x64.
 
 .DESCRIPTION
-    Deletes MayaModern\build\, runs CMake (Visual Studio 2022 x64), then builds
-    SwgMayaEditor.mll from scratch every time.
+    By default, deletes MayaModern\build\, runs CMake (Visual Studio 2022 x64), then
+    builds SwgMayaEditor.mll. With -Shallow, the existing build tree is kept so MSBuild
+    only recompiles changed translation units (incremental build).
 
 .PARAMETER Config
     MSBuild configuration: Release or Debug.
@@ -16,11 +17,19 @@
 .PARAMETER MayaLocation
     Optional MAYA_LOCATION for FindMaya. If omitted, uses env MAYA_LOCATION when set.
 
+.PARAMETER Shallow
+    Do not remove the build directory; run CMake configure (updates cache if needed)
+    then incremental compile. Use after a full build or when CMakeLists / generator
+    have not changed and you only edited sources.
+
 .EXAMPLE
     .\build-mayamodern.ps1
 
 .EXAMPLE
     .\build-mayamodern.ps1 -Config Debug
+
+.EXAMPLE
+    .\build-mayamodern.ps1 -Shallow
 
 .EXAMPLE
     .\build-mayamodern.ps1 -MayaLocation "C:\Program Files\Autodesk\Maya2026"
@@ -31,7 +40,9 @@ param(
 
     [string] $Generator = 'Visual Studio 17 2022',
 
-    [string] $MayaLocation = $env:MAYA_LOCATION
+    [string] $MayaLocation = $env:MAYA_LOCATION,
+
+    [switch] $Shallow
 )
 
 $ErrorActionPreference = 'Stop'
@@ -48,12 +59,18 @@ function Invoke-Tool {
     }
 }
 
-if (Test-Path -LiteralPath $BuildDir) {
-    Write-Host "Clean: removing $BuildDir" -ForegroundColor Yellow
-    Remove-Item -LiteralPath $BuildDir -Recurse -Force
+if ($Shallow) {
+    Write-Host "Shallow: keeping $BuildDir (incremental compile)" -ForegroundColor DarkCyan
+    if (-not (Test-Path -LiteralPath $BuildDir)) {
+        New-Item -ItemType Directory -Force -Path $BuildDir | Out-Null
+    }
+} else {
+    if (Test-Path -LiteralPath $BuildDir) {
+        Write-Host "Clean: removing $BuildDir" -ForegroundColor Yellow
+        Remove-Item -LiteralPath $BuildDir -Recurse -Force
+    }
+    New-Item -ItemType Directory -Force -Path $BuildDir | Out-Null
 }
-
-New-Item -ItemType Directory -Force -Path $BuildDir | Out-Null
 $cfgArgs = @(
     '-S', $SourceRoot,
     '-B', $BuildDir,

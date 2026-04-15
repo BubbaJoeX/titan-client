@@ -200,6 +200,8 @@ set(SOURCE_FILES
         commands/ImportStructure.h
         commands/SwgAssetDissector.cpp
         commands/SwgAssetDissector.h
+        commands/SwgAnimationBrowser.cpp
+        commands/SwgAnimationBrowser.h
         commands/SkeletonTemplateWriter.cpp
         commands/SkeletonTemplateWriter.h
         commands/StaticMeshWriter.cpp
@@ -244,11 +246,19 @@ target_include_directories(zlib PUBLIC
 build_plugin()
 target_link_libraries(${CMAKE_PROJECT_NAME} ws2_32 zlib)
 
+# Optional: CMake target swgDeployMayaPlugins copies .mll + MEL into Maya's plug-ins (see SWG_MAYA_PLUGIN_INSTALL_DIR).
+# Close Maya (or unloadPlugin SwgMayaEditor) before deploy — Windows locks the .mll while loaded, so copies can fail or show 0 updated.
+set(SWG_MAYA_PLUGIN_INSTALL_DIR "" CACHE PATH
+    "If non-empty, target swgDeployMayaPlugins copies SwgMayaEditor.mll and companion .mel files here.")
+
 # Copy swgAssetDissector.mel to build output (next to .mll so plugin can find it)
 add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_CURRENT_SOURCE_DIR}/scripts/swgAssetDissector.mel
         $<TARGET_FILE_DIR:${CMAKE_PROJECT_NAME}>/swgAssetDissector.mel
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_CURRENT_SOURCE_DIR}/scripts/swgAnimationBrowser.mel
+        $<TARGET_FILE_DIR:${CMAKE_PROJECT_NAME}>/swgAnimationBrowser.mel
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_CURRENT_SOURCE_DIR}/scripts/swgStaticMeshExport.mel
         $<TARGET_FILE_DIR:${CMAKE_PROJECT_NAME}>/swgStaticMeshExport.mel
@@ -257,3 +267,27 @@ add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
         $<TARGET_FILE_DIR:${CMAKE_PROJECT_NAME}>/pobAuthoring.mel
     COMMENT "Copying MEL scripts to plugin directory"
 )
+
+# Deploy into Maya's plug-ins folder (Administrator if under Program Files; quit Maya first so the .mll is not locked).
+if(SWG_MAYA_PLUGIN_INSTALL_DIR)
+    add_custom_target(
+        swgDeployMayaPlugins
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            $<TARGET_FILE:${CMAKE_PROJECT_NAME}>
+            "${SWG_MAYA_PLUGIN_INSTALL_DIR}"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${CMAKE_CURRENT_SOURCE_DIR}/scripts/swgAssetDissector.mel
+            "${SWG_MAYA_PLUGIN_INSTALL_DIR}"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${CMAKE_CURRENT_SOURCE_DIR}/scripts/swgAnimationBrowser.mel
+            "${SWG_MAYA_PLUGIN_INSTALL_DIR}"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${CMAKE_CURRENT_SOURCE_DIR}/scripts/swgStaticMeshExport.mel
+            "${SWG_MAYA_PLUGIN_INSTALL_DIR}"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${CMAKE_CURRENT_SOURCE_DIR}/scripts/pobAuthoring.mel
+            "${SWG_MAYA_PLUGIN_INSTALL_DIR}"
+        DEPENDS ${CMAKE_PROJECT_NAME}
+        COMMENT "Deploy SwgMayaEditor.mll + MEL to SWG_MAYA_PLUGIN_INSTALL_DIR (close Maya if copy fails)"
+    )
+endif()

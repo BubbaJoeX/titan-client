@@ -74,7 +74,7 @@ namespace
         }
         else
         {
-            report += MString("UV set used by exportStaticMesh (first in list): ") + uvSetNames[0] + "\n";
+            report += MString("UV set for exportStaticMesh: current / file uvSetName / map1 (not \"first in list\").\n");
         }
 
         MObjectArray shaderObjs;
@@ -103,8 +103,9 @@ namespace
                 MString val;
                 if (plug.isNull() || !st || plug.getValue(val) != MS::kSuccess || val.length() == 0)
                 {
-                    report += MString("WARN: Shading group \"") + sgFn.name()
-                        + "\" has no swgShaderPath (export will use shader/placeholder).\n";
+                    report += MString("INFO: Shading group \"") + sgFn.name()
+                        + "\" has no swgShaderPath - exportStaticMesh will auto-create a .sht from the diffuse network, "
+                          "swgTexturePath, or the prototype shader (set swgHueable=1 for shaderPrototypeHueableSht).\n";
                     ++outWarnings;
                 }
             }
@@ -112,7 +113,9 @@ namespace
 
         if (uvSetNames.length() > 0)
         {
-            const MString exportUvSet = uvSetNames[0];
+            MString exportUvSet;
+            if (meshFn.getCurrentUVSetName(exportUvSet) != MS::kSuccess || exportUvSet.length() == 0)
+                exportUvSet = uvSetNames[0];
             int facesMissingUv = 0;
             MItMeshPolygon polyIt(meshPath, MObject::kNullObj, &st);
             if (st)

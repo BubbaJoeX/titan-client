@@ -19,5 +19,14 @@ public:
 
     static bool ignoreNode(const MDagPath& dagPath);
     static bool hasNodeTypeInHierarchy(const MDagPath& hierarchyRoot, int nodeType);
+
+    /// Finds the first mesh shape under root (including root if it is already a mesh). Handles nested
+    /// transform groups; MDagPath::extendToShape() only reaches a direct mesh child, which fails for
+    /// common rigs (group → geo → mesh).
+    static bool findFirstMeshShapeInHierarchy(const MDagPath& root, MDagPath& outMeshPath);
+
+    /// Like findFirstMeshShapeInHierarchy, but skips mesh shapes with no shading group (e.g. leftover
+    /// geometry after combine). Depth-first order among meshes that have at least one material.
+    static bool findFirstMeshShapeWithShadersInHierarchy(const MDagPath& root, MDagPath& outMeshPath);
 };
 #endif //SWGMAYAEDITOR_MAYAUTILITY_H

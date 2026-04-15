@@ -1,0 +1,294 @@
+// SWG Animation Browser — categories + list of .ans under appearance/animation (data root).
+
+global string $g_swgAnimAnimDisk;
+
+global proc string swgAnimBrowserTrimSlashes(string $s) {
+    string $t = `substituteAllString $s "\\" "/"`;
+    while (`size $t` > 0) {
+        int $len = `size $t`;
+        string $last = `substring $t $len $len`;
+        if ($last == "/")
+            $t = `substring $t 1 ($len - 1)`;
+        else
+            break;
+    }
+    return $t;
+}
+
+// One-shot directory names (categories). Avoids spawning cmd.exe per folder (was freezing Maya on large trees).
+global proc string[] swgAnimBrowserOsListDir(string $dirPath) {
+    string $folder = `swgAnimBrowserTrimSlashes $dirPath`;
+    $folder = `substituteAllString $folder "\\" "/"`;
+    string $empty[];
+    if (`size $folder` == 0)
+        return $empty;
+    putenv "SWG_ANIM_OSLIST" $folder;
+    string $py;
+    $py = "import os\n";
+    $py += "p=os.environ.get('SWG_ANIM_OSLIST','')\n";
+    $py += "if not p or not os.path.isdir(p): print('')\n";
+    $py += "else:\n";
+    $py += "  print('\\n'.join(sorted([n for n in os.listdir(p) if os.path.isdir(os.path.join(p,n))])))\n";
+    string $raw = `python $py`;
+    putenv "SWG_ANIM_OSLIST" "";
+    $raw = `substituteAllString $raw "\r" ""`;
+    string $lines[];
+    if (`size $raw` > 0)
+        tokenize $raw "\n" $lines;
+    return $lines;
+}
+
+// All matching .ans rel paths under anim root via PowerShell (reliable, no Python/MEL bridge issues).
+global proc string[] swgAnimBrowserPythonCollectAns(string $animDisk, string $filterLower) {
+    string $root = `swgAnimBrowserTrimSlashes $animDisk`;
+    $root = `substituteAllString $root "\\" "/"`;
+    string $empty[];
+    if (`size $root` == 0)
+        return $empty;
+
+    // Write results to a temp file, then read it back (avoids MEL/Python capture issues).
+    string $tmp = `internalVar -userTmpDir` + "swg_anim_list.txt";
+    $tmp = `substituteAllString $tmp "\\" "/"`;
+
+    // Build PowerShell command: find .ans files, filter, write to temp file.
+    string $rootWin = `substituteAllString $root "/" "\\"`;
+    string $ps = "powershell -NoProfile -Command \"";
+    $ps += "$r='" + $rootWin + "';";
+    $ps += "$f='" + $filterLower + "'.Trim().ToLower();";
+    $ps += "$out=@();";
+    $ps += "if(Test-Path $r){";
+    $ps += "Get-ChildItem -Path $r -Filter '*.ans' -Recurse -File -ErrorAction SilentlyContinue | ForEach-Object {";
+    $ps += "$rel=$_.FullName.Substring($r.Length+1).Replace('\\','/');";
+    $ps += "$hay=('appearance/animation/'+$rel).ToLower();";
+    $ps += "$match=$true;";
+    $ps += "if($f){foreach($t in $f.Split(' ')){if($t -and $hay -notlike '*'+$t+'*'){$match=$false;break}}}";
+    $ps += "if($match){$out+=$rel}";
+    $ps += "}}";
+    $ps += "$out | Sort-Object | Set-Content -Path '" + $tmp + "' -Encoding UTF8";
+    $ps += "\"";
+
+    system $ps;
+
+    // Read the temp file.
+    string $lines[];
+    if (`filetest -r $tmp`) {
+        int $fid = `fopen $tmp "r"`;
+        string $line = `fgetline $fid`;
+        while (`size $line` > 0) {
+            // Strip trailing newline/carriage return.
+            $line = `substituteAllString $line "\r" ""`;
+            $line = `substituteAllString $line "\n" ""`;
+            if (`size $line` > 0)
+                $lines[`size $lines`] = $line;
+            $line = `fgetline $fid`;
+        }
+        fclose $fid;
+        sysFile -delete $tmp;
+    }
+    return $lines;
+}
+
+global proc string swgAnimBrowserTrimFilter(string $s) {
+    string $t = $s;
+    while (`size $t` > 0) {
+        string $c = `substring $t 1 1`;
+        if ($c == " " || $c == "\t") {
+            int $lt = `size $t`;
+            $t = `substring $t 2 $lt`;
+        } else
+            break;
+    }
+    while (`size $t` > 0) {
+        int $len = `size $t`;
+        string $c = `substring $t $len $len`;
+        if ($c == " " || $c == "\t")
+            $t = `substring $t 1 ($len - 1)`;
+        else
+            break;
+    }
+    return $t;
+}
+
+global proc swgAnimBrowserPopulateTerms(string $animDisk) {
+    if (!`control -exists swgAnimBrowserTerms`)
+        return;
+    textScrollList -edit -selectCommand "" swgAnimBrowserTerms;
+    textScrollList -edit -removeAll swgAnimBrowserTerms;
+    textScrollList -edit -append "(all)" swgAnimBrowserTerms;
+
+    string $ents[] = `swgAnimBrowserOsListDir $animDisk`;
+    string $dirs[];
+    int $nd = 0;
+    string $e;
+    for ($e in $ents) {
+        if (`size $e` == 0)
+            continue;
+        if ($e == "." || $e == "..")
+            continue;
+        string $full = `substituteAllString ($animDisk + "/" + $e) "\\" "/"`;
+        if (`filetest -d $full`) {
+            $dirs[$nd] = $e;
+            $nd++;
+        }
+    }
+    int $i;
+    int $j;
+    for ($i = 0; $i < $nd; $i++) {
+        for ($j = $i + 1; $j < $nd; $j++) {
+            if (`stringCompare $dirs[$i] $dirs[$j]` > 0) {
+                string $tmp = $dirs[$i];
+                $dirs[$i] = $dirs[$j];
+                $dirs[$j] = $tmp;
+            }
+        }
+    }
+    for ($i = 0; $i < $nd; $i++)
+        textScrollList -edit -append $dirs[$i] swgAnimBrowserTerms;
+
+    textScrollList -edit -selectCommand "swgAnimationBrowserOnTermPick" swgAnimBrowserTerms;
+}
+
+global proc swgAnimationBrowserOnTermPick() {
+    if (!`control -exists swgAnimBrowserTerms`)
+        return;
+    string $t[] = `textScrollList -query -selectItem swgAnimBrowserTerms`;
+    if (`size $t` == 0)
+        return;
+    string $pick = $t[0];
+    if ($pick == "(all)")
+        textField -edit -text "" swgAnimBrowserFilterField;
+    else
+        textField -edit -text $pick swgAnimBrowserFilterField;
+    swgAnimationBrowserApplyFilter;
+}
+
+global proc swgAnimationBrowserApplyFilter() {
+    global string $g_swgAnimAnimDisk;
+
+    if (!`control -exists swgAnimBrowserList`)
+        return;
+    if ($g_swgAnimAnimDisk == "")
+        return;
+
+    string $filter = "";
+    if (`control -exists swgAnimBrowserFilterField`)
+        $filter = `textField -query -text swgAnimBrowserFilterField`;
+    $filter = `swgAnimBrowserTrimFilter $filter`;
+    string $filterLower = `tolower $filter`;
+
+    textScrollList -edit -removeAll swgAnimBrowserList;
+
+    string $sorted[] = `swgAnimBrowserPythonCollectAns $g_swgAnimAnimDisk $filterLower`;
+
+    string $f;
+    for ($f in $sorted) {
+        string $line = ("appearance/animation/" + $f);
+        textScrollList -edit -append $line swgAnimBrowserList;
+    }
+
+    string $dr = `getDataRootDir`;
+    $dr = `swgAnimBrowserTrimSlashes $dr`;
+    int $nFound = `size $sorted`;
+    if (`control -exists swgAnimBrowserRootText`) {
+        string $filtNote = "";
+        if (`size $filter` > 0)
+            $filtNote = ("\nFilter: \"" + $filter + "\"");
+        string $summary = ("Data root: " + $dr + $filtNote + "\n");
+        $summary = ($summary + $nFound + " .ans file(s) listed");
+        text -edit -label $summary swgAnimBrowserRootText;
+    }
+}
+
+global proc swgAnimationBrowserImport() {
+    if (!`control -exists swgAnimBrowserList`)
+        return;
+    string $items[] = `textScrollList -query -selectItem swgAnimBrowserList`;
+    if (`size $items` == 0) {
+        warning "Select one or more .ans lines in the list, then Import.";
+        return;
+    }
+    string $p;
+    for ($p in $items) {
+        int $plen = `size $p`;
+        if ($plen >= 6 && `substring $p 1 6` == "Error:")
+            continue;
+        string $cmd = ("importAnimation -i \"" + $p + "\"");
+        eval $cmd;
+    }
+}
+
+global proc swgAnimationBrowserRefresh() {
+    global string $g_swgAnimAnimDisk;
+
+    string $dr = `getDataRootDir`;
+    $dr = `swgAnimBrowserTrimSlashes $dr`;
+    if (`control -exists swgAnimBrowserRootText`)
+        text -edit -label ("Data root: " + $dr + "\n(importAnimation paths use appearance/animation/...)") swgAnimBrowserRootText;
+
+    if (!`control -exists swgAnimBrowserList` || !`control -exists swgAnimBrowserTerms`)
+        return;
+
+    $g_swgAnimAnimDisk = "";
+
+    textScrollList -edit -removeAll swgAnimBrowserTerms;
+    textScrollList -edit -removeAll swgAnimBrowserList;
+
+    if ($dr == "") {
+        textScrollList -edit -append "Error: data root empty (env or setBaseDir)." swgAnimBrowserList;
+        if (`control -exists swgAnimBrowserRootText`)
+            text -edit -label ("Data root: (empty)\nSet TITAN_DATA_ROOT / DATA_ROOT or setBaseDir.") swgAnimBrowserRootText;
+        return;
+    }
+
+    string $animDisk = ($dr + "/appearance/animation");
+    $animDisk = `substituteAllString $animDisk "\\" "/"`;
+    if (!`filetest -d $animDisk`) {
+        string $msg = ("Error: missing folder:\n" + $animDisk);
+        textScrollList -edit -append $msg swgAnimBrowserList;
+        if (`control -exists swgAnimBrowserRootText`)
+            text -edit -label ("Data root: " + $dr + "\n(no appearance/animation on disk)") swgAnimBrowserRootText;
+        return;
+    }
+
+    $g_swgAnimAnimDisk = $animDisk;
+    swgAnimBrowserPopulateTerms $animDisk;
+    swgAnimationBrowserApplyFilter;
+}
+
+global proc swgAnimationBrowserShow() {
+    int $winExists = `window -exists swgAnimationBrowserWindow`;
+    if ($winExists) {
+        showWindow swgAnimationBrowserWindow;
+        evalDeferred -lowestPriority "swgAnimationBrowserRefresh;";
+        return;
+    }
+    window -title "SWG Animation Browser (.ans)" -widthHeight 640 720 swgAnimationBrowserWindow;
+    columnLayout -adjustableColumn 1 -rowSpacing 4;
+    text -label "Data root: (loading...)" -align "left" -wordWrap true -width 600 swgAnimBrowserRootText;
+    rowLayout -numberOfColumns 3 -columnWidth 1 50 -columnWidth 2 380 -columnWidth 3 120 -adjustableColumn 2;
+    text -label "Filter:";
+    textField -annotation "Substring on appearance/animation/... path (case-insensitive). Space = all words must match. Enter = apply." -enterCommand "swgAnimationBrowserApplyFilter;" swgAnimBrowserFilterField;
+    button -label "Refresh" -command "swgAnimationBrowserRefresh;";
+    setParent ..;
+    separator -height 4;
+    rowLayout -numberOfColumns 2 -adjustableColumn 2 -columnWidth 1 180 -columnWidth 2 430;
+    columnLayout -adjustableColumn 1 -rowSpacing 2;
+    text -label "Categories" -align "left";
+    textScrollList -numberOfRows 22 -height 460 -width 175 swgAnimBrowserTerms;
+    setParent ..;
+    columnLayout -adjustableColumn 1 -rowSpacing 2;
+    text -label "Animations (.ans) -  [Double Click to Import]" -align "left";
+    textScrollList -numberOfRows 22 -height 460 -width 420 -allowMultiSelection true
+        -doubleClickCommand "swgAnimationBrowserImport;"
+        swgAnimBrowserList;
+    setParent ..;
+    setParent ..;
+    separator -height 6;
+    rowLayout -numberOfColumns 3 -columnWidth 1 220 -columnWidth 2 220 -columnWidth 3 120;
+    button -label "Import selected" -command "swgAnimationBrowserImport;";
+    button -label "Revert bind pose" -command "swgRevertToBindPose";
+    button -label "Close" -command "deleteUI swgAnimationBrowserWindow";
+    setParent ..;
+    showWindow swgAnimationBrowserWindow;
+    evalDeferred -lowestPriority "swgAnimationBrowserRefresh;";
+}

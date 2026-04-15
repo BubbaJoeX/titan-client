@@ -8,16 +8,22 @@ This guide explains how to use the MEL commands and file translators in the SwgM
 
 1. **Load the plugin**: `loadPlugin SwgMayaEditor`
 2. **Set base directory** (required for most operations):
-   ```mel
+  ```mel
    setBaseDir "D:\\exported";
-   ```
+  ```
    This configures output directories under the given path (appearance, shader, texture, animation, skeleton, mesh, log).
-
 3. **Path resolution**: Import commands resolve relative paths using:
-   - `TITAN_DATA_ROOT` or `TITAN_EXPORT_ROOT` environment variables, or
-   - The directory set by `setBaseDir` (stored as `dataRootDir`)
-
+  - `TITAN_DATA_ROOT`, `TITAN_EXPORT_ROOT`, or `DATA_ROOT` environment variables, or
+  - The directory set by `setBaseDir` (stored as `dataRootDir`)
    Paths like `appearance/foo/bar` are resolved relative to the base. Absolute paths are used as-is.
+
+---
+
+## Build output and deploying (Windows)
+
+- **Release output**: `MayaModern/build/Release/SwgMayaEditor.mll` plus `.mel` scripts copied next to it by the build.
+- **Install into Maya** (`…/Maya2026/bin/plug-ins`): configure CMake with `SWG_MAYA_PLUGIN_INSTALL_DIR` pointing at that folder, then build target **`swgDeployMayaPlugins`** (elevated if under Program Files).
+- **Important**: **Quit Maya** (or run `unloadPlugin SwgMayaEditor`) before deploying. While the plugin is loaded, Windows **locks** `SwgMayaEditor.mll`, so the copy may fail or appear to update nothing (e.g. **0** files / old build still running). After deploy, restart Maya and `loadPlugin SwgMayaEditor` again.
 
 ---
 
@@ -32,12 +38,13 @@ setBaseDir "D:\\exported";
 ```
 
 Creates and configures:
+
 - `appearance\`, `shader\`, `texture\`, `animation\`, `skeleton\`, `mesh\`, `log\`
 - Reference prefixes for tree paths (e.g. `appearance/`, `shader/`, `texture/`)
 
 ### getDataRootDir
 
-Returns the currently configured data root directory.
+Returns the **same** base directory import uses: `TITAN_DATA_ROOT`, else `TITAN_EXPORT_ROOT`, else `DATA_ROOT`, else `setBaseDir` / cfg (`dataRootDir`, then `appearanceWriteDir` parent). Prefer **`TITAN_DATA_ROOT`** for consistency with the rest of the toolchain.
 
 ```mel
 getDataRootDir;
@@ -56,10 +63,12 @@ importSkeleton -i "appearance/skeleton/humanoid/humanoid";
 importSkeleton -i "path/to/skeleton.skt" -parent "|group1";
 ```
 
-| Flag | Description |
-|------|-------------|
-| `-i` | Input path (required). Tree path or absolute path. |
-| `-parent` | Optional. DAG path of parent transform. |
+
+| Flag      | Description                                        |
+| --------- | -------------------------------------------------- |
+| `-i`      | Input path (required). Tree path or absolute path. |
+| `-parent` | Optional. DAG path of parent transform.            |
+
 
 ### importAnimation
 
@@ -69,9 +78,11 @@ Imports an animation (.ans) via Maya's File > Import.
 importAnimation -i "appearance/animation/humanoid/combat/dance.ans";
 ```
 
-| Flag | Description |
-|------|-------------|
+
+| Flag | Description            |
+| ---- | ---------------------- |
 | `-i` | Input path (required). |
+
 
 ### importLodMesh
 
@@ -82,10 +93,12 @@ importLodMesh -i "appearance/mesh/object_lod0";
 importLodMesh -i "appearance/object" -parent "|group1";
 ```
 
-| Flag | Description |
-|------|-------------|
-| `-i` | Input path (required). Tries .lod, .apt, .msh in that order. |
-| `-parent` | Optional. DAG path of parent transform. |
+
+| Flag      | Description                                                  |
+| --------- | ------------------------------------------------------------ |
+| `-i`      | Input path (required). Tries .lod, .apt, .msh in that order. |
+| `-parent` | Optional. DAG path of parent transform.                      |
+
 
 ### importSkeletalMesh
 
@@ -96,11 +109,13 @@ importSkeletalMesh -i "appearance/mesh/character_lod0" -s "appearance/skeleton/h
 importSkeletalMesh -i "character.mgn" -s "humanoid.skt" -parent "|root";
 ```
 
-| Flag | Description |
-|------|-------------|
-| `-i` | Input mesh path (required). |
-| `-s` | Skeleton path (required). |
+
+| Flag      | Description                 |
+| --------- | --------------------------- |
+| `-i`      | Input mesh path (required). |
+| `-s`      | Skeleton path (required).   |
 | `-parent` | Optional. Parent transform. |
+
 
 ### importStaticMesh
 
@@ -111,10 +126,12 @@ importStaticMesh -i "appearance/mesh/object";
 importStaticMesh -i "object" -parent "|group1";
 ```
 
-| Flag | Description |
-|------|-------------|
-| `-i` | Input path (required). |
+
+| Flag      | Description                 |
+| --------- | --------------------------- |
+| `-i`      | Input path (required).      |
 | `-parent` | Optional. Parent transform. |
+
 
 ### importShader
 
@@ -124,9 +141,11 @@ Imports a shader template (.sht). Converts DDS textures to TGA for Maya editing.
 importShader -i "shader/foo/bar";
 ```
 
-| Flag | Description |
-|------|-------------|
+
+| Flag | Description                   |
+| ---- | ----------------------------- |
 | `-i` | Input shader path (required). |
+
 
 ### exportShader
 
@@ -138,9 +157,11 @@ exportShader -i "shader/foo/bar";
 exportShader -path "shader/foo/bar";
 ```
 
-| Flag | Description |
-|------|-------------|
+
+| Flag           | Description                                                                  |
+| -------------- | ---------------------------------------------------------------------------- |
 | `-i` / `-path` | Shader tree path (required), e.g. `shader/foo/bar` (with or without `.sht`). |
+
 
 **Prerequisites**: `setBaseDir` (or configured `shaderTemplateWriteDir` / `textureWriteDir`). Source shader is resolved like imports (data root / `TITAN_DATA_ROOT`).
 
@@ -152,9 +173,11 @@ Imports a skeletal appearance template (.sat). Loads skeleton, LOD meshes, and a
 importSat -i "appearance/character/sat_name";
 ```
 
-| Flag | Description |
-|------|-------------|
+
+| Flag | Description                |
+| ---- | -------------------------- |
 | `-i` | Input SAT path (required). |
+
 
 ### importPob
 
@@ -164,9 +187,11 @@ Imports a portal object (.pob) with cells, portals, and appearance references.
 importPob -i "appearance/building/cantina";
 ```
 
-| Flag | Description |
-|------|-------------|
+
+| Flag | Description                |
+| ---- | -------------------------- |
 | `-i` | Input POB path (required). |
+
 
 ### importStructure
 
@@ -178,11 +203,13 @@ importStructure -i "appearance/building/cantina" -flr;
 importStructure -i "appearance/building/cantina" -shader "shader/building/cantina_ext";
 ```
 
-| Flag | Description |
-|------|-------------|
-| `-i` | Tree path without extension (required). `appearance/` is prepended if missing. |
-| `-flr` | Import standalone `.flr` even when a POB was loaded (default: skip FLR if POB exists, to avoid duplicate floors). |
-| `-shader` / `-s` | Run `importShader` on this path after geometry. |
+
+| Flag             | Description                                                                                                       |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `-i`             | Tree path without extension (required). `appearance/` is prepended if missing.                                    |
+| `-flr`           | Import standalone `.flr` even when a POB was loaded (default: skip FLR if POB exists, to avoid duplicate floors). |
+| `-shader` / `-s` | Run `importShader` on this path after geometry.                                                                   |
+
 
 Requires `setBaseDir` / data root the same as other import commands.
 
@@ -202,10 +229,12 @@ exportSkeleton -bp -10;
 exportSkeleton -path "D:\\exported\\appearance\\skeleton\\custom.skt";
 ```
 
-| Flag | Description |
-|------|-------------|
-| `-bp` | Bind pose frame number (default: -10). |
+
+| Flag    | Description                                                            |
+| ------- | ---------------------------------------------------------------------- |
+| `-bp`   | Bind pose frame number (default: -10).                                 |
 | `-path` | Optional. Full output path. Otherwise uses `skeletonTemplateWriteDir`. |
+
 
 **Selection**: Select the root joint or any joint in the skeleton.
 
@@ -221,14 +250,17 @@ exportStaticMesh -path "D:\\exported\\appearance\\mesh\\object.msh";
 exportStaticMesh -name "custom_name";
 ```
 
-| Flag | Description |
-|------|-------------|
+
+| Flag    | Description                                                          |
+| ------- | -------------------------------------------------------------------- |
 | `-path` | Optional. Output path. Default: `appearanceWriteDir/mesh/<name>.msh` |
-| `-name` | Optional. Override mesh name. |
+| `-name` | Optional. Override mesh name.                                        |
+
 
 **Selection**: Select a mesh (or its transform).
 
 **Output**:
+
 - `.msh` – MESH/0005 with geometry, hardpoints, shader groups
 - APPR/FLOR – If the mesh transform has a child `floor_component` with string attribute `floorPath` (from `.msh` import), that path is written into the floor reference chunk on export.
 - `.apt` – Redirect to mesh (in `appearanceWriteDir`)
@@ -243,19 +275,23 @@ select -r pobRoot;
 exportPob -i "appearance/building/cantina";
 ```
 
-| Flag | Description |
-|------|-------------|
+
+| Flag | Description             |
+| ---- | ----------------------- |
 | `-i` | Output path (required). |
+
 
 **Selection**: Select the POB root or a cell.
 
 ### Skeletal mesh, animation, and SAT export (status)
 
-| Goal | SwgMayaEditor | Notes |
-|------|----------------|--------|
-| `.mgn` (SKMG) | **Import** supported; **File > Export .mgn** writer is not yet implemented | Full generator export lives in the legacy **MayaExporter** (`exportSkeletalMeshGenerator`) and depends on a large shared export stack. |
-| `.ans` (keyframe anim) | **Import** supported; **File > Export .ans** writer is not yet implemented | Legacy **MayaExporter** `exportKeyframeSkeletalAnimation`. |
-| `.sat` | **Import** via `importSat` | **Export** not implemented in SwgMayaEditor (legacy MayaExporter `exportSatFile` / appearance template pipeline). |
+
+| Goal                   | SwgMayaEditor                                                              | Notes                                                                                                                                  |
+| ---------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `.mgn` (SKMG)          | **Import** supported; **File > Export .mgn** writer is not yet implemented | Full generator export lives in the legacy **MayaExporter** (`exportSkeletalMeshGenerator`) and depends on a large shared export stack. |
+| `.ans` (keyframe anim) | **Import** supported; **File > Export .ans** writer is not yet implemented | Legacy **MayaExporter** `exportKeyframeSkeletalAnimation`.                                                                             |
+| `.sat`                 | **Import** via `importSat`                                                 | **Export** not implemented in SwgMayaEditor (legacy MayaExporter `exportSatFile` / appearance template pipeline).                      |
+
 
 Use **exportShader** and **exportStaticMesh** for shader round-trip; for skeletal mesh/animation/SAT binary export, use the legacy exporter build or port those sources into this project (see `todo.txt`).
 
@@ -265,20 +301,22 @@ Use **exportShader** and **exportStaticMesh** for shader round-trip; for skeleta
 
 Use Maya's **File > Import** or **File > Export** with these file types. The **Files of type** list shows the **filter** labels; MEL `file -import -type` / `file -export -type` must use the **short type id** (Maya matches the registered translator name, not the dialog text).
 
-**Do not use `SAT_ATF` for SWG `.sat` files.** In Maya, `SAT_ATF` is the **ACIS solid** SAT importer. SWG skeletal appearance templates are imported with type **`SwgSat`** (this plugin).
+**Do not use `SAT_ATF` for SWG `.sat` files.** In Maya, `SAT_ATF` is the **ACIS solid** SAT importer. SWG skeletal appearance templates are imported with type `**SwgSat`** (this plugin).
 
-| Extension | MEL `-type` (register name) | Files of type label (`filter()`) |
-|-----------|-----------------------------|----------------------------------|
-| .mgn | `SwgMgn` | SWG skeletal mesh (*.mgn) |
-| .msh / .apt | `SwgMsh` | SWG static mesh (*.msh *.apt) |
-| .skt | `SwgSkt` | SWG skeleton (*.skt) |
-| .ans | `SwgAns` | SWG animation (*.ans) |
-| .flr | `SwgFlr` | SWG floor (*.flr) |
-| .sat | `SwgSat` | SWG skeletal appearance (*.sat) |
-| .pob | `SwgPob` | SWG portal object (*.pob) |
-| .dds | `SwgDds` | SWG DDS texture (*.dds) |
 
-Constants live in `translators/SwgTranslatorNames.h`: `swg_translator::kType*` for scripts, `swg_translator::kFilter*` for the dialog strings.
+| Extension   | MEL `-type` (register name) | Files of type label (`filter()`) |
+| ----------- | --------------------------- | -------------------------------- |
+| .mgn        | `SwgMgn`                    | SWG skeletal mesh (*.mgn)        |
+| .msh / .apt | `SwgMsh`                    | SWG static mesh (*.msh *.apt)    |
+| .skt        | `SwgSkt`                    | SWG skeleton (*.skt)             |
+| .ans        | `SwgAns`                    | SWG animation (*.ans)            |
+| .flr        | `SwgFlr`                    | SWG floor (*.flr)                |
+| .sat        | `SwgSat`                    | SWG skeletal appearance (*.sat)  |
+| .pob        | `SwgPob`                    | SWG portal object (*.pob)        |
+| .dds        | `SwgDds`                    | SWG DDS texture (*.dds)          |
+
+
+Constants live in `translators/SwgTranslatorNames.h`: `swg_translator::kType`* for scripts, `swg_translator::kFilter*` for the dialog strings.
 
 Example SAT import:
 
@@ -308,6 +346,14 @@ Opens the asset dissector UI (if `swgAssetDissector.mel` is available).
 swgAssetDissector;
 ```
 
+### swgAnimationBrowser
+
+Opens a UI with **Categories** (top-level folders under `appearance/animation`), a **list** of matching `.ans` paths, **Filter** + **Refresh**, and **Import selected**. Picking a category fills the filter and refreshes the list; the filter is a case-insensitive substring on `appearance/animation/…`. **Double-click** a list row or use **Import selected** to run `importAnimation -i "<path>"`. Uses the same **data root** as other imports (`TITAN_DATA_ROOT` / `TITAN_EXPORT_ROOT` / `DATA_ROOT` or `setBaseDir`). Import a matching **`.sat`** first so joints line up.
+
+```mel
+swgAnimationBrowser;
+```
+
 ---
 
 ## Configuration
@@ -328,6 +374,17 @@ nvttExporterPath = "D:\\Program Files\\NVIDIA Corporation\\NVIDIA Texture Tools\
 ; Enable verbose logging
 verboseLogging = false
 ```
+
+---
+
+## Related documentation (repo `/docs`)
+
+From the repo root these live under `docs/`. Relative to this file (`MayaModern/how-to.md`): `../../../../../../docs/`.
+
+If you work mainly through **File → Import** / **Export Selection** and the Outliner (not MEL), read those two first; this how-to stays command- and translator-reference oriented.
+
+- [MAYA_POB_FROM_SCRATCH.md](../../../../../../docs/MAYA_POB_FROM_SCRATCH.md) — new `.pob` authoring in Maya.
+- [MAYA_KITBASH_IMPORT_COMBINE.md](../../../../../../docs/MAYA_KITBASH_IMPORT_COMBINE.md) — import SAT/APT/MSH, combine, pose, export static meshes.
 
 ---
 
@@ -383,7 +440,7 @@ Authoritative notes for which **FORM** versions the game client loads live in:
 
 `MayaModern/translators/SwgIffFormatVersions.h`
 
-The **`.msh`** translator (`MshTranslator`) follows **`MeshAppearanceTemplate`**, **`AppearanceTemplate`**, and **`ShaderPrimitiveSetTemplate`** for MESH / APPR / SPS versions.
+The `**.msh`** translator (`MshTranslator`) follows `**MeshAppearanceTemplate**`, `**AppearanceTemplate**`, and `**ShaderPrimitiveSetTemplate**` for MESH / APPR / SPS versions.
 
 ---
 
@@ -402,17 +459,17 @@ When importing a `.msh` file without SPS (Shader Primitive Set) geometry, you ma
 ### `.msh` import fails (Script Editor / stderr)
 
 1. **Run `setBaseDir`** (or set `TITAN_DATA_ROOT` / `TITAN_EXPORT_ROOT`) so paths in the file and companion `.apt` redirects resolve on disk.
-2. Prefer **`importLodMesh -i "appearance/mesh/your_basename"`** (no extension) so the tool can pick `.lod` / `.apt` / `.msh` in a supported order. Opening a raw `.msh` via **File → Import** still works but follows the same IFF parser rules.
-3. If you see **`Cannot build mesh: missing vertex/index data`**, the **MESH/0005 → SPS** block in that asset does not match what this plug-in expects (e.g. no index buffer, or an unsupported primitive layout). Check **`[MshTranslator]`** lines in stderr / the Script Editor history.
-4. If a sibling **`.apt`** exists, the importer follows the redirect; ensure the redirected file is present and readable.
+2. Prefer `**importLodMesh -i "appearance/mesh/your_basename"**` (no extension) so the tool can pick `.lod` / `.apt` / `.msh` in a supported order. Opening a raw `.msh` via **File → Import** still works but follows the same IFF parser rules.
+3. If you see `**Cannot build mesh: missing vertex/index data`**, the **MESH/0005 → SPS** block in that asset does not match what this plug-in expects (e.g. no index buffer, or an unsupported primitive layout). Check `**[MshTranslator]`** lines in stderr / the Script Editor history.
+4. If a sibling `**.apt**` exists, the importer follows the redirect; ensure the redirected file is present and readable.
 
 ### `.mgn` looked gray / no textures
 
-**Shader assignment**: After import, the plug-in resolves each per-shader **template name** from the `.mgn`, runs **`importShader`** for the matching **`.sht`** under your data root, then assigns that shading group to the mesh faces (same idea as `.msh`). If the `.sht` or textures cannot be resolved, you get a **default green** material — fix **`setBaseDir`**, tree layout (`shader/`, `texture/`), and paths inside the shader template.
+**Shader assignment**: After import, the plug-in resolves each per-shader **template name** from the `.mgn`, runs `**importShader`** for the matching `**.sht**` under your data root, then assigns that shading group to the mesh faces (same idea as `.msh`). If the `.sht` or textures cannot be resolved, you get a **default green** material — fix `**setBaseDir`**, tree layout (`shader/`, `texture/`), and paths inside the shader template.
 
 **UVs**: Texture coordinates are read from **PSDT → TCSF → TCSD** when present.
 
-**TRTS**: Optional **texture renderer template** bindings in `.mgn` / SKMG are parsed (FORM TRTS / CHUNK TRT) and written to the import root transform as **`swgTrtBindings`** (tab-separated lines: template name, shader index, texture tag hex). Shader assignment still comes from per-shader template names and **`importShader`**.
+**TRTS**: Optional **texture renderer template** bindings in `.mgn` / SKMG are parsed (FORM TRTS / CHUNK TRT) and written to the import root transform as `**swgTrtBindings`** (tab-separated lines: template name, shader index, texture tag hex). Shader assignment still comes from per-shader template names and `**importShader**`.
 
 ---
 
@@ -421,3 +478,4 @@ When importing a `.msh` file without SPS (Shader Primitive Set) geometry, you ma
 - **Tree paths**: Use forward slashes, e.g. `appearance/mesh/object`, `shader/foo/bar`
 - **Relative paths**: Resolved against data root. Prefix with `appearance/`, `shader/`, `texture/` as needed
 - **Absolute paths**: Use as-is (e.g. `D:\data\object.msh`)
+

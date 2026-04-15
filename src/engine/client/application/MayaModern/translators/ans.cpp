@@ -28,6 +28,7 @@
 #include <maya/MTime.h>
 #include <maya/MGlobal.h>
 #include <maya/MPlug.h>
+#include <maya/MSelectionList.h>
 #include <maya/MVector.h>
 
 #include <algorithm>
@@ -170,6 +171,36 @@ void* AnsTranslator::creator()
 MStatus AnsTranslator::reader (const MFileObject& file, const MString& options, MPxFileTranslator::FileAccessMode mode)
 {
     CompressedQuaternion::install();
+
+    // Clear existing animation and restore bind pose BEFORE reading new animation.
+    // This ensures bindQuat/bindTranslation are the original values, not from a previous animation.
+    ANS_LOG("clearing existing animation and restoring bind pose...");
+    {
+        MStatus clearStatus;
+        // Select all joints
+        MSelectionList jointSel;
+        MItDag dagIt(MItDag::kDepthFirst, MFn::kJoint, &clearStatus);
+        for (; !dagIt.isDone(); dagIt.next())
+        {
+            MDagPath path;
+            if (dagIt.getPath(path))
+                jointSel.add(path);
+        }
+        if (jointSel.length() > 0)
+        {
+            MGlobal::setActiveSelectionList(jointSel);
+            // Delete animation curves on rotation and translation
+            MGlobal::executeCommand("cutKey -clear -at translateX -at translateY -at translateZ "
+                                    "-at rotateX -at rotateY -at rotateZ");
+            // Restore bind pose
+            clearStatus = MGlobal::executeCommand("dagPose -restore -global -bindPose");
+            if (!clearStatus)
+                ANS_WARN("dagPose failed - bind pose may not be restored correctly");
+            MGlobal::clearSelectionList();
+        }
+        // Go to frame 0
+        MAnimControl::setCurrentTime(MTime(0.0, MTime::uiUnit()));
+    }
 
     MString mpath = file.expandedFullName();
     const char *fileName = mpath.asChar();

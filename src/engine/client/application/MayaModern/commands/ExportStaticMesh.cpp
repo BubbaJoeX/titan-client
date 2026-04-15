@@ -2,6 +2,7 @@
 #include "StaticMeshWriter.h"
 #include "SetDirectoryCommand.h"
 #include "ShaderExporter.h"
+#include "MayaUtility.h"
 #include "MayaConversions.h"
 #include "MayaCompoundString.h"
 #include "Iff.h"
@@ -22,6 +23,8 @@
 #include <maya/MIntArray.h>
 #include <maya/MPointArray.h>
 #include <maya/MPlug.h>
+#include <maya/MPlugArray.h>
+#include <maya/MFileObject.h>
 #include <maya/MSelectionList.h>
 #include <maya/MStatus.h>
 #include <maya/MString.h>
@@ -29,11 +32,16 @@
 #include <maya/MVector.h>
 
 #include <algorithm>
+#include <cctype>
+#include <cstdio>
 #include <cstring>
 #include <map>
-#include <set>
 #include <string>
 #include <vector>
+
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 namespace
 {
@@ -48,6 +56,90 @@ namespace
         MString val;
         if (p.getValue(val) != MS::kSuccess) return std::string();
         return val.asChar();
+    }
+
+    static bool stringTruthy(const std::string& s)
+    {
+        if (s.empty()) return false;
+        if (s == "1") return true;
+        std::string l;
+        l.reserve(s.size());
+        for (unsigned char uc : s)
+            l += static_cast<char>(std::tolower(uc));
+        return l == "true" || l == "yes" || l == "on";
+    }
+
+    /// SAT / msh import can tag hueable materials; clones shaderPrototypeHueableSht when true.
+    static bool getHueableFromSg(MFnDependencyNode& sgFn)
+    {
+        if (stringTruthy(getStringAttr(sgFn, "swgHueable"))) return true;
+        MPlug p = sgFn.findPlug("swgHueable", true);
+        if (p.isNull()) return false;
+        bool b = false;
+        if (p.getValue(b) == MS::kSuccess) return b;
+        int n = 0;
+        if (p.getValue(n) == MS::kSuccess) return n != 0;
+        return false;
+    }
+
+    static bool looksLikeFilesystemImagePathLocal(const std::string& p)
+    {
+        if (p.empty()) return false;
+        if (p.find(':') != std::string::npos) return true;
+        if (p[0] == '/' || p[0] == '\\') return true;
+        return false;
+    }
+
+    /// File basename (no path, no extension) from swgTexturePath or "texture/foo" / "foo.dds".
+    static std::string textureStemFromSwgOrTreePath(const std::string& raw)
+    {
+        if (raw.empty()) return std::string();
+        std::string s = raw;
+        for (char& c : s)
+            if (c == '\\') c = '/';
+        while (!s.empty() && (s[0] == '/' || s[0] == '\\'))
+            s.erase(0, 1);
+        const size_t slash = s.find_last_of('/');
+        if (slash != std::string::npos)
+            s = s.substr(slash + 1);
+        if (s.size() > 4)
+        {
+            std::string tail = s.substr(s.size() - 4);
+            for (char& c : tail)
+                c = static_cast<char>(tolower(static_cast<unsigned char>(c)));
+            if (tail == ".dds")
+                s.resize(s.size() - 4);
+        }
+        return s;
+    }
+
+    /// First existing image in textureWriteDir named <baseName>.<ext> (artist drop-in for export).
+    static std::string tryFindImageInTextureWriteDir(const std::string& baseNameNoExt)
+    {
+        if (baseNameNoExt.empty()) return std::string();
+        const char* tw = SetDirectoryCommand::getDirectoryString(SetDirectoryCommand::TEXTURE_WRITE_DIR_INDEX);
+        if (!tw || !tw[0]) return std::string();
+        std::string dir(tw);
+        if (!dir.empty() && dir.back() != '\\' && dir.back() != '/')
+            dir += '\\';
+        static const char* exts[] = { ".tga", ".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp" };
+        for (const char* ext : exts)
+        {
+            const std::string p = dir + baseNameNoExt + ext;
+            FILE* f = fopen(p.c_str(), "rb");
+            if (f)
+            {
+                fclose(f);
+                return p;
+            }
+        }
+        return std::string();
+    }
+
+    /// Normalizes swgTexturePath to texture/<base>.dds for TXM replacement (client loads DDS by this path).
+    static std::string normalizeTextureTreeForShader(const std::string& s)
+    {
+        return ShaderExporter::ensureTextureTreePathForTxmName(s);
     }
 
     static std::string toTreePath(const std::string& path)
@@ -69,6 +161,883 @@ namespace
         char c = s.back();
         if (c != '/' && c != '\\') return s + '\\';
         return s;
+    }
+
+    static std::string trimTrailingSeparatorsStr(std::string p)
+    {
+        while (!p.empty())
+        {
+            char c = p.back();
+            if (c == '/' || c == '\\') p.pop_back();
+            else break;
+        }
+        return p;
+    }
+
+    static std::string lastPathSegment(const std::string& path)
+    {
+        const std::string p = trimTrailingSeparatorsStr(path);
+        const size_t pos = p.find_last_of("/\\");
+        if (pos == std::string::npos) return p;
+        return p.substr(pos + 1);
+    }
+
+    static std::string parentPathStr(const std::string& path)
+    {
+        const std::string p = trimTrailingSeparatorsStr(path);
+        const size_t pos = p.find_last_of("/\\");
+        if (pos == std::string::npos) return std::string();
+        return p.substr(0, pos);
+    }
+
+    static bool iequalsSeg(const std::string& a, const std::string& b)
+    {
+#ifdef _WIN32
+        return _stricmp(a.c_str(), b.c_str()) == 0;
+#else
+        if (a.size() != b.size()) return false;
+        for (size_t i = 0; i < a.size(); ++i)
+        {
+            if (std::tolower(static_cast<unsigned char>(a[i])) !=
+                std::tolower(static_cast<unsigned char>(b[i])))
+                return false;
+        }
+        return true;
+#endif
+    }
+
+    static std::string winPathForMkdir(const std::string& s)
+    {
+#ifdef _WIN32
+        std::string p = s;
+        for (char& c : p)
+            if (c == '/') c = '\\';
+        return p;
+#else
+        return s;
+#endif
+    }
+
+    static std::string normalizePathForCompare(std::string p)
+    {
+        for (char& c : p)
+        {
+            if (c == '\\') c = '/';
+            c = static_cast<char>(tolower(static_cast<unsigned char>(c)));
+        }
+        return p;
+    }
+
+    /// Os::writeFile / CreateFile on Windows is more reliable with backslashes for dialog paths.
+    static std::string osPathForFileWrite(const std::string& s)
+    {
+#ifdef _WIN32
+        std::string p = s;
+        for (char& c : p)
+            if (c == '/') c = '\\';
+        return p;
+#else
+        return s;
+#endif
+    }
+
+#ifdef _WIN32
+    static bool copyFileContentsWin32(const std::string& src, const std::string& dst)
+    {
+        return CopyFileA(osPathForFileWrite(src).c_str(), osPathForFileWrite(dst).c_str(), FALSE) != 0;
+    }
+#endif
+
+    static bool fileExistsForBundle(const std::string& p)
+    {
+        FILE* f = fopen(osPathForFileWrite(p).c_str(), "rb");
+        if (!f) return false;
+        fclose(f);
+        return true;
+    }
+
+    static long getFileSizeBytes(const std::string& absPath)
+    {
+        FILE* f = fopen(osPathForFileWrite(absPath).c_str(), "rb");
+        if (!f) return -1;
+        if (fseek(f, 0, SEEK_END) != 0)
+        {
+            fclose(f);
+            return -1;
+        }
+        const long sz = ftell(f);
+        fclose(f);
+        return sz;
+    }
+
+    static bool fileStartsWithDdsMagic(const std::string& absPath)
+    {
+        FILE* f = fopen(osPathForFileWrite(absPath).c_str(), "rb");
+        if (!f) return false;
+        unsigned char b[4];
+        const size_t n = fread(b, 1, 4, f);
+        fclose(f);
+        return n == 4 && b[0] == 'D' && b[1] == 'D' && b[2] == 'S' && b[3] == ' ';
+    }
+
+    /// Maps TXM path (texture/foo.dds) to the DDS file written under textureWriteDir (foo.dds).
+    static std::string absolutePathForTextureWriteDirDds(const std::string& texTree)
+    {
+        if (texTree.empty()) return std::string();
+        const char* tw = SetDirectoryCommand::getDirectoryString(SetDirectoryCommand::TEXTURE_WRITE_DIR_INDEX);
+        if (!tw || !tw[0]) return std::string();
+        std::string dir(tw);
+        if (!dir.empty() && dir.back() != '\\' && dir.back() != '/')
+            dir += '\\';
+        for (char& c : dir)
+            if (c == '/') c = '\\';
+        const std::string stem = textureStemFromSwgOrTreePath(texTree);
+        if (stem.empty()) return std::string();
+        return dir + stem + ".dds";
+    }
+
+    /// Confirms the cloned .sht exists and, when a diffuse tree path was set, the matching DDS is present and valid.
+    static bool verifyShaderExportArtifacts(const std::string& absShaderWritten, const std::string& texTree,
+        const std::string& outShaderTreeForLog)
+    {
+        if (getFileSizeBytes(absShaderWritten) < 32)
+        {
+            std::cerr << "[ExportStaticMesh] Verify failed: shader missing or too small: " << absShaderWritten << "\n";
+            MGlobal::displayError(
+                MString("SwgMsh export verify: shader output invalid: ") + absShaderWritten.c_str());
+            return false;
+        }
+
+        if (texTree.empty())
+        {
+            MGlobal::displayWarning(
+                MString("SwgMayaEditor: verify: \"") + outShaderTreeForLog.c_str()
+                + "\" uses prototype TXM paths only (no diffuse published). Connect file/aiImage to base color, "
+                  "or set swgTexturePath / drop images in textureWriteDir, then re-export. "
+                  "Otherwise confirm prototype textures exist under the viewer data root.");
+            return true;
+        }
+
+        const std::string ddsAbs = absolutePathForTextureWriteDirDds(texTree);
+        if (ddsAbs.empty())
+        {
+            std::cerr << "[ExportStaticMesh] Verify failed: textureWriteDir not set; cannot check DDS for TXM \""
+                      << texTree << "\"\n";
+            MGlobal::displayError("SwgMsh export verify: textureWriteDir not set (setBaseDir). Cannot verify diffuse DDS.");
+            return false;
+        }
+        if (!fileStartsWithDdsMagic(ddsAbs))
+        {
+            std::cerr << "[ExportStaticMesh] Verify failed: DDS missing or not a valid DDS file (expected for TXM \""
+                      << texTree << "\"): " << ddsAbs << "\n";
+            MGlobal::displayError(MString("SwgMsh export verify: invalid or missing DDS for ") + texTree.c_str()
+                + " - expected file: " + ddsAbs.c_str());
+            return false;
+        }
+
+        std::cerr << "[ExportStaticMesh] Verified: " << absShaderWritten << " + " << ddsAbs << " (TXM " << texTree
+                  << ")\n";
+        MGlobal::displayInfo(
+            MString("SwgMayaEditor: verified shader and DDS (") + texTree.c_str() + ")");
+        return true;
+    }
+
+    static std::string fileNameFromPath(const std::string& p)
+    {
+        const size_t slash = p.find_last_of("/\\");
+        return (slash == std::string::npos) ? p : p.substr(slash + 1);
+    }
+
+    static void pushUniquePath(std::vector<std::string>& v, const std::string& p)
+    {
+        if (p.empty()) return;
+        for (const auto& x : v)
+            if (x == p) return;
+        v.push_back(p);
+    }
+
+    /// Ensures shader/, texture/, and appearance/ under setBaseDir (DATA_ROOT) contain the exported files.
+    /// Mesh is only written to appearance/mesh/ (no duplicate .msh at export root).
+    static void mirrorViewerBundleToDataRoot(
+        const std::vector<std::string>& exportedShaderAbsPaths,
+        const std::vector<std::string>& exportedDdsAbsPaths,
+        const std::string& mshCanonicalPath,
+        const std::string& aptCanonicalPath,
+        const std::string& meshName)
+    {
+        const char* dr = SetDirectoryCommand::getDirectoryString(SetDirectoryCommand::DATA_ROOT_DIR_INDEX);
+        if (!dr || !dr[0]) return;
+        std::string bundleRoot = dr;
+        for (char& c : bundleRoot)
+            if (c == '/') c = '\\';
+        if (!bundleRoot.empty() && bundleRoot.back() != '\\' && bundleRoot.back() != '/')
+            bundleRoot += '\\';
+
+        const std::string bundleShaderDir = bundleRoot + "shader\\";
+        const std::string bundleTexDir = bundleRoot + "texture\\";
+        const std::string bundleMeshDir = bundleRoot + "appearance\\mesh\\";
+        const std::string bundleAppearanceDir = bundleRoot + "appearance\\";
+        MayaUtility::createDirectory(winPathForMkdir(bundleShaderDir).c_str());
+        MayaUtility::createDirectory(winPathForMkdir(bundleTexDir).c_str());
+        MayaUtility::createDirectory(winPathForMkdir(bundleMeshDir).c_str());
+        MayaUtility::createDirectory(winPathForMkdir(bundleAppearanceDir).c_str());
+
+#ifdef _WIN32
+        for (const auto& src : exportedShaderAbsPaths)
+        {
+            if (src.empty()) continue;
+            const std::string base = fileNameFromPath(src);
+            const std::string dst = bundleShaderDir + base;
+            if (normalizePathForCompare(src) == normalizePathForCompare(dst)) continue;
+            if (!fileExistsForBundle(src))
+            {
+                std::cerr << "[ExportStaticMesh] Bundle skip (missing shader): " << src << "\n";
+                continue;
+            }
+            if (copyFileContentsWin32(src, dst))
+                std::cerr << "[ExportStaticMesh] Bundled .sht: " << dst << "\n";
+            else
+                std::cerr << "[ExportStaticMesh] Bundle copy failed: " << src << " -> " << dst << "\n";
+        }
+        for (const auto& src : exportedDdsAbsPaths)
+        {
+            if (src.empty()) continue;
+            const std::string base = fileNameFromPath(src);
+            const std::string dst = bundleTexDir + base;
+            if (normalizePathForCompare(src) == normalizePathForCompare(dst)) continue;
+            if (!fileExistsForBundle(src))
+            {
+                std::cerr << "[ExportStaticMesh] Bundle skip (missing texture): " << src << "\n";
+                continue;
+            }
+            if (copyFileContentsWin32(src, dst))
+                std::cerr << "[ExportStaticMesh] Bundled .dds: " << dst << "\n";
+            else
+                std::cerr << "[ExportStaticMesh] Bundle copy failed: " << src << " -> " << dst << "\n";
+        }
+        if (!mshCanonicalPath.empty() && fileExistsForBundle(mshCanonicalPath))
+        {
+            const std::string dstMsh = bundleMeshDir + meshName + ".msh";
+            if (normalizePathForCompare(mshCanonicalPath) != normalizePathForCompare(dstMsh))
+            {
+                if (copyFileContentsWin32(mshCanonicalPath, dstMsh))
+                    std::cerr << "[ExportStaticMesh] Bundled .msh: " << dstMsh << "\n";
+            }
+        }
+        if (!aptCanonicalPath.empty() && fileExistsForBundle(aptCanonicalPath))
+        {
+            const std::string dstApt = bundleAppearanceDir + meshName + ".apt";
+            if (normalizePathForCompare(aptCanonicalPath) != normalizePathForCompare(dstApt))
+            {
+                if (copyFileContentsWin32(aptCanonicalPath, dstApt))
+                    std::cerr << "[ExportStaticMesh] Bundled .apt: " << dstApt << "\n";
+            }
+        }
+#else
+        (void)exportedShaderAbsPaths;
+        (void)exportedDdsAbsPaths;
+        (void)mshCanonicalPath;
+        (void)aptCanonicalPath;
+        (void)meshName;
+#endif
+        MGlobal::displayInfo(
+            MString("SwgMayaEditor: viewer tree at setBaseDir - ") + (bundleRoot + "shader/, texture/, appearance/").c_str());
+    }
+
+    /// Chooses appearance root (parent of mesh/) and mesh output directory; shader/texture stay separate (SetDirectoryCommand).
+    static void resolveAppearanceAndMeshDirs(const std::string& directoryPathNoFile,
+        std::string& outAppearanceRoot, std::string& outMeshDir)
+    {
+        const std::string path = trimTrailingSeparatorsStr(directoryPathNoFile);
+        const std::string last = lastPathSegment(path);
+        if (iequalsSeg(last, "mesh"))
+        {
+            outMeshDir = ensureTrailingSlash(path);
+            outAppearanceRoot = ensureTrailingSlash(parentPathStr(path));
+        }
+        else if (iequalsSeg(last, "appearance"))
+        {
+            outAppearanceRoot = ensureTrailingSlash(path);
+            outMeshDir = ensureTrailingSlash(outAppearanceRoot + "mesh");
+        }
+        else
+        {
+            const std::string exportRoot = ensureTrailingSlash(path);
+            outAppearanceRoot = ensureTrailingSlash(exportRoot + "appearance");
+            outMeshDir = ensureTrailingSlash(outAppearanceRoot + "mesh");
+        }
+    }
+
+    static bool resolveMayaImagePathString(const MString& rawPath, std::string& outPath)
+    {
+        if (rawPath.length() == 0) return false;
+        MFileObject fileObj;
+        fileObj.setRawFullName(rawPath);
+        MString full = fileObj.resolvedFullName();
+        if (full.length() == 0) full = rawPath;
+        outPath = full.asChar();
+        return !outPath.empty();
+    }
+
+    /// True when fileTextureName is a pattern (sequence / UDIM) and needs Maya's evaluated string.
+    static bool texturePathNeedsComputedEvaluation(const MString& path)
+    {
+        if (path.length() == 0) return false;
+        std::string s(path.asChar());
+        for (unsigned char uc : s)
+        {
+            const char c = static_cast<char>(uc);
+            if (c == '<' || c == '#' || c == '%') return true;
+        }
+        std::string lower;
+        lower.reserve(s.size());
+        for (unsigned char uc : s)
+            lower += static_cast<char>(std::tolower(uc));
+        if (lower.find("udim") != std::string::npos) return true;
+        return false;
+    }
+
+    static bool tryReadFileOrMovieTexturePath(MFnDependencyNode& texFn, std::string& outPath)
+    {
+        MPlug ftnPlug = texFn.findPlug("fileTextureName", true);
+        MString ftn;
+        const bool haveFtn =
+            !ftnPlug.isNull() && ftnPlug.getValue(ftn) == MS::kSuccess && ftn.length() > 0;
+
+        MPlug cfnpPlug = texFn.findPlug("computedFileTextureNamePattern", true);
+        MString cfnp;
+        const bool haveCfnp =
+            !cfnpPlug.isNull() && cfnpPlug.getValue(cfnp) == MS::kSuccess && cfnp.length() > 0;
+
+        auto tryResolve = [&](const MString& raw) -> bool { return resolveMayaImagePathString(raw, outPath); };
+
+        if (haveFtn && texturePathNeedsComputedEvaluation(ftn))
+        {
+            if (haveCfnp && tryResolve(cfnp)) return true;
+            if (tryResolve(ftn)) return true;
+            return false;
+        }
+
+        // Normal image path: use what the artist set on the file node first (e.g. kettle_copper_b.tga).
+        // computedFileTextureNamePattern can still point at an older resolved name in some DG states.
+        if (haveFtn && tryResolve(ftn)) return true;
+        if (haveCfnp && tryResolve(cfnp)) return true;
+        return false;
+    }
+
+    static bool tryReadAiImageTexturePath(MFnDependencyNode& texFn, std::string& outPath)
+    {
+        static const char* candidates[] = { "filename", "image" };
+        for (const char* an : candidates)
+        {
+            MPlug p = texFn.findPlug(an, true);
+            if (p.isNull()) continue;
+            MString rawPath;
+            if (p.getValue(rawPath) != MS::kSuccess || rawPath.length() == 0) continue;
+            if (resolveMayaImagePathString(rawPath, outPath)) return true;
+        }
+        return false;
+    }
+
+    /// First upstream plug feeding a color-like attribute on the surface (or layeredShader layer).
+    static MPlug firstColorInputPlug(MFnDependencyNode& fn, const char* attrName)
+    {
+        MPlug p = fn.findPlug(attrName, true);
+        if (p.isNull()) return MPlug();
+        MPlugArray con;
+        p.connectedTo(con, true, false);
+        if (con.length() > 0) return con[0];
+        if (p.isCompound())
+        {
+            const unsigned nc = p.numChildren();
+            for (unsigned i = 0; i < nc; ++i)
+            {
+                MPlug ch = p.child(i);
+                ch.connectedTo(con, true, false);
+                if (con.length() > 0) return con[0];
+            }
+        }
+        return MPlug();
+    }
+
+    static MPlug diffuseSourcePlugFromSurface(MFnDependencyNode& surfaceFn)
+    {
+        const MString type = surfaceFn.typeName();
+
+        if (type == MString("layeredShader"))
+        {
+            MPlug inputs = surfaceFn.findPlug("inputs", true);
+            if (!inputs.isNull() && inputs.isArray())
+            {
+                const unsigned n = inputs.numElements();
+                for (unsigned i = 0; i < n; ++i)
+                {
+                    MPlug elem = inputs.elementByPhysicalIndex(i);
+                    const unsigned nch = elem.numChildren();
+                    for (unsigned ch = 0; ch < nch; ++ch)
+                    {
+                        MPlug o = elem.child(ch);
+                        MPlugArray con;
+                        o.connectedTo(con, true, false);
+                        if (con.length() > 0) return con[0];
+                    }
+                }
+            }
+        }
+
+        static const char* surfaceAttrs[] = {
+            "baseColor",
+            "base_color",
+            "color",
+            "diffuseColor",
+            "diffuse",
+            "emissionColor",
+            "emission_color",
+            "incandescence",
+            "TEX_color",
+        };
+        for (const char* an : surfaceAttrs)
+        {
+            MPlug c = firstColorInputPlug(surfaceFn, an);
+            if (!c.isNull()) return c;
+        }
+        return MPlug();
+    }
+
+    static bool traceTextureSourceGraph(const MObject& nodeObj, std::string& outPath, int depth);
+
+    /// Follow one Maya plug (compound or scalar) into traceTextureSourceGraph. Named function avoids MSVC/recursive-lambda edge cases.
+    static bool tracePlugIntoTextureGraph(MPlug& p, std::string& outPath, int depth)
+    {
+        if (p.isNull()) return false;
+        MPlugArray con;
+        if (p.isCompound())
+        {
+            for (unsigned c = 0; c < p.numChildren(); ++c)
+            {
+                MPlug ch = p.child(c);
+                ch.connectedTo(con, true, false);
+                if (con.length() > 0 && traceTextureSourceGraph(con[0].node(), outPath, depth + 1))
+                    return true;
+            }
+            return false;
+        }
+        p.connectedTo(con, true, false);
+        return con.length() > 0 && traceTextureSourceGraph(con[0].node(), outPath, depth + 1);
+    }
+
+    static bool traceTextureSourceGraph(const MObject& nodeObj, std::string& outPath, int depth)
+    {
+        if (depth > 16) return false;
+        MStatus st;
+        MFnDependencyNode fn(nodeObj, &st);
+        if (!st) return false;
+        const MString t = fn.typeName();
+
+        if (t == MString("file") || t == MString("movie") || t == MString("psdFileTex"))
+            return tryReadFileOrMovieTexturePath(fn, outPath);
+        if (t == MString("aiImage"))
+            return tryReadAiImageTexturePath(fn, outPath);
+
+        if (t == MString("multiplyDivide"))
+        {
+            static const char* mdAttrs[] = { "input1", "input2" };
+            for (const char* an : mdAttrs)
+            {
+                MPlug p = fn.findPlug(an, true);
+                if (tracePlugIntoTextureGraph(p, outPath, depth)) return true;
+            }
+            return false;
+        }
+
+        if (t == MString("blendColors") || t == MString("aiMixRgb"))
+        {
+            static const char* bc[] = { "color1", "color2", "input1", "input2" };
+            for (const char* an : bc)
+            {
+                MPlug p = fn.findPlug(an, true);
+                if (tracePlugIntoTextureGraph(p, outPath, depth)) return true;
+            }
+            return false;
+        }
+
+        if (t == MString("plusMinusAverage"))
+        {
+            static const char* pmaArrays[] = { "input3D", "input2D", "input1D" };
+            for (const char* arrName : pmaArrays)
+            {
+                MPlug arr = fn.findPlug(arrName, true);
+                if (arr.isNull() || !arr.isArray()) continue;
+                const unsigned ne = arr.numElements();
+                for (unsigned ei = 0; ei < ne; ++ei)
+                {
+                    MPlug elem = arr.elementByPhysicalIndex(ei);
+                    const unsigned nch = elem.numChildren();
+                    for (unsigned ch = 0; ch < nch; ++ch)
+                    {
+                        MPlug o = elem.child(ch);
+                        MPlugArray con;
+                        o.connectedTo(con, true, false);
+                        if (con.length() > 0 && traceTextureSourceGraph(con[0].node(), outPath, depth + 1))
+                            return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        if (t == MString("gammaCorrect") || t == MString("remapHsv") || t == MString("remapColor"))
+        {
+            static const char* gc[] = { "value", "color", "input" };
+            for (const char* an : gc)
+            {
+                MPlug p = fn.findPlug(an, true);
+                if (tracePlugIntoTextureGraph(p, outPath, depth)) return true;
+            }
+            return false;
+        }
+
+        if (t == MString("colorCorrect") || t == MString("aiColorCorrect"))
+        {
+            MPlug p = fn.findPlug("input", true);
+            if (tracePlugIntoTextureGraph(p, outPath, depth)) return true;
+            return false;
+        }
+
+        if (t == MString("layeredTexture"))
+        {
+            MPlug inputs = fn.findPlug("inputs", true);
+            if (inputs.isNull() || !inputs.isArray()) return false;
+            const unsigned n = inputs.numElements();
+            for (unsigned ei = 0; ei < n; ++ei)
+            {
+                MPlug e = inputs.elementByPhysicalIndex(ei);
+                const unsigned nc = e.numChildren();
+                for (unsigned ci = 0; ci < nc; ++ci)
+                {
+                    MPlug ch = e.child(ci);
+                    MPlugArray con;
+                    ch.connectedTo(con, true, false);
+                    if (con.length() > 0 && traceTextureSourceGraph(con[0].node(), outPath, depth + 1))
+                        return true;
+                }
+            }
+            return false;
+        }
+
+        static const char* passThrough[] = {
+            "input",
+            "inColor",
+            "image",
+            "default",
+            "input1",
+            "input2",
+            "color1",
+            "color2",
+        };
+        for (const char* an : passThrough)
+        {
+            MPlug p = fn.findPlug(an, true);
+            if (p.isNull()) continue;
+            if (p.isArray() && p.numElements() > 0)
+            {
+                MPlug e = p.elementByPhysicalIndex(0);
+                const unsigned nc = e.numChildren();
+                for (unsigned ci = 0; ci < nc; ++ci)
+                {
+                    MPlug ch = e.child(ci);
+                    MPlugArray con;
+                    ch.connectedTo(con, true, false);
+                    if (con.length() > 0 && traceTextureSourceGraph(con[0].node(), outPath, depth + 1))
+                        return true;
+                }
+            }
+            else
+            {
+                MPlugArray con;
+                p.connectedTo(con, true, false);
+                if (con.length() > 0 && traceTextureSourceGraph(con[0].node(), outPath, depth + 1))
+                    return true;
+            }
+        }
+        return false;
+    }
+
+    /// Follow shadingEngine -> surfaceShader -> diffuse/baseColor -> file / aiImage / layeredTexture chain.
+    static bool tryGetDiffuseImageAbsolutePath(MObject shadingGroupObj, std::string& outPath)
+    {
+        MStatus st;
+        MFnDependencyNode sgFn(shadingGroupObj, &st);
+        if (!st) return false;
+        MPlug surfPlug = sgFn.findPlug("surfaceShader", true, &st);
+        if (surfPlug.isNull()) return false;
+        MPlugArray surfConnections;
+        surfPlug.connectedTo(surfConnections, true, false);
+        if (surfConnections.length() == 0) return false;
+
+        MFnDependencyNode surfaceFn(surfConnections[0].node(), &st);
+        if (!st) return false;
+
+        MPlug src = diffuseSourcePlugFromSurface(surfaceFn);
+        if (src.isNull()) return false;
+        return traceTextureSourceGraph(src.node(), outPath, 0);
+    }
+
+    static bool traceTextureUvSetGraph(const MObject& nodeObj, MString& outUvSet, int depth);
+
+    static bool tracePlugIntoUvSetGraph(MPlug& p, MString& outUvSet, int depth)
+    {
+        if (p.isNull()) return false;
+        MPlugArray con;
+        if (p.isCompound())
+        {
+            for (unsigned c = 0; c < p.numChildren(); ++c)
+            {
+                MPlug ch = p.child(c);
+                ch.connectedTo(con, true, false);
+                if (con.length() > 0 && traceTextureUvSetGraph(con[0].node(), outUvSet, depth + 1))
+                    return true;
+            }
+            return false;
+        }
+        p.connectedTo(con, true, false);
+        return con.length() > 0 && traceTextureUvSetGraph(con[0].node(), outUvSet, depth + 1);
+    }
+
+    /// Same graph as traceTextureSourceGraph, but stops at the first file/aiImage and reads optional uvSetName.
+    static bool traceTextureUvSetGraph(const MObject& nodeObj, MString& outUvSet, int depth)
+    {
+        if (depth > 16) return false;
+        MStatus st;
+        MFnDependencyNode fn(nodeObj, &st);
+        if (!st) return false;
+        const MString t = fn.typeName();
+
+        if (t == MString("file") || t == MString("movie") || t == MString("psdFileTex"))
+        {
+            outUvSet.clear();
+            MPlug uvp = fn.findPlug("uvSetName", true);
+            if (!uvp.isNull())
+                uvp.getValue(outUvSet);
+            return true;
+        }
+        if (t == MString("aiImage"))
+        {
+            outUvSet.clear();
+            MPlug uvp = fn.findPlug("uvSetName", true);
+            if (!uvp.isNull())
+                uvp.getValue(outUvSet);
+            return true;
+        }
+
+        if (t == MString("multiplyDivide"))
+        {
+            static const char* mdAttrs[] = {"input1", "input2"};
+            for (const char* an : mdAttrs)
+            {
+                MPlug p = fn.findPlug(an, true);
+                if (tracePlugIntoUvSetGraph(p, outUvSet, depth)) return true;
+            }
+            return false;
+        }
+
+        if (t == MString("blendColors") || t == MString("aiMixRgb"))
+        {
+            static const char* bc[] = {"color1", "color2", "input1", "input2"};
+            for (const char* an : bc)
+            {
+                MPlug p = fn.findPlug(an, true);
+                if (tracePlugIntoUvSetGraph(p, outUvSet, depth)) return true;
+            }
+            return false;
+        }
+
+        if (t == MString("plusMinusAverage"))
+        {
+            static const char* pmaArrays[] = {"input3D", "input2D", "input1D"};
+            for (const char* arrName : pmaArrays)
+            {
+                MPlug arr = fn.findPlug(arrName, true);
+                if (arr.isNull() || !arr.isArray()) continue;
+                const unsigned ne = arr.numElements();
+                for (unsigned ei = 0; ei < ne; ++ei)
+                {
+                    MPlug elem = arr.elementByPhysicalIndex(ei);
+                    const unsigned nch = elem.numChildren();
+                    for (unsigned ch = 0; ch < nch; ++ch)
+                    {
+                        MPlug o = elem.child(ch);
+                        MPlugArray con;
+                        o.connectedTo(con, true, false);
+                        if (con.length() > 0 && traceTextureUvSetGraph(con[0].node(), outUvSet, depth + 1))
+                            return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        if (t == MString("gammaCorrect") || t == MString("remapHsv") || t == MString("remapColor"))
+        {
+            static const char* gc[] = {"value", "color", "input"};
+            for (const char* an : gc)
+            {
+                MPlug p = fn.findPlug(an, true);
+                if (tracePlugIntoUvSetGraph(p, outUvSet, depth)) return true;
+            }
+            return false;
+        }
+
+        if (t == MString("colorCorrect") || t == MString("aiColorCorrect"))
+        {
+            MPlug p = fn.findPlug("input", true);
+            if (tracePlugIntoUvSetGraph(p, outUvSet, depth)) return true;
+            return false;
+        }
+
+        if (t == MString("layeredTexture"))
+        {
+            MPlug inputs = fn.findPlug("inputs", true);
+            if (inputs.isNull() || !inputs.isArray()) return false;
+            const unsigned n = inputs.numElements();
+            for (unsigned ei = 0; ei < n; ++ei)
+            {
+                MPlug e = inputs.elementByPhysicalIndex(ei);
+                const unsigned nc = e.numChildren();
+                for (unsigned ci = 0; ci < nc; ++ci)
+                {
+                    MPlug ch = e.child(ci);
+                    MPlugArray con;
+                    ch.connectedTo(con, true, false);
+                    if (con.length() > 0 && traceTextureUvSetGraph(con[0].node(), outUvSet, depth + 1))
+                        return true;
+                }
+            }
+            return false;
+        }
+
+        static const char* passThrough[] = {
+            "input",
+            "inColor",
+            "image",
+            "default",
+            "input1",
+            "input2",
+            "color1",
+            "color2",
+        };
+        for (const char* an : passThrough)
+        {
+            MPlug p = fn.findPlug(an, true);
+            if (p.isNull()) continue;
+            if (p.isArray() && p.numElements() > 0)
+            {
+                MPlug e = p.elementByPhysicalIndex(0);
+                const unsigned nc = e.numChildren();
+                for (unsigned ci = 0; ci < nc; ++ci)
+                {
+                    MPlug ch = e.child(ci);
+                    MPlugArray con;
+                    ch.connectedTo(con, true, false);
+                    if (con.length() > 0 && traceTextureUvSetGraph(con[0].node(), outUvSet, depth + 1))
+                        return true;
+                }
+            }
+            else
+            {
+                MPlugArray con;
+                p.connectedTo(con, true, false);
+                if (con.length() > 0 && traceTextureUvSetGraph(con[0].node(), outUvSet, depth + 1))
+                    return true;
+            }
+        }
+        return false;
+    }
+
+    static bool tryGetDiffuseFileUvSetName(MObject shadingGroupObj, MString& outUvSet)
+    {
+        outUvSet.clear();
+        MStatus st;
+        MFnDependencyNode sgFn(shadingGroupObj, &st);
+        if (!st) return false;
+        MPlug surfPlug = sgFn.findPlug("surfaceShader", true, &st);
+        if (surfPlug.isNull()) return false;
+        MPlugArray surfConnections;
+        surfPlug.connectedTo(surfConnections, true, false);
+        if (surfConnections.length() == 0) return false;
+
+        MFnDependencyNode surfaceFn(surfConnections[0].node(), &st);
+        if (!st) return false;
+
+        MPlug src = diffuseSourcePlugFromSurface(surfaceFn);
+        if (src.isNull()) return false;
+        return traceTextureUvSetGraph(src.node(), outUvSet, 0);
+    }
+
+    static bool meshHasUvSet(MFnMesh& meshFn, const MString& name)
+    {
+        if (name.length() == 0) return false;
+        MStringArray names;
+        meshFn.getUVSetNames(names);
+        for (unsigned i = 0; i < names.length(); ++i)
+            if (names[i] == name) return true;
+        return false;
+    }
+
+    /// Prefer Maya current UV set (viewport / UV editor); else unanimous diffuse file uvSetName; else map1; else first listed.
+    static MString chooseExportUvSetName(MFnMesh& meshFn, const MObjectArray& shaderObjs, const MIntArray& faceToShader)
+    {
+        std::vector<int> usedSg;
+        usedSg.reserve(8);
+        for (unsigned fi = 0; fi < faceToShader.length(); ++fi)
+        {
+            const int idx = faceToShader[fi];
+            if (idx < 0 || static_cast<unsigned>(idx) >= shaderObjs.length()) continue;
+            if (std::find(usedSg.begin(), usedSg.end(), idx) == usedSg.end())
+                usedSg.push_back(idx);
+        }
+
+        MString current;
+        if (meshFn.getCurrentUVSetName(current) == MS::kSuccess && current.length() > 0 && meshHasUvSet(meshFn, current))
+            return current;
+
+        MString fromFile;
+        bool haveExplicit = false;
+        bool conflict = false;
+        for (int idx : usedSg)
+        {
+            MString u;
+            if (!tryGetDiffuseFileUvSetName(shaderObjs[static_cast<unsigned>(idx)], u))
+                continue;
+            if (u.length() == 0)
+                continue;
+            if (!meshHasUvSet(meshFn, u))
+                continue;
+            if (!haveExplicit)
+            {
+                fromFile = u;
+                haveExplicit = true;
+            }
+            else if (fromFile != u)
+            {
+                conflict = true;
+                break;
+            }
+        }
+
+        if (haveExplicit && !conflict)
+            return fromFile;
+
+        MStringArray uvSetNames;
+        meshFn.getUVSetNames(uvSetNames);
+        for (unsigned i = 0; i < uvSetNames.length(); ++i)
+        {
+            if (uvSetNames[i] == MString("map1"))
+                return uvSetNames[i];
+        }
+        if (uvSetNames.length() > 0)
+            return uvSetNames[0];
+        return MString();
     }
 }
 
@@ -110,18 +1079,35 @@ MStatus ExportStaticMesh::doIt(const MArgList& args)
     }
 
     MDagPath dagPath;
-    status = sel.getDagPath(0, dagPath);
-    if (!status)
+    bool foundMesh = false;
+    bool meshWithoutShader = false;
+    for (unsigned si = 0; si < sel.length(); ++si)
     {
-        std::cerr << "ExportStaticMesh: failed to get DAG path" << std::endl;
-        return MS::kFailure;
+        status = sel.getDagPath(si, dagPath);
+        if (!status) continue;
+        MDagPath meshPath;
+        if (MayaUtility::findFirstMeshShapeWithShadersInHierarchy(dagPath, meshPath))
+        {
+            dagPath = meshPath;
+            foundMesh = true;
+            break;
+        }
+        if (MayaUtility::findFirstMeshShapeInHierarchy(dagPath, meshPath))
+            meshWithoutShader = true;
     }
-
-    if (!dagPath.hasFn(MFn::kMesh))
-        dagPath.extendToShape();
-    if (!dagPath.hasFn(MFn::kMesh))
+    if (!foundMesh)
     {
-        std::cerr << "ExportStaticMesh: selection is not a mesh" << std::endl;
+        if (meshWithoutShader)
+        {
+            std::cerr << "ExportStaticMesh: mesh under selection has no shading group (or only meshes "
+                         "without materials were found first)" << std::endl;
+            MGlobal::displayError(
+                "SwgMsh export: mesh has no shader assignment. Found geometry but no material on the mesh "
+                "that would be exported. After combining, assign a material to the combined mesh, delete "
+                "hidden leftover shapes, or select the combined mesh shape directly.");
+            return MS::kFailure;
+        }
+        std::cerr << "ExportStaticMesh: no mesh under selection" << std::endl;
         return MS::kFailure;
     }
 
@@ -141,6 +1127,8 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
     MStatus status;
     outMeshPath.clear();
     outAptPath.clear();
+    std::vector<std::string> exportedShaderAbsPaths;
+    std::vector<std::string> exportedDdsAbsPaths;
 
     MDagPath shapePath = meshDagPath;
     if (shapePath.hasFn(MFn::kTransform))
@@ -174,21 +1162,25 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
     if (dot != std::string::npos)
         meshName = meshName.substr(0, dot);
 
+    std::string appearanceRootDir;
     std::string meshWriteDir;
     if (!outputPathOverride.empty())
     {
-        meshWriteDir = outputPathOverride;
-        if (meshWriteDir.find('.') != std::string::npos)
+        std::string pathRemainder = outputPathOverride;
+        if (pathRemainder.find('.') != std::string::npos)
         {
-            size_t slash = meshWriteDir.find_last_of("/\\");
+            const size_t slash = pathRemainder.find_last_of("/\\");
             if (slash != std::string::npos)
             {
-                meshName = meshWriteDir.substr(slash + 1);
-                size_t ext = meshName.find('.');
-                if (ext != std::string::npos) meshName = meshName.substr(0, ext);
+                const std::string fileCandidate = pathRemainder.substr(slash + 1);
+                if (fileCandidate.find('.') != std::string::npos)
+                {
+                    meshName = fileCandidate.substr(0, fileCandidate.find('.'));
+                    pathRemainder = pathRemainder.substr(0, slash);
+                }
             }
-            meshWriteDir = meshWriteDir.substr(0, meshWriteDir.find_last_of("/\\") + 1);
         }
+        resolveAppearanceAndMeshDirs(pathRemainder, appearanceRootDir, meshWriteDir);
     }
     else
     {
@@ -198,10 +1190,14 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
             std::cerr << "ExportStaticMesh: appearance output directory not configured" << std::endl;
             return false;
         }
-        meshWriteDir = ensureTrailingSlash(baseDir) + "mesh\\";
+        appearanceRootDir = ensureTrailingSlash(baseDir);
+        meshWriteDir = ensureTrailingSlash(appearanceRootDir + "mesh");
     }
 
     meshWriteDir = ensureTrailingSlash(meshWriteDir);
+    appearanceRootDir = ensureTrailingSlash(appearanceRootDir);
+    MayaUtility::createDirectory(winPathForMkdir(appearanceRootDir).c_str());
+    MayaUtility::createDirectory(winPathForMkdir(meshWriteDir).c_str());
 
     MObjectArray shaderObjs;
     MIntArray faceToShader;
@@ -209,6 +1205,13 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
     if (!status)
     {
         std::cerr << "ExportStaticMesh: getConnectedShaders failed" << std::endl;
+        return false;
+    }
+    if (shaderObjs.length() == 0)
+    {
+        std::cerr << "ExportStaticMesh: No shading group assigned to this mesh. Assign a material (Lambert/aiStandardSurface/etc.).\n";
+        MGlobal::displayError(
+            "SwgMsh export: mesh has no shader assignment. Assign a material to the mesh, then export again.");
         return false;
     }
 
@@ -220,9 +1223,7 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
         return false;
     }
 
-    MStringArray uvSetNames;
-    meshFn.getUVSetNames(uvSetNames);
-    const MString uvSetName = (uvSetNames.length() > 0) ? uvSetNames[0] : MString();
+    const MString uvSetName = chooseExportUvSetName(meshFn, shaderObjs, faceToShader);
 
     std::map<int, StaticMeshWriterShaderGroup> shaderGroups;
 
@@ -317,16 +1318,171 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
         }
     }
 
-    std::set<std::string> exportedShaders;
-    for (const auto& kv : shaderGroups)
     {
-        const std::string& path = kv.second.shaderTemplateName;
-        if (path.empty() || path == "shader/placeholder") continue;
-        if (exportedShaders.insert(path).second)
+        // Every material slot that receives geometry gets a fresh .sht + published DDS from Maya (1:1 with viewport),
+        // not a second-hand clone from DATA_ROOT. swgShaderPath (when set) is only the clone *prototype* (effect layout).
+        bool anyShaderRebuildFailed = false;
+        unsigned geomMaterialCount = 0;
+        for (unsigned si = 0; si < shaderObjs.length(); ++si)
         {
-            std::string outPath = ShaderExporter::exportShader(path);
-            if (!outPath.empty())
-                std::cerr << "[ExportStaticMesh] Exported shader: " << outPath << "\n";
+            auto it = shaderGroups.find(static_cast<int>(si));
+            if (it == shaderGroups.end()) continue;
+            if (!it->second.positions.empty() && !it->second.indices.empty())
+                ++geomMaterialCount;
+        }
+
+        for (unsigned si = 0; si < shaderObjs.length(); ++si)
+        {
+            auto it = shaderGroups.find(static_cast<int>(si));
+            if (it == shaderGroups.end()) continue;
+            StaticMeshWriterShaderGroup& g = it->second;
+            if (g.positions.empty() || g.indices.empty()) continue;
+
+            MStatus stSG;
+            MFnDependencyNode sgFn(shaderObjs[si], &stSG);
+            if (!stSG) continue;
+
+            const std::string swgShaderPrototype = getStringAttr(sgFn, "swgShaderPath");
+            const bool hue = getHueableFromSg(sgFn);
+
+            const std::string texBase =
+                (geomMaterialCount > 1) ? (meshName + "_m" + std::to_string(si)) : (meshName + std::string("_d"));
+
+            std::string texTree;
+            std::string absImage;
+
+            // 1) Maya shading network (file/aiImage chain) - viewport source.
+            if (tryGetDiffuseImageAbsolutePath(shaderObjs[si], absImage))
+            {
+                texTree = ShaderExporter::publishDiffuseTextureForGame(absImage, texBase);
+                if (texTree.empty())
+                    std::cerr << "[ExportStaticMesh] Could not publish texture (textureWriteDir / nvtt). Image: " << absImage
+                              << "\n";
+            }
+
+            // 2) Image dropped into textureWriteDir as <mesh>_d / <mesh>_mN (common after tweaking for export).
+            if (texTree.empty())
+            {
+                absImage = tryFindImageInTextureWriteDir(texBase);
+                if (!absImage.empty())
+                {
+                    texTree = ShaderExporter::publishDiffuseTextureForGame(absImage, texBase);
+                    if (texTree.empty())
+                        std::cerr << "[ExportStaticMesh] Could not publish texture (textureWriteDir / nvtt). Image: " << absImage
+                                  << "\n";
+                    else
+                        std::cerr << "[ExportStaticMesh] Published diffuse from textureWriteDir (" << texBase << "): " << absImage
+                                  << " -> " << texTree << "\n";
+                }
+            }
+
+            // 3) swgTexturePath (often set on import): bake from disk when possible, not only a tree string.
+            if (texTree.empty())
+            {
+                std::string swgTex = getStringAttr(sgFn, "swgTexturePath");
+                if (!swgTex.empty())
+                {
+                    if (looksLikeFilesystemImagePathLocal(swgTex))
+                    {
+                        texTree = ShaderExporter::publishDiffuseTextureForGame(swgTex, texBase);
+                        if (texTree.empty())
+                            std::cerr << "[ExportStaticMesh] Could not publish swgTexturePath image: " << swgTex << "\n";
+                    }
+                    else
+                    {
+                        const std::string stem = textureStemFromSwgOrTreePath(swgTex);
+                        absImage = tryFindImageInTextureWriteDir(stem);
+                        if (!absImage.empty())
+                        {
+                            texTree = ShaderExporter::publishDiffuseTextureForGame(absImage, texBase);
+                            if (texTree.empty())
+                                std::cerr << "[ExportStaticMesh] Could not publish swgTexturePath disk file: " << absImage
+                                          << "\n";
+                            else
+                                std::cerr << "[ExportStaticMesh] Published diffuse from swgTexturePath basename in textureWriteDir: "
+                                          << absImage << " -> " << texTree << "\n";
+                        }
+                        else
+                            texTree = normalizeTextureTreeForShader(swgTex);
+                    }
+                }
+            }
+
+            if (texTree.empty())
+            {
+                MString surfaceType("unknown");
+                MPlug surfPlug = sgFn.findPlug("surfaceShader", true);
+                if (!surfPlug.isNull())
+                {
+                    MPlugArray scon;
+                    surfPlug.connectedTo(scon, true, false);
+                    if (scon.length() > 0)
+                    {
+                        MStatus stSurf;
+                        MFnDependencyNode sfn(scon[0].node(), &stSurf);
+                        if (stSurf)
+                            surfaceType = sfn.typeName();
+                    }
+                }
+                std::cerr << "[ExportStaticMesh] No diffuse/DDS source for shading group \""
+                          << sgFn.name().asChar() << "\" (slot " << si << ", surface=" << surfaceType.asChar()
+                          << "). Connect file/aiImage to baseColor/color, or set swgTexturePath.\n";
+            }
+
+            if (!texTree.empty())
+            {
+                const std::string ddsAbsForBundle = absolutePathForTextureWriteDirDds(texTree);
+                if (!ddsAbsForBundle.empty())
+                    pushUniquePath(exportedDdsAbsPaths, ddsAbsForBundle);
+            }
+
+            std::string outShaderTree = std::string("shader/") + meshName;
+            if (geomMaterialCount > 1)
+                outShaderTree += "_sg" + std::to_string(si);
+
+            const std::string cloned = ShaderExporter::exportShaderClonedFromPrototype(
+                outShaderTree, swgShaderPrototype, texTree, hue, !texTree.empty());
+            if (!cloned.empty())
+            {
+                if (!verifyShaderExportArtifacts(cloned, texTree, outShaderTree))
+                    return false;
+
+                g.shaderTemplateName = outShaderTree;
+                std::cerr << "[ExportStaticMesh] Rebuilt shader: " << outShaderTree
+                          << " proto=" << (swgShaderPrototype.empty() ? "<default>" : swgShaderPrototype.c_str())
+                          << " hueable=" << (hue ? "yes" : "no")
+                          << " tex=" << (texTree.empty() ? "<prototype>" : texTree.c_str()) << "\n";
+                pushUniquePath(exportedShaderAbsPaths, cloned);
+                MGlobal::displayInfo(
+                    MString("SwgMayaEditor: wrote shader - copy shader/ + texture/ + appearance/ as one tree into the viewer (same as setBaseDir): ")
+                    + cloned.c_str());
+            }
+            else
+            {
+                anyShaderRebuildFailed = true;
+                const char* sw =
+                    SetDirectoryCommand::getDirectoryString(SetDirectoryCommand::SHADER_TEMPLATE_WRITE_DIR_INDEX);
+                if (!sw || !sw[0])
+                    std::cerr << "[ExportStaticMesh] Shader rebuild failed for " << outShaderTree
+                              << ": shaderTemplateWriteDir not set (setBaseDir).\n";
+                else
+                    std::cerr << "[ExportStaticMesh] Shader rebuild failed for " << outShaderTree
+                              << " (see [ShaderExporter] errors). Leaving mesh shader path unset or stale.\n";
+                MGlobal::displayWarning(
+                    MString("SwgMayaEditor: shader rebuild failed for \"") + outShaderTree.c_str()
+                    + "\". The mesh may reference a missing .sht in the viewer. Check setBaseDir, shader prototype, "
+                      "and Script Editor for [ShaderExporter] errors.");
+            }
+        }
+
+        if (anyShaderRebuildFailed)
+        {
+            MGlobal::displayError(
+                "SwgMsh export aborted: at least one material did not produce a .sht on disk. The viewer loads "
+                "shader/<name>.sht from the same tree as appearance/ and texture/. Run setBaseDir to your export root, "
+                "put shader/defaultshader.sht under DATA_ROOT or shaderTemplateWriteDir, set shaderPrototypeSht in "
+                "SwgMayaEditor.cfg if needed, and read Script Editor lines [ShaderExporter] / [TgaToDds].");
+            return false;
         }
     }
 
@@ -335,7 +1491,7 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
     for (unsigned i = 0; i < shaderObjs.length(); ++i)
     {
         auto it = shaderGroups.find(static_cast<int>(i));
-        if (it != shaderGroups.end() && !it->second.positions.empty())
+        if (it != shaderGroups.end() && !it->second.positions.empty() && !it->second.indices.empty())
             writer.addShaderGroup(it->second);
     }
 
@@ -410,14 +1566,18 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
         return false;
     }
 
+    // Mesh lives only under appearance/mesh/ (setBaseDir). Do not write a second .msh at the File dialog path
+    // (e.g. D:/exported/foo.msh). If Maya reports "Could not save file", export to
+    // <setBaseDir>/appearance/mesh/<name>.msh or use exportStaticMesh -path.
+
     outMeshPath = toTreePath(mshFullPath);
     if (outMeshPath.find("appearance/") != 0 && outMeshPath.find("appearance\\") != 0)
         outMeshPath = "appearance/mesh/" + meshName + ".msh";
 
-    std::string aptWriteDir = ensureTrailingSlash(SetDirectoryCommand::getDirectoryString(SetDirectoryCommand::APPEARANCE_WRITE_DIR_INDEX));
-    if (!aptWriteDir.empty())
+    // APT lives under appearance/; .msh under appearance/mesh/ (shader/ and texture/ are export-root siblings via SetDirectoryCommand).
+    std::string aptDiskPathWritten;
     {
-        std::string aptPath = aptWriteDir + meshName + ".apt";
+        std::string aptPath = appearanceRootDir + meshName + ".apt";
         Iff aptIff(4096, true);
         aptIff.insertForm(TAG_APT);
         aptIff.insertForm(::TAG_0000);
@@ -426,9 +1586,16 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
         aptIff.exitChunk(::TAG_NAME);
         aptIff.exitForm(::TAG_0000);
         aptIff.exitForm(TAG_APT);
-        if (aptIff.write(aptPath.c_str(), true))
+        if (!aptIff.write(aptPath.c_str(), true))
+            std::cerr << "[ExportStaticMesh] Failed to write APT: " << aptPath << std::endl;
+        else
+        {
             outAptPath = toTreePath(aptPath);
+            aptDiskPathWritten = aptPath;
+        }
     }
+
+    mirrorViewerBundleToDataRoot(exportedShaderAbsPaths, exportedDdsAbsPaths, mshFullPath, aptDiskPathWritten, meshName);
 
     return true;
 }

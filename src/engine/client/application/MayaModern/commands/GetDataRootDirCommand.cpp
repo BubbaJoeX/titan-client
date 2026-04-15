@@ -1,5 +1,5 @@
 #include "GetDataRootDirCommand.h"
-#include "SetDirectoryCommand.h"
+#include "ImportPathResolver.h"
 
 #include <maya/MArgList.h>
 #include <maya/MString.h>
@@ -11,7 +11,8 @@ void* GetDataRootDirCommand::creator()
 
 MStatus GetDataRootDirCommand::doIt(const MArgList&)
 {
-    const char* dataRoot = SetDirectoryCommand::getDirectoryString(SetDirectoryCommand::DATA_ROOT_DIR_INDEX);
-    setResult(MString(dataRoot ? dataRoot : ""));
+    // Match resolveImportPath: env vars first, then setBaseDir / cfg (see ImportPathResolver.cpp).
+    const std::string root = getImportDataRoot();
+    setResult(MString(root.c_str()));
     return MS::kSuccess;
 }

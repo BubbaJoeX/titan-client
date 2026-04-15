@@ -3,6 +3,7 @@
 #include <maya/MAnimControl.h>
 #include <maya/MArgList.h>
 #include <maya/MDagPath.h>
+#include <maya/MFnDagNode.h>
 #include <maya/MGlobal.h>
 #include <maya/MItDag.h>
 #include <maya/MSelectionList.h>
@@ -18,49 +19,49 @@ MStatus RevertToBindPose::doIt(const MArgList& args)
 {
     MStatus status;
 
-    // Go to frame 0 so cutKey preserves bind pose (frame 0) values
-    MAnimControl::setCurrentTime(MTime(0.0, MTime::kFilm));
+    // 1. Select all joints in scene
+    MSelectionList jointSelection;
+    MItDag dagIt(MItDag::kDepthFirst, MFn::kJoint, &status);
+    if (!status)
+        return MS::kFailure;
 
-    MSelectionList selection;
-    status = MGlobal::getActiveSelectionList(selection);
-
-    bool useSelection = (selection.length() > 0);
-
-    if (!useSelection)
+    for (; !dagIt.isDone(); dagIt.next())
     {
-        // No selection: find all joints in the scene
-        MItDag dagIt(MItDag::kDepthFirst, MFn::kJoint, &status);
-        if (!status)
-            return MS::kFailure;
-
-        for (; !dagIt.isDone(); dagIt.next())
-        {
-            MDagPath path;
-            status = dagIt.getPath(path);
-            if (status)
-                selection.add(path);
-        }
-
-        if (selection.length() == 0)
-        {
-            MGlobal::displayWarning("swgRevertToBindPose: No joints selected and no joints found in scene.");
-            return MS::kSuccess;
-        }
-
-        MGlobal::setActiveSelectionList(selection);
+        MDagPath path;
+        status = dagIt.getPath(path);
+        if (status)
+            jointSelection.add(path);
     }
 
-    // cutKey -clear: remove all keys, leave attributes at current (frame 0) values
-    status = MGlobal::executeCommand("cutKey -clear -hierarchy above -controlPoints 0 -shape 0");
+    if (jointSelection.length() == 0)
+    {
+        MGlobal::displayWarning("swgRevertToBindPose: No joints found in scene.");
+        return MS::kSuccess;
+    }
+
+    // 2. Select all joints and delete their animation curves
+    MGlobal::setActiveSelectionList(jointSelection);
+    
+    // Delete all animation on selected joints (rotation and translation)
+    status = MGlobal::executeCommand("cutKey -clear -at translateX -at translateY -at translateZ "
+                                     "-at rotateX -at rotateY -at rotateZ");
+    if (!status)
+        MGlobal::displayWarning("swgRevertToBindPose: cutKey failed (may have no keys).");
+
+    // 3. Go to bind pose using dagPose command
+    // First try the dagPose approach (works if bind pose was stored)
+    status = MGlobal::executeCommand("dagPose -restore -global -bindPose");
     if (!status)
     {
-        MGlobal::displayError("swgRevertToBindPose: cutKey failed.");
-        return status;
+        // Fallback: go to frame 0 (some rigs don't have dagPose)
+        MGlobal::displayWarning("swgRevertToBindPose: dagPose failed, going to frame 0.");
+        MAnimControl::setCurrentTime(MTime(0.0, MTime::uiUnit()));
     }
 
-    if (!useSelection)
-        MGlobal::clearSelectionList();
+    // 4. Set timeline to frame 0
+    MAnimControl::setCurrentTime(MTime(0.0, MTime::uiUnit()));
 
-    MGlobal::displayInfo("swgRevertToBindPose: Reverted to bind pose (cleared animation).");
+    MGlobal::clearSelectionList();
+    MGlobal::displayInfo("swgRevertToBindPose: Cleared animation and restored bind pose.");
     return MS::kSuccess;
 }

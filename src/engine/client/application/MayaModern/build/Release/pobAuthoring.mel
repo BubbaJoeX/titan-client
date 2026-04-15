@@ -1,5 +1,6 @@
 // SwgMayaEditor — .pob (portal object) authoring helpers for large buildings / apartments.
 // After loading SwgMayaEditor.mll:  source "…/pobAuthoring.mel";
+// Single cell + entry/exit portals preset:  source "…/pobSingleCellPreset.mel";  swg_pob_singleCellEntryExitDefault;
 //
 // EMPTY / BLACK VIEWPORT?
 //   New scene + no lights = black. Run:  swg_pob_defaultLight;

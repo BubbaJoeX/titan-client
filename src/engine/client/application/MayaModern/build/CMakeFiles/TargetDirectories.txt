@@ -1,5 +1,6 @@
 D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/zlib.dir
 D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/SwgMayaEditor.dir
+D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/swgDeployMayaPlugins.dir
 D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/ALL_BUILD.dir
 D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/ZERO_CHECK.dir
 D:/titan/client/src/engine/client/application/MayaModern/build/unicode/CMakeFiles/unicode.dir

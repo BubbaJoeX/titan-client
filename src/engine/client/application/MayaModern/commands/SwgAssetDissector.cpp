@@ -17,23 +17,28 @@ MStatus SwgAssetDissector::doIt(const MArgList&)
     // Get plugin path, source swgAssetDissector.mel (next to .mll), then show window
     const char* initMel = R"mel(
 string $pluginPath = `pluginInfo -q -path SwgMayaEditor`;
-if (size($pluginPath) == 0) {
+$pluginPath = `substituteAllString $pluginPath "\\" "/"`;
+int $plen = `size $pluginPath`;
+if ($plen == 0) {
     error "SwgAssetDissector: SwgMayaEditor plugin path not found. Is the plugin loaded?";
 }
 int $lastSlash = 0;
-for ($i = size($pluginPath); $i >= 1; $i--) {
-    string $c = substring $pluginPath $i $i;
+int $i;
+for ($i = $plen; $i >= 1; $i--) {
+    string $c = `substring $pluginPath $i $i`;
     if ($c == "/" || $c == "\\") {
         $lastSlash = $i;
         break;
     }
 }
-string $dir = ($lastSlash > 0) ? (substring $pluginPath 1 $lastSlash) : "";
+string $dir = "";
+if ($lastSlash > 0)
+    $dir = `substring $pluginPath 1 $lastSlash`;
 string $melPath = $dir + "swgAssetDissector.mel";
-if (!fileExists -loc $melPath) {
+if (!`filetest -f $melPath`) {
     error ("SwgAssetDissector: MEL file not found: " + $melPath);
 }
-source $melPath;
+eval ("source \"" + $melPath + "\"");
 swgAssetDissectorShow;
 )mel";
 

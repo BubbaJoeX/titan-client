@@ -224,6 +224,10 @@ OpenMayaUI_PATH:FILEPATH=D:/titan/client/src/external/3rd/library/devkitBase/lib
 //Path to a library.
 OpenMaya_PATH:FILEPATH=D:/titan/client/src/external/3rd/library/devkitBase/lib/OpenMaya.lib
 
+//If non-empty, POST_BUILD copies SwgMayaEditor.mll and companion
+// .mel files here (Maya bin/plug-ins).
+SWG_MAYA_PLUGIN_INSTALL_DIR:PATH=D:/Program Files/Autodesk/Maya2026/bin/plug-ins
+
 //Value Computed by CMake
 SwgMayaEditor_BINARY_DIR:STATIC=D:/titan/client/src/engine/client/application/MayaModern/build
 
