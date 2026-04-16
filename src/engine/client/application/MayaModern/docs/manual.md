@@ -1,8 +1,10 @@
-# SwgMayaEditor Complete Manual
+# SwgMayaEditor — Manual
 
 **Maya 2026 Plugin for Star Wars Galaxies Asset Authoring**
 
-Version 1.0 — Full Round-Trip Support
+Version 1.0 — Full round-trip support.
+
+Documentation map: [README.md](README.md) · Command-focused guide: [guide.md](guide.md)
 
 ---
 

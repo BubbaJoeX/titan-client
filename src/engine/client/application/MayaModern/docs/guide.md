@@ -1,6 +1,30 @@
-# SwgMayaEditor How-To: Commands and Workflows
+# SwgMayaEditor — Guide (commands and workflows)
 
-This guide explains how to use the MEL commands and file translators in the SwgMayaEditor plugin for Maya 2026.
+This is the **main operational guide** for the SwgMayaEditor Maya 2026 plugin: MEL commands, translators, deploy notes, and workflows.
+
+**Other docs in this folder**
+
+- [README.md](README.md) — Documentation home and table of contents  
+- [manual.md](manual.md) — Full editor manual (features, import/export detail, coordinate system)  
+- [ans-format.md](ans-format.md) — ANS (KFAT/CKAT) IFF layout reference
+
+---
+
+## Quick usage
+
+1. Build `SwgMayaEditor.mll` (see root [README.md](../README.md)), install next to bundled `.mel` scripts, then `loadPlugin SwgMayaEditor`.
+2. Point Maya at game data (pick one):
+  - Set `TITAN_DATA_ROOT` to your `…/compiled/game` tree **before** launch, or  
+  - In Maya: `setBaseDir "D:/path/to/compiled/game/";` then `getDataRootDir;` to verify.
+3. Import via **File → Import** using types `SwgSat`, `SwgAns`, etc., or use the MEL commands below.
+
+**Example SAT import**
+
+```mel
+file -import -type "SwgSat" -ignoreVersion -ra true -mergeNamespacesOnClash false -namespace "my_creature" -pr -importFrameRate true -importTimeRange "override" "D:/data/.../appearance/creature.sat";
+```
+
+Unload the plugin before overwriting the `.mll` on Windows (file lock).
 
 ---
 
@@ -22,7 +46,7 @@ This guide explains how to use the MEL commands and file translators in the SwgM
 ## Build output and deploying (Windows)
 
 - **Release output**: `MayaModern/build/Release/SwgMayaEditor.mll` plus `.mel` scripts copied next to it by the build.
-- **Install into Maya** (`…/Maya2026/bin/plug-ins`): configure CMake with `SWG_MAYA_PLUGIN_INSTALL_DIR` pointing at that folder, then build target **`swgDeployMayaPlugins`** (elevated if under Program Files).
+- **Install into Maya** (`…/Maya2026/bin/plug-ins`): configure CMake with `SWG_MAYA_PLUGIN_INSTALL_DIR` pointing at that folder, then build target `**swgDeployMayaPlugins`** (elevated if under Program Files).
 - **Important**: **Quit Maya** (or run `unloadPlugin SwgMayaEditor`) before deploying. While the plugin is loaded, Windows **locks** `SwgMayaEditor.mll`, so the copy may fail or appear to update nothing (e.g. **0** files / old build still running). After deploy, restart Maya and `loadPlugin SwgMayaEditor` again.
 
 ---
@@ -44,7 +68,7 @@ Creates and configures:
 
 ### getDataRootDir
 
-Returns the **same** base directory import uses: `TITAN_DATA_ROOT`, else `TITAN_EXPORT_ROOT`, else `DATA_ROOT`, else `setBaseDir` / cfg (`dataRootDir`, then `appearanceWriteDir` parent). Prefer **`TITAN_DATA_ROOT`** for consistency with the rest of the toolchain.
+Returns the **same** base directory import uses: `TITAN_DATA_ROOT`, else `TITAN_EXPORT_ROOT`, else `DATA_ROOT`, else `setBaseDir` / cfg (`dataRootDir`, then `appearanceWriteDir` parent). Prefer `**TITAN_DATA_ROOT`** for consistency with the rest of the toolchain.
 
 ```mel
 getDataRootDir;
@@ -286,13 +310,13 @@ exportPob -i "appearance/building/cantina";
 ### Skeletal mesh, animation, LOD, and SAT export (status)
 
 
-| Goal                   | SwgMayaEditor                                                                                                    | Notes                                                                                             |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `.mgn` (SKMG)          | **Import** and **Export** supported via File > Export Selection                                                  | Select a skinned mesh bound to a skeleton. Exports skin weights, UVs, normals, per-shader data.   |
-| `.ans` (keyframe anim) | **Import** and **Export** supported via File > Export Selection                                                  | Exports KFAT (uncompressed) format. Captures delta rotations/translations from bind pose.         |
-| `.lod` (MLOD)          | **Import** and **Export** supported                                                                              | Select transform with `swgLodChildren` attribute (from import) to re-export LOD container.        |
-| `.lmg` (MLOD)          | **Import** and **Export** supported                                                                              | Select transform with `swgLmgChildren` attribute (from import) to re-export LMG container.        |
-| `.sat`                 | **Import** via `importSat`; **Export** via `ExportSat` command                                                   | Export writes skeleton reference and mesh LOD references from scene hierarchy.                    |
+| Goal                   | SwgMayaEditor                                                   | Notes                                                                                           |
+| ---------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `.mgn` (SKMG)          | **Import** and **Export** supported via File > Export Selection | Select a skinned mesh bound to a skeleton. Exports skin weights, UVs, normals, per-shader data. |
+| `.ans` (keyframe anim) | **Import** and **Export** supported via File > Export Selection | Exports KFAT (uncompressed) format. Captures delta rotations/translations from bind pose.       |
+| `.lod` (MLOD)          | **Import** and **Export** supported                             | Select transform with `swgLodChildren` attribute (from import) to re-export LOD container.      |
+| `.lmg` (MLOD)          | **Import** and **Export** supported                             | Select transform with `swgLmgChildren` attribute (from import) to re-export LMG container.      |
+| `.sat`                 | **Import** via `importSat`; **Export** via `ExportSat` command  | Export writes skeleton reference and mesh LOD references from scene hierarchy.                  |
 
 
 All file types now support round-trip editing. Use **File > Export Selection** with the appropriate file type filter.
@@ -320,7 +344,7 @@ Use Maya's **File > Import** or **File > Export** with these file types. The **F
 | .dds        | `SwgDds`                    | SWG DDS texture (*.dds)          | Yes    | No     |
 
 
-Constants live in `translators/SwgTranslatorNames.h`: `swg_translator::kType`* for scripts, `swg_translator::kFilter*` for the dialog strings.
+Constants live in `translators/SwgTranslatorNames.h`: `swg_translator::kType`* for scripts, `swg_translator::kFilter`* for the dialog strings.
 
 Example SAT import:
 
@@ -352,11 +376,29 @@ swgAssetDissector;
 
 ### swgAnimationBrowser
 
-Opens a UI with **Categories** (top-level folders under `appearance/animation`), a **list** of matching `.ans` paths, **Filter** + **Refresh**, and **Import selected**. Picking a category fills the filter and refreshes the list; the filter is a case-insensitive substring on `appearance/animation/…`. **Double-click** a list row or use **Import selected** to run `importAnimation -i "<path>"`. Uses the same **data root** as other imports (`TITAN_DATA_ROOT` / `TITAN_EXPORT_ROOT` / `DATA_ROOT` or `setBaseDir`). Import a matching **`.sat`** first so joints line up.
+Opens a UI with **Categories** (top-level folders under `appearance/animation`), a **list** of matching `.ans` paths, **Filter** + **Refresh**, and **Import selected**. Picking a category fills the filter and refreshes the list; the filter is a case-insensitive substring on `appearance/animation/…`. **Double-click** a list row or use **Import selected** to run `importAnimation -i "<path>"`. Uses the same **data root** as other imports (`TITAN_DATA_ROOT` / `TITAN_EXPORT_ROOT` / `DATA_ROOT` or `setBaseDir`). Import a matching `**.sat`** first so joints line up.
 
 ```mel
 swgAnimationBrowser;
 ```
+
+### Statueize (`swgStatueize.mel`) — optional look-dev
+
+Apply preset SWG textures to selected meshes; originals stored on the transform as `swgOriginalShadingGroups`.
+
+```mel
+source "/path/to/SwgMayaEditor/build/Release/swgStatueize.mel";
+swgStatueizeUI;
+```
+
+Textures resolve under `getDataRootDir` / `TITAN_DATA_ROOT` in `texture/`, `texture/tatooine/`, `texture/thm_tatt_detail/`. If `source` fails after an update, restart Maya (MEL procedure cache).
+
+### Skeletal mesh, SAT, and ANS (behavior summary)
+
+- **SAT / `importSkeletalMesh`:** Resolves `.lmg` → `.mgn`, builds geometry and `skinCluster`. MGN transform names (XFNM) must match scene joints; matching is case-insensitive for skinning.
+- **Blend targets:** Names are stored on the mesh parent (e.g. `swgBlendTargets`) for export reference; live blendShape creation on import is disabled for stability.
+- **Occlusion zones:** Listed in the Script Editor and stored in custom attributes (see [manual.md](manual.md)).
+- **ANS import:** Before a new import, keys are cleared and bind pose restored on joints **except** hardpoints (`hold_`* names or `swgHardpointParent` attribute) so attachment nodes stay aligned with the hand.
 
 ---
 
@@ -381,11 +423,9 @@ verboseLogging = false
 
 ---
 
-## Related documentation (repo `/docs`)
+## Related documentation (repository `docs/`)
 
-From the repo root these live under `docs/`. Relative to this file (`MayaModern/how-to.md`): `../../../../../../docs/`.
-
-If you work mainly through **File → Import** / **Export Selection** and the Outliner (not MEL), read those two first; this how-to stays command- and translator-reference oriented.
+From the Titan repo root, shared Maya articles live under `docs/`. Relative to this file (`MayaModern/docs/guide.md`):
 
 - [MAYA_POB_FROM_SCRATCH.md](../../../../../../docs/MAYA_POB_FROM_SCRATCH.md) — new `.pob` authoring in Maya.
 - [MAYA_KITBASH_IMPORT_COMBINE.md](../../../../../../docs/MAYA_KITBASH_IMPORT_COMBINE.md) — import SAT/APT/MSH, combine, pose, export static meshes.
@@ -444,7 +484,7 @@ Authoritative notes for which **FORM** versions the game client loads live in:
 
 `MayaModern/translators/SwgIffFormatVersions.h`
 
-The `**.msh`** translator (`MshTranslator`) follows `**MeshAppearanceTemplate**`, `**AppearanceTemplate**`, and `**ShaderPrimitiveSetTemplate**` for MESH / APPR / SPS versions.
+The `**.msh`** translator (`MshTranslator`) follows `**MeshAppearanceTemplate`**, `**AppearanceTemplate`**, and `**ShaderPrimitiveSetTemplate**` for MESH / APPR / SPS versions.
 
 ---
 
@@ -464,16 +504,16 @@ When importing a `.msh` file without SPS (Shader Primitive Set) geometry, you ma
 
 1. **Run `setBaseDir`** (or set `TITAN_DATA_ROOT` / `TITAN_EXPORT_ROOT`) so paths in the file and companion `.apt` redirects resolve on disk.
 2. Prefer `**importLodMesh -i "appearance/mesh/your_basename"**` (no extension) so the tool can pick `.lod` / `.apt` / `.msh` in a supported order. Opening a raw `.msh` via **File → Import** still works but follows the same IFF parser rules.
-3. If you see `**Cannot build mesh: missing vertex/index data`**, the **MESH/0005 → SPS** block in that asset does not match what this plug-in expects (e.g. no index buffer, or an unsupported primitive layout). Check `**[MshTranslator]`** lines in stderr / the Script Editor history.
+3. If you see `**Cannot build mesh: missing vertex/index data`**, the MESH/0005 → SPS block in that asset does not match what this plug-in expects (e.g. no index buffer, or an unsupported primitive layout). Check `**[MshTranslator]`** lines in stderr / the Script Editor history.
 4. If a sibling `**.apt**` exists, the importer follows the redirect; ensure the redirected file is present and readable.
 
 ### `.mgn` looked gray / no textures
 
-**Shader assignment**: After import, the plug-in resolves each per-shader **template name** from the `.mgn`, runs `**importShader`** for the matching `**.sht**` under your data root, then assigns that shading group to the mesh faces (same idea as `.msh`). If the `.sht` or textures cannot be resolved, you get a **default green** material — fix `**setBaseDir`**, tree layout (`shader/`, `texture/`), and paths inside the shader template.
+**Shader assignment**: After import, the plug-in resolves each per-shader **template name** from the `.mgn`, runs `**importShader`** for the matching `**.sht`** under your data root, then assigns that shading group to the mesh faces (same idea as `.msh`). If the `.sht` or textures cannot be resolved, you get a **default green** material — fix `**setBaseDir`**, tree layout (`shader/`, `texture/`), and paths inside the shader template.
 
 **UVs**: Texture coordinates are read from **PSDT → TCSF → TCSD** when present.
 
-**TRTS**: Optional **texture renderer template** bindings in `.mgn` / SKMG are parsed (FORM TRTS / CHUNK TRT) and written to the import root transform as `**swgTrtBindings`** (tab-separated lines: template name, shader index, texture tag hex). Shader assignment still comes from per-shader template names and `**importShader**`.
+**TRTS**: Optional **texture renderer template** bindings in `.mgn` / SKMG are parsed (FORM TRTS / CHUNK TRT) and written to the import root transform as `**swgTrtBindings`** (tab-separated lines: template name, shader index, texture tag hex). Shader assignment still comes from per-shader template names and `**importShader`**.
 
 ---
 

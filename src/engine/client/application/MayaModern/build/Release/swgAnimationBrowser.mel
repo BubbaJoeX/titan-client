@@ -64,7 +64,7 @@ global proc string[] swgAnimBrowserPythonCollectAns(string $animDisk, string $fi
     $ps += "if($f){foreach($t in $f.Split(' ')){if($t -and $hay -notlike '*'+$t+'*'){$match=$false;break}}}";
     $ps += "if($match){$out+=$rel}";
     $ps += "}}";
-    $ps += "$out | Sort-Object | Set-Content -Path '" + $tmp + "' -Encoding UTF8";
+    $ps += "$out | Sort-Object | Out-File -FilePath '" + $tmp + "' -Encoding ASCII";
     $ps += "\"";
 
     system $ps;

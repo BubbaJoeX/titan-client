@@ -1,4 +1,6 @@
-# ANS (KFAT/CKAT) Format Analysis
+# ANS (KFAT/CKAT) format reference
+
+Documentation map: [README.md](README.md) · Operational guide: [guide.md](guide.md)
 
 ## Overview
 

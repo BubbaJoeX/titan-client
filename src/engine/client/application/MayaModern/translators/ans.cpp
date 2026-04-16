@@ -181,16 +181,32 @@ MStatus AnsTranslator::reader (const MFileObject& file, const MString& options, 
 
     // Clear existing animation and restore bind pose BEFORE reading new animation.
     // This ensures bindQuat/bindTranslation are the original values, not from a previous animation.
+    // IMPORTANT: Exclude hardpoints (hold_*, joints with swgHardpointParent) - they should keep their position.
     ANS_LOG("clearing existing animation and restoring bind pose...");
     {
         MStatus clearStatus;
-        // Select all joints
+        
+        // Helper to check if a joint is a hardpoint
+        auto isHardpointJoint = [](const MDagPath& path) -> bool {
+            MFnDagNode dagFn(path);
+            std::string name(dagFn.name().asChar());
+            // Skip joints with "hold_" prefix
+            if (name.size() >= 5 && name.substr(0, 5) == "hold_")
+                return true;
+            // Skip joints with swgHardpointParent attribute
+            MFnDependencyNode depFn(path.node());
+            if (depFn.hasAttribute("swgHardpointParent"))
+                return true;
+            return false;
+        };
+        
+        // Select all joints EXCEPT hardpoints
         MSelectionList jointSel;
         MItDag dagIt(MItDag::kDepthFirst, MFn::kJoint, &clearStatus);
         for (; !dagIt.isDone(); dagIt.next())
         {
             MDagPath path;
-            if (dagIt.getPath(path))
+            if (dagIt.getPath(path) && !isHardpointJoint(path))
                 jointSel.add(path);
         }
         if (jointSel.length() > 0)
@@ -859,6 +875,20 @@ MStatus AnsTranslator::reader (const MFileObject& file, const MString& options, 
                 const size_t ansCount = animTransformData.size();
                 const size_t sceneCount = sceneJointsOrdered.size();
 
+                // Helper to check if a joint is a hardpoint (should not be animated)
+                auto isHardpoint = [](const MDagPath& path) -> bool {
+                    MFnDagNode dagFn(path);
+                    std::string name(dagFn.name().asChar());
+                    // Skip joints with "hold_" prefix (hardpoints)
+                    if (name.size() >= 5 && name.substr(0, 5) == "hold_")
+                        return true;
+                    // Skip joints with swgHardpointParent attribute (imported hardpoints)
+                    MFnDependencyNode depFn(path.node());
+                    if (depFn.hasAttribute("swgHardpointParent"))
+                        return true;
+                    return false;
+                };
+
                 int matchedCount = 0;
                 for (size_t t = 0; t < animTransformData.size(); ++t)
                 {
@@ -871,6 +901,12 @@ MStatus AnsTranslator::reader (const MFileObject& file, const MString& options, 
                     }
                     for (const MDagPath& jointPath : jointPaths)
                     {
+                    // Skip hardpoints - they should maintain their bind pose offset from parent
+                    if (isHardpoint(jointPath))
+                    {
+                        ANS_LOG("skip [%s] - hardpoint (preserving position)", ti.jointName.c_str());
+                        continue;
+                    }
                     ++matchedCount;
                     MStatus status;
                     MFnIkJoint jointFn(jointPath.node());

@@ -537,30 +537,35 @@ MStatus MayaSceneBuilder::createSkinCluster(
         maxInfluencesPerVertex = 8;
 
     std::map<std::string, size_t> jointNameToIndex;
+    
+    auto addToMap = [&jointNameToIndex](const std::string& key, size_t idx) {
+        if (jointNameToIndex.find(key) == jointNameToIndex.end())
+            jointNameToIndex[key] = idx;
+        // Also add lowercase version
+        std::string lower;
+        for (char c : key) lower += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        if (lower != key && jointNameToIndex.find(lower) == jointNameToIndex.end())
+            jointNameToIndex[lower] = idx;
+    };
+    
     for (size_t j = 0; j < jointPaths.size(); ++j)
     {
         MFnDagNode dagFn(jointPaths[j]);
         std::string name(dagFn.name().asChar());
-        jointNameToIndex[name] = j;
+        addToMap(name, j);
+        
         size_t dbl = name.find("__");
         if (dbl != std::string::npos && dbl > 0)
         {
             std::string baseName = name.substr(0, dbl);
-            if (jointNameToIndex.find(baseName) == jointNameToIndex.end())
-                jointNameToIndex[baseName] = j;
-            std::string baseLower = baseName;
-            for (size_t k = 0; k < baseLower.size(); ++k)
-                baseLower[k] = static_cast<char>(std::tolower(static_cast<unsigned char>(baseLower[k])));
-            if (jointNameToIndex.find(baseLower) == jointNameToIndex.end())
-                jointNameToIndex[baseLower] = j;
+            addToMap(baseName, j);
         }
         // Maya namespaced joints (e.g. "lom:lThigh") must match MGN transform names ("lThigh")
         size_t colon = name.rfind(':');
         if (colon != std::string::npos && colon + 1 < name.size())
         {
             std::string shortName = name.substr(colon + 1);
-            if (jointNameToIndex.find(shortName) == jointNameToIndex.end())
-                jointNameToIndex[shortName] = j;
+            addToMap(shortName, j);
         }
         // MayaExporter MayaCompoundString::getComponentString(0) - first segment before '_'
         size_t u = name.rfind(':');
@@ -569,13 +574,7 @@ MStatus MayaSceneBuilder::createSkinCluster(
         if (u != std::string::npos && u > 0)
         {
             std::string comp0 = base.substr(0, u);
-            if (jointNameToIndex.find(comp0) == jointNameToIndex.end())
-                jointNameToIndex[comp0] = j;
-            std::string comp0Lower = comp0;
-            for (size_t k = 0; k < comp0Lower.size(); ++k)
-                comp0Lower[k] = static_cast<char>(std::tolower(static_cast<unsigned char>(comp0Lower[k])));
-            if (jointNameToIndex.find(comp0Lower) == jointNameToIndex.end())
-                jointNameToIndex[comp0Lower] = j;
+            addToMap(comp0, j);
         }
     }
 

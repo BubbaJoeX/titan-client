@@ -1,0 +1,245 @@
+// swgStatueize.mel - Convert selected meshes to metal statue appearance
+// Uses SWG game textures for silver, copper, and stone looks
+
+global proc string swgStatueizeGetTextureRoot() {
+    string $root = `getenv "TITAN_DATA_ROOT"`;
+    if (size($root) == 0)
+        $root = `getDataRootDir`;
+    if (size($root) > 0) {
+        $root = `substituteAllString $root "\\" "/"`;
+        if (`substring $root (size($root)) (size($root))` != "/")
+            $root += "/";
+    }
+    return $root;
+}
+
+global proc string swgStatueizeFindTexture(string $texName) {
+    string $root = `swgStatueizeGetTextureRoot`;
+    if (size($root) == 0) return "";
+    
+    // Try common texture paths
+    string $paths[] = {
+        $root + "texture/" + $texName,
+        $root + "texture/tatooine/" + $texName,
+        $root + "texture/thm_tatt_detail/" + $texName
+    };
+    
+    for ($p in $paths) {
+        if (`filetest -r $p`)
+            return $p;
+    }
+    return "";
+}
+
+
+// Material definitions: { displayName, matName, textureName, fallbackR, fallbackG, fallbackB }
+global proc string[] swgStatueizeGetMaterials() {
+    return {
+        "Silver Pipe,swgStatueSilver,thm_tatt_mtl_pipe_silver.dds,0.75,0.75,0.78",
+        "Copper Pipe,swgStatueCopper,thm_tatt_mtl_pipe_copper.dds,0.72,0.45,0.20",
+        "Corellia Marble,swgStatueCorelliaMarble,corellia_marble_detb.dds,0.85,0.82,0.78",
+        "Violet Crystal,swgStatueVioletCrystal,djt_marble_crystal_violet1.dds,0.6,0.3,0.7",
+        "Marble Stars,swgStatueMarbleStars,ljt_marblestars.dds,0.9,0.88,0.85",
+        "Gold Marble,swgStatueGoldMarble,63_gold_marble_002.dds,0.85,0.75,0.45",
+        "Gold Metal,swgStatueGoldMetal,all_metal_gold.dds,0.83,0.69,0.22"
+    };
+}
+
+global proc swgStatueize() {
+    swgStatueizeApplyMaterial("swgStatueSilver", "thm_tatt_mtl_pipe_silver.dds", 0.75, 0.75, 0.78);
+}
+
+global proc swgStatueizeApplyMaterial(string $matName, string $texName, float $fbR, float $fbG, float $fbB) {
+    string $sel[] = `ls -sl -dag -type "mesh"`;
+    if (size($sel) == 0) {
+        warning "Select one or more meshes to statueize.";
+        return;
+    }
+    
+    // Create material if needed
+    swgStatueizeCreateMaterialWithFallback($matName, $texName, $fbR, $fbG, $fbB);
+    
+    string $sg = $matName + "SG";
+    if (!`objExists $sg`) {
+        error ("Failed to create shading group: " + $sg);
+        return;
+    }
+    
+    // Apply material to selected meshes
+    int $count = 0;
+    for ($mesh in $sel) {
+        string $parents[] = `listRelatives -parent $mesh`;
+        string $transform = $parents[0];
+        
+        // Store original shading groups for restoration
+        string $origSGs[] = `listConnections -type "shadingEngine" $mesh`;
+        if (size($origSGs) > 0) {
+            string $attrName = "swgOriginalShadingGroups";
+            if (!`attributeExists $attrName $transform`) {
+                addAttr -ln $attrName -dt "string" $transform;
+            }
+            string $sgList = stringArrayToString($origSGs, ",");
+            setAttr -type "string" ($transform + "." + $attrName) $sgList;
+        }
+        
+        // Assign statue material
+        select -r $mesh;
+        sets -e -forceElement $sg;
+        $count++;
+    }
+    
+    select -r $sel;
+    print ("// Statueized " + $count + " mesh(es) with " + $matName + ".\n");
+}
+
+global proc swgStatueizeCreateMaterialWithFallback(string $matName, string $textureName, float $fbR, float $fbG, float $fbB) {
+    string $sg = $matName + "SG";
+    
+    if (`objExists $matName`) {
+        return;
+    }
+    
+    // Create Blinn shader
+    string $mat = `shadingNode -asShader blinn -name $matName`;
+    string $sgNode = `sets -renderable true -noSurfaceShader true -empty -name $sg`;
+    connectAttr -f ($mat + ".outColor") ($sgNode + ".surfaceShader");
+    
+    // Find texture file
+    string $texPath = `swgStatueizeFindTexture $textureName`;
+    
+    if (size($texPath) > 0) {
+        // Create file texture node
+        string $fileNode = `shadingNode -asTexture file -name ($matName + "_file")`;
+        string $place2d = `shadingNode -asUtility place2dTexture -name ($matName + "_place2d")`;
+        
+        // Connect place2dTexture to file
+        connectAttr ($place2d + ".coverage") ($fileNode + ".coverage");
+        connectAttr ($place2d + ".translateFrame") ($fileNode + ".translateFrame");
+        connectAttr ($place2d + ".rotateFrame") ($fileNode + ".rotateFrame");
+        connectAttr ($place2d + ".mirrorU") ($fileNode + ".mirrorU");
+        connectAttr ($place2d + ".mirrorV") ($fileNode + ".mirrorV");
+        connectAttr ($place2d + ".stagger") ($fileNode + ".stagger");
+        connectAttr ($place2d + ".wrapU") ($fileNode + ".wrapU");
+        connectAttr ($place2d + ".wrapV") ($fileNode + ".wrapV");
+        connectAttr ($place2d + ".repeatUV") ($fileNode + ".repeatUV");
+        connectAttr ($place2d + ".offset") ($fileNode + ".offset");
+        connectAttr ($place2d + ".rotateUV") ($fileNode + ".rotateUV");
+        connectAttr ($place2d + ".noiseUV") ($fileNode + ".noiseUV");
+        connectAttr ($place2d + ".vertexUvOne") ($fileNode + ".vertexUvOne");
+        connectAttr ($place2d + ".vertexUvTwo") ($fileNode + ".vertexUvTwo");
+        connectAttr ($place2d + ".vertexUvThree") ($fileNode + ".vertexUvThree");
+        connectAttr ($place2d + ".vertexCameraOne") ($fileNode + ".vertexCameraOne");
+        connectAttr ($place2d + ".outUV") ($fileNode + ".uv");
+        connectAttr ($place2d + ".outUvFilterSize") ($fileNode + ".uvFilterSize");
+        
+        setAttr -type "string" ($fileNode + ".fileTextureName") $texPath;
+        connectAttr -f ($fileNode + ".outColor") ($mat + ".color");
+        
+        print ("// Created material " + $matName + " with texture: " + $texPath + "\n");
+    } else {
+        // Fallback to flat color
+        setAttr ($mat + ".color") -type double3 $fbR $fbG $fbB;
+        warning ("Texture not found: " + $textureName + ". Using fallback color.");
+    }
+    
+    // Metal-like specular settings
+    setAttr ($mat + ".specularColor") -type double3 0.4 0.4 0.4;
+    setAttr ($mat + ".eccentricity") 0.3;
+    setAttr ($mat + ".specularRollOff") 0.7;
+}
+
+global proc swgUnstatueize() {
+    string $sel[] = `ls -sl -dag -type "mesh"`;
+    if (size($sel) == 0) {
+        warning "Select one or more meshes to restore original materials.";
+        return;
+    }
+    
+    int $count = 0;
+    for ($mesh in $sel) {
+        string $parents[] = `listRelatives -parent $mesh`;
+        string $transform = $parents[0];
+        
+        string $attrName = "swgOriginalShadingGroups";
+        if (`attributeExists $attrName $transform`) {
+            string $sgListStr = `getAttr ($transform + "." + $attrName)`;
+            if (size($sgListStr) > 0) {
+                string $sgs[];
+                tokenize $sgListStr "," $sgs;
+                if (size($sgs) > 0 && `objExists $sgs[0]`) {
+                    select -r $mesh;
+                    sets -e -forceElement $sgs[0];
+                    $count++;
+                }
+            }
+            deleteAttr ($transform + "." + $attrName);
+        } else {
+            warning ($transform + " has no stored original shading groups.");
+        }
+    }
+    
+    select -r $sel;
+    print ("// Restored original materials on " + $count + " mesh(es).\n");
+}
+
+global proc swgStatueizeApplySelected() {
+    string $materials[] = `swgStatueizeGetMaterials`;
+    int $sel[] = `textScrollList -q -selectIndexedItem swgStatueizeMaterialList`;
+    
+    if (size($sel) == 0) {
+        warning "Select a material from the list first.";
+        return;
+    }
+    
+    int $idx = $sel[0] - 1;
+    if ($idx < 0 || $idx >= size($materials)) {
+        warning "Invalid selection.";
+        return;
+    }
+    
+    string $parts[];
+    tokenize $materials[$idx] "," $parts;
+    
+    string $matName = $parts[1];
+    string $texName = $parts[2];
+    float $fbR = $parts[3];
+    float $fbG = $parts[4];
+    float $fbB = $parts[5];
+    
+    swgStatueizeApplyMaterial($matName, $texName, $fbR, $fbG, $fbB);
+}
+
+global proc swgStatueizeUI() {
+    if (`window -exists swgStatueizeWin`)
+        deleteUI swgStatueizeWin;
+    
+    window -title "Statueize" -widthHeight 320 340 swgStatueizeWin;
+    columnLayout -adjustableColumn true -rowSpacing 6 -columnAttach "both" 8;
+        text -label "Convert selected meshes to statues\nusing SWG game textures" -align "center";
+        separator -height 8;
+        
+        text -label "Select Material:" -align "left";
+        
+        // Build material list
+        string $materials[] = `swgStatueizeGetMaterials`;
+        textScrollList -numberOfRows 8 -height 160 -allowMultiSelection false swgStatueizeMaterialList;
+        
+        for ($mat in $materials) {
+            string $parts[];
+            tokenize $mat "," $parts;
+            string $displayName = $parts[0];
+            string $texName = $parts[2];
+            textScrollList -e -append ($displayName + "  (" + $texName + ")") swgStatueizeMaterialList;
+        }
+        
+        // Select first item by default
+        textScrollList -e -selectIndexedItem 1 swgStatueizeMaterialList;
+        
+        separator -height 8;
+        
+        button -label "Apply to Selection" -command "swgStatueizeApplySelected" -height 35 -backgroundColor 0.3 0.5 0.3;
+        button -label "Restore Original Materials" -command "swgUnstatueize" -height 30;
+        
+    setParent ..;
+    showWindow swgStatueizeWin;
+}

@@ -1,6 +1,13 @@
 # SwgMayaEditor (MayaModern) - Maya 2026
 # Full feature parity with MayaExporter (32-bit legacy) - migrated to 64-bit Maya 2026 with an Importer option.
 
+## Documentation (unified Markdown)
+- All docs live under MayaModern/docs/ — start at docs/README.md
+- guide.md — commands, translators, deploy, workflows (main day-to-day reference)
+- manual.md — long-form editor manual
+- ans-format.md — ANS IFF (KFAT/CKAT) technical reference
+- Root README.md — build, install, POB command quick table, file-type matrix
+
 ## Build Requirements
 - Maya 2026 (64-bit) - https://www.autodesk.com/developer-network/platform-technologies/maya
 - Maya 2026 Devkit - **Separate download** from Autodesk Feedback Forum (Downloads section). Extract include/ and lib/ into Maya dir or set MAYA_LOCATION to devkit root.
@@ -21,14 +28,15 @@
 
 ## Current Implementation Status
 
-### Standard Import (File > Import via translators)
-- [x] msh - Mesh import (SPS format, static mesh)
-- [x] mgn - Mesh generator import (SKMG format, skeletal mesh via MFileIO)
-- [x] skt - Skeleton import
-- [x] ans - Animation import (XFIN channel fix, swgRevertToBindPose)
-- [x] flr - Floor import
-- [x] sat - Skeletal appearance template (SAT)
-- [x] pob - Portal object
+### Standard Import / Export (File > Import / Export via translators)
+- [x] msh - Static mesh (MESH/0005); import + export
+- [x] mgn - Skeletal mesh (SKMG); import + export (writer: skinned mesh selection)
+- [x] skt - Skeleton; import + export
+- [x] ans - Animation (KFAT/CKAT); import + export
+- [x] flr - Floor import (export N/A)
+- [x] sat - Skeletal appearance; import + export
+- [x] pob - Portal object; import + export
+- [x] lod / lmg - LOD containers; import + export
 - [x] dds - DDS texture import
 
 ### MSH Import (full)
@@ -38,71 +46,85 @@
 - [x] createHardpoints() for static mesh (parent to mesh when no joint map)
 - [x] floor_component placeholder when floor reference exists
 
-### MGN Import (SKMG via ImportSkeletalMesh command)
-- [x] Skin weighting (TWHD/TWDT, createSkinCluster)
+### MGN Import (SKMG via ImportSkeletalMesh / translator)
+- [x] Skin weighting (TWHD/TWDT, createSkinCluster; case-insensitive joint name matching for XFNM)
 - [x] Hardpoints (HPTS: STAT + DYN chunks)
-- [x] Blend targets (BLTS: position/normal deltas, createBlendShapes)
-- [x] Joint matching (transform names, short names, namespace stripping)
+- [x] Blend targets (BLTS): names + data preserved for export via swgBlendTargets (and Script Editor log); live blendShape deformer on import disabled (stability)
+- [x] Occlusion zones: stored / logged (e.g. swgOcclusionZones); export path supported
+- [x] Joint matching (transform names, short names, namespace stripping, LOD suffix stripping)
 - [x] Single mesh from all shader groups, material assignment
-- [x] Blend shapes created before skin cluster (correct deformation order)
+- [x] Vertex X negation for Maya coordinate parity (game space vs Maya)
+- [x] ITL/OITL: valid triangle count matches polygonConnects (degenerate / OOB handling)
+
+### MGN Export
+- [x] File > Export Selection (SwgMgn) / skinned mesh pipeline (see translator writer)
+- [ ] Parity audit vs MayaExporter for edge-case SKMG versions / optional chunks
 
 ### Special Import Commands
 - [x] importSkeleton -i path
-- [x] importAnimation -i path
+- [x] importAnimation -i path (SwgAns translator)
 - [x] importStaticMesh
 - [x] importSkeletalMesh
 - [x] importLodMesh
 - [x] importPob
-- [x] importSat
-- [x] Import structure - `importStructure` (POB + optional FLR + shell MSH/APT/LOD + optional `-shader`)
-- [x] Import shader (ImportShader) - exercised via `importStructure -shader` / manual `importShader`
+- [x] importSat / exportSat
+- [x] importStructure (POB + optional FLR + shell MSH/APT/LOD + optional -shader)
+- [x] importShader / exportShader
 - [ ] Import Components (.cmp)
 
-### Export
+### POB authoring commands (plugin)
+- [x] createPobTemplate, layoutPobCells, addPobPortal, connectPobCells, duplicatePobCell, reportPobPortals, validatePob (see guide.md; PobExtendedCommands)
+- [x] pobAuthoring.mel helpers (source from build/Release next to .mll)
+
+### Export (round-trip status)
 - [x] exportPob
 - [x] exportStaticMesh (msh/apt + shader TGA→DDS)
 - [x] exportSkeleton
-- [x] exportShader (.sht via ShaderExporter; MEL `exportShader -i "shader/foo/bar"`)
+- [x] exportShader (.sht)
+- [x] .mgn / .ans / .sat / .lod / .lmg via File > Export Selection and registered translators (verify per-asset in QA)
+- [ ] Export mesh with lightsaber - .lsb generator (not in plugin)
+- [ ] Export mgn with ship - cockpit/*.iff bundle (legacy scope)
+- [ ] Export structure one-shot - pob/flr/msh/sht/sfp single command (partial: exportPob + exportStaticMesh separately)
+- [ ] Reexport command (batch / convenience)
 
 ### Commands
-- [x] setBaseDir
-- [x] getDataRootDir
+- [x] setBaseDir, getDataRootDir
 - [x] swgRevertToBindPose
 - [x] swgAssetDissector
+- [x] swgAnimationBrowser (UI; sources swgAnimationBrowser.mel beside .mll)
+- [x] swgPrepareStaticMeshExport
+
+### Optional MEL (not registered as MPxCommand)
+- [x] swgStatueize.mel — look-dev materials (source manually; see guide.md)
+- [x] swgAnimationBrowser.mel — used by swgAnimationBrowser command
+
+### ANS / animation behavior (recent)
+- [x] Rotation keyframes: delta quaternion path aligned with legacy exporter expectations
+- [x] Import prep: clear keys + bind pose restore; skip hardpoints (hold_* / swgHardpointParent) from cutKey/dagPose and from anim application
 
 ---
 
 ## Remaining for Complete 3D Asset Pipeline
 
 ### Import Gaps
-- [x] Import structure - `importStructure -i appearance/.../basename` (`-flr` to import FLR alongside POB; `-shader path`)
 - [ ] Import Components (.cmp) - component appearance with hardpoints
-- [x] Import shader - standalone `importShader`; `exportShader` registered in plugin (was missing from initializePlugin)
 
-### Export (Critical for Round-Trip)
-- [x] Export mesh - apt/msh/sht (exportStaticMesh)
-- [x] Export mesh with floor reference - `exportStaticMesh` writes APPR/FLOR from `floor_component.floorPath` (`.flr` file export still legacy)
-- [ ] Export mesh with lightsaber - above + .lsb generator
-- [ ] Export mgn - sat/mgn/lmg (skeletal mesh generator) — **not in SwgMayaEditor**; legacy MayaExporter
-- [ ] Export mgn with ship - above + cockpit/*.iff
-- [ ] Export structure - pob/flr/msh/sht/sfp (partial: exportPob + exportStaticMesh)
-- [ ] Export animation(s) — **legacy MayaExporter** Keyframe path
-- [ ] Export skeletal mesh generator (ExportSkeletalMeshGenerator) — port from MayaExporter
-- [ ] Export skeletal appearance template (ExportSkeletalAppearanceTemplate / .sat)
-- [ ] Export keyframe skeletal animation (ExportKeyframeSkeletalAnimation / .ans)
-- [ ] Reexport command
+### Export Gaps / Parity
+- [ ] Export mesh with lightsaber (.lsb)
+- [ ] Export mgn “with ship” / cockpit IFF bundles
+- [ ] Unified “reexport” or batch export UX
+- [ ] Writer parity pass: SPS edge cases, SkeletalMeshGeneratorWriter vs in-translator export, SkeletonTemplateWriter
 
-### Export Pipeline Dependencies
-- [ ] ShaderPrimitiveSetWriter (SPS)
-- [ ] SkeletalMeshGeneratorWriter
-- [ ] SkeletonTemplateWriter
-- [ ] SkeletalMeshGeneratorWriter (blend targets, hardpoints, skin weights)
-- [ ] StaticMeshBuilder / MeshBuilder
+### Export Pipeline Dependencies (legacy MayaExporter naming — audit vs current code)
+- [ ] ShaderPrimitiveSetWriter (SPS) — static mesh path may inline equivalent; confirm
+- [ ] SkeletalMeshGeneratorWriter — overlap with MgnTranslator::writer; document single path
+- [ ] SkeletonTemplateWriter — overlap with exportSkeleton; document
+- [ ] StaticMeshBuilder / MeshBuilder — overlap with exportStaticMesh; document
 
-### Commands (MayaExporter parity)
+### Commands (MayaExporter parity — not ported)
 - [ ] SwgGui - SWG GUI
 - [ ] SwgPrep - SWG prep
-- [ ] ExportCommand
+- [ ] ExportCommand (monolithic legacy)
 - [ ] AddAnimationCommand
 - [ ] DeleteAnimationCommand
 - [ ] VisitAnimationCommand
@@ -112,9 +134,9 @@
 ### Pipeline Workflow
 1. **Import** - Load SWG assets (mesh, skeleton, animation, materials)
 2. **Edit** - Modify in Maya (hardpoints, blend shapes, geometry, materials)
-3. **Export** - Write back to SWG IFF format
+3. **Export** - Write back to SWG IFF format (translators + export* commands)
 
-Current state: Import is largely complete; static mesh + POB + skeleton + shader export paths exist. Skeletal `.mgn`, `.ans`, `.sat` **binary export** remains legacy MayaExporter scope unless ported.
+Current state: Import is largely complete; static mesh + POB + skeleton + shader + skeletal/anim/SAT/LOD **export paths exist in plugin** (use File > Export Selection and command docs in guide.md). Remaining work: .cmp, lightsaber/ship bundles, batch/reexport UX, legacy command parity, writer audits.
 
 ---
 
