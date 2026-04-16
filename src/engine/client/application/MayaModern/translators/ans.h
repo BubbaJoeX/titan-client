@@ -85,7 +85,23 @@ public:
     static constexpr Tag TAG_MSGS = TAG(M,S,G,S);
     static constexpr Tag TAG_MESG = TAG(M,E,S,G);
     static constexpr Tag TAG_LOCT = TAG(L,O,C,T);
+    static constexpr Tag TAG_LOCR = TAG(L,O,C,R);
     static constexpr Tag TAG_QCNH = TAG(Q,C,N,H);
+    
+    // Animation message data
+    struct AnimationMessage
+    {
+        std::string name;
+        std::vector<int> signalFrameNumbers;
+    };
+    
+    // Locomotion data
+    struct LocomotionData
+    {
+        float averageTranslationSpeed = 0.0f;
+        std::vector<VectorKeyData> translationKeys;
+        std::vector<QuaternionKeyData> rotationKeys;
+    };
     
     // ======================================================================
     

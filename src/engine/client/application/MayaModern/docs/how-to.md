@@ -283,17 +283,19 @@ exportPob -i "appearance/building/cantina";
 
 **Selection**: Select the POB root or a cell.
 
-### Skeletal mesh, animation, and SAT export (status)
+### Skeletal mesh, animation, LOD, and SAT export (status)
 
 
-| Goal                   | SwgMayaEditor                                                              | Notes                                                                                                                                  |
-| ---------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `.mgn` (SKMG)          | **Import** supported; **File > Export .mgn** writer is not yet implemented | Full generator export lives in the legacy **MayaExporter** (`exportSkeletalMeshGenerator`) and depends on a large shared export stack. |
-| `.ans` (keyframe anim) | **Import** supported; **File > Export .ans** writer is not yet implemented | Legacy **MayaExporter** `exportKeyframeSkeletalAnimation`.                                                                             |
-| `.sat`                 | **Import** via `importSat`                                                 | **Export** not implemented in SwgMayaEditor (legacy MayaExporter `exportSatFile` / appearance template pipeline).                      |
+| Goal                   | SwgMayaEditor                                                                                                    | Notes                                                                                             |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `.mgn` (SKMG)          | **Import** and **Export** supported via File > Export Selection                                                  | Select a skinned mesh bound to a skeleton. Exports skin weights, UVs, normals, per-shader data.   |
+| `.ans` (keyframe anim) | **Import** and **Export** supported via File > Export Selection                                                  | Exports KFAT (uncompressed) format. Captures delta rotations/translations from bind pose.         |
+| `.lod` (MLOD)          | **Import** and **Export** supported                                                                              | Select transform with `swgLodChildren` attribute (from import) to re-export LOD container.        |
+| `.lmg` (MLOD)          | **Import** and **Export** supported                                                                              | Select transform with `swgLmgChildren` attribute (from import) to re-export LMG container.        |
+| `.sat`                 | **Import** via `importSat`; **Export** via `ExportSat` command                                                   | Export writes skeleton reference and mesh LOD references from scene hierarchy.                    |
 
 
-Use **exportShader** and **exportStaticMesh** for shader round-trip; for skeletal mesh/animation/SAT binary export, use the legacy exporter build or port those sources into this project (see `todo.txt`).
+All file types now support round-trip editing. Use **File > Export Selection** with the appropriate file type filter.
 
 ---
 
@@ -304,16 +306,18 @@ Use Maya's **File > Import** or **File > Export** with these file types. The **F
 **Do not use `SAT_ATF` for SWG `.sat` files.** In Maya, `SAT_ATF` is the **ACIS solid** SAT importer. SWG skeletal appearance templates are imported with type `**SwgSat`** (this plugin).
 
 
-| Extension   | MEL `-type` (register name) | Files of type label (`filter()`) |
-| ----------- | --------------------------- | -------------------------------- |
-| .mgn        | `SwgMgn`                    | SWG skeletal mesh (*.mgn)        |
-| .msh / .apt | `SwgMsh`                    | SWG static mesh (*.msh *.apt)    |
-| .skt        | `SwgSkt`                    | SWG skeleton (*.skt)             |
-| .ans        | `SwgAns`                    | SWG animation (*.ans)            |
-| .flr        | `SwgFlr`                    | SWG floor (*.flr)                |
-| .sat        | `SwgSat`                    | SWG skeletal appearance (*.sat)  |
-| .pob        | `SwgPob`                    | SWG portal object (*.pob)        |
-| .dds        | `SwgDds`                    | SWG DDS texture (*.dds)          |
+| Extension   | MEL `-type` (register name) | Files of type label (`filter()`) | Import | Export |
+| ----------- | --------------------------- | -------------------------------- | ------ | ------ |
+| .mgn        | `SwgMgn`                    | SWG skeletal mesh (*.mgn)        | Yes    | Yes    |
+| .msh / .apt | `SwgMsh`                    | SWG static mesh (*.msh *.apt)    | Yes    | Yes    |
+| .skt        | `SwgSkt`                    | SWG skeleton (*.skt)             | Yes    | Yes    |
+| .ans        | `SwgAns`                    | SWG animation (*.ans)            | Yes    | Yes    |
+| .flr        | `SwgFlr`                    | SWG floor (*.flr)                | Yes    | No     |
+| .sat        | `SwgSat`                    | SWG skeletal appearance (*.sat)  | Yes    | Yes    |
+| .pob        | `SwgPob`                    | SWG portal object (*.pob)        | Yes    | Yes    |
+| .lod        | `SwgLod`                    | SWG LOD container (*.lod)        | Yes    | Yes    |
+| .lmg        | `SwgLmg`                    | SWG skeletal LOD (*.lmg)         | Yes    | Yes    |
+| .dds        | `SwgDds`                    | SWG DDS texture (*.dds)          | Yes    | No     |
 
 
 Constants live in `translators/SwgTranslatorNames.h`: `swg_translator::kType`* for scripts, `swg_translator::kFilter*` for the dialog strings.

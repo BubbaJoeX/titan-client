@@ -752,6 +752,26 @@ MStatus MshTranslator::reader (const MFileObject& file, const MString& options, 
                     mshLog("  Created floor component placeholder: %s", floorReferencePath.c_str());
                 }
             }
+            
+            // Create collision group for user to add collision geometry
+            // User can middle-mouse drag geometry into this group for export
+            {
+                MStatus collStatus;
+                MFnTransform collFn;
+                MObject collObj = collFn.create(meshImportRootObj, &collStatus);
+                if (collStatus)
+                {
+                    collFn.setName("collision");
+                    // Add attribute to mark this as a collision container
+                    MGlobal::executeCommand(MString("addAttr -ln \"swgCollisionGroup\" -at bool -dv 1 ") + collFn.name());
+                    // Add attribute for collision type (box, sphere, mesh, composite)
+                    MGlobal::executeCommand(MString("addAttr -ln \"swgCollisionType\" -dt \"string\" ") + collFn.name());
+                    MPlug typePlug = collFn.findPlug("swgCollisionType", false);
+                    if (!typePlug.isNull())
+                        typePlug.setValue(MString("box")); // Default to box collision
+                    mshLog("  Created collision group (drag collision geometry here for export)");
+                }
+            }
         }
 
         iff.close();

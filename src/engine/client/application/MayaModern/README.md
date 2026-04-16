@@ -28,6 +28,7 @@ The plugin will be built as `SwgMayaEditor.mll`. You can also open `build/SwgMay
 ### Maya Location
 
 FindMaya checks these locations (in order):
+
 - `MAYA_LOCATION` (env or CMake variable)
 - `C:\Program Files\Autodesk\Maya2026`
 - `D:\Program Files\Autodesk\Maya2026`
@@ -47,39 +48,43 @@ cmake -B build -A x64
 
 After loading the plugin, use these for large portal graphs (complexes, corridors, many units).
 
-| Command | Purpose |
-|--------|---------|
-| **`createPobTemplate`** | ` -n NAME -cells N [-layoutSpacing F]` — empty `r*` hierarchy; spacing spreads cells on **+X** in the viewport. |
-| **`layoutPobCells`** | `[-cols C] [-dx F] [-dz F] [-root …]` — repositions existing `r*` cells in a grid (row-major: +X then +Z). |
-| **`addPobPortal`** | Selection: cell or `portals`. `[-preset 0–4] [-w/-h] [-index] [-clockwise] [-target] [-doorHardpoint] [-doorStyle]`. **Presets:** 0 default 2×2.5, 1 wide, 2 narrow, 3 tall, 4 garage. |
-| **`connectPobCells`** | One step for a **paired doorway:** `-from rA -to rB` (names under root) **or** select **two** cells (from = CCW 0 side, to = CW 1 side). Sets shared index + targets. |
-| **`duplicatePobCell`** | Select **`rN`** (direct child of POB root). `[-stripPortals]` empty portals on copy; `[-remapPortalIndices N]` add **N** to every portal index under the copy. |
-| **`reportPobPortals`** | Lists portal indices and paths; flags indices that are not a pair of two. |
-| **`validatePob`** | Cells: `mesh` / `portals` / `collision` / `floor0`; warns on empty `external_reference`; repeats portal-pair audit. |
+
+| Command                 | Purpose                                                                                                                                                                                |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `**createPobTemplate`** | `-n NAME -cells N [-layoutSpacing F]` — empty `r*` hierarchy; spacing spreads cells on **+X** in the viewport.                                                                         |
+| `**layoutPobCells`**    | `[-cols C] [-dx F] [-dz F] [-root …]` — repositions existing `r*` cells in a grid (row-major: +X then +Z).                                                                             |
+| `**addPobPortal**`      | Selection: cell or `portals`. `[-preset 0–4] [-w/-h] [-index] [-clockwise] [-target] [-doorHardpoint] [-doorStyle]`. **Presets:** 0 default 2×2.5, 1 wide, 2 narrow, 3 tall, 4 garage. |
+| `**connectPobCells`**   | One step for a **paired doorway:** `-from rA -to rB` (names under root) **or** select **two** cells (from = CCW 0 side, to = CW 1 side). Sets shared index + targets.                  |
+| `**duplicatePobCell`**  | Select `**rN**` (direct child of POB root). `[-stripPortals]` empty portals on copy; `[-remapPortalIndices N]` add **N** to every portal index under the copy.                         |
+| `**reportPobPortals`**  | Lists portal indices and paths; flags indices that are not a pair of two.                                                                                                              |
+| `**validatePob**`       | Cells: `mesh` / `portals` / `collision` / `floor0`; warns on empty `external_reference`; repeats portal-pair audit.                                                                    |
+
 
 **Typical flow:** `createPobTemplate` → optional `layoutPobCells` → assign mesh/floor refs → `connectPobCells` or `addPobPortal` for doors → `validatePob` → `exportPob`.
 
-**MEL:** `source "…/build/Release/pobAuthoring.mel"` (path next to the `.mll`) for `swg_pob_*` shortcuts.
+**MEL:** `source "…/build/Release/pobAuthoring.mel"` (path next to the `.mll`) for `swg_pob_`* shortcuts.
 
 **Black / empty viewport:** new Maya files often have no lights — run `swg_pob_defaultLight` after sourcing the MEL. Then `swg_pob_apartmentPreset` builds a 24-cell grid named `apt_wing_a` with **placeholder** room cubes and floor planes sized to your `dx`/`dz` bays (ignored by `exportPob`; real art uses `external_reference`). Or call `swg_pob_fromScratch` with your own counts. For a template built with `createPobTemplate` only, run `swg_pob_addTemplatePlaceholders "root" 11.76 3.0 9.8 12 10` (example) after `layoutPobCells`. Use `swg_pob_connectChain "r0,r1,r2"` for a corridor spine between consecutive cells.
 
 **More MEL (after `source pobAuthoring.mel`):**
 
-| Proc | What it does |
-|------|----------------|
-| `swg_pob_addTemplatePlaceholders "apt_wing_a" 11.76 3.0 9.8 12 10` | Room `polyCube` (W,H,D) under each `mesh` + floor `polyPlane` (W,D) under `floor0`; args = inset room, ceiling height, full floor footprint. |
-| `swg_pob_setAllMeshRefs "apt_wing_a" "appearance/your.lod"` | Same mesh ref on every `r*\|mesh`. |
-| `swg_pob_setAllFloorRefs "apt_wing_a" "appearance/collision/your_floor"` | Same floor `.flr` path on every `floor0`. |
-| `swg_pob_setCellRefs "apt_wing_a" 5 "appearance/unit.msh" "appearance/collision/floor"` | One cell’s mesh + floor. |
-| `swg_pob_connectRing "r0,r1,r2,r3"` | Chain plus last→first (courtyard / loop). |
-| `swg_pob_validateFull "apt_wing_a"` | `validatePob` + `reportPobPortals` with `-root`. |
-| `swg_pob_validateFullSelection` | Same, inferring root from selection. |
-| `swg_pob_exportDialog` | File dialog → `exportPob`. |
-| `swg_pob_layoutColumnY "apt_wing_a" 4.0` | Stack cells on local **Y** (tower preview). |
-| `swg_pob_selectPortalsGroup "apt_wing_a" 3` | Select `r3\|portals` for `addPobPortal`. |
-| `swg_pob_selectAllMeshes "apt_wing_a"` | Multi-select all cell meshes. |
-| `swg_pob_printCellPaths "apt_wing_a"` | Print `root\|rN` paths to Script Editor. |
-| `swg_pob_clearAllPortals "apt_wing_a"` | Deletes all portal transforms under every cell (reset). |
+
+| Proc                                                                                    | What it does                                                                                                                                 |
+| --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `swg_pob_addTemplatePlaceholders "apt_wing_a" 11.76 3.0 9.8 12 10`                      | Room `polyCube` (W,H,D) under each `mesh` + floor `polyPlane` (W,D) under `floor0`; args = inset room, ceiling height, full floor footprint. |
+| `swg_pob_setAllMeshRefs "apt_wing_a" "appearance/your.lod"`                             | Same mesh ref on every `r*|mesh`.                                                                                                            |
+| `swg_pob_setAllFloorRefs "apt_wing_a" "appearance/collision/your_floor"`                | Same floor `.flr` path on every `floor0`.                                                                                                    |
+| `swg_pob_setCellRefs "apt_wing_a" 5 "appearance/unit.msh" "appearance/collision/floor"` | One cell’s mesh + floor.                                                                                                                     |
+| `swg_pob_connectRing "r0,r1,r2,r3"`                                                     | Chain plus last→first (courtyard / loop).                                                                                                    |
+| `swg_pob_validateFull "apt_wing_a"`                                                     | `validatePob` + `reportPobPortals` with `-root`.                                                                                             |
+| `swg_pob_validateFullSelection`                                                         | Same, inferring root from selection.                                                                                                         |
+| `swg_pob_exportDialog`                                                                  | File dialog → `exportPob`.                                                                                                                   |
+| `swg_pob_layoutColumnY "apt_wing_a" 4.0`                                                | Stack cells on local **Y** (tower preview).                                                                                                  |
+| `swg_pob_selectPortalsGroup "apt_wing_a" 3`                                             | Select `r3|portals` for `addPobPortal`.                                                                                                      |
+| `swg_pob_selectAllMeshes "apt_wing_a"`                                                  | Multi-select all cell meshes.                                                                                                                |
+| `swg_pob_printCellPaths "apt_wing_a"`                                                   | Print `root|rN` paths to Script Editor.                                                                                                      |
+| `swg_pob_clearAllPortals "apt_wing_a"`                                                  | Deletes all portal transforms under every cell (reset).                                                                                      |
+
 
 ## Install
 
@@ -95,8 +100,23 @@ Or add the build output path to `MAYA_PLUG_IN_PATH` in Maya's environment.
 
 See [todo.txt](todo.txt) for the full feature roadmap and MayaExporter parity checklist.
 
-### Current Translators
-- **mgn** - Mesh generator (.mgn)
-- **msh** - Mesh (.msh)
-- **skt** - Skeleton (.skt)
-- **flr** - Floor (.flr)
+### File Type Support (Import/Export)
+
+
+| Extension | Type                | Import | Export | Notes                                               |
+| --------- | ------------------- | ------ | ------ | --------------------------------------------------- |
+| `.msh`    | Static mesh         | ✅      | ✅      | MESH/0005 format with hardpoints, shaders           |
+| `.apt`    | Appearance redirect | ✅      | ✅      | APT redirect to mesh                                |
+| `.mgn`    | Skeletal mesh       | ✅      | ✅      | SKMG format with skin weights, UVs, per-shader data |
+| `.skt`    | Skeleton            | ✅      | ✅      | Skeleton template with joint hierarchy              |
+| `.ans`    | Animation           | ✅      | ✅      | KFAT/CKAT keyframe animation                        |
+| `.sat`    | Skeletal appearance | ✅      | ✅      | Skeleton + mesh LOD references                      |
+| `.pob`    | Portal object       | ✅      | ✅      | Building cells, portals, appearances                |
+| `.flr`    | Floor               | ✅      | —      | Floor collision data                                |
+| `.lod`    | LOD container       | ✅      | ✅      | MLOD mesh LOD references                            |
+| `.lmg`    | Skeletal LOD        | ✅      | ✅      | MLOD skeletal mesh LOD references                   |
+| `.sht`    | Shader              | ✅      | ✅      | Shader template with texture references             |
+| `.dds`    | Texture             | ✅      | —      | DDS→TGA conversion on import                        |
+
+
+All major file types now support full round-trip editing.

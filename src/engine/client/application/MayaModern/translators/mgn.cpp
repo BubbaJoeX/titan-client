@@ -26,11 +26,29 @@
 #include <maya/MFnIkJoint.h>
 #include <maya/MFnMesh.h>
 #include <maya/MFnBlendShapeDeformer.h>
+#include <maya/MFnSkinCluster.h>
 #include <maya/MDagPath.h>
+#include <maya/MDagPathArray.h>
 #include <maya/MFloatArray.h>
+#include <maya/MFloatVectorArray.h>
+#include <maya/MItDependencyGraph.h>
+#include <maya/MItGeometry.h>
+#include <maya/MItMeshPolygon.h>
+#include <maya/MObjectArray.h>
+#include <maya/MSelectionList.h>
+#include <maya/MDoubleArray.h>
+#include <maya/MFnDependencyNode.h>
+#include <maya/MFnDagNode.h>
+#include <maya/MItDag.h>
+#include <maya/MPlug.h>
+#include <maya/MPlugArray.h>
 
 #include <vector>
+#include <array>
+#include <algorithm>
 #include <cstring>
+#include <set>
+#include <map>
 
 const int MgnTranslator::ms_blendTargetNameSize = 64;
 
@@ -734,13 +752,14 @@ MStatus MgnTranslator::reader (const MFileObject& file, const MString& options, 
 
                 //---- Start POSN Chunk [SKMG -> XXXX -> POSN]
                 // Position Vectors
+                // Coordinate conversion: Game X is negated for Maya
                 std::vector<Vector> positions;
                 iff.enterChunk(TAG_POSN);
                 for(int i = 0; i < positionCount; i++)
                 {
                     Vector v = iff.read_floatVector();
-                    vertexArray.append(v.x, v.y, v.z);
-                    positions.emplace_back(v);
+                    vertexArray.append(-v.x, v.y, v.z);  // Negate X for Maya coordinate system
+                    positions.emplace_back(v);  // Keep original for internal use
                 }
                 iff.exitChunk(TAG_POSN);
 
@@ -1096,7 +1115,6 @@ MStatus MgnTranslator::reader (const MFileObject& file, const MString& options, 
                                     const int primitiveCount = iff.read_int32();
                                 iff.exitChunk(TAG_INFO);
 
-                                int zeroAreaTriCount = 0;
                                 psd->getDrawPrimitives().reserve(primitiveCount);
                                 std::vector<DrawPrimitive*> drawPrimitives;
                                 for(int p = 0; p < primitiveCount; p++)
@@ -1107,7 +1125,7 @@ MStatus MgnTranslator::reader (const MFileObject& file, const MString& options, 
                                         {
                                             auto* thisPrimitive = new IndexedTriListPrimitive();
                                             Vector normal;
-                                            int localZeroAreaTriCount = 0;
+                                            int validTriangleCount = 0;
 
                                             //---- Start ITL Chunk [SKMG -> XXXX -> PSDT -> PRIM -> ITL]
                                             iff.enterChunk(TAG_ITL);
@@ -1115,45 +1133,68 @@ MStatus MgnTranslator::reader (const MFileObject& file, const MString& options, 
                                                 const int triangleCount = iff.read_int32();
                                                 thisPrimitive->m_triangleCount = triangleCount;
                                                 thisPrimitive->m_indices.reserve(3 * triangleCount);
-                                                totalPolygonsInMesh = triangleCount;
+
+                                                const int pidxSize = static_cast<int>(positionIndexLookup.size());
+                                                const int posSize = static_cast<int>(positions.size());
 
                                                 for(int x = 0; x < triangleCount; x++)
                                                 {
-
                                                     const int index0 = static_cast<int>(iff.read_int32());
                                                     const int index1 = static_cast<int>(iff.read_int32());
                                                     const int index2 = static_cast<int>(iff.read_int32());
 
-                                                    polygonConnects.append(positionIndexLookup[index0]);
-                                                    polygonConnects.append(positionIndexLookup[index1]);
-                                                    polygonConnects.append(positionIndexLookup[index2]);
+                                                    // Bounds check: indices must be within positionIndexLookup range
+                                                    if (index0 < 0 || index0 >= pidxSize ||
+                                                        index1 < 0 || index1 >= pidxSize ||
+                                                        index2 < 0 || index2 >= pidxSize)
+                                                    {
+                                                        cerr << "ITL: triangle " << x << " index out of PIDX range: "
+                                                             << index0 << "/" << index1 << "/" << index2 
+                                                             << " (pidxSize=" << pidxSize << ")" << std::endl;
+                                                        continue;
+                                                    }
 
-                                                    const Vector &v0 = positions[static_cast<std::vector<Vector>::size_type>(positionIndexLookup[static_cast<std::vector<int>::size_type>(index0)])];
-                                                    const Vector &v1 = positions[static_cast<std::vector<Vector>::size_type>(positionIndexLookup[static_cast<std::vector<int>::size_type>(index1)])];
-                                                    const Vector &v2 = positions[static_cast<std::vector<Vector>::size_type>(positionIndexLookup[static_cast<std::vector<int>::size_type>(index2)])];
+                                                    const int pi0 = positionIndexLookup[index0];
+                                                    const int pi1 = positionIndexLookup[index1];
+                                                    const int pi2 = positionIndexLookup[index2];
 
-                                                    // Compute normal.
+                                                    // Bounds check: position indices must be within positions range
+                                                    if (pi0 < 0 || pi0 >= posSize ||
+                                                        pi1 < 0 || pi1 >= posSize ||
+                                                        pi2 < 0 || pi2 >= posSize)
+                                                    {
+                                                        cerr << "ITL: triangle " << x << " position index out of range: "
+                                                             << pi0 << "/" << pi1 << "/" << pi2 
+                                                             << " (posSize=" << posSize << ")" << std::endl;
+                                                        continue;
+                                                    }
+
+                                                    const Vector &v0 = positions[pi0];
+                                                    const Vector &v1 = positions[pi1];
+                                                    const Vector &v2 = positions[pi2];
+
+                                                    // Compute normal to check for degenerate triangles
                                                     normal = (v0 - v2).cross(v1 - v0);
-                                                    if (normal.magnitudeSquared () == 0.0f)
+                                                    if (normal.magnitudeSquared() == 0.0f)
                                                     {
-                                                        //-- Do not keep this triangle.
-                                                        ++localZeroAreaTriCount;
-                                                    }
-                                                    else
-                                                    {
-                                                        //-- Keep this triangle.
-                                                        thisPrimitive->m_indices.emplace_back(index0);
-                                                        thisPrimitive->m_indices.emplace_back(index1);
-                                                        thisPrimitive->m_indices.emplace_back(index2);
+                                                        // Skip degenerate triangle
+                                                        continue;
                                                     }
 
+                                                    // Valid triangle - add to mesh
+                                                    polygonConnects.append(pi0);
+                                                    polygonConnects.append(pi1);
+                                                    polygonConnects.append(pi2);
+                                                    ++validTriangleCount;
+
+                                                    thisPrimitive->m_indices.emplace_back(index0);
+                                                    thisPrimitive->m_indices.emplace_back(index1);
+                                                    thisPrimitive->m_indices.emplace_back(index2);
                                                 }
                                             iff.exitChunk(TAG_ITL);
-                                            //-- Accumulate total zero are tri counts.
-                                            zeroAreaTriCount += localZeroAreaTriCount;
 
-                                            //-- Adjust  triangle count for primitive.
-                                            thisPrimitive->m_triangleCount -= localZeroAreaTriCount;
+                                            totalPolygonsInMesh += validTriangleCount;
+                                            thisPrimitive->m_triangleCount = validTriangleCount;
 
                                             // add this to our list
                                             drawPrimitives.emplace_back(thisPrimitive);
@@ -1163,7 +1204,7 @@ MStatus MgnTranslator::reader (const MFileObject& file, const MString& options, 
                                         {
                                             auto* thisPrimitive = new OccludedIndexedTriListPrimitive();
                                             Vector normal;
-                                            int localZeroAreaTriCount = 0;
+                                            int validTriangleCount = 0;
 
                                             //---- Start OITL Chunk [SKMG -> XXXX -> PSDT -> PRIM -> OITL]
                                             iff.enterChunk(TAG_OITL);
@@ -1171,7 +1212,9 @@ MStatus MgnTranslator::reader (const MFileObject& file, const MString& options, 
                                                 const int triangleCount = iff.read_int32();
                                                 thisPrimitive->m_triangleCount = triangleCount;
                                                 thisPrimitive->m_indices.reserve(4 * triangleCount); // note this is 4 not 3
-                                                totalPolygonsInMesh = triangleCount;
+
+                                                const int pidxSize = static_cast<int>(positionIndexLookup.size());
+                                                const int posSize = static_cast<int>(positions.size());
 
                                                 for(int x = 0; x < triangleCount; x++)
                                                 {
@@ -1182,37 +1225,60 @@ MStatus MgnTranslator::reader (const MFileObject& file, const MString& options, 
                                                     const int index1 = static_cast<int>(iff.read_int32());
                                                     const int index2 = static_cast<int>(iff.read_int32());
 
-                                                    polygonConnects.append(positionIndexLookup[index0]);
-                                                    polygonConnects.append(positionIndexLookup[index1]);
-                                                    polygonConnects.append(positionIndexLookup[index2]);
+                                                    // Bounds check: indices must be within positionIndexLookup range
+                                                    if (index0 < 0 || index0 >= pidxSize ||
+                                                        index1 < 0 || index1 >= pidxSize ||
+                                                        index2 < 0 || index2 >= pidxSize)
+                                                    {
+                                                        cerr << "OITL: triangle " << x << " index out of PIDX range: "
+                                                             << index0 << "/" << index1 << "/" << index2 
+                                                             << " (pidxSize=" << pidxSize << ")" << std::endl;
+                                                        continue;
+                                                    }
 
-                                                    const Vector &v0 = positions[static_cast<std::vector<Vector>::size_type>(positionIndexLookup[static_cast<std::vector<int>::size_type>(index0)])];
-                                                    const Vector &v1 = positions[static_cast<std::vector<Vector>::size_type>(positionIndexLookup[static_cast<std::vector<int>::size_type>(index1)])];
-                                                    const Vector &v2 = positions[static_cast<std::vector<Vector>::size_type>(positionIndexLookup[static_cast<std::vector<int>::size_type>(index2)])];
+                                                    const int pi0 = positionIndexLookup[index0];
+                                                    const int pi1 = positionIndexLookup[index1];
+                                                    const int pi2 = positionIndexLookup[index2];
 
-                                                    // Compute normal.
+                                                    // Bounds check: position indices must be within positions range
+                                                    if (pi0 < 0 || pi0 >= posSize ||
+                                                        pi1 < 0 || pi1 >= posSize ||
+                                                        pi2 < 0 || pi2 >= posSize)
+                                                    {
+                                                        cerr << "OITL: triangle " << x << " position index out of range: "
+                                                             << pi0 << "/" << pi1 << "/" << pi2 
+                                                             << " (posSize=" << posSize << ")" << std::endl;
+                                                        continue;
+                                                    }
+
+                                                    const Vector &v0 = positions[pi0];
+                                                    const Vector &v1 = positions[pi1];
+                                                    const Vector &v2 = positions[pi2];
+
+                                                    // Compute normal to check for degenerate triangles
                                                     normal = (v0 - v2).cross(v1 - v0);
                                                     if (normal.magnitudeSquared() == 0.0f)
                                                     {
-                                                        //-- Do not keep this triangle.
-                                                        ++localZeroAreaTriCount;
-                                                    } else
-                                                    {
-                                                        //-- Keep this triangle.
-                                                        thisPrimitive->m_indices.emplace_back(occlusionZoneCombinationIndex);
-                                                        thisPrimitive->m_indices.emplace_back(index0);
-                                                        thisPrimitive->m_indices.emplace_back(index1);
-                                                        thisPrimitive->m_indices.emplace_back(index2);
+                                                        // Skip degenerate triangle
+                                                        continue;
                                                     }
+
+                                                    // Valid triangle - add to mesh
+                                                    polygonConnects.append(pi0);
+                                                    polygonConnects.append(pi1);
+                                                    polygonConnects.append(pi2);
+                                                    ++validTriangleCount;
+
+                                                    thisPrimitive->m_indices.emplace_back(occlusionZoneCombinationIndex);
+                                                    thisPrimitive->m_indices.emplace_back(index0);
+                                                    thisPrimitive->m_indices.emplace_back(index1);
+                                                    thisPrimitive->m_indices.emplace_back(index2);
                                                 }
 
                                             iff.exitChunk(TAG_OITL);
 
-                                            //-- Accumulate total zero are tri counts.
-                                            zeroAreaTriCount += localZeroAreaTriCount;
-
-                                            //-- Adjust  triangle count for primitive.
-                                            thisPrimitive->m_triangleCount -= localZeroAreaTriCount;
+                                            totalPolygonsInMesh += validTriangleCount;
+                                            thisPrimitive->m_triangleCount = validTriangleCount;
 
                                             // add this to our list
                                             drawPrimitives.emplace_back(thisPrimitive);
@@ -1311,56 +1377,58 @@ MStatus MgnTranslator::reader (const MFileObject& file, const MString& options, 
                             }
                         }
                         
-                        // when we create this mesh, we need to iterate through its position and normal indices
-                        // to see if we have any blend targets that cross through, because if so, that blend
-                        // target belongs to this mesh
-                        for(const auto &blendTarget: blendTargets)
+                        // Store ALL blend target information as attributes on the mesh for reference
+                        // Note: Creating actual Maya blend shape deformers during import can cause instability
+                        // The blend target data is preserved for manual setup or export
+                        if (!blendTargets.empty() && createStatus == MS::kSuccess)
                         {
-                            bool blendBelongsToThisMesh = false;
-                            std::vector<int> shaderNormals = psd->getNormalIndices();
-                            std::vector<int> shaderPositions = psd->getPositionIndices();
+                            MGlobal::displayInfo(MString("  Total blend targets in MGN: ") + static_cast<int>(blendTargets.size()));
                             
-                            for(const auto &normal: blendTarget->m_normals)
+                            // Store ALL blend target names - don't filter by shader
+                            // The blend targets are shared across the entire mesh, not per-shader
+                            std::vector<std::string> allBlendTargetNames;
+                            for(const auto &blendTarget: blendTargets)
                             {
-                                if(std::find(shaderNormals.begin(), shaderNormals.end(), normal.m_index) != shaderNormals.end())
-                                {
-                                    blendBelongsToThisMesh = true;
-                                }
-                            }
-                            if(!blendBelongsToThisMesh)
-                            {
-                                for(const auto &position: blendTarget->m_positions)
-                                {
-                                    if(std::find(shaderPositions.begin(), shaderPositions.end(), position.m_index) != shaderPositions.end())
-                                    {
-                                        blendBelongsToThisMesh = true;
-                                    }
-                                }
-                            }
-                            if(blendBelongsToThisMesh)
-                            {
-                                // create a new mesh with vertices modified by the positions of the blend target
-                                MFnMesh targetMesh;
-                                MFloatPointArray vertexArrayForBlend;
-                                vertexArray.copy(vertexArrayForBlend);
+                                // Clean up the blend target name
+                                std::string cleanName = blendTarget->m_customizationVariablePathName;
+                                size_t prefixPos = cleanName.find("/shared_owner/");
+                                if (prefixPos != std::string::npos)
+                                    cleanName = cleanName.substr(prefixPos + 14);
+                                allBlendTargetNames.push_back(cleanName);
                                 
-                                // for each vector in the mesh
-                                for(int x = 0; x < vertexArrayForBlend.length(); x++)
+                                MGlobal::displayInfo(MString("    [") + static_cast<int>(allBlendTargetNames.size()-1) + 
+                                    "] " + cleanName.c_str() + " (positions: " + 
+                                    static_cast<int>(blendTarget->m_positions.size()) + ", normals: " +
+                                    static_cast<int>(blendTarget->m_normals.size()) + ")");
+                            }
+                            
+                            if (!allBlendTargetNames.empty())
+                            {
+                                // Store blend target names as attribute on the mesh's parent transform
+                                MDagPath meshDagPath;
+                                mesh.getPath(meshDagPath);
+                                meshDagPath.pop(); // Get parent transform
+                                MFnDependencyNode meshFn(meshDagPath.node());
+                                
+                                std::string blendNamesStr;
+                                for (size_t i = 0; i < allBlendTargetNames.size(); ++i)
                                 {
-                                    // for each index identified in the blend target
-                                    for(auto & m_position : blendTarget->m_positions)
-                                    {
-                                        // if the index in the blend target matches the index of the vertex array
-                                        if(x == m_position.m_index)
-                                        {
-                                            // override the position of the vertex array based on the position of the blend target
-                                            Vector v = m_position.m_deltaVector;
-                                            vertexArrayForBlend[x] = MFloatPoint(v.x, v.y, v.x);
-                                        }
-                                    }
+                                    if (i > 0) blendNamesStr += "\t";
+                                    blendNamesStr += allBlendTargetNames[i];
                                 }
-                                targetMesh.create(totalVerticesInMesh, totalPolygonsInMesh, vertexArrayForBlend, polygonCounts, polygonConnects, parentTransform.object(), &createStatus);
-                                targetMesh.setName(blendTarget->m_customizationVariablePathName.c_str());
+                                
+                                // Only add attribute if it doesn't exist yet (first PSDT for this mesh)
+                                MPlug existingPlug = meshFn.findPlug("swgBlendTargets", true);
+                                if (existingPlug.isNull())
+                                {
+                                    MGlobal::executeCommand(MString("addAttr -ln \"swgBlendTargets\" -dt \"string\" ") + meshFn.name());
+                                    MPlug btPlug = meshFn.findPlug("swgBlendTargets", false);
+                                    if (!btPlug.isNull())
+                                        btPlug.setValue(MString(blendNamesStr.c_str()));
+                                    
+                                    MGlobal::displayInfo(MString("  Stored ") + static_cast<int>(allBlendTargetNames.size()) + 
+                                        " blend targets in " + meshFn.name() + ".swgBlendTargets");
+                                }
                             }
                         }
 
@@ -1387,11 +1455,108 @@ MStatus MgnTranslator::reader (const MFileObject& file, const MString& options, 
                     }
                 }
                 
-                // join all children of the mesh
+                // Create hardpoints from imported data
+                if (!staticHardpoints.empty() || !dynamicHardpoints.empty())
+                {
+                    std::string meshBaseName = MayaUtility::parseFileNameToNodeName(file.rawName().asChar());
+                    
+                    // Convert Hardpoint to HardpointData for MayaSceneBuilder
+                    std::vector<MayaSceneBuilder::HardpointData> hardpointData;
+                    
+                    for (const auto& hp : staticHardpoints)
+                    {
+                        MayaSceneBuilder::HardpointData hpd;
+                        hpd.name = hp.getHardpointName();
+                        hpd.parentJoint = hp.getParentName();
+                        hpd.rotation[0] = hp.getRotation().x;
+                        hpd.rotation[1] = hp.getRotation().y;
+                        hpd.rotation[2] = hp.getRotation().z;
+                        hpd.rotation[3] = hp.getRotation().w;
+                        hpd.position[0] = hp.getPosition().x;
+                        hpd.position[1] = hp.getPosition().y;
+                        hpd.position[2] = hp.getPosition().z;
+                        hardpointData.push_back(hpd);
+                    }
+                    
+                    for (const auto& hp : dynamicHardpoints)
+                    {
+                        MayaSceneBuilder::HardpointData hpd;
+                        hpd.name = hp.getHardpointName();
+                        hpd.parentJoint = hp.getParentName();
+                        hpd.rotation[0] = hp.getRotation().x;
+                        hpd.rotation[1] = hp.getRotation().y;
+                        hpd.rotation[2] = hp.getRotation().z;
+                        hpd.rotation[3] = hp.getRotation().w;
+                        hpd.position[0] = hp.getPosition().x;
+                        hpd.position[1] = hp.getPosition().y;
+                        hpd.position[2] = hp.getPosition().z;
+                        hardpointData.push_back(hpd);
+                    }
+                    
+                    // Build joint map from scene
+                    std::map<std::string, MDagPath> jointMap;
+                    MItDag dagIt(MItDag::kDepthFirst, MFn::kJoint);
+                    for (; !dagIt.isDone(); dagIt.next())
+                    {
+                        MDagPath jp;
+                        if (dagIt.getPath(jp))
+                        {
+                            MFnDagNode jfn(jp);
+                            std::string jname(jfn.name().asChar());
+                            jointMap[jname] = jp;
+                        }
+                    }
+                    
+                    MStatus hpStatus = MayaSceneBuilder::createHardpoints(hardpointData, jointMap, meshBaseName, parentTransform.object());
+                    if (hpStatus)
+                    {
+                        MGlobal::displayInfo(MString("Created ") + (staticHardpoints.size() + dynamicHardpoints.size()) + " hardpoints");
+                    }
+                }
                 
+                // Store occlusion zone data as attributes on the root transform for export
+                if (!occlusionZoneNames.empty())
+                {
+                    MDagPath rootPath;
+                    if (MDagPath::getAPathTo(parentTransform.object(), rootPath))
+                    {
+                        MFnDependencyNode rootFn(rootPath.node());
+                        
+                        // Store zone names as tab-separated string
+                        std::string zoneNamesStr;
+                        for (size_t i = 0; i < occlusionZoneNames.size(); ++i)
+                        {
+                            if (i > 0) zoneNamesStr += "\t";
+                            zoneNamesStr += occlusionZoneNames[i]->getString();
+                        }
+                        MGlobal::executeCommand(MString("addAttr -ln \"swgOcclusionZones\" -dt \"string\" ") + rootFn.name());
+                        MPlug ozPlug = rootFn.findPlug("swgOcclusionZones", false);
+                        if (!ozPlug.isNull())
+                            ozPlug.setValue(MString(zoneNamesStr.c_str()));
+                        
+                        // Display occlusion zones in the Script Editor for visibility
+                        MGlobal::displayInfo(MString("=== Occlusion Zones (") + static_cast<int>(occlusionZoneNames.size()) + ") ===");
+                        for (size_t i = 0; i < occlusionZoneNames.size(); ++i)
+                        {
+                            MGlobal::displayInfo(MString("  [") + static_cast<int>(i) + "] " + occlusionZoneNames[i]->getString());
+                        }
+                        MGlobal::displayInfo(MString("  (Stored in attribute: ") + rootFn.name() + ".swgOcclusionZones)");
+                    }
+                }
                 
-                MPointArray unblendedPositions;
-                
+                // Store DOT3 data count as attribute for reference
+                if (!dot3Vectors.empty())
+                {
+                    MDagPath rootPath;
+                    if (MDagPath::getAPathTo(parentTransform.object(), rootPath))
+                    {
+                        MFnDependencyNode rootFn(rootPath.node());
+                        MGlobal::executeCommand(MString("addAttr -ln \"swgDot3Count\" -at long ") + rootFn.name());
+                        MPlug dot3Plug = rootFn.findPlug("swgDot3Count", false);
+                        if (!dot3Plug.isNull())
+                            dot3Plug.setValue(static_cast<int>(dot3Vectors.size()));
+                    }
+                }
                 
             }
             iff.close();
@@ -1408,7 +1573,7 @@ MStatus MgnTranslator::reader (const MFileObject& file, const MString& options, 
 }
 
 /**
- * Handles writing out (exporting) the skeleton
+ * Handles writing out (exporting) the skeletal mesh generator (.mgn)
  *
  * @param file the file to write
  * @param options the save options
@@ -1417,6 +1582,689 @@ MStatus MgnTranslator::reader (const MFileObject& file, const MString& options, 
  */
 MStatus MgnTranslator::writer (const MFileObject& file, const MString& options, MPxFileTranslator::FileAccessMode mode)
 {
+    MString mpath = file.expandedFullName();
+    const char* fileName = mpath.asChar();
+    LOG_F(ERROR, ("MGN export start: %s", fileName));
+
+    MStatus status;
+
+    // Find selected skinned mesh
+    MSelectionList sel;
+    MGlobal::getActiveSelectionList(sel);
+    if (sel.length() == 0)
+    {
+        MGlobal::displayError("MGN export: select a skinned mesh first");
+        return MS::kFailure;
+    }
+
+    MDagPath meshPath;
+    bool foundMesh = false;
+    for (unsigned i = 0; i < sel.length(); ++i)
+    {
+        MDagPath dp;
+        if (sel.getDagPath(i, dp) && (dp.hasFn(MFn::kMesh) || dp.hasFn(MFn::kTransform)))
+        {
+            if (dp.hasFn(MFn::kTransform))
+            {
+                dp.extendToShape();
+                if (!dp.hasFn(MFn::kMesh))
+                    continue;
+            }
+            meshPath = dp;
+            foundMesh = true;
+            break;
+        }
+    }
+
+    if (!foundMesh)
+    {
+        MGlobal::displayError("MGN export: no mesh found in selection");
+        return MS::kFailure;
+    }
+
+    MFnMesh meshFn(meshPath, &status);
+    if (!status)
+    {
+        MGlobal::displayError("MGN export: failed to get mesh function set");
+        return MS::kFailure;
+    }
+
+    // Get skin cluster
+    MObject skinClusterObj;
+    {
+        MItDependencyGraph dgIt(meshPath.node(), MFn::kSkinClusterFilter, MItDependencyGraph::kUpstream);
+        if (!dgIt.isDone())
+            skinClusterObj = dgIt.currentItem();
+    }
+
+    if (skinClusterObj.isNull())
+    {
+        MGlobal::displayError("MGN export: mesh has no skin cluster. Bind the mesh to a skeleton first.");
+        return MS::kFailure;
+    }
+
+    MFnSkinCluster skinFn(skinClusterObj, &status);
+    if (!status)
+    {
+        MGlobal::displayError("MGN export: failed to get skin cluster function set");
+        return MS::kFailure;
+    }
+
+    // Get influence objects (joints)
+    MDagPathArray influences;
+    unsigned numInfluences = skinFn.influenceObjects(influences, &status);
+    if (!status || numInfluences == 0)
+    {
+        MGlobal::displayError("MGN export: no influence objects found");
+        return MS::kFailure;
+    }
+
+    // Build transform name list
+    std::vector<std::string> transformNames;
+    transformNames.reserve(numInfluences);
+    for (unsigned i = 0; i < numInfluences; ++i)
+    {
+        MString name = influences[i].partialPathName();
+        std::string nameStr(name.asChar());
+        size_t lastPipe = nameStr.rfind('|');
+        if (lastPipe != std::string::npos) nameStr = nameStr.substr(lastPipe + 1);
+        size_t nsColon = nameStr.rfind(':');
+        if (nsColon != std::string::npos) nameStr = nameStr.substr(nsColon + 1);
+        transformNames.push_back(nameStr);
+    }
+
+    // Get vertex positions
+    MPointArray mayaPoints;
+    meshFn.getPoints(mayaPoints, MSpace::kObject);
+    const unsigned numVerts = mayaPoints.length();
+
+    std::vector<Vector> positions;
+    positions.reserve(numVerts);
+    for (unsigned i = 0; i < numVerts; ++i)
+    {
+        // Convert to game coordinates (negate X)
+        positions.emplace_back(
+            static_cast<float>(-mayaPoints[i].x),
+            static_cast<float>(mayaPoints[i].y),
+            static_cast<float>(mayaPoints[i].z)
+        );
+    }
+
+    // Get normals
+    MFloatVectorArray mayaNormals;
+    meshFn.getNormals(mayaNormals, MSpace::kObject);
+    std::vector<Vector> normals;
+    normals.reserve(mayaNormals.length());
+    for (unsigned i = 0; i < mayaNormals.length(); ++i)
+    {
+        normals.emplace_back(
+            static_cast<float>(-mayaNormals[i].x),
+            static_cast<float>(mayaNormals[i].y),
+            static_cast<float>(mayaNormals[i].z)
+        );
+    }
+
+    // Get skin weights for each vertex
+    struct TransformWeight {
+        int transformIndex;
+        float weight;
+    };
+    std::vector<std::vector<TransformWeight>> vertexWeights(numVerts);
+    int maxTransformsPerVertex = 0;
+
+    MItGeometry geomIt(meshPath);
+    for (unsigned vi = 0; !geomIt.isDone(); geomIt.next(), ++vi)
+    {
+        MObject component = geomIt.currentItem();
+        MDoubleArray weights;
+        unsigned numWeights;
+        skinFn.getWeights(meshPath, component, weights, numWeights);
+
+        std::vector<TransformWeight>& vw = vertexWeights[vi];
+        for (unsigned wi = 0; wi < numWeights; ++wi)
+        {
+            if (weights[wi] > 0.001) // Skip negligible weights
+            {
+                TransformWeight tw;
+                tw.transformIndex = static_cast<int>(wi);
+                tw.weight = static_cast<float>(weights[wi]);
+                vw.push_back(tw);
+            }
+        }
+        // Sort by weight descending and limit to 4 influences
+        std::sort(vw.begin(), vw.end(), [](const TransformWeight& a, const TransformWeight& b) {
+            return a.weight > b.weight;
+        });
+        if (vw.size() > 4) vw.resize(4);
+
+        // Renormalize weights
+        float totalWeight = 0.0f;
+        for (const auto& tw : vw) totalWeight += tw.weight;
+        if (totalWeight > 0.0f)
+            for (auto& tw : vw) tw.weight /= totalWeight;
+
+        if (static_cast<int>(vw.size()) > maxTransformsPerVertex)
+            maxTransformsPerVertex = static_cast<int>(vw.size());
+    }
+
+    // Get UVs
+    MFloatArray uArray, vArray;
+    meshFn.getUVs(uArray, vArray);
+
+    // Get triangles and per-shader data
+    MObjectArray shaders;
+    MIntArray shaderIndices;
+    meshFn.getConnectedShaders(0, shaders, shaderIndices);
+
+    struct PerShaderInfo {
+        std::string shaderName;
+        std::vector<int> positionIndices;
+        std::vector<int> normalIndices;
+        std::vector<std::pair<float, float>> uvs;
+        std::vector<std::array<int, 3>> triangles;
+    };
+    std::vector<PerShaderInfo> perShaderData(shaders.length() > 0 ? shaders.length() : 1);
+
+    // Get shader names
+    for (unsigned si = 0; si < shaders.length(); ++si)
+    {
+        MFnDependencyNode shaderFn(shaders[si]);
+        MPlug surfaceShaderPlug = shaderFn.findPlug("surfaceShader", true, &status);
+        if (status)
+        {
+            MPlugArray connectedPlugs;
+            surfaceShaderPlug.connectedTo(connectedPlugs, true, false);
+            if (connectedPlugs.length() > 0)
+            {
+                MFnDependencyNode materialFn(connectedPlugs[0].node());
+                perShaderData[si].shaderName = std::string("shader/") + materialFn.name().asChar() + ".sht";
+            }
+        }
+        if (perShaderData[si].shaderName.empty())
+            perShaderData[si].shaderName = "shader/defaultappearance.sht";
+    }
+    if (perShaderData.empty())
+    {
+        perShaderData.resize(1);
+        perShaderData[0].shaderName = "shader/defaultappearance.sht";
+    }
+
+    // Iterate over polygons
+    MItMeshPolygon polyIt(meshPath);
+    int polyIndex = 0;
+    for (; !polyIt.isDone(); polyIt.next(), ++polyIndex)
+    {
+        int shaderIdx = (shaderIndices.length() > 0 && polyIndex < static_cast<int>(shaderIndices.length())) 
+                        ? shaderIndices[polyIndex] : 0;
+        if (shaderIdx < 0 || shaderIdx >= static_cast<int>(perShaderData.size()))
+            shaderIdx = 0;
+
+        PerShaderInfo& psd = perShaderData[static_cast<size_t>(shaderIdx)];
+
+        // Triangulate the polygon
+        MIntArray triVerts;
+        MPointArray triPoints;
+        polyIt.getTriangles(triPoints, triVerts);
+
+        int numTris = static_cast<int>(triVerts.length()) / 3;
+        for (int ti = 0; ti < numTris; ++ti)
+        {
+            std::array<int, 3> tri;
+            for (int tv = 0; tv < 3; ++tv)
+            {
+                int localIdx = triVerts[static_cast<unsigned>(ti * 3 + tv)];
+                int globalIdx;
+                polyIt.getVertices(triVerts); // Get polygon vertices
+                
+                // Find the vertex index in the polygon
+                int vertIdx = -1;
+                for (unsigned pvi = 0; pvi < polyIt.polygonVertexCount(); ++pvi)
+                {
+                    int pvGlobal = polyIt.vertexIndex(static_cast<int>(pvi));
+                    if (pvGlobal == localIdx)
+                    {
+                        vertIdx = static_cast<int>(pvi);
+                        break;
+                    }
+                }
+
+                globalIdx = localIdx;
+                int normalIdx = polyIt.normalIndex(vertIdx >= 0 ? vertIdx : 0);
+
+                // Get UV
+                float u = 0.0f, v = 0.0f;
+                int uvIdx;
+                if (polyIt.getUVIndex(vertIdx >= 0 ? vertIdx : 0, uvIdx) && uvIdx >= 0 && uvIdx < static_cast<int>(uArray.length()))
+                {
+                    u = uArray[static_cast<unsigned>(uvIdx)];
+                    v = 1.0f - vArray[static_cast<unsigned>(uvIdx)]; // Flip V
+                }
+
+                // Add to per-shader data
+                int shaderVertIdx = static_cast<int>(psd.positionIndices.size());
+                psd.positionIndices.push_back(globalIdx);
+                psd.normalIndices.push_back(normalIdx);
+                psd.uvs.emplace_back(u, v);
+                tri[static_cast<size_t>(tv)] = shaderVertIdx;
+            }
+            psd.triangles.push_back(tri);
+        }
+    }
+
+    // Gather blend shape data from Maya
+    struct BlendTargetExport {
+        std::string name;
+        std::vector<std::pair<int, Vector>> positionDeltas; // index, delta
+        std::vector<std::pair<int, Vector>> normalDeltas;   // index, delta
+    };
+    std::vector<BlendTargetExport> blendTargets;
+    
+    // Find blend shape deformers on the mesh
+    {
+        MItDependencyGraph dgIt(meshPath.node(), MFn::kBlendShape, MItDependencyGraph::kUpstream);
+        for (; !dgIt.isDone(); dgIt.next())
+        {
+            MFnBlendShapeDeformer bsFn(dgIt.currentItem(), &status);
+            if (!status) continue;
+            
+            MObjectArray baseObjects;
+            bsFn.getBaseObjects(baseObjects);
+            
+            // Get target shapes
+            MIntArray weightIndices;
+            bsFn.weightIndexList(weightIndices);
+            
+            for (unsigned wi = 0; wi < weightIndices.length(); ++wi)
+            {
+                int weightIdx = weightIndices[wi];
+                MObjectArray targets;
+                bsFn.getTargets(baseObjects[0], weightIdx, targets);
+                
+                if (targets.length() > 0)
+                {
+                    MFnDependencyNode targetFn(targets[0]);
+                    BlendTargetExport bt;
+                    bt.name = targetFn.name().asChar();
+                    
+                    // Get target mesh points
+                    if (targets[0].hasFn(MFn::kMesh))
+                    {
+                        MFnMesh targetMeshFn(targets[0]);
+                        MPointArray targetPoints;
+                        targetMeshFn.getPoints(targetPoints, MSpace::kObject);
+                        
+                        // Compare with base mesh to get deltas
+                        for (unsigned vi = 0; vi < targetPoints.length() && vi < mayaPoints.length(); ++vi)
+                        {
+                            MVector delta = targetPoints[vi] - mayaPoints[vi];
+                            if (delta.length() > 0.0001)
+                            {
+                                Vector gameDelta(
+                                    static_cast<float>(-delta.x),
+                                    static_cast<float>(delta.y),
+                                    static_cast<float>(delta.z)
+                                );
+                                bt.positionDeltas.emplace_back(static_cast<int>(vi), gameDelta);
+                            }
+                        }
+                    }
+                    
+                    if (!bt.positionDeltas.empty())
+                        blendTargets.push_back(bt);
+                }
+            }
+        }
+    }
+    
+    // Gather occlusion zone data from mesh transform attributes
+    std::vector<std::string> occlusionZoneNames;
+    std::vector<int> zonesThisOccludes;
+    int occlusionLayer = -1;
+    {
+        MDagPath meshTransformPath = meshPath;
+        meshTransformPath.pop(); // Get transform
+        MFnDependencyNode meshTransformFn(meshTransformPath.node());
+        
+        MPlug ozPlug = meshTransformFn.findPlug("swgOcclusionZones", false);
+        if (!ozPlug.isNull())
+        {
+            MString ozStr;
+            ozPlug.getValue(ozStr);
+            std::string zones(ozStr.asChar());
+            size_t start = 0;
+            while (start < zones.size())
+            {
+                size_t end = zones.find('\t', start);
+                if (end == std::string::npos) end = zones.size();
+                std::string zone = zones.substr(start, end - start);
+                if (!zone.empty()) occlusionZoneNames.push_back(zone);
+                start = end + 1;
+            }
+        }
+        
+        MPlug layerPlug = meshTransformFn.findPlug("swgOcclusionLayer", false);
+        if (!layerPlug.isNull())
+            layerPlug.getValue(occlusionLayer);
+    }
+    
+    // Gather hardpoint data from child locators
+    struct HardpointExport {
+        std::string name;
+        std::string parentJoint;
+        Quaternion rotation;
+        Vector position;
+        bool isDynamic;
+    };
+    std::vector<HardpointExport> staticHardpoints;
+    std::vector<HardpointExport> dynamicHardpoints;
+    {
+        MDagPath meshTransformPath = meshPath;
+        meshTransformPath.pop();
+        MFnDagNode meshTransformFn(meshTransformPath);
+        
+        for (unsigned ci = 0; ci < meshTransformFn.childCount(); ++ci)
+        {
+            MObject childObj = meshTransformFn.child(ci);
+            if (!childObj.hasFn(MFn::kLocator)) continue;
+            
+            MDagPath locPath;
+            MDagPath::getAPathTo(childObj, locPath);
+            locPath.pop(); // Get transform
+            
+            MFnTransform locFn(locPath);
+            std::string locName(locFn.name().asChar());
+            
+            // Check if it's a hardpoint (starts with hp_)
+            if (locName.find("hp_") != 0) continue;
+            
+            HardpointExport hp;
+            hp.name = locName;
+            
+            // Get parent joint name from attribute or default
+            MPlug parentPlug = locFn.findPlug("swgHardpointParent", false);
+            if (!parentPlug.isNull())
+            {
+                MString parentStr;
+                parentPlug.getValue(parentStr);
+                hp.parentJoint = parentStr.asChar();
+            }
+            
+            // Get transform
+            MVector trans = locFn.getTranslation(MSpace::kTransform);
+            hp.position = Vector(static_cast<float>(-trans.x), static_cast<float>(trans.y), static_cast<float>(trans.z));
+            
+            MEulerRotation rot;
+            locFn.getRotation(rot);
+            Quaternion qx(static_cast<float>(rot.x), Vector::unitX);
+            Quaternion qy(static_cast<float>(-rot.y), Vector::unitY);
+            Quaternion qz(static_cast<float>(-rot.z), Vector::unitZ);
+            hp.rotation = qz * (qy * qx);
+            
+            // Check if dynamic
+            MPlug dynPlug = locFn.findPlug("swgHardpointDynamic", false);
+            hp.isDynamic = false;
+            if (!dynPlug.isNull())
+                dynPlug.getValue(hp.isDynamic);
+            
+            if (hp.isDynamic)
+                dynamicHardpoints.push_back(hp);
+            else
+                staticHardpoints.push_back(hp);
+        }
+    }
+
+    // Write SKMG file
+    Iff iff(4 * 1024 * 1024);
+    iff.insertForm(TAG_SKMG);
+    {
+        iff.insertForm(TAG_0004); // Version 4
+        {
+            // INFO chunk
+            iff.insertChunk(TAG_INFO);
+            {
+                iff.insertChunkData(static_cast<int32>(maxTransformsPerVertex));
+                iff.insertChunkData(static_cast<int32>(numInfluences)); // max transforms per shader (use total)
+                iff.insertChunkData(static_cast<int32>(0)); // skeleton template count (will use XFNM instead)
+                iff.insertChunkData(static_cast<int32>(transformNames.size()));
+                iff.insertChunkData(static_cast<int32>(positions.size()));
+                iff.insertChunkData(static_cast<int32>(normals.size()));
+                iff.insertChunkData(static_cast<int32>(perShaderData.size()));
+                iff.insertChunkData(static_cast<int32>(blendTargets.size())); // blend target count
+                iff.insertChunkData(static_cast<int16>(occlusionZoneNames.size())); // occlusion zone count
+                iff.insertChunkData(static_cast<int16>(0)); // occlusion zone combination count
+                iff.insertChunkData(static_cast<int16>(zonesThisOccludes.size())); // zones this occludes count
+                iff.insertChunkData(static_cast<int16>(occlusionLayer)); // occlusion layer
+            }
+            iff.exitChunk(TAG_INFO);
+
+            // XFNM chunk - transform names
+            iff.insertChunk(TAG_XFNM);
+            {
+                for (const std::string& name : transformNames)
+                    iff.insertChunkString(name.c_str());
+            }
+            iff.exitChunk(TAG_XFNM);
+
+            // POSN chunk - positions
+            iff.insertChunk(TAG_POSN);
+            {
+                for (const Vector& p : positions)
+                    iff.insertChunkFloatVector(p);
+            }
+            iff.exitChunk(TAG_POSN);
+
+            // TWHD chunk - transform weight headers (count per vertex)
+            iff.insertChunk(TAG_TWHD);
+            {
+                for (const auto& vw : vertexWeights)
+                    iff.insertChunkData(static_cast<uint32>(vw.size()));
+            }
+            iff.exitChunk(TAG_TWHD);
+
+            // TWDT chunk - transform weight data
+            iff.insertChunk(TAG_TWDT);
+            {
+                for (const auto& vw : vertexWeights)
+                {
+                    for (const auto& tw : vw)
+                    {
+                        iff.insertChunkData(static_cast<uint32>(tw.transformIndex));
+                        iff.insertChunkData(tw.weight);
+                    }
+                }
+            }
+            iff.exitChunk(TAG_TWDT);
+
+            // NORM chunk - normals
+            iff.insertChunk(TAG_NORM);
+            {
+                for (const Vector& n : normals)
+                    iff.insertChunkFloatVector(n);
+            }
+            iff.exitChunk(TAG_NORM);
+
+            // Per-shader data forms
+            for (const PerShaderInfo& psd : perShaderData)
+            {
+                iff.insertForm(TAG_PSDT);
+                {
+                    // NAME chunk - shader name
+                    iff.insertChunk(TAG_NAME);
+                    iff.insertChunkString(psd.shaderName.c_str());
+                    iff.exitChunk(TAG_NAME);
+
+                    // PIDX chunk - position indices
+                    iff.insertChunk(TAG_PIDX);
+                    {
+                        iff.insertChunkData(static_cast<int32>(psd.positionIndices.size()));
+                        for (int idx : psd.positionIndices)
+                            iff.insertChunkData(static_cast<int32>(idx));
+                    }
+                    iff.exitChunk(TAG_PIDX);
+
+                    // NIDX chunk - normal indices
+                    iff.insertChunk(TAG_NIDX);
+                    {
+                        for (int idx : psd.normalIndices)
+                            iff.insertChunkData(static_cast<int32>(idx));
+                    }
+                    iff.exitChunk(TAG_NIDX);
+
+                    // TXCI chunk - texture coordinate info
+                    iff.insertChunk(TAG_TXCI);
+                    {
+                        iff.insertChunkData(static_cast<int32>(1)); // 1 UV set
+                        iff.insertChunkData(static_cast<int32>(2)); // 2D UVs
+                    }
+                    iff.exitChunk(TAG_TXCI);
+
+                    // TCSF form - texture coordinate sets
+                    iff.insertForm(TAG_TCSF);
+                    {
+                        iff.insertChunk(TAG_TCSD);
+                        {
+                            for (const auto& uv : psd.uvs)
+                            {
+                                iff.insertChunkData(uv.first);
+                                iff.insertChunkData(uv.second);
+                            }
+                        }
+                        iff.exitChunk(TAG_TCSD);
+                    }
+                    iff.exitForm(TAG_TCSF);
+
+                    // PRIM form - primitives
+                    iff.insertForm(TAG_PRIM);
+                    {
+                        iff.insertChunk(TAG_INFO);
+                        iff.insertChunkData(static_cast<int32>(1)); // 1 primitive
+                        iff.exitChunk(TAG_INFO);
+
+                        // ITL chunk - indexed triangle list
+                        iff.insertChunk(TAG_ITL);
+                        {
+                            iff.insertChunkData(static_cast<int32>(psd.triangles.size() * 3));
+                            for (const auto& tri : psd.triangles)
+                            {
+                                iff.insertChunkData(static_cast<int32>(tri[0]));
+                                iff.insertChunkData(static_cast<int32>(tri[1]));
+                                iff.insertChunkData(static_cast<int32>(tri[2]));
+                            }
+                        }
+                        iff.exitChunk(TAG_ITL);
+                    }
+                    iff.exitForm(TAG_PRIM);
+                }
+                iff.exitForm(TAG_PSDT);
+            }
+            
+            // Write HPTS form - hardpoints (if any)
+            if (!staticHardpoints.empty() || !dynamicHardpoints.empty())
+            {
+                iff.insertForm(TAG_HPTS);
+                {
+                    // STAT chunk - static hardpoints
+                    if (!staticHardpoints.empty())
+                    {
+                        iff.insertChunk(TAG_STAT);
+                        iff.insertChunkData(static_cast<int16>(staticHardpoints.size()));
+                        for (const auto& hp : staticHardpoints)
+                        {
+                            iff.insertChunkString(hp.name.c_str());
+                            iff.insertChunkString(hp.parentJoint.c_str());
+                            iff.insertChunkFloatQuaternion(hp.rotation);
+                            iff.insertChunkFloatVector(hp.position);
+                        }
+                        iff.exitChunk(TAG_STAT);
+                    }
+                    
+                    // DYN chunk - dynamic hardpoints
+                    if (!dynamicHardpoints.empty())
+                    {
+                        iff.insertChunk(TAG_DYN);
+                        iff.insertChunkData(static_cast<int16>(dynamicHardpoints.size()));
+                        for (const auto& hp : dynamicHardpoints)
+                        {
+                            iff.insertChunkString(hp.name.c_str());
+                            iff.insertChunkString(hp.parentJoint.c_str());
+                            iff.insertChunkFloatQuaternion(hp.rotation);
+                            iff.insertChunkFloatVector(hp.position);
+                        }
+                        iff.exitChunk(TAG_DYN);
+                    }
+                }
+                iff.exitForm(TAG_HPTS);
+            }
+            
+            // Write BLTS form - blend targets (if any)
+            if (!blendTargets.empty())
+            {
+                iff.insertForm(TAG_BLTS);
+                {
+                    for (const auto& bt : blendTargets)
+                    {
+                        iff.insertForm(TAG_BLT);
+                        {
+                            // INFO chunk
+                            iff.insertChunk(TAG_INFO);
+                            iff.insertChunkData(static_cast<int32>(bt.positionDeltas.size()));
+                            iff.insertChunkData(static_cast<int32>(bt.normalDeltas.size()));
+                            iff.insertChunkString(bt.name.c_str());
+                            iff.exitChunk(TAG_INFO);
+                            
+                            // POSN chunk - position deltas
+                            iff.insertChunk(TAG_POSN);
+                            for (const auto& pd : bt.positionDeltas)
+                            {
+                                iff.insertChunkData(static_cast<int32>(pd.first));
+                                iff.insertChunkFloatVector(pd.second);
+                            }
+                            iff.exitChunk(TAG_POSN);
+                            
+                            // NORM chunk - normal deltas (empty for now)
+                            iff.insertChunk(TAG_NORM);
+                            for (const auto& nd : bt.normalDeltas)
+                            {
+                                iff.insertChunkData(static_cast<int32>(nd.first));
+                                iff.insertChunkFloatVector(nd.second);
+                            }
+                            iff.exitChunk(TAG_NORM);
+                        }
+                        iff.exitForm(TAG_BLT);
+                    }
+                }
+                iff.exitForm(TAG_BLTS);
+            }
+            
+            // Write OZN chunk - occlusion zone names (if any)
+            if (!occlusionZoneNames.empty())
+            {
+                iff.insertChunk(TAG_OZN);
+                for (const auto& name : occlusionZoneNames)
+                    iff.insertChunkString(name.c_str());
+                iff.exitChunk(TAG_OZN);
+            }
+            
+            // Write ZTO chunk - zones this occludes (if any)
+            if (!zonesThisOccludes.empty())
+            {
+                iff.insertChunk(TAG_ZTO);
+                for (int zoneIdx : zonesThisOccludes)
+                    iff.insertChunkData(static_cast<int16>(zoneIdx));
+                iff.exitChunk(TAG_ZTO);
+            }
+        }
+        iff.exitForm(TAG_0004);
+    }
+    iff.exitForm(TAG_SKMG);
+
+    if (!iff.write(fileName))
+    {
+        MGlobal::displayError(MString("MGN export: failed to write ") + fileName);
+        return MS::kFailure;
+    }
+
+    MGlobal::displayInfo(MString("MGN exported: ") + fileName + " (" + numVerts + " verts, " + transformNames.size() + " influences)");
     return MS::kSuccess;
 }
 

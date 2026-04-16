@@ -209,6 +209,9 @@ IS_APPLICATION:BOOL=OFF
 //Target the Python 3 devkit files
 IS_PYTHON_3_BUILD:BOOL=ON
 
+//No help, variable specified on the command line.
+MAYA_VERSION:UNINITIALIZED=2026
+
 //Path to a library.
 OpenMayaAnim_PATH:FILEPATH=D:/titan/client/src/external/3rd/library/devkitBase/lib/OpenMayaAnim.lib
 

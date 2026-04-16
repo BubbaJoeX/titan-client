@@ -1091,76 +1091,34 @@ MStatus MayaSceneBuilder::setRotationKeyframesFromDeltas(
     ryCurve.addKeyframe(time0, bindEuler.y);
     rzCurve.addKeyframe(time0, bindEuler.z);
 
-    MQuaternion prevFinalQ;
-    bool hasPrev = false;
+    MQuaternion prevFinalQ = bindQuat;
 
-    // Game coordinate system conversion:
-    // Export: game_quat = qz(-Z) * qy(-Y) * qx(X)  where X,Y,Z are Maya Euler angles
-    // Import: We have game delta quaternion, need to compute Maya final rotation.
-    //
-    // Game playback: final_game = delta_game * bind_game
-    // Maya display:  final_maya corresponds to final_game via the coordinate conversion
-    //
-    // The delta quaternion from .ans is in game space. To apply it correctly:
-    // 1. Convert Maya bind to game space
-    // 2. Apply game delta: final_game = delta_game * bind_game
-    // 3. Convert final_game back to Maya Euler
-    //
-    // Conversion Maya->Game for rotation: negate Y and Z Euler angles before building quaternion
-    // For quaternion: if game_q corresponds to euler (rx, -ry, -rz), then
-    // to reverse: Maya euler = (rx, -ry, -rz) from game euler (rx, ry, rz)
-
+    // Import rotation keyframes using the same approach as legacy MayaExporter:
+    // final = delta * bindPose (quaternion multiplication)
+    // Then convert to Euler with Y,Z negation for coordinate system
     for (size_t k = 0; k < deltaKeyframes.size(); ++k)
     {
         const QuatKeyframe& qk = deltaKeyframes[k];
         MTime time(static_cast<double>(qk.frame), timeUnit);
 
-        // Delta quaternion from .ans file (game coordinates)
-        // qk.rotation: [x, y, z, w]
+        // Delta quaternion from .ans file: stored as [x, y, z, w] in our struct
         MQuaternion deltaQ(qk.rotation[0], qk.rotation[1], qk.rotation[2], qk.rotation[3]);
 
-        // Convert Maya bind pose to game space:
-        // Game uses: qz(-Z) * qy(-Y) * qx(X) for XYZ order
-        // This is equivalent to conjugating Y and Z components of the quaternion
-        // Actually, the conversion is done at Euler level, so we need to:
-        // 1. Get Maya bind Euler
-        // 2. Convert to game Euler (negate Y, Z)
-        // 3. Build game bind quaternion
-        // 4. Apply delta: final_game = delta * bind_game
-        // 5. Convert final_game back to Maya Euler (negate Y, Z again)
+        // Apply delta to bind pose (this is how the game engine does it)
+        MQuaternion finalQ = deltaQ * bindQuat;
 
-        MEulerRotation bindE = bindQuat.asEulerRotation();
-        bindE.reorderIt(rotOrder);
+        // Quaternion sign flip for interpolation continuity (prevents flipping)
+        const double dot = prevFinalQ.w * finalQ.w + prevFinalQ.x * finalQ.x +
+                           prevFinalQ.y * finalQ.y + prevFinalQ.z * finalQ.z;
+        if (dot < 0.0)
+            finalQ = MQuaternion(-finalQ.x, -finalQ.y, -finalQ.z, -finalQ.w);
+        prevFinalQ = finalQ;
 
-        // Build game-space bind quaternion using game convention
-        // Game: quat = qz * qy * qx where angles are (X, -Y, -Z) from Maya
-        MQuaternion qx, qy, qz;
-        qx = MQuaternion(bindE.x, MVector(1, 0, 0));
-        qy = MQuaternion(-bindE.y, MVector(0, 1, 0));
-        qz = MQuaternion(-bindE.z, MVector(0, 0, 1));
-        MQuaternion bindGame = qz * qy * qx;
-
-        // Apply game delta to game bind pose (matches game playback exactly)
-        MQuaternion finalGame = deltaQ * bindGame;
-
-        // Quaternion sign flip for interpolation continuity
-        if (hasPrev)
-        {
-            const double dot = prevFinalQ.w * finalGame.w + prevFinalQ.x * finalGame.x +
-                               prevFinalQ.y * finalGame.y + prevFinalQ.z * finalGame.z;
-            if (dot < 0.0)
-                finalGame = MQuaternion(-finalGame.x, -finalGame.y, -finalGame.z, -finalGame.w);
-        }
-        prevFinalQ = finalGame;
-        hasPrev = true;
-
-        // Convert final game quaternion back to Maya Euler
-        // The game quaternion represents rotation with (rx, -ry, -rz) convention
-        // So Maya Euler = (game_rx, -game_ry, -game_rz)
-        MEulerRotation finalEuler = finalGame.asEulerRotation();
+        // Convert to Euler and apply coordinate conversion (negate Y, Z)
+        MEulerRotation finalEuler = finalQ.asEulerRotation();
         finalEuler.reorderIt(rotOrder);
 
-        // Reverse the Y, Z negation to get Maya angles
+        // Coordinate system conversion: Maya Y,Z are negated relative to game
         rxCurve.addKeyframe(time, finalEuler.x);
         ryCurve.addKeyframe(time, -finalEuler.y);
         rzCurve.addKeyframe(time, -finalEuler.z);
