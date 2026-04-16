@@ -511,6 +511,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\translators\lod.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\translators\lmg.cpp" />
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\translators\lmg.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\translators\lsb.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\translators\lsb.h" />
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\translators\SwgTranslatorNames.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\utility\MayaUtility.cpp" />
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\utility\MayaUtility.h" />

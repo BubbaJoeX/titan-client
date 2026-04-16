@@ -273,3 +273,27 @@ bool MayaUtility::createDirectory(const char* directory)
 #endif
     return true;
 }
+
+bool MayaUtility::fileExists(const std::string& path)
+{
+    if (path.empty()) return false;
+#ifdef _WIN32
+    const DWORD a = GetFileAttributesA(path.c_str());
+    return a != INVALID_FILE_ATTRIBUTES && (a & FILE_ATTRIBUTE_DIRECTORY) == 0;
+#else
+    FILE* f = fopen(path.c_str(), "rb");
+    if (!f) return false;
+    fclose(f);
+    return true;
+#endif
+}
+
+bool MayaUtility::copyFile(const std::string& src, const std::string& dst)
+{
+    if (src.empty() || dst.empty()) return false;
+#ifdef _WIN32
+    return CopyFileA(src.c_str(), dst.c_str(), FALSE) != 0;
+#else
+    return false;
+#endif
+}

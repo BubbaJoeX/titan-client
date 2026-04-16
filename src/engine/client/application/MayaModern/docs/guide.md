@@ -312,7 +312,8 @@ exportPob -i "appearance/building/cantina";
 
 | Goal                   | SwgMayaEditor                                                   | Notes                                                                                           |
 | ---------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `.mgn` (SKMG)          | **Import** and **Export** supported via File > Export Selection | Select a skinned mesh bound to a skeleton. Exports skin weights, UVs, normals, per-shader data. |
+| `.mgn` (SKMG)          | **Import** and **Export** supported via File > Export Selection | Select a skinned mesh bound to a skeleton. Exports skin weights, UVs, normals, per-shader data. Optional `swgShipBundlePaths` on the mesh parent copies extra IFFs next to the `.mgn` (see below). |
+| `.lsb` (LSAT)          | **Import** and **Export** supported via File > Import / Export | Lightsaber appearance template: one transform with `swgLsb*` string/long attributes (import creates them). |
 | `.ans` (keyframe anim) | **Import** and **Export** supported via File > Export Selection | Exports KFAT (uncompressed) format. Captures delta rotations/translations from bind pose.       |
 | `.lod` (MLOD)          | **Import** and **Export** supported                             | Select transform with `swgLodChildren` attribute (from import) to re-export LOD container.      |
 | `.lmg` (MLOD)          | **Import** and **Export** supported                             | Select transform with `swgLmgChildren` attribute (from import) to re-export LMG container.      |
@@ -320,6 +321,10 @@ exportPob -i "appearance/building/cantina";
 
 
 All file types now support round-trip editing. Use **File > Export Selection** with the appropriate file type filter.
+
+### MGN export: ship / cockpit IFF bundles
+
+On the **parent transform** of the skinned mesh (the transform above the mesh shape), you can add a string attribute **`swgShipBundlePaths`**: one or more **data-root-relative tree paths** (or absolute paths), separated by **semicolons** or **newlines**. After a successful `.mgn` write, the plug-in resolves each path with the same rules as other imports (`setBaseDir` / `TITAN_DATA_ROOT`, etc.) and **copies** each file into the **same folder as the exported `.mgn`**, using the file’s basename. Missing sources produce a script editor warning; copy failures are warned but do not roll back the `.mgn`.
 
 ---
 
@@ -333,6 +338,7 @@ Use Maya's **File > Import** or **File > Export** with these file types. The **F
 | Extension   | MEL `-type` (register name) | Files of type label (`filter()`) | Import | Export |
 | ----------- | --------------------------- | -------------------------------- | ------ | ------ |
 | .mgn        | `SwgMgn`                    | SWG skeletal mesh (*.mgn)        | Yes    | Yes    |
+| .lsb        | `SwgLsb`                    | SWG lightsaber appearance (*.lsb) | Yes    | Yes    |
 | .msh / .apt | `SwgMsh`                    | SWG static mesh (*.msh *.apt)    | Yes    | Yes    |
 | .skt        | `SwgSkt`                    | SWG skeleton (*.skt)             | Yes    | Yes    |
 | .ans        | `SwgAns`                    | SWG animation (*.ans)            | Yes    | Yes    |

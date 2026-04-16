@@ -28,5 +28,11 @@ public:
     /// Like findFirstMeshShapeInHierarchy, but skips mesh shapes with no shading group (e.g. leftover
     /// geometry after combine). Depth-first order among meshes that have at least one material.
     static bool findFirstMeshShapeWithShadersInHierarchy(const MDagPath& root, MDagPath& outMeshPath);
+
+    /// True if a regular file exists at path (Windows: GetFileAttributes).
+    static bool fileExists(const std::string& path);
+
+    /// Copy file src to dst (overwrites dst). Windows: CopyFileA. Returns false on failure.
+    static bool copyFile(const std::string& src, const std::string& dst);
 };
 #endif //SWGMAYAEDITOR_MAYAUTILITY_H

@@ -49,6 +49,83 @@
 #include <cstring>
 #include <set>
 #include <map>
+#include <cctype>
+#include <string>
+
+namespace
+{
+    std::string mgnTrimBundleToken(std::string s)
+    {
+        while (!s.empty() && std::isspace(static_cast<unsigned char>(s.front()))) s.erase(0, 1);
+        while (!s.empty() && std::isspace(static_cast<unsigned char>(s.back()))) s.pop_back();
+        return s;
+    }
+
+    /// Optional string attribute on the mesh parent transform: tree paths (semicolon/newline-separated).
+    /// After a successful .mgn write, each path is resolved with resolveImportPath and copied next to the .mgn (cockpit / ship IFF bundles).
+    void copyMgnShipBundleIFFs(const MDagPath& meshDag, const char* mgnOutputPath)
+    {
+        MDagPath xformPath = meshDag;
+        if (xformPath.hasFn(MFn::kMesh))
+        {
+            MStatus pst = xformPath.pop();
+            if (pst != MS::kSuccess)
+                return;
+        }
+
+        MFnDependencyNode dep(xformPath.node());
+        if (!dep.hasAttribute("swgShipBundlePaths"))
+            return;
+
+        MStatus st;
+        MPlug plug = dep.findPlug("swgShipBundlePaths", true, &st);
+        if (!st || plug.isNull())
+            return;
+        MString mlist;
+        if (plug.getValue(mlist) != MS::kSuccess)
+            return;
+        const std::string raw(mlist.asChar());
+        if (raw.empty())
+            return;
+
+        const std::string outFull(mgnOutputPath);
+        const size_t lastSlash = outFull.find_last_of("/\\");
+        if (lastSlash == std::string::npos)
+            return;
+        const std::string outDir = outFull.substr(0, lastSlash + 1);
+
+        std::string token;
+        const auto flushToken = [&]()
+        {
+            const std::string t = mgnTrimBundleToken(token);
+            token.clear();
+            if (t.empty())
+                return;
+            const std::string resolved = resolveImportPath(t);
+            if (!MayaUtility::fileExists(resolved))
+            {
+                MGlobal::displayWarning(MString("[MGN export] swgShipBundlePaths: file not found: ") + resolved.c_str());
+                return;
+            }
+            const size_t bn = resolved.find_last_of("/\\");
+            const std::string base = (bn == std::string::npos) ? resolved : resolved.substr(bn + 1);
+            const std::string dst = outDir + base;
+            if (!MayaUtility::copyFile(resolved, dst))
+                MGlobal::displayWarning(MString("[MGN export] failed to copy bundle file to ") + dst.c_str());
+            else
+                MGlobal::displayInfo(MString("[MGN export] copied ship bundle IFF: ") + base.c_str());
+        };
+
+        for (char c : raw)
+        {
+            if (c == ';' || c == '\n' || c == '\r')
+                flushToken();
+            else
+                token += c;
+        }
+        flushToken();
+    }
+}
 
 const int MgnTranslator::ms_blendTargetNameSize = 64;
 
@@ -2263,6 +2340,8 @@ MStatus MgnTranslator::writer (const MFileObject& file, const MString& options, 
         MGlobal::displayError(MString("MGN export: failed to write ") + fileName);
         return MS::kFailure;
     }
+
+    copyMgnShipBundleIFFs(meshPath, fileName);
 
     MGlobal::displayInfo(MString("MGN exported: ") + fileName + " (" + numVerts + " verts, " + transformNames.size() + " influences)");
     return MS::kSuccess;

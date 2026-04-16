@@ -13,6 +13,7 @@
 #include "translators/dds.h"
 #include "translators/lod.h"
 #include "translators/lmg.h"
+#include "translators/lsb.h"
 #include "translators/SwgTranslatorNames.h"
 
 #include "commands/SetDirectoryCommand.h"
@@ -84,7 +85,8 @@ static Translator* TRANSLATORS[] =
             new Translator(swg_translator::kTypePob, "", &PobTranslator::creator, nullptr, "preserveReferences=0", false),
             new Translator(swg_translator::kTypeDds, "", &DdsTranslator::creator, nullptr, "", false),
             new Translator(swg_translator::kTypeLod, "", &LodTranslator::creator, nullptr, "preserveReferences=0", false),
-            new Translator(swg_translator::kTypeLmg, "", &LmgTranslator::creator, nullptr, "preserveReferences=0", false)
+            new Translator(swg_translator::kTypeLmg, "", &LmgTranslator::creator, nullptr, "preserveReferences=0", false),
+            new Translator(swg_translator::kTypeLsb, "", &LsbTranslator::creator, nullptr, "preserveReferences=0", false)
         };
 
 MStatus initializePlugin(MObject obj)

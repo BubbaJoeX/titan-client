@@ -100,6 +100,9 @@
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\translators\lmg.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\translators\lsb.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\utility\MayaUtility.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -337,6 +340,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\translators\lmg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\translators\lsb.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\translators\SwgTranslatorNames.h">

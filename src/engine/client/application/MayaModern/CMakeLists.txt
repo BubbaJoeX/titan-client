@@ -133,6 +133,8 @@ set(SOURCE_FILES
         translators/lod.h
         translators/lmg.cpp
         translators/lmg.h
+        translators/lsb.cpp
+        translators/lsb.h
         translators/SwgTranslatorNames.h
 
         utility/MayaUtility.cpp
