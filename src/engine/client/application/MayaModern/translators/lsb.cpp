@@ -1,4 +1,5 @@
 #include "lsb.h"
+#include "LsbAttributes.h"
 #include "SwgTranslatorNames.h"
 #include "ImportPathResolver.h"
 #include "Iff.h"
@@ -9,15 +10,14 @@
 #include <maya/MFn.h>
 #include <maya/MFnTransform.h>
 #include <maya/MGlobal.h>
-#include <maya/MPlug.h>
 #include <maya/MDagPath.h>
 #include <maya/MFnDependencyNode.h>
 #include <maya/MSelectionList.h>
 #include <maya/MString.h>
 
+#include <algorithm>
 #include <cctype>
 #include <cstring>
-#include <sstream>
 #include <string>
 #include <vector>
 
@@ -27,17 +27,30 @@
 #define LSB_STRICMP strcasecmp
 #endif
 
-struct LsbBladeRow
-{
-    std::string shader;
-    float length = 1.8f;
-    float width = 0.15f;
-    float openRate = 0.5f;
-    float closeRate = 0.5f;
-};
-
 namespace
 {
+    static void importHiltAptParented(const std::string& hiltTreePath, const MString& parentTransformFullPath)
+    {
+        if (hiltTreePath.empty())
+            return;
+        std::string aptFile = resolveImportPath(hiltTreePath);
+        for (auto& c : aptFile)
+        {
+            if (c == '\\')
+                c = '/';
+        }
+        MString icmd = "importLodMesh -i \"";
+        icmd += aptFile.c_str();
+        icmd += "\" -parent \"";
+        icmd += parentTransformFullPath;
+        icmd += "\"";
+        const MStatus st = MGlobal::executeCommand(icmd, false, false);
+        if (st != MS::kSuccess)
+            MGlobal::displayWarning(MString("LsbTranslator: could not import hilt mesh (BASE path): ") + aptFile.c_str());
+        else
+            MGlobal::displayInfo(MString("LsbTranslator: imported hilt geometry under ") + parentTransformFullPath + " <- " + aptFile.c_str());
+    }
+
     const Tag TAG_LSAT = TAG(L, S, A, T);
     const Tag TAG_BASE = TAG(B, A, S, E);
     const Tag TAG_ASND = TAG(A, S, N, D);
@@ -58,78 +71,6 @@ namespace
         if (!buffer || size < 12) return false;
         if (memcmp(buffer, "FORM", 4) != 0) return false;
         return memcmp(buffer + 8, "LSAT", 4) == 0;
-    }
-
-    static void addStringAttrMEL(const std::string& nodeFullPath, const char* attrName, const std::string& value)
-    {
-        std::string esc;
-        for (char c : value)
-        {
-            if (c == '\\') esc += "\\\\";
-            else if (c == '"') esc += "\\\"";
-            else esc += c;
-        }
-        MString cmd = "if (!`attributeExists \"";
-        cmd += attrName;
-        cmd += "\" \"";
-        cmd += nodeFullPath.c_str();
-        cmd += "\"`) { addAttr -ln \"";
-        cmd += attrName;
-        cmd += "\" -dt \"string\" \"";
-        cmd += nodeFullPath.c_str();
-        cmd += "\"; }";
-        MGlobal::executeCommand(cmd);
-        MString setCmd = "setAttr -type \"string\" \"";
-        setCmd += nodeFullPath.c_str();
-        setCmd += ".";
-        setCmd += attrName;
-        setCmd += "\" \"";
-        setCmd += esc.c_str();
-        setCmd += "\"";
-        MGlobal::executeCommand(setCmd);
-    }
-
-    static void addIntAttrMEL(const std::string& nodeFullPath, const char* attrName, int v)
-    {
-        MString cmd = "if (!`attributeExists \"";
-        cmd += attrName;
-        cmd += "\" \"";
-        cmd += nodeFullPath.c_str();
-        cmd += "\"`) { addAttr -ln \"";
-        cmd += attrName;
-        cmd += "\" -at long \"";
-        cmd += nodeFullPath.c_str();
-        cmd += "\"; }";
-        MGlobal::executeCommand(cmd);
-        MString setCmd = "setAttr \"";
-        setCmd += nodeFullPath.c_str();
-        setCmd += ".";
-        setCmd += attrName;
-        setCmd += "\" ";
-        setCmd += v;
-        MGlobal::executeCommand(setCmd);
-    }
-
-    static std::string plugString(const MFnDependencyNode& dep, const char* attrName)
-    {
-        if (!dep.hasAttribute(attrName)) return std::string();
-        MStatus st;
-        MPlug p = dep.findPlug(attrName, true, &st);
-        if (!st || p.isNull()) return std::string();
-        MString v;
-        if (p.getValue(v) != MS::kSuccess) return std::string();
-        return std::string(v.asChar());
-    }
-
-    static int plugInt(const MFnDependencyNode& dep, const char* attrName, int defVal)
-    {
-        if (!dep.hasAttribute(attrName)) return defVal;
-        MStatus st;
-        MPlug p = dep.findPlug(attrName, true, &st);
-        if (!st || p.isNull()) return defVal;
-        int v = defVal;
-        p.getValue(v);
-        return v;
     }
 }
 
@@ -327,32 +268,21 @@ MStatus LsbTranslator::reader(const MFileObject& file, const MString&, MPxFileTr
     MFnTransform tf;
     MObject tObj = tf.create();
     tf.setName(MString(nodeName.c_str()));
-    const std::string fullPath(tf.fullPathName().asChar());
+    const MStatus ast =
+        lsbApplyAttributesToTransform(tObj, hiltPath, ambientSound, useFlicker, flickDayNight, static_cast<int>(flickR),
+                                      static_cast<int>(flickG), static_cast<int>(flickB), static_cast<int>(flickA), flickMinR,
+                                      flickMaxR, flickMinT, flickMaxT, blades);
+    if (!ast)
+    {
+        MGlobal::displayError("LsbTranslator: failed to create LSB attributes on transform");
+        return MS::kFailure;
+    }
 
-    addStringAttrMEL(fullPath, "swgLsbHiltPath", hiltPath);
-    addStringAttrMEL(fullPath, "swgLsbAmbientSound", ambientSound);
-    addIntAttrMEL(fullPath, "swgLsbUseLightFlicker", useFlicker ? 1 : 0);
-    addIntAttrMEL(fullPath, "swgLsbFlickerDayNight", flickDayNight ? 1 : 0);
-    {
-        std::ostringstream oss;
-        oss << static_cast<int>(flickR) << ' ' << static_cast<int>(flickG) << ' ' << static_cast<int>(flickB) << ' '
-            << static_cast<int>(flickA) << ' ' << flickMinR << ' ' << flickMaxR << ' ' << flickMinT << ' ' << flickMaxT;
-        addStringAttrMEL(fullPath, "swgLsbFlickerParams", oss.str());
-    }
-    addIntAttrMEL(fullPath, "swgLsbBladeCount", static_cast<int>(blades.size()));
-    for (size_t i = 0; i < blades.size(); ++i)
-    {
-        const LsbBladeRow& b = blades[i];
-        std::ostringstream line;
-        line << b.shader << '\t' << b.length << '\t' << b.width << '\t' << b.openRate << '\t' << b.closeRate;
-        std::string an = "swgLsbBlade";
-        an += std::to_string(static_cast<int>(i));
-        addStringAttrMEL(fullPath, an.c_str(), line.str());
-    }
+    importHiltAptParented(hiltPath, tf.fullPathName());
 
     {
         MString msg("LsbTranslator: imported ");
-        msg += fullPath.c_str();
+        msg += tf.fullPathName().asChar();
         msg += " (blades=";
         msg += static_cast<int>(blades.size());
         msg += ")";
@@ -377,40 +307,19 @@ MStatus LsbTranslator::writer(const MFileObject& file, const MString&, MPxFileTr
     if (dag.hasFn(MFn::kMesh))
         dag.pop();
     MFnDependencyNode dep(dag.node());
-    const std::string hilt = plugString(dep, "swgLsbHiltPath");
+    std::string hilt;
+    std::string ambient;
+    bool useFlicker = false;
+    bool flickDayNight = false;
+    int flickR = 32, flickG = 32, flickB = 32, flickA = 255;
+    float flickRangeMin = 1.f, flickRangeMax = 2.f, flickTimeMin = 0.02f, flickTimeMax = 0.1f;
+    std::vector<LsbBladeRow> blades;
+    lsbGatherExportData(dep, hilt, ambient, useFlicker, flickDayNight, flickR, flickG, flickB, flickA, flickRangeMin,
+                        flickRangeMax, flickTimeMin, flickTimeMax, blades);
     if (hilt.empty())
     {
         MGlobal::displayError("LsbTranslator: swgLsbHiltPath is empty on selection");
         return MS::kFailure;
-    }
-    const std::string ambient = plugString(dep, "swgLsbAmbientSound");
-    const int useFlicker = plugInt(dep, "swgLsbUseLightFlicker", 0);
-    const int flickDay = plugInt(dep, "swgLsbFlickerDayNight", 0);
-    const std::string flickParams = plugString(dep, "swgLsbFlickerParams");
-    int flickR = 32, flickG = 32, flickB = 32, flickA = 255;
-    float flickMinR = 1.f, flickMaxR = 2.f, flickMinT = 0.02f, flickMaxT = 0.1f;
-    if (!flickParams.empty())
-    {
-        std::istringstream iss(flickParams);
-        iss >> flickR >> flickG >> flickB >> flickA >> flickMinR >> flickMaxR >> flickMinT >> flickMaxT;
-    }
-    const int bladeCount = plugInt(dep, "swgLsbBladeCount", 0);
-    std::vector<LsbBladeRow> blades;
-    if (bladeCount > 0)
-    {
-        blades.resize(static_cast<size_t>(bladeCount));
-        for (int i = 0; i < bladeCount; ++i)
-        {
-            std::string an = "swgLsbBlade" + std::to_string(i);
-            const std::string line = plugString(dep, an.c_str());
-            if (line.empty()) continue;
-            std::istringstream ls(line);
-            std::getline(ls, blades[static_cast<size_t>(i)].shader, '\t');
-            ls >> blades[static_cast<size_t>(i)].length;
-            ls >> blades[static_cast<size_t>(i)].width;
-            ls >> blades[static_cast<size_t>(i)].openRate;
-            ls >> blades[static_cast<size_t>(i)].closeRate;
-        }
     }
     if (blades.empty())
     {
@@ -437,21 +346,24 @@ MStatus LsbTranslator::writer(const MFileObject& file, const MString&, MPxFileTr
                 iff.insertForm(TAG_LGHT);
                 {
                     iff.insertChunk(TAG_COLR);
-                    iff.insertChunkData(static_cast<uint8>(flickR));
-                    iff.insertChunkData(static_cast<uint8>(flickG));
-                    iff.insertChunkData(static_cast<uint8>(flickB));
-                    iff.insertChunkData(static_cast<uint8>(flickA));
+                    const auto u8 = [](int v) {
+                        return static_cast<uint8>(std::max(0, std::min(255, v)));
+                    };
+                    iff.insertChunkData(u8(flickR));
+                    iff.insertChunkData(u8(flickG));
+                    iff.insertChunkData(u8(flickB));
+                    iff.insertChunkData(u8(flickA));
                     iff.exitChunk(TAG_COLR);
                     iff.insertChunk(TAG_RANG);
-                    iff.insertChunkData(flickMinR);
-                    iff.insertChunkData(flickMaxR);
+                    iff.insertChunkData(flickRangeMin);
+                    iff.insertChunkData(flickRangeMax);
                     iff.exitChunk(TAG_RANG);
                     iff.insertChunk(TAG_TIME);
-                    iff.insertChunkData(flickMinT);
-                    iff.insertChunkData(flickMaxT);
+                    iff.insertChunkData(flickTimeMin);
+                    iff.insertChunkData(flickTimeMax);
                     iff.exitChunk(TAG_TIME);
                     iff.insertChunk(TAG_DAYN);
-                    iff.insertChunkData(static_cast<uint8>(flickDay ? 1 : 0));
+                    iff.insertChunkData(static_cast<uint8>(flickDayNight ? 1 : 0));
                     iff.exitChunk(TAG_DAYN);
                 }
                 iff.exitForm(TAG_LGHT);
@@ -488,6 +400,12 @@ MStatus LsbTranslator::writer(const MFileObject& file, const MString&, MPxFileTr
     {
         MGlobal::displayError(MString("LsbTranslator: failed to write ") + outPath);
         return MS::kFailure;
+    }
+    {
+        const std::string full(outPath);
+        const size_t ls = full.find_last_of("/\\");
+        const std::string bn = (ls == std::string::npos) ? full : full.substr(ls + 1);
+        mirrorExportToDataRootExported(full, bn);
     }
     MGlobal::displayInfo(MString("LsbTranslator: wrote ") + outPath);
     return MS::kSuccess;

@@ -61,24 +61,16 @@ namespace
         return s;
     }
 
-    /// Optional string attribute on the mesh parent transform: tree paths (semicolon/newline-separated).
-    /// After a successful .mgn write, each path is resolved with resolveImportPath and copied next to the .mgn (cockpit / ship IFF bundles).
-    void copyMgnShipBundleIFFs(const MDagPath& meshDag, const char* mgnOutputPath)
+    /// Optional string attributes on the mesh parent transform: tree paths (semicolon/newline-separated).
+    /// After a successful .mgn write, each path is resolved with resolveImportPath and copied next to the .mgn.
+    /// `swgShipBundlePaths` — spacecraft / cockpit IFF bundles; `swgVehicleBundlePaths` — ground vehicle bundles (separate workflow).
+    void copyMgnBundlePathsFromAttr(MFnDependencyNode& dep, const char* attrName, const char* logLabel, const std::string& outDir)
     {
-        MDagPath xformPath = meshDag;
-        if (xformPath.hasFn(MFn::kMesh))
-        {
-            MStatus pst = xformPath.pop();
-            if (pst != MS::kSuccess)
-                return;
-        }
-
-        MFnDependencyNode dep(xformPath.node());
-        if (!dep.hasAttribute("swgShipBundlePaths"))
+        if (!dep.hasAttribute(attrName))
             return;
 
         MStatus st;
-        MPlug plug = dep.findPlug("swgShipBundlePaths", true, &st);
+        MPlug plug = dep.findPlug(attrName, true, &st);
         if (!st || plug.isNull())
             return;
         MString mlist;
@@ -87,12 +79,6 @@ namespace
         const std::string raw(mlist.asChar());
         if (raw.empty())
             return;
-
-        const std::string outFull(mgnOutputPath);
-        const size_t lastSlash = outFull.find_last_of("/\\");
-        if (lastSlash == std::string::npos)
-            return;
-        const std::string outDir = outFull.substr(0, lastSlash + 1);
 
         std::string token;
         const auto flushToken = [&]()
@@ -104,7 +90,7 @@ namespace
             const std::string resolved = resolveImportPath(t);
             if (!MayaUtility::fileExists(resolved))
             {
-                MGlobal::displayWarning(MString("[MGN export] swgShipBundlePaths: file not found: ") + resolved.c_str());
+                MGlobal::displayWarning(MString("[MGN export] ") + attrName + ": file not found: " + resolved.c_str());
                 return;
             }
             const size_t bn = resolved.find_last_of("/\\");
@@ -113,7 +99,10 @@ namespace
             if (!MayaUtility::copyFile(resolved, dst))
                 MGlobal::displayWarning(MString("[MGN export] failed to copy bundle file to ") + dst.c_str());
             else
-                MGlobal::displayInfo(MString("[MGN export] copied ship bundle IFF: ") + base.c_str());
+            {
+                MGlobal::displayInfo(MString("[MGN export] copied ") + logLabel + " bundle IFF: " + base.c_str());
+                mirrorExportToDataRootExported(resolved, base);
+            }
         };
 
         for (char c : raw)
@@ -124,6 +113,28 @@ namespace
                 token += c;
         }
         flushToken();
+    }
+
+    void copyMgnShipBundleIFFs(const MDagPath& meshDag, const char* mgnOutputPath)
+    {
+        MDagPath xformPath = meshDag;
+        if (xformPath.hasFn(MFn::kMesh))
+        {
+            MStatus pst = xformPath.pop();
+            if (pst != MS::kSuccess)
+                return;
+        }
+
+        MFnDependencyNode dep(xformPath.node());
+
+        const std::string outFull(mgnOutputPath);
+        const size_t lastSlash = outFull.find_last_of("/\\");
+        if (lastSlash == std::string::npos)
+            return;
+        const std::string outDir = outFull.substr(0, lastSlash + 1);
+
+        copyMgnBundlePathsFromAttr(dep, "swgVehicleBundlePaths", "vehicle", outDir);
+        copyMgnBundlePathsFromAttr(dep, "swgShipBundlePaths", "ship", outDir);
     }
 }
 
@@ -2342,6 +2353,13 @@ MStatus MgnTranslator::writer (const MFileObject& file, const MString& options, 
     }
 
     copyMgnShipBundleIFFs(meshPath, fileName);
+
+    {
+        const std::string mgnFull(fileName);
+        const size_t ls = mgnFull.find_last_of("/\\");
+        const std::string bn = (ls == std::string::npos) ? mgnFull : mgnFull.substr(ls + 1);
+        mirrorExportToDataRootExported(mgnFull, bn);
+    }
 
     MGlobal::displayInfo(MString("MGN exported: ") + fileName + " (" + numVerts + " verts, " + transformNames.size() + " influences)");
     return MS::kSuccess;

@@ -60,6 +60,9 @@ MStatus SetBaseDirectory::doIt(const MArgList& args)
     MayaUtility::createDirectory(logWriteDir.c_str());
     MayaUtility::createDirectory(satWriteDir.c_str());
 
+    const std::string exportedStagingWriteDir = baseDirectory + "exported\\";
+    MayaUtility::createDirectory(exportedStagingWriteDir.c_str());
+
     const std::string shaderRef = "shader/";
     const std::string effectRef = "effect/";
     const std::string textureRef = "texture/";

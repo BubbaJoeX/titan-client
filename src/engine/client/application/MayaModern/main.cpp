@@ -39,8 +39,16 @@
 #include "commands/ImportStructure.h"
 #include "commands/ExportStaticMesh.h"
 #include "commands/PrepareStaticMeshExport.h"
+#include "commands/SwgAddStaticMeshHardpoint.h"
+#include "commands/SwgApplyWavefrontMtl.h"
+#include "commands/SwgReformatMesh.h"
 #include "commands/SwgAssetDissector.h"
 #include "commands/SwgAnimationBrowser.h"
+#include "commands/SwgMakeLightsaber.h"
+#include "commands/SwgMakeShip.h"
+#include "commands/SwgMakeVehicle.h"
+#include "commands/SwgLightsaberToolkit.h"
+#include "commands/SwgVehicleToolkit.h"
 
 #include "ConfigFile.h"
 #include "Globals.h"
@@ -48,7 +56,64 @@
 #include <maya/MFnPlugin.h>
 #include <maya/MGlobal.h>
 
+#include <string>
 #include <utility>
+
+namespace
+{
+/**
+ * Companion .mel files POST_BUILD-copied next to SwgMayaEditor.mll (see MayaModern/CMakeLists.txt).
+ * Export options and command UIs use global procs that only exist after `source`.
+ */
+static const char* const kCompanionMelFiles[] =
+        {
+            "swgMshExportOptions.mel",
+            "swgAssetDissector.mel",
+            "swgAnimationBrowser.mel",
+            "swgStaticMeshExport.mel",
+            "pobAuthoring.mel",
+            "swgLightsaberToolkit.mel",
+            "swgVehicleToolkit.mel",
+            "swgKeepFrameZeroKeys.mel"
+        };
+
+void sourceCompanionMelScripts(const MFnPlugin& plugin)
+{
+    MStatus loadSt;
+    MString loadPath = plugin.loadPath(&loadSt);
+    if (!loadSt || loadPath.length() == 0)
+    {
+        return;
+    }
+
+    std::string dir(loadPath.asChar());
+    const size_t slash = dir.find_last_of("\\/");
+    if (slash == std::string::npos)
+    {
+        return;
+    }
+    dir.resize(slash + 1);
+    for (char& c : dir)
+    {
+        if (c == '\\')
+        {
+            c = '/';
+        }
+    }
+
+    for (const char* melName : kCompanionMelFiles)
+    {
+        const std::string fullPath = dir + melName;
+        MString mel;
+        mel += "if (`filetest -f \"";
+        mel += fullPath.c_str();
+        mel += "\") { source \"";
+        mel += fullPath.c_str();
+        mel += "\"; }";
+        MGlobal::executeCommand(mel, false, false);
+    }
+}
+} // namespace
 
 /**
  * Structure to store all translator classes
@@ -69,14 +134,15 @@ struct Translator
     const char* defaultOptionsString;
     bool requiresFullMel;
 };
-// Pass nullptr for optionsScriptName - no MEL option procedures; avoids "Cannot find procedure" errors.
+// Pass nullptr for optionsScriptName when no export UI; otherwise name of global proc (e.g. swgMshExportOptions).
 // requiresFullMel must be false when there is no options MEL (Maya 2026 import dialog breaks otherwise).
 // Short translator ids (kType*): required for stable MEL -type and Maya's registry; filter() supplies UI text.
 // Pixmap: pass nullptr to Maya when unused (empty std::string is not the same as no pixmap).
 static Translator* TRANSLATORS[] =
         {
             new Translator(swg_translator::kTypeMgn, "", &MgnTranslator::creator, nullptr, "showPositions=1", false),
-            new Translator(swg_translator::kTypeMsh, "", &MshTranslator::creator, nullptr, "showPositions=1", false),
+            new Translator(swg_translator::kTypeMsh, "", &MshTranslator::creator, "swgMshExportOptions",
+                "legacyTriangleFlip=0", false),
             new Translator(swg_translator::kTypeSkt, "", &SktTranslator::creator, nullptr, "showPositions=1", false),
             new Translator(swg_translator::kTypeAns, "", &AnsTranslator::creator, nullptr, "showPositions=1", false),
             new Translator(swg_translator::kTypeFlr, "", &FlrTranslator::creator, nullptr, "showPositions=1", false),
@@ -103,6 +169,8 @@ MStatus initializePlugin(MObject obj)
 
     //---- Setup directory configuration (for setBaseDir, getDataRootDir, import path resolution)
     SetDirectoryCommand::install();
+
+    sourceCompanionMelScripts(plugin);
 
     //---- Setup Swg Logging
     const bool logDebug = ConfigFile::getKeyBool("SwgMayaEditor", "verboseLogging", false);
@@ -202,11 +270,35 @@ MStatus initializePlugin(MObject obj)
     status = plugin.registerCommand("swgPrepareStaticMeshExport", PrepareStaticMeshExport::creator);
     if (!status) { std::cerr << "ERROR: Unable to register swgPrepareStaticMeshExport" << std::endl; return status; }
 
+    status = plugin.registerCommand("swgAddStaticMeshHardpoint", SwgAddStaticMeshHardpoint::creator);
+    if (!status) { std::cerr << "ERROR: Unable to register swgAddStaticMeshHardpoint" << std::endl; return status; }
+
+    status = plugin.registerCommand("swgApplyWavefrontMtl", SwgApplyWavefrontMtl::creator);
+    if (!status) { std::cerr << "ERROR: Unable to register swgApplyWavefrontMtl" << std::endl; return status; }
+
+    status = plugin.registerCommand("swgReformatMesh", SwgReformatMesh::creator);
+    if (!status) { std::cerr << "ERROR: Unable to register swgReformatMesh" << std::endl; return status; }
+
     status = plugin.registerCommand("swgAssetDissector", SwgAssetDissector::creator);
     if (!status) { std::cerr << "ERROR: Unable to register swgAssetDissector" << std::endl; return status; }
 
     status = plugin.registerCommand("swgAnimationBrowser", SwgAnimationBrowser::creator);
     if (!status) { std::cerr << "ERROR: Unable to register swgAnimationBrowser" << std::endl; return status; }
+
+    status = plugin.registerCommand("swgMakeLightsaber", SwgMakeLightsaber::creator);
+    if (!status) { std::cerr << "ERROR: Unable to register swgMakeLightsaber" << std::endl; return status; }
+
+    status = plugin.registerCommand("swgMakeShip", SwgMakeShip::creator);
+    if (!status) { std::cerr << "ERROR: Unable to register swgMakeShip" << std::endl; return status; }
+
+    status = plugin.registerCommand("swgMakeVehicle", SwgMakeVehicle::creator);
+    if (!status) { std::cerr << "ERROR: Unable to register swgMakeVehicle" << std::endl; return status; }
+
+    status = plugin.registerCommand("swgLightsaberToolkit", SwgLightsaberToolkit::creator);
+    if (!status) { std::cerr << "ERROR: Unable to register swgLightsaberToolkit" << std::endl; return status; }
+
+    status = plugin.registerCommand("swgVehicleToolkit", SwgVehicleToolkit::creator);
+    if (!status) { std::cerr << "ERROR: Unable to register swgVehicleToolkit" << std::endl; return status; }
 
     return MS::kSuccess;
 }
@@ -227,8 +319,16 @@ MStatus uninitializePlugin(MObject obj)
         }
     }
 
+    plugin.deregisterCommand("swgVehicleToolkit");
+    plugin.deregisterCommand("swgLightsaberToolkit");
+    plugin.deregisterCommand("swgMakeVehicle");
+    plugin.deregisterCommand("swgMakeShip");
+    plugin.deregisterCommand("swgMakeLightsaber");
     plugin.deregisterCommand("swgAnimationBrowser");
     plugin.deregisterCommand("swgAssetDissector");
+    plugin.deregisterCommand("swgReformatMesh");
+    plugin.deregisterCommand("swgApplyWavefrontMtl");
+    plugin.deregisterCommand("swgAddStaticMeshHardpoint");
     plugin.deregisterCommand("swgPrepareStaticMeshExport");
     plugin.deregisterCommand("exportStaticMesh");
     plugin.deregisterCommand("exportShader");

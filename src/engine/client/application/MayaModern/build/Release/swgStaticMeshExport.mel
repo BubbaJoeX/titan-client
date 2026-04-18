@@ -1,5 +1,6 @@
 // SwgMayaEditor — programmatic prep for static mesh export (merged props, multi-shader, UVs).
 // Requires: loadPlugin SwgMayaEditor; setBaseDir ...
+// Rare OBJ workflow: exportStaticMesh -legacyTriangleFlip; restores old reversed triangle winding (SWG/imported-from-game uses default Maya winding).
 //
 // One-shot: select two+ meshes (or transforms), then:
 //   swgStaticMeshCombineValidateExport;

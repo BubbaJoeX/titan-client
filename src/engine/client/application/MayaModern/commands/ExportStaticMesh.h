@@ -10,8 +10,10 @@ public:
     MStatus doIt(const MArgList& args) override;
 
     /// Performs mesh export. Used by MshTranslator and MEL exportStaticMesh.
+    /// legacyTriangleFlipFromCmd: exportStaticMesh -legacyTriangleFlip; legacyTriangleFlipFromFileDialog: SwgMsh Export Selection options.
     bool performExport(const class MDagPath& meshDagPath, const std::string& outputPath,
-        std::string& outMeshPath, std::string& outAptPath);
+        std::string& outMeshPath, std::string& outAptPath, bool legacyTriangleFlipFromCmd = false,
+        bool legacyTriangleFlipFromFileDialog = false);
 };
 
 #endif

@@ -32,6 +32,7 @@ D:\titan\client\src\engine\client\application\MayaModern\translators\dds.cpp;D:\
 D:\titan\client\src\engine\client\application\MayaModern\translators\lod.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\lod.obj
 D:\titan\client\src\engine\client\application\MayaModern\translators\lmg.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\lmg.obj
 D:\titan\client\src\engine\client\application\MayaModern\translators\lsb.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\lsb.obj
+D:\titan\client\src\engine\client\application\MayaModern\translators\LsbAttributes.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\LsbAttributes.obj
 D:\titan\client\src\engine\client\application\MayaModern\utility\MayaUtility.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\MayaUtility.obj
 D:\titan\client\src\engine\client\application\MayaModern\utility\MayaConversions.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\MayaConversions.obj
 D:\titan\client\src\engine\client\application\MayaModern\utility\MayaCompoundString.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\MayaCompoundString.obj
@@ -69,4 +70,12 @@ D:\titan\client\src\engine\client\application\MayaModern\commands\SkeletonTempla
 D:\titan\client\src\engine\client\application\MayaModern\commands\StaticMeshWriter.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\StaticMeshWriter.obj
 D:\titan\client\src\engine\client\application\MayaModern\commands\ExportStaticMesh.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\ExportStaticMesh.obj
 D:\titan\client\src\engine\client\application\MayaModern\commands\PrepareStaticMeshExport.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\PrepareStaticMeshExport.obj
+D:\titan\client\src\engine\client\application\MayaModern\commands\SwgAddStaticMeshHardpoint.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\SwgAddStaticMeshHardpoint.obj
+D:\titan\client\src\engine\client\application\MayaModern\commands\SwgApplyWavefrontMtl.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\SwgApplyWavefrontMtl.obj
+D:\titan\client\src\engine\client\application\MayaModern\commands\SwgReformatMesh.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\SwgReformatMesh.obj
+D:\titan\client\src\engine\client\application\MayaModern\commands\SwgMakeLightsaber.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\SwgMakeLightsaber.obj
+D:\titan\client\src\engine\client\application\MayaModern\commands\SwgMakeShip.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\SwgMakeShip.obj
+D:\titan\client\src\engine\client\application\MayaModern\commands\SwgMakeVehicle.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\SwgMakeVehicle.obj
+D:\titan\client\src\engine\client\application\MayaModern\commands\SwgLightsaberToolkit.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\SwgLightsaberToolkit.obj
+D:\titan\client\src\engine\client\application\MayaModern\commands\SwgVehicleToolkit.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\SwgVehicleToolkit.obj
 D:\titan\client\src\engine\client\application\MayaModern\commands\ShaderExporter.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\ShaderExporter.obj

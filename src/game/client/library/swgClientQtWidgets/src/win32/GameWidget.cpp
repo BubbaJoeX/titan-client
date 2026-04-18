@@ -197,7 +197,7 @@ GameWidget *GameWidget::ms_globalGameWidget;
 
 //-----------------------------------------------------------------
 
-GameWidget::GameWidget(QWidget * parent, const char * name, const char * const configFileName, WFlags const flags)
+GameWidget::GameWidget(QWidget * parent, const char * name, const char * const configFileName, WFlags const flags, Game::Application application)
  : QWidget(parent, name, flags) //lint !e578 //hides
  , Receiver()
  , m_frameCounter(0)
@@ -381,7 +381,7 @@ GameWidget::GameWidget(QWidget * parent, const char * name, const char * const c
 
 	CuiManager::setImplementationInstallFunctions(SwgCuiManager::install, SwgCuiManager::remove, SwgCuiManager::update);
 
-	Game::install(Game::A_particleEditor);
+	Game::install(application);
 
 	// turn off the mousemode being default
 	CuiPreferences::setMouseModeDefault (false);
@@ -398,7 +398,9 @@ GameWidget::GameWidget(QWidget * parent, const char * name, const char * const c
 	// NOTE: this particular timer must be a zero-length timer to avoid a Qt bug
 	IGNORE_RETURN(connect(m_timer, SIGNAL(timeout()), this, SLOT(runGameLoop())));
 
-	int requestedFrameRate = atoi(ConfigFile::getKeyString("ParticleEditor", "frameRateLimit", "20"));
+	const char *const frameRateSection =
+		(application == Game::A_animationEditor) ? "AnimationEditor" : "ParticleEditor";
+	int requestedFrameRate = atoi(ConfigFile::getKeyString(frameRateSection, "frameRateLimit", "20"));
 
 	if (requestedFrameRate <= 0)
 	{

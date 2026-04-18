@@ -1,8 +1,15 @@
 #include "ImportPathResolver.h"
 #include "SetDirectoryCommand.h"
+#include "MayaUtility.h"
+
+#include <maya/MGlobal.h>
 
 #include <cstdlib>
 #include <string>
+
+#ifdef _WIN32
+#include <string.h>
+#endif
 
 static void stripTrailingAppearance(std::string& base)
 {
@@ -119,4 +126,65 @@ std::string resolveImportPath(const std::string& path)
         treePath = "appearance/" + treePath;
 
     return baseDir + treePath;
+}
+
+namespace
+{
+    std::string normalizeToBackslashDataRoot(std::string base)
+    {
+        if (base.empty())
+            return base;
+        for (auto& c : base)
+        {
+            if (c == '/')
+                c = '\\';
+        }
+        if (base.back() != '\\')
+            base += '\\';
+        return base;
+    }
+
+    std::string fileBasenameOnly(const std::string& p)
+    {
+        const size_t a = p.find_last_of("/\\");
+        return (a == std::string::npos) ? p : p.substr(a + 1);
+    }
+}
+
+std::string getExportedStagingDirectory()
+{
+    std::string base = getImportDataRoot();
+    if (base.empty())
+        return {};
+    return normalizeToBackslashDataRoot(std::move(base)) + "exported\\";
+}
+
+bool mirrorExportToDataRootExported(const std::string& srcAbsolutePath, const std::string& destBasename)
+{
+    if (srcAbsolutePath.empty() || destBasename.empty())
+        return false;
+    if (!MayaUtility::fileExists(srcAbsolutePath))
+        return false;
+    const std::string destDir = getExportedStagingDirectory();
+    if (destDir.empty())
+        return false;
+    MayaUtility::createDirectory(destDir.c_str());
+    const std::string safeName = fileBasenameOnly(destBasename);
+    if (safeName.empty())
+        return false;
+    const std::string dst = destDir + safeName;
+    std::string srcNorm = srcAbsolutePath;
+    std::string dstNorm = dst;
+    for (auto& c : srcNorm)
+        if (c == '/') c = '\\';
+    for (auto& c : dstNorm)
+        if (c == '/') c = '\\';
+#ifdef _WIN32
+    if (_stricmp(srcNorm.c_str(), dstNorm.c_str()) == 0)
+        return true;
+#endif
+    if (!MayaUtility::copyFile(srcAbsolutePath, dst))
+        return false;
+    MGlobal::displayInfo(MString("[export] mirrored to exported: ") + dst.c_str());
+    return true;
 }

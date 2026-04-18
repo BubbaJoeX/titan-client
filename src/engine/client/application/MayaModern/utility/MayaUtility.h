@@ -29,6 +29,10 @@ public:
     /// geometry after combine). Depth-first order among meshes that have at least one material.
     static bool findFirstMeshShapeWithShadersInHierarchy(const MDagPath& root, MDagPath& outMeshPath);
 
+    /// Mesh shapes tagged for viewport-only (e.g. hardpoint 0.5m cubes) are skipped when resolving the
+    /// mesh to export for static mesh (.msh).
+    static bool meshShapeExcludedFromStaticMeshExport(const MDagPath& meshPath);
+
     /// True if a regular file exists at path (Windows: GetFileAttributes).
     static bool fileExists(const std::string& path);
 

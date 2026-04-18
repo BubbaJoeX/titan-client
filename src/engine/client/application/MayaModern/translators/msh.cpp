@@ -37,6 +37,7 @@
 
 #include <ios>
 #include <cstring>
+#include <cctype>
 #include <set>
 #include <string>
 #include <cstdarg>
@@ -45,6 +46,29 @@
 #ifdef _WIN32
 #include <windows.h>
 #endif
+
+namespace
+{
+    /// Parse SwgMsh export dialog options string (see scripts/swgMshExportOptions.mel).
+    bool legacyTriangleFlipFromMshExportOptions(const MString& options)
+    {
+        const char* cs = options.asChar();
+        if (!cs || !cs[0]) return false;
+        std::string str(cs);
+        const std::string key = "legacyTriangleFlip=";
+        size_t pos = 0;
+        while ((pos = str.find(key, pos)) != std::string::npos)
+        {
+            pos += key.size();
+            while (pos < str.size() && (str[pos] == ' ' || str[pos] == '\t'))
+                ++pos;
+            if (pos >= str.size()) continue;
+            const char c = static_cast<char>(std::tolower(static_cast<unsigned char>(str[pos])));
+            return c == '1' || c == 't' || c == 'y';
+        }
+        return false;
+    }
+}
 
 namespace SwgMshImport
 {
@@ -843,9 +867,10 @@ MStatus MshTranslator::writer (const MFileObject& file, const MString& options, 
     }
 
     const char* filePath = file.expandedFullName().asChar();
+    const bool legacyTriFromExportDialog = legacyTriangleFlipFromMshExportOptions(options);
     std::string outMeshPath, outAptPath;
     ExportStaticMesh cmd;
-    if (!cmd.performExport(dagPath, filePath, outMeshPath, outAptPath))
+    if (!cmd.performExport(dagPath, filePath, outMeshPath, outAptPath, false, legacyTriFromExportDialog))
     {
         std::cerr << "[MshTranslator] Export: performExport failed" << std::endl;
         MGlobal::displayError(

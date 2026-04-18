@@ -6,7 +6,9 @@
 #include <maya/MFileObject.h>
 #include <maya/MFn.h>
 #include <maya/MFnDagNode.h>
+#include <maya/MFnDependencyNode.h>
 #include <maya/MFnMesh.h>
+#include <maya/MPlug.h>
 #include <maya/MIntArray.h>
 #include <maya/MObject.h>
 #include <maya/MObjectArray.h>
@@ -157,6 +159,26 @@ bool MayaUtility::hasNodeTypeInHierarchy(const MDagPath& hierarchyRoot, int node
     return hasNodeTypeInHierarchyHelper(hierarchyRoot, nodeType, &found) && found;
 }
 
+bool MayaUtility::meshShapeExcludedFromStaticMeshExport(const MDagPath& meshPath)
+{
+    if (!meshPath.hasFn(MFn::kMesh))
+        return false;
+    MStatus st;
+    MFnDependencyNode dep(meshPath.node(), &st);
+    if (!st)
+        return false;
+    MPlug p = dep.findPlug("swgExcludeFromStaticMeshExport", true, &st);
+    if (p.isNull() || !st)
+        return false;
+    bool b = false;
+    if (p.getValue(b) == MS::kSuccess)
+        return b;
+    int n = 0;
+    if (p.getValue(n) == MS::kSuccess)
+        return n != 0;
+    return false;
+}
+
 namespace
 {
     static bool meshShapeHasConnectedShaders(const MDagPath& meshPath)
@@ -176,6 +198,8 @@ namespace
         MStatus st;
         if (curr.hasFn(MFn::kMesh))
         {
+            if (MayaUtility::meshShapeExcludedFromStaticMeshExport(curr))
+                return false;
             outMeshPath = curr;
             return true;
         }
@@ -205,6 +229,8 @@ namespace
         MStatus st;
         if (curr.hasFn(MFn::kMesh))
         {
+            if (MayaUtility::meshShapeExcludedFromStaticMeshExport(curr))
+                return false;
             if (meshShapeHasConnectedShaders(curr))
             {
                 outMeshPath = curr;

@@ -133,6 +133,16 @@ if %errorlevel% neq 0 goto :cmEnd
 if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/pobAuthoring.mel D:/titan/client/src/engine/client/application/MayaModern/build/Debug/pobAuthoring.mel
 if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgLightsaberToolkit.mel D:/titan/client/src/engine/client/application/MayaModern/build/Debug/swgLightsaberToolkit.mel
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgVehicleToolkit.mel D:/titan/client/src/engine/client/application/MayaModern/build/Debug/swgVehicleToolkit.mel
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgMshExportOptions.mel D:/titan/client/src/engine/client/application/MayaModern/build/Debug/swgMshExportOptions.mel
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgKeepFrameZeroKeys.mel D:/titan/client/src/engine/client/application/MayaModern/build/Debug/swgKeepFrameZeroKeys.mel
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgSplitMeshFourQuadrants.py D:/titan/client/src/engine/client/application/MayaModern/build/Debug/swgSplitMeshFourQuadrants.py
+if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 :cmErrorLevel
@@ -206,6 +216,16 @@ if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgStaticMeshExport.mel D:/titan/client/src/engine/client/application/MayaModern/build/Release/swgStaticMeshExport.mel
 if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/pobAuthoring.mel D:/titan/client/src/engine/client/application/MayaModern/build/Release/pobAuthoring.mel
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgLightsaberToolkit.mel D:/titan/client/src/engine/client/application/MayaModern/build/Release/swgLightsaberToolkit.mel
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgVehicleToolkit.mel D:/titan/client/src/engine/client/application/MayaModern/build/Release/swgVehicleToolkit.mel
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgMshExportOptions.mel D:/titan/client/src/engine/client/application/MayaModern/build/Release/swgMshExportOptions.mel
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgKeepFrameZeroKeys.mel D:/titan/client/src/engine/client/application/MayaModern/build/Release/swgKeepFrameZeroKeys.mel
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgSplitMeshFourQuadrants.py D:/titan/client/src/engine/client/application/MayaModern/build/Release/swgSplitMeshFourQuadrants.py
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -281,6 +301,16 @@ if %errorlevel% neq 0 goto :cmEnd
 if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/pobAuthoring.mel D:/titan/client/src/engine/client/application/MayaModern/build/MinSizeRel/pobAuthoring.mel
 if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgLightsaberToolkit.mel D:/titan/client/src/engine/client/application/MayaModern/build/MinSizeRel/swgLightsaberToolkit.mel
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgVehicleToolkit.mel D:/titan/client/src/engine/client/application/MayaModern/build/MinSizeRel/swgVehicleToolkit.mel
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgMshExportOptions.mel D:/titan/client/src/engine/client/application/MayaModern/build/MinSizeRel/swgMshExportOptions.mel
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgKeepFrameZeroKeys.mel D:/titan/client/src/engine/client/application/MayaModern/build/MinSizeRel/swgKeepFrameZeroKeys.mel
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgSplitMeshFourQuadrants.py D:/titan/client/src/engine/client/application/MayaModern/build/MinSizeRel/swgSplitMeshFourQuadrants.py
+if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 :cmErrorLevel
@@ -353,6 +383,16 @@ if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgStaticMeshExport.mel D:/titan/client/src/engine/client/application/MayaModern/build/RelWithDebInfo/swgStaticMeshExport.mel
 if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/pobAuthoring.mel D:/titan/client/src/engine/client/application/MayaModern/build/RelWithDebInfo/pobAuthoring.mel
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgLightsaberToolkit.mel D:/titan/client/src/engine/client/application/MayaModern/build/RelWithDebInfo/swgLightsaberToolkit.mel
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgVehicleToolkit.mel D:/titan/client/src/engine/client/application/MayaModern/build/RelWithDebInfo/swgVehicleToolkit.mel
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgMshExportOptions.mel D:/titan/client/src/engine/client/application/MayaModern/build/RelWithDebInfo/swgMshExportOptions.mel
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgKeepFrameZeroKeys.mel D:/titan/client/src/engine/client/application/MayaModern/build/RelWithDebInfo/swgKeepFrameZeroKeys.mel
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgSplitMeshFourQuadrants.py D:/titan/client/src/engine/client/application/MayaModern/build/RelWithDebInfo/swgSplitMeshFourQuadrants.py
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -513,6 +553,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\translators\lmg.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\translators\lsb.cpp" />
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\translators\lsb.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\translators\LsbAttributes.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\translators\LsbAttributes.h" />
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\translators\SwgTranslatorNames.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\utility\MayaUtility.cpp" />
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\utility\MayaUtility.h" />
@@ -588,6 +630,22 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ExportStaticMesh.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\PrepareStaticMeshExport.cpp" />
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\PrepareStaticMeshExport.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgAddStaticMeshHardpoint.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgAddStaticMeshHardpoint.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgApplyWavefrontMtl.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgApplyWavefrontMtl.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgReformatMesh.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgReformatMesh.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgMakeLightsaber.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgMakeLightsaber.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgMakeShip.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgMakeShip.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgMakeVehicle.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgMakeVehicle.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgLightsaberToolkit.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgLightsaberToolkit.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgVehicleToolkit.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgVehicleToolkit.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ShaderExporter.cpp" />
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ShaderExporter.h" />
   </ItemGroup>

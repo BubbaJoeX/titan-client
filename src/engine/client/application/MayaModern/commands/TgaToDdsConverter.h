@@ -4,9 +4,10 @@
 #include <string>
 
 /**
- * Converts TGA to DDS using nvtt_export.exe (NVIDIA Texture Tools).
- * Used on export to convert edited TGA textures back to DDS for the game.
- * Requires nvttExporterPath in SwgMayaEditor.cfg, e.g.:
+ * Builds game DDS under textureWriteDir via nvtt_export.exe (PNG/JPG/TGA/etc. → BC3 DDS).
+ * There is no intermediate .tga written to disk unless you enable textureMirrorSourceBesideDds in cfg.
+ * If the source file is already .dds, copies it to the output name (passthrough).
+ * Requires nvttExporterPath in SwgMayaEditor.cfg when converting from raster formats, e.g.:
  *   nvttExporterPath = "D:\\Program Files\\NVIDIA Corporation\\NVIDIA Texture Tools\\nvtt_export.exe"
  */
 class TgaToDdsConverter

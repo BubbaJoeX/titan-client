@@ -31,9 +31,11 @@ extern "C" int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPST
 	//-- install all required systems.
 	SystemInstaller::preMainWindowInstall(hInstance, lpCmdLine);
 
-	//-- create the Qt application object.
-	int    argc = 0;
-	char **argv = 0;
+	// QApplication requires argc>=1 and a non-null argv[0] (program name); null argv crashes some Qt builds.
+	static char s_appExe[] = "AnimationEditor.exe";
+	static char *s_argv[] = { s_appExe, 0 };
+	int argc = 1;
+	char **argv = s_argv;
 
 	QApplication a(argc, argv);
 
@@ -74,8 +76,7 @@ extern "C" int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPST
 	//-- shut down installed systems.
 	SystemInstaller::remove();
 
-	//-- exit the windows application.
-	return (appReturnCode == 0) ? 1 : 0;
+	return appReturnCode;
 } //lint !e818 // lpCmdLine could be pointer to const // yes, but API is immutable.
 
 // ======================================================================

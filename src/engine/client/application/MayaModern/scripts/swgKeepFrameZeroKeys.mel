@@ -1,0 +1,44 @@
+// swgKeepFrameZeroKeys.mel - Strip animation keys except those at frame 0.
+//
+// Usage:
+//   Select transforms / nodes with keys, then:
+//     swgKeepFrameZeroKeys;              // integer timeline: keeps keys on frame 0 only
+//     swgKeepFrameZeroKeysStrict;        // strict: keeps only keys within +/- 0.00001 of time 0
+//
+// Default mode removes keys at time >= 1 and time <= -1, so sub-frame keys between 0 and 1 remain.
+// Strict mode removes everything outside an epsilon around t=0.
+
+global proc swgKeepFrameZeroKeysImpl(int $strict)
+{
+    string $sel[] = `ls -sl`;
+    if (size($sel) == 0)
+    {
+        warning "swgKeepFrameZeroKeys: Select one or more nodes with animation.";
+        return;
+    }
+
+    if ($strict)
+    {
+        cutKey -clear -time "0.00001:" $sel;
+        cutKey -clear -time ":-0.00001" $sel;
+    }
+    else
+    {
+        cutKey -clear -time "1:" $sel;
+        cutKey -clear -time ":-1" $sel;
+    }
+
+    print "swgKeepFrameZeroKeys: removed keys except near frame 0 (strict=";
+    print $strict;
+    print ").\n";
+}
+
+global proc swgKeepFrameZeroKeys()
+{
+    swgKeepFrameZeroKeysImpl(0);
+}
+
+global proc swgKeepFrameZeroKeysStrict()
+{
+    swgKeepFrameZeroKeysImpl(1);
+}

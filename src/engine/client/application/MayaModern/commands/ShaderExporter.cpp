@@ -7,6 +7,9 @@
 #include "Iff.h"
 #include "Tag.h"
 
+#include <maya/MGlobal.h>
+#include <maya/MString.h>
+
 #include <cctype>
 #include <cstdio>
 #include <cstdlib>
@@ -18,6 +21,8 @@ namespace
 {
     const Tag TAG_CSHD = TAG(C,S,H,D);
     const Tag TAG_SSHT = TAG(S,S,H,T);
+    const Tag TAG_PASS = TAG(P,A,S,S);
+    const Tag TAG_DATA = TAG(D,A,T,A);
     const Tag TAG_NAME = TAG(N,A,M,E);
     const Tag TAG_TXMS = TAG(T,X,M,S);
     const Tag TAG_TXM = TAG3(T,X,M);
@@ -203,7 +208,39 @@ namespace
         return std::string("texture/") + baseName + ".dds";
     }
 
-    static void copyIffRecursive(Iff& src, Iff& dest, bool insideTxm, Tag txmInnerVersion, CopyTxmOpts* txmOpts)
+    /// Byte offset of m_alphaBlendEnable in PASS/<ver>/DATA (ShaderImplementationPass::load_0000..0010).
+    static int alphaBlendEnableByteOffsetInPassData(Tag passVer)
+    {
+        if (passVer == TAG_0000)
+            return 6;
+        if (passVer == TAG_0001)
+            return 10;
+        if (passVer == TAG_0002 || passVer == TAG_0003 || passVer == TAG_0004)
+            return 8;
+        if (passVer == TAG_0005 || passVer == TAG_0006 || passVer == TAG_0007 || passVer == TAG_0008 || passVer == TAG_0009)
+            return 7;
+        if (passVer == TAG_0010)
+            return 8;
+        return -1;
+    }
+
+    static void patchPassDataChunkAlphaBlendEnable(unsigned char* buf, int len, Tag passVer)
+    {
+        const int off = alphaBlendEnableByteOffsetInPassData(passVer);
+        if (off < 0 || len <= off)
+            return;
+        buf[off] = 1;
+    }
+
+    static void copyIffRecursive(
+        Iff& src,
+        Iff& dest,
+        bool insideTxm,
+        Tag txmInnerVersion,
+        CopyTxmOpts* txmOpts,
+        bool patchPassForTransparent,
+        bool passNextChildIsVersionTag,
+        Tag passVersionTag)
     {
         while (src.getNumberOfBlocksLeft() > 0)
         {
@@ -218,7 +255,28 @@ namespace
                 if (insideTxm && (formTag == TAG_0000 || formTag == TAG_0001 || formTag == TAG_0002))
                     childTxmVer = formTag;
 
-                copyIffRecursive(src, dest, newInsideTxm, childTxmVer, txmOpts);
+                Tag nextPassVer = passVersionTag;
+                bool nextPassChild = passNextChildIsVersionTag;
+                if (formTag == TAG_PASS)
+                {
+                    nextPassChild = true;
+                    nextPassVer = 0;
+                }
+                else if (passNextChildIsVersionTag)
+                {
+                    nextPassVer = formTag;
+                    nextPassChild = false;
+                }
+
+                copyIffRecursive(
+                    src,
+                    dest,
+                    newInsideTxm,
+                    childTxmVer,
+                    txmOpts,
+                    patchPassForTransparent,
+                    nextPassChild,
+                    nextPassVer);
 
                 dest.exitForm(formTag);
                 src.exitForm(formTag);
@@ -278,9 +336,11 @@ namespace
                     dest.insertChunk(chunkTag);
                     if (len > 0)
                     {
-                        std::vector<char> buf(static_cast<size_t>(len));
-                        src.read_char(len, buf.data());
-                        dest.insertChunkData(buf.data(), len);
+                        std::vector<unsigned char> buf(static_cast<size_t>(len));
+                        src.read_char(len, reinterpret_cast<char*>(buf.data()));
+                        if (chunkTag == TAG_DATA && patchPassForTransparent && passVersionTag != 0 && !insideTxm)
+                            patchPassDataChunkAlphaBlendEnable(buf.data(), len, passVersionTag);
+                        dest.insertChunkData(reinterpret_cast<const char*>(buf.data()), len);
                     }
                     dest.exitChunk(chunkTag);
                 }
@@ -290,9 +350,9 @@ namespace
         }
     }
 
-    static void copyIffWithContext(Iff& src, Iff& dest, CopyTxmOpts* txmOpts)
+    static void copyIffWithContext(Iff& src, Iff& dest, CopyTxmOpts* txmOpts, bool patchPassForTransparent)
     {
-        copyIffRecursive(src, dest, false, 0, txmOpts);
+        copyIffRecursive(src, dest, false, 0, txmOpts, patchPassForTransparent, false, 0);
     }
 
     static std::string normalizeShaderRelPath(std::string relPath)
@@ -342,10 +402,21 @@ namespace
         return false;
     }
 
-    static std::string resolvePrototypeShtPath(const std::string& userOverride, bool hueable)
+    static std::string resolvePrototypeShtPath(const std::string& userOverride, bool hueable, bool transparent)
     {
         if (!userOverride.empty())
             return userOverride;
+        if (transparent)
+        {
+            const char* envT = getenv("TITAN_SHADER_PROTOTYPE_TRANSPARENT_SHT");
+            if (envT && envT[0])
+                return std::string(envT);
+            const char* cfgT = ConfigFile::getKeyString("SwgMayaEditor", "shaderPrototypeTransparentSht", "");
+            if (cfgT && cfgT[0])
+                return std::string(cfgT);
+            std::cerr << "[ShaderExporter] Transparent export: no shaderPrototypeTransparentSht / "
+                         "TITAN_SHADER_PROTOTYPE_TRANSPARENT_SHT — using opaque prototype with PASS alpha-blend patch.\n";
+        }
         if (hueable)
         {
             const char* envH = getenv("TITAN_SHADER_PROTOTYPE_HUEABLE_SHT");
@@ -364,7 +435,8 @@ namespace
         return std::string("shader/defaultshader.sht");
     }
 
-    static std::string writeClonedShaderIff(Iff& src, const std::string& outputShaderTreeRel, CopyTxmOpts* txmOpts)
+    static std::string writeClonedShaderIff(
+        Iff& src, const std::string& outputShaderTreeRel, CopyTxmOpts* txmOpts, bool patchPassForTransparent)
     {
         const char* shaderWriteDir = SetDirectoryCommand::getDirectoryString(SetDirectoryCommand::SHADER_TEMPLATE_WRITE_DIR_INDEX);
         if (!shaderWriteDir || !shaderWriteDir[0])
@@ -395,7 +467,7 @@ namespace
             Tag verTag = src.getCurrentName();
             src.enterForm(verTag);
             dest.insertForm(verTag);
-            copyIffWithContext(src, dest, txmOpts);
+            copyIffWithContext(src, dest, txmOpts, patchPassForTransparent);
             dest.exitForm(verTag);
             src.exitForm(verTag);
             dest.exitForm(TAG_SSHT);
@@ -408,7 +480,7 @@ namespace
             Tag verTag = src.getCurrentName();
             src.enterForm(verTag);
             dest.insertForm(verTag);
-            copyIffWithContext(src, dest, txmOpts);
+            copyIffWithContext(src, dest, txmOpts, patchPassForTransparent);
             dest.exitForm(verTag);
             src.exitForm(verTag);
             dest.exitForm(TAG_CSHD);
@@ -444,7 +516,7 @@ std::string ShaderExporter::exportShader(const std::string& sourceShaderPath)
         return std::string();
     }
 
-    std::string out = writeClonedShaderIff(src, sourceShaderPath, nullptr);
+    std::string out = writeClonedShaderIff(src, sourceShaderPath, nullptr, false);
     src.close();
     return out;
 }
@@ -458,6 +530,7 @@ std::string ShaderExporter::publishDiffuseTextureForGame(const std::string& abso
     if (!textureWriteDir || !textureWriteDir[0])
     {
         std::cerr << "[ShaderExporter] textureWriteDir not set (setBaseDir)\n";
+        MGlobal::displayError("[ShaderExporter] textureWriteDir not set — run setBaseDir before export so textures publish to texture/");
         return std::string();
     }
 
@@ -465,8 +538,40 @@ std::string ShaderExporter::publishDiffuseTextureForGame(const std::string& abso
     if (!texDir.empty() && texDir.back() != '/' && texDir.back() != '\\')
         texDir += '\\';
     std::string ddsOutputPath = texDir + treeBaseNameNoExt + ".dds";
-    if (TgaToDdsConverter::convertToDds(absoluteSourceImagePath, ddsOutputPath).empty())
+    const std::string converted = TgaToDdsConverter::convertToDds(absoluteSourceImagePath, ddsOutputPath);
+    if (converted.empty())
+    {
+        MGlobal::displayError(MString("[ShaderExporter] Failed to publish DDS from ") + absoluteSourceImagePath.c_str() +
+                               " — see Script Editor [TgaToDds] lines (nvtt path, image format).");
         return std::string();
+    }
+
+    // Optional: mirror source beside .dds so artists see what was converted (no separate .tga stage — PNG/JPG go straight to nvtt).
+    const char* mirrorCfg = ConfigFile::getKeyString("SwgMayaEditor", "textureMirrorSourceBesideDds", "0");
+    const bool mirror = mirrorCfg && mirrorCfg[0] && (mirrorCfg[0] == '1' || strcmp(mirrorCfg, "true") == 0 ||
+                                                       strcmp(mirrorCfg, "yes") == 0 || strcmp(mirrorCfg, "on") == 0);
+    if (mirror)
+    {
+        size_t dot = absoluteSourceImagePath.find_last_of('.');
+        if (dot != std::string::npos && dot < absoluteSourceImagePath.size() - 1)
+        {
+            const std::string extWithDot = absoluteSourceImagePath.substr(dot);
+            const std::string mirrorPath = texDir + treeBaseNameNoExt + "_src" + extWithDot;
+            if (MayaUtility::copyFile(absoluteSourceImagePath, mirrorPath))
+            {
+                MGlobal::displayInfo(MString("[ShaderExporter] Mirrored source for inspection: ") + mirrorPath.c_str());
+            }
+        }
+    }
+
+    {
+        const std::string rel = std::string("texture/") + treeBaseNameNoExt + ".dds";
+        MString infoMsg("[ShaderExporter] Published ");
+        infoMsg += rel.c_str();
+        infoMsg += " from ";
+        infoMsg += absoluteSourceImagePath.c_str();
+        MGlobal::displayInfo(infoMsg);
+    }
     return std::string("texture/") + treeBaseNameNoExt + ".dds";
 }
 
@@ -480,12 +585,13 @@ std::string ShaderExporter::exportShaderClonedFromPrototype(
     const std::string& prototypeShtPathOverride,
     const std::string& diffuseTextureTreePathNoExt,
     bool hueable,
-    bool bindPublishedDiffuseToAllTxmSlots)
+    bool bindPublishedDiffuseToAllTxmSlots,
+    bool transparent)
 {
     if (outputShaderTreeRel.empty())
         return std::string();
 
-    const std::string proto = resolvePrototypeShtPath(prototypeShtPathOverride, hueable);
+    const std::string proto = resolvePrototypeShtPath(prototypeShtPathOverride, hueable, transparent);
 
     Iff src;
     std::string triedPath;
@@ -507,7 +613,7 @@ std::string ShaderExporter::exportShaderClonedFromPrototype(
         optsPtr = &opts;
     }
 
-    std::string out = writeClonedShaderIff(src, outputShaderTreeRel, optsPtr);
+    std::string out = writeClonedShaderIff(src, outputShaderTreeRel, optsPtr, transparent);
     src.close();
 
     if (!out.empty() && optsPtr && optsPtr->txmPublishedApplyCount == 0)

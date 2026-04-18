@@ -63,7 +63,7 @@ setBaseDir "D:\\exported";
 
 Creates and configures:
 
-- `appearance\`, `shader\`, `texture\`, `animation\`, `skeleton\`, `mesh\`, `log\`
+- `appearance\`, `shader\`, `texture\`, `animation\`, `skeleton\`, `mesh\`, `log\`, `exported\`
 - Reference prefixes for tree paths (e.g. `appearance/`, `shader/`, `texture/`)
 
 ### getDataRootDir
@@ -283,12 +283,24 @@ exportStaticMesh -name "custom_name";
 
 **Selection**: Select a mesh (or its transform).
 
+**Hardpoints**: Add child transforms under the **mesh parent** (same level as the mesh shape’s transform). Each transform except `floor_component` and the vehicle authoring group `hardpoints` is written as HPNT (name, position, rotation only—no extra mesh geometry). To place a hardpoint with a **0.5 m viewport cube** that is **not** baked into the `.msh`, select the static mesh and run `swgAddStaticMeshHardpoint -n my_hp` (creates `hp_my_hp` and a cube shape tagged `swgExcludeFromStaticMeshExport`). You can tag any preview-only mesh shape with that attribute so `exportStaticMesh` / `swgPrepareStaticMeshExport` / `swgReformatMesh` ignore it when resolving export geometry. Imported `.msh` hardpoints get the same preview cube when rebuilt in the scene.
+
 **Output**:
 
 - `.msh` – MESH/0005 with geometry, hardpoints, shader groups
 - APPR/FLOR – If the mesh transform has a child `floor_component` with string attribute `floorPath` (from `.msh` import), that path is written into the floor reference chunk on export.
 - `.apt` – Redirect to mesh (in `appearanceWriteDir`)
-- `.sht` – Shaders with TGA→DDS conversion (in `shaderTemplateWriteDir`)
+- `.sht` – Shaders with image→DDS conversion via **nvtt** (in `shaderTemplateWriteDir`)
+
+### OBJ / Wavefront `.mtl` (auto → DDS + `.sht`)
+
+Maya’s OBJ importer loads the companion `**.mtl`** and builds shading networks **file texture → surface shader → shading group**. You do **not** need a separate step for that. `**exportStaticMesh`** walks those networks (including common intermediate nodes like `**bump2d**`) to find the diffuse image, **writes `texture/<mesh>_d.dds`** (and per-slot names when multimaterial), **clones the prototype `.sht`**, etc.
+
+**Important — no intermediate `.tga` on disk:** The plug-in converts **PNG / JPG / TGA / …** straight to `**.dds`** using `**nvtt_export.exe**` (NVIDIA Texture Tools). Nothing creates a sibling `.tga` unless you enable `**textureMirrorSourceBesideDds=1**` in **SwgMayaEditor.cfg**, which copies the **original** diffuse file beside the `.dds` as `**texture/<name>_src.png`** (or `.jpg`, etc.) for debugging. Configure `**nvttExporterPath**` to your installed `nvtt_export.exe`; if it is missing or fails, Script Editor lines `**[TgaToDds]**` / `**[ShaderExporter]**` explain the failure (the viewer then falls back to placeholder art). If the diffuse on disk is already `**.dds**`, it is **copied** to the published name.
+
+Configure `**setBaseDir`** so `**textureWriteDir**` / `**shaderTemplateWriteDir**` are set; keep **shader/defaultshader.sht** (or `**shaderPrototypeSht`**) available as elsewhere in this guide.
+
+**Optional** `**swgApplyWavefrontMtl`** — only if you need to **force** `**swgShaderPath`** / `**swgTexturePath**` from a `.mtl` on disk (e.g. broken file paths after moving files). Normal OBJ→export flow uses Maya’s networks only.
 
 ### exportPob
 
@@ -310,21 +322,52 @@ exportPob -i "appearance/building/cantina";
 ### Skeletal mesh, animation, LOD, and SAT export (status)
 
 
-| Goal                   | SwgMayaEditor                                                   | Notes                                                                                           |
-| ---------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `.mgn` (SKMG)          | **Import** and **Export** supported via File > Export Selection | Select a skinned mesh bound to a skeleton. Exports skin weights, UVs, normals, per-shader data. Optional `swgShipBundlePaths` on the mesh parent copies extra IFFs next to the `.mgn` (see below). |
-| `.lsb` (LSAT)          | **Import** and **Export** supported via File > Import / Export | Lightsaber appearance template: one transform with `swgLsb*` string/long attributes (import creates them). |
-| `.ans` (keyframe anim) | **Import** and **Export** supported via File > Export Selection | Exports KFAT (uncompressed) format. Captures delta rotations/translations from bind pose.       |
-| `.lod` (MLOD)          | **Import** and **Export** supported                             | Select transform with `swgLodChildren` attribute (from import) to re-export LOD container.      |
-| `.lmg` (MLOD)          | **Import** and **Export** supported                             | Select transform with `swgLmgChildren` attribute (from import) to re-export LMG container.      |
-| `.sat`                 | **Import** via `importSat`; **Export** via `ExportSat` command  | Export writes skeleton reference and mesh LOD references from scene hierarchy.                  |
+| Goal                   | SwgMayaEditor                                                   | Notes                                                                                                                                                                                                                                                        |
+| ---------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `.mgn` (SKMG)          | **Import** and **Export** supported via File > Export Selection | Select a skinned mesh bound to a skeleton. Exports skin weights, UVs, normals, per-shader data. Optional `swgShipBundlePaths` (spacecraft) or `swgVehicleBundlePaths` (ground vehicles) on the mesh parent copies extra IFFs next to the `.mgn` (see below). |
+| `.lsb` (LSAT)          | **Import** and **Export** supported via File > Import / Export  | Lightsaber template: **per-field** attrs; **import also loads the hilt `.apt`/mesh** from **Hilt appearance path** (BASE) under the LSB root via `importLodMesh`. Legacy string attrs still work on export if present.                                       |
+| `.ans` (keyframe anim) | **Import** and **Export** supported via File > Export Selection | Exports KFAT (uncompressed) format. Captures delta rotations/translations from bind pose.                                                                                                                                                                    |
+| `.lod` (MLOD)          | **Import** and **Export** supported                             | Select transform with `swgLodChildren` attribute (from import) to re-export LOD container.                                                                                                                                                                   |
+| `.lmg` (MLOD)          | **Import** and **Export** supported                             | Select transform with `swgLmgChildren` attribute (from import) to re-export LMG container.                                                                                                                                                                   |
+| `.sat`                 | **Import** via `importSat`; **Export** via `ExportSat` command  | Export writes skeleton reference and mesh LOD references from scene hierarchy.                                                                                                                                                                               |
 
 
 All file types now support round-trip editing. Use **File > Export Selection** with the appropriate file type filter.
 
-### MGN export: ship / cockpit IFF bundles
+### MGN export: optional bundle IFFs (ships vs ground vehicles)
 
-On the **parent transform** of the skinned mesh (the transform above the mesh shape), you can add a string attribute **`swgShipBundlePaths`**: one or more **data-root-relative tree paths** (or absolute paths), separated by **semicolons** or **newlines**. After a successful `.mgn` write, the plug-in resolves each path with the same rules as other imports (`setBaseDir` / `TITAN_DATA_ROOT`, etc.) and **copies** each file into the **same folder as the exported `.mgn`**, using the file’s basename. Missing sources produce a script editor warning; copy failures are warned but do not roll back the `.mgn`.
+On the **parent transform** of the skinned mesh (the transform above the mesh shape), add **one or both** string attributes, depending on asset type:
+
+- `**swgShipBundlePaths`** — **Spacecraft / starships** (cockpit and other ship IFFs the client references). Same semantics as before.
+- `**swgVehicleBundlePaths`** — **Ground vehicles** (speeders, walkers, etc.); separate authoring path from ships. `**swgMakeVehicle`** creates this attribute on `**swgVehicle_geo**`.
+
+Each attribute holds one or more **data-root-relative tree paths** (or absolute paths), separated by **semicolons** or **newlines**. After a successful `.mgn` write, the plug-in resolves each path like other imports (`setBaseDir` / `TITAN_DATA_ROOT`, etc.) and **copies** each file into the **same folder as the exported `.mgn`**, using the file’s basename. The same sources are also copied into `**<dataRoot>/exported/**` (see below). Missing sources produce a script editor warning; copy failures are warned but do not roll back the `.mgn`.
+
+**Export staging (`exported/`)**: `setBaseDir` creates an `**exported`** folder under your base path. For any configured **data root** (`getDataRootDir` / `TITAN_DATA_ROOT` / `setBaseDir`), successful `**.mgn`**, bundle IFF, and `**.lsb`** writes are **mirrored** into `**<dataRoot>\\exported\\`** with the same basename so client-relevant files collect in one place alongside your chosen export path.
+
+### Authoring: `swgMakeShip`, `swgMakeVehicle`, and `swgMakeLightsaber`
+
+- `**swgMakeShip`** — **Spacecraft** rig: `**|…|swgShip_geo`** (string attribute `**swgShipBundlePaths**`), `**|…|swgShip_skeleton|swgShip_root**`, empty geo group. Parent your skinned hull under `**swgShip_geo**`, bind to the skeleton, fill bundle paths, then export `**.mgn**` with **SwgMgn**. Optional: `swgMakeShip -n myShip` (alphanumeric / underscore root name).
+- `**swgMakeVehicle`** — **Ground vehicle** rig (not a ship): `**|…|swgVehicle_geo`** (`**swgVehicleBundlePaths**`), `**|…|swgVehicle_skeleton|swgVehicle_root**`, `**seat_0` … `seat_{n-1}**` under `**swgVehicle_root**`, empty `**hardpoints**` under the root, and `**swgVehicleSeatCount**` on the root. Use **one seat** for a single occupant; **two or more** for multi-passenger (`**seat_0`** = primary / driver). Flags: `swgMakeVehicle -n myVehicle -seats 4` (seats **1–16**). Export `**.mgn`** like any skinned mesh; bundle copying uses `**swgVehicleBundlePaths**`.
+- `**swgMakeLightsaber`** — Creates a **capped cylinder** (0.1 m diameter, 0.6 m height, Y-up) and installs the **granular** `swgLsb`* attribute set (categories in the Attribute Editor: **LSB / Core**, **LGHT Flicker**, **BLAD blade N**). Optional: `swgMakeLightsaber -n myLsb`. Fill **Hilt appearance path** and blade **Shader** fields before export; export IFF matches the client LSAT layout.
+
+### `swgVehicleToolkit` — Vehicle suite UI
+
+Run `**swgVehicleToolkit`** (with **SwgMayaEditor** loaded) to open **SWG Vehicle Toolkit**:
+
+- **Create vehicle rig** — runs `swgMakeVehicle` with the **root name** and **seat count** from the window (presets for 1, 2, or 4 seats). Spacecraft use `**swgMakeShip`** separately (not from this window).
+
+Requires `**getDataRootDir**` / `setBaseDir` for the data-root line (same as other toolkits).
+
+### `swgLightsaberToolkit` — Lightsaber suite UI
+
+Run `**swgLightsaberToolkit**` (with **SwgMayaEditor** loaded) to open **SWG Lightsaber Toolkit**:
+
+- **Create lightsaber base** — same as `swgMakeLightsaber`.
+- **Import .lsb** — file dialog + `file -import -type "SwgLsb"` (hilt APT is imported automatically as above).
+- **View blade / Hide blade / Refresh** — builds a **preview cylinder** child `swgLsb_bladePreview` under the LSB transform, sized from `**swgLsbBlade0Length`** and `**swgLsbBlade0Width**` (select the LSB root or any descendant). Hide toggles visibility only.
+
+Requires `**getDataRootDir**` / `setBaseDir` so hilt and APT paths resolve.
 
 ---
 
@@ -335,19 +378,19 @@ Use Maya's **File > Import** or **File > Export** with these file types. The **F
 **Do not use `SAT_ATF` for SWG `.sat` files.** In Maya, `SAT_ATF` is the **ACIS solid** SAT importer. SWG skeletal appearance templates are imported with type `**SwgSat`** (this plugin).
 
 
-| Extension   | MEL `-type` (register name) | Files of type label (`filter()`) | Import | Export |
-| ----------- | --------------------------- | -------------------------------- | ------ | ------ |
-| .mgn        | `SwgMgn`                    | SWG skeletal mesh (*.mgn)        | Yes    | Yes    |
+| Extension   | MEL `-type` (register name) | Files of type label (`filter()`)  | Import | Export |
+| ----------- | --------------------------- | --------------------------------- | ------ | ------ |
+| .mgn        | `SwgMgn`                    | SWG skeletal mesh (*.mgn)         | Yes    | Yes    |
 | .lsb        | `SwgLsb`                    | SWG lightsaber appearance (*.lsb) | Yes    | Yes    |
-| .msh / .apt | `SwgMsh`                    | SWG static mesh (*.msh *.apt)    | Yes    | Yes    |
-| .skt        | `SwgSkt`                    | SWG skeleton (*.skt)             | Yes    | Yes    |
-| .ans        | `SwgAns`                    | SWG animation (*.ans)            | Yes    | Yes    |
-| .flr        | `SwgFlr`                    | SWG floor (*.flr)                | Yes    | No     |
-| .sat        | `SwgSat`                    | SWG skeletal appearance (*.sat)  | Yes    | Yes    |
-| .pob        | `SwgPob`                    | SWG portal object (*.pob)        | Yes    | Yes    |
-| .lod        | `SwgLod`                    | SWG LOD container (*.lod)        | Yes    | Yes    |
-| .lmg        | `SwgLmg`                    | SWG skeletal LOD (*.lmg)         | Yes    | Yes    |
-| .dds        | `SwgDds`                    | SWG DDS texture (*.dds)          | Yes    | No     |
+| .msh / .apt | `SwgMsh`                    | SWG static mesh (*.msh *.apt)     | Yes    | Yes    |
+| .skt        | `SwgSkt`                    | SWG skeleton (*.skt)              | Yes    | Yes    |
+| .ans        | `SwgAns`                    | SWG animation (*.ans)             | Yes    | Yes    |
+| .flr        | `SwgFlr`                    | SWG floor (*.flr)                 | Yes    | No     |
+| .sat        | `SwgSat`                    | SWG skeletal appearance (*.sat)   | Yes    | Yes    |
+| .pob        | `SwgPob`                    | SWG portal object (*.pob)         | Yes    | Yes    |
+| .lod        | `SwgLod`                    | SWG LOD container (*.lod)         | Yes    | Yes    |
+| .lmg        | `SwgLmg`                    | SWG skeletal LOD (*.lmg)          | Yes    | Yes    |
+| .dds        | `SwgDds`                    | SWG DDS texture (*.dds)           | Yes    | No     |
 
 
 Constants live in `translators/SwgTranslatorNames.h`: `swg_translator::kType`* for scripts, `swg_translator::kFilter`* for the dialog strings.
@@ -372,6 +415,15 @@ Reverts the scene to bind pose. Useful before exporting skeletons or when animat
 swgRevertToBindPose;
 ```
 
+### swgReformatMesh
+
+Isolates the **selected** polygon mesh(es) for a clean static-mesh workflow: deletes **every other polygon mesh** in the scene, then **groups** the remaining top-level mesh roots under a new transform (default `**swgStaticMesh`**). Shading on kept meshes is preserved; **unused** shading nodes are pruned via Hypershade’s delete-unused step. Does **not** remove cameras, lights, or non-mesh DAG nodes—only polygon meshes not in the selection.
+
+```mel
+swgReformatMesh;
+swgReformatMesh -root myStaticRoot;
+```
+
 ### swgAssetDissector
 
 Opens the asset dissector UI (if `swgAssetDissector.mel` is available).
@@ -386,6 +438,14 @@ Opens a UI with **Categories** (top-level folders under `appearance/animation`),
 
 ```mel
 swgAnimationBrowser;
+```
+
+### swgLightsaberToolkit
+
+Opens **SWG Lightsaber Toolkit**: create saber base, import `.lsb`, and blade preview (details under **Authoring** above).
+
+```mel
+swgLightsaberToolkit;
 ```
 
 ### Statueize (`swgStatueize.mel`) — optional look-dev

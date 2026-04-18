@@ -757,6 +757,16 @@ MStatus MayaSceneBuilder::createHardpoints(
         engineQuatToMayaEuler(hd.rotation, 0, hrx, hry, hrz);
         MEulerRotation hpEuler(hrx, hry, hrz);
         transformFn.setRotation(hpEuler.asQuaternion(), MSpace::kTransform);
+
+        const MString mel = MString("string $p[] = `polyCube -w 0.5 -h 0.5 -d 0.5 -ax 0 1 0`;\n") + "parent $p[0] \"" +
+                            transformFn.fullPathName() +
+                            "\";\n"
+                            "string $s[] = `listRelatives -f -s $p[0]`;\n"
+                            "if (`size $s` > 0) {\n"
+                            "  catchQuiet(`addAttr -ln swgExcludeFromStaticMeshExport -at bool -dv 1 $s[0]`);\n"
+                            "  catchQuiet(`setAttr ($s[0] + \".swgExcludeFromStaticMeshExport\") 1`);\n"
+                            "}\n";
+        MGlobal::executeCommand(mel, false, true);
     }
     return MS::kSuccess;
 }

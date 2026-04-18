@@ -10,6 +10,8 @@
 
 // ======================================================================
 
+#include "clientGame/Game.h"
+
 class QTimer;
 class QPopupMenu;
 class GroundScene;
@@ -31,7 +33,7 @@ class GameWidget : public QWidget, public MessageDispatch::Receiver
 
 public:
 
-	explicit GameWidget(QWidget *parent, const char *name, const char * configFileName, WFlags const flags = 0);
+	explicit GameWidget(QWidget *parent, const char *name, const char * configFileName, WFlags const flags = 0, Game::Application application = Game::A_particleEditor);
 	virtual ~GameWidget();
 
 	void receiveMessage(const MessageDispatch::Emitter & source, const MessageDispatch::MessageBase & message);

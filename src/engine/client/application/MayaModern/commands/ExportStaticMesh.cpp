@@ -9,6 +9,7 @@
 #include "Quaternion.h"
 #include "Tag.h"
 #include "Vector.h"
+#include "ConfigFile.h"
 
 #include <maya/MArgList.h>
 #include <maya/MDagPath.h>
@@ -17,6 +18,7 @@
 #include <maya/MFnMesh.h>
 #include <maya/MFnTransform.h>
 #include <maya/MGlobal.h>
+#include <maya/MItDependencyGraph.h>
 #include <maya/MItMeshPolygon.h>
 #include <maya/MObject.h>
 #include <maya/MFloatPointArray.h>
@@ -80,6 +82,105 @@ namespace
         int n = 0;
         if (p.getValue(n) == MS::kSuccess) return n != 0;
         return false;
+    }
+
+    static bool getTransparentOverrideFromSg(MFnDependencyNode& sgFn)
+    {
+        if (stringTruthy(getStringAttr(sgFn, "swgTransparent"))) return true;
+        MPlug p = sgFn.findPlug("swgTransparent", true);
+        if (p.isNull()) return false;
+        bool b = false;
+        if (p.getValue(b) == MS::kSuccess) return b;
+        int n = 0;
+        if (p.getValue(n) == MS::kSuccess) return n != 0;
+        return false;
+    }
+
+    /// StandardSurface / aiStandardSurface: opacity 1 = opaque; lower or connected => blend.
+    static bool opacityPlugIndicatesTransparency(MPlug op)
+    {
+        if (op.isNull()) return false;
+        MPlugArray con;
+        op.connectedTo(con, true, false);
+        if (con.length() > 0) return true;
+        if (op.isCompound())
+        {
+            double mn = 1.0;
+            const unsigned nc = op.numChildren();
+            const unsigned lim = nc < 3u ? nc : 3u;
+            for (unsigned i = 0; i < lim; ++i)
+            {
+                double v = 1.0;
+                op.child(i).getValue(v);
+                if (v < mn) mn = v;
+            }
+            return mn < 0.999;
+        }
+        double s = 1.0;
+        op.getValue(s);
+        return s < 0.999;
+    }
+
+    /// Lambert / Phong / Blinn: transparency (0,0,0)=opaque; white=transparent; connection => blend.
+    static bool surfaceShaderIndicatesTransparency(MFnDependencyNode& surfaceFn)
+    {
+        const MString typ = surfaceFn.typeName();
+
+        if (typ == MString("standardSurface") || typ == MString("aiStandardSurface"))
+        {
+            MPlug op = surfaceFn.findPlug("opacity", true);
+            if (!op.isNull() && opacityPlugIndicatesTransparency(op)) return true;
+            MPlug mat = surfaceFn.findPlug("matteOpacity", true);
+            if (!mat.isNull() && opacityPlugIndicatesTransparency(mat)) return true;
+            return false;
+        }
+
+        MPlug tr = surfaceFn.findPlug("transparency", true);
+        if (tr.isNull()) return false;
+        MPlugArray con;
+        tr.connectedTo(con, true, false);
+        if (con.length() > 0) return true;
+        if (tr.isCompound())
+        {
+            double mx = 0.0;
+            const unsigned nc = tr.numChildren();
+            const unsigned lim = nc < 3u ? nc : 3u;
+            for (unsigned i = 0; i < lim; ++i)
+            {
+                double v = 0.0;
+                tr.child(i).getValue(v);
+                if (v > mx) mx = v;
+            }
+            return mx > 1e-4;
+        }
+        return false;
+    }
+
+    static bool shadingGroupIndicatesTransparency(MObject shadingGroupObj)
+    {
+        MStatus st;
+        MFnDependencyNode sgFn(shadingGroupObj, &st);
+        if (!st) return false;
+        if (getTransparentOverrideFromSg(sgFn)) return true;
+
+        MPlug surfPlug = sgFn.findPlug("surfaceShader", true);
+        if (surfPlug.isNull()) return false;
+        MPlugArray scon;
+        surfPlug.connectedTo(scon, true, false);
+        if (scon.length() == 0) return false;
+        MFnDependencyNode surfaceFn(scon[0].node(), &st);
+        if (!st) return false;
+        return surfaceShaderIndicatesTransparency(surfaceFn);
+    }
+
+    static bool diffuseImagePathOftenHasAlphaFile(const std::string& absPath)
+    {
+        size_t dot = absPath.find_last_of('.');
+        if (dot == std::string::npos || dot + 1 >= absPath.size()) return false;
+        std::string ext = absPath.substr(dot + 1);
+        for (char& c : ext)
+            c = static_cast<char>(tolower(static_cast<unsigned char>(c)));
+        return ext == "png" || ext == "tga" || ext == "tif" || ext == "tiff";
     }
 
     static bool looksLikeFilesystemImagePathLocal(const std::string& p)
@@ -639,6 +740,14 @@ namespace
         if (t == MString("aiImage"))
             return tryReadAiImageTexturePath(fn, outPath);
 
+        if (t == MString("bump2d"))
+        {
+            MPlug b = fn.findPlug("bumpValue", true);
+            if (!b.isNull() && tracePlugIntoTextureGraph(b, outPath, depth))
+                return true;
+            return false;
+        }
+
         if (t == MString("multiplyDivide"))
         {
             static const char* mdAttrs[] = { "input1", "input2" };
@@ -763,6 +872,93 @@ namespace
         return false;
     }
 
+    static void collectUpstreamFileTextureNodes(const MObject& rootNode, std::vector<MObject>& outFiles)
+    {
+        outFiles.clear();
+        if (rootNode.isNull()) return;
+        MStatus st;
+        MObject root = rootNode;
+        MItDependencyGraph dgIt(root, MFn::kFileTexture, MItDependencyGraph::kUpstream,
+            MItDependencyGraph::kBreadthFirst, MItDependencyGraph::kNodeLevel, &st);
+        if (!st) return;
+        for (; !dgIt.isDone(); dgIt.next())
+        {
+            MObject o = dgIt.currentItem(&st);
+            if (!st || o.isNull()) continue;
+            bool dup = false;
+            for (const MObject& e : outFiles)
+            {
+                if (e == o)
+                {
+                    dup = true;
+                    break;
+                }
+            }
+            if (!dup) outFiles.push_back(o);
+        }
+    }
+
+    /// OBJ / kitbash graphs sometimes insert nodes we do not traverse; filenames like *_normal* are usually not diffuse.
+    static bool basenameLooksLikeAuxTexture(const std::string& absPath)
+    {
+        std::string base = absPath;
+        size_t slash = base.find_last_of("/\\");
+        if (slash != std::string::npos) base = base.substr(slash + 1);
+        std::string lower;
+        lower.reserve(base.size());
+        for (unsigned char uc : base)
+            lower += static_cast<char>(tolower(uc));
+        if (lower.find("normal") != std::string::npos) return true;
+        if (lower.find("rough") != std::string::npos) return true;
+        if (lower.find("metal") != std::string::npos) return true;
+        if (lower.find("orm") != std::string::npos) return true;
+        if (lower.find("bump") != std::string::npos) return true;
+        if (lower.find("height") != std::string::npos) return true;
+        if (lower.find("disp") != std::string::npos) return true;
+        const size_t dot = lower.rfind('.');
+        if (dot >= 2 && dot != std::string::npos && lower[dot - 2] == '_' &&
+            (lower[dot - 1] == 'n' || lower[dot - 1] == 'N'))
+            return true;
+        return false;
+    }
+
+    static bool tryPickDiffusePathFromUpstreamFileNodes(const std::vector<MObject>& files, std::string& outPath)
+    {
+        std::vector<std::string> paths;
+        paths.reserve(files.size());
+        for (const MObject& o : files)
+        {
+            if (o.isNull()) continue;
+            MFnDependencyNode fn(o);
+            std::string path;
+            if (!tryReadFileOrMovieTexturePath(fn, path)) continue;
+            paths.push_back(std::move(path));
+        }
+        if (paths.empty()) return false;
+
+        auto tryPick = [&](bool allowAux) -> bool {
+            int best = -1;
+            std::string bestPath;
+            for (const std::string& path : paths)
+            {
+                if (!allowAux && basenameLooksLikeAuxTexture(path)) continue;
+                int sc = fileExistsForBundle(path) ? 100 : 0;
+                if (!basenameLooksLikeAuxTexture(path)) sc += 50;
+                if (sc > best)
+                {
+                    best = sc;
+                    bestPath = path;
+                }
+            }
+            if (bestPath.empty()) return false;
+            outPath = std::move(bestPath);
+            return true;
+        };
+
+        if (tryPick(false)) return true;
+        return tryPick(true);
+    }
+
     /// Follow shadingEngine -> surfaceShader -> diffuse/baseColor -> file / aiImage / layeredTexture chain.
     static bool tryGetDiffuseImageAbsolutePath(MObject shadingGroupObj, std::string& outPath)
     {
@@ -780,7 +976,12 @@ namespace
 
         MPlug src = diffuseSourcePlugFromSurface(surfaceFn);
         if (src.isNull()) return false;
-        return traceTextureSourceGraph(src.node(), outPath, 0);
+        if (traceTextureSourceGraph(src.node(), outPath, 0))
+            return true;
+
+        std::vector<MObject> upstreamFiles;
+        collectUpstreamFileTextureNodes(src.node(), upstreamFiles);
+        return tryPickDiffusePathFromUpstreamFileNodes(upstreamFiles, outPath);
     }
 
     static bool traceTextureUvSetGraph(const MObject& nodeObj, MString& outUvSet, int depth);
@@ -984,6 +1185,28 @@ namespace
         return false;
     }
 
+    /// Old behavior: reverse triangle vertex order vs Maya's getTriangles(). Helped some OBJ imports but breaks SWG-imported
+    /// meshes (textures read as inside-out vs viewport). Opt-in via command flag, mesh attr, or cfg (see useLegacyTriangleOrder).
+    static bool legacyTriangleFlipFromMeshShape(MFnMesh& meshFn)
+    {
+        MStatus st;
+        MFnDependencyNode meshDep(meshFn.object(), &st);
+        if (!st) return false;
+        MPlug p = meshDep.findPlug("swgLegacyTriangleFlip", true);
+        if (p.isNull()) return false;
+        bool b = false;
+        if (p.getValue(b) != MS::kSuccess) return false;
+        return b;
+    }
+
+    static bool useLegacyTriangleOrder(bool legacyFromCommand, bool legacyFromExportDialog, MFnMesh& meshFn)
+    {
+        if (legacyFromCommand) return true;
+        if (legacyFromExportDialog) return true;
+        if (legacyTriangleFlipFromMeshShape(meshFn)) return true;
+        return ConfigFile::getKeyBool("SwgMayaEditor", "staticMeshLegacyTriangleFlip", false);
+    }
+
     /// Prefer Maya current UV set (viewport / UV editor); else unanimous diffuse file uvSetName; else map1; else first listed.
     static MString chooseExportUvSetName(MFnMesh& meshFn, const MObjectArray& shaderObjs, const MIntArray& faceToShader)
     {
@@ -1051,6 +1274,7 @@ MStatus ExportStaticMesh::doIt(const MArgList& args)
     MStatus status;
     std::string outputPath;
     std::string meshName;
+    bool legacyTriangleFlipCmd = false;
 
     for (unsigned i = 0; i < args.length(&status); ++i)
     {
@@ -1067,6 +1291,10 @@ MStatus ExportStaticMesh::doIt(const MArgList& args)
         {
             meshName = args.asString(i + 1, &status).asChar();
             if (status) ++i;
+        }
+        else if (argName == "-legacyTriangleFlip" || argName == "-legacyTriFlip")
+        {
+            legacyTriangleFlipCmd = true;
         }
     }
 
@@ -1112,7 +1340,7 @@ MStatus ExportStaticMesh::doIt(const MArgList& args)
     }
 
     std::string outMeshPath, outAptPath;
-    if (!performExport(dagPath, outputPath, outMeshPath, outAptPath))
+    if (!performExport(dagPath, outputPath, outMeshPath, outAptPath, legacyTriangleFlipCmd, false))
         return MS::kFailure;
 
     MGlobal::displayInfo(MString("Exported mesh: ") + outMeshPath.c_str());
@@ -1122,7 +1350,8 @@ MStatus ExportStaticMesh::doIt(const MArgList& args)
 }
 
 bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::string& outputPathOverride,
-    std::string& outMeshPath, std::string& outAptPath)
+    std::string& outMeshPath, std::string& outAptPath, bool legacyTriangleFlipFromCmd,
+    bool legacyTriangleFlipFromFileDialog)
 {
     MStatus status;
     outMeshPath.clear();
@@ -1140,6 +1369,9 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
         std::cerr << "ExportStaticMesh: MFnMesh failed" << std::endl;
         return false;
     }
+
+    const bool legacyTriangleOrder =
+        useLegacyTriangleOrder(legacyTriangleFlipFromCmd, legacyTriangleFlipFromFileDialog, meshFn);
 
     MDagPath transformPath = shapePath;
     if (transformPath.hasFn(MFn::kMesh))
@@ -1312,9 +1544,20 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
             uint16_t i1 = addVert(v1, static_cast<float>(u1), static_cast<float>(v1_), n1);
             uint16_t i2 = addVert(v2, static_cast<float>(u2), static_cast<float>(v2_), n2);
 
-            sg.indices.push_back(i0);
-            sg.indices.push_back(i1);
-            sg.indices.push_back(i2);
+            // Default: Maya / getTriangles order — matches viewport for SWG-imported meshes and swgApplyWavefrontMtl texturing.
+            // Legacy: swap two vertices (old OBJ workaround); opt in via -legacyTriangleFlip, swgLegacyTriangleFlip on mesh, or cfg staticMeshLegacyTriangleFlip.
+            if (legacyTriangleOrder)
+            {
+                sg.indices.push_back(i0);
+                sg.indices.push_back(i2);
+                sg.indices.push_back(i1);
+            }
+            else
+            {
+                sg.indices.push_back(i0);
+                sg.indices.push_back(i1);
+                sg.indices.push_back(i2);
+            }
         }
     }
 
@@ -1440,8 +1683,20 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
             if (geomMaterialCount > 1)
                 outShaderTree += "_sg" + std::to_string(si);
 
+            std::string diffuseAbsForAlpha = absImage;
+            if (diffuseAbsForAlpha.empty())
+            {
+                const std::string swgTexPath = getStringAttr(sgFn, "swgTexturePath");
+                if (looksLikeFilesystemImagePathLocal(swgTexPath))
+                    diffuseAbsForAlpha = swgTexPath;
+            }
+            const bool fileAlphaHint =
+                !diffuseAbsForAlpha.empty() && diffuseImagePathOftenHasAlphaFile(diffuseAbsForAlpha);
+            const bool transparent =
+                shadingGroupIndicatesTransparency(shaderObjs[si]) || fileAlphaHint;
+
             const std::string cloned = ShaderExporter::exportShaderClonedFromPrototype(
-                outShaderTree, swgShaderPrototype, texTree, hue, !texTree.empty());
+                outShaderTree, swgShaderPrototype, texTree, hue, !texTree.empty(), transparent);
             if (!cloned.empty())
             {
                 if (!verifyShaderExportArtifacts(cloned, texTree, outShaderTree))
@@ -1451,6 +1706,7 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
                 std::cerr << "[ExportStaticMesh] Rebuilt shader: " << outShaderTree
                           << " proto=" << (swgShaderPrototype.empty() ? "<default>" : swgShaderPrototype.c_str())
                           << " hueable=" << (hue ? "yes" : "no")
+                          << " transparent=" << (transparent ? "yes" : "no")
                           << " tex=" << (texTree.empty() ? "<prototype>" : texTree.c_str()) << "\n";
                 pushUniquePath(exportedShaderAbsPaths, cloned);
                 MGlobal::displayInfo(
@@ -1513,6 +1769,11 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
 
             MString hpName = childTransform.name(&status);
             if (!status) continue;
+
+            MString hpNameLower = hpName;
+            hpNameLower.toLowerCase();
+            if (hpNameLower == "hardpoints")
+                continue;
 
             if (hpName == "floor_component")
             {

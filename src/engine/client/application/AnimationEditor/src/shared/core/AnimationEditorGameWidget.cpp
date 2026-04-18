@@ -15,7 +15,7 @@
 // ======================================================================
 
 AnimationEditorGameWidget::AnimationEditorGameWidget(QWidget* theParent, char const * theName, WFlags const flags)
-: GameWidget(theParent, theName, "AnimationEditor.cfg", flags)
+: GameWidget(theParent, theName, "AnimationEditor.cfg", flags, Game::A_animationEditor)
 {
 }
 

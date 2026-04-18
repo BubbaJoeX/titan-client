@@ -1,5 +1,7 @@
 #include "PrepareStaticMeshExport.h"
 
+#include "MayaUtility.h"
+
 #include <maya/MArgList.h>
 #include <maya/MDagPath.h>
 #include <maya/MFnDependencyNode.h>
@@ -34,7 +36,8 @@ namespace
 
             if (path.hasFn(MFn::kMesh))
             {
-                outMeshShapes.add(path);
+                if (!MayaUtility::meshShapeExcludedFromStaticMeshExport(path))
+                    outMeshShapes.add(path);
                 continue;
             }
 
@@ -50,7 +53,8 @@ namespace
                 {
                     MDagPath meshPath(path);
                     meshPath.push(child);
-                    outMeshShapes.add(meshPath);
+                    if (!MayaUtility::meshShapeExcludedFromStaticMeshExport(meshPath))
+                        outMeshShapes.add(meshPath);
                 }
             }
         }

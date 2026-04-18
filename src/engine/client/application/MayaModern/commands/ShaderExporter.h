@@ -25,6 +25,8 @@ public:
     /// Prototype: prototypeShtPathOverride if non-empty; else SwgMayaEditor.cfg / env (see below).
     /// When hueable: TITAN_SHADER_PROTOTYPE_HUEABLE_SHT, then shaderPrototypeHueableSht, then same as non-hueable.
     /// Non-hueable: TITAN_SHADER_PROTOTYPE_SHT, shaderPrototypeSht, shader/defaultshader.sht.
+    /// Transparent (alpha blend): optional TITAN_SHADER_PROTOTYPE_TRANSPARENT_SHT / shaderPrototypeTransparentSht (clone that .sht as-is).
+    /// If unset, clones the normal opaque prototype and enables alpha blending on PASS/DATA so the viewer sorts/blends like Maya.
     /// If diffuseTextureTreePathNoExt is non-empty (e.g. "texture/myasset_d.dds"), replaces TXM NAME chunk(s); if empty, copies prototype textures unchanged.
     /// When bindPublishedDiffuseToAllTxmSlots is true (static mesh bake), every TXM NAME gets the published path so the viewer does not keep a default slot.
     static std::string exportShaderClonedFromPrototype(
@@ -32,7 +34,8 @@ public:
         const std::string& prototypeShtPathOverride,
         const std::string& diffuseTextureTreePathNoExt,
         bool hueable = false,
-        bool bindPublishedDiffuseToAllTxmSlots = false);
+        bool bindPublishedDiffuseToAllTxmSlots = false,
+        bool transparent = false);
 };
 
 #endif

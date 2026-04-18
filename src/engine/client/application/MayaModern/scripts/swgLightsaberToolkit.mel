@@ -1,0 +1,125 @@
+// SWG Lightsaber Toolkit — creation helpers, blade preview, LSB import.
+
+global proc string swgLsabTkFindLsbRoot() {
+    string $sel[] = `ls -sl -flatten`;
+    if (`size $sel` < 1) {
+        warning "Select a lightsaber transform (or any child).";
+        return "";
+    }
+    string $p = $sel[0];
+    if (`nodeType $p` != "transform") {
+        string $pp[] = `listRelatives -fullPath -parent $p`;
+        if (`size $pp`) $p = $pp[0];
+    }
+    int $guard = 0;
+    while (`size $p` > 0 && $guard < 256) {
+        $guard++;
+        if (`attributeExists "swgLsbHiltPath" $p`)
+            return $p;
+        string $pp[] = `listRelatives -fullPath -parent $p`;
+        if (!`size $pp`) break;
+        $p = $pp[0];
+    }
+    warning "No swgLsbHiltPath on selection hierarchy. Import an .lsb or run swgMakeLightsaber.";
+    return "";
+}
+
+global proc float swgLsabTkGetFloatAttr(string $node, string $attr, float $def) {
+    string $ap = $node + "." + $attr;
+    if (`attributeExists $attr $node`)
+        return `getAttr $ap`;
+    return $def;
+}
+
+global proc swgLsabTkDeletePreview(string $root) {
+    string $path = $root + "|swgLsb_bladePreview";
+    if (`objExists $path`)
+        delete $path;
+}
+
+global proc swgLsabTkBuildPreview(string $root) {
+    swgLsabTkDeletePreview($root);
+    float $len = swgLsabTkGetFloatAttr($root, "swgLsbBlade0Length", 1.8);
+    float $wid = swgLsabTkGetFloatAttr($root, "swgLsbBlade0Width", 0.15);
+    if ($len <= 0) $len = 1.8;
+    if ($wid <= 0) $wid = 0.15;
+    float $rad = $wid * 0.5;
+    string $pc[] = `polyCylinder -r $rad -h $len -sx 10 -sy 1 -sz 1 -ax 0 1 0`;
+    string $t = $pc[0];
+    parent $t $root;
+    rename $t "swgLsb_bladePreview";
+    string $full = $root + "|swgLsb_bladePreview";
+    move -relative -objectSpace 0 ($len * 0.5) 0 $full;
+    sets -e -forceElement initialShadingGroup ($full + "Shape");
+}
+
+global proc swgLightsaberToolkitViewBlade() {
+    string $root = swgLsabTkFindLsbRoot();
+    if (`size $root` == 0) return;
+    swgLsabTkBuildPreview($root);
+    string $prev = $root + "|swgLsb_bladePreview";
+    if (`objExists $prev`) {
+        setAttr ($prev + ".visibility") 1;
+        select -r $prev;
+    }
+}
+
+global proc swgLightsaberToolkitHideBlade() {
+    string $root = swgLsabTkFindLsbRoot();
+    if (`size $root` == 0) return;
+    string $prev = $root + "|swgLsb_bladePreview";
+    if (`objExists $prev`)
+        setAttr ($prev + ".visibility") 0;
+    else
+        warning "No blade preview. Use View blade first.";
+}
+
+global proc swgLightsaberToolkitRefreshBlade() {
+    string $root = swgLsabTkFindLsbRoot();
+    if (`size $root` == 0) return;
+    swgLsabTkBuildPreview($root);
+    string $prev = $root + "|swgLsb_bladePreview";
+    setAttr ($prev + ".visibility") 1;
+    select -r $prev;
+}
+
+global proc swgLightsaberToolkitImportLsb() {
+    string $f[] = `fileDialog2 -fileMode 1 -caption "Import LSB" -fileFilter "LSB (*.lsb)"`;
+    if (`size $f` < 1) return;
+    string $path = $f[0];
+    file -import -type "SwgLsb" -ignoreVersion -ra true -mergeNamespacesOnClash false $path;
+}
+
+global proc swgLightsaberToolkitShow() {
+    if (`window -exists swgLightsaberToolkitWin`)
+        deleteUI swgLightsaberToolkitWin;
+
+    window -t "SWG Lightsaber Toolkit" swgLightsaberToolkitWin;
+    columnLayout -adjustableColumn true -rowSpacing 6 -columnAttach "both" 8 -cw 360;
+
+    text -label "All-in-one: create a saber, import .lsb (hilt APT loads automatically), preview blade size." -align "left" -wordWrap true -width 340;
+    separator -height 8 -style "none";
+
+    string $dr = `getDataRootDir`;
+    text -label ("Data root: " + $dr) -align "left" -font "smallPlainLabelFont";
+
+    button -label "Create lightsaber base (cylinder + LSB attributes)" -c "swgMakeLightsaber;";
+    button -label "Import .lsb file (loads hilt APT under LSB root)" -c "swgLightsaberToolkitImportLsb;";
+
+    separator -height 4 -style "in";
+
+    text -label "Blade preview (uses swgLsbBlade0 length/width):" -align "left" -font "boldLabelFont";
+    text -label "Select the LSB transform or any child, then:" -align "left";
+
+    rowLayout -numberOfColumns 2 -columnWidth2 170 170 -columnAlign2 "center" "center" -columnAttach2 "both" "both";
+    button -label "View blade" -c "swgLightsaberToolkitViewBlade;";
+    button -label "Hide blade" -c "swgLightsaberToolkitHideBlade;";
+    setParent ..;
+
+    button -label "Refresh blade from attributes" -c "swgLightsaberToolkitRefreshBlade;";
+
+    separator -height 6 -style "none";
+    text -label "Export: File > Export Selection, type SwgLsb. Set paths in Extra Attributes first." -align "left" -wordWrap true -width 340;
+
+    showWindow swgLightsaberToolkitWin;
+}

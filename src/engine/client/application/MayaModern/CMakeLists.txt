@@ -135,6 +135,8 @@ set(SOURCE_FILES
         translators/lmg.h
         translators/lsb.cpp
         translators/lsb.h
+        translators/LsbAttributes.cpp
+        translators/LsbAttributes.h
         translators/SwgTranslatorNames.h
 
         utility/MayaUtility.cpp
@@ -212,6 +214,22 @@ set(SOURCE_FILES
         commands/ExportStaticMesh.h
         commands/PrepareStaticMeshExport.cpp
         commands/PrepareStaticMeshExport.h
+        commands/SwgAddStaticMeshHardpoint.cpp
+        commands/SwgAddStaticMeshHardpoint.h
+        commands/SwgApplyWavefrontMtl.cpp
+        commands/SwgApplyWavefrontMtl.h
+        commands/SwgReformatMesh.cpp
+        commands/SwgReformatMesh.h
+        commands/SwgMakeLightsaber.cpp
+        commands/SwgMakeLightsaber.h
+        commands/SwgMakeShip.cpp
+        commands/SwgMakeShip.h
+        commands/SwgMakeVehicle.cpp
+        commands/SwgMakeVehicle.h
+        commands/SwgLightsaberToolkit.cpp
+        commands/SwgLightsaberToolkit.h
+        commands/SwgVehicleToolkit.cpp
+        commands/SwgVehicleToolkit.h
         commands/ShaderExporter.cpp
         commands/ShaderExporter.h
         )
@@ -267,6 +285,21 @@ add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_CURRENT_SOURCE_DIR}/scripts/pobAuthoring.mel
         $<TARGET_FILE_DIR:${CMAKE_PROJECT_NAME}>/pobAuthoring.mel
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_CURRENT_SOURCE_DIR}/scripts/swgLightsaberToolkit.mel
+        $<TARGET_FILE_DIR:${CMAKE_PROJECT_NAME}>/swgLightsaberToolkit.mel
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_CURRENT_SOURCE_DIR}/scripts/swgVehicleToolkit.mel
+        $<TARGET_FILE_DIR:${CMAKE_PROJECT_NAME}>/swgVehicleToolkit.mel
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_CURRENT_SOURCE_DIR}/scripts/swgMshExportOptions.mel
+        $<TARGET_FILE_DIR:${CMAKE_PROJECT_NAME}>/swgMshExportOptions.mel
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_CURRENT_SOURCE_DIR}/scripts/swgKeepFrameZeroKeys.mel
+        $<TARGET_FILE_DIR:${CMAKE_PROJECT_NAME}>/swgKeepFrameZeroKeys.mel
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_CURRENT_SOURCE_DIR}/scripts/swgSplitMeshFourQuadrants.py
+        $<TARGET_FILE_DIR:${CMAKE_PROJECT_NAME}>/swgSplitMeshFourQuadrants.py
     COMMENT "Copying MEL scripts to plugin directory"
 )
 
@@ -288,6 +321,21 @@ if(SWG_MAYA_PLUGIN_INSTALL_DIR)
             "${SWG_MAYA_PLUGIN_INSTALL_DIR}"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             ${CMAKE_CURRENT_SOURCE_DIR}/scripts/pobAuthoring.mel
+            "${SWG_MAYA_PLUGIN_INSTALL_DIR}"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${CMAKE_CURRENT_SOURCE_DIR}/scripts/swgLightsaberToolkit.mel
+            "${SWG_MAYA_PLUGIN_INSTALL_DIR}"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${CMAKE_CURRENT_SOURCE_DIR}/scripts/swgVehicleToolkit.mel
+            "${SWG_MAYA_PLUGIN_INSTALL_DIR}"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${CMAKE_CURRENT_SOURCE_DIR}/scripts/swgMshExportOptions.mel
+            "${SWG_MAYA_PLUGIN_INSTALL_DIR}"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${CMAKE_CURRENT_SOURCE_DIR}/scripts/swgKeepFrameZeroKeys.mel
+            "${SWG_MAYA_PLUGIN_INSTALL_DIR}"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${CMAKE_CURRENT_SOURCE_DIR}/scripts/swgSplitMeshFourQuadrants.py
             "${SWG_MAYA_PLUGIN_INSTALL_DIR}"
         DEPENDS ${CMAKE_PROJECT_NAME}
         COMMENT "Deploy SwgMayaEditor.mll + MEL to SWG_MAYA_PLUGIN_INSTALL_DIR (close Maya if copy fails)"
