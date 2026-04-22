@@ -12,6 +12,7 @@
 #include "sharedDebug/DebugMonitor.h"
 #include "sharedDebug/InstallTimer.h"
 #include "sharedDebug/Profiler.h"
+#include "sharedDebug/Report.h"
 
 #include "sharedFoundation/ApplicationVersion.h"
 #include "sharedFoundation/Clock.h"
@@ -28,6 +29,7 @@
 #include "sharedFoundation/MemoryBlockManager.h"
 #include "sharedFoundation/Watcher.h"
 #include "sharedLog/TailFileLogObserver.h"
+#include "sharedFoundation/WindowsWrapper.h"
 
 #include <eh.h>
 #include <cstdio>
@@ -45,6 +47,29 @@ namespace SetupSharedFoundationNamespace
 	LONG __stdcall MyUnhandledExceptionFilter(LPEXCEPTION_POINTERS exceptionPointers);
 
 	bool  ms_writeMiniDumps;
+}
+
+// Optional: [SharedFoundation] logStartupMilestones=1 — use ODS only (do not use REPORT_LOG here;
+// the Report path can block or re-enter other init while DebugMonitor / log file is half-ready).
+static void logSetupMilestone(const char *msg)
+{
+	if (ConfigFile::isEmpty())
+		return;
+	if (!ConfigFile::getKeyBool("SharedFoundation", "logStartupMilestones", false))
+		return;
+	char buf[512];
+	_snprintf_s(buf, sizeof(buf), _TRUNCATE, "[Titan] milestone: SetupSharedFoundation: %s", msg);
+	OutputDebugStringA(buf);
+	OutputDebugStringA("\r\n");
+}
+
+// Unconditional: visible in DebugView / VS output without .cfg (pinpoints which step blocks)
+// Single OutputDebugString (avoids empty-looking lines in some viewers; keep strings 7-bit ASCII)
+static void titanStartupOds(const char *step)
+{
+	char line[320];
+	_snprintf_s(line, sizeof(line), _TRUNCATE, "[Titan] startup: %s\r\n", step ? step : "");
+	OutputDebugStringA(line);
 }
 
 using namespace SetupSharedFoundationNamespace;
@@ -269,17 +294,31 @@ void SetupSharedFoundation::install(const Data &data)
 #endif
 
 	MemoryBlockManager::install (ConfigSharedFoundation::getMemoryBlockManagerDebugDumpOnRemove ());
+	titanStartupOds("SetupSharedFoundation: after MemoryBlockManager::install");
 
 	ExitChain::install();
+	titanStartupOds("SetupSharedFoundation: after ExitChain::install");
 	Report::install();
+	titanStartupOds("SetupSharedFoundation: after Report::install");
 	Clock::install(data.clockUsesSleep, data.clockUsesRecalibrationThread);
+	titanStartupOds("SetupSharedFoundation: after Clock::install");
+	logSetupMilestone("after Clock::install");
 	CrashReportInformation::install();
+	titanStartupOds("SetupSharedFoundation: after CrashReportInformation::install");
 	RegistryKey::install(data.productRegistryKey);
-
+	titanStartupOds("SetupSharedFoundation: after RegistryKey::install");
+	titanStartupOds("entering logSetupMilestone(RegistryKey) - no-op if logStartupMilestones off");
+	logSetupMilestone("after RegistryKey::install");
+	titanStartupOds("before PersistentCrcString::install (allocates 5x MemoryBlockManager)");
 	PersistentCrcString::install();
+	titanStartupOds("after PersistentCrcString::install");
+	titanStartupOds("before CrcLowerString::install");
 	CrcLowerString::install();
-
+	titanStartupOds("after CrcLowerString::install");
+	titanStartupOds("before WatchedByList::install");
 	WatchedByList::install();
+	titanStartupOds("after WatchedByList::install");
+	titanStartupOds("calling Os::install (D_game: createWindow path, RegisterClass+CreateWindow)");
 
 	if (data.createWindow)
 	{
@@ -293,10 +332,15 @@ void SetupSharedFoundation::install(const Data &data)
 		else
 			Os::install();
 	}
+	titanStartupOds("SetupSharedFoundation: after Os::install");
+
+	logSetupMilestone("after Os::install");
 
 	StaticCallbackEntry::install();
+	titanStartupOds("SetupSharedFoundation: after StaticCallbackEntry::install");
 
 	setFatalVersionString();
+	titanStartupOds("SetupSharedFoundation::install complete");
 }
 
 // ----------------------------------------------------------------------

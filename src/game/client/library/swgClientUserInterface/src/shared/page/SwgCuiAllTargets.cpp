@@ -534,7 +534,7 @@ void SwgCuiAllTargets::update(const Camera & camera)
 						int64 const value = tangible->getNetworkId().getValue();
 						unsigned const long procId = tangible->getAuthServerProcessId();
 						
-						snprintf(buffer, sizeof(buffer), "(%d) "INT64_FORMAT_SPECIFIER, procId, value);
+						snprintf(buffer, sizeof(buffer), "(%d) " INT64_FORMAT_SPECIFIER, procId, value);
 						
 						status->setDebugInformation(buffer);
 					}

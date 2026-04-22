@@ -1,0 +1,5 @@
+# CMake generation dependency list for this directory.
+C:/Program Files/CMake/share/cmake-4.3/Modules/CMakeParseArguments.cmake
+C:/Program Files/CMake/share/cmake-4.3/Modules/CheckCXXCompilerFlag.cmake
+D:/titan/client/src/external/3rd/library/openal-soft/upstream/fmt-11.2.0/CMakeLists.txt
+D:/titan/client/src/external/3rd/library/openal-soft/upstream/fmt-11.2.0/support/cmake/JoinPaths.cmake

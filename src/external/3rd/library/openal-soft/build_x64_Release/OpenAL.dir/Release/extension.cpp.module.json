@@ -1,0 +1,13 @@
+{
+    "version": 1,
+    "revision": 0,
+    "rules": [
+        {
+            "primary-output": "OpenAL.dir\\Release\\extension.obj",
+            "outputs": [
+                "OpenAL.dir\\Release\\"
+            ],
+            "requires": []
+        }
+    ]
+}

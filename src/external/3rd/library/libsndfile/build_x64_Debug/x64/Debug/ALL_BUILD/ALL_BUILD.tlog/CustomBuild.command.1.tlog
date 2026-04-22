@@ -1,0 +1,10 @@
+^D:\TITAN\CLIENT\SRC\EXTERNAL\3RD\LIBRARY\LIBSNDFILE\UPSTREAM\CMAKELISTS.TXT
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SD:/titan/client/src/external/3rd/library/libsndfile/upstream -BD:/titan/client/src/external/3rd/library/libsndfile/build_x64_Debug --check-stamp-file D:/titan/client/src/external/3rd/library/libsndfile/build_x64_Debug/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

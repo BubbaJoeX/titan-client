@@ -1,0 +1,21 @@
+{
+    "version": 1,
+    "revision": 0,
+    "rules": [
+        {
+            "primary-output": "alsoft.core-modules.dir\\Release\\logging.obj",
+            "outputs": [
+                "alsoft.core-modules.dir\\Release\\",
+                "alsoft.core-modules.dir\\Release\\logging.ifc"
+            ],
+            "provides": [
+                {
+                    "logical-name": "logging",
+                    "source-path": "d:\\titan\\client\\src\\external\\3rd\\library\\openal-soft\\upstream\\core\\logging.cppm",
+                    "is-interface": true
+                }
+            ],
+            "requires": []
+        }
+    ]
+}

@@ -1,0 +1,21 @@
+{
+    "version": 1,
+    "revision": 0,
+    "rules": [
+        {
+            "primary-output": "OpenAL.dir\\Debug\\auxeffectslot.obj",
+            "outputs": [
+                "D:\\titan\\client\\src\\external\\3rd\\library\\openal-soft\\build_x64_Debug\\OpenAL.dir\\Debug\\vc143.pdb",
+                "OpenAL.dir\\Debug\\"
+            ],
+            "requires": [
+                {
+                    "logical-name": "format.types"
+                },
+                {
+                    "logical-name": "logging"
+                }
+            ]
+        }
+    ]
+}

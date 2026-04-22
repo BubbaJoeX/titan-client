@@ -14,6 +14,10 @@
 #include "sharedFoundation/MemoryBlockManager.h"
 #include "sharedFoundation/Os.h"
 
+#if defined(PLATFORM_WIN32)
+#include "sharedFoundation/WindowsWrapper.h"
+#endif
+
 // ======================================================================
 
 namespace PersistentCrcStringNamespace
@@ -37,6 +41,9 @@ PersistentCrcString const PersistentCrcString::empty("", CC_true);
 
 void PersistentCrcString::install()
 {
+#if defined(PLATFORM_WIN32)
+	OutputDebugStringA("[Titan] startup: PersistentCrcString::install entered\r\n");
+#endif
 	ms_memoryBlockManager8  = new MemoryBlockManager("PersistentCrcString8",  true,  8, 0, 0, 0);
 	ms_memoryBlockManager16 = new MemoryBlockManager("PersistentCrcString16", true, 16, 0, 0, 0);
 	ms_memoryBlockManager32 = new MemoryBlockManager("PersistentCrcString32", true, 32, 0, 0, 0);

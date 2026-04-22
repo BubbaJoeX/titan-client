@@ -68,8 +68,8 @@ const char * ApplicationVersion::getPublicVersion()
 char const * ApplicationVersion::getInternalVersion()
 {
 	if (!isBranded())
-		return "unknown.0";
-
+		// Unstamped / dev builds: marker at brandOffset is not '1' (no post-link branding step)
+		return "Titan-x64-dev";
 	return ms_version + versionOffset;
 }
 

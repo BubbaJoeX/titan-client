@@ -25,6 +25,7 @@
 #include "sharedThread/RunThread.h"
 #include "sharedThread/ThreadHandle.h"
 #include <string>
+#include <time.h>
 
 #ifdef PLATFORM_WIN32 //@todo code reorg
 #include "sharedFoundation/WindowsWrapper.h"
@@ -130,9 +131,19 @@ void Clock::install(bool newUseSleep, bool useRecalibrationThread)
 	DebugFlags::registerFlag(ms_useRecalibrationThread, "SharedFoundation", "useClockRecalibrationThread");
 #endif
 
-	time_t t = 0;
-	localtime(&t);
-	ms_timeZone = timezone;
+	// POSIX `timezone` is not available in MSVC/UCRT; _get_timezone returns
+	// the same offset in seconds (non-Windows still uses the legacy global).
+#if defined(PLATFORM_WIN32)
+	long _tz;
+	errno_t const tzerr = _get_timezone(&_tz);
+	ms_timeZone = (tzerr == 0) ? static_cast<int>(_tz) : 0;
+#else
+	{
+		time_t t = 0;
+		localtime(&t);
+		ms_timeZone = timezone;
+	}
+#endif
 	if(ms_timeZone < (12 * 60 * 60))
 	{
 		ms_timeZone = -ms_timeZone;

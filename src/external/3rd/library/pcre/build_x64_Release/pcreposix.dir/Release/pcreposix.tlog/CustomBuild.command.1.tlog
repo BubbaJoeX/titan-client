@@ -1,0 +1,10 @@
+^D:\TITAN\CLIENT\SRC\EXTERNAL\3RD\LIBRARY\PCRE\PCRE-8.45\CMAKELISTS.TXT
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SD:/titan/client/src/external/3rd/library/pcre/pcre-8.45 -BD:/titan/client/src/external/3rd/library/pcre/build_x64_Release --check-stamp-file D:/titan/client/src/external/3rd/library/pcre/build_x64_Release/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

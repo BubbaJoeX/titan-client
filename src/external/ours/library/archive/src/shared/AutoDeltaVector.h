@@ -70,10 +70,10 @@ public:
 	static void        unpack        (ReadIterator & source, std::vector<Command> & data);
 	static void        unpackDelta   (ReadIterator & source, std::vector<Command> & data);
 
-	void               setOnChanged  (ObjectType * owner, void (ObjectType::*onChanged)());
-	void               setOnErase    (ObjectType * owner, void (ObjectType::*onErase)(const unsigned int, const ValueType &));
-	void               setOnInsert   (ObjectType * owner, void (ObjectType::*onInsert)(const unsigned int, const ValueType &));
-	void               setOnSet      (ObjectType * owner, void (ObjectType::*onSet)(const unsigned int, const ValueType &, const ValueType &));
+	void               setOnChanged  (ObjectType * objectPtr, void (ObjectType::*onChanged)());
+	void               setOnErase    (ObjectType * objectPtr, void (ObjectType::*onErase)(const unsigned int, const ValueType &));
+	void               setOnInsert   (ObjectType * objectPtr, void (ObjectType::*onInsert)(const unsigned int, const ValueType &));
+	void               setOnSet      (ObjectType * objectPtr, void (ObjectType::*onSet)(const unsigned int, const ValueType &, const ValueType &));
 
 	const size_t       size          () const;
 	bool               empty         () const;
@@ -307,9 +307,9 @@ inline void AutoDeltaVector<ValueType, ObjectType>::onChanged()
 	{
 		if(onChangedCallback->first)
 		{
-			ObjectType & owner = *onChangedCallback->first;
+			ObjectType & objectRef = *onChangedCallback->first;
 			void (ObjectType::*cb)() = onChangedCallback->second;
-			(owner.*cb)();
+			(objectRef.*cb)();
 		}
 	}
 }
@@ -323,9 +323,9 @@ inline void AutoDeltaVector<ValueType, ObjectType>::onErase(const unsigned int e
 	{
 		if(onEraseCallback->first)
 		{
-			ObjectType & owner = *onEraseCallback->first;
+			ObjectType & objectRef = *onEraseCallback->first;
 			void (ObjectType::*cb)(const unsigned int, const ValueType &) = onEraseCallback->second;
-			(owner.*cb)(element, oldValue);
+			(objectRef.*cb)(element, oldValue);
 		}
 	}
 }
@@ -339,9 +339,9 @@ inline void AutoDeltaVector<ValueType, ObjectType>::onInsert(const unsigned int 
 	{
 		if(onInsertCallback->first)
 		{
-			ObjectType & owner = *onInsertCallback->first;
+			ObjectType & objectRef = *onInsertCallback->first;
 			void (ObjectType::*cb)(const unsigned int, const ValueType &) = onInsertCallback->second;
-			(owner.*cb)(element, newValue);
+			(objectRef.*cb)(element, newValue);
 		}
 	}
 }
@@ -355,9 +355,9 @@ inline void AutoDeltaVector<ValueType, ObjectType>::onSet(const unsigned int ele
 	{
 		if(onSetCallback->first)
 		{
-			ObjectType & owner = *onSetCallback->first;
+			ObjectType & objectRef = *onSetCallback->first;
 			void (ObjectType::*cb)(const unsigned int, const ValueType &, const ValueType &) = onSetCallback->second;
-			(owner.*cb)(element, oldValue, newValue);
+			(objectRef.*cb)(element, oldValue, newValue);
 		}
 	}
 }
@@ -556,44 +556,44 @@ inline void AutoDeltaVector<ValueType, ObjectType>::set(const VectorType & newVa
 //-----------------------------------------------------------------------
 
 template<typename ValueType, typename ObjectType>
-inline void AutoDeltaVector<ValueType, ObjectType>::setOnChanged(ObjectType * owner, void (ObjectType::*cb)())
+inline void AutoDeltaVector<ValueType, ObjectType>::setOnChanged(ObjectType * objectPtr, void (ObjectType::*cb)())
 {
 	delete onChangedCallback;
 	onChangedCallback = new std::pair<ObjectType *, void (ObjectType::*)()>;
-	onChangedCallback->first = owner;
+	onChangedCallback->first = objectPtr;
 	onChangedCallback->second = cb;
 }
 
 //-----------------------------------------------------------------------
 
 template<typename ValueType, typename ObjectType>
-inline void AutoDeltaVector<ValueType, ObjectType>::setOnErase(ObjectType * owner, void (ObjectType::*cb)(const unsigned int, const ValueType &))
+inline void AutoDeltaVector<ValueType, ObjectType>::setOnErase(ObjectType * objectPtr, void (ObjectType::*cb)(const unsigned int, const ValueType &))
 {
 	delete onEraseCallback;
 	onEraseCallback = new std::pair<ObjectType *, void (ObjectType::*)(const unsigned int, const ValueType &)>;
-	onEraseCallback->first = owner;
+	onEraseCallback->first = objectPtr;
 	onEraseCallback->second = cb;
 }
 
 //-----------------------------------------------------------------------
 
 template<typename ValueType, typename ObjectType>
-inline void AutoDeltaVector<ValueType, ObjectType>::setOnInsert(ObjectType * owner, void (ObjectType::*cb)(const unsigned int, const ValueType &))
+inline void AutoDeltaVector<ValueType, ObjectType>::setOnInsert(ObjectType * objectPtr, void (ObjectType::*cb)(const unsigned int, const ValueType &))
 {
 	delete onInsertCallback;
 	onInsertCallback = new std::pair<ObjectType *, void (ObjectType::*)(const unsigned int, const ValueType &)>;
-	onInsertCallback->first = owner;
+	onInsertCallback->first = objectPtr;
 	onInsertCallback->second = cb;
 }
 
 //-----------------------------------------------------------------------
 
 template<typename ValueType, typename ObjectType>
-inline void AutoDeltaVector<ValueType, ObjectType>::setOnSet(ObjectType * owner, void (ObjectType::*cb)(const unsigned int, const ValueType &, const ValueType &))
+inline void AutoDeltaVector<ValueType, ObjectType>::setOnSet(ObjectType * objectPtr, void (ObjectType::*cb)(const unsigned int, const ValueType &, const ValueType &))
 {
 	delete onSetCallback;
 	onSetCallback = new std::pair<ObjectType *, void (ObjectType::*)(const unsigned int, const ValueType &, const ValueType &)>;
-	onSetCallback->first = owner;
+	onSetCallback->first = objectPtr;
 	onSetCallback->second = cb;
 }
 

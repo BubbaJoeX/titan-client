@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="D:\titan\client\src\external\3rd\library\openal-soft\upstream\modules\alc.cppm">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\titan\client\src\external\3rd\library\openal-soft\upstream\modules\al.cppm">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\titan\client\src\external\3rd\library\openal-soft\upstream\modules\alstd.cppm">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\titan\client\src\external\3rd\library\openal-soft\upstream\modules\efx.cppm">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\titan\client\src\external\3rd\library\openal-soft\upstream\modules\alext.cppm">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\titan\client\src\external\3rd\library\openal-soft\upstream\modules\openal.cppm">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\titan\client\src\external\3rd\library\openal-soft\upstream\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{BD13391C-A719-3453-8D60-77F9EA0E9431}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

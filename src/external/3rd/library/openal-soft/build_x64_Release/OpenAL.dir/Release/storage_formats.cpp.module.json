@@ -1,0 +1,13 @@
+{
+    "version": 1,
+    "revision": 0,
+    "rules": [
+        {
+            "primary-output": "OpenAL.dir\\Release\\storage_formats.obj",
+            "outputs": [
+                "OpenAL.dir\\Release\\"
+            ],
+            "requires": []
+        }
+    ]
+}

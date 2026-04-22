@@ -76,9 +76,9 @@ public: // methods
 	const_iterator begin() const;
 	const_iterator end() const;
 
-	void setOnErase   (ObjectType * owner, void (ObjectType::*onErase)(const KeyType &, const ValueType &));
-	void setOnInsert  (ObjectType * owner, void (ObjectType::*onInsert)(const KeyType &, const ValueType &));
-	void setOnSet     (ObjectType * owner, void (ObjectType::*onSet)(const KeyType &, const ValueType &, const ValueType &));
+	void setOnErase   (ObjectType * objectPtr, void (ObjectType::*onErase)(const KeyType &, const ValueType &));
+	void setOnInsert  (ObjectType * objectPtr, void (ObjectType::*onInsert)(const KeyType &, const ValueType &));
+	void setOnSet     (ObjectType * objectPtr, void (ObjectType::*onSet)(const KeyType &, const ValueType &, const ValueType &));
 
 private:
 	AutoDeltaMap &operator=(const AutoDeltaMap &);
@@ -684,9 +684,9 @@ inline void AutoDeltaMap<KeyType, ValueType, ObjectType>::onSet(const KeyType &k
 {
 	if (onSetCallback && onSetCallback->first)
 	{
-		ObjectType &owner = *onSetCallback->first;
+		ObjectType &objectRef = *onSetCallback->first;
 		void (ObjectType::*cb)(const KeyType &, const ValueType &, const ValueType &) = onSetCallback->second;
-		(owner.*cb)(key, oldValue, newValue);
+		(objectRef.*cb)(key, oldValue, newValue);
 	}
 }
 
@@ -697,9 +697,9 @@ inline void AutoDeltaMap<KeyType, ValueType, ObjectType>::onErase(const KeyType 
 {
 	if (onEraseCallback && onEraseCallback->first)
 	{
-		ObjectType &owner = *onEraseCallback->first;
+		ObjectType &objectRef = *onEraseCallback->first;
 		void (ObjectType::*cb)(const KeyType &, const ValueType &) = onEraseCallback->second;
-		(owner.*cb)(key, value);
+		(objectRef.*cb)(key, value);
 	}
 }
 
@@ -710,42 +710,42 @@ inline void AutoDeltaMap<KeyType, ValueType, ObjectType>::onInsert(const KeyType
 {
 	if (onInsertCallback && onInsertCallback->first)
 	{
-		ObjectType &owner = *onInsertCallback->first;
+		ObjectType &objectRef = *onInsertCallback->first;
 		void (ObjectType::*cb)(const KeyType &, const ValueType &) = onInsertCallback->second;
-		(owner.*cb)(key, value);
+		(objectRef.*cb)(key, value);
 	}
 }
 
 //-----------------------------------------------------------------------
 
 template<class KeyType, typename ValueType, typename ObjectType>
-inline void AutoDeltaMap<KeyType, ValueType, ObjectType>::setOnErase(ObjectType * owner, void (ObjectType::*cb)(const KeyType &, const ValueType &))
+inline void AutoDeltaMap<KeyType, ValueType, ObjectType>::setOnErase(ObjectType * objectPtr, void (ObjectType::*cb)(const KeyType &, const ValueType &))
 {
 	delete onEraseCallback;
 	onEraseCallback = new std::pair<ObjectType *, void (ObjectType::*)(const KeyType &, const ValueType &)>;
-	onEraseCallback->first = owner;
+	onEraseCallback->first = objectPtr;
 	onEraseCallback->second = cb;
 }
 
 //-----------------------------------------------------------------------
 
 template<class KeyType, typename ValueType, typename ObjectType>
-inline void AutoDeltaMap<KeyType, ValueType, ObjectType>::setOnInsert(ObjectType * owner, void (ObjectType::*cb)(const KeyType &, const ValueType &))
+inline void AutoDeltaMap<KeyType, ValueType, ObjectType>::setOnInsert(ObjectType * objectPtr, void (ObjectType::*cb)(const KeyType &, const ValueType &))
 {
 	delete onInsertCallback;
 	onInsertCallback = new std::pair<ObjectType *, void (ObjectType::*)(const KeyType &, const ValueType &)>;
-	onInsertCallback->first = owner;
+	onInsertCallback->first = objectPtr;
 	onInsertCallback->second = cb;
 }
 
 //-----------------------------------------------------------------------
 
 template<class KeyType, typename ValueType, typename ObjectType>
-inline void AutoDeltaMap<KeyType, ValueType, ObjectType>::setOnSet(ObjectType * owner, void (ObjectType::*cb)(const KeyType &, const ValueType &, const ValueType &))
+inline void AutoDeltaMap<KeyType, ValueType, ObjectType>::setOnSet(ObjectType * objectPtr, void (ObjectType::*cb)(const KeyType &, const ValueType &, const ValueType &))
 {
 	delete onSetCallback;
 	onSetCallback = new std::pair<ObjectType *, void (ObjectType::*)(const KeyType &, const ValueType &, const ValueType &)>;
-	onSetCallback->first = owner;
+	onSetCallback->first = objectPtr;
 	onSetCallback->second = cb;
 }
 

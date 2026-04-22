@@ -1,0 +1,10 @@
+^D:\TITAN\CLIENT\SRC\EXTERNAL\3RD\LIBRARY\OPENAL-SOFT\BUILD_X64_RELEASE\CMAKEFILES\80FA05D24266445AB7842C4923B7AC22\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SD:/titan/client/src/external/3rd/library/openal-soft/upstream -BD:/titan/client/src/external/3rd/library/openal-soft/build_x64_Release --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file D:/titan/client/src/external/3rd/library/openal-soft/build_x64_Release/OpenAL.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

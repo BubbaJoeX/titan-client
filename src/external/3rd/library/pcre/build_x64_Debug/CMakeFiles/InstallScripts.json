@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"D:/titan/client/src/external/3rd/library/pcre/build_x64_Debug/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

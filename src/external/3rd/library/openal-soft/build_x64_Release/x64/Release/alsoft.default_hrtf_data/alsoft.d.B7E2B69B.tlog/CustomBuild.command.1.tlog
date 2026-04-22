@@ -1,0 +1,34 @@
+^D:\TITAN\CLIENT\SRC\EXTERNAL\3RD\LIBRARY\OPENAL-SOFT\UPSTREAM\HRTF\DEFAULT HRTF.MHR
+setlocal
+cd D:\titan\client\src\external\3rd\library\openal-soft\upstream
+if %errorlevel% neq 0 goto :cmEnd
+D:
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -D "INPUT_FILE=D:/titan/client/src/external/3rd/library/openal-soft/upstream/hrtf/Default HRTF.mhr" -D OUTPUT_FILE=D:/titan/client/src/external/3rd/library/openal-soft/build_x64_Release/default_hrtf.hpp -D VARNAME=default_hrtf -P D:/titan/client/src/external/3rd/library/openal-soft/upstream/cmake/bin2h.script.cmake
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E touch D:/titan/client/src/external/3rd/library/openal-soft/build_x64_Release/default_hrtf_witness.txt
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^D:\TITAN\CLIENT\SRC\EXTERNAL\3RD\LIBRARY\OPENAL-SOFT\BUILD_X64_RELEASE\CMAKEFILES\80FA05D24266445AB7842C4923B7AC22\ALSOFT.DEFAULT_HRTF_DATA.RULE
+setlocal
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^D:\TITAN\CLIENT\SRC\EXTERNAL\3RD\LIBRARY\OPENAL-SOFT\UPSTREAM\CMAKELISTS.TXT
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SD:/titan/client/src/external/3rd/library/openal-soft/upstream -BD:/titan/client/src/external/3rd/library/openal-soft/build_x64_Release --check-stamp-file D:/titan/client/src/external/3rd/library/openal-soft/build_x64_Release/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

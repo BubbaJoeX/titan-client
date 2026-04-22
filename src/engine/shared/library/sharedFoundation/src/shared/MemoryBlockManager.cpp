@@ -17,6 +17,10 @@
 #include <map>
 #include <vector>
 
+#if defined(PLATFORM_WIN32)
+#include "sharedFoundation/WindowsWrapper.h"
+#endif
+
 #define PASS_THROUGH_TO_GLOBAL_MEMORY_MANAGER 0
 
 // ======================================================================
@@ -346,13 +350,24 @@ void MemoryBlockManager::install(bool debugDumpOnRemove)
 	
 	DebugFlags::registerFlag(ms_forceAllNonShared,     "SharedFoundation", "memoryBlockManagerForceAllNonShared");
 	REPORT_LOG(ms_forceAllNonShared, ("MemoryBlockManager enabled memoryBlockManagerForceAllNonShared\n"));
+#if defined(PLATFORM_WIN32)
+	// If startup appears to "hang" after the line above, the next instructions are
+	// the _DEBUG registerFlags (if _DEBUG) then ExitChain::add for MBM::remove.
+	OutputDebugStringA("[Titan] startup: MemoryBlockManager after REPORT_LOG, before debug-only registerFlags/ExitChain::add\r\n");
+#endif
 
 #ifdef _DEBUG
 	DebugFlags::registerFlag(ms_debugReport,           "SharedFoundation", "reportMemoryBlockManager",   debugReport);
 	DebugFlags::registerFlag(ms_debugDumpAllNextFrame, "SharedFoundation", "memoryBlockManagerDebugDumpAllNextFrame", debugDumpAll);
 #endif
+#if defined(PLATFORM_WIN32)
+	OutputDebugStringA("[Titan] startup: MemoryBlockManager before ExitChain::add(MBM::remove)\r\n");
+#endif
 
 	ExitChain::add(MemoryBlockManagerNamespace::remove, "MemoryBlockManager::remove");
+#if defined(PLATFORM_WIN32)
+	OutputDebugStringA("[Titan] startup: MemoryBlockManager::install returned\r\n");
+#endif
 }
 
 // ----------------------------------------------------------------------

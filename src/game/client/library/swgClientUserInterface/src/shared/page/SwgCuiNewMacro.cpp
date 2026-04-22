@@ -25,6 +25,7 @@
 #include "sharedMessageDispatch/Transceiver.h"
 
 #include <algorithm>
+#include <iterator>
 
 //======================================================================
 

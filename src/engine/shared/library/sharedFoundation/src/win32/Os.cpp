@@ -25,6 +25,7 @@
 #include "sharedFoundation/WindowsWrapper.h"
 #include "shellapi.h"
 
+#include <cstdio>
 #include <stack>
 #include <map>
 #include <string>
@@ -99,6 +100,15 @@ using namespace OsNamespace;
 
 static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
+// ODS: pin startup stalls in Os::install (game window path) without Report/file logging
+// Single string (matches SetupSharedFoundation::titanStartupOds) so DebugView shows full line
+static void titanOsStartupOds(const char *const step)
+{
+	char line[400];
+	_snprintf_s(line, sizeof(line), _TRUNCATE, "[Titan] startup: %s\r\n", step ? step : "");
+	OutputDebugStringA(line);
+}
+
 // ======================================================================
 /**
  * Install the Os subsystem for games
@@ -119,7 +129,9 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 
 void Os::install(HINSTANCE instance, const char *windowName, HICON normalIcon, HICON smallIcon)
 {
+	titanOsStartupOds("Os::install(game): before installCommon");
 	installCommon();
+	titanOsStartupOds("Os::install(game): after installCommon");
 
 	// setup the window class
 	WNDCLASSEX  wclass;
@@ -136,9 +148,11 @@ void Os::install(HINSTANCE instance, const char *windowName, HICON normalIcon, H
 
 	// register the window class
 	ATOM atom = RegisterClassEx(&wclass);
+	titanOsStartupOds("Os::install(game): after RegisterClassEx");
 	FATAL(atom == 0, ("RegisterClassEx failed"));
 
 	// create the window
+	titanOsStartupOds("Os::install(game): before CreateWindow(640x480 WS_POPUP)");
 	ms_window = CreateWindow(
 		windowName,                                 // pointer to registered class name
 		windowName,                                 // pointer to window name
@@ -151,11 +165,13 @@ void Os::install(HINSTANCE instance, const char *windowName, HICON normalIcon, H
 		NULL,                                       // handle to menu or child-window identifier
 		instance,                                   // handle to application instance
 		NULL);                                      // pointer to window-creation data
+	titanOsStartupOds("Os::install(game): after CreateWindow");
 	FATAL(!ms_window, ("CreateWindow failed"));
 	ms_engineOwnsWindow = true;
 
 	// load the arrow cursor
 	ms_cursorArrow = LoadCursor(NULL, IDC_ARROW);
+	titanOsStartupOds("Os::install(game): after LoadCursor");
 	FATAL(ms_cursorArrow == NULL, ("LoadCursor failed"));
 }
 
@@ -214,23 +230,33 @@ void Os::remove()
 
 void Os::installCommon()
 {
+	titanOsStartupOds("installCommon: enter");
 	DEBUG_FATAL(ms_installed, ("already installed"));
 
+	titanOsStartupOds("installCommon: before ExitChain::add(Os::remove)");
 	ExitChain::add(Os::remove, "Os::remove", 0, true);
+	titanOsStartupOds("installCommon: after ExitChain::add");
 
 	// get startup folder.
 	GetCurrentDirectory(sizeof(ms_programStartupDirectory), ms_programStartupDirectory);
+	titanOsStartupOds("installCommon: after GetCurrentDirectory");
 
 	ms_numberOfUpdates = 0;
 	ms_mainThreadId = GetCurrentThreadId();
+	titanOsStartupOds("installCommon: before setThreadName Main (RaiseException 0x406D1388; can interact with debugger)");
 	setThreadName(ms_mainThreadId, "Main");
+	titanOsStartupOds("installCommon: after setThreadName");
 
 #if PRODUCTION == 0
+	titanOsStartupOds("installCommon: before ConfigFile allowPopupDebugMenu");
 	ms_allowPopupDebugMenu = ConfigFile::getKeyBool("SharedFoundation", "allowPopupDebugMenu", false);
+	titanOsStartupOds("installCommon: after ConfigFile allowPopupDebugMenu");
 #endif
 
 	// get the name of the executable
+	titanOsStartupOds("installCommon: before GetModuleFileName");
 	DWORD result = GetModuleFileName(NULL, ms_programName, sizeof(ms_programName));
+	titanOsStartupOds("installCommon: after GetModuleFileName");
 	FATAL(result == 0, ("GetModuleFileName failed"));
 
 	// get the file name without the path
@@ -239,20 +265,28 @@ void Os::installCommon()
 		++ms_shortProgramName;
 	else
 		ms_shortProgramName = ms_programName;
+	titanOsStartupOds("installCommon: after exe path short name");
 
 	// switch into single-precision floating point mode
+	titanOsStartupOds("installCommon: before FloatingPointUnit::install");
 	FloatingPointUnit::install();
+	titanOsStartupOds("installCommon: after FloatingPointUnit::install");
 
 	if (!GetKeyboardLayoutName(ms_keyboardLayout))
 		ms_keyboardLayout[0] = '\0';
+	titanOsStartupOds("installCommon: after GetKeyboardLayoutName");
 
 	ms_installed = true;
+	titanOsStartupOds("installCommon: ms_installed=true");
 
 #if PRODUCTION == 0
+	titanOsStartupOds("installCommon: before DebugFlags register (guard patterns)");
 	DebugFlags::registerFlag(ms_validateGuardPatterns, "SharedFoundation", "validateGuardPatterns");
 	DebugFlags::registerFlag(ms_validateFreePatterns, "SharedFoundation", "validateFreePatterns");
+	titanOsStartupOds("installCommon: after DebugFlags register");
 #endif
 
+	titanOsStartupOds("installCommon: before getProcessPriority / setProcessPriority");
 	switch (ConfigSharedFoundation::getProcessPriority())
 	{
 		case -1:
@@ -271,6 +305,7 @@ void Os::installCommon()
 			DEBUG_WARNING(true, ("invalid process priority, %d should be betweein [-1..1]", ConfigSharedFoundation::getProcessPriority()));
 			break;
 	}
+	titanOsStartupOds("installCommon: return");
 }
 
 // ======================================================================

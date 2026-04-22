@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"D:/titan/client/src/external/3rd/library/libxml2/build_x64_Release/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

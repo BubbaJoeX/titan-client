@@ -17,6 +17,7 @@
 #include "sharedUtility/DataTableManager.h"
 
 #include <algorithm>
+#include <iterator>
 #include <map>
 
 // ======================================================================

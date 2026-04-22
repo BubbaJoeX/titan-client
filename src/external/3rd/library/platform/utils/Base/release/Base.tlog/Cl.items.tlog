@@ -1,0 +1,13 @@
+d:\titan\client\src\external\3rd\library\platform\utils\Base\Archive.cpp;d:\titan\client\src\external\3rd\library\platform\utils\Base\release\Archive.obj
+d:\titan\client\src\external\3rd\library\platform\utils\Base\AutoLog.cpp;d:\titan\client\src\external\3rd\library\platform\utils\Base\release\AutoLog.obj
+d:\titan\client\src\external\3rd\library\platform\utils\Base\Base.cpp;d:\titan\client\src\external\3rd\library\platform\utils\Base\release\Base.obj
+d:\titan\client\src\external\3rd\library\platform\utils\Base\Config.cpp;d:\titan\client\src\external\3rd\library\platform\utils\Base\release\Config.obj
+d:\titan\client\src\external\3rd\library\platform\utils\Base\MD5.cpp;d:\titan\client\src\external\3rd\library\platform\utils\Base\release\MD5.obj
+d:\titan\client\src\external\3rd\library\platform\utils\Base\ScopeLock.cpp;d:\titan\client\src\external\3rd\library\platform\utils\Base\release\ScopeLock.obj
+d:\titan\client\src\external\3rd\library\platform\utils\Base\Statistics.cpp;d:\titan\client\src\external\3rd\library\platform\utils\Base\release\Statistics.obj
+d:\titan\client\src\external\3rd\library\platform\utils\Base\win32\BlockAllocator.cpp;d:\titan\client\src\external\3rd\library\platform\utils\Base\release\BlockAllocator.obj
+d:\titan\client\src\external\3rd\library\platform\utils\Base\win32\Event.cpp;d:\titan\client\src\external\3rd\library\platform\utils\Base\release\Event.obj
+d:\titan\client\src\external\3rd\library\platform\utils\Base\win32\Logger.cpp;d:\titan\client\src\external\3rd\library\platform\utils\Base\release\Logger.obj
+d:\titan\client\src\external\3rd\library\platform\utils\Base\win32\Mutex.cpp;d:\titan\client\src\external\3rd\library\platform\utils\Base\release\Mutex.obj
+d:\titan\client\src\external\3rd\library\platform\utils\Base\win32\Platform.cpp;d:\titan\client\src\external\3rd\library\platform\utils\Base\release\Platform.obj
+d:\titan\client\src\external\3rd\library\platform\utils\Base\win32\Thread.cpp;d:\titan\client\src\external\3rd\library\platform\utils\Base\release\Thread.obj

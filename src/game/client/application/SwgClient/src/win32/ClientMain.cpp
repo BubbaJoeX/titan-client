@@ -178,6 +178,10 @@ int ClientMain(
 	data.configFile = "titan.cfg";
 #endif
 	data.clockUsesSleep = true;
+	// D_game defaults to clockUsesRecalibrationThread=true, which spawns a worker during
+	// SetupSharedFoundation::install (before the main window). That has been a source of
+	// hard-to-debug startup stalls; QPC recalibration is optional for the client.
+	data.clockUsesRecalibrationThread = false;
 	data.minFrameRate = 1.f;
 	data.frameRateLimit = 144.f;
 #if PRODUCTION
@@ -194,7 +198,9 @@ int ClientMain(
 	if (ConfigFile::isEmpty())
 		FATAL(true, ("Config file not specified"));
 
+	REPORT_LOG(true, ("ClientMain: config OK (not empty), before InstallTimer::checkConfigFile\n"));
 	InstallTimer::checkConfigFile();
+	REPORT_LOG(true, ("ClientMain: after InstallTimer::checkConfigFile, before instance semaphore\n"));
 
 	SetLastError(0);
 	HANDLE semaphore = CreateSemaphore(NULL, 0, 1, "SwgClientInstanceRunning");
@@ -204,6 +210,8 @@ int ClientMain(
 	}
 	else
 	{
+		REPORT_LOG(true, ("ClientMain: instance semaphore OK, starting subsystem install chain (compression through audio)\n"));
+		REPORT_LOG(true, ("ClientMain: before Game::setGameFeatureBits / subscription / externalCommandHandler\n"));
 		{
 			uint32 gameFeatures = ConfigFile::getKeyInt("Station", "gameFeatures", 0) & ~ConfigFile::getKeyInt("ClientGame", "gameBitsToClear", 0);
 			// hack to set retail if beta or preorder
@@ -224,18 +232,22 @@ int ClientMain(
 			Game::setSubscriptionFeatureBits(ConfigFile::getKeyInt("Station", "subscriptionFeatures", 0));
 			Game::setExternalCommandHandler(externalCommandHandler);
 		}
+		REPORT_LOG(true, ("ClientMain: after Game:: feature setters, before SetupSharedCompression::install (Zlib pool)\n"));
 
 		{
 			SetupSharedCompression::Data data;
 			data.numberOfThreadsAccessingZlib = 3;
 			SetupSharedCompression::install(data);
 		}
+		REPORT_LOG(true, ("ClientMain: after SetupSharedCompression::install\n"));
 
 		//-- Regular expression support.
 		SetupSharedRegex::install();
+		REPORT_LOG(true, ("ClientMain: after SetupSharedRegex::install\n"));
 
 		//-- file
 		{
+			REPORT_LOG(true, ("ClientMain: before SetupSharedFile::install (TreeFile / search path; can block on bad or huge data dir)\n"));
 			// figure out what skus we need to support in the tree file system
 			uint32 skuBits = 0;
 			if ((Game::getGameFeatureBits() & ClientGameFeature::Base) != 0)
@@ -249,8 +261,10 @@ int ClientMain(
 
 			SetupSharedFile::install(true, skuBits);
 		}
+		REPORT_LOG(true, ("ClientMain: after SetupSharedFile::install\n"));
 
 		installConfigFileOverride();
+		REPORT_LOG(true, ("ClientMain: after installConfigFileOverride\n"));
 
 		//-- math
 		SetupSharedMath::install();
@@ -275,9 +289,11 @@ int ClientMain(
 		SetupSharedNetwork::SetupData  networkSetupData;
 		SetupSharedNetwork::getDefaultClientSetupData(networkSetupData);
 		SetupSharedNetwork::install(networkSetupData);
+		REPORT_LOG(true, ("ClientMain: after SetupSharedNetwork::install\n"));
 
 		SetupSharedNetworkMessages::install();
 		SetupSwgSharedNetworkMessages::install();
+		REPORT_LOG(true, ("ClientMain: after network messages setup\n"));
 
 		//-- object
 		SetupSharedObject::Data setupObjectData;
@@ -289,6 +305,7 @@ int ClientMain(
 		SetupSharedObject::addCustomizationSupportData(setupObjectData);
 		SetupSharedObject::addMovementTableData(setupObjectData);
 		SetupSharedObject::install(setupObjectData);
+		REPORT_LOG(true, ("ClientMain: after SetupSharedObject::install\n"));
 
 		//-- game
 		SetupSharedGame::Data setupSharedGameData;
@@ -297,6 +314,7 @@ int ClientMain(
 		setupSharedGameData.setUseMountValidScaleRangeTable(true);
 		setupSharedGameData.m_debugBadStringsFunc = CuiManager::debugBadStringIdsFunc;
 		SetupSharedGame::install(setupSharedGameData);
+		REPORT_LOG(true, ("ClientMain: after SetupSharedGame::install\n"));
 
 		CommoditiesAdvancedSearchAttribute::install();
 		SwgCuiAuctionFilter::buildAttributeFilterDisplayString(); // must be called after CommoditiesAdvancedSearchAttribute::install()
@@ -316,6 +334,7 @@ int ClientMain(
 
 		//-- audio
 		SetupClientAudio::install();
+		REPORT_LOG(true, ("ClientMain: after SetupClientAudio::install, next: SetupClientGraphics (D3D)\n"));
 
 		//-- graphics
 		SetupClientGraphics::Data setupGraphicsData;
@@ -324,6 +343,7 @@ int ClientMain(
 		setupGraphicsData.alphaBufferBitDepth = 0;
 		SetupClientGraphics::setupDefaultGameData(setupGraphicsData);
 
+		REPORT_LOG(true, ("ClientMain: calling SetupClientGraphics::install (D3D / gl05_r / raster)\n"));
 		if (SetupClientGraphics::install(setupGraphicsData))
 		{
 			// Install and render splash screen immediately after graphics initialization
@@ -406,6 +426,12 @@ int ClientMain(
 			CuiChatHistory::save();
 			CurrentUserOptionManager::save();
 			LocalMachineOptionManager::save();
+		}
+		else
+		{
+			REPORT_LOG(
+				true,
+				("ClientMain: SetupClientGraphics::install FAILED - game loop not started. Typical: ms_api->install (D3D) false, or missing gl05_r.dll / d3d9.\n"));
 		}
 	}
 

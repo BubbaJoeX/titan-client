@@ -276,7 +276,19 @@ bool Graphics::install()
 	// install the rasterizer
 	NOT_NULL(ms_api->install);
 	if (!ms_api->install(&gl_install))
+	{
+		// No FATAL here (legacy) — caller returns false; make failure visible (was silent in Release).
+		OutputDebugStringA("[Titan] Graphics: ms_api->install (D3D / rasterizer) returned false. Check gl05_r.dll, d3d9, window/device.\r\n");
+		WARNING(true, ("Graphics: ms_api->install() failed; D3D or device init\n"));
+#if PRODUCTION
+		MessageBoxA(
+			NULL,
+			"Display initialization failed (Direct3D / rasterizer). Try: windowed mode in titan.cfg, update GPU drivers, or ensure gl05_r.dll is next to the exe.",
+			"SwgTitan",
+			MB_OK | MB_ICONSTOP);
+#endif
 		return false;
+	}
 
 	ms_frameBufferMaxWidth  = gl_install.width;
 	ms_frameBufferMaxHeight = gl_install.height;

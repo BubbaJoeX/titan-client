@@ -1,0 +1,13 @@
+{
+    "version": 1,
+    "revision": 0,
+    "rules": [
+        {
+            "primary-output": "alsoft.common.dir\\Release\\strutils.obj",
+            "outputs": [
+                "alsoft.common.dir\\Release\\"
+            ],
+            "requires": []
+        }
+    ]
+}

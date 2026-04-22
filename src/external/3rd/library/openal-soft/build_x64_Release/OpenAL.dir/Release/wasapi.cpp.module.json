@@ -1,0 +1,17 @@
+{
+    "version": 1,
+    "revision": 0,
+    "rules": [
+        {
+            "primary-output": "OpenAL.dir\\Release\\wasapi.obj",
+            "outputs": [
+                "OpenAL.dir\\Release\\"
+            ],
+            "requires": [
+                {
+                    "logical-name": "logging"
+                }
+            ]
+        }
+    ]
+}

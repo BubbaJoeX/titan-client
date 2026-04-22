@@ -1,0 +1,14 @@
+{
+    "version": 1,
+    "revision": 0,
+    "rules": [
+        {
+            "primary-output": "alsoft.common.dir\\Debug\\altypes.obj",
+            "outputs": [
+                "D:\\titan\\client\\src\\external\\3rd\\library\\openal-soft\\build_x64_Debug\\Debug\\alsoft.common.pdb",
+                "alsoft.common.dir\\Debug\\"
+            ],
+            "requires": []
+        }
+    ]
+}

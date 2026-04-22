@@ -1,0 +1,21 @@
+{
+    "version": 1,
+    "revision": 0,
+    "rules": [
+        {
+            "primary-output": "alsoft.common.dir\\Release\\gsl.obj",
+            "outputs": [
+                "alsoft.common.dir\\Release\\",
+                "alsoft.common.dir\\Release\\gsl.ifc"
+            ],
+            "provides": [
+                {
+                    "logical-name": "gsl",
+                    "source-path": "d:\\titan\\client\\src\\external\\3rd\\library\\openal-soft\\upstream\\alsoft-modules\\gsl.cppm",
+                    "is-interface": true
+                }
+            ],
+            "requires": []
+        }
+    ]
+}

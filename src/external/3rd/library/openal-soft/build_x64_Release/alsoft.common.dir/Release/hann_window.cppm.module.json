@@ -1,0 +1,21 @@
+{
+    "version": 1,
+    "revision": 0,
+    "rules": [
+        {
+            "primary-output": "alsoft.common.dir\\Release\\hann_window.obj",
+            "outputs": [
+                "alsoft.common.dir\\Release\\",
+                "alsoft.common.dir\\Release\\window.hann.ifc"
+            ],
+            "provides": [
+                {
+                    "logical-name": "window.hann",
+                    "source-path": "d:\\titan\\client\\src\\external\\3rd\\library\\openal-soft\\upstream\\alsoft-modules\\hann_window.cppm",
+                    "is-interface": true
+                }
+            ],
+            "requires": []
+        }
+    ]
+}

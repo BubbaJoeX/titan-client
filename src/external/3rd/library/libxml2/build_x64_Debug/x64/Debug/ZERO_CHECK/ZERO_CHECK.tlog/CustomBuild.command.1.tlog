@@ -1,0 +1,10 @@
+^D:\TITAN\CLIENT\SRC\EXTERNAL\3RD\LIBRARY\LIBXML2\BUILD_X64_DEBUG\CMAKEFILES\E4AE961D300B71D6D7C577348E0C94CE\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SD:/titan/client/src/external/3rd/library/libxml2/libxml2-2.12.7 -BD:/titan/client/src/external/3rd/library/libxml2/build_x64_Debug --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file D:/titan/client/src/external/3rd/library/libxml2/build_x64_Debug/libxml2.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

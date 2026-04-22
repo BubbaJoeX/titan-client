@@ -1,0 +1,17 @@
+D:/titan/client/src/external/3rd/library/openal-soft/build_x64_Release/CMakeFiles/alsoft.build_version.dir
+D:/titan/client/src/external/3rd/library/openal-soft/build_x64_Release/CMakeFiles/alsoft.default_hrtf_data.dir
+D:/titan/client/src/external/3rd/library/openal-soft/build_x64_Release/CMakeFiles/alsoft.api-modules.dir
+D:/titan/client/src/external/3rd/library/openal-soft/build_x64_Release/CMakeFiles/alsoft.buildapi-modules.dir
+D:/titan/client/src/external/3rd/library/openal-soft/build_x64_Release/CMakeFiles/alsoft.common.dir
+D:/titan/client/src/external/3rd/library/openal-soft/build_x64_Release/CMakeFiles/alsoft.core-modules.dir
+D:/titan/client/src/external/3rd/library/openal-soft/build_x64_Release/CMakeFiles/OpenAL.dir
+D:/titan/client/src/external/3rd/library/openal-soft/build_x64_Release/CMakeFiles/alsoft.excommon.dir
+D:/titan/client/src/external/3rd/library/openal-soft/build_x64_Release/CMakeFiles/clang-tidy-check.dir
+D:/titan/client/src/external/3rd/library/openal-soft/build_x64_Release/CMakeFiles/RUN_TESTS.dir
+D:/titan/client/src/external/3rd/library/openal-soft/build_x64_Release/CMakeFiles/INSTALL.dir
+D:/titan/client/src/external/3rd/library/openal-soft/build_x64_Release/CMakeFiles/ALL_BUILD.dir
+D:/titan/client/src/external/3rd/library/openal-soft/build_x64_Release/CMakeFiles/ZERO_CHECK.dir
+D:/titan/client/src/external/3rd/library/openal-soft/build_x64_Release/fmt-11.2.0/CMakeFiles/alsoft.fmt.dir
+D:/titan/client/src/external/3rd/library/openal-soft/build_x64_Release/fmt-11.2.0/CMakeFiles/RUN_TESTS.dir
+D:/titan/client/src/external/3rd/library/openal-soft/build_x64_Release/fmt-11.2.0/CMakeFiles/INSTALL.dir
+D:/titan/client/src/external/3rd/library/openal-soft/build_x64_Release/fmt-11.2.0/CMakeFiles/ALL_BUILD.dir

@@ -1,0 +1,13 @@
+{
+    "version": 1,
+    "revision": 0,
+    "rules": [
+        {
+            "primary-output": "OpenAL.dir\\Release\\alc/effects/equalizer.cpp.obj",
+            "outputs": [
+                "OpenAL.dir\\Release\\"
+            ],
+            "requires": []
+        }
+    ]
+}

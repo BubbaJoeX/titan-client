@@ -856,8 +856,38 @@ void RegistryKey::install(const char *productKeyRelativePath)
 	// create/open the product user key
 	productUserKey = currentUserKey->createSubkey(useRegistryPath, AF_READ | AF_WRITE);
 
-	// create/open the product machine key
-	productMachineKey = localMachineKey->createSubkey(useRegistryPath, AF_READ);
+	// create/open the product machine key under HKLM.
+	// (Original code used only AF_READ; RegCreateKeyEx needs KEY_WRITE to create a
+	// new subkey, which surfaces as ERROR_ACCESS_DENIED (5) even for HKCU.
+	// Standard users also cannot create keys under HKLM\Software, so we fall back
+	// to a per-user subkey of the product key for machine-affinity data.)
+	{
+		HKEY   hMachine = 0;
+		DWORD  disposition = 0;
+		LONG   r = RegCreateKeyEx(
+			HKEY_LOCAL_MACHINE,
+			useRegistryPath,
+			0,
+			const_cast<char *>(""),
+			REG_OPTION_NON_VOLATILE,
+			KEY_READ | KEY_WRITE,
+			NULL,
+			&hMachine,
+			&disposition
+		);
+		if (r == ERROR_SUCCESS)
+		{
+			productMachineKey = new RegistryKey(hMachine, true);
+		}
+		else if (r == ERROR_ACCESS_DENIED)
+		{
+			productMachineKey = productUserKey->createSubkey("TitanPerMachineData", AF_READ | AF_WRITE);
+		}
+		else
+		{
+			FATAL(1, ("failed to create product machine registry (HKLM) \"%s\", error = %ld\n", useRegistryPath, r));
+		}
+	}
 
 	delete [] useRegistryPath;
 

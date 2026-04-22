@@ -7,7 +7,7 @@
 //
 // Generated from the TEXTINCLUDE 2 resource.
 //
-#include "afxres.h"
+#include "winres.h"
 
 /////////////////////////////////////////////////////////////////////////////
 #undef APSTUDIO_READONLY_SYMBOLS
@@ -42,7 +42,7 @@ END
 
 2 TEXTINCLUDE 
 BEGIN
-    "#include ""afxres.h""\r\n"
+    "#include ""winres.h""\r\n"
     "\0"
 END
 
@@ -82,7 +82,7 @@ BEGIN
             VALUE "FileDescription", "SwgClient_r"
             VALUE "FileVersion", "2.0b"
             VALUE "InternalName", "SwgClient_r"
-            VALUE "LegalCopyright", "© Lucasfilm Entertainment Company Ltd. or Lucasfilm Ltd."
+            VALUE "LegalCopyright", "ù Lucasfilm Entertainment Company Ltd. or Lucasfilm Ltd."
             VALUE "LegalTrademarks", "Star Wars Galaxies is a trademark of Lucasfilm Entertainment Company Ltd."
             VALUE "OriginalFilename", "SwgClient_r.exe"
             VALUE "ProductName", "Star Wars Galaxies"

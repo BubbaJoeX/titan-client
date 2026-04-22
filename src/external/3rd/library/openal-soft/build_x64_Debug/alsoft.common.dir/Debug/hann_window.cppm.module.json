@@ -1,0 +1,22 @@
+{
+    "version": 1,
+    "revision": 0,
+    "rules": [
+        {
+            "primary-output": "alsoft.common.dir\\Debug\\hann_window.obj",
+            "outputs": [
+                "D:\\titan\\client\\src\\external\\3rd\\library\\openal-soft\\build_x64_Debug\\Debug\\alsoft.common.pdb",
+                "alsoft.common.dir\\Debug\\",
+                "alsoft.common.dir\\Debug\\window.hann.ifc"
+            ],
+            "provides": [
+                {
+                    "logical-name": "window.hann",
+                    "source-path": "d:\\titan\\client\\src\\external\\3rd\\library\\openal-soft\\upstream\\alsoft-modules\\hann_window.cppm",
+                    "is-interface": true
+                }
+            ],
+            "requires": []
+        }
+    ]
+}

@@ -1,0 +1,6 @@
+D:/titan/client/src/external/3rd/library/libsndfile/build_x64_Release/CMakeFiles/sndfile.dir
+D:/titan/client/src/external/3rd/library/libsndfile/build_x64_Release/CMakeFiles/GENFILES.dir
+D:/titan/client/src/external/3rd/library/libsndfile/build_x64_Release/CMakeFiles/PACKAGE.dir
+D:/titan/client/src/external/3rd/library/libsndfile/build_x64_Release/CMakeFiles/INSTALL.dir
+D:/titan/client/src/external/3rd/library/libsndfile/build_x64_Release/CMakeFiles/ALL_BUILD.dir
+D:/titan/client/src/external/3rd/library/libsndfile/build_x64_Release/CMakeFiles/ZERO_CHECK.dir

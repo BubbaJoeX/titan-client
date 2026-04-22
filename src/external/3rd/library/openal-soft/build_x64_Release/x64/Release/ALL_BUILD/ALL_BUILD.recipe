@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <ProjectOutputs>
+    <ProjectOutput>
+      <FullPath>D:\titan\client\src\external\3rd\library\openal-soft\build_x64_Release\x64\Release\ZERO_CHECK</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>D:\titan\client\src\external\3rd\library\openal-soft\build_x64_Release\x64\Release\alsoft.build_version</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>D:\titan\client\src\external\3rd\library\openal-soft\build_x64_Release\x64\Release\alsoft.default_hrtf_data</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>D:\titan\client\src\external\3rd\library\openal-soft\build_x64_Release\Release\OpenAL32.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>D:\titan\client\src\external\3rd\library\openal-soft\build_x64_Release\x64\Release\ALL_BUILD</FullPath>
+    </ProjectOutput>
+  </ProjectOutputs>
+  <ContentFiles />
+  <SatelliteDlls />
+  <NonRecipeFileRefs />
+</Project>

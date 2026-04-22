@@ -1,0 +1,22 @@
+{
+    "version": 1,
+    "revision": 0,
+    "rules": [
+        {
+            "primary-output": "alsoft.core-modules.dir\\Debug\\logging.obj",
+            "outputs": [
+                "D:\\titan\\client\\src\\external\\3rd\\library\\openal-soft\\build_x64_Debug\\alsoft.core-modules.dir\\Debug\\alsoft.core-modules.pdb",
+                "alsoft.core-modules.dir\\Debug\\",
+                "alsoft.core-modules.dir\\Debug\\logging.ifc"
+            ],
+            "provides": [
+                {
+                    "logical-name": "logging",
+                    "source-path": "d:\\titan\\client\\src\\external\\3rd\\library\\openal-soft\\upstream\\core\\logging.cppm",
+                    "is-interface": true
+                }
+            ],
+            "requires": []
+        }
+    ]
+}

@@ -16,7 +16,11 @@
 
 #include "zlib.h"
 
+#include <cstdlib>
 #include <vector>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 // ======================================================================
 
@@ -96,6 +100,9 @@ void ZlibCompressorNamespace::freeWrapper(voidpf opaque, voidpf address)
 
 void ZlibCompressor::install(int numberOfParallelThreads)
 {
+	// x64: the ~1MB pool was allocated with global operator new (routes to MemoryManager::allocate) and
+	// some builds hung between "enter" and "leave" (before ExitChain::add or inside allocate). The pool
+	// is pre-engine-init bulk storage; use CRT malloc so it does not re-enter the custom allocator.
 	if (numberOfParallelThreads <= 1 || MemoryManager::getLimit() < 260)
 		ms_poolElementCount = 5;
 	else
@@ -105,12 +112,20 @@ void ZlibCompressor::install(int numberOfParallelThreads)
 			ms_poolElementCount = 15;
 
 	int const size = cms_poolElementThreshold * ms_poolElementCount;
-	ms_memoryBottom = operator new(size);
-	ms_memoryTop = reinterpret_cast<byte*>(ms_memoryBottom) + size;
+	void * const pool = std::malloc(static_cast<size_t>(size));
+	if (!pool)
+		FATAL(true, ("ZlibCompressor: malloc for zlib pool failed, size %d", size));
+	ms_memoryBottom = pool;
+	ms_memoryTop = reinterpret_cast<byte *>(ms_memoryBottom) + size;
+	ms_memoryPool.clear();
+	ms_memoryPool.reserve(static_cast<size_t>(ms_poolElementCount));
 	for (int i = 0; i < ms_poolElementCount; ++i)
-		ms_memoryPool.push_back(reinterpret_cast<byte*>(ms_memoryBottom) + (i * cms_poolElementThreshold));
+		ms_memoryPool.push_back(reinterpret_cast<byte *>(ms_memoryBottom) + (i * cms_poolElementThreshold));
 
 	ExitChain::add(ZlibCompressorNamespace::remove, "ZlibCompressorNamespace::remove");
+#ifdef _WIN32
+	OutputDebugStringA("[Titan] ZlibCompressor::install: pool from malloc+ExitChain add OK\r\n");
+#endif
 }
 
 // ----------------------------------------------------------------------
@@ -120,7 +135,7 @@ void ZlibCompressorNamespace::remove()
 	ms_mutex.enter();
 
 		DEBUG_FATAL(static_cast<int>(ms_memoryPool.size()) != ms_poolElementCount, ("ZLibCompressor memory pool entries not all released"));
-		operator delete(ms_memoryBottom);
+		std::free(ms_memoryBottom);
 		ms_memoryBottom = NULL;
 		ms_memoryTop = NULL;
 		ms_memoryPool.clear();

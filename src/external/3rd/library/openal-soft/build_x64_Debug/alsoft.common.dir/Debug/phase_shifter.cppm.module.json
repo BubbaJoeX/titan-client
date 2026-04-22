@@ -1,0 +1,26 @@
+{
+    "version": 1,
+    "revision": 0,
+    "rules": [
+        {
+            "primary-output": "alsoft.common.dir\\Debug\\phase_shifter.obj",
+            "outputs": [
+                "D:\\titan\\client\\src\\external\\3rd\\library\\openal-soft\\build_x64_Debug\\Debug\\alsoft.common.pdb",
+                "alsoft.common.dir\\Debug\\",
+                "alsoft.common.dir\\Debug\\phase_shifter.ifc"
+            ],
+            "provides": [
+                {
+                    "logical-name": "phase_shifter",
+                    "source-path": "d:\\titan\\client\\src\\external\\3rd\\library\\openal-soft\\upstream\\alsoft-modules\\phase_shifter.cppm",
+                    "is-interface": true
+                }
+            ],
+            "requires": [
+                {
+                    "logical-name": "gsl"
+                }
+            ]
+        }
+    ]
+}

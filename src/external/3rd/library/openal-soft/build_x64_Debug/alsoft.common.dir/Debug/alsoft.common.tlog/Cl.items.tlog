@@ -1,0 +1,14 @@
+D:\titan\client\src\external\3rd\library\openal-soft\upstream\common\alcomplex.cpp;D:\titan\client\src\external\3rd\library\openal-soft\build_x64_Debug\alsoft.common.dir\Debug\alcomplex.obj
+D:\titan\client\src\external\3rd\library\openal-soft\upstream\common\almalloc.cpp;D:\titan\client\src\external\3rd\library\openal-soft\build_x64_Debug\alsoft.common.dir\Debug\almalloc.obj
+D:\titan\client\src\external\3rd\library\openal-soft\upstream\common\alstring.cpp;D:\titan\client\src\external\3rd\library\openal-soft\build_x64_Debug\alsoft.common.dir\Debug\alstring.obj
+D:\titan\client\src\external\3rd\library\openal-soft\upstream\common\althrd_setname.cpp;D:\titan\client\src\external\3rd\library\openal-soft\build_x64_Debug\alsoft.common.dir\Debug\althrd_setname.obj
+D:\titan\client\src\external\3rd\library\openal-soft\upstream\common\altypes.cpp;D:\titan\client\src\external\3rd\library\openal-soft\build_x64_Debug\alsoft.common.dir\Debug\altypes.obj
+D:\titan\client\src\external\3rd\library\openal-soft\upstream\common\dynload.cpp;D:\titan\client\src\external\3rd\library\openal-soft\build_x64_Debug\alsoft.common.dir\Debug\dynload.obj
+D:\titan\client\src\external\3rd\library\openal-soft\upstream\common\filesystem.cpp;D:\titan\client\src\external\3rd\library\openal-soft\build_x64_Debug\alsoft.common.dir\Debug\filesystem.obj
+D:\titan\client\src\external\3rd\library\openal-soft\upstream\common\pffft.cpp;D:\titan\client\src\external\3rd\library\openal-soft\build_x64_Debug\alsoft.common.dir\Debug\pffft.obj
+D:\titan\client\src\external\3rd\library\openal-soft\upstream\common\polyphase_resampler.cpp;D:\titan\client\src\external\3rd\library\openal-soft\build_x64_Debug\alsoft.common.dir\Debug\polyphase_resampler.obj
+D:\titan\client\src\external\3rd\library\openal-soft\upstream\common\strutils.cpp;D:\titan\client\src\external\3rd\library\openal-soft\build_x64_Debug\alsoft.common.dir\Debug\strutils.obj
+D:\titan\client\src\external\3rd\library\openal-soft\upstream\alsoft-modules\gsl.cppm;D:\titan\client\src\external\3rd\library\openal-soft\build_x64_Debug\alsoft.common.dir\Debug\gsl.obj
+D:\titan\client\src\external\3rd\library\openal-soft\upstream\alsoft-modules\hann_window.cppm;D:\titan\client\src\external\3rd\library\openal-soft\build_x64_Debug\alsoft.common.dir\Debug\hann_window.obj
+D:\titan\client\src\external\3rd\library\openal-soft\upstream\alsoft-modules\phase_shifter.cppm;D:\titan\client\src\external\3rd\library\openal-soft\build_x64_Debug\alsoft.common.dir\Debug\phase_shifter.obj
+D:\titan\client\src\external\3rd\library\openal-soft\upstream\common\alformattypes.cppm;D:\titan\client\src\external\3rd\library\openal-soft\build_x64_Debug\alsoft.common.dir\Debug\alformattypes.obj

@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="D:\titan\client\src\external\3rd\library\pcre\build_x64_Release\CMakeFiles\f2a9b881b3e666fcde7b8c7180d42dfb\generate.stamp.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{8F06CBE7-1C67-3B17-B10C-4D381546CD8A}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

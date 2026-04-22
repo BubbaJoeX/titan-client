@@ -11,6 +11,7 @@
 
 #include "sharedFoundation/ConfigSharedFoundation.h"
 
+#include <float.h>
 #include <xmmintrin.h>
 
 // ======================================================================
@@ -42,6 +43,83 @@ const WORD EXCEPTION_ZERO_DIVIDE = BINARY4(0000,0000,0000,0100);
 const WORD EXCEPTION_DENORMAL    = BINARY4(0000,0000,0000,0010);
 const WORD EXCEPTION_INVALID     = BINARY4(0000,0000,0000,0001);
 const WORD EXCEPTION_ALL         = BINARY4(0000,0000,0011,1111);
+
+#if defined(_WIN64)
+// 16-bit x87 semantics in (WORD) status vs. MSVC's 32-bit _controlfp_s layout; never cast
+// between them. A raw x87 value with _controlfp_s(…, 0xFFFF) was a startup hang in x64.
+namespace
+{
+unsigned msvcFpuValueFromX87(WORD w)
+{
+	unsigned t = 0;
+	const WORD p = w & PRECISION_MASK;
+	if (p == PRECISION_64)
+		t |= _PC_64;
+	else if (p == PRECISION_53)
+		t |= _PC_53;
+	else
+		t |= _PC_24;
+
+	const WORD r = w & ROUND_MASK;
+	if (r == ROUND_DOWN)
+		t |= _RC_DOWN;
+	else if (r == ROUND_UP)
+		t |= _RC_UP;
+	else if (r == ROUND_CHOP)
+		t |= _RC_CHOP;
+	else
+		t |= _RC_NEAR;
+
+	if (w & EXCEPTION_INVALID)
+		t |= _EM_INVALID;
+	if (w & EXCEPTION_DENORMAL)
+		t |= _EM_DENORMAL;
+	if (w & EXCEPTION_ZERO_DIVIDE)
+		t |= _EM_ZERODIVIDE;
+	if (w & EXCEPTION_OVERFLOW)
+		t |= _EM_OVERFLOW;
+	if (w & EXCEPTION_UNDERFLOW)
+		t |= _EM_UNDERFLOW;
+	if (w & EXCEPTION_PRECISION)
+		t |= _EM_INEXACT;
+	return t;
+}
+
+WORD x87ValueFromMsvcFpu(unsigned t)
+{
+	WORD w = 0;
+	const unsigned pc = t & _MCW_PC;
+	if (pc == _PC_64)
+		w |= static_cast<WORD>(PRECISION_64);
+	else if (pc == _PC_53)
+		w |= static_cast<WORD>(PRECISION_53);
+	else
+		w |= static_cast<WORD>(PRECISION_24);
+
+	const unsigned rc = t & _MCW_RC;
+	if (rc == _RC_CHOP)
+		w |= static_cast<WORD>(ROUND_CHOP);
+	else if (rc == _RC_UP)
+		w |= static_cast<WORD>(ROUND_UP);
+	else if (rc == _RC_DOWN)
+		w |= static_cast<WORD>(ROUND_DOWN);
+
+	if (t & _EM_INVALID)
+		w |= EXCEPTION_INVALID;
+	if (t & _EM_DENORMAL)
+		w |= EXCEPTION_DENORMAL;
+	if (t & _EM_ZERODIVIDE)
+		w |= EXCEPTION_ZERO_DIVIDE;
+	if (t & _EM_OVERFLOW)
+		w |= EXCEPTION_OVERFLOW;
+	if (t & _EM_UNDERFLOW)
+		w |= EXCEPTION_UNDERFLOW;
+	if (t & _EM_INEXACT)
+		w |= EXCEPTION_PRECISION;
+	return w;
+}
+} // namespace
+#endif
 
 // MXCSR exception mask bits (bits 7-12 mask SSE exceptions when set to 1)
 const unsigned int MXCSR_EXCEPTION_MASK = 0x1F80;  // Mask all SSE exceptions
@@ -138,9 +216,9 @@ void FloatingPointUnit::update(void)
 WORD FloatingPointUnit::getControlWord(void)
 {
 #ifdef _WIN64
-	unsigned int cw = 0;
-	_controlfp_s(&cw, 0, 0);
-	return static_cast<WORD>(cw);
+	unsigned t = 0;
+	_controlfp_s(&t, 0, 0);
+	return x87ValueFromMsvcFpu(t);
 #else
 	WORD controlWord = 0;
 	__asm fnstcw controlWord;
@@ -153,8 +231,9 @@ WORD FloatingPointUnit::getControlWord(void)
 void FloatingPointUnit::setControlWord(WORD controlWord)
 {
 #ifdef _WIN64
-	unsigned int cw = 0;
-	_controlfp_s(&cw, static_cast<unsigned int>(controlWord), 0xFFFF);
+	const unsigned t = msvcFpuValueFromX87(controlWord);
+	unsigned         cur = 0;
+	IGNORE_RETURN(_controlfp_s(&cur, t, _MCW_EM | _MCW_RC | _MCW_PC));
 #else
 	UNREF(controlWord);
 	__asm fldcw controlWord;

@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="D:\titan\client\src\external\3rd\library\libsndfile\build_x64_Debug\CMakeFiles\6dd2def50d512de56bffa2864b9e1cdd\INSTALL_force.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{26F4CCA4-DD26-35CE-BCC8-A3FE4F23EE44}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

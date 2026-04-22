@@ -46,7 +46,7 @@ namespace Archive
 		virtual void    packDelta(ByteStream & target) const;
 		virtual void    unpackDelta(ReadIterator & source);
 
-		void setOnChanged(ObjectType * owner, void (ObjectType::*onChanged)());
+		void setOnChanged(ObjectType * objectPtr, void (ObjectType::*onChanged)());
 
 	private:
 		static void     internal_unpack(ReadIterator & source, std::string & buffer, const char * format);
@@ -162,18 +162,18 @@ namespace Archive
 	{
 		if (onChangedCallback && onChangedCallback->first)
 		{
-			ObjectType &owner = *onChangedCallback->first;
+			ObjectType &objectRef = *onChangedCallback->first;
 			void (ObjectType::*cb)() = onChangedCallback->second;
-			(owner.*cb)();
+			(objectRef.*cb)();
 		}
 	}
 
 	template<class KeyType, typename ValueType, typename ObjectType>
-	inline void AutoDeltaPackedMap<KeyType, ValueType, ObjectType>::setOnChanged(ObjectType * owner, void (ObjectType::*cb)())
+	inline void AutoDeltaPackedMap<KeyType, ValueType, ObjectType>::setOnChanged(ObjectType * objectPtr, void (ObjectType::*cb)())
 	{
 		delete onChangedCallback;
 		onChangedCallback = new std::pair<ObjectType *, void (ObjectType::*)()>;
-		onChangedCallback->first = owner;
+		onChangedCallback->first = objectPtr;
 		onChangedCallback->second = cb;
 	}
 

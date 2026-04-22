@@ -1,0 +1,1 @@
+D:\titan\client\src\external\3rd\library\openal-soft\build_x64_Release\alsoft.core-modules.dir\Release\alsoft.core-modules.lib

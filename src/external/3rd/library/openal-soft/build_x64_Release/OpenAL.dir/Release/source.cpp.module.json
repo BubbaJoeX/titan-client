@@ -1,0 +1,20 @@
+{
+    "version": 1,
+    "revision": 0,
+    "rules": [
+        {
+            "primary-output": "OpenAL.dir\\Release\\source.obj",
+            "outputs": [
+                "OpenAL.dir\\Release\\"
+            ],
+            "requires": [
+                {
+                    "logical-name": "format.types"
+                },
+                {
+                    "logical-name": "logging"
+                }
+            ]
+        }
+    ]
+}

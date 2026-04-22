@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="D:\titan\client\src\external\3rd\library\openal-soft\build_x64_Debug\CMakeFiles\a134fc3a08df1508ce69be60685fd4be\INSTALL_force.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{CC9A2E55-EE65-34D2-B050-BA84BAAF95F2}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

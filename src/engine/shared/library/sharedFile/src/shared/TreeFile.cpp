@@ -24,12 +24,35 @@
 #include "sharedSynchronization/Mutex.h"
 
 #include <cstdlib>
+#include <cstdio>
 #include <algorithm>
 #include <set>
 #include <string>
-#include <stdio.h>
 #include <vector>
 #include <map>
+#include <cstdarg>
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
+namespace
+{
+void titanTreeFileOds(const char *const fmt, ...) // max ~512 chars
+{
+#ifdef _WIN32
+	char buf[512];
+	va_list ap;
+	va_start(ap, fmt);
+	(void)_vsnprintf_s(buf, sizeof(buf), _TRUNCATE, fmt, ap);
+	va_end(ap);
+	char line[600];
+	_snprintf_s(line, sizeof(line), _TRUNCATE, "[Titan] TreeFile: %s\r\n", buf);
+	OutputDebugStringA(line);
+#else
+	(void)fmt;
+#endif
+}
+} // namespace
 
 // ======================================================================
 
@@ -103,6 +126,8 @@ void TreeFile::install(uint32 skuBits)
 	// the value 20 is used here for legacy support
 	int const maxPriority = ConfigFile::getKeyInt("SharedFile", "maxSearchPriority", 20);
 
+	titanTreeFileOds("install begin maxPriority=%d skuBits=0x%08X (hangs here are often huge .tre load or slow disk)", maxPriority, static_cast<unsigned int>(skuBits));
+
 	// search all the specified skus
 	bool first = true;
 	for (uint32 sku = 0; first || skuBits; first = false, skuBits &= ~(1 << sku), ++sku)
@@ -119,6 +144,7 @@ void TreeFile::install(uint32 skuBits)
 		// add all the search paths
 		for (int priority = 0; priority <= maxPriority; ++priority)
 		{
+			titanTreeFileOds("priority %d..%d sku=[%s] (next: searchPath keys)", priority, maxPriority, skuText);
 			// add all search paths
 			{
 				char buffer[32];
@@ -126,7 +152,10 @@ void TreeFile::install(uint32 skuBits)
 
 				char const * result;
 				for (int index = 0; (result = ConfigFile::getKeyString("SharedFile", buffer, index, NULL)) != NULL; ++index)
+				{
+					titanTreeFileOds("addSearchPath cfg[%s] = %s", buffer, result);
 					TreeFile::addSearchPath(result, priority);
+				}
 			}
 
 			// add all search trees
@@ -136,7 +165,10 @@ void TreeFile::install(uint32 skuBits)
 
 				char const * result;
 				for (int index = 0; (result = ConfigFile::getKeyString("SharedFile", buffer, index, NULL)) != NULL; ++index)
+				{
+					titanTreeFileOds("addSearchTree cfg[%s] = %s (loads/parses .tre or TitanPak; can take long)", buffer, result);
 					TreeFile::addSearchTree(result, priority);
+				}
 			}
 
 			// add in any TOCs
@@ -146,9 +178,14 @@ void TreeFile::install(uint32 skuBits)
 
 				char const * result;
 				for (int index = 0; (result = ConfigFile::getKeyString("SharedFile", buffer, index, NULL)) != NULL; ++index)
+				{
+					titanTreeFileOds("addSearchTOC cfg[%s] = %s", buffer, result);
 					TreeFile::addSearchTOC(result, priority);
+				}
 			}
 		}
+
+		titanTreeFileOds("finished path/tree/toc sweep for this sku, preloads next");
 
 		// add cached files
 		{
@@ -158,6 +195,7 @@ void TreeFile::install(uint32 skuBits)
 				char const * const path = ConfigSharedFile::getTreeFilePreload(i);
 				if (path != 0)
 				{
+					titanTreeFileOds("preload[%d] open %s", i, path);
 					AbstractFile * const file = open(path, AbstractFile::PriorityData, true);
 					if (file)
 					{
@@ -175,14 +213,17 @@ void TreeFile::install(uint32 skuBits)
 
 	//-- add an absolute search path after all search nodes
 	{
+		titanTreeFileOds("addSearchAbsolute");
 		TreeFile::addSearchAbsolute(ConfigFile::getKeyInt("SharedFile", "searchAbsolute", 0, !ms_searchNodes.empty() ? ms_searchNodes.front()->getPriority() + 1 : 0));
 	}
 
 	//-- add search cache after all search nodes
 	{
+		titanTreeFileOds("addSearchCache");
 		TreeFile::addSearchCache(ConfigFile::getKeyInt("SharedFile", "searchCache", 0, !ms_searchNodes.empty() ? ms_searchNodes.front()->getPriority() + 1 : 0));
 	}
 
+	titanTreeFileOds("install complete");
 #if PRODUCTION == 0
 	DebugFlags::registerFlag(ms_debugReportFlagShowMetrics,     "SharedFile", "reportTreeFileMetrics",   debugReportMetrics);
 	DebugFlags::registerFlag(ms_debugReportFlagShowSearchPaths, "SharedFile", "reportTreeFilePaths",     debugReportPaths);

@@ -29,6 +29,8 @@
 #include "sharedSynchronization/Mutex.h"
 
 #include <algorithm>
+#include <cstdarg>
+#include <cstdio>
 #include <map>
 #include <vector>
 
@@ -36,6 +38,25 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #endif
+
+namespace
+{
+void titanSearchNodeOds(const char *const fmt, ...)
+{
+#ifdef _WIN32
+	char buf[512];
+	va_list ap;
+	va_start(ap, fmt);
+	(void)_vsnprintf_s(buf, sizeof(buf), _TRUNCATE, fmt, ap);
+	va_end(ap);
+	char line[600];
+	_snprintf_s(line, sizeof(line), _TRUNCATE, "[Titan] SearchNode: %s\r\n", buf);
+	OutputDebugStringA(line);
+#else
+	(void)fmt;
+#endif
+}
+} // namespace
 
 // ======================================================================
 
@@ -95,6 +116,7 @@ TreeFile::SearchPath::SearchPath(int priority, const char *path)
 {
 	NOT_NULL(path);
 	DEBUG_FATAL(!path[0], ("empty path"));
+	titanSearchNodeOds("SearchPath begin p=%d path=%s", priority, path);
 
 	// convert from relative to absolute path
 	char absolutePath[Os::MAX_PATH_LENGTH];
@@ -111,6 +133,7 @@ TreeFile::SearchPath::SearchPath(int priority, const char *path)
 
 	// copy the path to a safe place
 	m_pathName = DuplicateString(absolutePath);
+	titanSearchNodeOds("SearchPath ok p=%d abs=%s", priority, m_pathName);
 }
 
 // ----------------------------------------------------------------------
@@ -336,12 +359,14 @@ TreeFile::SearchTree::SearchTree(int priority, const char *fileName)
 	m_encryptionContext(NULL)
 {
 	NOT_NULL(fileName);
+	titanSearchNodeOds("SearchTree ctor begin p=%d file=%s", priority, fileName);
 
 	// set to the the current name of the tree file that is fileName
 	m_treeFileName = DuplicateString(fileName);
 
 	m_treeFile = FileStreamer::open(m_treeFileName, true);
 	DEBUG_FATAL(!m_treeFile, ("failed to open TreeFile %s", m_treeFileName));
+	titanSearchNodeOds("SearchTree opened %s", m_treeFileName);
 
 	// read the header (the first 36 bytes of the tree file) 
 	Header header;
@@ -353,6 +378,7 @@ TreeFile::SearchTree::SearchTree(int priority, const char *fileName)
 	
 	// set to the number of files that has been compressed within the tree file
 	m_numberOfFiles = static_cast<int>(header.numberOfFiles);
+	titanSearchNodeOds("SearchTree header ok file=%s files=%d tocOff=%u enc=%d tocComp=%u nameComp=%u", m_treeFileName, m_numberOfFiles, header.tocOffset, m_encrypted ? 1 : 0, header.tocCompressor, header.blockCompressor);
 	
 	if (m_encrypted)
 	{
@@ -366,7 +392,7 @@ TreeFile::SearchTree::SearchTree(int priority, const char *fileName)
 		// Initialize encryption context
 		m_encryptionContext = new TitanPakEncryptionContext();
 		m_encryptionContext->initialize(password, encHeader);
-		
+		titanSearchNodeOds("SearchTree TitanPak crypto init done %s", m_treeFileName);
 		
 		DEBUG_REPORT_LOG(true, ("Loaded encrypted TitanPak: %s (files=%d, tocOffset=%u, tocComp=%u, nameComp=%u)\n", 
 			m_treeFileName, m_numberOfFiles, header.tocOffset, header.tocCompressor, header.blockCompressor));
@@ -392,6 +418,7 @@ TreeFile::SearchTree::SearchTree(int priority, const char *fileName)
 
 				if (isCompressed(header.tocCompressor))
 				{
+					titanSearchNodeOds("SearchTree read compressed TOC %s bytes=%u", m_treeFileName, static_cast<unsigned int>(header.sizeOfTOC));
 					// create temp buffer to store the compressed TOC entry data
 					byte *entryBuffer = new byte[static_cast<uint32>(header.sizeOfTOC)];
 				
@@ -407,12 +434,15 @@ TreeFile::SearchTree::SearchTree(int priority, const char *fileName)
 					}
 
 					// decompress data into toc 
+					titanSearchNodeOds("SearchTree Zlib expand TOC %s", m_treeFileName);
 					static_cast<void>(ZlibCompressor().expand(entryBuffer, header.sizeOfTOC, m_tableOfContents, tableOfContentsSize));
+					titanSearchNodeOds("SearchTree TOC expand done %s", m_treeFileName);
 
 					delete [] entryBuffer;
 				}
 				else
 				{
+					titanSearchNodeOds("SearchTree read uncompressed TOC %s bytes=%d", m_treeFileName, tableOfContentsSize);
 					// read the uncompressed table of contents data
 					const int bytesRead = m_treeFile->read(header.tocOffset, m_tableOfContents, tableOfContentsSize, AbstractFile::PriorityData);
 					DEBUG_FATAL(bytesRead != tableOfContentsSize, ("failed to read tree file tableOfContents entries"));
@@ -423,10 +453,12 @@ TreeFile::SearchTree::SearchTree(int priority, const char *fileName)
 					{
 						m_encryptionContext->decryptAt(reinterpret_cast<uint8_t*>(m_tableOfContents), tableOfContentsSize, header.tocOffset);
 					}
+					titanSearchNodeOds("SearchTree uncompressed TOC read done %s", m_treeFileName);
 				}
 
 				if (header.blockCompressor)
 				{
+					titanSearchNodeOds("SearchTree read compressed name block %s bytes=%u", m_treeFileName, static_cast<unsigned int>(header.sizeOfNameBlock));
 					// create temp buffer to store the compressed name block data
 					byte *nameBuffer  = new byte[static_cast<uint32>(header.sizeOfNameBlock)];
 
@@ -442,12 +474,15 @@ TreeFile::SearchTree::SearchTree(int priority, const char *fileName)
 					}
 
 					// decompress data into tocFileNames 
+					titanSearchNodeOds("SearchTree Zlib expand name block %s", m_treeFileName);
 					static_cast<void>(ZlibCompressor().expand(nameBuffer, header.sizeOfNameBlock, m_fileNames, header.uncompSizeOfNameBlock));
+					titanSearchNodeOds("SearchTree name block expand done %s", m_treeFileName);
 					
 					delete [] nameBuffer;
 				}
 				else
 				{
+					titanSearchNodeOds("SearchTree read uncompressed name block %s bytes=%u", m_treeFileName, header.uncompSizeOfNameBlock);
 					// read the uncompressed name block data 
 					const int bytesRead = m_treeFile->read(readPosition, m_fileNames, header.uncompSizeOfNameBlock, AbstractFile::PriorityData);
 					UNREF(bytesRead);
@@ -459,6 +494,7 @@ TreeFile::SearchTree::SearchTree(int priority, const char *fileName)
 					{
 						m_encryptionContext->decryptAt(reinterpret_cast<uint8_t*>(m_fileNames), header.uncompSizeOfNameBlock, readPosition);
 					}
+					titanSearchNodeOds("SearchTree uncompressed name block read done %s", m_treeFileName);
 				}
 
 				// Debug: show first few files in the TOC to verify decryption worked
@@ -483,6 +519,7 @@ TreeFile::SearchTree::SearchTree(int priority, const char *fileName)
 					WARNING(true, ("=== End TitanPak/TreeFile '%s' ===", m_treeFileName));
 				}
 			}
+			titanSearchNodeOds("SearchTree ctor end ok %s files=%d", m_treeFileName, m_numberOfFiles);
 			break;
 
 		default:

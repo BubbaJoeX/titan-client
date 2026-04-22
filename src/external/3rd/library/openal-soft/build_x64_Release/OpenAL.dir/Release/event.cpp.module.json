@@ -1,0 +1,20 @@
+{
+    "version": 1,
+    "revision": 0,
+    "rules": [
+        {
+            "primary-output": "OpenAL.dir\\Release\\event.obj",
+            "outputs": [
+                "OpenAL.dir\\Release\\"
+            ],
+            "requires": [
+                {
+                    "logical-name": "gsl"
+                },
+                {
+                    "logical-name": "logging"
+                }
+            ]
+        }
+    ]
+}

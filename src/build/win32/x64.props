@@ -9,10 +9,10 @@
   This overrides output directories, preprocessor defines, and removes
   x86-specific settings (STLport, _USE_32BIT_TIME_T) for x64 builds.
 -->
-<Project ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 
   <PropertyGroup Label="Configuration" Condition="'$(Platform)'=='x64'">
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Platform)'=='x64'">
