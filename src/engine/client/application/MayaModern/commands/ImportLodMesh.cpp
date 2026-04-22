@@ -589,6 +589,7 @@ MStatus ImportLodMesh::doIt(const MArgList& args)
     MStatus status;
     std::string filename;
     std::string parentPath;
+    bool visualHardpoints = false;
 
     const unsigned argCount = args.length(&status);
     if (!status) return MS::kFailure;
@@ -607,6 +608,8 @@ MStatus ImportLodMesh::doIt(const MArgList& args)
             parentPath = args.asString(i + 1, &status).asChar();
             ++i;
         }
+        else if (argName == MString("-visualHardpoints"))
+            visualHardpoints = true;
     }
 
     if (filename.empty())
@@ -764,7 +767,7 @@ MStatus ImportLodMesh::doIt(const MArgList& args)
         iff.close();
         MString rootPath;
         MString parentPathStr(parentPath.c_str());
-        status = MshTranslator::createMeshFromMsh(filename.c_str(), rootPath, parentPathStr);
+        status = MshTranslator::createMeshFromMsh(filename.c_str(), rootPath, parentPathStr, visualHardpoints);
         if (!status)
         {
             std::cerr << "ImportLodMesh: failed to import .msh " << filename << std::endl;
@@ -859,7 +862,7 @@ MStatus ImportLodMesh::doIt(const MArgList& args)
         {
             lodLog("  createMeshFromMsh (static mesh only, no fallback)");
             MString rootPath;
-            status = MshTranslator::createMeshFromMsh(resolvedPath.c_str(), rootPath, MString(lodPath.c_str()));
+            status = MshTranslator::createMeshFromMsh(resolvedPath.c_str(), rootPath, MString(lodPath.c_str()), visualHardpoints);
             lodLog("  createMeshFromMsh: %s", (status && rootPath.length() > 0) ? "OK" : "FAILED");
             if (status && rootPath.length() > 0)
             {
@@ -925,8 +928,18 @@ MStatus ImportLodMesh::doIt(const MArgList& args)
             {
                 std::map<std::string, MDagPath> emptyJointMap;
                 const std::string hpMeshName = baseName + std::string("_appearance");
-                MStatus hpSt = MayaSceneBuilder::createHardpoints(dtlaAppearanceHardpoints, emptyJointMap, hpMeshName, l0Dag.node());
-                lodLog("DTLA appearance hardpoints on l0: count=%zu %s", dtlaAppearanceHardpoints.size(), hpSt ? "OK" : "FAILED");
+                if (visualHardpoints)
+                {
+                    MStatus hpSt = MayaSceneBuilder::createHardpoints(dtlaAppearanceHardpoints, emptyJointMap, hpMeshName, l0Dag.node());
+                    lodLog("DTLA appearance hardpoints on l0: count=%zu %s", dtlaAppearanceHardpoints.size(), hpSt ? "OK" : "FAILED");
+                }
+                else
+                {
+                    std::vector<MayaSceneBuilder::HardpointData> dynEmpty;
+                    MStatus hpSt = MayaSceneBuilder::storeSkmgHardpointsOnMeshTransform(l0Dag.node(), dtlaAppearanceHardpoints, dynEmpty);
+                    lodLog("DTLA appearance hardpoints (swgSkmgHardpoints on l0): count=%zu %s",
+                        dtlaAppearanceHardpoints.size(), hpSt ? "OK" : "FAILED");
+                }
             }
         }
     }

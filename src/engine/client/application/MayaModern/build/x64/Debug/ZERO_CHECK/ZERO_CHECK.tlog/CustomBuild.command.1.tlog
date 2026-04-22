@@ -1,0 +1,10 @@
+^D:\TITAN\CLIENT\SRC\ENGINE\CLIENT\APPLICATION\MAYAMODERN\BUILD\CMAKEFILES\44CEB83DD427A22E08343FCB82220C70\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SD:/titan/client/src/engine/client/application/MayaModern -BD:/titan/client/src/engine/client/application/MayaModern/build --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file D:/titan/client/src/engine/client/application/MayaModern/build/SwgMayaEditor.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

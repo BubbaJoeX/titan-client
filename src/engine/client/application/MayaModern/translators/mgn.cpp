@@ -50,6 +50,8 @@
 #include <set>
 #include <map>
 #include <cctype>
+#include <cstdio>
+#include <sstream>
 #include <string>
 
 namespace
@@ -59,6 +61,79 @@ namespace
         while (!s.empty() && std::isspace(static_cast<unsigned char>(s.front()))) s.erase(0, 1);
         while (!s.empty() && std::isspace(static_cast<unsigned char>(s.back()))) s.pop_back();
         return s;
+    }
+
+    struct ParsedSkmgHp
+    {
+        std::string name;
+        std::string parentJoint;
+        Quaternion rotation = Quaternion::identity;
+        Vector position{};
+        bool isDynamic = false;
+    };
+
+    static void splitTabs(const std::string& line, std::vector<std::string>& cols)
+    {
+        cols.clear();
+        size_t start = 0;
+        for (;;)
+        {
+            const size_t tab = line.find('\t', start);
+            if (tab == std::string::npos)
+            {
+                cols.push_back(line.substr(start));
+                break;
+            }
+            cols.push_back(line.substr(start, tab - start));
+            start = tab + 1;
+        }
+    }
+
+    /** SAT / ImportSkeletalMesh writes `swgSkmgHardpoints` — parse for MGN export without locator DAG. */
+    static bool parseSwgSkmgHardpointsAttrBlob(const std::string& blob,
+        std::vector<ParsedSkmgHp>& staticOut,
+        std::vector<ParsedSkmgHp>& dynOut)
+    {
+        staticOut.clear();
+        dynOut.clear();
+        static const char hdr[] = "swgSkmgHp v1";
+        const size_t hdrLen = sizeof(hdr) - 1;
+        if (blob.size() < hdrLen || blob.compare(0, hdrLen, hdr) != 0)
+            return false;
+        size_t pos = blob.find('\n');
+        if (pos == std::string::npos)
+            return true;
+        std::istringstream iss(blob.substr(pos + 1));
+        std::string line;
+        std::vector<std::string> cols;
+        while (std::getline(iss, line))
+        {
+            if (line.empty())
+                continue;
+            splitTabs(line, cols);
+            if (cols.size() < 5)
+                continue;
+            const char kind = cols[0].empty() ? 0 : cols[0][0];
+            if (kind != 's' && kind != 'd')
+                continue;
+            float px = 0.f, py = 0.f, pz = 0.f;
+            float rx = 0.f, ry = 0.f, rz = 0.f, rw = 1.f;
+            if (std::sscanf(cols[3].c_str(), "%f %f %f", &px, &py, &pz) != 3)
+                continue;
+            if (std::sscanf(cols[4].c_str(), "%f %f %f %f", &rx, &ry, &rz, &rw) != 4)
+                continue;
+            ParsedSkmgHp hp;
+            hp.name = cols[1];
+            hp.parentJoint = cols[2];
+            hp.position = Vector(px, py, pz);
+            hp.rotation = Quaternion(rw, rx, ry, rz);
+            hp.isDynamic = (kind == 'd');
+            if (hp.isDynamic)
+                dynOut.push_back(hp);
+            else
+                staticOut.push_back(hp);
+        }
+        return true;
     }
 
     /// Optional string attributes on the mesh parent transform: tree paths (semicolon/newline-separated).
@@ -2035,7 +2110,7 @@ MStatus MgnTranslator::writer (const MFileObject& file, const MString& options, 
             layerPlug.getValue(occlusionLayer);
     }
     
-    // Gather hardpoint data from child locators
+    // Gather hardpoints: prefer swgSkmgHardpoints string (SAT import — no viewport DAG), else hp_* locators.
     struct HardpointExport {
         std::string name;
         std::string parentJoint;
@@ -2049,55 +2124,94 @@ MStatus MgnTranslator::writer (const MFileObject& file, const MString& options, 
         MDagPath meshTransformPath = meshPath;
         meshTransformPath.pop();
         MFnDagNode meshTransformFn(meshTransformPath);
-        
-        for (unsigned ci = 0; ci < meshTransformFn.childCount(); ++ci)
+
+        bool usedAttrExport = false;
+        MPlug hpPlug = meshTransformFn.findPlug("swgSkmgHardpoints", true);
+        if (!hpPlug.isNull())
         {
-            MObject childObj = meshTransformFn.child(ci);
-            if (!childObj.hasFn(MFn::kLocator)) continue;
-            
-            MDagPath locPath;
-            MDagPath::getAPathTo(childObj, locPath);
-            locPath.pop(); // Get transform
-            
-            MFnTransform locFn(locPath);
-            std::string locName(locFn.name().asChar());
-            
-            // Check if it's a hardpoint (starts with hp_)
-            if (locName.find("hp_") != 0) continue;
-            
-            HardpointExport hp;
-            hp.name = locName;
-            
-            // Get parent joint name from attribute or default
-            MPlug parentPlug = locFn.findPlug("swgHardpointParent", false);
-            if (!parentPlug.isNull())
+            MString blobStr;
+            if (hpPlug.getValue(blobStr) == MS::kSuccess && blobStr.length() > 0)
             {
-                MString parentStr;
-                parentPlug.getValue(parentStr);
-                hp.parentJoint = parentStr.asChar();
+                std::vector<ParsedSkmgHp> st;
+                std::vector<ParsedSkmgHp> dn;
+                if (parseSwgSkmgHardpointsAttrBlob(std::string(blobStr.asChar()), st, dn))
+                {
+                    usedAttrExport = true;
+                    for (const auto& p : st)
+                    {
+                        HardpointExport hp;
+                        hp.name = p.name;
+                        hp.parentJoint = p.parentJoint;
+                        hp.rotation = p.rotation;
+                        hp.position = p.position;
+                        hp.isDynamic = false;
+                        staticHardpoints.push_back(hp);
+                    }
+                    for (const auto& p : dn)
+                    {
+                        HardpointExport hp;
+                        hp.name = p.name;
+                        hp.parentJoint = p.parentJoint;
+                        hp.rotation = p.rotation;
+                        hp.position = p.position;
+                        hp.isDynamic = true;
+                        dynamicHardpoints.push_back(hp);
+                    }
+                }
             }
-            
-            // Get transform
-            MVector trans = locFn.getTranslation(MSpace::kTransform);
-            hp.position = Vector(static_cast<float>(-trans.x), static_cast<float>(trans.y), static_cast<float>(trans.z));
-            
-            MEulerRotation rot;
-            locFn.getRotation(rot);
-            Quaternion qx(static_cast<float>(rot.x), Vector::unitX);
-            Quaternion qy(static_cast<float>(-rot.y), Vector::unitY);
-            Quaternion qz(static_cast<float>(-rot.z), Vector::unitZ);
-            hp.rotation = qz * (qy * qx);
-            
-            // Check if dynamic
-            MPlug dynPlug = locFn.findPlug("swgHardpointDynamic", false);
-            hp.isDynamic = false;
-            if (!dynPlug.isNull())
-                dynPlug.getValue(hp.isDynamic);
-            
-            if (hp.isDynamic)
-                dynamicHardpoints.push_back(hp);
-            else
-                staticHardpoints.push_back(hp);
+        }
+
+        if (!usedAttrExport)
+        {
+            for (unsigned ci = 0; ci < meshTransformFn.childCount(); ++ci)
+            {
+                MObject childObj = meshTransformFn.child(ci);
+                if (!childObj.hasFn(MFn::kLocator)) continue;
+
+                MDagPath locPath;
+                MDagPath::getAPathTo(childObj, locPath);
+                locPath.pop(); // Get transform
+
+                MFnTransform locFn(locPath);
+                std::string locName(locFn.name().asChar());
+
+                // Check if it's a hardpoint (starts with hp_)
+                if (locName.find("hp_") != 0) continue;
+
+                HardpointExport hp;
+                hp.name = locName;
+
+                // Get parent joint name from attribute or default
+                MPlug parentPlug = locFn.findPlug("swgHardpointParent", false);
+                if (!parentPlug.isNull())
+                {
+                    MString parentStr;
+                    parentPlug.getValue(parentStr);
+                    hp.parentJoint = parentStr.asChar();
+                }
+
+                // Get transform
+                MVector trans = locFn.getTranslation(MSpace::kTransform);
+                hp.position = Vector(static_cast<float>(-trans.x), static_cast<float>(trans.y), static_cast<float>(trans.z));
+
+                MEulerRotation rot;
+                locFn.getRotation(rot);
+                Quaternion qx(static_cast<float>(rot.x), Vector::unitX);
+                Quaternion qy(static_cast<float>(-rot.y), Vector::unitY);
+                Quaternion qz(static_cast<float>(-rot.z), Vector::unitZ);
+                hp.rotation = qz * (qy * qx);
+
+                // Check if dynamic
+                MPlug dynPlug = locFn.findPlug("swgHardpointDynamic", false);
+                hp.isDynamic = false;
+                if (!dynPlug.isNull())
+                    dynPlug.getValue(hp.isDynamic);
+
+                if (hp.isDynamic)
+                    dynamicHardpoints.push_back(hp);
+                else
+                    staticHardpoints.push_back(hp);
+            }
         }
     }
 

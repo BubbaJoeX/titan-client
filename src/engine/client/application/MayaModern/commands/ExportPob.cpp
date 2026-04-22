@@ -22,6 +22,7 @@
 #include <maya/MPlug.h>
 #include <maya/MSelectionList.h>
 #include <maya/MFnLight.h>
+#include <maya/MFnMatrixData.h>
 
 #include <algorithm>
 #include <map>
@@ -152,10 +153,8 @@ namespace
         if (!pb.isNull()) pb.getValue(b);
     }
 
-    static void readDoorHardpointFromPortalTransform(MObject portalTransformObj, PortalInfo& pi)
+    static void readDoorHardpointFromLegacyChild(MObject portalTransformObj, PortalInfo& pi)
     {
-        pi.hasDoorHardpoint = false;
-        pi.doorTransform = Transform::identity;
         MFnDagNode pfn(portalTransformObj);
         for (unsigned c = 0; c < pfn.childCount(); ++c)
         {
@@ -168,6 +167,34 @@ namespace
             pi.doorTransform = mayaMatrixToEngineTransform(tfn.transformationMatrix());
             return;
         }
+    }
+
+    /// Prefers `doorHardpointEnabled` + `doorHardpointMatrix` (data only). Falls back to legacy `doorHardpoint` child.
+    static void readDoorHardpointForExport(MObject portalTransformObj, PortalInfo& pi)
+    {
+        pi.hasDoorHardpoint = false;
+        pi.doorTransform = Transform::identity;
+        MFnDependencyNode pDep(portalTransformObj);
+        MPlug enPl = pDep.findPlug("doorHardpointEnabled", true);
+        if (!enPl.isNull())
+        {
+            enPl.getValue(pi.hasDoorHardpoint);
+            if (pi.hasDoorHardpoint)
+            {
+                MPlug mPl = pDep.findPlug("doorHardpointMatrix", true);
+                if (!mPl.isNull())
+                {
+                    MObject matObj;
+                    if (mPl.getValue(matObj) == MS::kSuccess)
+                    {
+                        MFnMatrixData mdata(matObj);
+                        pi.doorTransform = mayaMatrixToEngineTransform(mdata.matrix());
+                    }
+                }
+            }
+            return;
+        }
+        readDoorHardpointFromLegacyChild(portalTransformObj, pi);
     }
 
     static bool extractMeshGeometry(MDagPath meshPath, PortalGeometry& geom)
@@ -294,6 +321,7 @@ MStatus ExportPob::doIt(const MArgList& args)
 
     std::map<int, PortalGeometry> portalGeometries;
     std::vector<CellData> cells;
+    std::vector<bool> cellUsesImportedSeeWorld(cellObjs.size(), false);
 
     for (size_t cellIdx = 0; cellIdx < cellObjs.size(); ++cellIdx)
     {
@@ -301,6 +329,22 @@ MStatus ExportPob::doIt(const MArgList& args)
         char buf[32];
         sprintf(buf, "r%zu", cellIdx);
         cell.name = buf;
+        {
+            std::string pcn;
+            if (getStringAttr(cellObjs[cellIdx], "pobCellName", pcn) && !pcn.empty())
+                cell.name = pcn;
+        }
+        cell.canSeeWorldCell = false;
+        {
+            MFnDependencyNode cellNodeDep(cellObjs[cellIdx]);
+            if (!cellNodeDep.findPlug("pobCellCanSeeWorld", true).isNull())
+            {
+                cellUsesImportedSeeWorld[cellIdx] = true;
+                getBoolAttr(cellObjs[cellIdx], "pobCellCanSeeWorld", cell.canSeeWorldCell);
+            }
+            else if (cellIdx == 0)
+                cell.canSeeWorldCell = true;
+        }
 
         MFnDagNode cellFn(cellObjs[cellIdx]);
         for (unsigned j = 0; j < cellFn.childCount(); ++j)
@@ -338,7 +382,7 @@ MStatus ExportPob::doIt(const MArgList& args)
                     getBoolAttr(portalObj, "portalDisabled", pi.disabled);
                     getBoolAttr(portalObj, "portalPassable", pi.passable);
                     getStringAttr(portalObj, "doorStyle", pi.doorStyle);
-                    readDoorHardpointFromPortalTransform(portalObj, pi);
+                    readDoorHardpointForExport(portalObj, pi);
 
                     for (unsigned m = 0; m < portalFn.childCount(); ++m)
                     {
@@ -431,8 +475,6 @@ MStatus ExportPob::doIt(const MArgList& args)
             }
         }
 
-        if (cellIdx == 0)
-            cell.canSeeWorldCell = true;
         cells.push_back(cell);
     }
 
@@ -457,10 +499,18 @@ MStatus ExportPob::doIt(const MArgList& args)
     }
     for (size_t m = 0; m < static_cast<size_t>(numberOfPortals); ++m)
     {
-        if (clockwiseCell[m] == 0)
-            cells[static_cast<size_t>(counterClockwiseCell[m])].canSeeWorldCell = true;
-        if (counterClockwiseCell[m] == 0)
-            cells[static_cast<size_t>(clockwiseCell[m])].canSeeWorldCell = true;
+        if (clockwiseCell[m] == 0 && counterClockwiseCell[m] >= 0)
+        {
+            const size_t idx = static_cast<size_t>(counterClockwiseCell[m]);
+            if (idx < cells.size() && !cellUsesImportedSeeWorld[idx])
+                cells[idx].canSeeWorldCell = true;
+        }
+        if (counterClockwiseCell[m] == 0 && clockwiseCell[m] >= 0)
+        {
+            const size_t idx = static_cast<size_t>(clockwiseCell[m]);
+            if (idx < cells.size() && !cellUsesImportedSeeWorld[idx])
+                cells[idx].canSeeWorldCell = true;
+        }
     }
 
     Iff iff(65536, true);

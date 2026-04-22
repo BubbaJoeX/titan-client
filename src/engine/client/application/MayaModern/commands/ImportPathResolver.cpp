@@ -128,6 +128,76 @@ std::string resolveImportPath(const std::string& path)
     return baseDir + treePath;
 }
 
+std::string resolveWindowsMayaAbsolutePath(const std::string& path)
+{
+#ifndef _WIN32
+    return path;
+#else
+    if (path.empty())
+        return path;
+    if (MayaUtility::fileExists(path))
+        return path;
+    const size_t n = path.size();
+    if (n >= 2 && path[1] == ':')
+        return path;
+    if (n >= 2 && path[0] == '/' && path[1] == '/')
+        return path;
+
+    if (path[0] != '/')
+        return path;
+
+    auto tryDrivePrefix = [&path](char d) -> std::string {
+        const bool letter = (d >= 'A' && d <= 'Z') || (d >= 'a' && d <= 'z');
+        if (!letter)
+            return {};
+        std::string c;
+        c += d;
+        c += ':';
+        c += path;
+        return MayaUtility::fileExists(c) ? c : std::string{};
+    };
+
+    const char* tw = SetDirectoryCommand::getDirectoryString(SetDirectoryCommand::TEXTURE_WRITE_DIR_INDEX);
+    if (tw && tw[0] && tw[1] == ':')
+    {
+        const std::string fix = tryDrivePrefix(tw[0]);
+        if (!fix.empty())
+            return fix;
+    }
+    const char* dr = SetDirectoryCommand::getDirectoryString(SetDirectoryCommand::DATA_ROOT_DIR_INDEX);
+    if (dr && dr[0] && dr[1] == ':')
+    {
+        const std::string fix = tryDrivePrefix(dr[0]);
+        if (!fix.empty())
+            return fix;
+    }
+
+    std::string base = getImportDataRoot();
+    if (!base.empty())
+    {
+        while (!base.empty() && (base.back() == '/' || base.back() == '\\'))
+            base.pop_back();
+        std::string rel = path;
+        while (!rel.empty() && (rel[0] == '/' || rel[0] == '\\'))
+            rel.erase(0, 1);
+        if (!rel.empty())
+        {
+            const std::string candidate = base + '/' + rel;
+            if (MayaUtility::fileExists(candidate))
+                return candidate;
+            std::string candBs = candidate;
+            for (char& ch : candBs)
+                if (ch == '/')
+                    ch = '\\';
+            if (candBs != candidate && MayaUtility::fileExists(candBs))
+                return candBs;
+        }
+    }
+
+    return path;
+#endif
+}
+
 namespace
 {
     std::string normalizeToBackslashDataRoot(std::string base)

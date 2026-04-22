@@ -36,6 +36,8 @@
 #include <maya/MFnMesh.h>
 
 #include <ios>
+#include <iostream>
+#include <exception>
 #include <cstring>
 #include <cctype>
 #include <set>
@@ -49,24 +51,111 @@
 
 namespace
 {
-    /// Parse SwgMsh export dialog options string (see scripts/swgMshExportOptions.mel).
-    bool legacyTriangleFlipFromMshExportOptions(const MString& options)
+    /// Parse semicolon-separated SwgMsh export options (see scripts/swgMshExportOptions.mel).
+    bool parseMshExportOptionBool(const MString& options, const char* keyEq)
     {
         const char* cs = options.asChar();
         if (!cs || !cs[0]) return false;
         std::string str(cs);
-        const std::string key = "legacyTriangleFlip=";
+        const std::string key(keyEq);
+        size_t scan = 0;
+        bool found = false;
+        bool value = false;
         size_t pos = 0;
-        while ((pos = str.find(key, pos)) != std::string::npos)
+        while ((pos = str.find(key, scan)) != std::string::npos)
         {
-            pos += key.size();
-            while (pos < str.size() && (str[pos] == ' ' || str[pos] == '\t'))
-                ++pos;
-            if (pos >= str.size()) continue;
-            const char c = static_cast<char>(std::tolower(static_cast<unsigned char>(str[pos])));
-            return c == '1' || c == 't' || c == 'y';
+            size_t vpos = pos + key.size();
+            while (vpos < str.size() && (str[vpos] == ' ' || str[vpos] == '\t'))
+                ++vpos;
+            if (vpos < str.size())
+            {
+                const char c = static_cast<char>(std::tolower(static_cast<unsigned char>(str[vpos])));
+                value = (c == '1' || c == 't' || c == 'y');
+                found = true;
+            }
+            scan = pos + key.size();
         }
-        return false;
+        return found ? value : false;
+    }
+
+    /// Import-only: must not match `visualHardpoints=` inside unrelated option values (substring false positives).
+    /// Semicolon-separated tokens; `visualHardpoints` must be the key at the start of a token. Last token wins.
+    /// Missing key => false (attribute-only hardpoints). Explicit `visualHardpoints=0` => false.
+    bool mshImportVisualHardpointsOptInFromOptions(const MString& options)
+    {
+        const char* cs = options.asChar();
+        if (!cs || !cs[0])
+            return false;
+
+        const std::string keyEq = "visualHardpoints=";
+        std::string str(cs);
+        for (char& ch : str)
+        {
+            if (ch == '\n' || ch == '\r')
+                ch = ';';
+        }
+        bool foundKey = false;
+        bool enabled = false;
+
+        size_t start = 0;
+        for (;;)
+        {
+            const size_t semi = str.find(';', start);
+            std::string token = (semi == std::string::npos) ? str.substr(start) : str.substr(start, semi - start);
+
+            size_t a = 0;
+            size_t b = token.size();
+            while (a < b && (token[a] == ' ' || token[a] == '\t'))
+                ++a;
+            while (b > a && (token[b - 1] == ' ' || token[b - 1] == '\t'))
+                --b;
+            if (a < b)
+            {
+                token = token.substr(a, b - a);
+                if (token.size() >= keyEq.size() && token.compare(0, keyEq.size(), keyEq) == 0)
+                {
+                    size_t v = keyEq.size();
+                    while (v < token.size() && (token[v] == ' ' || token[v] == '\t'))
+                        ++v;
+                    if (v < token.size())
+                    {
+                        const char c = static_cast<char>(std::tolower(static_cast<unsigned char>(token[v])));
+                        enabled = (c == '1' || c == 't' || c == 'y');
+                        foundKey = true;
+                    }
+                }
+            }
+            if (semi == std::string::npos)
+                break;
+            start = semi + 1;
+        }
+        return foundKey ? enabled : false;
+    }
+
+    bool legacyTriangleFlipFromMshExportOptions(const MString& options)
+    {
+        return parseMshExportOptionBool(options, "legacyTriangleFlip=");
+    }
+
+    bool objExportDirectUvFromMshExportOptions(const MString& options)
+    {
+        return parseMshExportOptionBool(options, "objExportDirectUv=");
+    }
+
+    bool mshOptionKeySpecified(const MString& opt, const char* keyEq)
+    {
+        const char* cs = opt.asChar();
+        if (!cs || !cs[0])
+            return false;
+        return std::string(cs).find(keyEq) != std::string::npos;
+    }
+
+    /// Matches SwgMsh defaultOptionsString (main.cpp): objExportDirectUv=1 when key omitted — SWG→SWG round-trip with default export.
+    bool mshImportUsesDirectUvFromOptions(const MString& options)
+    {
+        if (!mshOptionKeySpecified(options, "objExportDirectUv="))
+            return true;
+        return parseMshExportOptionBool(options, "objExportDirectUv=");
     }
 }
 
@@ -233,6 +322,9 @@ namespace
 
     MString s_parentPathForMshImport;
     MString s_createdRootPathForMshImport;
+    bool s_mshImportVisualHardpoints = false;
+    /// Set at reader() entry from objExportDirectUv option; used when building per-vertex UV arrays.
+    bool s_mshImportUvDirectEngineToMaya = true;
 
     static const Tag TAG_APPR = TAG(A,P,P,R);
     static const Tag TAG_CNTR = TAG(C,N,T,R);
@@ -240,7 +332,7 @@ namespace
     static const Tag TAG_SPS_NS = TAG3(S,P,S);
 }
 
-MStatus MshTranslator::createMeshFromMsh(const char* mshPath, MString& outRootPath, const MString& parentPath)
+MStatus MshTranslator::createMeshFromMsh(const char* mshPath, MString& outRootPath, const MString& parentPath, bool visualHardpoints)
 {
     mshLog("createMeshFromMsh: %s", mshPath);
     std::set<std::string> before;
@@ -259,7 +351,8 @@ MStatus MshTranslator::createMeshFromMsh(const char* mshPath, MString& outRootPa
     fileObj.setRawFullName(mshPath);
     MshTranslator* t = static_cast<MshTranslator*>(creator());
     mshLog("  Calling reader...");
-    MStatus status = t->reader(fileObj, MString(), MPxFileTranslator::kImportAccessMode);
+    const MString readerOpts = visualHardpoints ? MString("visualHardpoints=1") : MString();
+    MStatus status = t->reader(fileObj, readerOpts, MPxFileTranslator::kImportAccessMode);
     mshLog("  Reader returned: %s", status ? "OK" : "FAILED");
     s_parentPathForMshImport = MString();
     delete t;
@@ -303,6 +396,11 @@ MStatus MshTranslator::reader (const MFileObject& file, const MString& options, 
 {
     const char* fileName = file.expandedFullName().asChar();
     mshLog("reader: %s", fileName);
+    mshLog("reader options string: [%s]", options.asChar() ? options.asChar() : "");
+
+    s_mshImportVisualHardpoints = mshImportVisualHardpointsOptInFromOptions(options);
+    s_mshImportUvDirectEngineToMaya = mshImportUsesDirectUvFromOptions(options);
+    mshLog("  UV import mode: %s", s_mshImportUvDirectEngineToMaya ? "direct (matches default SwgMsh export / OBJ path)" : "1-V flip (legacy; pair with export objExportDirectUv OFF for round-trip)");
 
     // APT redirect + DTLA/MLOD unwrapping (parity with legacy ImportStaticMesh / importLodMesh).
     const std::string pathRaw(fileName);
@@ -411,8 +509,16 @@ MStatus MshTranslator::reader (const MFileObject& file, const MString& options, 
             const bool useIndicesU32 = (spsInnerTag == ::TAG_0000);
             mshLog("  SPS inner: %s indices", useIndicesU32 ? "uint32" : "uint16");
             iff.enterChunk(TAG_CNT);
-            const int32 numberOfShaders = iff.read_int32();
+            const int32 numberOfShadersRaw = iff.read_int32();
             iff.exitChunk(TAG_CNT);
+            if (numberOfShadersRaw < 1 || numberOfShadersRaw > 2048)
+            {
+                mshLog("  Invalid SPS shader count %d (must be 1..2048)", static_cast<int>(numberOfShadersRaw));
+                MGlobal::displayError(MString("[MshTranslator] Invalid MESH/SPS shader count in .msh. File: ") + pathToLoad.c_str());
+                iff.close();
+                return MS::kFailure;
+            }
+            const int32 numberOfShaders = numberOfShadersRaw;
             mshLog("  Shaders: %d", numberOfShaders);
             
             MObject parentObj = MObject::kNullObj;
@@ -453,14 +559,14 @@ MStatus MshTranslator::reader (const MFileObject& file, const MString& options, 
 
                     iff.enterChunk(TAG_INFO);
                         const int numberOfPrimitives = iff.read_int32();
-                        cout << "number of primitives for first shader is " << numberOfPrimitives << std::endl;
+                        (void)numberOfPrimitives;
                     iff.exitChunk(TAG_INFO);
 
 
                     iff.enterForm(); // This is the version # of the LocalShaderPrimitiveTemplate
                         iff.enterChunk(TAG_INFO);
                             const int primitiveTypeInt = iff.read_int32();
-                            cout << "primitive int type is: " << primitiveTypeInt << std::endl;
+                            (void)primitiveTypeInt;
                             // todo VALIDATE_RANGE_INCLUSIVE_INCLUSIVE here against SPSPT:: list
                             const bool hasIndices = iff.read_bool8();
                             const bool hasSortedIndices = iff.read_bool8();
@@ -477,8 +583,6 @@ MStatus MshTranslator::reader (const MFileObject& file, const MString& options, 
                                     vbf.setFlags(static_cast<VertexBufferFormat::Flags>(iff.read_uint32()));
                                     int numberOfTextureCoordinateSets = vbf.getNumberOfTextureCoordinateSets();
 
-                                    cout << "number of Texture Coordinate Sets is: " << numberOfTextureCoordinateSets << std::endl;
-
                                     bool skipDot3 = false;
                                     //todo this is also supposed to check if [ClientGraphics] DOT3 is enabled but we don't have a good way to do that
                                     // and I'm not sure if there is a point based on assets we've tried reading in for editing
@@ -490,18 +594,32 @@ MStatus MshTranslator::reader (const MFileObject& file, const MString& options, 
                                         skipDot3 = true;
                                     }
                                     const int numberOfVertices = iff.read_int32();
+                                    // Guard absurd counts (corrupt IFF / format mismatch) — avoids hour-long "freezes".
+                                    constexpr int kMaxReasonableVertices = 32 * 1024 * 1024;
+                                    if (numberOfVertices < 0 || numberOfVertices > kMaxReasonableVertices)
+                                    {
+                                        mshLog("    Invalid vertex count %d (shader %d)", numberOfVertices, i + 1);
+                                        MGlobal::displayError(MString("[MshTranslator] Invalid vertex count in .msh DATA (corrupt file or unsupported layout). Path: ")
+                                            + pathToLoad.c_str());
+                                        iff.close();
+                                        return MS::kFailure;
+                                    }
                                     mshLog("    Vertices: %d (shader %d)", numberOfVertices, i + 1);
 
                                     totalVerticesInMesh += numberOfVertices;
                                 iff.exitChunk(TAG_INFO);
 
                                 iff.enterChunk(::TAG_DATA);
-                                    int vertCount = 0;
-                                    do
+                                    // IMPORTANT: Do not use `while (!iff.atEndOfForm())` here. If the vertex layout implied by
+                                    // VertexBufferFormat does not match the bytes on disk (re-exported / mixed client assets),
+                                    // the reader under-fills each vertex and never reaches the end of the DATA chunk — Maya
+                                    // appears frozen. Iterate exactly `numberOfVertices` times (same contract as
+                                    // VertexBuffer::load_0003), then drain any trailing padding bytes.
+                                    for (int vertIndex = 0; vertIndex < numberOfVertices; ++vertIndex)
                                     {
-                                        ++vertCount;
-                                        if (vertCount == 1 || vertCount == numberOfVertices || (numberOfVertices > 1000 && vertCount % 10000 == 0))
-                                            mshLog("    Vertex %d/%d", vertCount, numberOfVertices);
+                                        if (vertIndex == 0 || vertIndex + 1 == numberOfVertices
+                                            || (numberOfVertices > 1000 && (vertIndex + 1) % 10000 == 0))
+                                            mshLog("    Vertex %d/%d", vertIndex + 1, numberOfVertices);
                                         if(vbf.hasPosition())
                                         {
                                             Vector pos = iff.read_floatVector();
@@ -539,7 +657,7 @@ MStatus MshTranslator::reader (const MFileObject& file, const MString& options, 
                                             if (j == 0)
                                             {
                                                 uArray.append(u);
-                                                vArray.append(1.0f - v);
+                                                vArray.append(s_mshImportUvDirectEngineToMaya ? v : (1.0f - v));
                                             }
                                         }
                                         if(skipDot3)
@@ -550,10 +668,8 @@ MStatus MshTranslator::reader (const MFileObject& file, const MString& options, 
                                             IGNORE_RETURN(iff.read_float());
                                         }
                                     }
-                                    while (!iff.atEndOfForm());
-
-
-                                    cout << "at end of this block and now about to exit chunk DATA 0003" << std::endl;
+                                    while (!iff.atEndOfForm())
+                                        (void)iff.read_uint8();
 
                                 iff.exitChunk(::TAG_DATA);
                             iff.exitForm(::TAG_0003);
@@ -562,10 +678,18 @@ MStatus MshTranslator::reader (const MFileObject& file, const MString& options, 
                         // load normal index buffer
                         if(hasIndices)
                         {
-                            cout << "starting load normal index buffer inside hasIndices" << std::endl;
                             iff.enterChunk(TAG_INDX);
                                 const int numberOfIndices = iff.read_int32();
-                                cout << "number of indices is " << numberOfIndices << std::endl;
+                                constexpr int kMaxReasonableIndices = 256 * 1024 * 1024;
+                                if (numberOfIndices < 3 || numberOfIndices > kMaxReasonableIndices
+                                    || (numberOfIndices % 3) != 0)
+                                {
+                                    mshLog("    Invalid index count %d (shader %d)", numberOfIndices, i + 1);
+                                    MGlobal::displayError(MString("[MshTranslator] Invalid triangle index count in .msh INDX. Path: ")
+                                        + pathToLoad.c_str());
+                                    iff.close();
+                                    return MS::kFailure;
+                                }
                                 totalPolygonsInMesh += numberOfIndices;
                                 for(int m = 0; m < numberOfIndices; m++)
                                 {
@@ -616,15 +740,15 @@ MStatus MshTranslator::reader (const MFileObject& file, const MString& options, 
                     return MS::kFailure;
                 }
 
-                MStatus createStatus;
+                MStatus createStatus(MS::kFailure);
                 try
                 {
-                    cerr << "preparing to create mesh: " << std::endl;
-                    cerr << "total vertices in mesh: " << totalVerticesInMesh << std::endl;
-                    cerr << "total polygons in mesh: " << (totalPolygonsInMesh / 3) << std::endl;
-                    cerr << "vertex array length: " << vertexArray.length() << std::endl;
-                    cerr << "polygon counts length: " << polygonCounts.length() << std::endl;
-                    cerr << "polygon connects length: " << polygonCounts.length() << std::endl;
+                    mshLog("    createMesh: verts=%d tris=%d uvCount=%d idx=%d polyCounts=%d",
+                        totalVerticesInMesh,
+                        (totalPolygonsInMesh / 3),
+                        uArray.length(),
+                        polygonConnects.length(),
+                        polygonCounts.length());
 
                     MFnMesh mesh;
                     mesh.create(totalVerticesInMesh, (totalPolygonsInMesh / 3), vertexArray, polygonCounts, polygonConnects, parentTransform.object(), &createStatus);
@@ -666,19 +790,14 @@ MStatus MshTranslator::reader (const MFileObject& file, const MString& options, 
                         }
                     }
                 }
-                catch (std::exception e)
+                catch (const std::exception& e)
                 {
-                    cerr << "EXCEPTION RAISED: " << e.what() << std::endl;
+                    mshLog("    mesh.create exception: %s", e.what());
                 }
                 if(createStatus.statusCode() != MS::kSuccess)
-                {
-                    cerr << "MESH CREATE STATUS WAS NOT SUCCESS" << std::endl;
-                    cerr << "MESH STATUS CODE: " << createStatus.errorString();
-                }
+                    mshLog("    mesh.create failed: %s", createStatus.errorString().asChar());
                 else
-                {
-                    cerr << "MESH CREATE STATUS WAS SUCCESS";
-                }
+                    mshLog("    mesh.create OK");
 
                 // reset everything for end of for loop
                 totalVerticesInMesh = 0;
@@ -757,9 +876,20 @@ MStatus MshTranslator::reader (const MFileObject& file, const MString& options, 
             {
                 std::string meshBaseName = MayaUtility::parseFileNameToNodeName(file.rawName().asChar());
                 std::map<std::string, MDagPath> emptyJointMap;
-                MStatus hpStatus = MayaSceneBuilder::createHardpoints(hardpoints, emptyJointMap, meshBaseName, meshImportRootObj);
-                if (hpStatus)
-                    mshLog("  Created %zu hardpoints", hardpoints.size());
+                MStatus hpStatus;
+                if (s_mshImportVisualHardpoints)
+                {
+                    hpStatus = MayaSceneBuilder::createHardpoints(hardpoints, emptyJointMap, meshBaseName, meshImportRootObj);
+                    if (hpStatus)
+                        mshLog("  Created %zu visual hardpoints (hp_*)", hardpoints.size());
+                }
+                else
+                {
+                    std::vector<MayaSceneBuilder::HardpointData> dynEmpty;
+                    hpStatus = MayaSceneBuilder::storeSkmgHardpointsOnMeshTransform(meshImportRootObj, hardpoints, dynEmpty);
+                    if (hpStatus)
+                        mshLog("  Stored %zu hardpoints on swgSkmgHardpoints (no viewport nodes)", hardpoints.size());
+                }
             }
             if (!floorReferencePath.empty())
             {
@@ -868,9 +998,11 @@ MStatus MshTranslator::writer (const MFileObject& file, const MString& options, 
 
     const char* filePath = file.expandedFullName().asChar();
     const bool legacyTriFromExportDialog = legacyTriangleFlipFromMshExportOptions(options);
+    const bool objUvFromExportDialog = objExportDirectUvFromMshExportOptions(options);
     std::string outMeshPath, outAptPath;
     ExportStaticMesh cmd;
-    if (!cmd.performExport(dagPath, filePath, outMeshPath, outAptPath, false, legacyTriFromExportDialog))
+    if (!cmd.performExport(dagPath, filePath, outMeshPath, outAptPath, false, legacyTriFromExportDialog, false,
+            objUvFromExportDialog, options))
     {
         std::cerr << "[MshTranslator] Export: performExport failed" << std::endl;
         MGlobal::displayError(

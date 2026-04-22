@@ -1,5 +1,6 @@
 #include "ExportStaticMesh.h"
 #include "StaticMeshWriter.h"
+#include "ImportPathResolver.h"
 #include "SetDirectoryCommand.h"
 #include "ShaderExporter.h"
 #include "MayaUtility.h"
@@ -38,6 +39,7 @@
 #include <cstdio>
 #include <cstring>
 #include <map>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -47,6 +49,14 @@
 
 namespace
 {
+    /// True when the SwgMsh export options string contains a given key (e.g. legacyTriangleFlip=).
+    /// Used so explicit dialog values override SwgMayaEditor.cfg / mesh attrs when Maya passes the full options line.
+    bool mshExportOptionsKeySpecified(const MString& opt, const char* keyEq)
+    {
+        const char* cs = opt.asChar();
+        return cs != nullptr && std::strstr(cs, keyEq) != nullptr;
+    }
+
     constexpr int DEFAULT_IFF_SIZE = 65536;
 
     const Tag TAG_APT = TAG3(A,P,T);
@@ -60,6 +70,35 @@ namespace
         return val.asChar();
     }
 
+    /// Optional on shadingEngine: overrides File > Export SwgMsh UV/triangle options for faces using that SG.
+    /// Use when one combined mesh mixes SWG .msh re-import shells (typically swgExportUvDirect=0) with OBJ shells (defaults / 1).
+    static bool shadingGroupExportUvDirect(MObject shadingGroupObj, bool globalDefault)
+    {
+        MStatus st;
+        MFnDependencyNode dep(shadingGroupObj, &st);
+        if (!st) return globalDefault;
+        if (!dep.hasAttribute("swgExportUvDirect")) return globalDefault;
+        MPlug p = dep.findPlug("swgExportUvDirect", true, &st);
+        if (!st || p.isNull()) return globalDefault;
+        bool v = globalDefault;
+        if (p.getValue(v) != MS::kSuccess) return globalDefault;
+        return v;
+    }
+
+    /// Same override family: when absent, use global reverseTriangleIndices from dialog/cfg.
+    static bool shadingGroupExportTriangleSwap(MObject shadingGroupObj, bool globalDefault)
+    {
+        MStatus st;
+        MFnDependencyNode dep(shadingGroupObj, &st);
+        if (!st) return globalDefault;
+        if (!dep.hasAttribute("swgExportTriangleSwap")) return globalDefault;
+        MPlug p = dep.findPlug("swgExportTriangleSwap", true, &st);
+        if (!st || p.isNull()) return globalDefault;
+        bool v = globalDefault;
+        if (p.getValue(v) != MS::kSuccess) return globalDefault;
+        return v;
+    }
+
     static bool stringTruthy(const std::string& s)
     {
         if (s.empty()) return false;
@@ -69,6 +108,67 @@ namespace
         for (unsigned char uc : s)
             l += static_cast<char>(std::tolower(uc));
         return l == "true" || l == "yes" || l == "on";
+    }
+
+    static void splitTabsHpLine(const std::string& line, std::vector<std::string>& cols)
+    {
+        cols.clear();
+        size_t start = 0;
+        for (;;)
+        {
+            const size_t tab = line.find('\t', start);
+            if (tab == std::string::npos)
+            {
+                cols.push_back(line.substr(start));
+                break;
+            }
+            cols.push_back(line.substr(start, tab - start));
+            start = tab + 1;
+        }
+    }
+
+    /** Same blob as `MayaSceneBuilder::storeSkmgHardpointsOnMeshTransform` / .mgn exporter. */
+    static bool parseSwgSkmgHardpointsForStaticExport(const std::string& blob, std::vector<StaticMeshWriterHardpoint>& out)
+    {
+        out.clear();
+        static const char hdr[] = "swgSkmgHp v1";
+        constexpr size_t hdrLen = sizeof(hdr) - 1;
+        if (blob.size() < hdrLen || blob.compare(0, hdrLen, hdr) != 0)
+            return false;
+        const size_t nl = blob.find('\n');
+        if (nl == std::string::npos)
+            return true;
+        std::istringstream iss(blob.substr(nl + 1));
+        std::string line;
+        std::vector<std::string> cols;
+        while (std::getline(iss, line))
+        {
+            if (line.empty())
+                continue;
+            splitTabsHpLine(line, cols);
+            if (cols.size() < 5)
+                continue;
+            const char kind = cols[0].empty() ? 0 : cols[0][0];
+            if (kind != 's' && kind != 'd')
+                continue;
+            float px = 0.f, py = 0.f, pz = 0.f;
+            float rx = 0.f, ry = 0.f, rz = 0.f, rw = 1.f;
+            if (std::sscanf(cols[3].c_str(), "%f %f %f", &px, &py, &pz) != 3)
+                continue;
+            if (std::sscanf(cols[4].c_str(), "%f %f %f %f", &rx, &ry, &rz, &rw) != 4)
+                continue;
+            StaticMeshWriterHardpoint hp;
+            hp.name = cols[1];
+            hp.position[0] = px;
+            hp.position[1] = py;
+            hp.position[2] = pz;
+            hp.rotation[0] = rx;
+            hp.rotation[1] = ry;
+            hp.rotation[2] = rz;
+            hp.rotation[3] = rw;
+            out.push_back(hp);
+        }
+        return true;
     }
 
     /// SAT / msh import can tag hueable materials; clones shaderPrototypeHueableSht when true.
@@ -317,6 +417,15 @@ namespace
 #else
         return s;
 #endif
+    }
+
+    /// Maya namespaces use group:shape; ':' is invalid in Windows filenames for .sht / .msh / .apt.
+    static std::string replaceColonsForAssetFileName(std::string name)
+    {
+        for (char& c : name)
+            if (c == ':')
+                c = '_';
+        return name;
     }
 
     static std::string normalizePathForCompare(std::string p)
@@ -576,7 +685,7 @@ namespace
         fileObj.setRawFullName(rawPath);
         MString full = fileObj.resolvedFullName();
         if (full.length() == 0) full = rawPath;
-        outPath = full.asChar();
+        outPath = resolveWindowsMayaAbsolutePath(std::string(full.asChar()));
         return !outPath.empty();
     }
 
@@ -1185,8 +1294,8 @@ namespace
         return false;
     }
 
-    /// Old behavior: reverse triangle vertex order vs Maya's getTriangles(). Helped some OBJ imports but breaks SWG-imported
-    /// meshes (textures read as inside-out vs viewport). Opt-in via command flag, mesh attr, or cfg (see useLegacyTriangleOrder).
+    /// Reverse triangle corners vs Maya getTriangles(); mesh attr swgLegacyTriangleFlip / cfg apply only when exporting
+    /// via exportStaticMesh command (no SwgMsh options string).
     static bool legacyTriangleFlipFromMeshShape(MFnMesh& meshFn)
     {
         MStatus st;
@@ -1199,12 +1308,13 @@ namespace
         return b;
     }
 
-    static bool useLegacyTriangleOrder(bool legacyFromCommand, bool legacyFromExportDialog, MFnMesh& meshFn)
+    /// Per face / shading group: file texture may reference a uvSetName — use it when the mesh has that set (combined .msh + OBJ often differ).
+    static MString effectiveUvSetForFace(MFnMesh& meshFn, MObject shadingGroupObj, const MString& meshWideDefault)
     {
-        if (legacyFromCommand) return true;
-        if (legacyFromExportDialog) return true;
-        if (legacyTriangleFlipFromMeshShape(meshFn)) return true;
-        return ConfigFile::getKeyBool("SwgMayaEditor", "staticMeshLegacyTriangleFlip", false);
+        MString fromShader;
+        if (tryGetDiffuseFileUvSetName(shadingGroupObj, fromShader) && meshHasUvSet(meshFn, fromShader))
+            return fromShader;
+        return meshWideDefault;
     }
 
     /// Prefer Maya current UV set (viewport / UV editor); else unanimous diffuse file uvSetName; else map1; else first listed.
@@ -1275,6 +1385,7 @@ MStatus ExportStaticMesh::doIt(const MArgList& args)
     std::string outputPath;
     std::string meshName;
     bool legacyTriangleFlipCmd = false;
+    bool objExportDirectUvCmd = false;
 
     for (unsigned i = 0; i < args.length(&status); ++i)
     {
@@ -1295,6 +1406,10 @@ MStatus ExportStaticMesh::doIt(const MArgList& args)
         else if (argName == "-legacyTriangleFlip" || argName == "-legacyTriFlip")
         {
             legacyTriangleFlipCmd = true;
+        }
+        else if (argName == "-objExportDirectUv")
+        {
+            objExportDirectUvCmd = true;
         }
     }
 
@@ -1340,7 +1455,8 @@ MStatus ExportStaticMesh::doIt(const MArgList& args)
     }
 
     std::string outMeshPath, outAptPath;
-    if (!performExport(dagPath, outputPath, outMeshPath, outAptPath, legacyTriangleFlipCmd, false))
+    if (!performExport(dagPath, outputPath, outMeshPath, outAptPath, legacyTriangleFlipCmd, false, objExportDirectUvCmd,
+            false, MString()))
         return MS::kFailure;
 
     MGlobal::displayInfo(MString("Exported mesh: ") + outMeshPath.c_str());
@@ -1351,7 +1467,8 @@ MStatus ExportStaticMesh::doIt(const MArgList& args)
 
 bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::string& outputPathOverride,
     std::string& outMeshPath, std::string& outAptPath, bool legacyTriangleFlipFromCmd,
-    bool legacyTriangleFlipFromFileDialog)
+    bool legacyTriangleFlipFromFileDialog, bool objExportDirectUvFromCmd, bool objExportDirectUvFromExportDialog,
+    const MString& rawMshExportOptions)
 {
     MStatus status;
     outMeshPath.clear();
@@ -1370,8 +1487,25 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
         return false;
     }
 
+    // When the file translator passes a full options line, honor dialog 0/1 — do not let cfg or mesh attrs override.
+    const bool legacyKeyInOptions = mshExportOptionsKeySpecified(rawMshExportOptions, "legacyTriangleFlip=");
+    const bool objUvKeyInOptions = mshExportOptionsKeySpecified(rawMshExportOptions, "objExportDirectUv=");
+
     const bool legacyTriangleOrder =
-        useLegacyTriangleOrder(legacyTriangleFlipFromCmd, legacyTriangleFlipFromFileDialog, meshFn);
+        legacyTriangleFlipFromCmd
+        || (legacyKeyInOptions
+                ? legacyTriangleFlipFromFileDialog
+                : (legacyTriangleFlipFromFileDialog || legacyTriangleFlipFromMeshShape(meshFn)
+                      || ConfigFile::getKeyBool("SwgMayaEditor", "staticMeshLegacyTriangleFlip", false)));
+
+    const bool objExportDirectUv =
+        objExportDirectUvFromCmd
+        || (objUvKeyInOptions ? objExportDirectUvFromExportDialog
+                              : (objExportDirectUvFromExportDialog
+                                    || ConfigFile::getKeyBool("SwgMayaEditor", "staticMeshObjExportDirectUv", false)));
+
+    // Legacy / cfg-only fallback when a triangle is degenerate in engine space (zero-area cross).
+    const bool legacyTriangleFallback = legacyTriangleOrder || objExportDirectUv;
 
     MDagPath transformPath = shapePath;
     if (transformPath.hasFn(MFn::kMesh))
@@ -1426,10 +1560,20 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
         meshWriteDir = ensureTrailingSlash(appearanceRootDir + "mesh");
     }
 
+    meshName = replaceColonsForAssetFileName(std::move(meshName));
+
     meshWriteDir = ensureTrailingSlash(meshWriteDir);
     appearanceRootDir = ensureTrailingSlash(appearanceRootDir);
     MayaUtility::createDirectory(winPathForMkdir(appearanceRootDir).c_str());
     MayaUtility::createDirectory(winPathForMkdir(meshWriteDir).c_str());
+    {
+        const char* sw = SetDirectoryCommand::getDirectoryString(SetDirectoryCommand::SHADER_TEMPLATE_WRITE_DIR_INDEX);
+        const char* tw = SetDirectoryCommand::getDirectoryString(SetDirectoryCommand::TEXTURE_WRITE_DIR_INDEX);
+        if (sw && sw[0])
+            MayaUtility::createDirectory(winPathForMkdir(ensureTrailingSlash(std::string(sw))).c_str());
+        if (tw && tw[0])
+            MayaUtility::createDirectory(winPathForMkdir(ensureTrailingSlash(std::string(tw))).c_str());
+    }
 
     MObjectArray shaderObjs;
     MIntArray faceToShader;
@@ -1483,6 +1627,10 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
                 shaderTemplateName = swgPath;
         }
 
+        const bool uvDirectThisSg = shadingGroupExportUvDirect(sgObj, objExportDirectUv);
+
+        const MString uvSetForFace = effectiveUvSetForFace(meshFn, sgObj, uvSetName);
+
         StaticMeshWriterShaderGroup& sg = shaderGroups[shaderIdx];
         if (sg.shaderTemplateName.empty())
             sg.shaderTemplateName = shaderTemplateName;
@@ -1493,15 +1641,19 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
         if (!status) continue;
 
         auto getUV = [&](int meshVert) -> std::pair<float, float> {
-            if (uvSetName.length() == 0) return {0.0f, 0.0f};
-            for (unsigned i = 0; i < polyIt.polygonVertexCount(&status); ++i)
+            const MString trySets[2] = {uvSetForFace, uvSetName};
+            for (int si = 0; si < 2; ++si)
             {
-                if (polyIt.vertexIndex(static_cast<int>(i), &status) == meshVert)
+                if (trySets[si].length() == 0) continue;
+                if (si > 0 && trySets[si] == trySets[0]) continue;
+                for (unsigned i = 0; i < polyIt.polygonVertexCount(&status); ++i)
                 {
-                    float2 uv;
-                    if (polyIt.getUV(i, uv, &uvSetName) == MS::kSuccess)
-                        return {uv[0], uv[1]};
-                    return {0.0f, 0.0f};
+                    if (polyIt.vertexIndex(static_cast<int>(i), &status) == meshVert)
+                    {
+                        float2 uv;
+                        if (polyIt.getUV(i, uv, &trySets[si]) == MS::kSuccess)
+                            return {uv[0], uv[1]};
+                    }
                 }
             }
             return {0.0f, 0.0f};
@@ -1513,10 +1665,11 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
             int v1 = triVerts[t + 1];
             int v2 = triVerts[t + 2];
 
-            MVector n0, n1, n2;
-            meshFn.getPolygonNormal(faceIdx, n0);
-            n1 = n0;
-            n2 = n0;
+            MVector nFace;
+            meshFn.getPolygonNormal(faceIdx, nFace, MSpace::kObject);
+            const MVector n0 = nFace;
+            const MVector n1 = nFace;
+            const MVector n2 = nFace;
 
             float u0 = getUV(v0).first, v0_ = getUV(v0).second;
             float u1 = getUV(v1).first, v1_ = getUV(v1).second;
@@ -1535,7 +1688,11 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
                 sg.normals.push_back(engineNorm.y);
                 sg.normals.push_back(engineNorm.z);
                 sg.uvs.push_back(u);
-                sg.uvs.push_back(1.0f - static_cast<float>(v));
+                {
+                    const float mv = static_cast<float>(v);
+                    // Global or per-shading-group: direct Maya V vs 1-V for game (see shadingGroupExportUvDirect).
+                    sg.uvs.push_back(uvDirectThisSg ? mv : (1.0f - mv));
+                }
 
                 return static_cast<uint16_t>(base);
             };
@@ -1544,9 +1701,26 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
             uint16_t i1 = addVert(v1, static_cast<float>(u1), static_cast<float>(v1_), n1);
             uint16_t i2 = addVert(v2, static_cast<float>(u2), static_cast<float>(v2_), n2);
 
-            // Default: Maya / getTriangles order — matches viewport for SWG-imported meshes and swgApplyWavefrontMtl texturing.
-            // Legacy: swap two vertices (old OBJ workaround); opt in via -legacyTriangleFlip, swgLegacyTriangleFlip on mesh, or cfg staticMeshLegacyTriangleFlip.
-            if (legacyTriangleOrder)
+            // Winding: Maya viewport uses object-space normals; engine applies -X on positions/normals. Pick a swap
+            // so the triangle cross product in engine space agrees with the converted face normal (viewport parity).
+            // Degenerate triangles fall back to legacyTriangleFallback / swgExportTriangleSwap on the SG.
+            const MPoint& p0m = mayaPoints[static_cast<unsigned>(v0)];
+            const MPoint& p1m = mayaPoints[static_cast<unsigned>(v1)];
+            const MPoint& p2m = mayaPoints[static_cast<unsigned>(v2)];
+            Vector P0 = MayaConversions::convertVector(MVector(p0m.x, p0m.y, p0m.z));
+            Vector P1 = MayaConversions::convertVector(MVector(p1m.x, p1m.y, p1m.z));
+            Vector P2 = MayaConversions::convertVector(MVector(p2m.x, p2m.y, p2m.z));
+            Vector e1 = P1 - P0;
+            Vector e2 = P2 - P0;
+            Vector G = e1.cross(e2);
+            Vector Nref = MayaConversions::convertVector(nFace);
+            constexpr real kDegenerateAreaSq = static_cast<real>(1e-18);
+            const bool degenerate = G.magnitudeSquared() < kDegenerateAreaSq;
+            const bool autoNeedSwap = !degenerate && (G.dot(Nref) < static_cast<real>(0));
+            const bool baseSwap = degenerate ? legacyTriangleFallback : autoNeedSwap;
+            const bool reverseTrianglesThisSg = shadingGroupExportTriangleSwap(sgObj, baseSwap);
+
+            if (reverseTrianglesThisSg)
             {
                 sg.indices.push_back(i0);
                 sg.indices.push_back(i2);
@@ -1557,6 +1731,30 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
                 sg.indices.push_back(i0);
                 sg.indices.push_back(i1);
                 sg.indices.push_back(i2);
+            }
+
+            uint16_t ord[3] = {i0, i1, i2};
+            if (reverseTrianglesThisSg)
+            {
+                ord[1] = i2;
+                ord[2] = i1;
+            }
+            Vector Q0(sg.positions[static_cast<size_t>(ord[0]) * 3], sg.positions[static_cast<size_t>(ord[0]) * 3 + 1],
+                sg.positions[static_cast<size_t>(ord[0]) * 3 + 2]);
+            Vector Q1(sg.positions[static_cast<size_t>(ord[1]) * 3], sg.positions[static_cast<size_t>(ord[1]) * 3 + 1],
+                sg.positions[static_cast<size_t>(ord[1]) * 3 + 2]);
+            Vector Q2(sg.positions[static_cast<size_t>(ord[2]) * 3], sg.positions[static_cast<size_t>(ord[2]) * 3 + 1],
+                sg.positions[static_cast<size_t>(ord[2]) * 3 + 2]);
+            Vector geo = (Q1 - Q0).cross(Q2 - Q0);
+            if (geo.normalize())
+            {
+                for (uint16_t idx : ord)
+                {
+                    const size_t o = static_cast<size_t>(idx) * 3;
+                    sg.normals[o] = static_cast<float>(geo.x);
+                    sg.normals[o + 1] = static_cast<float>(geo.y);
+                    sg.normals[o + 2] = static_cast<float>(geo.z);
+                }
             }
         }
     }
@@ -1594,29 +1792,27 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
             std::string texTree;
             std::string absImage;
 
-            // 1) Maya shading network (file/aiImage chain) - viewport source.
-            if (tryGetDiffuseImageAbsolutePath(shaderObjs[si], absImage))
+            // 1) Drop-in under textureWriteDir (<mesh>_d / <mesh>_mN.*) wins over the file node path so swapping a
+            //    .tga/.png beside the published DDS actually exports (viewport may still point at an older path).
+            absImage = tryFindImageInTextureWriteDir(texBase);
+            if (!absImage.empty())
+            {
+                texTree = ShaderExporter::publishDiffuseTextureForGame(absImage, texBase);
+                if (texTree.empty())
+                    std::cerr << "[ExportStaticMesh] Could not publish texture from textureWriteDir drop-in: " << absImage
+                              << "\n";
+                else
+                    std::cerr << "[ExportStaticMesh] Published diffuse from textureWriteDir (" << texBase << "): " << absImage
+                              << " -> " << texTree << "\n";
+            }
+
+            // 2) Maya shading network (file/aiImage) — viewport / source images when no drop-in.
+            if (texTree.empty() && tryGetDiffuseImageAbsolutePath(shaderObjs[si], absImage))
             {
                 texTree = ShaderExporter::publishDiffuseTextureForGame(absImage, texBase);
                 if (texTree.empty())
                     std::cerr << "[ExportStaticMesh] Could not publish texture (textureWriteDir / nvtt). Image: " << absImage
                               << "\n";
-            }
-
-            // 2) Image dropped into textureWriteDir as <mesh>_d / <mesh>_mN (common after tweaking for export).
-            if (texTree.empty())
-            {
-                absImage = tryFindImageInTextureWriteDir(texBase);
-                if (!absImage.empty())
-                {
-                    texTree = ShaderExporter::publishDiffuseTextureForGame(absImage, texBase);
-                    if (texTree.empty())
-                        std::cerr << "[ExportStaticMesh] Could not publish texture (textureWriteDir / nvtt). Image: " << absImage
-                                  << "\n";
-                    else
-                        std::cerr << "[ExportStaticMesh] Published diffuse from textureWriteDir (" << texBase << "): " << absImage
-                                  << " -> " << texTree << "\n";
-                }
             }
 
             // 3) swgTexturePath (often set on import): bake from disk when possible, not only a tree string.
@@ -1751,7 +1947,49 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
             writer.addShaderGroup(it->second);
     }
 
-    if (transformPath.childCount(&status) > 0 && status)
+    bool hardpointsFromAttr = false;
+    {
+        std::vector<StaticMeshWriterHardpoint> blobHps;
+        MFnDependencyNode meshTfFn(transformPath.node(), &status);
+        if (status)
+        {
+            MPlug hpPlug = meshTfFn.findPlug("swgSkmgHardpoints", true);
+            if (!hpPlug.isNull())
+            {
+                MString blobStr;
+                if (hpPlug.getValue(blobStr) == MS::kSuccess && blobStr.length() > 0
+                    && parseSwgSkmgHardpointsForStaticExport(std::string(blobStr.asChar()), blobHps))
+                {
+                    hardpointsFromAttr = true;
+                    for (const auto& h : blobHps)
+                        writer.addHardpoint(h);
+                }
+            }
+        }
+        if (!hardpointsFromAttr && transformPath.length() >= 2)
+        {
+            MDagPath parentDag = transformPath;
+            parentDag.pop(1);
+            MFnDependencyNode parentFn(parentDag.node(), &status);
+            if (status)
+            {
+                MPlug hpPlug2 = parentFn.findPlug("swgSkmgHardpoints", true);
+                if (!hpPlug2.isNull())
+                {
+                    MString blobStr;
+                    if (hpPlug2.getValue(blobStr) == MS::kSuccess && blobStr.length() > 0
+                        && parseSwgSkmgHardpointsForStaticExport(std::string(blobStr.asChar()), blobHps))
+                    {
+                        hardpointsFromAttr = true;
+                        for (const auto& h : blobHps)
+                            writer.addHardpoint(h);
+                    }
+                }
+            }
+        }
+    }
+
+    if (!hardpointsFromAttr && transformPath.childCount(&status) > 0 && status)
     {
         for (unsigned c = 0; c < transformPath.childCount(&status); ++c)
         {

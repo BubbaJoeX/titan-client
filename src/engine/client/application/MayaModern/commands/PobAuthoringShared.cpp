@@ -1,15 +1,21 @@
 #include "PobAuthoringShared.h"
 
 #include "MayaSceneBuilder.h"
+#include "Transform.h"
 
+#include <maya/MFn.h>
 #include <maya/MFnDagNode.h>
+#include <maya/MFnDependencyNode.h>
 #include <maya/MFnTransform.h>
+#include <maya/MFnMatrixAttribute.h>
+#include <maya/MFnMatrixData.h>
 #include <maya/MFnNumericAttribute.h>
 #include <maya/MFnTypedAttribute.h>
 #include <maya/MGlobal.h>
 #include <maya/MItDag.h>
 #include <maya/MPlug.h>
 #include <maya/MSelectionList.h>
+#include <maya/MMatrix.h>
 
 #include <cstdlib>
 #include <cstdio>
@@ -17,6 +23,51 @@
 
 namespace PobAuthoring
 {
+    static void engineTransformToMayaMatrix(const Transform& t, MMatrix& out)
+    {
+        const Transform::matrix_t& mm = t.getMatrix();
+        for (int row = 0; row < 3; ++row)
+            for (int col = 0; col < 4; ++col)
+                out[row][col] = static_cast<double>(mm[row][col]);
+        out[3][0] = 0.0;
+        out[3][1] = 0.0;
+        out[3][2] = 0.0;
+        out[3][3] = 1.0;
+    }
+
+    void applyDoorHardpointAttributes(MObject portalTransformObj, bool enabled, const Transform& doorTransform)
+    {
+        MFnDependencyNode fn(portalTransformObj);
+
+        MPlug enPl = fn.findPlug("doorHardpointEnabled", true);
+        if (enPl.isNull())
+        {
+            MFnNumericAttribute na;
+            MObject a = na.create("doorHardpointEnabled", "dhpEn", MFnNumericData::kBoolean);
+            na.setStorable(true);
+            fn.addAttribute(a);
+            enPl = fn.findPlug("doorHardpointEnabled", true);
+        }
+        if (!enPl.isNull())
+            enPl.setBool(enabled);
+
+        MPlug matPl = fn.findPlug("doorHardpointMatrix", true);
+        if (matPl.isNull())
+        {
+            MFnMatrixAttribute ma;
+            MObject a = ma.create("doorHardpointMatrix", "dhm", MFnMatrixAttribute::kDouble);
+            ma.setStorable(true);
+            fn.addAttribute(a);
+            matPl = fn.findPlug("doorHardpointMatrix", true);
+        }
+        MMatrix m;
+        engineTransformToMayaMatrix(enabled ? doorTransform : Transform::identity, m);
+        MFnMatrixData md;
+        MObject mdObj = md.create(m);
+        if (!matPl.isNull())
+            matPl.setValue(mdObj);
+    }
+
     bool isCellName(const MString& n)
     {
         if (n.length() < 2) return false;
@@ -217,6 +268,7 @@ namespace PobAuthoring
         MDagPath meshShapePath;
         MStatus status = MayaSceneBuilder::createMesh(positions, normals, groups, portalTransformName, meshShapePath);
         if (!status) return status;
+        (void)MayaSceneBuilder::assignPobCollisionPreviewMaterial(meshShapePath);
 
         std::string shapeFullPath = meshShapePath.fullPathName().asChar();
         MString addCmd = "addAttr -ln portal -at bool \"";
@@ -241,13 +293,7 @@ namespace PobAuthoring
         parentCmd += "\"";
         MGlobal::executeCommand(parentCmd);
 
-        if (addDoorHardpoint)
-        {
-            MFnTransform doorFn;
-            MObject doorObj = doorFn.create(outPortalTransformPath.node(), &status);
-            if (status)
-                doorFn.setName("doorHardpoint");
-        }
+        applyDoorHardpointAttributes(outPortalTransformPath.node(), addDoorHardpoint, Transform::identity);
         return MS::kSuccess;
     }
 

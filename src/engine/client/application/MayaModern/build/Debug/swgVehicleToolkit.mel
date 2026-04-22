@@ -1,0 +1,44 @@
+// SWG Vehicle Toolkit - ground vehicle rigs (MGN + swgVehicleBundlePaths). Ships: swgMakeShip.
+
+global proc swgVehicleToolkitRunCreate() {
+    string $n = `textFieldGrp -q -text swgVeh_rootName`;
+    if (`size $n` == 0) $n = "swgVehicle";
+    int $s = `intFieldGrp -q -value1 swgVeh_seatCount`;
+    if ($s < 1) $s = 1;
+    if ($s > 16) $s = 16;
+    swgMakeVehicle -n $n -seats $s;
+}
+
+global proc swgVehicleToolkitShow() {
+    if (`window -exists swgVehicleToolkitWin`)
+        deleteUI swgVehicleToolkitWin;
+
+    window -t "SWG Vehicle Toolkit" swgVehicleToolkitWin;
+    columnLayout -adjustableColumn true -rowSpacing 6 -columnAttach "both" 8 -cw 400;
+
+    text -label "Create an MGN-ready vehicle rig: geo group, skeleton, seat joints, hardpoints group, bundle paths." -align "left" -wordWrap true -width 380;
+    separator -height 6 -style "none";
+
+    string $dr = `getDataRootDir`;
+    text -label ("Data root: " + $dr) -align "left" -font "smallPlainLabelFont";
+
+    textFieldGrp -label "Root transform name" -text "swgVehicle" swgVeh_rootName;
+    text -label "Seat count: 1 = single occupant. 2+ = multi-passenger (seat_0 = primary / driver)." -align "left" -font "smallPlainLabelFont";
+    intFieldGrp -label "Seats" -value1 1 swgVeh_seatCount;
+
+    rowLayout -numberOfColumns 3 -columnWidth3 120 120 120 -columnAlign3 "center" "center" "center";
+    button -label "Preset: 1 seat" -c "intFieldGrp -e -value1 1 swgVeh_seatCount;";
+    button -label "Preset: 2 seats" -c "intFieldGrp -e -value1 2 swgVeh_seatCount;";
+    button -label "Preset: 4 seats" -c "intFieldGrp -e -value1 4 swgVeh_seatCount;";
+    setParent ..;
+
+    button -label "Create vehicle rig" -h 32 -c "swgVehicleToolkitRunCreate;";
+
+    separator -height 6 -style "none";
+    text -label "Spacecraft / starships: use swgMakeShip (swgShip_geo, swgShipBundlePaths) — not the vehicle rig." -align "left" -wordWrap true -width 380;
+
+    separator -height 6 -style "none";
+    text -label "After create: parent skinned mesh under swgVehicle_geo, bind to swgVehicle_skeleton, place seat_* on the hull, use hardpoints for attachments. Export .mgn; set swgVehicleBundlePaths for extra IFFs." -align "left" -wordWrap true -width 380;
+
+    showWindow swgVehicleToolkitWin;
+}

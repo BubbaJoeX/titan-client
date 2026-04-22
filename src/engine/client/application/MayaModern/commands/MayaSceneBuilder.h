@@ -81,10 +81,14 @@ public:
         const std::string& swgShaderPath = std::string(),
         const std::string& swgTexturePath = std::string());
 
+    /// Assigns per mesh instance (same .sht on two imports each get their own shading network / texture bind).
     static MStatus assignMaterials(
         const MDagPath& meshPath,
         const std::vector<ShaderGroupData>& shaderGroups,
         const std::string& inputFilePath);
+
+    /// Green Lambert shared by POB floor + portal preview meshes (idempotent).
+    static MStatus assignPobCollisionPreviewMaterial(const MDagPath& meshShapePath);
 
     /** Strip trailing "SG" from shader name - MayaExporter uses shader name only for paths */
     static std::string stripSGSuffixFromShaderName(const std::string& name);
@@ -111,6 +115,12 @@ public:
         const std::map<std::string, MDagPath>& parentJointToPathMap,
         const std::string& meshName,
         MObject defaultParentForEmpty = MObject::kNullObj);
+
+    /// Serialize SKMG hardpoints onto the **mesh transform** (no viewport DAG). Used for SAT import round-trip.
+    static MStatus storeSkmgHardpointsOnMeshTransform(
+        MObject meshTransformObj,
+        const std::vector<HardpointData>& staticHardpoints,
+        const std::vector<HardpointData>& dynamicHardpoints);
 
     /// Create blend shape deformer from delta-based blend targets. Base mesh must exist.
     static MStatus createBlendShapes(

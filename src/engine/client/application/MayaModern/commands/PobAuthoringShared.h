@@ -9,6 +9,8 @@
 
 #include <string>
 
+class Transform;
+
 namespace PobAuthoring
 {
     bool isCellName(const MString& n);
@@ -24,6 +26,9 @@ namespace PobAuthoring
 
     void addPortalAuthoringAttrs(MFnDependencyNode& transformDepFn, int portalIndex, bool clockwise,
                                  int targetCell, bool disabled, bool passable, const std::string& doorStyle);
+
+    /// Door hardpoint for export: **data only** (bool + matrix), no DAG geometry/locator child.
+    void applyDoorHardpointAttributes(MObject portalTransformObj, bool enabled, const Transform& doorTransform);
 
     /// Parses `r0`, `r12` -> 0, 12; otherwise -1.
     int cellIndexFromRName(const MString& n);

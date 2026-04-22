@@ -1,5 +1,6 @@
 #include "TgaToDdsConverter.h"
 #include "ConfigFile.h"
+#include "ImportPathResolver.h"
 #include "SetDirectoryCommand.h"
 #include "MayaUtility.h"
 
@@ -72,37 +73,39 @@ std::string TgaToDdsConverter::convertToDds(const std::string& tgaPath,
     const std::string& format,
     int quality)
 {
+    const std::string srcPath = resolveWindowsMayaAbsolutePath(tgaPath);
+
     std::string outPath = outputPath;
     if (outPath.empty())
-        outPath = replaceExtension(tgaPath, "dds");
+        outPath = replaceExtension(srcPath, "dds");
 
     // Source already DDS: publish by copy (no TGA intermediate; OBJ often references PNG/JPG — those use nvtt below).
-    const std::string srcExt = extensionLower(tgaPath);
+    const std::string srcExt = extensionLower(srcPath);
     if (srcExt == "dds")
     {
-        if (!MayaUtility::fileExists(tgaPath))
+        if (!MayaUtility::fileExists(srcPath))
         {
-            std::cerr << "[TgaToDds] Source DDS not found: " << tgaPath << "\n";
-            MGlobal::displayError(MString("[TgaToDds] Source DDS not found: ") + tgaPath.c_str());
+            std::cerr << "[TgaToDds] Source DDS not found: " << srcPath << "\n";
+            MGlobal::displayError(MString("[TgaToDds] Source DDS not found: ") + srcPath.c_str());
             return std::string();
         }
         const std::string parent = parentDirectoryOfFile(outPath);
         if (!parent.empty())
             MayaUtility::createDirectory(parent.c_str());
-        if (!MayaUtility::copyFile(tgaPath, outPath))
+        if (!MayaUtility::copyFile(srcPath, outPath))
         {
             std::cerr << "[TgaToDds] Failed to copy DDS to: " << outPath << "\n";
             MGlobal::displayError(MString("[TgaToDds] Failed to copy DDS to: ") + outPath.c_str());
             return std::string();
         }
-        std::cerr << "[TgaToDds] Copied DDS (no recompress): " << tgaPath << " -> " << outPath << "\n";
+        std::cerr << "[TgaToDds] Copied DDS (no recompress): " << srcPath << " -> " << outPath << "\n";
         return outPath;
     }
 
-    if (!isSupportedImagePath(tgaPath))
+    if (!isSupportedImagePath(srcPath))
     {
-        std::cerr << "[TgaToDds] Unsupported image extension (use tga/png/jpg/bmp or .dds passthrough): " << tgaPath << "\n";
-        MGlobal::displayError(MString("[TgaToDds] Unsupported image type: ") + tgaPath.c_str());
+        std::cerr << "[TgaToDds] Unsupported image extension (use tga/png/jpg/bmp or .dds passthrough): " << srcPath << "\n";
+        MGlobal::displayError(MString("[TgaToDds] Unsupported image type: ") + srcPath.c_str());
         return std::string();
     }
 
@@ -124,7 +127,7 @@ std::string TgaToDdsConverter::convertToDds(const std::string& tgaPath,
     else if (format == "bc3" || format == "bc3n") formatId = 18;
     else if (format == "bgra8") formatId = 25;
 
-    std::cerr << "[TgaToDds] Converting: " << tgaPath << " -> " << outPath << "\n";
+    std::cerr << "[TgaToDds] Converting: " << srcPath << " -> " << outPath << "\n";
 
 #ifdef _WIN32
     std::string cmd;
@@ -138,7 +141,7 @@ std::string TgaToDdsConverter::convertToDds(const std::string& tgaPath,
     cmd += " -q ";
     cmd += std::to_string(quality);
     cmd += " \"";
-    cmd += tgaPath;
+    cmd += srcPath;
     cmd += '"';
 
     std::vector<char> cmdBuf(cmd.begin(), cmd.end());
@@ -166,8 +169,8 @@ std::string TgaToDdsConverter::convertToDds(const std::string& tgaPath,
         MString msg("[TgaToDds] nvtt_export failed (code ");
         msg += static_cast<int>(exitCode);
         msg += ") converting ";
-        msg += tgaPath.c_str();
-        msg += " — check nvttExporterPath and source image path.";
+        msg += srcPath.c_str();
+        msg += " - check nvttExporterPath and source image path.";
         MGlobal::displayError(msg);
         return std::string();
     }

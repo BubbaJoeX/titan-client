@@ -2,6 +2,7 @@
 #include "ImportPathResolver.h"
 #include "ImportLodMesh.h"
 #include "MayaSceneBuilder.h"
+#include "PobAuthoringShared.h"
 #include "flr.h"
 
 #include "Iff.h"
@@ -115,12 +116,13 @@ namespace
             iff.enterForm(TAG_IDTL);
             iff.enterForm(TAG_0000);
             iff.enterChunk(TAG_VERT);
-            const int numVerts = iff.getChunkLengthLeft(12) / 12;
+            const int numVerts = iff.read_int32();
             vertices.resize(static_cast<size_t>(numVerts));
-            iff.read_floatVector(numVerts, vertices.data());
+            for (int j = 0; j < numVerts; ++j)
+                vertices[static_cast<size_t>(j)] = iff.read_floatVector();
             iff.exitChunk(TAG_VERT);
             iff.enterChunk(TAG_INDX);
-            const int numIndices = iff.getChunkLengthLeft(4) / 4;
+            const int numIndices = iff.read_int32();
             indices.resize(static_cast<size_t>(numIndices));
             for (int j = 0; j < numIndices; ++j)
                 indices[j] = iff.read_int32();
@@ -129,6 +131,44 @@ namespace
             iff.exitForm(TAG_IDTL);
         }
     };
+
+    static PortalGeometry makeFallbackPortalQuad()
+    {
+        // Matches `PobAuthoring::createPortalDoorMeshAndParent` default quad (1m x 2m, local XY plane).
+        const float hw = 0.5f;
+        const float height = 2.0f;
+        PortalGeometry g;
+        g.vertices.resize(4);
+        g.vertices[0] = Vector(hw, 0.f, 0.f);
+        g.vertices[1] = Vector(-hw, 0.f, 0.f);
+        g.vertices[2] = Vector(-hw, height, 0.f);
+        g.vertices[3] = Vector(hw, height, 0.f);
+        g.indices.push_back(0);
+        g.indices.push_back(1);
+        g.indices.push_back(2);
+        g.indices.push_back(0);
+        g.indices.push_back(2);
+        g.indices.push_back(3);
+        return g;
+    }
+
+    static void skipOneIffBlock(Iff& iff)
+    {
+        if (iff.getNumberOfBlocksLeft() <= 0)
+            return;
+        if (iff.isCurrentForm())
+        {
+            iff.enterForm();
+            while (iff.getNumberOfBlocksLeft() > 0)
+                skipOneIffBlock(iff);
+            iff.exitForm();
+        }
+        else
+        {
+            iff.enterChunk();
+            iff.exitChunk();
+        }
+    }
 
     static std::string resolveTreeFilePath(const std::string& treeFilePath, const std::string& inputFilename)
     {
@@ -299,21 +339,7 @@ namespace
         addStrAttr("doorStyle", pd.doorStyle);
     }
 
-    static MStatus attachDoorHardpoint(MObject portalTransformObj, const PortalData& pd)
-    {
-        if (!pd.hasDoorHardpoint)
-            return MS::kSuccess;
-        MStatus st;
-        MFnTransform doorFn;
-        MObject doorObj = doorFn.create(portalTransformObj, &st);
-        if (!st) return st;
-        doorFn.setName("doorHardpoint");
-        MMatrix dm;
-        engineTransformToMayaMatrix(pd.doorTransform, dm);
-        return doorFn.set(dm);
-    }
-
-    /// Creates portal transform under `parentObj`: mesh (if geometry exists) plus POB authoring attrs and optional `doorHardpoint` child.
+    /// Creates portal transform under `parentObj`: mesh (real IDTL/PRTL or fallback quad) plus POB authoring attrs and door hardpoint **data** (`doorHardpointEnabled` + matrix).
     static MStatus createPortalRepresentation(
         const PortalGeometry* geom,
         const char* portalName,
@@ -321,70 +347,69 @@ namespace
         const PortalData& pd,
         MDagPath& outPortalTransformPath)
     {
-        const bool hasMesh = geom && !geom->vertices.empty() && geom->indices.size() >= 3;
-        MStatus st;
-        if (hasMesh)
+        PortalGeometry fallback;
+        const PortalGeometry* useGeom = geom;
+        if (!useGeom || useGeom->vertices.empty() || useGeom->indices.size() < 3)
         {
-            std::vector<float> positions;
-            positions.reserve(geom->vertices.size() * 3);
-            for (size_t i = 0; i < geom->vertices.size(); ++i)
-            {
-                positions.push_back(geom->vertices[i].x);
-                positions.push_back(geom->vertices[i].y);
-                positions.push_back(geom->vertices[i].z);
-            }
-            std::vector<float> normals(positions.size(), 0.0f);
-
-            MayaSceneBuilder::ShaderGroupData sg;
-            sg.shaderTemplateName = "shader/placeholder";
-            for (size_t t = 0; t + 2 < geom->indices.size(); t += 3)
-            {
-                MayaSceneBuilder::TriangleData tri;
-                tri.indices[0] = geom->indices[t];
-                tri.indices[1] = geom->indices[t + 1];
-                tri.indices[2] = geom->indices[t + 2];
-                sg.triangles.push_back(tri);
-            }
-
-            std::vector<MayaSceneBuilder::ShaderGroupData> groups(1, sg);
-            MDagPath meshShapePath;
-            st = MayaSceneBuilder::createMesh(positions, normals, groups, portalName, meshShapePath);
-            if (!st) return st;
-
-            MObject shapeObj = meshShapePath.node();
-            std::string shapeFullPath = meshShapePath.fullPathName().asChar();
-            MString addCmd = "addAttr -ln portal -at bool \"";
-            addCmd += shapeFullPath.c_str();
-            addCmd += "\"";
-            MGlobal::executeCommand(addCmd);
-            MString setCmd = "setAttr \"";
-            setCmd += shapeFullPath.c_str();
-            setCmd += ".portal\" 1";
-            MGlobal::executeCommand(setCmd);
-
-            meshShapePath.pop(1);
-            outPortalTransformPath = meshShapePath;
-            MFnDependencyNode transformDepFn(outPortalTransformPath.node());
-            addPortalAuthoringAttrs(transformDepFn, pd);
-
-            MFnDagNode parentFn(parentObj);
-            MString parentCmd = "parent \"";
-            parentCmd += outPortalTransformPath.fullPathName();
-            parentCmd += "\" \"";
-            parentCmd += parentFn.fullPathName();
-            parentCmd += "\"";
-            MGlobal::executeCommand(parentCmd);
-            return attachDoorHardpoint(outPortalTransformPath.node(), pd);
+            fallback = makeFallbackPortalQuad();
+            useGeom = &fallback;
         }
 
-        MFnTransform portalFn;
-        MObject portalObj = portalFn.create(parentObj, &st);
+        MStatus st;
+        std::vector<float> positions;
+        positions.reserve(useGeom->vertices.size() * 3);
+        for (size_t i = 0; i < useGeom->vertices.size(); ++i)
+        {
+            positions.push_back(useGeom->vertices[i].x);
+            positions.push_back(useGeom->vertices[i].y);
+            positions.push_back(useGeom->vertices[i].z);
+        }
+        std::vector<float> normals(positions.size(), 0.0f);
+
+        MayaSceneBuilder::ShaderGroupData sg;
+        sg.shaderTemplateName = "shader/placeholder";
+        for (size_t t = 0; t + 2 < useGeom->indices.size(); t += 3)
+        {
+            MayaSceneBuilder::TriangleData tri;
+            tri.indices[0] = useGeom->indices[t];
+            tri.indices[1] = useGeom->indices[t + 1];
+            tri.indices[2] = useGeom->indices[t + 2];
+            sg.triangles.push_back(tri);
+        }
+
+        std::vector<MayaSceneBuilder::ShaderGroupData> groups(1, sg);
+        MDagPath meshShapePath;
+        st = MayaSceneBuilder::createMesh(positions, normals, groups, portalName, meshShapePath);
         if (!st) return st;
-        portalFn.setName(MString(portalName));
-        portalFn.getPath(outPortalTransformPath);
-        MFnDependencyNode depFn(portalObj);
-        addPortalAuthoringAttrs(depFn, pd);
-        return attachDoorHardpoint(portalObj, pd);
+
+        st = MayaSceneBuilder::assignPobCollisionPreviewMaterial(meshShapePath);
+        if (!st)
+            pobLog("  assignPobCollisionPreviewMaterial failed for portal mesh");
+
+        std::string shapeFullPath = meshShapePath.fullPathName().asChar();
+        MString addCmd = "addAttr -ln portal -at bool \"";
+        addCmd += shapeFullPath.c_str();
+        addCmd += "\"";
+        MGlobal::executeCommand(addCmd);
+        MString setCmd = "setAttr \"";
+        setCmd += shapeFullPath.c_str();
+        setCmd += ".portal\" 1";
+        MGlobal::executeCommand(setCmd);
+
+        meshShapePath.pop(1);
+        outPortalTransformPath = meshShapePath;
+        MFnDependencyNode transformDepFn(outPortalTransformPath.node());
+        addPortalAuthoringAttrs(transformDepFn, pd);
+
+        MFnDagNode parentFn(parentObj);
+        MString parentCmd = "parent \"";
+        parentCmd += outPortalTransformPath.fullPathName();
+        parentCmd += "\" \"";
+        parentCmd += parentFn.fullPathName();
+        parentCmd += "\"";
+        MGlobal::executeCommand(parentCmd);
+        PobAuthoring::applyDoorHardpointAttributes(outPortalTransformPath.node(), pd.hasDoorHardpoint, pd.doorTransform);
+        return MS::kSuccess;
     }
 
     static void readCellLightsChunk(Iff& iff, std::vector<PobCellLight>& out)
@@ -617,15 +642,18 @@ MStatus ImportPob::doIt(const MArgList& args)
     iff.enterForm(TAG_PRTS);
     for (int i = 0; i < numberOfPortals && iff.getNumberOfBlocksLeft() > 0; ++i)
     {
-        if (version >= 4 && iff.isCurrentForm() && iff.getCurrentName() == TAG_IDTL)
-        {
+        if (iff.isCurrentForm() && iff.getCurrentName() == TAG_IDTL)
             portalGeometries[static_cast<size_t>(i)].loadFromIdtl(iff);
-        }
-        else if (version < 4)
+        else if (!iff.isCurrentForm() && iff.getCurrentName() == TAG_PRTL)
         {
             iff.enterChunk(TAG_PRTL);
             portalGeometries[static_cast<size_t>(i)].loadFromPrtl(iff);
             iff.exitChunk(TAG_PRTL);
+        }
+        else
+        {
+            pobLog("PRTS portal %d: skipping unexpected block (tag mismatch)", i);
+            skipOneIffBlock(iff);
         }
     }
     iff.exitForm(TAG_PRTS);
@@ -672,7 +700,7 @@ MStatus ImportPob::doIt(const MArgList& args)
 
         iff.enterChunk(TAG_DATA);
         cellPortalCount = iff.read_int32();
-        iff.read_bool8();
+        const bool pobCellCanSeeWorldInFile = iff.read_bool8() != 0;
         if (cellVersion >= 5)
             cellName = iff.read_stdstring();
         else
@@ -684,6 +712,38 @@ MStatus ImportPob::doIt(const MArgList& args)
                 floorName = iff.read_stdstring();
         }
         iff.exitChunk(TAG_DATA);
+
+        {
+            MFnDependencyNode cellAuthoringFn(cellTransforms[static_cast<size_t>(i)]);
+            auto ensureStrAttr = [&](const char* longName, const char* shortName, const std::string& val) {
+                MPlug p = cellAuthoringFn.findPlug(longName, true);
+                if (p.isNull())
+                {
+                    MFnTypedAttribute tAttr;
+                    MObject attrObj = tAttr.create(longName, shortName, MFnData::kString);
+                    tAttr.setStorable(true);
+                    if (cellAuthoringFn.addAttribute(attrObj))
+                        p = cellAuthoringFn.findPlug(longName, true);
+                }
+                if (!p.isNull())
+                    p.setValue(MString(val.c_str()));
+            };
+            auto ensureBoolAttr = [&](const char* longName, const char* shortName, bool val) {
+                MPlug p = cellAuthoringFn.findPlug(longName, true);
+                if (p.isNull())
+                {
+                    MFnNumericAttribute nAttr;
+                    MObject attrObj = nAttr.create(longName, shortName, MFnNumericData::kBoolean);
+                    nAttr.setStorable(true);
+                    if (cellAuthoringFn.addAttribute(attrObj))
+                        p = cellAuthoringFn.findPlug(longName, true);
+                }
+                if (!p.isNull())
+                    p.setBool(val);
+            };
+            ensureStrAttr("pobCellName", "pcnm", cellName);
+            ensureBoolAttr("pobCellCanSeeWorld", "pccsw", pobCellCanSeeWorldInFile);
+        }
 
         if (cellVersion >= 5 && iff.getNumberOfBlocksLeft() > 0 && iff.isCurrentForm())
         {

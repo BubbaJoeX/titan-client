@@ -8,6 +8,7 @@
 #include <maya/MFnDependencyNode.h>
 #include <maya/MFnTypedAttribute.h>
 #include <maya/MFnIkJoint.h>
+#include <maya/MDagPath.h>
 #include <maya/MFnMesh.h>
 #include <maya/MFnSingleIndexedComponent.h>
 #include <maya/MFnSkinCluster.h>
@@ -26,11 +27,14 @@
 #include <maya/MDGModifier.h>
 #include <maya/MNamespace.h>
 
+#include <atomic>
 #include <cmath>
 #include <cstdarg>
 #include <cstdio>
 #include <cstring>
+#include <iomanip>
 #include <map>
+#include <sstream>
 #include <string>
 
 #ifdef _WIN32
@@ -195,8 +199,13 @@ MStatus MayaSceneBuilder::createMesh(
 
 namespace SceneBuilderHelpers
 {
-    // Cache: shader path -> actual Maya SG name (Maya may increment names: aeb14SG -> aeb15SG)
-    static std::map<std::string, std::string> s_shaderToActualSgName;
+    /// Short token per assignMaterials() call — unique per mesh import. (Full DAG paths made MEL
+    /// `importShader -materialBase "..."` long enough to truncate / hang inside MGlobal::executeCommand.)
+    std::string nextMaterialImportInstanceToken()
+    {
+        static std::atomic<unsigned> s_importInstance{0};
+        return std::string("m") + std::to_string(++s_importInstance);
+    }
 
     // Strip trailing "SG" from shader name - MayaExporter uses shader name only (no SG) for paths
     std::string stripSGSuffix(const std::string& name)
@@ -395,12 +404,44 @@ MStatus MayaSceneBuilder::createMaterial(
     return MS::kSuccess;
 }
 
+MStatus MayaSceneBuilder::assignPobCollisionPreviewMaterial(const MDagPath& meshPathIn)
+{
+    MDagPath meshShapePath = meshPathIn;
+    if (meshShapePath.hasFn(MFn::kTransform))
+        meshShapePath.extendToShape();
+    if (!meshShapePath.hasFn(MFn::kMesh))
+        return MS::kFailure;
+
+    MDagPath assignPath = meshShapePath;
+    if (assignPath.hasFn(MFn::kMesh))
+        assignPath.pop(1);
+
+    MString createIfMissing =
+        "if (!`objExists \"swgPob_collisionPreviewGreen\"`) {"
+        "shadingNode -asShader lambert -n \"swgPob_collisionPreviewGreen\";"
+        "setAttr \"swgPob_collisionPreviewGreen.color\" -type double3 0.14 0.68 0.22;"
+        "sets -renderable true -noSurfaceShader true -empty -name \"swgPob_collisionPreviewGreenSG\";"
+        "connectAttr -f swgPob_collisionPreviewGreen.outColor swgPob_collisionPreviewGreenSG.surfaceShader;"
+        "}";
+    MGlobal::executeCommand(createIfMissing);
+
+    MString assignCmd = "hyperShade -assign \"swgPob_collisionPreviewGreenSG\" \"";
+    assignCmd += assignPath.fullPathName();
+    assignCmd += "\"";
+    return MGlobal::executeCommand(assignCmd);
+}
+
 MStatus MayaSceneBuilder::assignMaterials(
     const MDagPath& meshPath,
     const std::vector<ShaderGroupData>& shaderGroups,
     const std::string& inputFilePath)
 {
     if (shaderGroups.empty()) return MS::kSuccess;
+
+    // Per-mesh only: same shader template on another mesh must import again (own texture / nodes). A global cache
+    // reused SGs across imports and forced the second mesh green or wrong texture.
+    std::map<std::string, std::string> shaderToActualSgName;
+    const std::string meshTok = SceneBuilderHelpers::nextMaterialImportInstanceToken();
 
     int faceOffset = 0;
     MDagPath meshShapePath = meshPath;
@@ -423,8 +464,10 @@ MStatus MayaSceneBuilder::assignMaterials(
         std::string shaderName = SceneBuilderHelpers::sanitizeMayaName(rawName);
         if (shaderName.empty()) shaderName = "material";
 
+        const std::string materialInstanceBase = shaderName + "__m__" + meshTok;
+
         std::string cacheKey = group.shaderTemplateName;
-        MString sgNodeName = (shaderName + "SG").c_str();
+        MString sgNodeName = (materialInstanceBase + "SG").c_str();
         MString fullPath = meshDagFn.fullPathName();
         int colonPos = fullPath.index(':');
         if (colonPos >= 0)
@@ -440,9 +483,9 @@ MStatus MayaSceneBuilder::assignMaterials(
             }
         }
 
-        // Use cached actual SG name if we created it earlier (Maya may rename aeb14SG -> aeb15SG)
-        auto it = SceneBuilderHelpers::s_shaderToActualSgName.find(cacheKey);
-        if (it != SceneBuilderHelpers::s_shaderToActualSgName.end())
+        // Same mesh, multiple face ranges: reuse SG for identical shader template (cacheKey).
+        auto it = shaderToActualSgName.find(cacheKey);
+        if (it != shaderToActualSgName.end())
         {
             sgNodeName = it->second.c_str();
         }
@@ -464,13 +507,15 @@ MStatus MayaSceneBuilder::assignMaterials(
                 {
                     MString importCmd = "importShader -i \"";
                     importCmd += resolvedShaderFile.c_str();
+                    importCmd += "\" -materialBase \"";
+                    importCmd += materialInstanceBase.c_str();
                     importCmd += "\"";
                     MStringArray importResult;
                     if (MGlobal::executeCommand(importCmd, importResult, false, false) && importResult.length() > 0)
                     {
                         materialExists = true;
                         sgNodeName = importResult[0];
-                        SceneBuilderHelpers::s_shaderToActualSgName[cacheKey] = sgNodeName.asChar();
+                        shaderToActualSgName[cacheKey] = sgNodeName.asChar();
                     }
                     else
                     {
@@ -480,17 +525,17 @@ MStatus MayaSceneBuilder::assignMaterials(
                 }
                 if (useDefault)
                 {
-                    shaderLog("assignMaterials: using default (green) material for %s", shaderName.c_str());
+                    shaderLog("assignMaterials: using default (green) material for %s", materialInstanceBase.c_str());
                     MObject dummySG;
-                    createMaterial(shaderName, std::string(), dummySG);
+                    createMaterial(materialInstanceBase, std::string(), dummySG);
                     MFnDependencyNode fn(dummySG);
                     sgNodeName = fn.name();
-                    SceneBuilderHelpers::s_shaderToActualSgName[cacheKey] = sgNodeName.asChar();
+                    shaderToActualSgName[cacheKey] = sgNodeName.asChar();
                 }
             }
             else
             {
-                SceneBuilderHelpers::s_shaderToActualSgName[cacheKey] = sgNodeName.asChar();
+                shaderToActualSgName[cacheKey] = sgNodeName.asChar();
             }
         }
 
@@ -768,6 +813,56 @@ MStatus MayaSceneBuilder::createHardpoints(
                             "}\n";
         MGlobal::executeCommand(mel, false, true);
     }
+    return MS::kSuccess;
+}
+
+namespace
+{
+    static std::string skmgEscField(const std::string& s)
+    {
+        std::string o;
+        o.reserve(s.size());
+        for (char c : s)
+        {
+            if (c == '\t' || c == '\n' || c == '\r')
+                c = ' ';
+            o += c;
+        }
+        return o;
+    }
+}
+
+MStatus MayaSceneBuilder::storeSkmgHardpointsOnMeshTransform(
+    MObject meshTransformObj,
+    const std::vector<HardpointData>& staticHardpoints,
+    const std::vector<HardpointData>& dynamicHardpoints)
+{
+    std::ostringstream oss;
+    oss << "swgSkmgHp v1\n";
+    oss.setf(std::ios::fixed);
+    oss.precision(9);
+    const auto line = [&](char kind, const HardpointData& h) {
+        oss << kind << '\t' << skmgEscField(h.name) << '\t' << skmgEscField(h.parentJoint) << '\t' << h.position[0] << ' '
+            << h.position[1] << ' ' << h.position[2] << '\t' << h.rotation[0] << ' ' << h.rotation[1] << ' ' << h.rotation[2]
+            << ' ' << h.rotation[3] << '\n';
+    };
+    for (const auto& h : staticHardpoints)
+        line('s', h);
+    for (const auto& h : dynamicHardpoints)
+        line('d', h);
+
+    MFnDependencyNode fn(meshTransformObj);
+    MPlug plug = fn.findPlug("swgSkmgHardpoints", true);
+    if (plug.isNull())
+    {
+        MFnTypedAttribute ta;
+        MObject attrObj = ta.create("swgSkmgHardpoints", "ssh", MFnData::kString);
+        ta.setStorable(true);
+        if (fn.addAttribute(attrObj))
+            plug = fn.findPlug("swgSkmgHardpoints", true);
+    }
+    if (!plug.isNull())
+        plug.setValue(MString(oss.str().c_str()));
     return MS::kSuccess;
 }
 

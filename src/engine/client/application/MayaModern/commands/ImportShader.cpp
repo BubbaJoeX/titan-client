@@ -296,10 +296,11 @@ MStatus ImportShader::doIt(const MArgList& args)
     if (!status) return MS::kFailure;
     if (argCount < 2)
     {
-        std::cerr << "ImportShader: usage importShader -i <filename>" << std::endl;
+        std::cerr << "ImportShader: usage importShader -i <filename> [-materialBase <name>]" << std::endl;
         return MS::kFailure;
     }
 
+    std::string materialBaseOverride;
     for (unsigned i = 0; i < argCount; ++i)
     {
         MString arg = args.asString(i, &status);
@@ -307,6 +308,11 @@ MStatus ImportShader::doIt(const MArgList& args)
         if (arg == "-i" && (i + 1) < argCount)
         {
             filename = args.asString(i + 1, &status).asChar();
+            ++i;
+        }
+        else if (arg == MString("-materialBase") && (i + 1) < argCount)
+        {
+            materialBaseOverride = args.asString(i + 1, &status).asChar();
             ++i;
         }
     }
@@ -496,8 +502,12 @@ MStatus ImportShader::doIt(const MArgList& args)
 
     shaderImportLog("mainTexturePath: %s", mainTexturePath.empty() ? "(empty)" : mainTexturePath.c_str());
 
-    std::string shaderName = filename;
+    std::string shaderName;
+    if (!materialBaseOverride.empty())
+        shaderName = materialBaseOverride;
+    else
     {
+        shaderName = filename;
         const size_t lastSlash = shaderName.find_last_of("\\/");
         if (lastSlash != std::string::npos)
             shaderName = shaderName.substr(lastSlash + 1);

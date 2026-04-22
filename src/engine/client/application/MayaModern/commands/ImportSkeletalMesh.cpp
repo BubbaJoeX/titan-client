@@ -7,6 +7,7 @@
 #include "Tag.h"
 
 #include <maya/MArgList.h>
+#include <maya/MFn.h>
 #include <maya/MDagPath.h>
 #include <maya/MFnDagNode.h>
 #include <maya/MGlobal.h>
@@ -203,6 +204,7 @@ MStatus ImportSkeletalMesh::doIt(const MArgList& args)
     std::string inputFilename;
     std::string skeletonFilename;
     std::string parentPath;
+    bool hardpointsAsAttributes = true;
 
     const unsigned argCount = args.length(&status);
     if (!status) return MS::kFailure;
@@ -226,6 +228,10 @@ MStatus ImportSkeletalMesh::doIt(const MArgList& args)
             parentPath = args.asString(i + 1, &status).asChar();
             ++i;
         }
+        else if (argName == MString("-hardpointsAsAttributes"))
+            hardpointsAsAttributes = true;
+        else if (argName == MString("-visualHardpoints"))
+            hardpointsAsAttributes = false;
     }
 
     if (inputFilename.empty())
@@ -980,16 +986,30 @@ MStatus ImportSkeletalMesh::doIt(const MArgList& args)
                 std::cerr << "ImportSkeletalMesh: failed to create skin cluster" << std::endl;
         }
 
-        std::vector<MayaSceneBuilder::HardpointData> allHardpoints;
-        allHardpoints.insert(allHardpoints.end(), staticHardpoints.begin(), staticHardpoints.end());
-        allHardpoints.insert(allHardpoints.end(), dynamicHardpoints.begin(), dynamicHardpoints.end());
-
-        if (!allHardpoints.empty() && !jointMap.empty())
+        if (!hardpointsAsAttributes)
         {
-            status = MayaSceneBuilder::createHardpoints(allHardpoints, jointMap, meshName);
-            if (!status)
-                std::cerr << "ImportSkeletalMesh: failed to create hardpoints" << std::endl;
+            std::vector<MayaSceneBuilder::HardpointData> allHardpoints;
+            allHardpoints.insert(allHardpoints.end(), staticHardpoints.begin(), staticHardpoints.end());
+            allHardpoints.insert(allHardpoints.end(), dynamicHardpoints.begin(), dynamicHardpoints.end());
+
+            if (!allHardpoints.empty() && !jointMap.empty())
+            {
+                status = MayaSceneBuilder::createHardpoints(allHardpoints, jointMap, meshName);
+                if (!status)
+                    std::cerr << "ImportSkeletalMesh: failed to create hardpoints" << std::endl;
+            }
         }
+    }
+
+    if (hardpointsAsAttributes && (!staticHardpoints.empty() || !dynamicHardpoints.empty()))
+    {
+        MDagPath meshTransformPath = meshPath;
+        if (meshTransformPath.hasFn(MFn::kMesh))
+            meshTransformPath.pop(1);
+        status = MayaSceneBuilder::storeSkmgHardpointsOnMeshTransform(
+            meshTransformPath.node(), staticHardpoints, dynamicHardpoints);
+        if (!status)
+            std::cerr << "ImportSkeletalMesh: failed to store swgSkmgHardpoints" << std::endl;
     }
 
     {

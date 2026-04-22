@@ -68,8 +68,10 @@ public:
     MStatus writer (const MFileObject& file, const MString& optionsString, MPxFileTranslator::FileAccessMode mode) override;
 
     /** Load .msh file directly (bypasses MFileIO). Returns root transform path.
-     *  If parentPath is non-empty, creates mesh under that parent (avoids post-parent command). */
-    static MStatus createMeshFromMsh(const char* mshPath, MString& outRootPath, const MString& parentPath = MString());
+     *  If parentPath is non-empty, creates mesh under that parent (avoids post-parent command).
+     *  Hardpoints: default **attribute-only** (`swgSkmgHardpoints` on root); pass visualHardpoints=true for viewport hp_* nodes. */
+    static MStatus createMeshFromMsh(const char* mshPath, MString& outRootPath, const MString& parentPath = MString(),
+                                     bool visualHardpoints = false);
 
 private:
     static MString const magic;

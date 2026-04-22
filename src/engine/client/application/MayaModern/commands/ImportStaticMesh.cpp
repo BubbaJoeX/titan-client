@@ -16,6 +16,7 @@ MStatus ImportStaticMesh::doIt(const MArgList& args)
     MStatus status;
     std::string filename;
     std::string parentPath;
+    bool visualHardpoints = false;
 
     const unsigned argCount = args.length(&status);
     if (!status) return MS::kFailure;
@@ -34,6 +35,8 @@ MStatus ImportStaticMesh::doIt(const MArgList& args)
             parentPath = args.asString(i + 1, &status).asChar();
             ++i;
         }
+        else if (argName == MString("-visualHardpoints"))
+            visualHardpoints = true;
     }
 
     if (filename.empty())
@@ -45,8 +48,14 @@ MStatus ImportStaticMesh::doIt(const MArgList& args)
     filename = resolveImportPath(filename);
     MString cmd = "importLodMesh -i \"";
     cmd += filename.c_str();
-    cmd += "\" -parent \"";
-    cmd += parentPath.c_str();
     cmd += "\"";
+    if (!parentPath.empty())
+    {
+        cmd += " -parent \"";
+        cmd += parentPath.c_str();
+        cmd += "\"";
+    }
+    if (visualHardpoints)
+        cmd += " -visualHardpoints";
     return MGlobal::executeCommand(cmd);
 }

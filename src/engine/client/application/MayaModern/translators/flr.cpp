@@ -173,6 +173,9 @@ MStatus FlrTranslator::createMeshFromFlr(const char* flrPath, const char* meshNa
         flrLog("createMesh failed");
         return status;
     }
+    status = MayaSceneBuilder::assignPobCollisionPreviewMaterial(outPath);
+    if (!status)
+        flrLog("assignPobCollisionPreviewMaterial failed (floor preview shading)");
     flrLog("createMeshFromFlr OK");
 
     if (!parentObj.isNull())

@@ -53,9 +53,11 @@
 #include "ConfigFile.h"
 #include "Globals.h"
 
+#include <maya/MFileObject.h>
 #include <maya/MFnPlugin.h>
 #include <maya/MGlobal.h>
 
+#include <iostream>
 #include <string>
 #include <utility>
 
@@ -101,16 +103,20 @@ void sourceCompanionMelScripts(const MFnPlugin& plugin)
         }
     }
 
+    // Use MGlobal::sourceFile — embedding paths in executeCommand("if (`filetest -f \"...\") { source \"...\"; }")
+    // truncates on some Maya builds (syntax errors around column ~80–160 with long paths under "Program Files").
     for (const char* melName : kCompanionMelFiles)
     {
         const std::string fullPath = dir + melName;
-        MString mel;
-        mel += "if (`filetest -f \"";
-        mel += fullPath.c_str();
-        mel += "\") { source \"";
-        mel += fullPath.c_str();
-        mel += "\"; }";
-        MGlobal::executeCommand(mel, false, false);
+        MFileObject fo;
+        fo.setRawFullName(fullPath.c_str());
+        if (!fo.exists())
+            continue;
+        const MStatus st = MGlobal::sourceFile(fo.resolvedFullName());
+        if (!st)
+        {
+            std::cerr << "SwgMayaEditor: could not source companion MEL: " << fullPath.c_str() << std::endl;
+        }
     }
 }
 } // namespace
@@ -142,7 +148,7 @@ static Translator* TRANSLATORS[] =
         {
             new Translator(swg_translator::kTypeMgn, "", &MgnTranslator::creator, nullptr, "showPositions=1", false),
             new Translator(swg_translator::kTypeMsh, "", &MshTranslator::creator, "swgMshExportOptions",
-                "legacyTriangleFlip=0", false),
+                "legacyTriangleFlip=1;objExportDirectUv=1;visualHardpoints=0", false),
             new Translator(swg_translator::kTypeSkt, "", &SktTranslator::creator, nullptr, "showPositions=1", false),
             new Translator(swg_translator::kTypeAns, "", &AnsTranslator::creator, nullptr, "showPositions=1", false),
             new Translator(swg_translator::kTypeFlr, "", &FlrTranslator::creator, nullptr, "showPositions=1", false),

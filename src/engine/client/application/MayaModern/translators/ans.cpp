@@ -28,6 +28,7 @@
 #include <maya/MTime.h>
 #include <maya/MGlobal.h>
 #include <maya/MPlug.h>
+#include <maya/MPlugArray.h>
 #include <maya/MSelectionList.h>
 #include <maya/MVector.h>
 #include <maya/MFnAttribute.h>
@@ -37,6 +38,7 @@
 #include <cctype>
 #include <cstring>
 #include <cstdio>
+#include <cmath>
 #include <iostream>
 #include <limits>
 #include <utility>
@@ -95,6 +97,30 @@ struct AnimationTransformationData
         int16 translationChannelIndexY;
         int16 translationChannelIndexZ;
 };
+
+namespace {
+
+// Hardpoints: hold_* joints (game attachment nodes) and imported locators tagged swgHardpointParent.
+// Prefix match is case-insensitive so Hold_* still counts.
+static bool ansIsHardpointJoint(const MDagPath& path)
+{
+    MFnDagNode dagFn(path);
+    std::string name(dagFn.name().asChar());
+    if (name.size() >= 5)
+    {
+        std::string prefix(name.substr(0, 5));
+        for (char& c : prefix)
+            c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        if (prefix == "hold_")
+            return true;
+    }
+    MFnDependencyNode depFn(path.node());
+    if (depFn.hasAttribute("swgHardpointParent"))
+        return true;
+    return false;
+}
+
+} // namespace
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -181,42 +207,36 @@ MStatus AnsTranslator::reader (const MFileObject& file, const MString& options, 
 
     // Clear existing animation and restore bind pose BEFORE reading new animation.
     // This ensures bindQuat/bindTranslation are the original values, not from a previous animation.
-    // IMPORTANT: Exclude hardpoints (hold_*, joints with swgHardpointParent) - they should keep their position.
+    // Hardpoints must keep authored offset from parent; they must NOT keep old anim curves (that causes
+    // hold_* to drift during playback). Clear keys on ALL joints, then restore bind pose on non-hardpoints only.
     ANS_LOG("clearing existing animation and restoring bind pose...");
     {
         MStatus clearStatus;
-        
-        // Helper to check if a joint is a hardpoint
-        auto isHardpointJoint = [](const MDagPath& path) -> bool {
-            MFnDagNode dagFn(path);
-            std::string name(dagFn.name().asChar());
-            // Skip joints with "hold_" prefix
-            if (name.size() >= 5 && name.substr(0, 5) == "hold_")
-                return true;
-            // Skip joints with swgHardpointParent attribute
-            MFnDependencyNode depFn(path.node());
-            if (depFn.hasAttribute("swgHardpointParent"))
-                return true;
-            return false;
-        };
-        
-        // Select all joints EXCEPT hardpoints
-        MSelectionList jointSel;
+
+        MSelectionList allJointSel;
+        MSelectionList bindRestoreSel;
         MItDag dagIt(MItDag::kDepthFirst, MFn::kJoint, &clearStatus);
         for (; !dagIt.isDone(); dagIt.next())
         {
             MDagPath path;
-            if (dagIt.getPath(path) && !isHardpointJoint(path))
-                jointSel.add(path);
+            if (!dagIt.getPath(path))
+                continue;
+            allJointSel.add(path);
+            if (!ansIsHardpointJoint(path))
+                bindRestoreSel.add(path);
         }
-        if (jointSel.length() > 0)
+        if (allJointSel.length() > 0)
         {
-            MGlobal::setActiveSelectionList(jointSel);
-            // Delete animation curves on rotation and translation
+            MGlobal::setActiveSelectionList(allJointSel);
+            // Delete animation curves on rotation and translation (including hold_* — removes stale curves)
             MGlobal::executeCommand("cutKey -clear -at translateX -at translateY -at translateZ "
                                     "-at rotateX -at rotateY -at rotateZ");
-            // Restore bind pose
-            clearStatus = MGlobal::executeCommand("dagPose -restore -global -bindPose");
+            MGlobal::clearSelectionList();
+        }
+        if (bindRestoreSel.length() > 0)
+        {
+            MGlobal::setActiveSelectionList(bindRestoreSel);
+            clearStatus = MGlobal::executeCommand("dagPose -restore -bindPose");
             if (!clearStatus)
                 ANS_WARN("dagPose failed - bind pose may not be restored correctly");
             MGlobal::clearSelectionList();
@@ -875,20 +895,6 @@ MStatus AnsTranslator::reader (const MFileObject& file, const MString& options, 
                 const size_t ansCount = animTransformData.size();
                 const size_t sceneCount = sceneJointsOrdered.size();
 
-                // Helper to check if a joint is a hardpoint (should not be animated)
-                auto isHardpoint = [](const MDagPath& path) -> bool {
-                    MFnDagNode dagFn(path);
-                    std::string name(dagFn.name().asChar());
-                    // Skip joints with "hold_" prefix (hardpoints)
-                    if (name.size() >= 5 && name.substr(0, 5) == "hold_")
-                        return true;
-                    // Skip joints with swgHardpointParent attribute (imported hardpoints)
-                    MFnDependencyNode depFn(path.node());
-                    if (depFn.hasAttribute("swgHardpointParent"))
-                        return true;
-                    return false;
-                };
-
                 int matchedCount = 0;
                 for (size_t t = 0; t < animTransformData.size(); ++t)
                 {
@@ -902,7 +908,7 @@ MStatus AnsTranslator::reader (const MFileObject& file, const MString& options, 
                     for (const MDagPath& jointPath : jointPaths)
                     {
                     // Skip hardpoints - they should maintain their bind pose offset from parent
-                    if (isHardpoint(jointPath))
+                    if (ansIsHardpointJoint(jointPath))
                     {
                         ANS_LOG("skip [%s] - hardpoint (preserving position)", ti.jointName.c_str());
                         continue;
@@ -1093,6 +1099,56 @@ MStatus AnsTranslator::reader (const MFileObject& file, const MString& options, 
     }
 }
 
+namespace {
+
+// Grows [ioMinTU, ioMaxTU] to include key times on anim curves feeding the joint (rotate/translate etc.).
+static void expandExportRangeWithJointAnimCurves(const MDagPath& jointPath, MTime::Unit uiUnit,
+    double& ioMinTU, double& ioMaxTU)
+{
+    MStatus st;
+    MFnDependencyNode dep(jointPath.node(), &st);
+    if (!st)
+        return;
+
+    static const char* attrs[] = {
+        "rotateX", "rotateY", "rotateZ",
+        "translateX", "translateY", "translateZ",
+        "jointOrientX", "jointOrientY", "jointOrientZ",
+        "scaleX", "scaleY", "scaleZ",
+    };
+
+    for (const char* attr : attrs)
+    {
+        if (!dep.hasAttribute(attr))
+            continue;
+        MPlug p = dep.findPlug(attr, true, &st);
+        if (!st || p.isNull())
+            continue;
+
+        MPlugArray srcConns;
+        p.connectedTo(srcConns, true, false);
+        for (unsigned i = 0; i < srcConns.length(); ++i)
+        {
+            MObject node = srcConns[i].node();
+            if (node.isNull())
+                continue;
+            MFnAnimCurve acFn(node, &st);
+            if (!st)
+                continue;
+
+            const unsigned nk = acFn.numKeys();
+            for (unsigned k = 0; k < nk; ++k)
+            {
+                const double tu = acFn.time(k).as(uiUnit);
+                ioMinTU = std::min(ioMinTU, tu);
+                ioMaxTU = std::max(ioMaxTU, tu);
+            }
+        }
+    }
+}
+
+} // namespace
+
 /**
  * Handles writing out (exporting) the animation
  *
@@ -1109,22 +1165,7 @@ MStatus AnsTranslator::writer (const MFileObject& file, const MString& options, 
 
     MStatus status;
 
-    // Get animation time range
-    MTime startTime = MAnimControl::minTime();
-    MTime endTime = MAnimControl::maxTime();
-    int firstFrame = static_cast<int>(startTime.as(MTime::uiUnit()));
-    int lastFrame = static_cast<int>(endTime.as(MTime::uiUnit()));
-    int frameCount = lastFrame - firstFrame;
-    if (frameCount < 1)
-    {
-        ANS_WARN("No animation frames to export (range: %d - %d)", firstFrame, lastFrame);
-        return MS::kFailure;
-    }
-
-    float fps = static_cast<float>(MTime(1.0, MTime::kSeconds).as(MTime::uiUnit()));
-    ANS_LOG("exporting frames %d - %d (%.1f fps)", firstFrame, lastFrame, fps);
-
-    // Collect all joints in scene
+    // Collect joints first — we need them to derive the export range from anim curves, not only the slider.
     std::vector<MDagPath> joints;
     {
         MItDag dagIt(MItDag::kDepthFirst, MFn::kJoint, &status);
@@ -1140,6 +1181,32 @@ MStatus AnsTranslator::writer (const MFileObject& file, const MString& options, 
         ANS_WARN("No joints found in scene");
         return MS::kFailure;
     }
+
+    const MTime::Unit uiUnit = MTime::uiUnit();
+    double minTU = MAnimControl::minTime().as(uiUnit);
+    double maxTU = MAnimControl::maxTime().as(uiUnit);
+    {
+        MTime a = MAnimControl::animationStartTime();
+        minTU = std::min(minTU, a.as(uiUnit));
+        MTime b = MAnimControl::animationEndTime();
+        maxTU = std::max(maxTU, b.as(uiUnit));
+    }
+    for (const MDagPath& jp : joints)
+        expandExportRangeWithJointAnimCurves(jp, uiUnit, minTU, maxTU);
+
+    int firstFrame = static_cast<int>(std::floor(minTU));
+    int lastFrame = static_cast<int>(std::ceil(maxTU));
+    if (lastFrame < firstFrame)
+    {
+        const double cur = MAnimControl::currentTime().as(uiUnit);
+        firstFrame = lastFrame = static_cast<int>(std::lround(cur));
+    }
+
+    const int frameCount = lastFrame - firstFrame;
+
+    float fps = static_cast<float>(MTime(1.0, MTime::kSeconds).as(uiUnit));
+    ANS_LOG("export time range (playback + animation range + joint curve keys): %.3f - %.3f ui -> frames %d - %d (%.1f fps, span=%d)",
+        minTU, maxTU, firstFrame, lastFrame, fps, frameCount);
     ANS_LOG("found %zu joints", joints.size());
 
     // Go to bind pose (frame 0 or first frame) to capture bind pose data
