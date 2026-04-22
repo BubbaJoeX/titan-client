@@ -5,16 +5,17 @@
 //
 // ======================================================================
 
+#include "clientGraphics/SwgVideoCapture.h"
+
+#if PRODUCTION == 0 && !defined(_WIN64)
+
 #include <cassert>
 #include "clientGraphics/FirstClientGraphics.h"
 #include "clientGraphics/Graphics.h"
-#include "clientGraphics/SwgVideoCapture.h"
 #include "sharedFoundation/FirstSharedFoundation.h"
 #include "AudioCapture/AudioCapture.h"
 #include "VideoCapture/VideoCapture.h"
 #include "SoeUtil/String.h"
-
-#if PRODUCTION == 0
 
 namespace VideoCapture
 {
@@ -654,4 +655,4 @@ void run()
 
 } // VideoCapture
 
-#endif // PRODUCTION
+#endif // PRODUCTION == 0 && !defined(_WIN64)

@@ -152,7 +152,7 @@ void UITextStyleManager::Initialize (UIPage* rootPage, UILoader &loader)
 		UILowerString const logicalFontProperty(buffer);
 		UIString logicalFontValue;
 		UI_IGNORE_RETURN(GetProperty(logicalFontProperty, logicalFontValue));
-		UI_IGNORE_RETURN(m_logicalToFixedFaceMap->insert(std::make_pair(logicalFontFace, Unicode::wideToNarrow(logicalFontValue))));
+		UI_IGNORE_RETURN(m_logicalToFixedFaceMap->insert(std::make_pair(logicalFontFace, UILowerString(Unicode::wideToNarrow(logicalFontValue)))));
 	}
 	
 	m_initialized = true;

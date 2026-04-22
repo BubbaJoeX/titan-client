@@ -70,10 +70,17 @@ protected:
 							ReferenceCount      (class ImpReferenceCount*);         
     virtual                 ~ReferenceCount     (void);   
     virtual void            destruct            (void) const;
+#ifdef _WIN64
+	unsigned int			m_reserved0;					// reserved for internal use
+private:
+    mutable int             m_referenceCount    :31;        // reference count of the object
+    mutable unsigned int    m_autoReleased      :1;         // has the object been auto-released?
+#else
 	UINT32					m_reserved0;					// reserved for internal use
 private:
     mutable INT32           m_referenceCount    :31;        // reference count of the object
     mutable UINT32          m_autoReleased      :1;         // has the object been auto-released?
+#endif
     void*                   m_userPointer;                  // user data pointer
 };
 

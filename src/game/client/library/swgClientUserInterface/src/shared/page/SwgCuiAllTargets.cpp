@@ -342,7 +342,7 @@ SwgCuiStatusGround * SwgCuiAllTargets::addStatus(TangibleObject & tangible)
 
 		status = new SwgCuiStatusGround(*page, SwgCuiStatusGround::ST_target);
 
-		IGNORE_RETURN(m_statii->insert(std::make_pair(id, status)));
+		IGNORE_RETURN(m_statii->emplace(id, UISmartPointer<SwgCuiStatusGround>(status)));
 
 		status->setTarget(id);
 		status->activate();

@@ -13,7 +13,11 @@
 #include "sharedUtility/DataTableCell.h"
 
 #include <map>
+#ifdef _WIN64
+#include <unordered_map>
+#else
 #include <hash_map>
+#endif
 
 //----------------------------------------------------------------------------
 

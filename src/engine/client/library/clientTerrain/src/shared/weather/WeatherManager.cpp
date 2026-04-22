@@ -39,7 +39,7 @@ void WeatherManager::addWeatherChangedFunction (WeatherChangedFunction weatherCh
 	if (weatherChangedFunction)
 	{
 		//-- verify weather changed function isn't already in list
-		if (!std::find (ms_weatherChangedFunctionList.end (), ms_weatherChangedFunctionList.begin (), weatherChangedFunction))
+		if (std::find (ms_weatherChangedFunctionList.begin (), ms_weatherChangedFunctionList.end (), weatherChangedFunction) == ms_weatherChangedFunctionList.end ())
 		{
 			//-- add to list
 			ms_weatherChangedFunctionList.push_back (weatherChangedFunction);

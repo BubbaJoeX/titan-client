@@ -17,7 +17,11 @@
 
 #include <vector>
 #include <list>
+#ifdef _WIN64
+#include <unordered_map>
+#else
 #include <hash_map>
+#endif
 
 // ======================================================================
 
@@ -77,7 +81,11 @@ protected:
 	void _printReferenceCountingData(const ReferenceCountingData &) const;
 
 	struct ptr_hash {
+#ifdef _WIN64
+		size_t operator()(void *p) const { return std::hash<uintptr_t>()(reinterpret_cast<uintptr_t>(p)); }
+#else
 		size_t operator()(void *p) const { return std::hash<unsigned long>()((unsigned long)p); }
+#endif
 	};
 
 	struct ObjectData
@@ -89,7 +97,11 @@ protected:
 		ReferenceCountingData *referenceData;
 	};
 
+#ifdef _WIN64
+	typedef std::unordered_map<void *, ObjectData, ptr_hash> ObjectMap;
+#else
 	typedef std::hash_map<void *, ObjectData, ptr_hash> ObjectMap;
+#endif
 
 	ObjectMap liveObjects;
 };

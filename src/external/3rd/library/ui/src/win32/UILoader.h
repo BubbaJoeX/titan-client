@@ -10,7 +10,11 @@
 #include <map>
 #include <stack>
 #include <vector>
+#ifdef _WIN64
+#include <unordered_set>
+#else
 #include <hash_set>
+#endif
 
 struct UILoaderToken;
 class UICanvas;

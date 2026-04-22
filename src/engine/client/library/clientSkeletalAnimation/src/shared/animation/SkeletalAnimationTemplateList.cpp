@@ -117,7 +117,7 @@ void SkeletalAnimationTemplateList::deregisterXmlCreateFunction(char const *elem
 
 	//-- look for it
 	XmlCreationFunctionMap::iterator it = s_xmlCreationFunctions.find(elementName);
-	FATAL(it == ms_creationFunctions->end(), ("Failed to deregister animation's xml create function for element [%s] --- element not registered.", elementName));
+	FATAL(it == s_xmlCreationFunctions.end(), ("Failed to deregister animation's xml create function for element [%s] --- element not registered.", elementName));
 
 	s_xmlCreationFunctions.erase(it);
 }

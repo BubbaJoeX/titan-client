@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="18.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="D:\titan\client\src\engine\shared\application\SwgMapRasterizer\build\x64_cmake\CMakeFiles\2e334087f150feadf896bc9dad9eb3f4\generate.stamp.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{27686F4A-99A1-3A90-8EBE-1858538A4B89}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

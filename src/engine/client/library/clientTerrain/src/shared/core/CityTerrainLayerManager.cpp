@@ -1061,7 +1061,7 @@ void CityTerrainLayerManager::addPaintTileGridDebugPrimitives(Camera const & cam
 	if (!proceduralAppearance || !proceduralAppearance->getAppearanceTemplate())
 		return;
 
-	float const tileW = proceduralAppearance->getAppearanceTemplate()->getTileWidthInMeters();
+	float const tileW = safe_cast<ProceduralTerrainAppearanceTemplate const *>(proceduralAppearance->getAppearanceTemplate())->getTileWidthInMeters();
 	if (tileW < 0.01f)
 		return;
 

@@ -13,7 +13,11 @@
 #include "sharedFoundation/CrcString.h"
 #include "sharedNetworkMessages/NetworkMessageFactory.h"
 #include <algorithm>
+#ifdef _WIN64
+#include <unordered_map>
+#else
 #include <hash_map>
+#endif
 
 // ======================================================================
 

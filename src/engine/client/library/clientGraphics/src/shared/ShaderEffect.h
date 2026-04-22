@@ -36,7 +36,7 @@ public:
 
 	bool                         containsPrecalculatedVertexLighting() const;
 
-	int                          getShaderImplementationSortKey() const;
+	intptr_t                     getShaderImplementationSortKey() const;
 	const ShaderImplementation * getActiveShaderImplementation() const;
 
 private:
@@ -87,9 +87,9 @@ inline bool ShaderEffect::containsPrecalculatedVertexLighting() const
 
 // ----------------------------------------------------------------------
 
-inline int ShaderEffect::getShaderImplementationSortKey() const
+inline intptr_t ShaderEffect::getShaderImplementationSortKey() const
 {
-	return reinterpret_cast<int>(m_implementation);
+	return reinterpret_cast<intptr_t>(m_implementation);
 }
 
 // ======================================================================

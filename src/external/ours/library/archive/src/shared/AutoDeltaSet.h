@@ -295,8 +295,8 @@ inline void AutoDeltaSet<ValueType, ObjectType>::onInsert(ValueType const &value
 template<typename ValueType, typename ObjectType>
 inline void AutoDeltaSet<ValueType, ObjectType>::pack(ByteStream &target) const
 {
-	Archive::put(target, m_set.size());
-	Archive::put(target, m_baselineCommandCount);
+	Archive::put(target, static_cast<unsigned int>(m_set.size()));
+	Archive::put(target, static_cast<unsigned int>(m_baselineCommandCount));
 	for (typename SetType::const_iterator i = m_set.begin(); i != m_set.end(); ++i)
 		Archive::put(target, *i);
 }
@@ -306,8 +306,8 @@ inline void AutoDeltaSet<ValueType, ObjectType>::pack(ByteStream &target) const
 template<typename ValueType, typename ObjectType>
 inline void AutoDeltaSet<ValueType, ObjectType>::pack(ByteStream &target, std::set<ValueType> const &data)
 {
-	Archive::put(target, data.size());
-	Archive::put(target, static_cast<size_t>(0)); // baselineCommandCount
+	Archive::put(target, static_cast<unsigned int>(data.size()));
+	Archive::put(target, static_cast<unsigned int>(0)); // baselineCommandCount
 	for (typename std::set<ValueType>::const_iterator i = data.begin(); i != data.end(); ++i)
 		Archive::put(target, *i);
 }
@@ -317,8 +317,8 @@ inline void AutoDeltaSet<ValueType, ObjectType>::pack(ByteStream &target, std::s
 template<typename ValueType, typename ObjectType>
 inline void AutoDeltaSet<ValueType, ObjectType>::packDelta(ByteStream &target) const
 {
-	Archive::put(target, m_commands.size());
-	Archive::put(target, m_baselineCommandCount);
+	Archive::put(target, static_cast<unsigned int>(m_commands.size()));
+	Archive::put(target, static_cast<unsigned int>(m_baselineCommandCount));
 	for (typename std::vector<Command>::iterator i = m_commands.begin(); i != m_commands.end(); ++i)
 	{
 		Command const &c = *i;
@@ -409,11 +409,13 @@ inline void AutoDeltaSet<ValueType, ObjectType>::unpack(ReadIterator &source)
 	m_set.clear();
 	clearDelta();
 
-	size_t commandCount;
+	unsigned int commandCount;
+	unsigned int tempBaselineCommandCount;
 	ValueType value;
 
 	Archive::get(source, commandCount);
-	Archive::get(source, m_baselineCommandCount);
+	Archive::get(source, tempBaselineCommandCount);
+	m_baselineCommandCount = tempBaselineCommandCount;
 
 	for (size_t i = 0; i < commandCount; ++i)
 	{
@@ -430,7 +432,7 @@ template<typename ValueType, typename ObjectType>
 inline void AutoDeltaSet<ValueType, ObjectType>::unpack(ReadIterator &source, std::vector<Command> &data)
 {
 	Command c;
-	size_t commandCount, targetBaselineCommandCount;
+	unsigned int commandCount, targetBaselineCommandCount;
 
 	Archive::get(source, commandCount);
 	Archive::get(source, targetBaselineCommandCount);
@@ -449,7 +451,7 @@ template<typename ValueType, typename ObjectType>
 inline void AutoDeltaSet<ValueType, ObjectType>::unpackDelta(ReadIterator &source, std::vector<Command> &data)
 {
 	Command c;
-	size_t commandCount, targetBaselineCommandCount;
+	unsigned int commandCount, targetBaselineCommandCount;
 
 	Archive::get(source, commandCount);
 	Archive::get(source, targetBaselineCommandCount);
@@ -479,7 +481,8 @@ template<typename ValueType, typename ObjectType>
 inline void AutoDeltaSet<ValueType, ObjectType>::unpackDelta(ReadIterator &source)
 {
 	Command c;
-	size_t skipCount, commandCount, targetBaselineCommandCount;
+	size_t skipCount;
+	unsigned int commandCount, targetBaselineCommandCount;
 
 	Archive::get(source, commandCount);
 	Archive::get(source, targetBaselineCommandCount);

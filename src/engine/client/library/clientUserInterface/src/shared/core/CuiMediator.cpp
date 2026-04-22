@@ -1020,7 +1020,7 @@ void CuiMediator::updateAll (float deltaTimeSecs)
 #if _DEBUG
 					if (i < numProfilerBufs)
 					{
-						snprintf (buf [i], buf_size, "%-30s 0x%08x", mediator->getMediatorDebugName ().c_str (), reinterpret_cast<int>(mediator));
+						snprintf (buf [i], buf_size, "%-30s %p", mediator->getMediatorDebugName ().c_str (), reinterpret_cast<const void *>(mediator));
 						//PROFILER_START (buf [i]);
 					}
 #endif

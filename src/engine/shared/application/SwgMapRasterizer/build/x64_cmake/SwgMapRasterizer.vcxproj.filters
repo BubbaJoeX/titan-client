@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="18.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="D:\titan\client\src\engine\shared\application\SwgMapRasterizer\src\shared\SwgMapRasterizer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\titan\client\src\engine\shared\application\SwgMapRasterizer\src\win32\WinMain.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\titan\client\src\engine\shared\application\SwgMapRasterizer\src\win32\FirstSwgMapRasterizer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="D:\titan\client\src\engine\shared\application\SwgMapRasterizer\src\shared\SwgMapRasterizer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\titan\client\src\engine\shared\application\SwgMapRasterizer\src\shared\FirstSwgMapRasterizer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\titan\client\src\engine\shared\application\SwgMapRasterizer\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{47A4CB11-3A7C-3E19-8D2C-FED26D6D27A0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{260897C2-013D-3343-B022-F1D9AE7C1172}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

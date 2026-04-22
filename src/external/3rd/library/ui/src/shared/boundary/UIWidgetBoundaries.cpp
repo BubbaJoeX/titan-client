@@ -42,7 +42,7 @@ UIWidgetBoundaries::~UIWidgetBoundaries ()
 
 void UIWidgetBoundaries::addBoundary (UIBoundary & boundary)
 {
-	mBoundaries.insert(std::make_pair(boundary.getName(), &boundary));
+	mBoundaries.emplace(UILowerString(boundary.getName()), &boundary);
 }
 
 //-----------------------------------------------------------------

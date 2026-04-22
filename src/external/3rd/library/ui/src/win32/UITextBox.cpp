@@ -21,6 +21,7 @@
 #include "UIUtils.h"
 
 #include <cassert>
+#include <iterator>
 #include <limits>
 #include <vector>
 
@@ -878,9 +879,10 @@ void UITextbox::MoveCaratVertically( long MovementDirection )
 		long PixelOffset = 0;
 		long CaratOffset = mCaratRect.left;
 
-		const UIString::value_type *s = mLinePointers[CaratLineNumber];
+		UIString::const_iterator s = mLinePointers[CaratLineNumber];
+		UIString::const_iterator const s_end = mLinePointers[CaratLineNumber + 1];
 
-		for( ; s < mLinePointers[CaratLineNumber + 1]; ++s )
+		for( ; s < s_end; ++s )
 		{
 			if( *s != '\n' )
 			{
@@ -898,7 +900,7 @@ void UITextbox::MoveCaratVertically( long MovementDirection )
 				break;
 		}
 
-		mCaratIndex = s - mLinePointers[0];
+		mCaratIndex = static_cast<long>(std::distance( mLinePointers[0], s ));
 		ScrollCaratOnScreen();
 		CalculateCaratRect();
 	}
@@ -1009,7 +1011,8 @@ long UITextbox::GetCaratOffsetFromPoint( const UIPoint & widgetPt )
 	}
 
 	long  PixelOffset              = textPadding.left;
-	const UIString::value_type * s = mRenderLinePointers[CaratRow];
+	UIString::const_iterator s = mRenderLinePointers[CaratRow];
+	UIString::const_iterator const s_line_end = mRenderLinePointers[CaratRow + 1];
 
 #if 0
 	//-- Debugging to look at the string we're advancing over
@@ -1040,7 +1043,7 @@ long UITextbox::GetCaratOffsetFromPoint( const UIPoint & widgetPt )
 
 		++s;
 
-		if( s == mRenderLinePointers[CaratRow + 1] )
+		if( s == s_line_end )
 		{
 			if( CaratRow != static_cast<long>(mRenderLinePointers.size() - 2 ))
 				--s;
@@ -1049,7 +1052,7 @@ long UITextbox::GetCaratOffsetFromPoint( const UIPoint & widgetPt )
 		}
 	}
 
-	return s - mRenderLinePointers[0] - skippedSlashes;
+	return static_cast<long>(std::distance( mRenderLinePointers[0], s )) - skippedSlashes;
 
 }
 
@@ -1074,7 +1077,7 @@ void UITextbox::MoveCaratToStartOfLine ()
 	{
 		long CaratLineNumber = GetCaratLine();
 
-		mCaratIndex = mRenderLinePointers[CaratLineNumber] - mRenderLinePointers[0];
+		mCaratIndex = static_cast<long>(std::distance( mRenderLinePointers[0], mRenderLinePointers[CaratLineNumber] ));
 
 		ScrollCaratOnScreen();
 		CalculateCaratRect();
@@ -1477,11 +1480,10 @@ void UITextbox::CalculateCaratRect ()
 					CaratLineNumber++;
 			}
 
-			long AmountToCopy = caretIndex - (mRenderLinePointers[CaratLineNumber] - mRenderLinePointers[0]);
+			long AmountToCopy = caretIndex - static_cast<long>(std::distance( mRenderLinePointers[0], mRenderLinePointers[CaratLineNumber] ));
 
 			if( AmountToCopy > 0 )
 			{
-				long realAmountToCopy = 0;
 				long index = 0;
 				UIString::const_iterator i = mRenderLinePointers[CaratLineNumber];
 				UIString::const_iterator end;
@@ -1515,8 +1517,7 @@ void UITextbox::CalculateCaratRect ()
 					
 					ignoreNextEscape = false;										
 				}
-				realAmountToCopy = static_cast<long>(i - mRenderLinePointers[CaratLineNumber]);
-				s.assign( mRenderLinePointers[CaratLineNumber], realAmountToCopy );
+				s.assign( mRenderLinePointers[CaratLineNumber], i );
 			}
 		}
 	}

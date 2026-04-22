@@ -12,7 +12,11 @@
 
 #include "sharedMath/Vector.h"
 
+#ifdef _WIN64
+#include <unordered_map>
+#else
 #include <hash_map>
+#endif
 
 // ======================================================================
 
@@ -42,7 +46,11 @@ private:
 
 private:
 
+#ifdef _WIN64
+	typedef std::unordered_multimap<uint32 /*crc*/, int /*index*/> VertexIndexMap;
+#else
 	typedef std::hash_multimap<uint32 /*crc*/, int /*index*/> VertexIndexMap;
+#endif
 
 	VectorVector * m_vertices;
 	VertexIndexMap * m_indexMap;

@@ -171,7 +171,7 @@ static void InternalFatal(const char *format, va_list va)
 
 #ifdef _WIN32
 	{
-		__asm int 3;
+		__debugbreak();
 	}
 #endif
 

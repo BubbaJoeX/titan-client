@@ -26,6 +26,8 @@ endif()
 
 set(ENGINE_SHARED_LIB_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../library")
 set(ENGINE_CLIENT_LIB_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../client/library")
+set(EXTERNAL_OURS_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../../external/ours/library")
+set(EXTERNAL_3RD_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../../external/3rd/library")
 
 # ======================================================================
 # Source Files
@@ -57,9 +59,13 @@ if(WIN32)
         NOMINMAX
         WIN32_LEAN_AND_MEAN
     )
+    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+        target_compile_definitions(SwgMapRasterizer PRIVATE _WIN64)
+    else()
+        target_compile_definitions(SwgMapRasterizer PRIVATE _USE_32BIT_TIME_T=1)
+    endif()
     if(MSVC)
         target_compile_options(SwgMapRasterizer PRIVATE /W3 /MP)
-        # Use precompiled headers
         set_source_files_properties(src/win32/FirstSwgMapRasterizer.cpp PROPERTIES
             COMPILE_FLAGS "/YcFirstSwgMapRasterizer.h"
         )
@@ -82,11 +88,13 @@ set(SHARED_LIBS
     sharedDebug
     sharedFile
     sharedFoundation
+    sharedFoundationTypes
     sharedImage
     sharedIoWin
     sharedLog
     sharedMath
     sharedMathArchive
+    sharedMemoryBlockManager
     sharedMemoryManager
     sharedMessageDispatch
     sharedObject
@@ -142,6 +150,20 @@ foreach(LIB ${CLIENT_LIBS})
         )
     endif()
 endforeach()
+
+# External libraries (our own)
+target_include_directories(SwgMapRasterizer PRIVATE
+    "${EXTERNAL_OURS_ROOT}/fileInterface/include/public"
+    "${EXTERNAL_OURS_ROOT}/archive/include/public"
+    "${EXTERNAL_OURS_ROOT}/unicodeArchive/include/public"
+    "${EXTERNAL_OURS_ROOT}/unicode/include/public"
+    "${EXTERNAL_OURS_ROOT}/localization/include/public"
+)
+
+# Third-party libraries
+target_include_directories(SwgMapRasterizer PRIVATE
+    "${EXTERNAL_3RD_ROOT}/ati_compress"
+)
 
 # Local source directories
 target_include_directories(SwgMapRasterizer PRIVATE

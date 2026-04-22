@@ -508,7 +508,7 @@ m_textStyleManager(UITextStyleManager::GetInstance()) // hook singleton of this 
 
 	m_effectorUseChild->SetPropertyNarrow (UILowerString ("PalTarget"), "icon");
 
-	m_toolbarItemPanes = new ToolbarItemPaneVector (DEFAULT_PANE_COUNT, DEFAULT_ITEM_COUNT_PER_PANE);
+	m_toolbarItemPanes = new ToolbarItemPaneVector (DEFAULT_PANE_COUNT, ToolbarItemPane (DEFAULT_ITEM_COUNT_PER_PANE));
 	m_petToolbarItemPane = new ToolbarItemPane(DEFAULT_ITEM_COUNT_PER_PANE);
 
 	getCodeDataObject (TUIPage, m_toolbarPage,      "ToolBar", true);
@@ -2432,7 +2432,7 @@ void SwgCuiToolbar::onCommandRemoved (const CreatureObject::Messages::CommandRem
 		
 		for (ToolbarItemPane::iterator it = items.begin (); it != items.end (); ++it)
 		{
-			CuiDragInfo * item = it;
+			CuiDragInfo * item = &*it;
 			if(!item)
 				continue;
 			

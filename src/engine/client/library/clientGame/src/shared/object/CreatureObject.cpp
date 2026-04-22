@@ -3030,7 +3030,7 @@ void CreatureObject::skillModsOnErase         (const std::string &, const std::p
 
 //----------------------------------------------------------------------
 
-void CreatureObject::attributesOnSet (const size_t elem, const Attributes::Value & oldValue, const Attributes::Value & newValue)
+void CreatureObject::attributesOnSet (const unsigned int elem, const Attributes::Value & oldValue, const Attributes::Value & newValue)
 {
 	if (newValue > oldValue)
 		return;
@@ -6741,7 +6741,11 @@ void CreatureObject::verifyWornAppearanceItems()
 			for(int i = 0; i < skeleAppearance->getWearableCount(); ++i)
 			{
 				TangibleObject const * currentItem = dynamic_cast<TangibleObject const *>(skeleAppearance->getWearableObject(i));
+	#ifdef _WIN64
+				wornAppearanceMap.insert(std::make_pair(currentItem->getNetworkId(), currentItem));
+#else
 				wornAppearanceMap.insert(std::make_pair<NetworkId, TangibleObject const *>(currentItem->getNetworkId(), currentItem));
+#endif
 			}
 
 			for (unsigned int k = 0; k < m_wearableAppearanceData.size(); ++k) // go through our streamed wearables

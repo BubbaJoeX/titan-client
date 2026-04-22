@@ -23,10 +23,11 @@
 #include "swgClientUserInterface/SwgCuiHud.h"
 #include "swgClientUserInterface/SwgCuiHudFactory.h"
 
+// Logitech G15 / GamePanel / lgLcd stack removed from the link line; keep hooks as no-ops.
+// Do not define USE_LCD so existing #ifdef USE_LCD bodies stay excluded.
+#if 0
 #include "EZ_LCD.h"
-
-//#undef this if the LCD causes problems
-#define USE_LCD
+#endif
 
 // ======================================================================
 

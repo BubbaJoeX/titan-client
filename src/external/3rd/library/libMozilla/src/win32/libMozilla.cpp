@@ -1,3 +1,4 @@
+#include <intrin.h>
 #include "libMozilla.h"
 
 // Define this if you want to link with the debug version of Mozilla in debug builds.  By default we link with release libs, even in
@@ -74,6 +75,7 @@
 #include <nsXPCOM.h>
 #include <nsXULAppAPI.h>
 
+#include <intrin.h>
 #include <windows.h>
 
 static char *s_nullString = "";

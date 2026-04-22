@@ -1099,7 +1099,7 @@ void RenderWorld::leakedObject(DPVS::Object *object)
 	DPVS::Vector3 center;
 	float radius;
 	object->getSphere(center, radius);
-	DEBUG_REPORT_LOG_PRINT(true, ("leaked DPVS object %08x [%f %f %f] %f\n", reinterpret_cast<int>(object),
+	DEBUG_REPORT_LOG_PRINT(true, ("leaked DPVS object %p [%f %f %f] %f\n", object,
 		center.v[0], center.v[1], center.v[2], radius));
 
 #ifdef _DEBUG
@@ -1124,7 +1124,7 @@ void RenderWorld::leakedObject(DPVS::Object *object)
 				if (DebugHelp::lookupAddress(callStack.callers[i], libName, fileName, sizeof(fileName), line))
 					DEBUG_REPORT_LOG_PRINT(true, ("  %s(%d) : caller %d\n", fileName, line, i));
 				else
-					DEBUG_REPORT_LOG_PRINT(true, ("  0x%08X : caller %d\n", static_cast<int>(callStack.callers[i]), i));
+					DEBUG_REPORT_LOG_PRINT(true, ("  0x%p : caller %d\n", reinterpret_cast<void*>(static_cast<uintptr_t>(callStack.callers[i])), i));
 			}
 	}
 	else

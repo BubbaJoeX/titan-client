@@ -500,6 +500,9 @@ void DebugHelp::getCallStack(uint32 *callStack, int sizeOfCallStack)
 	//	return;
 
 	EnterCriticalSection(&criticalSection);
+#ifdef _WIN64
+	RtlCaptureContext(&context);
+#else
 	__asm
 	{
 		call GetEIP
@@ -509,20 +512,29 @@ void DebugHelp::getCallStack(uint32 *callStack, int sizeOfCallStack)
 		mov context.Esp, esp
 		mov context.Ebp, ebp
 	}
+#endif
 	LeaveCriticalSection(&criticalSection);
 
 	STACKFRAME64 stackFrame;
 	Zero(stackFrame);
 	stackFrame.AddrPC.Mode      = AddrModeFlat;
+	stackFrame.AddrStack.Mode   = AddrModeFlat;
+	stackFrame.AddrFrame.Mode   = AddrModeFlat;
+#ifdef _WIN64
+	stackFrame.AddrPC.Offset    = context.Rip;
+	stackFrame.AddrStack.Offset = context.Rsp;
+	stackFrame.AddrFrame.Offset = context.Rbp;
+	const DWORD machineType = IMAGE_FILE_MACHINE_AMD64;
+#else
 	stackFrame.AddrPC.Offset    = context.Eip;
 	stackFrame.AddrStack.Offset = context.Esp;
-	stackFrame.AddrStack.Mode   = AddrModeFlat;
 	stackFrame.AddrFrame.Offset = context.Ebp;
-	stackFrame.AddrFrame.Mode   = AddrModeFlat;
+	const DWORD machineType = IMAGE_FILE_MACHINE_I386;
+#endif
 
 	for (int i = 0; i < sizeOfCallStack; ++i, ++callStack)
 	{
-		if (stackWalk64(IMAGE_FILE_MACHINE_I386, process, process, &stackFrame, &context, NULL, functionTableAccess, getModuleBase, NULL))
+		if (stackWalk64(machineType, process, GetCurrentThread(), &stackFrame, &context, NULL, functionTableAccess, getModuleBase, NULL))
 		{
 			const DWORD64 Offset = stackFrame.AddrPC.Offset;
 			*callStack = DWORD(Offset);

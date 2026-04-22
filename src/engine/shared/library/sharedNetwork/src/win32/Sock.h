@@ -15,8 +15,13 @@
 
 // ======================================================================
 
+#ifdef _WIN64
+#include <winsock2.h>
+const SOCKET SOCK_ERROR = INVALID_SOCKET;
+#else
 const unsigned int SOCK_ERROR = 0xFFFFFFFF;
 typedef unsigned int SOCKET;
+#endif
 
 /**
 	@brief a BSD socket abstraction

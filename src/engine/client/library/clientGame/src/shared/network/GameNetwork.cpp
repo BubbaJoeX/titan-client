@@ -22,6 +22,7 @@
 #include "clientGame/ResourceTypeManager.h"
 #include "clientGame/TaskConnection.h"
 #include "clientTerrain/CityTerrainLayerManager.h"
+#include "clientGame/ZoneAbilityTrayManager.h"
 #include "clientUserInterface/CuiActionManager.h"
 #include "clientUserInterface/CuiActions.h"
 #include "clientUserInterface/CuiLoadingManager.h"
@@ -127,6 +128,8 @@ MessageDispatch::Receiver ()
 	connectToMessage("OpenTerraformingUIMessage");
 	connectToMessage("CityTerrainModifyMessage");
 	connectToMessage("CityTerrainPaintResponseMessage");
+	connectToMessage("ZoneAbilityTrayUpdate");
+	connectToMessage("ZoneAbilityTrayClose");
 }
 
 //-----------------------------------------------------------------------
@@ -311,6 +314,19 @@ void GameNetwork::Listener::receiveMessage(const MessageDispatch::Emitter & , co
 		if (CityTerrainLayerManager::isInstalled())
 			CityTerrainLayerManager::dispatchPaintResponse(msg.getSuccess(), msg.getRegionId(), msg.getErrorMessage());
 		CityTerrainLayerManager::notifyCityTerrainUiRefresh(0);
+	}
+	else if(message.isType("ZoneAbilityTrayUpdate"))
+	{
+		Archive::ReadIterator ri = NON_NULL (safe_cast<const GameNetworkMessage *>(&message))->getByteStream().begin();
+		GenericValueTypeMessage<std::string> const trayMsg(ri);
+		ZoneAbilityTrayManager::notifyTrayPayload(trayMsg.getValue());
+	}
+	else if(message.isType("ZoneAbilityTrayClose"))
+	{
+		Archive::ReadIterator ri = NON_NULL (safe_cast<const GameNetworkMessage *>(&message))->getByteStream().begin();
+		GenericValueTypeMessage<bool> const closeMsg(ri);
+		UNREF(closeMsg);
+		ZoneAbilityTrayManager::notifyTrayClose();
 	}
 }
 

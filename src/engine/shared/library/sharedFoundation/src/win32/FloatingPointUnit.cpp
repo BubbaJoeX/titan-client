@@ -137,18 +137,28 @@ void FloatingPointUnit::update(void)
 
 WORD FloatingPointUnit::getControlWord(void)
 {
+#ifdef _WIN64
+	unsigned int cw = 0;
+	_controlfp_s(&cw, 0, 0);
+	return static_cast<WORD>(cw);
+#else
 	WORD controlWord = 0;
-
 	__asm fnstcw controlWord;
 	return controlWord;
+#endif
 }
 
 // ----------------------------------------------------------------------
 
 void FloatingPointUnit::setControlWord(WORD controlWord)
 {
+#ifdef _WIN64
+	unsigned int cw = 0;
+	_controlfp_s(&cw, static_cast<unsigned int>(controlWord), 0xFFFF);
+#else
 	UNREF(controlWord);
 	__asm fldcw controlWord;
+#endif
 }
 
 // ----------------------------------------------------------------------

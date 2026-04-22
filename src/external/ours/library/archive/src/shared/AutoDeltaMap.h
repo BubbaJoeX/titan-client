@@ -349,8 +349,8 @@ template<class KeyType, typename ValueType, typename ObjectType>
 inline void AutoDeltaMap<KeyType, ValueType, ObjectType>::pack(ByteStream & target) const
 {
 	typename std::map<KeyType, ValueType>::const_iterator i;
-	Archive::put(target, container.size());
-	Archive::put(target, baselineCommandCount);
+	Archive::put(target, static_cast<unsigned int>(container.size()));
+	Archive::put(target, static_cast<unsigned int>(baselineCommandCount));
 	unsigned char cmd;
 	for(i = container.begin(); i != container.end(); ++i)
 	{
@@ -374,8 +374,8 @@ inline void AutoDeltaMap<KeyType, ValueType, ObjectType>::pack(ByteStream & targ
 template<class KeyType, typename ValueType, typename ObjectType>
 inline void AutoDeltaMap<KeyType, ValueType, ObjectType>::pack(ByteStream & target, const std::vector<Command> &data)
 {
-	Archive::put(target, data.size());
-	Archive::put(target, static_cast<size_t>(0)); // baselineCommandCount
+	Archive::put(target, static_cast<unsigned int>(data.size()));
+	Archive::put(target, static_cast<unsigned int>(0)); // baselineCommandCount
 	for(typename std::vector<Command>::const_iterator c(data.begin()); c != data.end(); ++c)
 	{
 		assert(c->cmd == Command::ADD); // only add is valid in packing the whole container
@@ -403,8 +403,8 @@ inline void AutoDeltaMap<KeyType, ValueType, ObjectType>::pack(ByteStream & targ
 template<class KeyType, typename ValueType, typename ObjectType>
 inline void AutoDeltaMap<KeyType, ValueType, ObjectType>::packDelta(ByteStream & target) const
 {
-	Archive::put(target, changes.size());
-	Archive::put(target, baselineCommandCount);
+	Archive::put(target, static_cast<unsigned int>(changes.size()));
+	Archive::put(target, static_cast<unsigned int>(baselineCommandCount));
 	for (typename std::vector<Command>::iterator i = changes.begin(); i != changes.end(); ++i)
 	{
 		const Command & c = (*i);
@@ -514,10 +514,12 @@ inline void AutoDeltaMap<KeyType, ValueType, ObjectType>::unpack(ReadIterator & 
 	clearDelta();
 
 	Command c;
-	size_t commandCount;
+	unsigned int commandCount;
+	unsigned int tempBaselineCommandCount;
 
 	Archive::get(source, commandCount);
-	Archive::get(source, baselineCommandCount);
+	Archive::get(source, tempBaselineCommandCount);
+	baselineCommandCount = tempBaselineCommandCount;
 
 	for (size_t i = 0; i < commandCount; ++i)
 	{
@@ -548,8 +550,8 @@ inline void AutoDeltaMap<KeyType, ValueType, ObjectType>::unpack(ReadIterator & 
 	// unpacking baseline data
 
 	Command c;
-	size_t commandCount;
-	size_t baselineCommandCount;
+	unsigned int commandCount;
+	unsigned int baselineCommandCount;
 
 	Archive::get(source, commandCount);
 	Archive::get(source, baselineCommandCount);
@@ -572,7 +574,8 @@ template<class KeyType, typename ValueType, typename ObjectType>
 inline void AutoDeltaMap<KeyType, ValueType, ObjectType>::unpackDelta(ReadIterator & source)
 {
 	Command c;
-	size_t skipCount, commandCount, targetBaselineCommandCount;
+	size_t skipCount;
+	unsigned int commandCount, targetBaselineCommandCount;
 
 	Archive::get(source, commandCount);
 	Archive::get(source, targetBaselineCommandCount);
@@ -647,12 +650,12 @@ template<class KeyType, typename ValueType, typename ObjectType>
 inline void AutoDeltaMap<KeyType, ValueType, ObjectType>::unpackDelta(ReadIterator & source, std::vector<Command> & data)
 {
 	Command c;
-	size_t commandCount, targetBaselineCommandCount;
+	unsigned int commandCount, targetBaselineCommandCount;
 
 	Archive::get(source, commandCount);
 	Archive::get(source, targetBaselineCommandCount);
 
-	for (size_t i=0 ; i < commandCount; ++i)
+	for (unsigned int i=0 ; i < commandCount; ++i)
 	{
 		Archive::get(source, c.cmd);
 		switch(c.cmd)

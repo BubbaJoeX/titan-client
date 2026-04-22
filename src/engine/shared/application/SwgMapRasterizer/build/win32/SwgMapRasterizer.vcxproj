@@ -13,6 +13,18 @@
       <Configuration>Release</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Optimized|x64">
+      <Configuration>Optimized</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{A1B2C3D4-E5F6-4890-ABCD-EF1234567890}</ProjectGuid>
@@ -25,7 +37,19 @@
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v120</PlatformToolset>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v120</PlatformToolset>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <PlatformToolset>v120</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
@@ -37,16 +61,31 @@
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v120</PlatformToolset>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
@@ -58,14 +97,29 @@
     <IntDir>..\..\..\..\..\..\compile\win32\$(ProjectName)\$(Configuration)\</IntDir>
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <OutDir>..\..\..\..\..\..\compile\x64\$(ProjectName)\$(Configuration)\</OutDir>
+    <IntDir>..\..\..\..\..\..\compile\x64\$(ProjectName)\$(Configuration)\</IntDir>
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">
     <OutDir>..\..\..\..\..\..\compile\win32\$(ProjectName)\$(Configuration)\</OutDir>
     <IntDir>..\..\..\..\..\..\compile\win32\$(ProjectName)\$(Configuration)\</IntDir>
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">
+    <OutDir>..\..\..\..\..\..\compile\x64\$(ProjectName)\$(Configuration)\</OutDir>
+    <IntDir>..\..\..\..\..\..\compile\x64\$(ProjectName)\$(Configuration)\</IntDir>
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>..\..\..\..\..\..\compile\win32\$(ProjectName)\$(Configuration)\</OutDir>
     <IntDir>..\..\..\..\..\..\compile\win32\$(ProjectName)\$(Configuration)\</IntDir>
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <OutDir>..\..\..\..\..\..\compile\x64\$(ProjectName)\$(Configuration)\</OutDir>
+    <IntDir>..\..\..\..\..\..\compile\x64\$(ProjectName)\$(Configuration)\</IntDir>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <!-- ================================================================ -->
@@ -112,6 +166,54 @@
     </ResourceCompile>
   </ItemDefinitionGroup>
   <!-- ================================================================ -->
+  <!-- Debug|x64 - Link same vendor + engine closure as SwgClient x64     -->
+  <!-- (x64 ATI_Compress, Miles, Vivox wrapper, libsndfile, libxml2, …)   -->
+  <!-- ================================================================ -->
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <AdditionalIncludeDirectories>..\..\src\shared;..\..\src\win32;..\..\..\..\..\..\external\3rd\library\ati_compress;..\..\..\..\..\..\external\ours\library\fileInterface\include\public;..\..\..\..\..\shared\library\sharedCompression\include\public;..\..\..\..\..\shared\library\sharedDebug\include\public;..\..\..\..\..\shared\library\sharedFile\include\public;..\..\..\..\..\shared\library\sharedFoundation\include\public;..\..\..\..\..\shared\library\sharedFoundationTypes\include\public;..\..\..\..\..\shared\library\sharedImage\include\public;..\..\..\..\..\shared\library\sharedIoWin\include\public;..\..\..\..\..\shared\library\sharedLog\include\public;..\..\..\..\..\shared\library\sharedMath\include\public;..\..\..\..\..\shared\library\sharedMathArchive\include\public;..\..\..\..\..\shared\library\sharedMemoryBlockManager\include\public;..\..\..\..\..\shared\library\sharedMemoryManager\include\public;..\..\..\..\..\shared\library\sharedMessageDispatch\include\public;..\..\..\..\..\shared\library\sharedObject\include\public;..\..\..\..\..\shared\library\sharedRandom\include\public;..\..\..\..\..\shared\library\sharedRegex\include\public;..\..\..\..\..\shared\library\sharedSynchronization\include\public;..\..\..\..\..\shared\library\sharedTerrain\include\public;..\..\..\..\..\shared\library\sharedThread\include\public;..\..\..\..\..\shared\library\sharedUtility\include\public;..\..\..\..\..\shared\library\sharedXml\include\public;..\..\..\..\..\client\library\clientGraphics\include\public;..\..\..\..\..\client\library\clientObject\include\public;..\..\..\..\..\client\library\clientTerrain\include\public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_WIN64;_DEBUG;_MBCS;DEBUG_LEVEL=2;_CRT_SECURE_NO_DEPRECATE=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MinimalRebuild>true</MinimalRebuild>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <ForceConformanceInForLoopScope>true</ForceConformanceInForLoopScope>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <PrecompiledHeaderFile>FirstSwgMapRasterizer.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile>$(OutDir)$(ProjectName).pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>$(OutDir)</AssemblerListingLocation>
+      <ObjectFileName>$(OutDir)</ObjectFileName>
+      <ProgramDataBaseFileName>$(OutDir)$(ProjectName)_d.pdb</ProgramDataBaseFileName>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <CompileAs>Default</CompileAs>
+      <UseFullPaths>true</UseFullPaths>
+      <TreatWChar_tAsBuiltInType>false</TreatWChar_tAsBuiltInType>
+    </ClCompile>
+    <PreLinkEvent>
+      <Command>"$(MSBuildBinPath)\MSBuild.exe" "$(MSBuildThisFileDirectory)..\..\..\..\..\..\external\3rd\library\directx9\build\win32\directx9_x64_stubs.vcxproj" /p:Configuration=$(Configuration) /p:Platform=$(Platform) /v:minimal /nologo &amp;&amp; "$(MSBuildBinPath)\MSBuild.exe" "$(MSBuildThisFileDirectory)..\..\..\..\..\..\external\3rd\library\vivoxSharedWrapper\build\win32\vivoxSharedWrapper_x64.vcxproj" /p:Configuration=$(Configuration) /p:Platform=$(Platform) /v:minimal /nologo</Command>
+    </PreLinkEvent>
+    <Link>
+      <AdditionalDependencies>archive.lib;blat.lib;clientAnimation.lib;clientAudio.lib;clientBugReporting.lib;clientDirectInput.lib;clientGame.lib;clientGraphics.lib;clientObject.lib;clientParticle.lib;clientSkeletalAnimation.lib;clientTerrain.lib;clientTextureRenderer.lib;clientUserInterface.lib;crypto.lib;gl05_d.lib;gl06_d.lib;gl07_d.lib;fileInterface.lib;libEverQuestTCG.lib;localization.lib;localizationArchive.lib;sharedCollision.lib;sharedCommandParser.lib;sharedCompression.lib;sharedDebug.lib;sharedFile.lib;sharedFoundation.lib;sharedFractal.lib;sharedGame.lib;sharedImage.lib;sharedInputMap.lib;sharedIoWin.lib;sharedLog.lib;sharedMath.lib;sharedMemoryManager.lib;sharedMessageDispatch.lib;sharedNetwork.lib;sharedNetworkMessages.lib;sharedObject.lib;sharedPathfinding.lib;sharedRandom.lib;sharedRegex.lib;sharedRemoteDebugServer.lib;sharedSkillSystem.lib;sharedStatusWindow.lib;sharedSwitcher.lib;sharedSynchronization.lib;sharedTerrain.lib;sharedThread.lib;sharedUtility.lib;sharedXml.lib;swgClientUserInterface.lib;swgSharedNetworkMessages.lib;swgSharedUtility.lib;udplibrary.lib;ui.lib;unicode.lib;unicodeArchive.lib;zlib.lib;NxN_alienbrain_XDK_110_D.lib;NxN_alienbrain_XDK_122.lib;NxN_alienbrain_XDK_123_D.lib;AtiDXTC.lib;ATI_Compress.lib;atldload.lib;atlsd.lib;eafxisd.lib;atl.lib;EAFXISD.lib;MFCM80D.lib;MFCM80UD.lib;MFCS80D.lib;MFCS80UD.lib;NafxcWD.lib;NAFXISD.lib;UafxcWD.lib;mfc80d.lib;mfc80ud.lib;mfcdload.lib;mfcs80d.lib;mfcs80ud.lib;nafxcwd.lib;nafxisd.lib;uafxcwd.lib;binkw32.lib;DejaDLL.Win32.lib;DejaLib.Win32.lib;DejaLib.X360.lib;d3d9.lib;d3dx9_x64_stubs.lib;ddraw.lib;dinput8.lib;dsound.lib;DxErr9.lib;dxguid.lib;dpvs.lib;libjpeg.lib;nspr4.lib;plc4.lib;profdirserviceprovider_s.lib;xpcom.lib;xul.lib;libxml2-win32-debug.lib;Foundation.lib;Image.lib;libMDtAPI.lib;libMocap.lib;OpenMaya.lib;OpenMayaAnim.lib;OpenMayaFX.lib;OpenMayaRender.lib;OpenMayaUI.lib;libMDtApi.lib;libmocap.lib;cg.lib;cgGL.lib;Cloth.lib;IMF.lib;libfbxfilesdk.lib;libHalf.lib;libIex.lib;libIlmImf.lib;libImath.lib;Mss32.lib;unicows.lib;NvTriStrip.lib;libclient.lib;librpc.lib;libsupp.lib;designercore.lib;editor.lib;qassistantclient.lib;qaxcontainer.lib;qt-mt334.lib;qtmain.lib;qui.lib;qtwidgets100.lib;cppeditor100.lib;dlgplugin.lib;gladeplugin.lib;kdevdlgplugin.lib;qaxwidget100.lib;rcplugin.lib;wizards.lib;qjpeg100.lib;qmng100.lib;QAxContainerd.lib;Qt3Supportd4.lib;QtAssistantClientd.lib;QtCored4.lib;QtDesignerComponentsd4.lib;QtDesignerd4.lib;QtGuid4.lib;qtmaind.lib;QtNetworkd4.lib;QtOpenGLd4.lib;QtSqld4.lib;QtSvgd4.lib;QtTest_debug4.lib;QtUiTools.lib;QtXmld4.lib;qtaccessiblecompatwidgetsd1.lib;qtaccessiblewidgetsd1.lib;qcncodecsd.lib;qjpcodecsd.lib;qkrcodecsd.lib;qtwcodecsd.lib;arthurplugin.lib;containerextension.lib;customwidgetplugin.lib;qaxwidget.lib;qt3supportwidgets.lib;taskmenuextension.lib;worldtimeclockplugin.lib;qjpegd1.lib;qmngd1.lib;qsqlited.lib;qsqlmysqld.lib;qsqlodbcd.lib;qsqlpsqld.lib;Base.lib;Base_vchat.lib;ChatAPI.lib;ChatMono.lib;CommodityAPI.lib;dbgutil.lib;monapi.lib;Network.lib;rdp.lib;TcpLibrary.lib;VChatAPI.lib;989crypt.lib;tinyxmld.lib;tinyxmld_STL.lib;libsndfile-1.lib;vivoxSharedWrapper_Debug.lib;ws2_32.lib;winmm.lib;libpcre.a;libxml2-win32-release.lib;mswsock.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(OutDir)$(ProjectName)_d.exe</OutputFile>
+      <AdditionalLibraryDirectories>..\..\..\..\..\..\external\3rd\library\vivoxSharedWrapper\lib\x64\Debug;..\..\..\..\..\..\compile\x64\sharedDebug\Debug;..\..\..\..\..\..\external\3rd\library\pcre\4.1\win32\lib;..\..\..\..\..\..\compile\x64\archive\Debug;..\..\..\..\..\..\compile\x64\blat\Debug;..\..\..\..\..\..\compile\x64\clientAnimation\Debug;..\..\..\..\..\..\compile\x64\clientAudio\Debug;..\..\..\..\..\..\compile\x64\clientBugReporting\Debug;..\..\..\..\..\..\compile\x64\clientDirectInput\Debug;..\..\..\..\..\..\compile\x64\clientGame\Debug;..\..\..\..\..\..\compile\x64\clientGraphics\Debug;..\..\..\..\..\..\compile\x64\clientObject\Debug;..\..\..\..\..\..\compile\x64\clientParticle\Debug;..\..\..\..\..\..\compile\x64\clientSkeletalAnimation\Debug;..\..\..\..\..\..\compile\x64\clientTerrain\Debug;..\..\..\..\..\..\compile\x64\clientTextureRenderer\Debug;..\..\..\..\..\..\compile\x64\clientUserInterface\Debug;..\..\..\..\..\..\compile\x64\crypto\Debug;..\..\..\..\..\..\compile\x64\Direct3d9\Debug;..\..\..\..\..\..\compile\x64\Direct3d9_ffp\Debug;..\..\..\..\..\..\compile\x64\Direct3d9_vsps\Debug;..\..\..\..\..\..\compile\x64\DllExport\Debug;..\..\..\..\..\..\compile\x64\fileInterface\Debug;..\..\..\..\..\..\compile\x64\libEverQuestTCG\Debug;..\..\..\..\..\..\external\3rd\library\libMozilla\include\private\lib\Release;..\..\..\..\..\..\compile\x64\localization\Debug;..\..\..\..\..\..\compile\x64\localizationArchive\Debug;..\..\..\..\..\..\compile\x64\sharedCollision\Debug;..\..\..\..\..\..\compile\x64\sharedCommandParser\Debug;..\..\..\..\..\..\compile\x64\sharedCompression\Debug;..\..\..\..\..\..\compile\x64\sharedDebug\Debug;..\..\..\..\..\..\compile\x64\sharedFile\Debug;..\..\..\..\..\..\compile\x64\sharedFoundation\Debug;..\..\..\..\..\..\compile\x64\sharedFractal\Debug;..\..\..\..\..\..\compile\x64\sharedGame\Debug;..\..\..\..\..\..\compile\x64\sharedImage\Debug;..\..\..\..\..\..\compile\x64\sharedInputMap\Debug;..\..\..\..\..\..\compile\x64\sharedIoWin\Debug;..\..\..\..\..\..\compile\x64\sharedLog\Debug;..\..\..\..\..\..\compile\x64\sharedMath\Debug;..\..\..\..\..\..\compile\x64\sharedMemoryManager\Debug;..\..\..\..\..\..\compile\x64\sharedMessageDispatch\Debug;..\..\..\..\..\..\compile\x64\sharedNetwork\Debug;..\..\..\..\..\..\compile\x64\sharedNetworkMessages\Debug;..\..\..\..\..\..\compile\x64\sharedObject\Debug;..\..\..\..\..\..\compile\x64\sharedPathfinding\Debug;..\..\..\..\..\..\compile\x64\sharedRandom\Debug;..\..\..\..\..\..\compile\x64\sharedRegex\Debug;..\..\..\..\..\..\compile\x64\sharedRemoteDebugServer\Debug;..\..\..\..\..\..\compile\x64\sharedSkillSystem\Debug;..\..\..\..\..\..\compile\x64\sharedStatusWindow\Debug;..\..\..\..\..\..\compile\x64\sharedSwitcher\Debug;..\..\..\..\..\..\compile\x64\sharedSynchronization\Debug;..\..\..\..\..\..\compile\x64\sharedTerrain\Debug;..\..\..\..\..\..\compile\x64\sharedThread\Debug;..\..\..\..\..\..\compile\x64\sharedUtility\Debug;..\..\..\..\..\..\compile\x64\sharedXml\Debug;..\..\..\..\..\..\compile\x64\swgClientUserInterface\Debug;..\..\..\..\..\..\compile\x64\swgServerNetworkMessages\Debug;..\..\..\..\..\..\compile\x64\swgSharedNetworkMessages\Debug;..\..\..\..\..\..\compile\x64\swgSharedUtility\Debug;..\..\..\..\..\..\compile\x64\udplibrary\Debug;..\..\..\..\..\..\compile\x64\ui\Debug;..\..\..\..\..\..\compile\x64\unicode\Debug;..\..\..\..\..\..\compile\x64\unicodeArchive\Debug;..\..\..\..\..\..\compile\x64\zlib\Debug;..\..\..\..\..\..\external\3rd\library\alienbrain110\Lib;..\..\..\..\..\..\external\3rd\library\alienbrain122\Lib;..\..\..\..\..\..\external\3rd\library\alienbrain123\Lib;..\..\..\..\..\..\external\3rd\library\atiDxtc;..\..\..\..\..\..\external\3rd\library\ati_compress\x64;..\..\..\..\..\..\external\3rd\library\ati_compress;..\..\..\..\..\..\external\3rd\library\atlmfc\lib;..\..\..\..\..\..\external\3rd\library\atlmfc\lib\INTEL;..\..\..\..\..\..\external\3rd\library\bink\lib\win32;..\..\..\..\..\..\external\3rd\library\DejaInsight;..\..\..\..\..\..\external\3rd\library\directx9\lib\x64;..\..\..\..\..\..\compile\x64\dpvs\Debug;..\..\..\..\..\..\external\3rd\library\libjpeg\lib\x64;..\..\..\..\..\..\external\3rd\library\libxml2-2.6.7.win32\lib;..\..\..\..\..\..\external\3rd\library\maya4\lib;..\..\..\..\..\..\external\3rd\library\maya5\lib;..\..\..\..\..\..\external\3rd\library\maya7\lib;..\..\..\..\..\..\external\3rd\library\maya8\lib;..\..\..\..\..\..\external\3rd\library\miles\lib\win;..\..\..\..\..\..\external\3rd\library\miles-7.2e\lib\win;..\..\..\..\..\..\external\3rd\library\ms_unicode;..\..\..\..\..\..\external\3rd\library\nvtristrip;..\..\..\..\..\..\external\3rd\library\oracle_win32\ora80\oci\lib\bc;..\..\..\..\..\..\external\3rd\library\oracle_win32\ora80\oci\lib\msvc;..\..\..\..\..\..\external\3rd\library\perforce\lib\win32;..\..\..\..\..\..\external\3rd\library\qt\3.3.4\lib;..\..\..\..\..\..\external\3rd\library\qt\3.3.4\plugins\accessible;..\..\..\..\..\..\external\3rd\library\qt\3.3.4\plugins\designer;..\..\..\..\..\..\external\3rd\library\qt\3.3.4\plugins\imageformats;..\..\..\..\..\..\external\3rd\library\qt\4.1.0\lib;..\..\..\..\..\..\external\3rd\library\qt\4.1.0\plugins\accessible;..\..\..\..\..\..\external\3rd\library\qt\4.1.0\plugins\codecs;..\..\..\..\..\..\external\3rd\library\qt\4.1.0\plugins\designer;..\..\..\..\..\..\external\3rd\library\qt\4.1.0\plugins\imageformats;..\..\..\..\..\..\external\3rd\library\qt\4.1.0\plugins\sqldrivers;..\..\..\..\..\..\external\3rd\library\soePlatform\libs\Win32-Debug;..\..\..\..\..\..\external\3rd\library\stationapi;..\..\..\..\..\..\external\3rd\library\tinyxml\build\win32;..\..\..\..\..\..\external\3rd\library\tinyxml\lib;..\..\..\..\..\..\external\3rd\library\zlib\lib\win32;..\..\..\..\..\..\compile\x64\libMozilla\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <IgnoreSpecificDefaultLibraries>LIBCMT;MSVCRTD;libc;MSVCRT;libcmt;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ProgramDatabaseFile>$(OutDir)$(ProjectName)_d.pdb</ProgramDatabaseFile>
+      <SubSystem>Windows</SubSystem>
+      <LargeAddressAware>true</LargeAddressAware>
+      <ForceFileOutput>Enabled</ForceFileOutput>
+    </Link>
+    <ResourceCompile>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <Culture>0x0409</Culture>
+    </ResourceCompile>
+  </ItemDefinitionGroup>
+  <!-- ================================================================ -->
   <!-- Optimized Configuration                                          -->
   <!-- ================================================================ -->
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">
@@ -151,6 +253,50 @@
       <SubSystem>Windows</SubSystem>
       <HeapReserveSize>1073741824</HeapReserveSize>
       <HeapCommitSize>1048576</HeapCommitSize>
+    </Link>
+    <ResourceCompile>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <Culture>0x0409</Culture>
+    </ResourceCompile>
+  </ItemDefinitionGroup>
+  <!-- ================================================================ -->
+  <!-- Optimized|x64 - Colormap-only with optimizations for profiling  -->
+  <!-- ================================================================ -->
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">
+    <ClCompile>
+      <Optimization>Full</Optimization>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <OmitFramePointers>false</OmitFramePointers>
+      <AdditionalIncludeDirectories>..\..\src\shared;..\..\src\win32;..\..\..\..\..\..\external\3rd\library\ati_compress;..\..\..\..\..\..\external\ours\library\fileInterface\include\public;..\..\..\..\..\shared\library\sharedCompression\include\public;..\..\..\..\..\shared\library\sharedDebug\include\public;..\..\..\..\..\shared\library\sharedFile\include\public;..\..\..\..\..\shared\library\sharedFoundation\include\public;..\..\..\..\..\shared\library\sharedFoundationTypes\include\public;..\..\..\..\..\shared\library\sharedImage\include\public;..\..\..\..\..\shared\library\sharedIoWin\include\public;..\..\..\..\..\shared\library\sharedLog\include\public;..\..\..\..\..\shared\library\sharedMath\include\public;..\..\..\..\..\shared\library\sharedMathArchive\include\public;..\..\..\..\..\shared\library\sharedMemoryBlockManager\include\public;..\..\..\..\..\shared\library\sharedMemoryManager\include\public;..\..\..\..\..\shared\library\sharedMessageDispatch\include\public;..\..\..\..\..\shared\library\sharedObject\include\public;..\..\..\..\..\shared\library\sharedRandom\include\public;..\..\..\..\..\shared\library\sharedRegex\include\public;..\..\..\..\..\shared\library\sharedSynchronization\include\public;..\..\..\..\..\shared\library\sharedTerrain\include\public;..\..\..\..\..\shared\library\sharedThread\include\public;..\..\..\..\..\shared\library\sharedUtility\include\public;..\..\..\..\..\shared\library\sharedXml\include\public;..\..\..\..\..\client\library\clientGraphics\include\public;..\..\..\..\..\client\library\clientObject\include\public;..\..\..\..\..\client\library\clientTerrain\include\public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_WIN64;_DEBUG;_MBCS;DEBUG_LEVEL=1;_CRT_SECURE_NO_DEPRECATE=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MinimalRebuild>true</MinimalRebuild>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <ForceConformanceInForLoopScope>true</ForceConformanceInForLoopScope>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <PrecompiledHeaderFile>FirstSwgMapRasterizer.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile>$(OutDir)$(ProjectName).pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>$(OutDir)</AssemblerListingLocation>
+      <ObjectFileName>$(OutDir)</ObjectFileName>
+      <ProgramDataBaseFileName>$(OutDir)$(ProjectName)_o.pdb</ProgramDataBaseFileName>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <CompileAs>Default</CompileAs>
+      <UseFullPaths>true</UseFullPaths>
+      <TreatWChar_tAsBuiltInType>false</TreatWChar_tAsBuiltInType>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>zlib.lib;ws2_32.lib;winmm.lib;kernel32.lib;user32.lib;gdi32.lib;advapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(OutDir)$(ProjectName)_o.exe</OutputFile>
+      <AdditionalLibraryDirectories>..\..\..\..\..\..\compile\x64\zlib\Debug;..\..\..\..\..\..\external\3rd\library\ati_compress\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <IgnoreSpecificDefaultLibraries>libcmt;libc;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ProgramDatabaseFile>$(OutDir)$(ProjectName)_o.pdb</ProgramDatabaseFile>
+      <SubSystem>Windows</SubSystem>
     </Link>
     <ResourceCompile>
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -209,17 +355,68 @@
     </ResourceCompile>
   </ItemDefinitionGroup>
   <!-- ================================================================ -->
+  <!-- Release|x64 - Minimal colormap-only link set for 64-bit tool    -->
+  <!-- ================================================================ -->
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <OmitFramePointers>true</OmitFramePointers>
+      <AdditionalIncludeDirectories>..\..\src\shared;..\..\src\win32;..\..\..\..\..\..\external\3rd\library\ati_compress;..\..\..\..\..\..\external\ours\library\fileInterface\include\public;..\..\..\..\..\shared\library\sharedCompression\include\public;..\..\..\..\..\shared\library\sharedDebug\include\public;..\..\..\..\..\shared\library\sharedFile\include\public;..\..\..\..\..\shared\library\sharedFoundation\include\public;..\..\..\..\..\shared\library\sharedFoundationTypes\include\public;..\..\..\..\..\shared\library\sharedImage\include\public;..\..\..\..\..\shared\library\sharedIoWin\include\public;..\..\..\..\..\shared\library\sharedLog\include\public;..\..\..\..\..\shared\library\sharedMath\include\public;..\..\..\..\..\shared\library\sharedMathArchive\include\public;..\..\..\..\..\shared\library\sharedMemoryBlockManager\include\public;..\..\..\..\..\shared\library\sharedMemoryManager\include\public;..\..\..\..\..\shared\library\sharedMessageDispatch\include\public;..\..\..\..\..\shared\library\sharedObject\include\public;..\..\..\..\..\shared\library\sharedRandom\include\public;..\..\..\..\..\shared\library\sharedRegex\include\public;..\..\..\..\..\shared\library\sharedSynchronization\include\public;..\..\..\..\..\shared\library\sharedTerrain\include\public;..\..\..\..\..\shared\library\sharedThread\include\public;..\..\..\..\..\shared\library\sharedUtility\include\public;..\..\..\..\..\shared\library\sharedXml\include\public;..\..\..\..\..\client\library\clientGraphics\include\public;..\..\..\..\..\client\library\clientObject\include\public;..\..\..\..\..\client\library\clientTerrain\include\public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_WIN64;NDEBUG;_MBCS;DEBUG_LEVEL=0;_CRT_SECURE_NO_DEPRECATE=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <StringPooling>true</StringPooling>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <ForceConformanceInForLoopScope>true</ForceConformanceInForLoopScope>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <PrecompiledHeaderFile>FirstSwgMapRasterizer.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile>$(OutDir)$(ProjectName).pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>$(OutDir)</AssemblerListingLocation>
+      <ObjectFileName>$(OutDir)</ObjectFileName>
+      <ProgramDataBaseFileName>$(OutDir)$(ProjectName)_r.pdb</ProgramDataBaseFileName>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <CompileAs>Default</CompileAs>
+      <UseFullPaths>true</UseFullPaths>
+      <TreatWChar_tAsBuiltInType>false</TreatWChar_tAsBuiltInType>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>archive.lib;fileInterface.lib;unicodeArchive.lib;sharedCompression.lib;sharedDebug.lib;sharedFile.lib;sharedFoundation.lib;sharedImage.lib;sharedIoWin.lib;sharedLog.lib;sharedMath.lib;sharedMemoryManager.lib;sharedMessageDispatch.lib;sharedObject.lib;sharedRandom.lib;sharedRegex.lib;sharedSynchronization.lib;sharedTerrain.lib;sharedThread.lib;sharedUtility.lib;sharedXml.lib;clientGraphics.lib;clientObject.lib;clientTerrain.lib;zlib.lib;ws2_32.lib;winmm.lib;kernel32.lib;user32.lib;gdi32.lib;advapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(OutDir)$(ProjectName)_r.exe</OutputFile>
+      <AdditionalLibraryDirectories>..\..\..\..\..\..\compile\x64\archive\Release;..\..\..\..\..\..\compile\x64\fileInterface\Release;..\..\..\..\..\..\compile\x64\unicodeArchive\Release;..\..\..\..\..\..\compile\x64\sharedCompression\Release;..\..\..\..\..\..\compile\x64\sharedDebug\Release;..\..\..\..\..\..\compile\x64\sharedFile\Release;..\..\..\..\..\..\compile\x64\sharedFoundation\Release;..\..\..\..\..\..\compile\x64\sharedImage\Release;..\..\..\..\..\..\compile\x64\sharedIoWin\Release;..\..\..\..\..\..\compile\x64\sharedLog\Release;..\..\..\..\..\..\compile\x64\sharedMath\Release;..\..\..\..\..\..\compile\x64\sharedMemoryManager\Release;..\..\..\..\..\..\compile\x64\sharedMessageDispatch\Release;..\..\..\..\..\..\compile\x64\sharedObject\Release;..\..\..\..\..\..\compile\x64\sharedRandom\Release;..\..\..\..\..\..\compile\x64\sharedRegex\Release;..\..\..\..\..\..\compile\x64\sharedSynchronization\Release;..\..\..\..\..\..\compile\x64\sharedTerrain\Release;..\..\..\..\..\..\compile\x64\sharedThread\Release;..\..\..\..\..\..\compile\x64\sharedUtility\Release;..\..\..\..\..\..\compile\x64\sharedXml\Release;..\..\..\..\..\..\compile\x64\clientGraphics\Release;..\..\..\..\..\..\compile\x64\clientObject\Release;..\..\..\..\..\..\compile\x64\clientTerrain\Release;..\..\..\..\..\..\compile\x64\zlib\Release;..\..\..\..\..\..\external\3rd\library\ati_compress\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <IgnoreSpecificDefaultLibraries>libc;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ProgramDatabaseFile>$(OutDir)$(ProjectName)_r.pdb</ProgramDatabaseFile>
+      <SubSystem>Windows</SubSystem>
+      <StackReserveSize>33554432</StackReserveSize>
+      <StackCommitSize>1024</StackCommitSize>
+    </Link>
+    <ResourceCompile>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <Culture>0x0409</Culture>
+    </ResourceCompile>
+  </ItemDefinitionGroup>
+  <!-- ================================================================ -->
   <!-- Source Files                                                      -->
   <!-- ================================================================ -->
   <ItemGroup>
     <ClCompile Include="..\..\src\shared\SwgMapRasterizer.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\WinMain.cpp" />
     <ClCompile Include="..\..\src\win32\FirstSwgMapRasterizer.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
   </ItemGroup>
   <!-- ================================================================ -->

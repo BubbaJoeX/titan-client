@@ -22,6 +22,42 @@ class IManager;
 namespace VideoCapture
 {
 
+#if defined(_WIN64)
+// Legacy SOE VideoCapture stack is x86-only (vendor libs). Dev-build hooks remain as no-ops on x64.
+inline void install()
+{
+}
+
+namespace SingleUse
+{
+
+class ICallback
+{
+public:
+	virtual ~ICallback()
+	{
+	}
+	virtual void OnStart() = 0;
+	virtual void OnStop() = 0;
+};
+
+inline void config(int, int, int, const char*, AudioCapture::IManager*)
+{
+}
+inline void start(ICallback*, AudioCapture::IManager*)
+{
+}
+inline void stop()
+{
+}
+inline void run()
+{
+}
+
+} // namespace SingleUse
+
+#else
+
 void install(); // Installs SoeUtilMemoryAdapter
 
 namespace SingleUse
@@ -30,7 +66,9 @@ namespace SingleUse
 class ICallback
 {
 public:
-	virtual ~ICallback(){}
+	virtual ~ICallback()
+	{
+	}
 	virtual void OnStart() = 0;
 	virtual void OnStop() = 0;
 };
@@ -40,9 +78,11 @@ void start(VideoCapture::SingleUse::ICallback* pVideoCaptureCallback, AudioCaptu
 void stop();
 void run();
 
-} // SingleUse
+} // namespace SingleUse
 
-} // VideoCapture
+#endif // _WIN64
+
+} // namespace VideoCapture
 
 #endif // PRODUCTION
 

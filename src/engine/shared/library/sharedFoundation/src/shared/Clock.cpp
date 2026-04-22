@@ -264,7 +264,7 @@ void Clock::update(void)
 	static int bad = 0;
 
 	if (bad && ++bad > 64)
-		__asm int 3;
+		__debugbreak();
 
 	if (ms_lastFrameTime > 3.0)
 		bad = 1;

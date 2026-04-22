@@ -98,7 +98,7 @@ private:
 	~MatrixCache	(void);							// not allowed
 };
 
-DPVS_CT_ASSERT(sizeof(MatrixCache::Entry)==64);
+DPVS_CT_ASSERT(sizeof(MatrixCache::Entry)==DPVS_MATRIX_CACHE_ENTRY_BYTES);
 
 //------------------------------------------------------------------------
 // Constants

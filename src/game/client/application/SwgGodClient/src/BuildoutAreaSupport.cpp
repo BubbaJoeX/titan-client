@@ -36,7 +36,11 @@
 #include "MainFrame.h"
 #include "ServerObjectData.h"
 #include <algorithm>
+#ifdef _WIN64
+#include <unordered_set>
+#else
 #include <hash_set>
+#endif
 #include <string>
 
 // ======================================================================

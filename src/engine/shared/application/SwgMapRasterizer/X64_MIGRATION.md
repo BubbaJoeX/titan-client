@@ -136,3 +136,21 @@ Validate:
 
 Once these pass, `SwgMapRasterizer` can produce full-resolution maps without 32-bit memory ceilings.
 
+## Implementation status
+
+Steps 1-4 are **complete** as of 2026-04-21:
+
+- **Step 1**: `add_x64_platform.py` patched all 26 dependency `.vcxproj` files and `SwgMapRasterizer.vcxproj`/`.sln` with `Debug|x64`, `Optimized|x64`, `Release|x64` configurations. Output dirs route to `compile\x64\`. `_USE_32BIT_TIME_T` stripped from all x64 configs.
+- **Step 2**: x64 link profiles use a **minimal colormap-only** dependency set (~24 engine libs + system libs) instead of the ~200-lib full-client list. `ImageHasSafeExceptionHandlers` and `/SAFESEH:NO` removed (not applicable to x64). `_WIN64` defined in x64 preprocessor.
+- **Step 3**: `ATI_Compress` x64 lib dir added to search paths (`external/3rd/library/ati_compress/x64`); zlib search path updated to `zlib/lib/x64`. Win32-only 3rd-party libs (Bink, Maya, Qt, DirectInput, Vivox, etc.) are not linked in x64 configs.
+- **Step 4**: `SwgMapRasterizer.cpp` patched for 64-bit safety:
+  - `saveTGA()`: `srcOffset` widened from `int` to `size_t`.
+  - `downsample2xRGB()`: all pixel index variables widened to `size_t`.
+  - `applyHillshading()`: pre-computed `size_t w` row stride; all indexing via `size_t idx`.
+  - Colormap tile loop: `pixelIndex`/`colorOffset` widened to `size_t`.
+  - AA memory guard: 32-bit ceiling stays at 1.2 GB; **x64 ceiling raised to 24 GB** via `#ifdef _WIN64`.
+  - AA auto-disable at `>= 8192` gated to 32-bit only (`#ifndef _WIN64`).
+- **CMakeLists.txt**: `_WIN64` defined when `CMAKE_SIZEOF_VOID_P == 8`; `_USE_32BIT_TIME_T` only for 32-bit.
+
+**Step 5** (validation) requires building x64 dependencies and running test maps.
+

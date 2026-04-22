@@ -13,6 +13,18 @@
       <Configuration>Release</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Optimized|x64">
+      <Configuration>Optimized</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}</ProjectGuid>
@@ -26,7 +38,19 @@
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v120</PlatformToolset>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v120</PlatformToolset>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <PlatformToolset>v120</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
@@ -38,16 +62,31 @@
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v120</PlatformToolset>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
@@ -59,14 +98,30 @@
     <IntDir>..\..\..\..\..\..\compile\win32\$(ProjectName)\$(Configuration)\</IntDir>
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <OutDir>..\..\..\..\..\..\compile\x64\$(ProjectName)\$(Configuration)\</OutDir>
+    <IntDir>..\..\..\..\..\..\compile\x64\$(ProjectName)\$(Configuration)\</IntDir>
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">
     <OutDir>..\..\..\..\..\..\compile\win32\$(ProjectName)\$(Configuration)\</OutDir>
     <IntDir>..\..\..\..\..\..\compile\win32\$(ProjectName)\$(Configuration)\</IntDir>
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">
+    <OutDir>..\..\..\..\..\..\compile\x64\$(ProjectName)\$(Configuration)\</OutDir>
+    <IntDir>..\..\..\..\..\..\compile\x64\$(ProjectName)\$(Configuration)\</IntDir>
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>..\..\..\..\..\..\compile\win32\$(ProjectName)\$(Configuration)\</OutDir>
     <IntDir>..\..\..\..\..\..\compile\win32\$(ProjectName)\$(Configuration)\</IntDir>
+    <TargetName>$(ProjectName)_r</TargetName>
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <OutDir>..\..\..\..\..\..\compile\x64\$(ProjectName)\$(Configuration)\</OutDir>
+    <IntDir>..\..\..\..\..\..\compile\x64\$(ProjectName)\$(Configuration)\</IntDir>
     <TargetName>$(ProjectName)_r</TargetName>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
@@ -104,6 +159,46 @@
       <ProgramDatabaseFile>$(OutDir)$(ProjectName)_d.pdb</ProgramDatabaseFile>
       <SubSystem>Console</SubSystem>
       <AdditionalOptions>/SAFESEH:NO %(AdditionalOptions)</AdditionalOptions>
+    </Link>
+    <ResourceCompile>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <Culture>0x0409</Culture>
+    </ResourceCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <AdditionalIncludeDirectories>..\..\src\shared;..\..\..\..\..\..\engine\shared\library\sharedCommandParser\include\public;..\..\..\..\..\..\engine\shared\library\sharedCompression\include\public;..\..\..\..\..\..\engine\shared\library\sharedDebug\include\public;..\..\..\..\..\..\engine\shared\library\sharedFile\include\public;..\..\..\..\..\..\engine\shared\library\sharedFoundation\include\public;..\..\..\..\..\..\engine\shared\library\sharedFoundationTypes\include\public;..\..\..\..\..\..\engine\shared\library\sharedIoWin\include\public;..\..\..\..\..\..\engine\shared\library\sharedLog\include\public;..\..\..\..\..\..\engine\shared\library\sharedMath\include\public;..\..\..\..\..\..\engine\shared\library\sharedMemoryManager\include\public;..\..\..\..\..\..\engine\shared\library\sharedMessageDispatch\include\public;..\..\..\..\..\..\engine\shared\library\sharedNetwork\include\public;..\..\..\..\..\..\engine\shared\library\sharedNetworkMessages\include\public;..\..\..\..\..\..\engine\shared\library\sharedSynchronization\include\public;..\..\..\..\..\..\engine\shared\library\sharedThread\include\public;..\..\..\..\..\..\engine\shared\library\sharedUtility\include\public;..\..\..\..\..\..\external\ours\library\archive\include;..\..\..\..\..\..\external\ours\library\fileInterface\include\public;..\..\..\..\..\..\external\ours\library\unicode\include;..\..\..\..\..\..\external\ours\library\unicodeArchive\include\public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_MBCS;DEBUG_LEVEL=2;_CRT_SECURE_NO_DEPRECATE=1;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MinimalRebuild>true</MinimalRebuild>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <ForceConformanceInForLoopScope>true</ForceConformanceInForLoopScope>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <PrecompiledHeaderFile>FirstSwgFileControl.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile>$(OutDir)$(ProjectName).pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>$(OutDir)</AssemblerListingLocation>
+      <ObjectFileName>$(OutDir)</ObjectFileName>
+      <ProgramDataBaseFileName>$(OutDir)$(ProjectName)_d.pdb</ProgramDataBaseFileName>
+      <WarningLevel>Level4</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <CompileAs>Default</CompileAs>
+      <UseFullPaths>true</UseFullPaths>
+      <TreatWChar_tAsBuiltInType>false</TreatWChar_tAsBuiltInType>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>archive.lib;crypto.lib;fileInterface.lib;sharedCommandParser.lib;sharedCompression.lib;sharedDebug.lib;sharedFile.lib;sharedFoundation.lib;sharedLog.lib;sharedMath.lib;sharedMemoryManager.lib;sharedMessageDispatch.lib;sharedNetwork.lib;sharedNetworkMessages.lib;sharedRandom.lib;sharedSynchronization.lib;sharedThread.lib;sharedUtility.lib;unicode.lib;unicodeArchive.lib;udplibrary.lib;zlib.lib;ws2_32.lib;winmm.lib;mswsock.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(OutDir)$(ProjectName)_d.exe</OutputFile>
+      <AdditionalLibraryDirectories>..\..\..\..\..\..\..\src\compile\x64\archive\Debug;..\..\..\..\..\..\..\src\compile\x64\crypto\Debug;..\..\..\..\..\..\..\src\compile\x64\fileInterface\Debug;..\..\..\..\..\..\..\src\compile\x64\sharedCommandParser\Debug;..\..\..\..\..\..\..\src\compile\x64\sharedCompression\Debug;..\..\..\..\..\..\..\src\compile\x64\sharedDebug\Debug;..\..\..\..\..\..\..\src\compile\x64\sharedFile\Debug;..\..\..\..\..\..\..\src\compile\x64\sharedFoundation\Debug;..\..\..\..\..\..\..\src\compile\x64\sharedLog\Debug;..\..\..\..\..\..\..\src\compile\x64\sharedMath\Debug;..\..\..\..\..\..\..\src\compile\x64\sharedMemoryManager\Debug;..\..\..\..\..\..\..\src\compile\x64\sharedMessageDispatch\Debug;..\..\..\..\..\..\..\src\compile\x64\sharedNetwork\Debug;..\..\..\..\..\..\..\src\compile\x64\sharedNetworkMessages\Debug;..\..\..\..\..\..\..\src\compile\x64\sharedRandom\Debug;..\..\..\..\..\..\..\src\compile\x64\sharedSynchronization\Debug;..\..\..\..\..\..\..\src\compile\x64\sharedThread\Debug;..\..\..\..\..\..\..\src\compile\x64\sharedUtility\Debug;..\..\..\..\..\..\..\src\compile\x64\udplibrary\Debug;..\..\..\..\..\..\..\src\compile\x64\unicode\Debug;..\..\..\..\..\..\..\src\compile\x64\unicodeArchive\Debug;..\..\..\..\..\..\..\src\compile\x64\zlib\Debug;..\..\..\..\..\..\..\src\external\3rd\library\zlib\lib\win32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <IgnoreSpecificDefaultLibraries>LIBCMT;msvcrt;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ProgramDatabaseFile>$(OutDir)$(ProjectName)_d.pdb</ProgramDatabaseFile>
+      <SubSystem>Console</SubSystem>
+      <AdditionalOptions> %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <ResourceCompile>
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -152,6 +247,48 @@
       <Culture>0x0409</Culture>
     </ResourceCompile>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">
+    <ClCompile>
+      <Optimization>Full</Optimization>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <OmitFramePointers>false</OmitFramePointers>
+      <AdditionalIncludeDirectories>..\..\src\shared;..\..\..\..\..\..\engine\shared\library\sharedCommandParser\include\public;..\..\..\..\..\..\engine\shared\library\sharedCompression\include\public;..\..\..\..\..\..\engine\shared\library\sharedDebug\include\public;..\..\..\..\..\..\engine\shared\library\sharedFile\include\public;..\..\..\..\..\..\engine\shared\library\sharedFoundation\include\public;..\..\..\..\..\..\engine\shared\library\sharedFoundationTypes\include\public;..\..\..\..\..\..\engine\shared\library\sharedIoWin\include\public;..\..\..\..\..\..\engine\shared\library\sharedLog\include\public;..\..\..\..\..\..\engine\shared\library\sharedMath\include\public;..\..\..\..\..\..\engine\shared\library\sharedMemoryManager\include\public;..\..\..\..\..\..\engine\shared\library\sharedMessageDispatch\include\public;..\..\..\..\..\..\engine\shared\library\sharedNetwork\include\public;..\..\..\..\..\..\engine\shared\library\sharedNetworkMessages\include\public;..\..\..\..\..\..\engine\shared\library\sharedSynchronization\include\public;..\..\..\..\..\..\engine\shared\library\sharedThread\include\public;..\..\..\..\..\..\engine\shared\library\sharedUtility\include\public;..\..\..\..\..\..\external\ours\library\archive\include;..\..\..\..\..\..\external\ours\library\fileInterface\include\public;..\..\..\..\..\..\external\ours\library\unicode\include;..\..\..\..\..\..\external\ours\library\unicodeArchive\include\public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_MBCS;DEBUG_LEVEL=1;_CRT_SECURE_NO_DEPRECATE=1;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MinimalRebuild>true</MinimalRebuild>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <ForceConformanceInForLoopScope>true</ForceConformanceInForLoopScope>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <PrecompiledHeaderFile>FirstSwgFileControl.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile>$(OutDir)$(ProjectName).pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>$(OutDir)</AssemblerListingLocation>
+      <ObjectFileName>$(OutDir)</ObjectFileName>
+      <ProgramDataBaseFileName>$(OutDir)$(ProjectName)_o.pdb</ProgramDataBaseFileName>
+      <WarningLevel>Level4</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <CompileAs>Default</CompileAs>
+      <UseFullPaths>true</UseFullPaths>
+      <TreatWChar_tAsBuiltInType>false</TreatWChar_tAsBuiltInType>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>archive.lib;crypto.lib;fileInterface.lib;sharedCommandParser.lib;sharedCompression.lib;sharedDebug.lib;sharedFile.lib;sharedFoundation.lib;sharedLog.lib;sharedMath.lib;sharedMemoryManager.lib;sharedMessageDispatch.lib;sharedNetwork.lib;sharedNetworkMessages.lib;sharedRandom.lib;sharedSynchronization.lib;sharedThread.lib;sharedUtility.lib;unicode.lib;unicodeArchive.lib;udplibrary.lib;zlib.lib;ws2_32.lib;winmm.lib;mswsock.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(OutDir)$(ProjectName)_o.exe</OutputFile>
+      <AdditionalLibraryDirectories>..\..\..\..\..\..\..\src\compile\x64\archive\Optimized;..\..\..\..\..\..\..\src\compile\x64\crypto\Optimized;..\..\..\..\..\..\..\src\compile\x64\fileInterface\Optimized;..\..\..\..\..\..\..\src\compile\x64\sharedCommandParser\Optimized;..\..\..\..\..\..\..\src\compile\x64\sharedCompression\Optimized;..\..\..\..\..\..\..\src\compile\x64\sharedDebug\Optimized;..\..\..\..\..\..\..\src\compile\x64\sharedFile\Optimized;..\..\..\..\..\..\..\src\compile\x64\sharedFoundation\Optimized;..\..\..\..\..\..\..\src\compile\x64\sharedLog\Optimized;..\..\..\..\..\..\..\src\compile\x64\sharedMath\Optimized;..\..\..\..\..\..\..\src\compile\x64\sharedMemoryManager\Optimized;..\..\..\..\..\..\..\src\compile\x64\sharedMessageDispatch\Optimized;..\..\..\..\..\..\..\src\compile\x64\sharedNetwork\Optimized;..\..\..\..\..\..\..\src\compile\x64\sharedNetworkMessages\Optimized;..\..\..\..\..\..\..\src\compile\x64\sharedRandom\Optimized;..\..\..\..\..\..\..\src\compile\x64\sharedSynchronization\Optimized;..\..\..\..\..\..\..\src\compile\x64\sharedThread\Optimized;..\..\..\..\..\..\..\src\compile\x64\sharedUtility\Optimized;..\..\..\..\..\..\..\src\compile\x64\udplibrary\Optimized;..\..\..\..\..\..\..\src\compile\x64\unicode\Optimized;..\..\..\..\..\..\..\src\compile\x64\unicodeArchive\Optimized;..\..\..\..\..\..\..\src\compile\x64\zlib\Optimized;..\..\..\..\..\..\..\src\external\3rd\library\zlib\lib\win32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <IgnoreSpecificDefaultLibraries>LIBCMT;msvcrt;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ProgramDatabaseFile>$(OutDir)$(ProjectName)_o.pdb</ProgramDatabaseFile>
+      <SubSystem>Console</SubSystem>
+      <AdditionalOptions> %(AdditionalOptions)</AdditionalOptions>
+    </Link>
+    <ResourceCompile>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <Culture>0x0409</Culture>
+    </ResourceCompile>
+  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
@@ -194,6 +331,48 @@
       <Culture>0x0409</Culture>
     </ResourceCompile>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <OmitFramePointers>true</OmitFramePointers>
+      <AdditionalIncludeDirectories>..\..\src\shared;..\..\..\..\..\..\engine\shared\library\sharedCommandParser\include\public;..\..\..\..\..\..\engine\shared\library\sharedCompression\include\public;..\..\..\..\..\..\engine\shared\library\sharedDebug\include\public;..\..\..\..\..\..\engine\shared\library\sharedFile\include\public;..\..\..\..\..\..\engine\shared\library\sharedFoundation\include\public;..\..\..\..\..\..\engine\shared\library\sharedFoundationTypes\include\public;..\..\..\..\..\..\engine\shared\library\sharedIoWin\include\public;..\..\..\..\..\..\engine\shared\library\sharedLog\include\public;..\..\..\..\..\..\engine\shared\library\sharedMath\include\public;..\..\..\..\..\..\engine\shared\library\sharedMemoryManager\include\public;..\..\..\..\..\..\engine\shared\library\sharedMessageDispatch\include\public;..\..\..\..\..\..\engine\shared\library\sharedNetwork\include\public;..\..\..\..\..\..\engine\shared\library\sharedNetworkMessages\include\public;..\..\..\..\..\..\engine\shared\library\sharedSynchronization\include\public;..\..\..\..\..\..\engine\shared\library\sharedThread\include\public;..\..\..\..\..\..\engine\shared\library\sharedUtility\include\public;..\..\..\..\..\..\external\ours\library\archive\include;..\..\..\..\..\..\external\ours\library\fileInterface\include\public;..\..\..\..\..\..\external\ours\library\unicode\include;..\..\..\..\..\..\external\ours\library\unicodeArchive\include\public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_MBCS;DEBUG_LEVEL=0;_CRT_SECURE_NO_DEPRECATE=1;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <StringPooling>true</StringPooling>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <ForceConformanceInForLoopScope>true</ForceConformanceInForLoopScope>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <PrecompiledHeaderFile>FirstSwgFileControl.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile>$(OutDir)$(ProjectName).pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>$(OutDir)</AssemblerListingLocation>
+      <ObjectFileName>$(OutDir)</ObjectFileName>
+      <ProgramDataBaseFileName>$(OutDir)$(ProjectName)_r.pdb</ProgramDataBaseFileName>
+      <WarningLevel>Level4</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <CompileAs>Default</CompileAs>
+      <UseFullPaths>true</UseFullPaths>
+      <TreatWChar_tAsBuiltInType>false</TreatWChar_tAsBuiltInType>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>archive.lib;crypto.lib;fileInterface.lib;sharedCommandParser.lib;sharedCompression.lib;sharedDebug.lib;sharedFile.lib;sharedFoundation.lib;sharedLog.lib;sharedMath.lib;sharedMemoryManager.lib;sharedMessageDispatch.lib;sharedNetwork.lib;sharedNetworkMessages.lib;sharedRandom.lib;sharedSynchronization.lib;sharedThread.lib;sharedUtility.lib;unicode.lib;unicodeArchive.lib;udplibrary.lib;zlib.lib;ws2_32.lib;winmm.lib;mswsock.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(OutDir)$(ProjectName)_r.exe</OutputFile>
+      <AdditionalLibraryDirectories>..\..\..\..\..\..\..\src\compile\x64\archive\Release;..\..\..\..\..\..\..\src\compile\x64\crypto\Release;..\..\..\..\..\..\..\src\compile\x64\fileInterface\Release;..\..\..\..\..\..\..\src\compile\x64\sharedCommandParser\Release;..\..\..\..\..\..\..\src\compile\x64\sharedCompression\Release;..\..\..\..\..\..\..\src\compile\x64\sharedDebug\Release;..\..\..\..\..\..\..\src\compile\x64\sharedFile\Release;..\..\..\..\..\..\..\src\compile\x64\sharedFoundation\Release;..\..\..\..\..\..\..\src\compile\x64\sharedLog\Release;..\..\..\..\..\..\..\src\compile\x64\sharedMath\Release;..\..\..\..\..\..\..\src\compile\x64\sharedMemoryManager\Release;..\..\..\..\..\..\..\src\compile\x64\sharedMessageDispatch\Release;..\..\..\..\..\..\..\src\compile\x64\sharedNetwork\Release;..\..\..\..\..\..\..\src\compile\x64\sharedNetworkMessages\Release;..\..\..\..\..\..\..\src\compile\x64\sharedRandom\Release;..\..\..\..\..\..\..\src\compile\x64\sharedSynchronization\Release;..\..\..\..\..\..\..\src\compile\x64\sharedThread\Release;..\..\..\..\..\..\..\src\compile\x64\sharedUtility\Release;..\..\..\..\..\..\..\src\compile\x64\udplibrary\Release;..\..\..\..\..\..\..\src\compile\x64\unicode\Release;..\..\..\..\..\..\..\src\compile\x64\unicodeArchive\Release;..\..\..\..\..\..\..\src\compile\x64\zlib\Release;..\..\..\..\..\..\..\src\external\3rd\library\zlib\lib\win32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <IgnoreSpecificDefaultLibraries>libc;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ProgramDatabaseFile>$(OutDir)$(ProjectName)_r.pdb</ProgramDatabaseFile>
+      <SubSystem>Console</SubSystem>
+      <AdditionalOptions> %(AdditionalOptions)</AdditionalOptions>
+    </Link>
+    <ResourceCompile>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <Culture>0x0409</Culture>
+    </ResourceCompile>
+  </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\shared\ConfigFileControl.cpp" />
     <ClCompile Include="..\..\src\shared\FileControlClient.cpp" />
@@ -202,8 +381,11 @@
     <ClCompile Include="..\..\src\shared\FileControlServer.cpp" />
     <ClCompile Include="..\..\src\shared\FirstSwgFileControl.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\..\src\shared\FileControlReloadHandler.cpp" />
     <ClCompile Include="..\..\src\shared\HotReloadManager.cpp" />

@@ -73,8 +73,12 @@ namespace CutSceneNamespace
 				const std::string &areaName = areaCutScenesTable.getStringValue("areaName", areaRow);
 				const std::string &cutSceneName = areaCutScenesTable.getStringValue("cutSceneName", areaRow);
 
-				s_areaCutSceneLookup.push_back();
-				StringPair &lookup = s_areaCutSceneLookup.back();
+#ifdef _WIN64
+			s_areaCutSceneLookup.push_back(StringPair());
+#else
+			s_areaCutSceneLookup.push_back();
+#endif
+			StringPair &lookup = s_areaCutSceneLookup.back();
 				lookup.first = areaName;
 				lookup.second = cutSceneName;
 			}

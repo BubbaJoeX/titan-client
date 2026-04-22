@@ -385,7 +385,7 @@ bool Direct3d9_StaticShaderData::Stage::getTextureSortKey(int &value) const
 {
 	if (m_texture)
 	{
-		value = reinterpret_cast<int>((*m_texture)->getBaseTexture());
+		value = static_cast<int>(reinterpret_cast<intptr_t>((*m_texture)->getBaseTexture()));
 		return true;
 	}
 

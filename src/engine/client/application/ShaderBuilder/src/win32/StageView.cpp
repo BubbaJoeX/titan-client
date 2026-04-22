@@ -158,7 +158,7 @@ void CStageView::Dump(CDumpContext& dc) const
 
 static void stop()
 {
-	__asm int 3;
+	__debugbreak();
 }
 
 // Set a combo box's value to the string in the node.

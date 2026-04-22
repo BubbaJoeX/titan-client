@@ -13,6 +13,18 @@
       <Configuration>Release</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Optimized|x64">
+      <Configuration>Optimized</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{513A5071-8AAE-45CD-B58F-FA81F48137A0}</ProjectGuid>
@@ -25,7 +37,19 @@
     <UseOfMfc>Static</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v120</PlatformToolset>
+    <UseOfMfc>Static</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v120</PlatformToolset>
+    <UseOfMfc>Static</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <PlatformToolset>v120</PlatformToolset>
     <UseOfMfc>Static</UseOfMfc>
@@ -37,16 +61,31 @@
     <UseOfMfc>Static</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v120</PlatformToolset>
+    <UseOfMfc>Static</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
@@ -58,14 +97,29 @@
     <IntDir>..\..\..\..\..\..\compile\win32\$(ProjectName)\$(Configuration)\</IntDir>
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <OutDir>..\..\..\..\..\..\compile\x64\$(ProjectName)\$(Configuration)\</OutDir>
+    <IntDir>..\..\..\..\..\..\compile\x64\$(ProjectName)\$(Configuration)\</IntDir>
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">
     <OutDir>..\..\..\..\..\..\compile\win32\$(ProjectName)\$(Configuration)\</OutDir>
     <IntDir>..\..\..\..\..\..\compile\win32\$(ProjectName)\$(Configuration)\</IntDir>
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">
+    <OutDir>..\..\..\..\..\..\compile\x64\$(ProjectName)\$(Configuration)\</OutDir>
+    <IntDir>..\..\..\..\..\..\compile\x64\$(ProjectName)\$(Configuration)\</IntDir>
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>..\..\..\..\..\..\compile\win32\$(ProjectName)\$(Configuration)\</OutDir>
     <IntDir>..\..\..\..\..\..\compile\win32\$(ProjectName)\$(Configuration)\</IntDir>
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <OutDir>..\..\..\..\..\..\compile\x64\$(ProjectName)\$(Configuration)\</OutDir>
+    <IntDir>..\..\..\..\..\..\compile\x64\$(ProjectName)\$(Configuration)\</IntDir>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -107,6 +161,45 @@
       <Culture>0x0409</Culture>
     </ResourceCompile>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <AdditionalIncludeDirectories>..\..\..\..\..\..\external\3rd\library\atlmfc\include;..\..\..\..\..\..\external\3rd\library\ui\include;..\..\..\..\..\..\external\3rd\library\ui\src\win32;..\..\..\..\..\..\external\ours\library\fileInterface\include\public;..\..\..\..\..\..\external\ours\library\archive\include;..\..\..\..\..\..\external\ours\library\unicode\include;..\..\..\..\..\client\library\clientAnimation\include\public;..\..\..\..\..\client\library\clientAudio\include\public;..\..\..\..\..\client\library\clientBugReporting\include\public;..\..\..\..\..\client\library\clientGraphics\include\public;..\..\..\..\..\client\library\clientObject\include\public;..\..\..\..\..\client\library\clientParticle\include\public;..\..\..\..\..\client\library\clientSkeletalAnimation\include\public;..\..\..\..\..\client\library\clientTextureRenderer\include\public;..\..\..\..\..\client\library\clientTerrain\include\public;..\..\..\..\..\shared\library\sharedCollision\include\public;..\..\..\..\..\shared\library\sharedCompression\include\public;..\..\..\..\..\shared\library\sharedDebug\include\public;..\..\..\..\..\shared\library\sharedFile\include\public;..\..\..\..\..\shared\library\sharedFoundation\include\public;..\..\..\..\..\shared\library\sharedFoundationTypes\include\public;..\..\..\..\..\shared\library\sharedFractal\include\public;..\..\..\..\..\shared\library\sharedImage\include\public;..\..\..\..\..\shared\library\sharedMath\include\public;..\..\..\..\..\shared\library\sharedMemoryBlockManager\include\public;..\..\..\..\..\shared\library\sharedMemoryManager\include\public;..\..\..\..\..\shared\library\sharedObject\include\public;..\..\..\..\..\shared\library\sharedRandom\include\public;..\..\..\..\..\shared\library\sharedSynchronization\include\public;..\..\..\..\..\shared\library\sharedTerrain\include\public;..\..\..\..\..\shared\library\sharedThread\include\public;..\..\..\..\..\shared\library\sharedUtility\include\public;..\..\src\win32;..\..\src\win32\external;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_MBCS;DEBUG_LEVEL=2;_CRT_SECURE_NO_DEPRECATE=1;_WINDOWS;WINVER=0x0502;_WIN32_WINNT=0x0502;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MinimalRebuild>true</MinimalRebuild>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
+      <ForceConformanceInForLoopScope>true</ForceConformanceInForLoopScope>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <PrecompiledHeaderFile>FirstTerrainEditor.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile>$(OutDir)$(ProjectName).pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>$(OutDir)</AssemblerListingLocation>
+      <ObjectFileName>$(OutDir)</ObjectFileName>
+      <ProgramDataBaseFileName>$(OutDir)$(ProjectName)_d.pdb</ProgramDataBaseFileName>
+      <WarningLevel>Level4</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <CompileAs>Default</CompileAs>
+      <UseFullPaths>true</UseFullPaths>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>archive.lib;fileInterface.lib;clientAnimation.lib;clientAudio.lib;clientBugReporting.lib;clientGraphics.lib;clientObject.lib;clientParticle.lib;clientSkeletalAnimation.lib;clientTerrain.lib;clientTextureRenderer.lib;localization.lib;sharedCollision.lib;sharedCompression.lib;sharedDebug.lib;sharedFile.lib;sharedFoundation.lib;sharedFractal.lib;sharedGame.lib;sharedImage.lib;sharedIoWin.lib;sharedLog.lib;sharedMath.lib;sharedMemoryManager.lib;sharedMessageDispatch.lib;sharedNetwork.lib;sharedNetworkMessages.lib;sharedObject.lib;sharedPathfinding.lib;sharedRandom.lib;sharedRegex.lib;sharedSynchronization.lib;sharedSwitcher.lib;sharedTerrain.lib;sharedThread.lib;sharedUtility.lib;sharedXml.lib;unicode.lib;unicodeArchive.lib;zlib.lib;blat.lib;dxguid.lib;dsound.lib;dpvs.lib;libxml2-win32-release.lib;ws2_32.lib;winmm.lib;dinput8.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(OutDir)$(ProjectName)_d.exe</OutputFile>
+      <AdditionalLibraryDirectories>..\..\..\..\..\..\compile\x64\archive\Debug;..\..\..\..\..\..\compile\x64\fileInterface\Debug;..\..\..\..\..\..\compile\x64\clientAnimation\Debug;..\..\..\..\..\..\compile\x64\clientAudio\Debug;..\..\..\..\..\..\compile\x64\clientBugReporting\Debug;..\..\..\..\..\..\compile\x64\clientDirectInput\Debug;..\..\..\..\..\..\compile\x64\clientGame\Debug;..\..\..\..\..\..\compile\x64\clientGraphics\Debug;..\..\..\..\..\..\compile\x64\clientObject\Debug;..\..\..\..\..\..\compile\x64\clientParticle\Debug;..\..\..\..\..\..\compile\x64\clientSkeletalAnimation\Debug;..\..\..\..\..\..\compile\x64\clientTerrain\Debug;..\..\..\..\..\..\compile\x64\clientTextureRenderer\Debug;..\..\..\..\..\..\compile\x64\clientUserInterface\Debug;..\..\..\..\..\..\compile\x64\Direct3d9\Debug;..\..\..\..\..\..\compile\x64\Direct3d9_ffp\Debug;..\..\..\..\..\..\compile\x64\Direct3d9_vsps\Debug;..\..\..\..\..\..\compile\x64\localization\Debug;..\..\..\..\..\..\compile\x64\localizationArchive\Debug;..\..\..\..\..\..\compile\x64\sharedCollision\Debug;..\..\..\..\..\..\compile\x64\sharedCommandParser\Debug;..\..\..\..\..\..\compile\x64\sharedCompression\Debug;..\..\..\..\..\..\compile\x64\sharedDebug\Debug;..\..\..\..\..\..\compile\x64\sharedFile\Debug;..\..\..\..\..\..\compile\x64\sharedFoundation\Debug;..\..\..\..\..\..\compile\x64\sharedFoundationTypes\Debug;..\..\..\..\..\..\compile\x64\sharedFractal\Debug;..\..\..\..\..\..\compile\x64\sharedImage\Debug;..\..\..\..\..\..\compile\x64\sharedInputMap\Debug;..\..\..\..\..\..\compile\x64\sharedIoWin\Debug;..\..\..\..\..\..\compile\x64\sharedLog\Debug;..\..\..\..\..\..\compile\x64\sharedMath\Debug;..\..\..\..\..\..\compile\x64\sharedMemoryManager\Debug;..\..\..\..\..\..\compile\x64\sharedMessageDispatch\Debug;..\..\..\..\..\..\compile\x64\sharedNetwork\Debug;..\..\..\..\..\..\compile\x64\sharedNetworkMessages\Debug;..\..\..\..\..\..\compile\x64\sharedObject\Debug;..\..\..\..\..\..\compile\x64\sharedPathfinding\Debug;..\..\..\..\..\..\compile\x64\sharedRandom\Debug;..\..\..\..\..\..\compile\x64\sharedRegex\Debug;..\..\..\..\..\..\compile\x64\sharedSkillSystem\Debug;..\..\..\..\..\..\compile\x64\sharedStatusWindow\Debug;..\..\..\..\..\..\compile\x64\sharedSynchronization\Debug;..\..\..\..\..\..\compile\x64\sharedTerrain\Debug;..\..\..\..\..\..\compile\x64\sharedThread\Debug;..\..\..\..\..\..\compile\x64\sharedUtility\Debug;..\..\..\..\..\..\compile\x64\sharedXml\Debug;..\..\..\..\..\..\compile\x64\swgClientUserInterface\Debug;..\..\..\..\..\..\compile\x64\swgGame\Debug;..\..\..\..\..\..\compile\x64\swgSharedUtility\Debug;..\..\..\..\..\..\compile\x64\zlib\Debug;..\..\..\..\..\..\compile\x64\blat\Debug;..\..\..\..\..\..\compile\x64\sharedGame\Debug;..\..\..\..\..\..\compile\x64\sharedSwitcher\Debug;..\..\..\..\..\..\compile\x64\unicode\Debug;..\..\..\..\..\..\compile\x64\unicodeArchive\Debug;..\..\..\..\..\..\external\3rd\library\atlmfc\lib\INTEL;..\..\..\..\..\..\external\3rd\library\directx9\lib\x64;..\..\..\..\..\..\external\3rd\library\dpvs\lib\win32-x86;..\..\..\..\..\..\external\3rd\library\libxml2-2.6.7.win32\lib;..\..\..\..\..\..\external\3rd\library\miles\lib\win;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <IgnoreSpecificDefaultLibraries>libcmt;libc;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ProgramDatabaseFile>$(OutDir)$(ProjectName)_d.pdb</ProgramDatabaseFile>
+      <SubSystem>Windows</SubSystem>
+    </Link>
+    <ResourceCompile>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <Culture>0x0409</Culture>
+    </ResourceCompile>
+  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">
     <ClCompile>
       <Optimization>Full</Optimization>
@@ -138,6 +231,47 @@
       <AdditionalDependencies>archive.lib;fileInterface.lib;clientAnimation.lib;clientAudio.lib;clientBugReporting.lib;clientGraphics.lib;clientObject.lib;clientParticle.lib;clientSkeletalAnimation.lib;clientTerrain.lib;clientTextureRenderer.lib;localization.lib;sharedCollision.lib;sharedCompression.lib;sharedDebug.lib;sharedFile.lib;sharedFoundation.lib;sharedFractal.lib;sharedGame.lib;sharedImage.lib;sharedIoWin.lib;sharedLog.lib;sharedMath.lib;sharedMemoryManager.lib;sharedMessageDispatch.lib;sharedNetwork.lib;sharedNetworkMessages.lib;sharedObject.lib;sharedPathfinding.lib;sharedRandom.lib;sharedRegex.lib;sharedSynchronization.lib;sharedSwitcher.lib;sharedTerrain.lib;sharedThread.lib;sharedUtility.lib;sharedXml.lib;unicode.lib;unicodeArchive.lib;zlib.lib;blat.lib;VideoCapture_release.lib;ImageCapture_release.lib;Smart_release.lib;SoeUtil_release.lib;ZlibUtil_release.lib;picn20m.lib;dxguid.lib;dsound.lib;dpvs.lib;libxml2-win32-release.lib;mss32.lib;ws2_32.lib;winmm.lib;dinput8.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName)_o.exe</OutputFile>
       <AdditionalLibraryDirectories>..\..\..\..\..\..\compile\win32\archive\Optimized;..\..\..\..\..\..\compile\win32\fileInterface\Optimized;..\..\..\..\..\..\compile\win32\clientAnimation\Optimized;..\..\..\..\..\..\compile\win32\clientAudio\Optimized;..\..\..\..\..\..\compile\win32\clientBugReporting\Optimized;..\..\..\..\..\..\compile\win32\clientDirectInput\Optimized;..\..\..\..\..\..\compile\win32\clientGame\Optimized;..\..\..\..\..\..\compile\win32\clientGraphics\Optimized;..\..\..\..\..\..\compile\win32\clientObject\Optimized;..\..\..\..\..\..\compile\win32\clientParticle\Optimized;..\..\..\..\..\..\compile\win32\clientSkeletalAnimation\Optimized;..\..\..\..\..\..\compile\win32\clientTerrain\Optimized;..\..\..\..\..\..\compile\win32\clientTextureRenderer\Optimized;..\..\..\..\..\..\compile\win32\clientUserInterface\Optimized;..\..\..\..\..\..\compile\win32\Direct3d9\Optimized;..\..\..\..\..\..\compile\win32\Direct3d9_ffp\Optimized;..\..\..\..\..\..\compile\win32\Direct3d9_vsps\Optimized;..\..\..\..\..\..\compile\win32\localization\Optimized;..\..\..\..\..\..\compile\win32\localizationArchive\Optimized;..\..\..\..\..\..\compile\win32\sharedCollision\Optimized;..\..\..\..\..\..\compile\win32\sharedCommandParser\Optimized;..\..\..\..\..\..\compile\win32\sharedCompression\Optimized;..\..\..\..\..\..\compile\win32\sharedDebug\Optimized;..\..\..\..\..\..\compile\win32\sharedFile\Optimized;..\..\..\..\..\..\compile\win32\sharedFoundation\Optimized;..\..\..\..\..\..\compile\win32\sharedFoundationTypes\Optimized;..\..\..\..\..\..\compile\win32\sharedFractal\Optimized;..\..\..\..\..\..\compile\win32\sharedImage\Optimized;..\..\..\..\..\..\compile\win32\sharedInputMap\Optimized;..\..\..\..\..\..\compile\win32\sharedIoWin\Optimized;..\..\..\..\..\..\compile\win32\sharedLog\Optimized;..\..\..\..\..\..\compile\win32\sharedMath\Optimized;..\..\..\..\..\..\compile\win32\sharedMemoryManager\Optimized;..\..\..\..\..\..\compile\win32\sharedMessageDispatch\Optimized;..\..\..\..\..\..\compile\win32\sharedNetwork\Optimized;..\..\..\..\..\..\compile\win32\sharedNetworkMessages\Optimized;..\..\..\..\..\..\compile\win32\sharedObject\Optimized;..\..\..\..\..\..\compile\win32\sharedPathfinding\Optimized;..\..\..\..\..\..\compile\win32\sharedRandom\Optimized;..\..\..\..\..\..\compile\win32\sharedRegex\Optimized;..\..\..\..\..\..\compile\win32\sharedSkillSystem\Optimized;..\..\..\..\..\..\compile\win32\sharedStatusWindow\Optimized;..\..\..\..\..\..\compile\win32\sharedSynchronization\Optimized;..\..\..\..\..\..\compile\win32\sharedTerrain\Optimized;..\..\..\..\..\..\compile\win32\sharedThread\Optimized;..\..\..\..\..\..\compile\win32\sharedUtility\Optimized;..\..\..\..\..\..\compile\win32\sharedXml\Optimized;..\..\..\..\..\..\compile\win32\swgClientUserInterface\Optimized;..\..\..\..\..\..\compile\win32\swgGame\Optimized;..\..\..\..\..\..\compile\win32\swgSharedUtility\Optimized;..\..\..\..\..\..\compile\win32\zlib\Optimized;..\..\..\..\..\..\compile\win32\blat\Optimized;..\..\..\..\..\..\compile\win32\sharedGame\Optimized;..\..\..\..\..\..\compile\win32\sharedSwitcher\Optimized;..\..\..\..\..\..\compile\win32\unicode\Optimized;..\..\..\..\..\..\compile\win32\unicodeArchive\Optimized;..\..\..\..\..\..\external\3rd\library\atlmfc\lib\INTEL;..\..\..\..\..\..\external\3rd\library\directx9\lib;..\..\..\..\..\..\external\3rd\library\dpvs\lib\win32-x86;..\..\..\..\..\..\external\3rd\library\libxml2-2.6.7.win32\lib;..\..\..\..\..\..\external\3rd\library\miles\lib\win;..\..\..\..\..\..\external\3rd\library\stlport453\lib\win32;..\..\..\..\..\..\external\3rd\library\videocapture\VideoCapture\lib\win32;..\..\..\..\..\..\external\3rd\library\videocapture\ImageCapture\lib\win32;..\..\..\..\..\..\external\3rd\library\videocapture\Smart\lib\win32;..\..\..\..\..\..\external\3rd\library\videocapture\ZlibUtil\lib\win32;..\..\..\..\..\..\external\3rd\library\videocapture\SoeUtil\lib\win32;..\..\..\..\..\..\external\3rd\library\videocapture\PICTools\Lib\win32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <IgnoreSpecificDefaultLibraries>libcmt;libc;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ProgramDatabaseFile>$(OutDir)$(ProjectName)_o.pdb</ProgramDatabaseFile>
+      <SubSystem>Windows</SubSystem>
+    </Link>
+    <ResourceCompile>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <Culture>0x0409</Culture>
+    </ResourceCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">
+    <ClCompile>
+      <Optimization>Full</Optimization>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <OmitFramePointers>false</OmitFramePointers>
+      <AdditionalIncludeDirectories>..\..\..\..\..\..\external\3rd\library\atlmfc\include;..\..\..\..\..\..\external\3rd\library\ui\include;..\..\..\..\..\..\external\3rd\library\ui\src\win32;..\..\..\..\..\..\external\ours\library\fileInterface\include\public;..\..\..\..\..\..\external\ours\library\archive\include;..\..\..\..\..\..\external\ours\library\unicode\include;..\..\..\..\..\client\library\clientAnimation\include\public;..\..\..\..\..\client\library\clientAudio\include\public;..\..\..\..\..\client\library\clientBugReporting\include\public;..\..\..\..\..\client\library\clientGraphics\include\public;..\..\..\..\..\client\library\clientObject\include\public;..\..\..\..\..\client\library\clientParticle\include\public;..\..\..\..\..\client\library\clientSkeletalAnimation\include\public;..\..\..\..\..\client\library\clientTextureRenderer\include\public;..\..\..\..\..\client\library\clientTerrain\include\public;..\..\..\..\..\shared\library\sharedCollision\include\public;..\..\..\..\..\shared\library\sharedCompression\include\public;..\..\..\..\..\shared\library\sharedDebug\include\public;..\..\..\..\..\shared\library\sharedFile\include\public;..\..\..\..\..\shared\library\sharedFoundation\include\public;..\..\..\..\..\shared\library\sharedFoundationTypes\include\public;..\..\..\..\..\shared\library\sharedFractal\include\public;..\..\..\..\..\shared\library\sharedImage\include\public;..\..\..\..\..\shared\library\sharedMath\include\public;..\..\..\..\..\shared\library\sharedMemoryBlockManager\include\public;..\..\..\..\..\shared\library\sharedMemoryManager\include\public;..\..\..\..\..\shared\library\sharedObject\include\public;..\..\..\..\..\shared\library\sharedRandom\include\public;..\..\..\..\..\shared\library\sharedSynchronization\include\public;..\..\..\..\..\shared\library\sharedTerrain\include\public;..\..\..\..\..\shared\library\sharedThread\include\public;..\..\..\..\..\shared\library\sharedUtility\include\public;..\..\src\win32;..\..\src\win32\external;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_MBCS;DEBUG_LEVEL=1;_CRT_SECURE_NO_DEPRECATE=1;_WINDOWS;WINVER=0x0502;_WIN32_WINNT=0x0502;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MinimalRebuild>true</MinimalRebuild>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
+      <ForceConformanceInForLoopScope>true</ForceConformanceInForLoopScope>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <PrecompiledHeaderFile>FirstTerrainEditor.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile>$(OutDir)$(ProjectName).pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>$(OutDir)</AssemblerListingLocation>
+      <ObjectFileName>$(OutDir)</ObjectFileName>
+      <ProgramDataBaseFileName>$(OutDir)$(ProjectName)_o.pdb</ProgramDataBaseFileName>
+      <WarningLevel>Level4</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <CompileAs>Default</CompileAs>
+      <UseFullPaths>true</UseFullPaths>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>archive.lib;fileInterface.lib;clientAnimation.lib;clientAudio.lib;clientBugReporting.lib;clientGraphics.lib;clientObject.lib;clientParticle.lib;clientSkeletalAnimation.lib;clientTerrain.lib;clientTextureRenderer.lib;localization.lib;sharedCollision.lib;sharedCompression.lib;sharedDebug.lib;sharedFile.lib;sharedFoundation.lib;sharedFractal.lib;sharedGame.lib;sharedImage.lib;sharedIoWin.lib;sharedLog.lib;sharedMath.lib;sharedMemoryManager.lib;sharedMessageDispatch.lib;sharedNetwork.lib;sharedNetworkMessages.lib;sharedObject.lib;sharedPathfinding.lib;sharedRandom.lib;sharedRegex.lib;sharedSynchronization.lib;sharedSwitcher.lib;sharedTerrain.lib;sharedThread.lib;sharedUtility.lib;sharedXml.lib;unicode.lib;unicodeArchive.lib;zlib.lib;blat.lib;dxguid.lib;dsound.lib;dpvs.lib;libxml2-win32-release.lib;ws2_32.lib;winmm.lib;dinput8.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(OutDir)$(ProjectName)_o.exe</OutputFile>
+      <AdditionalLibraryDirectories>..\..\..\..\..\..\compile\x64\archive\Optimized;..\..\..\..\..\..\compile\x64\fileInterface\Optimized;..\..\..\..\..\..\compile\x64\clientAnimation\Optimized;..\..\..\..\..\..\compile\x64\clientAudio\Optimized;..\..\..\..\..\..\compile\x64\clientBugReporting\Optimized;..\..\..\..\..\..\compile\x64\clientDirectInput\Optimized;..\..\..\..\..\..\compile\x64\clientGame\Optimized;..\..\..\..\..\..\compile\x64\clientGraphics\Optimized;..\..\..\..\..\..\compile\x64\clientObject\Optimized;..\..\..\..\..\..\compile\x64\clientParticle\Optimized;..\..\..\..\..\..\compile\x64\clientSkeletalAnimation\Optimized;..\..\..\..\..\..\compile\x64\clientTerrain\Optimized;..\..\..\..\..\..\compile\x64\clientTextureRenderer\Optimized;..\..\..\..\..\..\compile\x64\clientUserInterface\Optimized;..\..\..\..\..\..\compile\x64\Direct3d9\Optimized;..\..\..\..\..\..\compile\x64\Direct3d9_ffp\Optimized;..\..\..\..\..\..\compile\x64\Direct3d9_vsps\Optimized;..\..\..\..\..\..\compile\x64\localization\Optimized;..\..\..\..\..\..\compile\x64\localizationArchive\Optimized;..\..\..\..\..\..\compile\x64\sharedCollision\Optimized;..\..\..\..\..\..\compile\x64\sharedCommandParser\Optimized;..\..\..\..\..\..\compile\x64\sharedCompression\Optimized;..\..\..\..\..\..\compile\x64\sharedDebug\Optimized;..\..\..\..\..\..\compile\x64\sharedFile\Optimized;..\..\..\..\..\..\compile\x64\sharedFoundation\Optimized;..\..\..\..\..\..\compile\x64\sharedFoundationTypes\Optimized;..\..\..\..\..\..\compile\x64\sharedFractal\Optimized;..\..\..\..\..\..\compile\x64\sharedImage\Optimized;..\..\..\..\..\..\compile\x64\sharedInputMap\Optimized;..\..\..\..\..\..\compile\x64\sharedIoWin\Optimized;..\..\..\..\..\..\compile\x64\sharedLog\Optimized;..\..\..\..\..\..\compile\x64\sharedMath\Optimized;..\..\..\..\..\..\compile\x64\sharedMemoryManager\Optimized;..\..\..\..\..\..\compile\x64\sharedMessageDispatch\Optimized;..\..\..\..\..\..\compile\x64\sharedNetwork\Optimized;..\..\..\..\..\..\compile\x64\sharedNetworkMessages\Optimized;..\..\..\..\..\..\compile\x64\sharedObject\Optimized;..\..\..\..\..\..\compile\x64\sharedPathfinding\Optimized;..\..\..\..\..\..\compile\x64\sharedRandom\Optimized;..\..\..\..\..\..\compile\x64\sharedRegex\Optimized;..\..\..\..\..\..\compile\x64\sharedSkillSystem\Optimized;..\..\..\..\..\..\compile\x64\sharedStatusWindow\Optimized;..\..\..\..\..\..\compile\x64\sharedSynchronization\Optimized;..\..\..\..\..\..\compile\x64\sharedTerrain\Optimized;..\..\..\..\..\..\compile\x64\sharedThread\Optimized;..\..\..\..\..\..\compile\x64\sharedUtility\Optimized;..\..\..\..\..\..\compile\x64\sharedXml\Optimized;..\..\..\..\..\..\compile\x64\swgClientUserInterface\Optimized;..\..\..\..\..\..\compile\x64\swgGame\Optimized;..\..\..\..\..\..\compile\x64\swgSharedUtility\Optimized;..\..\..\..\..\..\compile\x64\zlib\Optimized;..\..\..\..\..\..\compile\x64\blat\Optimized;..\..\..\..\..\..\compile\x64\sharedGame\Optimized;..\..\..\..\..\..\compile\x64\sharedSwitcher\Optimized;..\..\..\..\..\..\compile\x64\unicode\Optimized;..\..\..\..\..\..\compile\x64\unicodeArchive\Optimized;..\..\..\..\..\..\external\3rd\library\atlmfc\lib\INTEL;..\..\..\..\..\..\external\3rd\library\directx9\lib\x64;..\..\..\..\..\..\external\3rd\library\dpvs\lib\win32-x86;..\..\..\..\..\..\external\3rd\library\libxml2-2.6.7.win32\lib;..\..\..\..\..\..\external\3rd\library\miles\lib\win;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreSpecificDefaultLibraries>libcmt;libc;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>$(OutDir)$(ProjectName)_o.pdb</ProgramDatabaseFile>
@@ -190,356 +324,515 @@
       <Culture>0x0409</Culture>
     </ResourceCompile>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <OmitFramePointers>true</OmitFramePointers>
+      <AdditionalIncludeDirectories>..\..\..\..\..\..\external\3rd\library\atlmfc\include;..\..\..\..\..\..\external\3rd\library\ui\include;..\..\..\..\..\..\external\3rd\library\ui\src\win32;..\..\..\..\..\..\external\ours\library\fileInterface\include\public;..\..\..\..\..\..\external\ours\library\archive\include;..\..\..\..\..\..\external\ours\library\unicode\include;..\..\..\..\..\client\library\clientAnimation\include\public;..\..\..\..\..\client\library\clientAudio\include\public;..\..\..\..\..\client\library\clientBugReporting\include\public;..\..\..\..\..\client\library\clientGraphics\include\public;..\..\..\..\..\client\library\clientObject\include\public;..\..\..\..\..\client\library\clientParticle\include\public;..\..\..\..\..\client\library\clientSkeletalAnimation\include\public;..\..\..\..\..\client\library\clientTextureRenderer\include\public;..\..\..\..\..\client\library\clientTerrain\include\public;..\..\..\..\..\shared\library\sharedCollision\include\public;..\..\..\..\..\shared\library\sharedCompression\include\public;..\..\..\..\..\shared\library\sharedDebug\include\public;..\..\..\..\..\shared\library\sharedFile\include\public;..\..\..\..\..\shared\library\sharedFoundation\include\public;..\..\..\..\..\shared\library\sharedFoundationTypes\include\public;..\..\..\..\..\shared\library\sharedFractal\include\public;..\..\..\..\..\shared\library\sharedImage\include\public;..\..\..\..\..\shared\library\sharedMath\include\public;..\..\..\..\..\shared\library\sharedMemoryBlockManager\include\public;..\..\..\..\..\shared\library\sharedMemoryManager\include\public;..\..\..\..\..\shared\library\sharedObject\include\public;..\..\..\..\..\shared\library\sharedRandom\include\public;..\..\..\..\..\shared\library\sharedSynchronization\include\public;..\..\..\..\..\shared\library\sharedTerrain\include\public;..\..\..\..\..\shared\library\sharedThread\include\public;..\..\..\..\..\shared\library\sharedUtility\include\public;..\..\src\win32;..\..\src\win32\external;..\..\..\..\..\shared\library\sharedGame\include\public;..\..\..\..\..\client\library\clientGame\include\public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_MBCS;DEBUG_LEVEL=0;_CRT_SECURE_NO_DEPRECATE=1;_WINDOWS;WINVER=0x0502;_WIN32_WINNT=0x0502;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <StringPooling>true</StringPooling>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
+      <ForceConformanceInForLoopScope>true</ForceConformanceInForLoopScope>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <PrecompiledHeaderFile>FirstTerrainEditor.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile>$(OutDir)$(ProjectName).pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>$(OutDir)</AssemblerListingLocation>
+      <ObjectFileName>$(OutDir)</ObjectFileName>
+      <ProgramDataBaseFileName>$(OutDir)$(ProjectName)_r.pdb</ProgramDataBaseFileName>
+      <WarningLevel>Level4</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <CompileAs>Default</CompileAs>
+      <UseFullPaths>true</UseFullPaths>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>archive.lib;fileInterface.lib;clientAnimation.lib;clientAudio.lib;clientBugReporting.lib;clientGraphics.lib;clientObject.lib;clientParticle.lib;clientSkeletalAnimation.lib;clientTerrain.lib;clientTextureRenderer.lib;localization.lib;sharedCollision.lib;sharedCompression.lib;sharedDebug.lib;sharedFile.lib;sharedFoundation.lib;sharedFractal.lib;sharedGame.lib;sharedImage.lib;sharedIoWin.lib;sharedLog.lib;sharedMath.lib;sharedMemoryManager.lib;sharedMessageDispatch.lib;sharedNetwork.lib;sharedNetworkMessages.lib;sharedObject.lib;sharedPathfinding.lib;sharedRandom.lib;sharedRegex.lib;sharedSynchronization.lib;sharedSwitcher.lib;sharedTerrain.lib;sharedThread.lib;sharedUtility.lib;sharedXml.lib;unicode.lib;unicodeArchive.lib;zlib.lib;blat.lib;dxguid.lib;dsound.lib;dpvs.lib;libxml2-win32-release.lib;ws2_32.lib;winmm.lib;dinput8.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(OutDir)$(ProjectName)_r.exe</OutputFile>
+      <AdditionalLibraryDirectories>..\..\..\..\..\..\compile\x64\archive\Release;..\..\..\..\..\..\compile\x64\fileInterface\Release;..\..\..\..\..\..\compile\x64\clientAnimation\Release;..\..\..\..\..\..\compile\x64\clientAudio\Release;..\..\..\..\..\..\compile\x64\clientBugReporting\Release;..\..\..\..\..\..\compile\x64\clientDirectInput\Release;..\..\..\..\..\..\compile\x64\clientGame\Release;..\..\..\..\..\..\compile\x64\clientGraphics\Release;..\..\..\..\..\..\compile\x64\clientObject\Release;..\..\..\..\..\..\compile\x64\clientParticle\Release;..\..\..\..\..\..\compile\x64\clientSkeletalAnimation\Release;..\..\..\..\..\..\compile\x64\clientTerrain\Release;..\..\..\..\..\..\compile\x64\clientTextureRenderer\Release;..\..\..\..\..\..\compile\x64\clientUserInterface\Release;..\..\..\..\..\..\compile\x64\Direct3d9\Release;..\..\..\..\..\..\compile\x64\Direct3d9_ffp\Release;..\..\..\..\..\..\compile\x64\Direct3d9_vsps\Release;..\..\..\..\..\..\compile\x64\localization\Release;..\..\..\..\..\..\compile\x64\localizationArchive\Release;..\..\..\..\..\..\compile\x64\sharedCollision\Release;..\..\..\..\..\..\compile\x64\sharedCommandParser\Release;..\..\..\..\..\..\compile\x64\sharedCompression\Release;..\..\..\..\..\..\compile\x64\sharedDebug\Release;..\..\..\..\..\..\compile\x64\sharedFile\Release;..\..\..\..\..\..\compile\x64\sharedFoundation\Release;..\..\..\..\..\..\compile\x64\sharedFoundationTypes\Release;..\..\..\..\..\..\compile\x64\sharedFractal\Release;..\..\..\..\..\..\compile\x64\sharedImage\Release;..\..\..\..\..\..\compile\x64\sharedInputMap\Release;..\..\..\..\..\..\compile\x64\sharedIoWin\Release;..\..\..\..\..\..\compile\x64\sharedLog\Release;..\..\..\..\..\..\compile\x64\sharedMath\Release;..\..\..\..\..\..\compile\x64\sharedMemoryManager\Release;..\..\..\..\..\..\compile\x64\sharedMessageDispatch\Release;..\..\..\..\..\..\compile\x64\sharedNetwork\Release;..\..\..\..\..\..\compile\x64\sharedNetworkMessages\Release;..\..\..\..\..\..\compile\x64\sharedObject\Release;..\..\..\..\..\..\compile\x64\sharedPathfinding\Release;..\..\..\..\..\..\compile\x64\sharedRandom\Release;..\..\..\..\..\..\compile\x64\sharedRegex\Release;..\..\..\..\..\..\compile\x64\sharedSkillSystem\Release;..\..\..\..\..\..\compile\x64\sharedStatusWindow\Release;..\..\..\..\..\..\compile\x64\sharedSynchronization\Release;..\..\..\..\..\..\compile\x64\sharedTerrain\Release;..\..\..\..\..\..\compile\x64\sharedThread\Release;..\..\..\..\..\..\compile\x64\sharedUtility\Release;..\..\..\..\..\..\compile\x64\sharedXml\Release;..\..\..\..\..\..\compile\x64\swgClientUserInterface\Release;..\..\..\..\..\..\compile\x64\swgGame\Release;..\..\..\..\..\..\compile\x64\swgSharedUtility\Release;..\..\..\..\..\..\compile\x64\zlib\Release;..\..\..\..\..\..\compile\x64\blat\Release;..\..\..\..\..\..\compile\x64\sharedGame\Release;..\..\..\..\..\..\compile\x64\sharedSwitcher\Release;..\..\..\..\..\..\compile\x64\unicode\Release;..\..\..\..\..\..\compile\x64\unicodeArchive\Release;..\..\..\..\..\..\external\3rd\library\atlmfc\lib\INTEL;..\..\..\..\..\..\external\3rd\library\directx9\lib\x64;..\..\..\..\..\..\external\3rd\library\dpvs\lib\win32-x86;..\..\..\..\..\..\external\3rd\library\libxml2-2.6.7.win32\lib;..\..\..\..\..\..\external\3rd\library\miles\lib\win;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <IgnoreSpecificDefaultLibraries>libc;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ProgramDatabaseFile>$(OutDir)$(ProjectName)_r.pdb</ProgramDatabaseFile>
+      <SubSystem>Windows</SubSystem>
+    </Link>
+    <ResourceCompile>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <Culture>0x0409</Culture>
+    </ResourceCompile>
+  </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\win32\BitmapFrame.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\BitmapPreviewFrame.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\BitmapPreviewView.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\BitmapView.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\BlendGroupFrame.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\BlendTreeView.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\BlendView.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\BookmarkFrame.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\BookmarkView.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\ConsoleFrame.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\ConsoleView.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\DialogCatalog.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\DialogControlPointEdit.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\DialogControlPointEditor.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\DialogEditorPreferences.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\DialogFind.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\DialogFloraParameters.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\DialogMapParameters.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\DialogResetFloraParameters.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\EditorTerrain.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\EnvironmentFrame.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\EnvironmentView.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\external\CDib.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\external\CoolDialogBar.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\external\DialogPalette.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\external\ProgressDialog.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\external\RecentDirectory.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\external\SmartEditCtrl.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\external\SmartSliderCtrl.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\external\TreeListCtrl.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\external\TreeListFrame.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\external\TreeListHeaderCtrl.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FindFrame.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FindView.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FirstTerrainEditor.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FloraGroupFrame.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FloraMeshView.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FloraTreeView.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FormAffectorColorConstant.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FormAffectorColorRampFractal.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FormAffectorColorRampHeight.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FormAffectorEnvironment.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FormAffectorFloraDynamicConstant.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FormAffectorFloraStaticConstant.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FormAffectorHeightConstant.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FormAffectorHeightFractal.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FormAffectorHeightTerrace.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FormAffectorPassable.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FormAffectorRibbon.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FormAffectorRiver.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FormAffectorRoad.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FormAffectorShaderConstant.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FormAffectorShaderReplace.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FormBitmapFamily.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FormBoundaryCircle.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FormBoundaryPolygon.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FormBoundaryPolyline.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FormBoundaryRect.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FormEnvironmentFamily.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FormFilterBitmap.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FormFilterDirection.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FormFilterFractal.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FormFilterHeight.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FormFilterShader.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FormFilterSlope.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FormFlora.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FormFloraFamily.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FormFractalFamily.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FormLayer.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FormLayerItem.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FormRadial.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FormRadialFamily.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FormShader.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FormShaderFamily.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FormTemplate.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FractalFrame.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FractalPreviewFrame.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FractalPreviewView.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\FractalView.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\HelpFrame.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\HelpView.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\LayerFrame.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\LayerView.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\MainFrame.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\MapFrame.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\MapView.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\MapViewMode.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\NumberEdit.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\ProfileFrame.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\ProfileView.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\PropertyFrame.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\PropertyView.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\RadialGroupFrame.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\RadialTreeView.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\RadialView.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\RenderView.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\Ruler.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\ShaderGroupFrame.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\ShaderTreeView.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\ShaderView.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\Splash.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\TerrainEditor.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\TerrainEditorDoc.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\TerrainGeneratorHelper.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\TerrainGeneratorHelperBitmap.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\TerrainGeneratorHelperEnvironment.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\TerrainGeneratorHelperFlora.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\TerrainGeneratorHelperFractal.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\TerrainGeneratorHelperRadial.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\TerrainGeneratorHelperShader.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\TipDialog.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\View3dFrame.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\View3dView.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\WarningFrame.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\WarningView.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\win32\ClientGameStubs.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

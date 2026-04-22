@@ -134,7 +134,7 @@ void LeakFinder::debugPrint() const
 				{
 					REPORT_PRINT(true, ("\n"));
 				}
-				REPORT_PRINT(true, ("(0x%08X) ", reinterpret_cast<int>(ui->second[i]->object)));
+				REPORT_PRINT(true, ("(%p) ", ui->second[i]->object));
 				if (printRefs)
 				{
 					printedRefs=true;

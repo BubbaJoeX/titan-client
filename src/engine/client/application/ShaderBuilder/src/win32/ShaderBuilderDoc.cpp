@@ -102,7 +102,7 @@ BOOL CShaderBuilderDoc::OnSaveDocument(LPCTSTR lpszPathName)
 {
 	UNREF(lpszPathName);
 	// TODO: Add your specialized code here and/or call the base class
-	__asm int 3;
+	__debugbreak();
 	// return 	leftView->Save(lpszPathName);
 	return FALSE;
 }

@@ -44,6 +44,17 @@
 #   define DPVSDEC								// Static Library
 #endif
 
+// x64 Windows SDK defines INT32/UINT32 as macros in <basetsd.h> which
+// collide with the DPVS namespace typedefs and break bit-field declarations.
+#if defined(_WIN64)
+#   ifdef INT32
+#       undef INT32
+#   endif
+#   ifdef UINT32
+#       undef UINT32
+#   endif
+#endif
+
 namespace DPVS
 {
 

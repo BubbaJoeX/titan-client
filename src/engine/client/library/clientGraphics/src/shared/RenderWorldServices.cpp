@@ -12,6 +12,8 @@
 #include "sharedFoundation/ExitChain.h"
 #include "sharedSynchronization/Mutex.h"
 
+#include <intrin.h>
+
 // ======================================================================
 
 RenderWorldServices::RenderWorldServices()
@@ -43,28 +45,9 @@ static void * __cdecl localAllocate(size_t size, uint32 owner, bool array, bool 
 	return MemoryManager::allocate(size, owner, array, leakTest);
 }
 
-static __declspec(naked) void * dpvsAllocate(size_t)
+static void * dpvsAllocate(size_t size)
 {
-	_asm
-	{
-		// setup local call stack
-		push    ebp
-		mov     ebp, esp
-
-		// MemoryManager::alloc(size, [return address], false, true)
-		push    1
-		push    0
-		mov     eax, dword ptr [ebp+4]
-		push    eax
-		mov     eax, dword ptr [ebp+8]
-		push    eax
-		call    localAllocate
-		add     esp, 12
-
-		mov     esp, ebp
-		pop     ebp
-		ret
-	}
+	return localAllocate(size, static_cast<uint32>(reinterpret_cast<uintptr_t>(_ReturnAddress())), false, true);
 }
 
 // ----------------------------------------------------------------------

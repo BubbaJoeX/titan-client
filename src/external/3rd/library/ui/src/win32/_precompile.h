@@ -4,6 +4,9 @@
 #pragma warning( disable : 4702 )
 
 #include <cstdlib>
+#ifdef _WIN64
+#include <algorithm>
+#endif
 #include "UIStlFwd.h"
 #include "UiReport.h"
 #include "UnicodeUtils.h"

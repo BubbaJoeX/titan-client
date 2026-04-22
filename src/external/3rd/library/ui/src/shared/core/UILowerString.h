@@ -9,7 +9,11 @@
 #define INCLUDED_UILowerString_H
 
 //======================================================================
+#ifdef _WIN64
+#include <unordered_map>
+#else
 #include <hash_map>
+#endif
 
 class UILowerString
 {

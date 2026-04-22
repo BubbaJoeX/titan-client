@@ -11,8 +11,16 @@
 
 // Efficiently handle memory mangagement for rapidly allocated and deleted objects.
 
+#ifdef _WIN64
+#include <unordered_map>
+#else
 #include <hash_map>
+#endif
+#ifdef _WIN64
+#include <unordered_set>
+#else
 #include <hash_set>
+#endif
 
 class UiMemoryBlockManager
 {

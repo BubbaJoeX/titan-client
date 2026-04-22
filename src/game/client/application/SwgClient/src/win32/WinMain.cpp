@@ -86,9 +86,9 @@ void externalCommandHandler(const char* command)
 
 		HINSTANCE result = ShellExecute(NULL, "open", url8.c_str(), NULL, NULL, SW_SHOWNORMAL);
 
-		if (reinterpret_cast<int>(result) < 32) //Pulled straight from MSDN -ARH
+		if (reinterpret_cast<intptr_t>(result) < 32) //Pulled straight from MSDN -ARH
 		{
-			WARNING(true, ("could not launch external application (%d)", reinterpret_cast<int>(result)));
+			WARNING(true, ("could not launch external application (%td)", reinterpret_cast<intptr_t>(result)));
 		}
 		else
 		{

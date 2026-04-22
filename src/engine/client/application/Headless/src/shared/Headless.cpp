@@ -88,7 +88,6 @@ bool Headless::verify()
 
 void Headless::_defaultFunc_Void()
 {
-	__asm xor eax,eax;
 }
 
 //---------------------------------------------------------------------------

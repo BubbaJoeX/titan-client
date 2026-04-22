@@ -15,7 +15,9 @@
 // ======================================================================
 
 char *      strsep(char **string, const char *delim);
+#if _MSC_VER < 1900
 int         snprintf(char *buffer, size_t count, const char *format, ...);
+#endif
 struct tm * gmtime_r(const time_t *timep, struct tm *result);
 int         finite(double value);
 

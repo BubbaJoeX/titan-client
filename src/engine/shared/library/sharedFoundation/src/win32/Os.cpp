@@ -838,7 +838,7 @@ bool Os::handleDebugMenu()
 							;
 
 						HMENU newMenu = CreatePopupMenu();
-						static_cast<void>(InsertMenu(lastSubmenu, insertLocation, MF_BYPOSITION | MF_POPUP, reinterpret_cast<UINT>(newMenu), start));
+						static_cast<void>(InsertMenu(lastSubmenu, insertLocation, MF_BYPOSITION | MF_POPUP, reinterpret_cast<UINT_PTR>(newMenu), start));
 						lastSubmenu = newMenu;
 						map.insert(Map::value_type(DuplicateString(buffer), lastSubmenu));
 					}
@@ -855,7 +855,7 @@ bool Os::handleDebugMenu()
 					;
 
 				HMENU newMenu = CreatePopupMenu();
-				static_cast<void>(InsertMenu(lastSubmenu, insertLocation, MF_BYPOSITION | MF_POPUP, reinterpret_cast<UINT>(newMenu), start));
+				static_cast<void>(InsertMenu(lastSubmenu, insertLocation, MF_BYPOSITION | MF_POPUP, reinterpret_cast<UINT_PTR>(newMenu), start));
 				lastSubmenu = newMenu;
 				map.insert(Map::value_type(DuplicateString(buffer), lastSubmenu));
 			}
@@ -871,7 +871,7 @@ bool Os::handleDebugMenu()
 			DEBUG_FATAL(entry == map.end(), ("Could not find SharedDebug section"));
 
 			HMENU newMenu = CreatePopupMenu();
-			static_cast<void>(AppendMenu(entry->second, MF_POPUP, reinterpret_cast<UINT>(newMenu), "DebugKey"));
+			static_cast<void>(AppendMenu(entry->second, MF_POPUP, reinterpret_cast<UINT_PTR>(newMenu), "DebugKey"));
 			lastSubmenu = newMenu;
 
 			DebugKey::FlagVector::const_iterator end = DebugKey::ms_flags.end();
@@ -1354,7 +1354,7 @@ void Os::setThreadName(ThreadId threadID, const char* threadName)
 	__try
 	{
 		// use the magic exception number MS picked for this purpose
-		RaiseException(0x406D1388, 0, sizeof(info) / sizeof(DWORD), reinterpret_cast<DWORD *>(&info));
+		RaiseException(0x406D1388, 0, sizeof(info) / sizeof(ULONG_PTR), reinterpret_cast<const ULONG_PTR *>(&info));
 	}
 	__except (EXCEPTION_CONTINUE_EXECUTION)
 	{
@@ -1537,7 +1537,7 @@ bool Os::launchBrowser(std::string const & website)
 {
 	std::string URL("http://");
 	URL=website;
-	int result = reinterpret_cast<int>(ShellExecute(NULL, "open", URL.c_str(), NULL, NULL, SW_SHOWNORMAL));
+	intptr_t result = reinterpret_cast<intptr_t>(ShellExecute(NULL, "open", URL.c_str(), NULL, NULL, SW_SHOWNORMAL));
 	return (result > 32);
 }
 

@@ -10,7 +10,11 @@
 #include "sharedFoundation/NetworkId.h"
 #include "sharedObject/Object.h"
 
+#ifdef _WIN64
+#include <unordered_map>
+#else
 #include <hash_map>
+#endif
 #include <string>
 
 //-----------------------------------------------------------------------

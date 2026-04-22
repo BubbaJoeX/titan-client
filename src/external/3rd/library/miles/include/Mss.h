@@ -26,6 +26,15 @@
 //##                                                                        ##
 //############################################################################
 
+#ifdef _WIN64
+#ifndef UINTa
+#define UINTa unsigned __int64
+#endif
+#ifndef SINTa
+#define SINTa signed __int64
+#endif
+#endif
+
 #ifndef MSS_VERSION
 
 #define MSS_VERSION      "7.2a"     // Version string needs to be 4 characters long for benefit of MIDIECHW and SETSOUND 

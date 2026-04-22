@@ -193,7 +193,7 @@ PathSearchNode * PathSearchNode::createSearchNode( PathNode const * node )
 
 	PathSearchNode * searchNode = new PathSearchNode(m_search,m_graph,node);
 
-	node->setMark( 3, (int)((void*)searchNode) );
+	node->setMark( 3, static_cast<int>(reinterpret_cast<intptr_t>(searchNode)) );
 
 	m_search->m_visitedNodes->push_back(node);
 

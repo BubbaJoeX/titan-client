@@ -190,10 +190,9 @@ template<typename A> inline void get_ptr(ReadIterator & source, std::vector<cons
 
 template<typename Key, typename Value> inline void get(ReadIterator & source, std::map<Key, Value> & target)
 {
-	size_t numKeys;
+	unsigned int numKeys;
 	get(source, numKeys);
-	size_t i;
-	for(i = 0; i < numKeys; ++i)
+	for(unsigned int i = 0; i < numKeys; ++i)
 	{
 		Key k;
 		get(source, k);
@@ -303,10 +302,10 @@ inline void put(ByteStream & target, const std::string & source)
 	{
 		unsigned short len = static_cast<unsigned short>(65535);
 		put(target, len);
-		unsigned int size = source.size();
+		unsigned int size = static_cast<unsigned int>(source.size());
 		put(target, size);
 	}
-	target.put(source.data(), source.size());
+	target.put(source.data(), static_cast<unsigned int>(source.size()));
 }
 
 //---------------------------------------------------------------------
@@ -379,7 +378,7 @@ template<typename A> inline void put(ByteStream & target, const std::deque<A> & 
 
 template<typename Key, typename Value> inline void put(ByteStream & target, const std::map<Key, Value> & source)
 {
-	size_t numKeys = source.size();
+	unsigned int numKeys = static_cast<unsigned int>(source.size());
 	put(target, numKeys);
 	for (typename std::map<Key, Value>::const_iterator i = source.begin(); i != source.end(); ++i)
 	{

@@ -7,7 +7,11 @@
 #include "hashtable.hpp"
 
 #if defined(WIN32)
-	typedef unsigned int SOCKET;	// avoids us having to include winsock.h just for this
+	#if defined(UDPLIBRARY_WINSOCK2) || defined(_WIN64)
+		#include <winsock2.h>
+	#else
+		typedef unsigned int SOCKET;
+	#endif
 	typedef __int64 udp_int64;
 #else
 	typedef int SOCKET;

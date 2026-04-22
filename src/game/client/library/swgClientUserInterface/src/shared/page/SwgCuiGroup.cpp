@@ -645,7 +645,7 @@ void SwgCuiGroup::addMember(NetworkId const & member, std::string const & member
 
 		mfdStatus->setTarget(member);
 
-		m_mfds->insert(std::make_pair(member, mfdStatus));
+		m_mfds->emplace(member, UISmartPointer<SwgCuiMfdStatus>(mfdStatus));
 		
 	}
 

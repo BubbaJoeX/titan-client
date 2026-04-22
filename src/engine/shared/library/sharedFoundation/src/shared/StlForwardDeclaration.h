@@ -31,6 +31,47 @@
 // ======================================================================
 
 
+#ifdef _WIN64
+
+#include <algorithm>
+#include <unordered_map>
+#include <unordered_set>
+
+namespace std
+{
+	template <class _Tp>                                                                struct less;
+	template <class _Tp>                                                                struct equal_to;
+	template <class _T1, class _T2>                                                     struct pair;
+	template <class _Tp>                                                                class  allocator;
+	template <class _CharT, class _Traits, class _Alloc>                                class  basic_string;
+	template <class _CharT>                                                             struct char_traits;
+
+	template <size_t _Nb>                                                               class  bitset;
+	template <class _Tp, class _Alloc>                                                  class  deque;
+	template <class _Tp, class _Alloc>                                                  class  list;
+	template <class _Tp, class _Alloc>                                                  class  queue;
+	template <class _Tp, class _Alloc>                                                  class  vector;
+	template <class _Tp, class _Sequence>                                               class  stack;
+	template <class _Tp, class _Container, class _Compare>                              class  priority_queue;
+	template <class _Key, class _Tp, class _Compare, class _Alloc>                      class  map;
+	template <class _Key, class _Tp, class _Compare, class _Alloc>                      class  multimap;
+	template <class _Key, class _Compare, class _Alloc>                                 class  set;
+	template <class _Key, class _Compare, class _Alloc>                                 class  multiset;
+
+	template <class _Key, class _Tp, class _Hash = std::hash<_Key>, class _Pred = std::equal_to<_Key>, class _Alloc = std::allocator<std::pair<const _Key, _Tp> > >
+	using hash_map = std::unordered_map<_Key, _Tp, _Hash, _Pred, _Alloc>;
+
+	template <class _Key, class _Hash = std::hash<_Key>, class _Pred = std::equal_to<_Key>, class _Alloc = std::allocator<_Key> >
+	using hash_set = std::unordered_set<_Key, _Hash, _Pred, _Alloc>;
+
+	template <class _Key, class _Tp, class _Hash = std::hash<_Key>, class _Pred = std::equal_to<_Key>, class _Alloc = std::allocator<std::pair<const _Key, _Tp> > >
+	using hash_multimap = std::unordered_multimap<_Key, _Tp, _Hash, _Pred, _Alloc>;
+
+	typedef basic_string<char, char_traits<char>, allocator<char> >                     string;
+}
+
+#else
+
 namespace std
 {
 	template <class _Tp>                                                                struct less;
@@ -58,6 +99,8 @@ namespace std
 	typedef basic_string<char, char_traits<char>, allocator<char> >                     string;
 }
 
+#endif
+
 template <class _Tp, class _Alloc = std::allocator<_Tp> > struct stddeque
 {
 	typedef std::deque<_Tp, _Alloc> fwd;
@@ -73,10 +116,17 @@ template <class _Key, class _Tp, class _Compare = std::less<_Key>, class _Alloc 
 	typedef std::map<_Key, _Tp, _Compare, _Alloc> fwd;
 };
 
+#ifdef _WIN64
+template <class _Key, class _Tp, class _HashFcn = std::hash<_Key>, class _Compare = std::equal_to<_Key>, class _Alloc = std::allocator< std::pair <const _Key, _Tp> > > struct stdhash_map
+{
+	typedef std::unordered_map<_Key, _Tp, _HashFcn, _Compare, _Alloc> fwd;
+};
+#else
 template <class _Key, class _Tp, class _HashFcn = std::hash<_Key>, class _Compare = std::equal_to<_Key>, class _Alloc = std::allocator< std::pair <const _Key, _Tp> > > struct stdhash_map
 {
 	typedef std::hash_map<_Key, _Tp, _HashFcn, _Compare, _Alloc> fwd;
 };
+#endif
 
 template <class _Key, class _Tp, class _Compare = std::less<_Key>, class _Alloc = std::allocator< std::pair <const _Key, _Tp> > > struct stdmultimap
 {
@@ -88,10 +138,17 @@ template <class _Key, class _Compare = std::less<_Key>, class _Alloc = std::allo
 	typedef std::set<_Key, _Compare, _Alloc> fwd;
 };
 
+#ifdef _WIN64
+template <class _Key, class _HashFcn = std::hash<_Key>, class _Compare = std::equal_to<_Key>, class _Alloc = std::allocator<_Key> > struct stdhash_set
+{
+	typedef std::unordered_set<_Key, _HashFcn, _Compare, _Alloc> fwd;
+};
+#else
 template <class _Key, class _HashFcn = std::hash<_Key>, class _Compare = std::equal_to<_Key>, class _Alloc = std::allocator<_Key> > struct stdhash_set
 {
 	typedef std::hash_set<_Key, _HashFcn, _Compare, _Alloc> fwd;
 };
+#endif
 
 template <class _Key, class _Compare = std::less<_Key>, class _Alloc = std::allocator<_Key> > struct stdmultiset
 {

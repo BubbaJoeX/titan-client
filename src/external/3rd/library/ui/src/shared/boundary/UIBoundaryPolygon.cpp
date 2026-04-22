@@ -8,6 +8,7 @@
 #include "_precompile.h"
 #include "UIBoundaryPolygon.h"
 
+#include <algorithm>
 #include <cassert>
 
 // ======================================================================

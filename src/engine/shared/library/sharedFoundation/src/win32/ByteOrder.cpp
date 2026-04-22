@@ -10,49 +10,26 @@
 
 // ======================================================================
 
-// I'm using the arguments, but the compiler can't tell that
-#pragma warning(disable: 4100)
+#include <stdlib.h>
 
-__declspec(naked) ulong ntohl(ulong netLong)
+ulong ntohl(ulong netLong)
 {
-	_asm
-	{
-		mov     eax, [esp+4]
-		bswap   eax
-		ret
-	}
-} //lint !e533 !e715 // function should return a value, argument not referenced
+	return _byteswap_ulong(netLong);
+}
 
-__declspec(naked) ulong htonl(ulong hostLong)
+ulong htonl(ulong hostLong)
 {
-	_asm
-	{
-		mov     eax, [esp+4]
-		bswap   eax
-		ret
-	}
-} //lint !e533 !e715 // function should return a value, argument not referenced
+	return _byteswap_ulong(hostLong);
+}
 
-__declspec(naked) ushort ntohs(ushort netShort)
+ushort ntohs(ushort netShort)
 {
-	_asm
-	{
-		mov     eax, [esp+4]
-		bswap   eax
-		shr     eax, 16
-		ret
-	}
-} //lint !e533 !e715 // function should return a value, argument not referenced
+	return _byteswap_ushort(netShort);
+}
 
-__declspec(naked) ushort htons(ushort hostShort)
+ushort htons(ushort hostShort)
 {
-	_asm
-	{
-		mov     eax, [esp+4]
-		bswap   eax
-		shr     eax, 16
-		ret
-	}
-} //lint !e533 !e715 // function should return a value, argument not referenced
+	return _byteswap_ushort(hostShort);
+}
 
 // ======================================================================

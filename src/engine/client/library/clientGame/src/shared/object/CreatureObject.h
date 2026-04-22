@@ -595,7 +595,7 @@ private:
 	
 	void maxAttributesOnChanged   ();
 
-	void attributesOnSet          (const size_t elem, const Attributes::Value & oldValue, const Attributes::Value & newValue);
+	void attributesOnSet          (const unsigned int elem, const Attributes::Value & oldValue, const Attributes::Value & newValue);
 
 	void setAppearanceTransformModifiers ();
 

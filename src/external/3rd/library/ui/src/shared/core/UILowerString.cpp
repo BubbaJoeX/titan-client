@@ -8,7 +8,11 @@
 #include "_precompile.h"
 #include "UILowerString.h"
 
+#ifdef _WIN64
+#include <unordered_map>
+#else
 #include <hash_map>
+#endif
 #include <memory>
 #include <assert.h>
 

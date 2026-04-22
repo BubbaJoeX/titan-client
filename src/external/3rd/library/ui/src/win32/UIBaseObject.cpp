@@ -11,8 +11,16 @@
 
 #include <algorithm>
 #include <cassert>
+#ifdef _WIN64
+#include <unordered_map>
+#else
 #include <hash_map>
+#endif
+#ifdef _WIN64
+#include <unordered_set>
+#else
 #include <hash_set>
+#endif
 #include <list>
 #include <map>
 #include <set>

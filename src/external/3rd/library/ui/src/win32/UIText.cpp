@@ -379,7 +379,7 @@ void UIText::RemoveLeadingLines( int LinesToRemove )
 
 	if( mLines->linePointers.size() && ((int)mLines->linePointers.size() > (LinesToRemove - 2)) )
 	{
-		UIString LinesRemaining( mLines->linePointers[LinesToRemove] );
+		UIString LinesRemaining( mLines->linePointers[LinesToRemove], mRenderData.end() );
 
 		mLocalText = LinesRemaining;	
 		mLines->clear();
@@ -453,7 +453,7 @@ void UIText::AppendLocalText( const UIString &StringToAppend )
 				UIString::const_iterator		TextToRewrap;
 
 				TextToRewrap = mLines->linePointers[mLines->linePointers.size() - 2];
-				TextToLineWrap.append( TextToRewrap );
+				TextToLineWrap.append( TextToRewrap, mRenderData.end() );
 
 				mStyle->GetWrappedTextInfo( TextToLineWrap, mMaxLines, GetWidth(), ScrollExtentOfNewText, &NewLineBreaks, &NewLineWidths );
 

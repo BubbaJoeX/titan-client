@@ -22,7 +22,11 @@
 #include "sharedObject/Object.h"
 #include "sharedRandom/Random.h"
 
+#ifdef _WIN64
+#include <unordered_map>
+#else
 #include <hash_map>
+#endif
 #include <limits>
 #include <string>
 #include <vector>

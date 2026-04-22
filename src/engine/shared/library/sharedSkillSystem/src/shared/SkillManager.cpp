@@ -15,7 +15,11 @@
 #include "sharedDebug/InstallTimer.h"
 
 #include <algorithm>
+#ifdef _WIN64
+#include <unordered_map>
+#else
 #include <hash_map>
+#endif
 #include <string>
 
 SkillManager      *SkillManager::ms_instance = NULL;

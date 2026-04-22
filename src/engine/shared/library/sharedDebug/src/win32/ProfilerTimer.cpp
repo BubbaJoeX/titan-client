@@ -26,13 +26,11 @@ using namespace ProfilerTimerNamespace;
 
 // ======================================================================
 
-static __int64 __declspec(naked) __stdcall readTimeStampCounter()
+#include <intrin.h>
+
+static __int64 readTimeStampCounter()
 {
-    __asm
-		{
-        rdtsc;
-        ret;
-    }
+	return static_cast<__int64>(__rdtsc());
 }
 
 // ======================================================================

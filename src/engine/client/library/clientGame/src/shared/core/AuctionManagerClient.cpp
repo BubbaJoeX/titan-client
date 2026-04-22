@@ -507,7 +507,11 @@ ClientObject * AuctionManagerClient::getClientObjectForAuction (const NetworkId 
 			obj->endBaselines ();
 		}
 
+#ifdef _WIN64
+		s_objects[itemId] = obj;
+#else
 		s_objects.insert (std::make_pair (itemId, obj));
+#endif
 		return obj;
 	}
 

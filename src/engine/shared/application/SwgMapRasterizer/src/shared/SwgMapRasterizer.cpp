@@ -1614,23 +1614,29 @@ int SwgMapRasterizer::run(HINSTANCE hInstance, const char* commandLine)
 		config.imageSize = adjusted;
 	}
 
-	// CPU colormap + AA uses a 2x internal buffer; 8K output => 16K internal, which is too large
-	// for a 32-bit process (height map alone ~1GB).
+	// CPU colormap + AA uses a 2x internal buffer; 8K output => 16K internal.
+	// On 32-bit the height map alone would be ~1GB; on 64-bit this is fine.
+#ifndef _WIN64
 	if (config.useColormapMode && config.antiAlias && config.imageSize >= 8192)
 	{
 		printf("NOTE: CPU colormap anti-aliasing is disabled for image size %d (>= 8192). Use -noaa to silence this.\n",
 			config.imageSize);
 		config.antiAlias = false;
 	}
+#endif
 
-	// Additional memory guard for 32-bit: estimate core internal buffers
-	// (color RGB + height float + easing temp RGB) and disable AA when too large.
+	// Memory guard: estimate core internal buffers (color RGB + height float + easing temp RGB).
+	// On 32-bit limit to ~1.2 GB; on 64-bit allow up to ~24 GB before auto-disabling AA.
 	if (config.useColormapMode && config.antiAlias)
 	{
 		const unsigned long long internal = static_cast<unsigned long long>(config.imageSize) * 2ull;
 		const unsigned long long pixels = internal * internal;
 		const unsigned long long estimatedBytes = pixels * 10ull; // 3 + 4 + 3
-		const unsigned long long maxSafeBytes = 1200ull * 1024ull * 1024ull; // ~1.2 GB working set
+#ifdef _WIN64
+		const unsigned long long maxSafeBytes = 24ull * 1024ull * 1024ull * 1024ull;
+#else
+		const unsigned long long maxSafeBytes = 1200ull * 1024ull * 1024ull;
+#endif
 		if (estimatedBytes > maxSafeBytes)
 		{
 			printf("NOTE: CPU colormap anti-aliasing auto-disabled for memory headroom (estimated %.2f GB internal buffers).\n",
@@ -2107,8 +2113,8 @@ bool SwgMapRasterizer::renderTerrainColormap(const Config& config, const char* t
 							const float height =
 								buffer->heightMap.getData(srcX, srcZ);
 
-							const int pixelIndex = imgY * internalSize + imgX;
-							const int colorOffset = pixelIndex * 3;
+							const size_t pixelIndex = static_cast<size_t>(imgY) * internalSize + imgX;
+							const size_t colorOffset = pixelIndex * 3;
 
 							colorPixels[colorOffset + 0] = color.r;
 							colorPixels[colorOffset + 1] = color.g;
@@ -2718,7 +2724,7 @@ bool SwgMapRasterizer::saveTGA(const uint8* pixels, int width, int height, int c
 	{
 		for (int x = 0; x < width; ++x)
 		{
-			const int srcOffset = (y * width + x) * channels;
+			const size_t srcOffset = (static_cast<size_t>(y) * width + x) * channels;
 			uint8 bgr[4];
 
 			if (channels >= 3)
@@ -2766,17 +2772,18 @@ void SwgMapRasterizer::downsample2xRGB(
 	{
 		for (int x = 0; x < outWidth; ++x)
 		{
-			const int sx = 2 * x;
-			const int sy = 2 * y;
-			const int i00 = (sy     * srcWidth + sx) * 3;
-			const int i10 = (sy     * srcWidth + sx + 1) * 3;
-			const int i01 = ((sy+1) * srcWidth + sx) * 3;
-			const int i11 = ((sy+1) * srcWidth + sx + 1) * 3;
+			const size_t sx = static_cast<size_t>(2 * x);
+			const size_t sy = static_cast<size_t>(2 * y);
+			const size_t sw = static_cast<size_t>(srcWidth);
+			const size_t i00 = (sy       * sw + sx)     * 3;
+			const size_t i10 = (sy       * sw + sx + 1) * 3;
+			const size_t i01 = ((sy + 1) * sw + sx)     * 3;
+			const size_t i11 = ((sy + 1) * sw + sx + 1) * 3;
 
 			for (int c = 0; c < 3; ++c)
 			{
 				unsigned sum = src[i00 + c] + src[i10 + c] + src[i01 + c] + src[i11 + c];
-				out[(y * outWidth + x) * 3 + c] = static_cast<uint8>((sum + 2) / 4);
+				out[(static_cast<size_t>(y) * outWidth + x) * 3 + c] = static_cast<uint8>((sum + 2) / 4);
 			}
 		}
 	}
@@ -2811,16 +2818,17 @@ void SwgMapRasterizer::applyHillshading(
 	const float ambient  = 0.52f;
 	const float diffuse  = 0.48f;
 
+	const size_t w = static_cast<size_t>(width);
 	for (int y = 1; y < height - 1; ++y)
 	{
 		for (int x = 1; x < width - 1; ++x)
 		{
-			// Calculate surface normal using central differences
-			const float hC = heightMap[y * width + x];
-			const float hL = heightMap[y * width + (x - 1)];
-			const float hR = heightMap[y * width + (x + 1)];
-			const float hD = heightMap[(y + 1) * width + x]; // down in image = south
-			const float hU = heightMap[(y - 1) * width + x]; // up in image = north
+			const size_t idx = static_cast<size_t>(y) * w + x;
+			const float hC = heightMap[idx];
+			const float hL = heightMap[idx - 1];
+			const float hR = heightMap[idx + 1];
+			const float hD = heightMap[idx + w]; // down in image = south
+			const float hU = heightMap[idx - w]; // up in image = north
 
 			// Surface normal: cross product of tangent vectors
 			// dX = (2*metersPerPixel, 0, hR - hL)
@@ -2863,8 +2871,7 @@ void SwgMapRasterizer::applyHillshading(
 
 			lighting = std::max(0.0f, std::min(1.45f, lighting));
 
-			// Apply to color pixels
-			const int offset = (y * width + x) * 3;
+			const size_t offset = idx * 3;
 			for (int c = 0; c < 3; ++c)
 			{
 				float val = colorPixels[offset + c] * lighting;

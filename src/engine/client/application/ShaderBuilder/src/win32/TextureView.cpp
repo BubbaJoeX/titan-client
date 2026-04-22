@@ -94,7 +94,7 @@ void CTextureView::Dump(CDumpContext& dc) const
 
 static void stop()
 {
-	__asm int 3;
+	__debugbreak();
 }
 
 #define SET(a) \

@@ -67,6 +67,16 @@ namespace DPVS
 									// we need to include this (not all compilers have size_t as built-in)
 
 //------------------------------------------------------------------------
+// MatrixCache::Entry is 64 bytes on 32-bit (48 + 4 + 4 + 8 padding) but larger on 64-bit
+// because ImpObject* is 8 bytes. Scratchpad layout must match.
+//------------------------------------------------------------------------
+#if defined(_WIN64) || defined(__x86_64__) || defined(__amd64__)
+#define DPVS_MATRIX_CACHE_ENTRY_BYTES 72
+#else
+#define DPVS_MATRIX_CACHE_ENTRY_BYTES 64
+#endif
+
+//------------------------------------------------------------------------
 // Begin the DPVS namespace
 //------------------------------------------------------------------------
 
@@ -127,8 +137,12 @@ namespace DPVS
 #endif
 
 #if defined (DPVS_OS_WIN32)
-#	define DPVS_CPU_X86										// x86 series CPU
 #	define DPVS_LITTLE_ENDIAN								// x86 processors are little-endian
+#	if defined(_M_X64) || defined(_M_AMD64) || defined(_WIN64)
+// Win64: do not set DPVS_CPU_X86 (disables 32-bit inline asm); portable fallbacks are used instead.
+#	else
+#	define DPVS_CPU_X86										// x86 series CPU
+#	endif
 #elif defined (DPVS_OS_MAC)									// Apple Macintosh
 #	define DPVS_CPU_PPC
 #	define DPVS_CPU_NAME		"PowerPC"
@@ -172,6 +186,10 @@ namespace DPVS
 
 #if defined (DPVS_CPU_X86)	&& !defined (DPVS_CPU_NAME)								
 #	define DPVS_CPU_NAME "X86"
+#endif
+
+#if !defined (DPVS_CPU_NAME) && (defined(_M_X64) || defined(_M_AMD64) || defined(_WIN64))
+#	define DPVS_CPU_NAME "AMD64"
 #endif
 
 #if !defined (DPVS_CPU_NAME)
@@ -429,7 +447,11 @@ namespace DPVS
 typedef unsigned char			UINT8;					// 8-bit unsigned integer
 typedef short int				INT16;                  // 16-bit signed integer
 typedef unsigned short int		UINT16;                 // 16-bit unsigned integer
+#if defined(_WIN64)
+typedef unsigned __int64		UPTR;					// unsigned integer large enough to hold a void*
+#else
 typedef unsigned int			UPTR;					// unsigned integer large enough to hold a void*
+#endif
 
 //------------------------------------------------------------------------
 // Make sure that certain typedefs really do have the intended sizes
@@ -597,7 +619,7 @@ DPVS_FORCE_INLINE const void* getInvalidPointer (void)
 
 DPVS_FORCE_INLINE UINT32 changeEndian(UINT32& a)
 {
-#if defined(DPVS_X86_ASSEMBLY)
+#if defined(DPVS_X86_ASSEMBLY) && !defined(_M_X64) && !defined(_M_AMD64) && !defined(_WIN64)
 	DPVS_ASM
 	{
 		mov		eax,a

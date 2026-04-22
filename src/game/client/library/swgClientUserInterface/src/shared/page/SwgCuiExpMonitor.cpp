@@ -28,7 +28,11 @@
 #include "UIString.h"
 #include "UIText.h"
 
+#ifdef _WIN64
+#include <unordered_map>
+#else
 #include <hash_map>
+#endif
 #include <map>
 #include <vector>
 

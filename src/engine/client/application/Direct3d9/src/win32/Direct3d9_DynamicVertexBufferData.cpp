@@ -259,7 +259,7 @@ int Direct3d9_DynamicVertexBufferData::getNumberOfLockableDynamicVertices(bool w
 
 int Direct3d9_DynamicVertexBufferData::getSortKey()
 {
-	return reinterpret_cast<int>(ms_d3dVertexBuffer);
+	return static_cast<int>(reinterpret_cast<intptr_t>(ms_d3dVertexBuffer));
 }
 
 // ----------------------------------------------------------------------

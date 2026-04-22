@@ -37,7 +37,11 @@
 #include "swgClientUserInterface/SwgCuiSpaceRadarSpherical.h"
 #include "swgClientUserInterface/SwgCuiSpaceRadarSpherical2.h"
 
+#ifdef _WIN64
+#include <unordered_map>
+#else
 #include <hash_map>
+#endif
 #include <list>
 
 //======================================================================

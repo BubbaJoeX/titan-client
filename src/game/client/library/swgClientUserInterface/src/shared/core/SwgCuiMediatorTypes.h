@@ -125,6 +125,7 @@ namespace CuiMediatorTypes
 
 	// City Terrain Painter
 	MAKE_MEDIATOR_TYPE (WS_CityTerrainPainter);
+	MAKE_MEDIATOR_TYPE (WS_ZoneAbilityTray);
 	MAKE_MEDIATOR_TYPE (WS_Terraforming);
 
 	//space

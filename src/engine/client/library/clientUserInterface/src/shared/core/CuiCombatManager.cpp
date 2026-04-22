@@ -1908,7 +1908,11 @@ void CuiCombatManager::processCombatSpam (const MessageQueueCombatSpam & spamMsg
 
 void CuiCombatManager::fillSpamOrder(short spamOrder[], Unicode::String spamTemplate)
 {
+#ifdef _WIN64
+	size_t pos = 0;
+#else
 	unsigned int pos = 0;
+#endif
 	Unicode::NarrowString token;
 	Unicode::NarrowString narrowTemplate = Unicode::wideToNarrow(spamTemplate);
 	for (int i = 0; pos != narrowTemplate.npos; i++)

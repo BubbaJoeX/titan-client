@@ -286,7 +286,7 @@ int StaticShader::getTextureSortKey() const
 
 int StaticShader::getShaderTemplateSortKey() const
 {
-	return reinterpret_cast<int>(&getStaticShaderTemplate());
+	return static_cast<int>(reinterpret_cast<intptr_t>(&getStaticShaderTemplate()));
 }
 
 // ----------------------------------------------------------------------

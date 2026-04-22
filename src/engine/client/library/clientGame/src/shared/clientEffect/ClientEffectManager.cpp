@@ -9,6 +9,10 @@
 #include "clientGame/FirstClientGame.h"
 #include "clientGame/ClientEffectManager.h"
 
+#ifdef _WIN64
+#define _STL std
+#endif
+
 #include "clientGame/CellObject.h"
 #include "clientGame/ClientCommandQueue.h"
 #include "clientGame/ClientEffect.h"

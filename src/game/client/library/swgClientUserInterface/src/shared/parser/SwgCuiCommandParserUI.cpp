@@ -71,7 +71,11 @@
 #include "LocalizationManager.h"
 
 #include <cstdio>
+#ifdef _WIN64
+#include <unordered_map>
+#else
 #include <hash_map>
+#endif
 #include <list>
 #include <map>
 #include <set>

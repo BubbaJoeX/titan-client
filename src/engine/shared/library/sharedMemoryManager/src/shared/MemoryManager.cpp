@@ -402,7 +402,7 @@ inline Block const * Block::getNext() const
 
 inline void Block::setNext(Block *next)
 {
-	DEBUG_FATAL(next && reinterpret_cast<int>(next) - reinterpret_cast<int>(this) < cms_blockSize, ("too small"));
+	DEBUG_FATAL(next && reinterpret_cast<intptr_t>(next) - reinterpret_cast<intptr_t>(this) < cms_blockSize, ("too small"));
 	m_next = next;
 }
 
@@ -1326,7 +1326,7 @@ void * MemoryManager::allocate(size_t size, uint32 owner, bool array, bool leakT
 
 	ms_criticalSection->leave();
 
-	DEBUG_REPORT_LOG_PRINT(ms_debugReportLogMemoryAllocFreePointers, ("MM::alloc %08x\n", reinterpret_cast<int>(memory)));
+	DEBUG_REPORT_LOG_PRINT(ms_debugReportLogMemoryAllocFreePointers, ("MM::alloc %p\n", memory));
 
 #ifdef _DEBUG
 	if (ms_debugProfileAllocate)
@@ -1423,7 +1423,7 @@ void MemoryManager::free(void * userPointer, bool array)
 		verify(ms_debugVerifyGuardPatterns, ms_debugVerifyFreePatterns);
 #endif
 
-	DEBUG_REPORT_LOG_PRINT(ms_debugReportLogMemoryAllocFreePointers, ("MM::free %08x\n", reinterpret_cast<int>(userPointer)));
+	DEBUG_REPORT_LOG_PRINT(ms_debugReportLogMemoryAllocFreePointers, ("MM::free %p\n", userPointer));
 
 	UNREF(array);
 
@@ -1673,7 +1673,7 @@ void MemoryManager::verify(bool guardPatterns, bool freePatterns)
 							if (*memory != cms_freeFillPattern)
 							{
 								corrupt = true;
-								DEBUG_REPORT_LOG_PRINT(true, ("corrupted free pattern at position %3d [membase=0x%x, memaddr=0x%x] = %02x\n", i, reinterpret_cast<unsigned int>(reinterpret_cast<byte *>(block) + cms_freeBlockSize), reinterpret_cast<unsigned int>(reinterpret_cast<byte *>(block) + cms_freeBlockSize + i), static_cast<int>(*memory)));
+								DEBUG_REPORT_LOG_PRINT(true, ("corrupted free pattern at position %3d [membase=%p, memaddr=%p] = %02x\n", i, reinterpret_cast<void *>(reinterpret_cast<byte *>(block) + cms_freeBlockSize), reinterpret_cast<void *>(reinterpret_cast<byte *>(block) + cms_freeBlockSize + i), static_cast<int>(*memory)));
 								DEBUG_OUTPUT_CHANNEL("Foundation\\MemoryManager", ("corrupted free pattern at position %3d = %02x\n", i, static_cast<int>(*memory)));
 							}
 
@@ -1750,11 +1750,11 @@ void MemoryManagerNamespace::report(AllocatedBlock const * block, bool leak)
 	char      libName[256];
 	char      fileName[256];
 	int       line = 0;
-	int const memory = reinterpret_cast<int>(reinterpret_cast<byte const *>(block) + cms_allocatedBlockSize + cms_guardBandSize);
+	const void * const memory = reinterpret_cast<byte const *>(block) + cms_allocatedBlockSize + cms_guardBandSize;
 
 	if (ms_allowNameLookup && DebugHelp::lookupAddress(owner, libName, fileName, sizeof(fileName), line))
 	{
-		sprintf(buffer, "%s(%d) : %08X memory %s, %d bytes\n", fileName, line, memory, leak ? "leak" : "allocation", static_cast<int>(requestedSize));
+		sprintf(buffer, "%s(%d) : %p memory %s, %d bytes\n", fileName, line, memory, leak ? "leak" : "allocation", static_cast<int>(requestedSize));
 	}
 	else
 	{

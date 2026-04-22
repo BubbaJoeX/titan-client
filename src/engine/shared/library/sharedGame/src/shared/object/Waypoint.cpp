@@ -19,7 +19,11 @@
 #include "sharedMessageDispatch/Transceiver.h"
 #include "unicodeArchive/UnicodeArchive.h"
 #include "UnicodeUtils.h"
+#ifdef _WIN64
+#include <unordered_map>
+#else
 #include <hash_map>
+#endif
 
 // ======================================================================
 

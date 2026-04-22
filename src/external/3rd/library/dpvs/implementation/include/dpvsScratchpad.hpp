@@ -56,8 +56,8 @@ public:
 	enum Address
 	{
 		BASE				  = 0,
-		MATRIX_CACHE          = 0,								// 4096 bytes
-		OCCLUSIONBUFFER_CACHE = MATRIX_CACHE + 64*64,			// 768 bytes		
+		MATRIX_CACHE          = 0,								// 64 * DPVS_MATRIX_CACHE_ENTRY_BYTES
+		OCCLUSIONBUFFER_CACHE = MATRIX_CACHE + 64*DPVS_MATRIX_CACHE_ENTRY_BYTES,			// 768 bytes		
 		VQDATA				  = OCCLUSIONBUFFER_CACHE + 768,	// 384 bytes
 		BLOCKBUFFERS          = VQDATA + 384,					// 1024*3+96 bytes
 		WRITEQUEUE_BUCKETS	  = BLOCKBUFFERS + 1024*3+96,		// 2560 bytes

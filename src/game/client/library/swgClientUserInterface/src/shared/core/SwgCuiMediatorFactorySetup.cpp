@@ -54,6 +54,8 @@
 #include "swgClientUserInterface/SwgCuiCinematicConversation.h"
 #include "swgClientUserInterface/SwgCuiCityTerrainPainter.h"
 #include "swgClientUserInterface/SwgCuiTerraforming.h"
+#include "swgClientUserInterface/SwgCuiZoneAbilityTray.h"
+#include "clientGame/ZoneAbilityTrayManager.h"
 #include "swgClientUserInterface/SwgCuiClusterSelection.h"
 #include "swgClientUserInterface/SwgCuiCollections.h"
 #include "swgClientUserInterface/SwgCuiCommandBrowser.h"
@@ -323,6 +325,8 @@ void SwgCuiMediatorFactorySetup::install ()
 
 	//register the mediators for ui minigames
 	CuiMinigameManager::registerMediatorForGame(SwgCuiMahjong::cms_gameName, CuiMediatorTypes::WS_Mahjong);
+
+	SwgCuiZoneAbilityTray::installCallbacks();
 
 	s_installed = true;
 }

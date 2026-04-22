@@ -12,6 +12,7 @@
 #include "LocalizedString.h"
 #include "UnicodeUtils.h"
 
+#include <algorithm>
 #include <cstdio>
 #include <cassert>
 

@@ -10,8 +10,8 @@
 #include <math.h>
 #include <malloc.h>
 
+#include <winsock2.h>
 #include <windows.h>
-#include <winsock.h>
 #ifdef _DEBUG
 	#include <crtdbg.h>
 #endif

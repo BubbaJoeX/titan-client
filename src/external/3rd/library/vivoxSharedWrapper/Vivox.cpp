@@ -1,3 +1,156 @@
+#if defined(SWG_NO_VIVOX)
+////////////////////////////////////////////////////////////////////////////////
+// Vivox SDK disabled at build time (SWG_NO_VIVOX). No vivoxsdk.dll / voice service.
+////////////////////////////////////////////////////////////////////////////////
+
+#include "Vivox.h"
+
+#include <windows.h>
+#include <stdio.h>
+#include <string>
+
+HMODULE shVivoxDll = 0;
+
+#define DECLARE_FN( ret, name, parms ) name##_type name = 0
+DECLARE_FN(void,destroy_resp,(vx_resp_base_t *pCmd));
+DECLARE_FN(void,destroy_evt,(vx_evt_base_t *pCmd));
+DECLARE_FN(int,vx_get_message,(vx_message_base_t** message));
+DECLARE_FN(int,vx_issue_request,(vx_req_base_t* request));
+DECLARE_FN(char*,vx_strdup,(const char*));
+DECLARE_FN(void,vx_req_connector_initiate_shutdown_create,(vx_req_connector_initiate_shutdown_t ** req));
+DECLARE_FN(void,vx_req_account_logout_create,(vx_req_account_logout_t ** req));
+DECLARE_FN(void,vx_req_connector_create_create,(vx_req_connector_create_t ** req));
+DECLARE_FN(void,vx_req_account_login_create,(vx_req_account_login_t ** req));
+DECLARE_FN(void,vx_req_account_channel_add_moderator_create,(vx_req_account_channel_add_moderator ** req));
+DECLARE_FN(void,vx_req_account_channel_remove_moderator_create,(vx_req_account_channel_remove_moderator ** req));
+DECLARE_FN(void,vx_req_channel_ban_user_create,(vx_req_channel_ban_user ** req));
+DECLARE_FN(void,vx_req_channel_kick_user_create,(vx_req_channel_kick_user ** req));
+DECLARE_FN(void,vx_req_channel_mute_user_create,(vx_req_channel_mute_user ** req));
+DECLARE_FN(void,vx_req_channel_mute_all_users_create,(vx_req_channel_mute_all_users ** req));
+DECLARE_FN(void,vx_req_account_channel_update_create,(vx_req_account_channel_update ** req));
+DECLARE_FN(void,vx_req_account_channel_get_moderators_create,(vx_req_account_channel_get_moderators ** req));
+DECLARE_FN(void,vx_req_sessiongroup_create_create,(vx_req_sessiongroup_create_t ** req));
+DECLARE_FN(void,vx_req_sessiongroup_add_session_create,(vx_req_sessiongroup_add_session_t ** req));
+DECLARE_FN(void,vx_req_sessiongroup_remove_session_create,(vx_req_sessiongroup_remove_session_t ** req));
+DECLARE_FN(void,vx_req_sessiongroup_terminate_create,(vx_req_sessiongroup_terminate_t ** req));
+DECLARE_FN(void,vx_req_session_create_create,(vx_req_session_create_t ** req));
+DECLARE_FN(void,vx_req_session_terminate_create,(vx_req_session_terminate_t ** req));
+DECLARE_FN(void,vx_req_session_media_disconnect_create,(vx_req_session_media_disconnect ** req));
+DECLARE_FN(void,vx_req_session_send_message_create,(vx_req_session_send_message ** req));
+DECLARE_FN(void,vx_req_connector_mute_local_mic_create,(vx_req_connector_mute_local_mic ** req));
+DECLARE_FN(void,vx_req_connector_mute_local_speaker_create,(vx_req_connector_mute_local_speaker ** req));
+DECLARE_FN(void,vx_req_connector_set_local_mic_volume_create,(vx_req_connector_set_local_mic_volume ** req));
+DECLARE_FN(void,vx_req_connector_set_local_speaker_volume_create,(vx_req_connector_set_local_speaker_volume ** req));
+DECLARE_FN(void,vx_req_session_set_participant_mute_for_me_create,(vx_req_session_set_participant_mute_for_me ** req));
+DECLARE_FN(void,vx_req_session_set_participant_volume_for_me_create,(vx_req_session_set_participant_volume_for_me ** req));
+DECLARE_FN(void,vx_req_aux_get_render_devices_create,(vx_req_aux_get_render_devices ** req));
+DECLARE_FN(void,vx_req_aux_set_render_device_create,(vx_req_aux_set_render_device ** req));
+DECLARE_FN(void,vx_req_aux_get_capture_devices_create,(vx_req_aux_get_capture_devices ** req));
+DECLARE_FN(void,vx_req_aux_set_capture_device_create,(vx_req_aux_set_capture_device ** req));
+DECLARE_FN(void,vx_req_aux_start_buffer_capture_create,(vx_req_aux_start_buffer_capture ** req));
+DECLARE_FN(void,vx_req_aux_play_audio_buffer_create,(vx_req_aux_play_audio_buffer ** req));
+DECLARE_FN(void,vx_req_aux_render_audio_stop_create,(vx_req_aux_render_audio_stop ** req));
+DECLARE_FN(void,vx_req_session_set_3d_position_create,(vx_req_session_set_3d_position ** req));
+DECLARE_FN(void,vx_req_sessiongroup_set_tx_session_create,(vx_req_sessiongroup_set_tx_session ** req));
+DECLARE_FN(void,vx_req_aux_global_monitor_keyboard_mouse_create,(vx_req_aux_global_monitor_keyboard_mouse_t ** req));
+DECLARE_FN(void,vx_req_session_mute_local_speaker_create,(vx_req_session_mute_local_speaker ** req));
+DECLARE_FN(void,vx_req_session_set_local_speaker_volume_create,(vx_req_session_set_local_speaker_volume ** req));
+DECLARE_FN(void,vx_req_session_send_notification_create,(vx_req_session_send_notification ** req));
+DECLARE_FN(void,vx_req_aux_capture_audio_start_create,(vx_req_aux_capture_audio_start ** req));
+DECLARE_FN(void,vx_req_aux_capture_audio_stop_create,(vx_req_aux_capture_audio_stop ** req));
+DECLARE_FN(void,vx_req_aux_set_mic_level_create,(vx_req_aux_set_mic_level ** req));
+DECLARE_FN(void,vx_req_aux_set_speaker_level_create,(vx_req_aux_set_speaker_level ** req));
+DECLARE_FN(void,vx_on_application_exit,());
+#if VIVOX_VERSION >= 3
+DECLARE_FN(void,vx_req_aux_diagnostic_state_dump_create,(vx_req_aux_diagnostic_state_dump ** req));
+DECLARE_FN(int, vx_alloc_sdk_handle,(const char *address, unsigned short port, VX_SDK_HANDLE *handle));
+DECLARE_FN(int, vx_free_sdk_handle,(VX_SDK_HANDLE sdkHandle));
+#endif
+#undef DECLARE_FN
+
+void
+sUnloadVivoxDLL()
+{
+}
+
+bool
+sStartService( const char* /*sExe*/, const char* /*sIP*/, int /*log_level*/ )
+{
+	return false;
+}
+
+bool
+sLoadVivoxDLL( void (*)( void ), void (*)( const char*, int, const char*, ... ) )
+{
+	return false;
+}
+
+bool
+sGetKeyState( int iKeyCode )
+{
+	if ( ( iKeyCode == VK_LBUTTON || iKeyCode == VK_RBUTTON ) && GetSystemMetrics( SM_SWAPBUTTON ) == TRUE )
+	{
+		if ( iKeyCode == VK_LBUTTON )
+			iKeyCode = VK_RBUTTON;
+		else
+			iKeyCode = VK_LBUTTON;
+	}
+
+	const bool kbNumeric = ( iKeyCode >= VK_NUMPAD0 && iKeyCode <= VK_NUMPAD9 );
+	if ( kbNumeric )
+	{
+		SHORT s = GetKeyState( VK_NUMLOCK );
+		if ( ( s & 0x0001 ) == 0 )
+		{
+			s = GetKeyState( iKeyCode );
+			if ( ( s & 0x8000 ) != 0 )
+			{
+				BYTE keys[ 256 ];
+				if ( GetKeyboardState( keys ) == TRUE )
+				{
+					keys[ iKeyCode ] = 0;
+					SetKeyboardState( keys );
+				}
+			}
+			return false;
+		}
+	}
+
+	SHORT s = kbNumeric ? GetKeyState( iKeyCode ) : GetAsyncKeyState( iKeyCode );
+	bool b = ( s & 0x8000 ) != 0;
+
+	if ( !b )
+	{
+		if ( iKeyCode == VK_CONTROL )
+			b = ( ( GetAsyncKeyState( VK_LCONTROL ) | GetAsyncKeyState( VK_RCONTROL ) ) & 0x8000 ) != 0;
+		else if ( iKeyCode == VK_MENU )
+			b = ( ( GetAsyncKeyState( VK_LMENU    ) | GetAsyncKeyState( VK_RMENU    ) ) & 0x8000 ) != 0;
+		else if ( iKeyCode == VK_SHIFT )
+			b = ( ( GetAsyncKeyState( VK_LSHIFT   ) | GetAsyncKeyState( VK_RSHIFT   ) ) & 0x8000 ) != 0;
+	}
+
+	return b;
+}
+
+VivoxCheckMic
+sCheckMic( const std::string& /*sDevice*/, bool /*bFix*/ )
+{
+	return VCM_OK;
+}
+
+bool
+sGrabVivoxSystemMutex()
+{
+	return true;
+}
+
+bool
+sReleaseVivoxSystemMutex()
+{
+	return true;
+}
+
+#else
 ////////////////////////////////////////////////////////////////////////////////
 //Vivox.cpp
 //
@@ -787,3 +940,5 @@ sReleaseVivoxSystemMutex()
 #endif
 }
 
+
+#endif

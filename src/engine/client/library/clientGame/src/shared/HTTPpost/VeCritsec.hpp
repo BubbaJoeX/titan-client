@@ -39,6 +39,10 @@ public:
             return( true );
         }
 
+#ifdef _WIN64
+        if (_interlockedbittestandset((volatile long *)&m_iLock, 0))
+            return( false );
+#else
         volatile unsigned int* p_i_lock = &m_iLock;
         __asm 
         {
@@ -49,6 +53,7 @@ public:
         return( false );
         
         Locked:
+#endif
         m_uThreadID = uCallingThread;
         m_uLockCount = 1;
         return( true );    

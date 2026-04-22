@@ -39,7 +39,7 @@ inline InterlockedVoidPointer::InterlockedVoidPointer(void * initialValue)
 
 inline void * InterlockedVoidPointer::compareExchange(void * compare, void * exchange)
 {
-	return (void *)InterlockedCompareExchange((void **)&value, exchange, compare);
+	return InterlockedCompareExchangePointer((PVOID volatile *)&value, exchange, compare);
 }
 
 #endif

@@ -1126,7 +1126,11 @@ bool CuiObjectTextManager::canSee(const Vector & sourcePos, const CellProperty *
 		const Vector & curHeadPoint = computeCurHeadPoint_o(targetObject);
 		const float curTime         = Game::getElapsedTime ();
 		
+#ifdef _WIN64
+		const std::pair<HeadMap::iterator, bool> retval = s_headMap.insert(HeadMap::value_type(CachedNetworkId(targetObject.getNetworkId()), HeadFramePair(curHeadPoint, curTime)));
+#else
 		const std::pair<HeadMap::iterator, bool> retval = s_headMap.insert (std::make_pair (targetObject.getNetworkId (), HeadFramePair (curHeadPoint, curTime)));
+#endif
 		it = retval.first;
 	}
 	

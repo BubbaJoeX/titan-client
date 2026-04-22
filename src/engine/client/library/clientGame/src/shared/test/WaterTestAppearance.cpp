@@ -94,7 +94,7 @@ float WaterTestAppearance::LocalShaderPrimitive::getDepthSquaredSortKey () const
 
 int WaterTestAppearance::LocalShaderPrimitive::getVertexBufferSortKey () const
 {
-	return reinterpret_cast<int> (&m_appearance.getVertexBuffer ());
+	return static_cast<int>(reinterpret_cast<intptr_t>(&m_appearance.getVertexBuffer()));
 }
 
 // ----------------------------------------------------------------------
