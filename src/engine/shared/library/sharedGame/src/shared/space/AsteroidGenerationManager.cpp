@@ -163,8 +163,8 @@ void AsteroidGenerationManager::loadStaticFieldDataForScene(std::string const & 
 				newData.scaleMax = table->getFloatValue("ScaleMax", i);
 				newData.rotationMin = table->getFloatValue("RotationMin", i);
 				newData.rotationMax = table->getFloatValue("RotationMax", i);
-				std::string const & fieldStyleTableName = table->getStringValue("FieldStyleTable", i);
-				std::string const & radialStyleTableName = table->getStringValue("RadialStyleTable", i);
+				std::string const fieldStyleTableName(table->getStringValue("FieldStyleTable", i));
+				std::string const radialStyleTableName(table->getStringValue("RadialStyleTable", i));
 				newData.radialCount = table->getIntValue("NumRadialAsteroids", i);
 				newData.radialLikelihoodSum = 0;
 				newData.maxViewableDistance = table->getFloatValue("MaxViewableDistance", i);

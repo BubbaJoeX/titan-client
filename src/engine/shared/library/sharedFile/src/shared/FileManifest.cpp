@@ -13,6 +13,7 @@
 #include "sharedFoundation/ConfigFile.h"
 #include "sharedFoundation/Crc.h"
 #include "sharedFoundation/ExitChain.h"
+#include "sharedFoundation/Fatal.h"
 #include "fileInterface/StdioFile.h"
 #include "sharedFile/FileNameUtils.h"
 
@@ -281,7 +282,7 @@ void FileManifest::addNewManifestEntry(const char *fileName, int fileSize)
 		// delete the new entry we created
 		delete entry;
 	}
-	delete entry;
+	// else: map owns entry — do not delete (was incorrectly deleted here, leaving dangling pointers in s_manifest).
 #else
 	return;
 #endif
@@ -291,16 +292,29 @@ void FileManifest::addNewManifestEntry(const char *fileName, int fileSize)
 
 void FileManifest::addStoredManifestEntry(const char *fileName, const char * sceneId, int fileSize)
 {
+	if (!fileName || !fileName[0])
+		return;
+
 	const uint32 crc = Crc::calculate(fileName);
 	FileManifestEntry * entry = new FileManifestEntry();
 	entry->name     = fileName;
-	entry->scene    = sceneId;
+	entry->scene    = sceneId ? sceneId : "";
 	entry->size     = fileSize;
 	entry->accesses = 0;
 
 	std::pair<ManifestMap::iterator, bool> insertReturn = s_manifest.insert(std::pair<const uint32, FileManifestEntry*>(crc, entry));
 
-	delete entry;
+	if (!insertReturn.second)
+	{
+		FileManifestEntry *const existing = insertReturn.first->second;
+		NOT_NULL (existing);
+		if (fileSize)
+			existing->size = fileSize;
+		if (sceneId)
+			existing->scene = sceneId;
+		delete entry;
+	}
+	// else: map owns entry — do not delete (unconditional delete here caused UAF on every row after skufree.iff load).
 }
 
 // -----------------------------------------------------------------------

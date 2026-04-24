@@ -14,6 +14,8 @@
 
 #include "sharedFoundation/Production.h"
 
+#include <cstring>
+
 // ======================================================================
 
 int WINAPI WinMain(
@@ -33,8 +35,12 @@ int WINAPI WinMain(
 
 	const int result = SwgMapRasterizer::run(hInstance, lpCmdLine);
 
-	printf("\nPress any key to exit...\n");
-	getchar();
+	// CTest and batch scripts: pass -noPause to skip blocking on stdin.
+	if (!lpCmdLine || !strstr(lpCmdLine, "-noPause"))
+	{
+		printf("\nPress any key to exit...\n");
+		getchar();
+	}
 
 	FreeConsole();
 	return result;

@@ -133,7 +133,7 @@ namespace ShipHitEffectsManagerClientNamespace
 				for (int type = 0; type < HE_numTypes; ++type)
 				{
 					int const tableCol = type + 1;
-					std::string const & cefName = dt->getStringValue(tableCol, row);
+					std::string const cefName(dt->getStringValue(tableCol, row));
 					
 					if (cefName.empty())
 					{
@@ -175,13 +175,13 @@ namespace ShipHitEffectsManagerClientNamespace
 			{
 				SoundGroup sg;
 
-				std::string const & chassisSoundName = dt->getStringValue(0, row);
+				std::string const chassisSoundName(dt->getStringValue(0, row));
 
 				for (int type = 0; type < ShipHitEffectsManager::HT_numTypes; ++type)
 				{
 					int const tableCol = type + 1;
 
-					std::string const & sndName = dt->getStringValue(tableCol, row);
+					std::string const sndName(dt->getStringValue(tableCol, row));
 
 					if (sndName.empty())
 					{

@@ -317,7 +317,7 @@ m_entriesRequested         (false)
 		int const numRows = table->getNumRows ();
 		for (int i = 0; i < numRows; ++i)
 		{
-			std::string const & areaName = table->getStringValue("Zone", i);
+			std::string const areaName(table->getStringValue("Zone", i));
 
 			bool unused = table->getIntValue("unused", i);
 

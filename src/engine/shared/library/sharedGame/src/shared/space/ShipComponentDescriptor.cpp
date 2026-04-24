@@ -102,12 +102,12 @@ void ShipComponentDescriptor::load()
 	
 	for (int row = 0; row < numRows; ++row)
 	{
-		std::string const & name             = dt.getStringValue (s_colnameName, row);
+		std::string const name(dt.getStringValue(s_colnameName, row));
 		ShipComponentType::Type const type   = ShipComponentType::getTypeFromName (dt.getStringValue (s_colnameShipComponentType, row));
-		std::string const & compatibility    = dt.getStringValue (s_colnameCompatibility, row);
-		std::string const & serverObjectTemplateName = dt.getStringValue (s_colnameObjectTemplate, row);
+		std::string const compatibility(dt.getStringValue(s_colnameCompatibility, row));
+		std::string const serverObjectTemplateName(dt.getStringValue(s_colnameObjectTemplate, row));
 		uint32 const serverObjectTemplateCrc = Crc::normalizeAndCalculate (serverObjectTemplateName.c_str());
-		std::string const & sharedTemplateName   = dt.getStringValue (s_colnameSharedObjectTemplate, row);
+		std::string const sharedTemplateName(dt.getStringValue(s_colnameSharedObjectTemplate, row));
 		uint32 const sharedObjectTemplateCrc = Crc::normalizeAndCalculate (sharedTemplateName.c_str ());
 
 #ifdef _DEBUG

@@ -55,7 +55,7 @@ bool CuiCharacterHairManager::getAvailableStylesSkillMod (std::string const & te
 	for (int i = 0; i < dataTable.getNumRows(); ++i)
 	{
 		row = i;
-		std::string const & playerTemplate = dataTable.getStringValue(1, row);
+		std::string const playerTemplate(dataTable.getStringValue(1, row));
 		//only investigate rows that apply to this player template (race/gender)
 		if(playerTemplate == templateName)
 		{
@@ -84,7 +84,7 @@ bool CuiCharacterHairManager::getAvailableStylesCreation (std::string const & te
 	for (int i = 0; i < dataTable.getNumRows(); ++i)
 	{
 		row = i;
-		std::string const & playerTemplate = dataTable.getStringValue(1, row);
+		std::string const playerTemplate(dataTable.getStringValue(1, row));
 		//only investigate rows that apply to this player template (race/gender)
 		if(playerTemplate == templateName)
 		{
@@ -92,7 +92,7 @@ bool CuiCharacterHairManager::getAvailableStylesCreation (std::string const & te
 			bool availableAtCreation = dataTable.getIntValue   (3, row) ? true : false;
 			if(availableAtCreation)
 			{
-				std::string const & hair = dataTable.getStringValue(0, row);
+				std::string const hair(dataTable.getStringValue(0, row));
 				result.push_back(hair);
 				if(!defaultHairSet)
 				{
@@ -116,7 +116,7 @@ int CuiCharacterHairManager::getIndexForHair(std::string const & templateName)
 	for (int i = 0; i < dataTable.getNumRows(); ++i)
 	{
 		row = i;
-		std::string const & hair = dataTable.getStringValue(0, row);
+		std::string const hair(dataTable.getStringValue(0, row));
 		{
 			if(hair == templateName)
 				return row;
@@ -135,7 +135,7 @@ std::string CuiCharacterHairManager::getHairForIndex(int const hairIndex)
 
 	if(hairIndex < dataTable.getNumRows())
 	{
-		std::string const & hairTemplate = dataTable.getStringValue(0, hairIndex);
+		std::string const hairTemplate(dataTable.getStringValue(0, hairIndex));
 		return hairTemplate;
 	}
 	return std::string();

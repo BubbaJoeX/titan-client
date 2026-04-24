@@ -73,6 +73,7 @@ public:
 
 	bool isOpen() const;
 	int  length() const;
+	long long length64() const;
 	int  read(int offset, void *destinationBuffer, int numberOfBytes, AbstractFile::PriorityType priority);
 	void close();
 

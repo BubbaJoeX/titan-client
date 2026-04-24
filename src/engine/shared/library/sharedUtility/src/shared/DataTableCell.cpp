@@ -11,7 +11,10 @@
 
 #include "sharedFoundation/Crc.h"
 #include "sharedFoundation/CrcString.h"
+#include "sharedFoundation/Fatal.h"
 #include "sharedFoundation/MemoryBlockManager.h"
+
+#include <cstring>
 
 
 // ======================================================================
@@ -40,9 +43,19 @@ void DataTableCell::remove()
 void *DataTableCell::operator new(size_t size)
 {
 	UNREF(size);
-	DEBUG_FATAL(!ms_memoryBlockManager,("DataTableCell is not installed"));
-	DEBUG_FATAL(size != sizeof(DataTableCell),("bad size"));
-	return ms_memoryBlockManager->allocate();
+	FATAL (
+		!ms_memoryBlockManager,
+		("DataTableCell::operator new: DataTableCell not installed (call DataTableManager::install before loading DataTables)."));
+	FATAL (
+		size != sizeof(DataTableCell),
+		("DataTableCell::operator new: bad size %zu (expected %zu).",
+		 static_cast<size_t>(size),
+		 sizeof(DataTableCell)));
+	void * const mem = ms_memoryBlockManager->allocate ();
+	FATAL (
+		!mem,
+		("DataTableCell::operator new: MemoryBlockManager returned null (pool exhausted or internal error)."));
+	return mem;
 }
 
 // ----------------------------------------------------------------------
@@ -81,8 +94,14 @@ DataTableCell::DataTableCell(const char *value)
 	}
 	else
 	{
-		int len = strlen(value) + 1;
-		char *s = new char[len];
+		// Match _readCell max (16383 chars + NUL); unbounded strlen can run past damaged buffers.
+		enum { kMaxStringCellChars = 16383 };
+		size_t const n = strnlen (value, static_cast<size_t>(kMaxStringCellChars) + 1);
+		FATAL (
+			n > static_cast<size_t>(kMaxStringCellChars),
+			("DataTableCell: string length exceeds %d or missing terminator.", kMaxStringCellChars));
+		int const len = static_cast<int>(n) + 1;
+		char *s = new char[static_cast<size_t>(len)];
 		
 		// normalize copies the output into s, so we can get the crc
 		CrcString::normalize(s, value);

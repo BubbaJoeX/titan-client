@@ -140,7 +140,7 @@ void ShipComponentPowerEffectsManagerClient::install()
 	
 	for (int row = 0; row < numRows; ++row)
 	{
-		std::string const & shipHitType = dt->getStringValue(0, row);
+		std::string const shipHitType(dt->getStringValue(0, row));
 
 		SoundComponentMap & scm = s_soundShipComponentMap[Crc::normalizeAndCalculate(shipHitType.c_str())];
 

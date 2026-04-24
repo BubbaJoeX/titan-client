@@ -60,7 +60,7 @@ namespace SwgCuiSpaceMiningSaleNamespace
 		{
 			for (int row = 0; row < numRows; ++row)
 			{
-				std::string const & resourceClassName = dt->getStringValue(0, row);
+				std::string const resourceClassName(dt->getStringValue(0, row));
 				int const pricePerUnit = dt->getIntValue(1, row);
 
 				ResourceClassObject const * const resourceClassObject = Universe::getInstance ().getResourceClassByName (resourceClassName);;

@@ -137,8 +137,8 @@ namespace ClientWaypointObjectNamespace
 
 			for (int i = 0; i < numRows; ++i)
 			{
-				const std::string & planet     = table->getStringValue (0, i);
-				const std::string & appearance = appname_prefix + table->getStringValue (1, i);
+				std::string const planet(table->getStringValue(0, i));
+				std::string const appearance(appname_prefix + std::string(table->getStringValue(1, i)));
 
 				if (planet == planet_default)
 					s_planetDefaultAppearance = appearance;
@@ -163,8 +163,8 @@ namespace ClientWaypointObjectNamespace
 
 			for (int i = 0; i < numRows; ++i)
 			{
-				std::string const & color = wp_table->getStringValue (0, i);
-				std::string const & appearance = wp_table->getStringValue (1, i);
+				std::string const color(wp_table->getStringValue(0, i));
+				std::string const appearance(wp_table->getStringValue(1, i));
 				float const argbcolorA  = wp_table->getFloatValue (2, i);
 				float const argbcolorR  = wp_table->getFloatValue (3, i);
 				float const argbcolorG  = wp_table->getFloatValue (4, i);

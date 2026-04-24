@@ -48,8 +48,8 @@ namespace DraftSchematicGroupManagerNamespace
 		const int numRows = schematicGroupTable->getNumRows();
 		for (int i = 0; i < numRows; ++i)
 		{
-			const std::string & group     = schematicGroupTable->getStringValue (0, i);
-			const std::string & schematic = schematicGroupTable->getStringValue (1, i);
+			std::string const group(schematicGroupTable->getStringValue(0, i));
+			std::string const schematic(schematicGroupTable->getStringValue(1, i));
 			const std::string::size_type slash = schematic.rfind('/');
 			const std::string sharedSchematic(schematic.substr(0, slash + 1) + "shared_" + schematic.substr(slash + 1));
 			const uint32 serverCrc = Crc::calculate(schematic.c_str());

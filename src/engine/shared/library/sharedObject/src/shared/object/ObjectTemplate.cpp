@@ -15,6 +15,9 @@
 #include "sharedObject/ObjectTemplateList.h"
 
 #include <string>
+#if defined(_WIN32)
+#include <windows.h>
+#endif
 
 // ======================================================================
 
@@ -44,13 +47,23 @@ void ObjectTemplateNamespace::remove()
 
 void ObjectTemplate::install()
 {
+#if defined(_WIN32)
+	::OutputDebugStringA("[Titan] ObjectTemplate::install: enter\r\n");
+#endif
 	s_crashReportInfoConstructor[0] = '\0';
 	CrashReportInformation::addDynamicText(s_crashReportInfoConstructor);
-
+#if defined(_WIN32)
+	::OutputDebugStringA("[Titan] ObjectTemplate::install: after addDynamicText(constructor buffer)\r\n");
+#endif
 	s_crashReportInfoLoadFromIff[0] = '\0';
 	CrashReportInformation::addDynamicText(s_crashReportInfoLoadFromIff);
-
+#if defined(_WIN32)
+	::OutputDebugStringA("[Titan] ObjectTemplate::install: after addDynamicText(loadFromIff buffer)\r\n");
+#endif
 	ExitChain::add(remove, "ObjectTemplate");
+#if defined(_WIN32)
+	::OutputDebugStringA("[Titan] ObjectTemplate::install: leave\r\n");
+#endif
 }
 
 // ======================================================================

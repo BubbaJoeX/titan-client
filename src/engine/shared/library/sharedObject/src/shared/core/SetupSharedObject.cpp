@@ -38,6 +38,12 @@
 #include "sharedDebug/InstallTimer.h"
 
 #include <string>
+#if defined(_WIN32)
+#include <windows.h>
+#define SETUP_SO_TRACE(msg) do { ::OutputDebugStringA("[Titan] " msg "\r\n"); } while (0)
+#else
+#define SETUP_SO_TRACE(msg) do { } while (0)
+#endif
 
 // ======================================================================
 // class SetupSharedObject::Data
@@ -81,6 +87,7 @@ SetupSharedObject::Data::~Data()
 void SetupSharedObject::install(const Data &data)
 {
 	InstallTimer const installTimer("SetupSharedObject::install");
+	SETUP_SO_TRACE("SetupSharedObject::install: enter");
 
 	DEBUG_FATAL(data.version != DATA_VERSION, ("SetupSharedObject::install wrong version %d/%d", data.version, DATA_VERSION));
 
@@ -94,9 +101,15 @@ void SetupSharedObject::install(const Data &data)
 
 	// this is needed by plug-ins that aren't using the rest of the 3d system
 	ExtentList::install();
+	SETUP_SO_TRACE("SetupSharedObject::install: after ExtentList, before ObjectTemplateList::install");
 	ObjectTemplateList::install(data.loadObjectTemplateCrcStringTable);
+	SETUP_SO_TRACE("SetupSharedObject::install: after ObjectTemplateList::install");
+	SETUP_SO_TRACE("SetupSharedObject::install: before ObjectTemplate::install");
 	ObjectTemplate::install();
+	SETUP_SO_TRACE("SetupSharedObject::install: after ObjectTemplate::install");
+	SETUP_SO_TRACE("SetupSharedObject::install: before Object::install");
 	Object::install(data.objectsAlterChildrenAndContents);
+	SETUP_SO_TRACE("SetupSharedObject::install: after Object::install");
 	MemoryBlockManagedObject::install();
 	CellProperty::install();
 	AppearanceTemplate::install();
@@ -117,23 +130,33 @@ void SetupSharedObject::install(const Data &data)
 	{
 		DEBUG_FATAL(data.slotDefinitionFilename->empty(), ("must specify a slotDefinitionFilename if you're using containers\n"));
 
+		SETUP_SO_TRACE("SetupSharedObject::install: before SlotIdManager::install (slot_definitions.iff, etc.)");
 		SlotIdManager::install(*data.slotDefinitionFilename, data.loadAssociatedHardpointNames);
+		SETUP_SO_TRACE("SetupSharedObject::install: after SlotIdManager, before SlotDescriptorList");
 		SlotDescriptorList::install();
 		ArrangementDescriptorList::install();
+		SETUP_SO_TRACE("SetupSharedObject::install: after container slot lists");
 	}
 
 	// install movement table
 	if (data.useMovementTable)
 	{
 		DEBUG_FATAL(data.movementStateTableFilename->empty(), ("must specify a movementStateTableFilename if using the movement table\n"));
+		SETUP_SO_TRACE("SetupSharedObject::install: before MovementTable::install (movementstates.iff)");
 		MovementTable::install(*data.movementStateTableFilename);
+		SETUP_SO_TRACE("SetupSharedObject::install: after MovementTable::install");
 	}
 
 	AlterScheduler::install();
 
 	// Optionally install customization id manager
 	if (data.customizationIdManagerFilename)
+	{
+		SETUP_SO_TRACE("SetupSharedObject::install: before CustomizationIdManager::install");
 		CustomizationIdManager::install(data.customizationIdManagerFilename->c_str());
+		SETUP_SO_TRACE("SetupSharedObject::install: after CustomizationIdManager::install");
+	}
+	SETUP_SO_TRACE("SetupSharedObject::install: leave");
 }
 
 // ----------------------------------------------------------------------

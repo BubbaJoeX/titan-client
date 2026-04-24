@@ -11,6 +11,7 @@
 
 #include "UnicodeUtils.h"
 #include "sharedFoundation/Crc.h"
+#include "sharedFoundation/Fatal.h"
 #include "sharedUtility/DataTable.h"
 #include "sharedUtility/DataTableManager.h"
 #include <cstdio>
@@ -81,7 +82,7 @@ DataTableColumnType::~DataTableColumnType ()
 
 // ----------------------------------------------------------------------
 
-DataTableColumnType::DataTableColumnType(std::string const &desc) :
+DataTableColumnType::DataTableColumnType(std::string const &desc, bool deferDefaultCell) :
 	m_typeSpecString(desc),
 	m_type(DT_Unknown),
 	m_basicType(DT_Unknown),
@@ -92,8 +93,12 @@ DataTableColumnType::DataTableColumnType(std::string const &desc) :
 	// desc may only look like:
 	// {ifshbep}[def] or e(x=0,y=1,z=2,...)[def]
 
+	FATAL (
+		desc.empty (),
+		("DataTableColumnType: empty type descriptor string (IFF TYPE chunk missing format for a column)."));
+
 	// first, split into type and default value
-	int type = tolower(desc[0]);
+	int type = tolower (static_cast<unsigned char>(desc[0]));
 	m_defaultValue = getDelimStr(desc, '[', ']');
 
 	if (type == 'i')
@@ -228,7 +233,16 @@ DataTableColumnType::DataTableColumnType(std::string const &desc) :
 	else
 		m_basicType = DT_Unknown;
 
-	createDefaultCell();
+	if (!deferDefaultCell)
+		createDefaultCell ();
+}
+
+// ----------------------------------------------------------------------
+
+void DataTableColumnType::finalizeDeferredDefaultCell ()
+{
+	IS_NULL (m_defaultCell);
+	createDefaultCell ();
 }
 
 // ----------------------------------------------------------------------

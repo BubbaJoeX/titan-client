@@ -1066,7 +1066,7 @@ void CombatEffectsManager::install()
 		{
 			MeleeWeaponEffectData currentWeaponData;
 
-			std::string const &weaponEffect = meleeDataTable.getStringValue(CEMC_weapon, row);
+			std::string const weaponEffect(meleeDataTable.getStringValue(CEMC_weapon, row));
 
 			// we only want to continue if this effect does not exist
 			MeleeTableItr itr = s_idToMeleeEffectDataMap.find(weaponEffect);
@@ -1110,7 +1110,7 @@ void CombatEffectsManager::install()
 		{
 			RangedWeaponEffectData currentWeaponData;
 
-			std::string const &weaponEffect = weaponRangedData.getStringValue(CERC_weapon, row);
+			std::string const weaponEffect(weaponRangedData.getStringValue(CERC_weapon, row));
 
 			// we only want to continue if this effect does not exist
 			RangedTableItr itr = s_idToRangedEffectDataMap.find(weaponEffect);

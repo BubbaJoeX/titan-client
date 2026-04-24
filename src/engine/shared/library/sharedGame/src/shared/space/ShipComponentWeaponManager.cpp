@@ -86,7 +86,7 @@ void ShipComponentWeaponManager::install()
 	
 	for (int row = 0; row < numRows; ++row)
 	{
-		std::string const & componentName = dt->getStringValue(static_cast<int>(DC_componentName), row);
+		std::string const componentName(dt->getStringValue(static_cast<int>(DC_componentName), row));
 		ShipComponentDescriptor const * const shipComponentDescriptor = 
 			ShipComponentDescriptor::findShipComponentDescriptorByName(TemporaryCrcString(componentName.c_str(), true));
 		

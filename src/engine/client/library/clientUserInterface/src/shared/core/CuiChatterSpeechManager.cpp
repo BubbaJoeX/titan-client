@@ -61,7 +61,7 @@ void CuiChatterSpeechManager::loadData()
 
 		for (int i = 0; i < numRows; ++i)
 		{
-			std::string const & value = table->getStringValue("command", i);
+			std::string const value(table->getStringValue("command", i));
 			ms_chatterData.push_back(value);
 		}
 

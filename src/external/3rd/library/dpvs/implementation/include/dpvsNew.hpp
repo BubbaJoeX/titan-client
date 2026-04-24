@@ -30,9 +30,8 @@
 #	error This file should be included directly by dpvsPrivateDefs.hpp!
 #endif
 
-//#include <new>
-
-DPVS_FORCE_INLINE void* /*__cdecl*/ operator new(size_t, void *_P) { return (_P); }
+// Standard <new> supplies placement new; duplicating it here collides with MSVC 14.40+ vcruntime_new.h (C2084/C3615).
+#include <new>
 
 namespace DPVS
 {

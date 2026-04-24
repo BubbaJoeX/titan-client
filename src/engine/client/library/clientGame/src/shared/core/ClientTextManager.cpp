@@ -101,7 +101,7 @@ void ClientTextManagerNamespace::getDefaultTextColorFromDataTable(char const *te
 
 	for (int row = 0; row < dataTable.getNumRows(); ++row)
 	{
-		std::string const &rowString = dataTable.getStringValue("stringId", row);
+		std::string const rowString(dataTable.getStringValue("stringId", row));
 		StringId stringId("ui_text_color", rowString);
 
 		if (rowString == text)

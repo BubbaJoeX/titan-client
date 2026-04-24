@@ -18,6 +18,12 @@
 
 #include <cstdio>
 #include <cstdarg>
+#include <cstring>
+#include <string.h> // strnlen (MSVC cstring may omit global name)
+
+#if defined(_MSC_VER)
+#include <stdio.h> // _vsnprintf_s, _TRUNCATE
+#endif
 
 // ======================================================================
 
@@ -120,8 +126,10 @@ void Report::puts(const char *buffer)
 		HANDLE hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
 		if (hStdOut)
 		{
+			// vprintf's buffer is 8*1024; do not unbounded-strlen a possibly non-terminated string.
+			size_t const n = strnlen(buffer, 8U * 1024U);
 			DWORD bytesWritten;
-			WriteFile(hStdOut, buffer, strlen(buffer), &bytesWritten, 0);
+			WriteFile(hStdOut, buffer, static_cast<DWORD>(n), &bytesWritten, 0);
 		}
 #else
 		fputs(buffer, stdout);
@@ -139,7 +147,12 @@ void Report::puts(const char *buffer)
 
 	if (flags & RF_log)
 	{
+		// x64: do not get/set x87 + _controlfp_s around every OutputDebugString. That round-trip
+		// (see FloatingPointUnit x87/MSVC mapping) has been a source of 0xC0000005 after high-volume
+		// REPORT_LOG during startup. The x86 "debugger reset FPU precision" quirk is not worth it on Win64.
+#if defined(_WIN32) && !defined(_M_X64)
 		const WORD fp1 = FloatingPointUnit::getControlWord();
+#endif
 
 #ifdef WIN32
 		OutputDebugString(buffer);
@@ -161,11 +174,12 @@ void Report::puts(const char *buffer)
 #endif
 		}
 
+#if defined(_WIN32) && !defined(_M_X64)
 		const WORD fp2 = FloatingPointUnit::getControlWord();
-
-		// -qq- HACK this is an attempt to work around OutputDebugString resetting the FPU precision to 53 bits when running under the debugger
+		// -qq- HACK: work around OutputDebugString resetting the FPU precision (Win32; see above for Win64)
 		if (fp1 != fp2)
 			FloatingPointUnit::setControlWord(fp1);
+#endif
 	}
 
 	// fatal strings should be made very obvious, so pop up a message box
@@ -207,13 +221,25 @@ void Report::vprintf(const char *format, va_list va)
 	buffer[sizeof(buffer)-1] = '\0';
 
 	// format the string into the space after the prefix
-	IGNORE_RETURN(vsnprintf(buffer + prefixLen, sizeof(buffer) - prefixLen - 1, format, va));
-
-	// handle overflow reasonably nicely
-	if (strlen(buffer) == sizeof(buffer)-1)
+	// MSVC: use _vsnprintf_s for consistent varargs / buffer behavior on x64 (vs legacy vsnprintf).
+#if defined(_MSC_VER)
 	{
-		buffer[sizeof(buffer)-3] = '+';
-		buffer[sizeof(buffer)-2] = '\n';
+		size_t const room = sizeof(buffer) - static_cast<size_t>(prefixLen);
+		IGNORE_RETURN(_vsnprintf_s(buffer + prefixLen, room, _TRUNCATE, format, va));
+	}
+#else
+	IGNORE_RETURN(vsnprintf(buffer + prefixLen, sizeof(buffer) - prefixLen - 1, format, va));
+#endif
+	// Always cap (strlen can read past 8k if the formatted region was not terminated)
+	buffer[sizeof(buffer) - 1] = '\0';
+	// handle overflow reasonably nicely
+	{
+		size_t const n = strnlen(buffer, sizeof(buffer));
+		if (n >= sizeof(buffer) - 1U)
+		{
+			buffer[sizeof(buffer) - 3U] = '+';
+			buffer[sizeof(buffer) - 2U] = '\n';
+		}
 	}
 
 	puts(buffer);

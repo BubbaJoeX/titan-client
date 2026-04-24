@@ -29,8 +29,11 @@
 #include "sharedSynchronization/Mutex.h"
 
 #include <algorithm>
+#include <climits>
 #include <cstdarg>
 #include <cstdio>
+#include <cstdint>
+#include <cstring>
 #include <map>
 #include <vector>
 
@@ -54,6 +57,26 @@ void titanSearchNodeOds(const char *const fmt, ...)
 	OutputDebugStringA(line);
 #else
 	(void)fmt;
+#endif
+}
+
+// MSVC: use %I64d + __int64 in varargs; %lld with long long can break _vsnprintf_s stack in some builds.
+static size_t titanBoundedCStrLen(char const *p, size_t const cap)
+{
+	if (!p)
+		return 0U;
+	size_t n = 0U;
+	while (n < cap && p[n] != '\0')
+		++n;
+	return n;
+}
+
+void titanOdsS32I64i(char const *const lead, int const a, long long const b)
+{
+#ifdef _WIN32
+	char line[400];
+	_snprintf_s(line, sizeof(line), _TRUNCATE, "[Titan] SearchNode: %s %d onDiskBytes=%I64d\r\n", lead, a, static_cast<__int64>(b));
+	OutputDebugStringA(line);
 #endif
 }
 } // namespace
@@ -295,8 +318,8 @@ void TreeFile::SearchAbsolute::getPathName(const char *fileName, char *pathName,
 	DEBUG_FATAL(!exists(fileName, deleted), ("fileName does not exist"));
 #endif
 
-	UNREF(pathNameLength);
-	DEBUG_FATAL(istrlen(fileName) + 1 > pathNameLength, ("Filename too long %d/%d", strlen(fileName) + 1, pathNameLength));
+	const int fnLen = istrlen(fileName);
+	FATAL(fnLen + 1 > pathNameLength, ("SearchAbsolute::getPathName: name too long %d/%d", fnLen + 1, pathNameLength));
 	strcpy(pathName, fileName);
 }
 
@@ -652,15 +675,14 @@ void TreeFile::SearchTree::getPathName(const char *fileName, char *pathName, int
 {
 	NOT_NULL(fileName);
 	NOT_NULL(pathName);
-	UNREF(pathNameLength);
 
 #ifdef _DEBUG
 	bool deleted = false;
 	DEBUG_FATAL(!exists(fileName, deleted), ("fileName does not exist"));
-
-	int stringLength = istrlen(m_treeFileName) + 1 + istrlen(fileName) + 1 + 1;
-	DEBUG_FATAL(stringLength > pathNameLength, ("file name to long %d/%d", stringLength, pathNameLength));
 #endif
+
+	const int stringLength = istrlen(m_treeFileName) + 1 + istrlen(fileName) + 1 + 1;
+	FATAL(stringLength > pathNameLength, ("SearchTree::getPathName: name too long %d/%d", stringLength, pathNameLength));
 
 	// make a pseudo-path name for the tree file
 	strcpy(pathName, m_treeFileName);
@@ -794,12 +816,16 @@ TreeFile::SearchTOC::SearchTOC(int priority, const char *fileName)
 	m_fileNames(NULL)
 {
 	NOT_NULL(fileName);
+	titanSearchNodeOds("SearchTOC ctor begin file=%s", fileName);
 
 	// set to the the current name of the TOC file to the fileName
 	m_TOCFileName = DuplicateString(fileName);
 
 	m_TOCFile = FileStreamer::open(m_TOCFileName, true);
 	DEBUG_FATAL(!m_TOCFile, ("failed to open TOCFile %s", m_TOCFileName));
+	long long const tocBytesOnDisk = m_TOCFile->length64();
+	FATAL(tocBytesOnDisk < 0, ("SearchTOC: GetFileSizeEx/length64 failed for %s", m_TOCFileName));
+	titanSearchNodeOds("SearchTOC open ok %s bytes=%I64d", m_TOCFileName, static_cast<__int64>(tocBytesOnDisk));
 
 	// read the header
 	Header header;
@@ -814,6 +840,34 @@ TreeFile::SearchTOC::SearchTOC(int priority, const char *fileName)
 
 	// grab the number of tree files
 	m_numberOfTreeFiles = header.numberOfTreeFiles;
+	titanSearchNodeOds("SearchTOC header nFiles=%u nTree=%u compTOC=%u compNames=%u", header.numberOfFiles, header.numberOfTreeFiles, header.tocCompressor, header.fileNameBlockCompressor);
+
+	// Reject pathological or corrupt field combinations before we allocate 100MB+ in one shot.
+	{
+		int64_t const tocFileLen = static_cast<int64_t>(tocBytesOnDisk);
+		// 512 MiB cap on single name block; adjust if a future SKU justifies it.
+		uint32 const kMaxNameBlock = 512U * 1024U * 1024U;
+		FATAL(header.uncompSizeOfNameBlock > kMaxNameBlock, ("SearchTOC: uncomp name block %u too large (corrupt header?) in %s", header.uncompSizeOfNameBlock, m_TOCFileName));
+		// Uncompressed: read() must not write past our allocation. Compressed: expanded size is uncomp.
+		if (!SearchTOC::isCompressed(static_cast<int>(header.fileNameBlockCompressor)))
+		{
+			FATAL(
+				header.sizeOfNameBlock > header.uncompSizeOfNameBlock,
+				("SearchTOC: on-disk name block %u > uncompSize %u (heap overflow) in %s", header.sizeOfNameBlock, header.uncompSizeOfNameBlock, m_TOCFileName));
+		}
+		int64_t const tocTableBytes = static_cast<int64_t>(sizeof(TableOfContentsEntry)) * static_cast<int64_t>(m_numberOfFiles);
+		// 256 MiB cap on one TOC table (nFiles * record size).
+		int64_t const kMaxTocTable = static_cast<int64_t>(256) * 1024 * 1024;
+		FATAL(tocTableBytes > kMaxTocTable, ("SearchTOC: TOC table too large (%u files, %I64d bytes) in %s", m_numberOfFiles, static_cast<__int64>(tocTableBytes), m_TOCFileName));
+		FATAL(tocTableBytes > static_cast<int64_t>(INT_MAX), ("SearchTOC: TOC table int overflow; %u files in %s", m_numberOfFiles, m_TOCFileName));
+		// Coarse: file must be large enough for tree name block, TOC region, and on-disk name block.
+		int const readPosAfterHeader = tocEncrypted ? (isizeof(Header) + static_cast<int>(sizeof(TitanPakCrypto::EncryptionHeader))) : isizeof(Header);
+		int64_t const tocPayloadBytes = SearchTOC::isCompressed(static_cast<int>(header.tocCompressor)) ? static_cast<int64_t>(header.sizeOfTOC) : tocTableBytes;
+		int64_t const needLo =
+			static_cast<int64_t>(readPosAfterHeader) + static_cast<int64_t>(header.sizeOfTreeFileNameBlock) + tocPayloadBytes
+			+ static_cast<int64_t>(header.sizeOfNameBlock);
+		FATAL(needLo > tocFileLen, ("SearchTOC: file too small (len=%I64d, need>=%I64d) %s", static_cast<__int64>(tocFileLen), static_cast<__int64>(needLo), m_TOCFileName));
+	}
 
 	// set the read position to after the header (beginning of patch tree names)
 	int readPosition = isizeof(Header);
@@ -846,26 +900,34 @@ TreeFile::SearchTOC::SearchTOC(int priority, const char *fileName)
 
 		{
 					// get any paths we need to check to open the tree files
-					std::vector<const char *> treePaths;
-					char *treePathBuffer = new char[Os::MAX_PATH_LENGTH];
-					
-					// add on the current path (an empty string) to the list of paths
-					char *emptyPath = new char('\0');
-					treePaths.push_back(emptyPath);
-
-					// add /tres/ subfolder so TOC tree files (e.g. bottom.tre) can be in exe/tres/
-					treePaths.push_back("tres/");
+					// Fixed storage (no std::vector): in x64/Release we saw a failure mode after
+					// "tree open done" and before the next ODS, consistent with heap corruption
+					// or unsafe teardown when the path vector is destroyed.
+					enum { kMaxTocTreePathExtraKeys = 64 };
+					char const* treePathEntries[2 + kMaxTocTreePathExtraKeys];
+					int numTreePathEntries = 0;
+					treePathEntries[numTreePathEntries++] = "";
+					treePathEntries[numTreePathEntries++] = "tres/";
 
 					// add on all paths in config file
-					const char * result;
-					for (int index = 0; (result = ConfigFile::getKeyString("SharedFile", "TOCTreePath", index, NULL)) != NULL; ++index)
-						treePaths.push_back(result);
+					for (int index = 0;; ++index)
+					{
+						char const* const result = ConfigFile::getKeyString("SharedFile", "TOCTreePath", index, NULL);
+						if (result == NULL)
+							break;
+						FATAL(
+							numTreePathEntries >= static_cast<int>(sizeof(treePathEntries) / sizeof(treePathEntries[0])),
+							("SearchTOC: too many TOCTreePath keys in SharedFile (max %d) %s", kMaxTocTreePathExtraKeys, m_TOCFileName));
+						treePathEntries[numTreePathEntries++] = result;
+					}
+
+					char * const treePathBuffer = new char[Os::MAX_PATH_LENGTH];
 
 					// read in the tree file names and open the files
 					// Track the offset where tree names start for decryption
 					const int treeNamesOffset = readPosition;
 					const int bytesRead = m_TOCFile->read(readPosition, m_treeFileNames, header.sizeOfTreeFileNameBlock, AbstractFile::PriorityData);
-					DEBUG_FATAL(bytesRead != static_cast<int>(header.sizeOfTreeFileNameBlock), ("failed to read tree file name entries"));
+					FATAL(bytesRead != static_cast<int>(header.sizeOfTreeFileNameBlock), ("SearchTOC: failed to read tree file name block (got %d need %u) %s", bytesRead, header.sizeOfTreeFileNameBlock, m_TOCFileName));
 					readPosition += bytesRead;
 					
 					// Decrypt tree file names if the titanlst is encrypted
@@ -880,23 +942,39 @@ TreeFile::SearchTOC::SearchTOC(int priority, const char *fileName)
 					m_treeFiles[treeFileNameIndex] = NULL;
 					m_encryptionContexts[treeFileNameIndex] = NULL;
 
-					// try to open the tree file in each of the relative paths 
-					for (std::vector<const char *>::const_iterator pathIter = treePaths.begin(); pathIter != treePaths.end(); ++pathIter)
+					int const nameBytesRemaining = static_cast<int>(header.sizeOfTreeFileNameBlock) - treeFileNameReadPosition;
+					if (nameBytesRemaining <= 0)
 					{
-					strcpy(treePathBuffer, *pathIter);
-					strcat(treePathBuffer, (m_treeFileNames + treeFileNameReadPosition));
+						FATAL(true, ("SearchTOC: tree name block exhausted before tree index %d (pos %d, size %u)", treeFileNameIndex, treeFileNameReadPosition, header.sizeOfTreeFileNameBlock));
+					}
+					// try to open the tree file in each of the relative paths
+					for (int pathIdx = 0; pathIdx < numTreePathEntries; ++pathIdx)
+					{
+					char const* const pathPrefix = treePathEntries[pathIdx];
+					// Use %.*s: tree-name bytes are not proven null-terminated here; a bare %s can read past
+					// the name block and access-violate (0xC0000005) during snprintf.
+					(void)snprintf(
+						treePathBuffer,
+						static_cast<size_t>(Os::MAX_PATH_LENGTH),
+						"%s%.*s",
+						pathPrefix,
+						nameBytesRemaining,
+						m_treeFileNames + treeFileNameReadPosition);
 
 					if (FileStreamer::exists (treePathBuffer))
 					{
 					m_treeFiles[treeFileNameIndex] = FileStreamer::open(treePathBuffer, true);
-								
-					// Check if this tree file is an encrypted TitanPak
-					if (m_treeFiles[treeFileNameIndex])
+					// Only stop searching paths after a successful open. If exists() was true
+					// but open() failed, keep trying other prefixes (e.g. tres/ vs current dir).
+					if (!m_treeFiles[treeFileNameIndex])
 					{
-						// Read just the magic token to check if encrypted (NUNA = encrypted TitanPak)
+					continue;
+					}
+					// Check if this tree file is an encrypted TitanPak
+					// Read just the magic token to check if encrypted (NUNA = encrypted TitanPak)
+					{
 						Tag treeToken;
 						m_treeFiles[treeFileNameIndex]->read(0, &treeToken, sizeof(treeToken), AbstractFile::PriorityData);
-									
 						if (treeToken == TAG_NUNA)
 						{
 						// This is an encrypted TitanPak - read encryption header and initialize context
@@ -904,11 +982,9 @@ TreeFile::SearchTOC::SearchTOC(int priority, const char *fileName)
 						const int encryptionHeaderOffset = 36;
 						TitanPakCrypto::EncryptionHeader encHeader;
 						m_treeFiles[treeFileNameIndex]->read(encryptionHeaderOffset, &encHeader, sizeof(encHeader), AbstractFile::PriorityData);
-										
 						const char* password = TitanPakCrypto::getPassword();
 						m_encryptionContexts[treeFileNameIndex] = new TitanPakEncryptionContext();
 						m_encryptionContexts[treeFileNameIndex]->initialize(password, encHeader);
-										
 						DEBUG_REPORT_LOG(true, ("SearchTOC: Loaded encrypted TitanPak tree file: %s\n", treePathBuffer));
 						}
 					}
@@ -916,18 +992,47 @@ TreeFile::SearchTOC::SearchTOC(int priority, const char *fileName)
 					}
 					}
 
-					FATAL(!m_treeFiles[treeFileNameIndex], ("failed to open tree file index %d, offset %d, name %s", treeFileNameIndex, treeFileNameReadPosition, m_treeFileNames + treeFileNameReadPosition));
-
-					treeFileNameReadPosition += (strlen(m_treeFileNames + treeFileNameReadPosition) + 1);
+					{
+					char const * const nptr = m_treeFileNames + treeFileNameReadPosition;
+					size_t const nameLen = titanBoundedCStrLen(nptr, static_cast<size_t>(nameBytesRemaining));
+					if (nameLen == static_cast<size_t>(nameBytesRemaining))
+					{
+						FATAL(true, ("SearchTOC: tree file name in TOC not null-terminated (index %d, pos %d, rem %d)", treeFileNameIndex, treeFileNameReadPosition, nameBytesRemaining));
+					}
+					char namePreview[256] = { 0 };
+					::strncpy(namePreview, nptr, sizeof(namePreview) - 1U);
+					namePreview[sizeof(namePreview) - 1U] = '\0';
+					FATAL(!m_treeFiles[treeFileNameIndex], ("failed to open tree file index %d, offset %d, name '%s' (tried full tre paths)", treeFileNameIndex, treeFileNameReadPosition, namePreview));
+					treeFileNameReadPosition += static_cast<int>(nameLen + 1U);
+					}
 					}
 
 					delete [] treePathBuffer;
-					delete emptyPath;
+					titanSearchNodeOds("SearchTOC tree .tre(s) open done, read main TOC (zlib may follow)");
 				}
 
+#ifdef _WIN32
+				OutputDebugStringA("[Titan] SearchNode: after tree inner block, before main TOC\r\n");
+#endif
+				titanOdsS32I64i("SearchTOC step2 main TOC readPos", readPosition, tocBytesOnDisk);
+
 				// prepare table of contents by zeroing out the total size of data to be stored
-				const int tableOfContentsSize = isizeof(TableOfContentsEntry) * m_numberOfFiles;
-				if (isCompressed(header.tocCompressor))
+				// TOC table byte size: use int64 multiply (early header check already bounded; int must hold result)
+				int const tableOfContentsSize = static_cast<int>(static_cast<int64_t>(sizeof(TableOfContentsEntry)) * static_cast<int64_t>(m_numberOfFiles));
+				{
+					if (SearchTOC::isCompressed(static_cast<int>(header.tocCompressor)))
+					{
+						int64_t const needToc = static_cast<int64_t>(readPosition) + static_cast<int64_t>(header.sizeOfTOC);
+						FATAL(needToc > static_cast<int64_t>(tocBytesOnDisk) || needToc < 0, ("SearchTOC: truncated before compressed TOC (pos=%d comp=%u len64=%I64d) %s", readPosition, header.sizeOfTOC, static_cast<__int64>(tocBytesOnDisk), m_TOCFileName));
+					}
+					else
+					{
+						int64_t const needToc = static_cast<int64_t>(readPosition) + static_cast<int64_t>(tableOfContentsSize);
+						FATAL(needToc > static_cast<int64_t>(tocBytesOnDisk) || needToc < 0, ("SearchTOC: truncated before raw TOC (pos=%d need=%d len64=%I64d) %s", readPosition, tableOfContentsSize, static_cast<__int64>(tocBytesOnDisk), m_TOCFileName));
+					}
+				}
+				titanSearchNodeOds("SearchTOC: read main TOC n=%u needRaw=%d pos=%d zlib=%d", m_numberOfFiles, tableOfContentsSize, readPosition, SearchTOC::isCompressed(static_cast<int>(header.tocCompressor)) ? 1 : 0);
+				if (SearchTOC::isCompressed(static_cast<int>(header.tocCompressor)))
 				{
 					// create temp buffer to store the compressed TOC entry data
 					byte *entryBuffer = new byte[header.sizeOfTOC];
@@ -935,7 +1040,7 @@ TreeFile::SearchTOC::SearchTOC(int priority, const char *fileName)
 					// read the compressed table of contents data into buffer
 					const int tocOffset = readPosition;
 					const int bytesRead = m_TOCFile->read(readPosition, entryBuffer, header.sizeOfTOC, AbstractFile::PriorityData);
-					DEBUG_FATAL(bytesRead != static_cast<int>(header.sizeOfTOC), ("failed to read tableOfContents entries"));
+					FATAL(bytesRead != static_cast<int>(header.sizeOfTOC), ("SearchTOC: failed to read compressed TOC (got %d need %u) %s", bytesRead, header.sizeOfTOC, m_TOCFileName));
 					readPosition += bytesRead;
 
 					// Decrypt if the titanlst is encrypted (before decompression)
@@ -954,7 +1059,7 @@ TreeFile::SearchTOC::SearchTOC(int priority, const char *fileName)
 					// read the uncompressed table of contents data
 					const int tocOffset = readPosition;
 					const int bytesRead = m_TOCFile->read(readPosition, m_tableOfContents, tableOfContentsSize, AbstractFile::PriorityData);
-					DEBUG_FATAL(bytesRead != tableOfContentsSize, ("failed to read tableOfContents entries"));
+					FATAL(bytesRead != tableOfContentsSize, ("SearchTOC: failed to read raw TOC (got %d need %d) %s", bytesRead, tableOfContentsSize, m_TOCFileName));
 					readPosition += bytesRead;
 					
 					// Decrypt if the titanlst is encrypted
@@ -963,22 +1068,35 @@ TreeFile::SearchTOC::SearchTOC(int priority, const char *fileName)
 						m_tocEncryptionContext->decryptAt(reinterpret_cast<uint8_t*>(m_tableOfContents), tableOfContentsSize, tocOffset);
 					}
 				}
+				titanSearchNodeOds("SearchTOC: main TOC in memory; mapping name lengths to offsets");
 
 				// After the TableOfContents is read into memory, the fileNameLengths must be changed to fileNameOffsets
 				{
-					int currentFileNameOffset = 0;
-					int currentFileNameLength = 0;
-
+					int64_t run = 0;
+					int64_t const nameCap = static_cast<int64_t>(header.uncompSizeOfNameBlock);
 					for (uint32 i = 0; i < m_numberOfFiles; ++i)
 					{
-						currentFileNameLength = m_tableOfContents[i].fileNameOffset;
-						m_tableOfContents[i].fileNameOffset = currentFileNameOffset;
-						// + 1 for the null termination
-						currentFileNameOffset += (currentFileNameLength + 1);
+						uint32 const nameField = m_tableOfContents[i].fileNameOffset; // still length, not yet offset
+						int64_t const add = static_cast<int64_t>(nameField) + 1;
+						if (add < 1 || add > (nameCap - run))
+						{
+							FATAL(true, ("SearchTOC: bad per-file name length (idx=%u len=%u run=%I64d cap=%u) in %s", i, nameField, static_cast<__int64>(run), header.uncompSizeOfNameBlock, m_TOCFileName));
+						}
+						m_tableOfContents[i].fileNameOffset = static_cast<uint32_t>(run);
+						run += add;
+					}
+					if (run > nameCap)
+					{
+						FATAL(true, ("SearchTOC: name lengths past end of name block (run=%I64d cap=%u) in %s", static_cast<__int64>(run), header.uncompSizeOfNameBlock, m_TOCFileName));
 					}
 				}
 
-				if (isCompressed(header.fileNameBlockCompressor))
+				{
+					int64_t const needName = static_cast<int64_t>(readPosition) + static_cast<int64_t>(header.sizeOfNameBlock);
+					FATAL(needName > static_cast<int64_t>(tocBytesOnDisk) || needName < 0, ("SearchTOC: truncated before name block (pos=%d onDisk=%u fileLen64=%I64d) %s", readPosition, header.sizeOfNameBlock, static_cast<__int64>(tocBytesOnDisk), m_TOCFileName));
+				}
+				titanSearchNodeOds("SearchTOC: name block read pos=%d onDisk=%u uncomp=%u compressed=%d", readPosition, header.sizeOfNameBlock, header.uncompSizeOfNameBlock, SearchTOC::isCompressed(static_cast<int>(header.fileNameBlockCompressor)) ? 1 : 0);
+				if (SearchTOC::isCompressed(static_cast<int>(header.fileNameBlockCompressor)))
 				{
 					// create temp buffer to store the compressed name block data
 					byte *nameBuffer  = new byte[header.sizeOfNameBlock];
@@ -986,8 +1104,7 @@ TreeFile::SearchTOC::SearchTOC(int priority, const char *fileName)
 					// read the compressed table of contents data into buffer
 					const int nameBlockOffset = readPosition;
 					const int bytesRead = m_TOCFile->read(readPosition, nameBuffer, header.sizeOfNameBlock, AbstractFile::PriorityData);
-					UNREF(bytesRead);
-					DEBUG_FATAL(bytesRead != static_cast<int>(header.sizeOfNameBlock), ("failed to read file name block"));
+					FATAL(bytesRead != static_cast<int>(header.sizeOfNameBlock), ("SearchTOC: failed to read compressed name block (got %d need %u) %s", bytesRead, header.sizeOfNameBlock, m_TOCFileName));
 
 					// Decrypt if the titanlst is encrypted (before decompression)
 					if (m_tocEncryptionContext && m_tocEncryptionContext->isInitialized())
@@ -1005,8 +1122,7 @@ TreeFile::SearchTOC::SearchTOC(int priority, const char *fileName)
 					// read the uncompressed name block data
 					const int nameBlockOffset = readPosition;
 					const int bytesRead = m_TOCFile->read(readPosition, m_fileNames, header.sizeOfNameBlock, AbstractFile::PriorityData);
-					UNREF(bytesRead);
-					DEBUG_FATAL(bytesRead != static_cast<int>(header.sizeOfNameBlock), ("failed to read file name block"));
+					FATAL(bytesRead != static_cast<int>(header.sizeOfNameBlock), ("SearchTOC: failed to read raw name block (got %d need %u) %s", bytesRead, header.sizeOfNameBlock, m_TOCFileName));
 					
 					// Decrypt if the titanlst is encrypted
 					if (m_tocEncryptionContext && m_tocEncryptionContext->isInitialized())
@@ -1152,7 +1268,6 @@ void TreeFile::SearchTOC::getPathName(const char *fileName, char *pathName, int 
 {
 	NOT_NULL(fileName);
 	NOT_NULL(pathName);
-	UNREF(pathNameLength);
 
 	// make a pseudo-path name for the tree file
 	int tableOfContentsIndex = 0;
@@ -1164,10 +1279,10 @@ void TreeFile::SearchTOC::getPathName(const char *fileName, char *pathName, int 
 #ifdef _DEBUG
 	bool deleted;
 	DEBUG_FATAL(!exists(fileName, deleted), ("fileName does not exist"));
-
-	int stringLength = istrlen(treeFileName) + 1 + istrlen(fileName) + 1 + 1;
-	DEBUG_FATAL(stringLength > pathNameLength, ("file name to long %d/%d", stringLength, pathNameLength));
 #endif
+
+	const int stringLength = istrlen(treeFileName) + 1 + istrlen(fileName) + 1 + 1;
+	FATAL(stringLength > pathNameLength, ("SearchTOC::getPathName: name too long %d/%d", stringLength, pathNameLength));
 
 	strcpy(pathName, treeFileName);
 	strcat(pathName, "[");
@@ -1470,15 +1585,14 @@ void TreeFile::SearchCache::getPathName(char const * const fileName, char * cons
 {
 	NOT_NULL(fileName);
 	NOT_NULL(pathName);
-	UNREF(pathNameLength);
 
 #ifdef _DEBUG
 	bool deleted = false;
 	DEBUG_FATAL(!exists(fileName, deleted), ("fileName does not exist"));
-
-	int const stringLength = 13 + istrlen(fileName) + 1 + 1;
-	DEBUG_FATAL(stringLength > pathNameLength, ("file name to long %d/%d", stringLength, pathNameLength));
 #endif
+
+	const int stringLength = 13 + istrlen(fileName) + 1 + 1;
+	FATAL(stringLength > pathNameLength, ("SearchCache::getPathName: name too long %d/%d", stringLength, pathNameLength));
 
 	// make a pseudo-path name for the tree file
 	strcpy(pathName, "SearchCache[");

@@ -89,7 +89,7 @@ void ClientWeaponObjectTemplate::install(bool allowDefaultTemplateParams)
 
 		for (int row = 0; row < rowCount; ++row)
 		{
-			std::string const &weaponEffect = ms_weaponEffectDataTable->getStringValue(0, row);
+			std::string const weaponEffect(ms_weaponEffectDataTable->getStringValue(0, row));
 			int const weaponEffectIndex = ms_weaponEffectDataTable->getIntValue(1, row);
 
 			char weaponIndexString[256];
@@ -330,7 +330,7 @@ void ClientWeaponObjectTemplate::postLoad ()
 			const ClientEffectTemplate *& ceft = *cefTemplateData [i].second.first;
 			const int column             =  cefTemplateData [i].second.second;
 			
-			const std::string & stringValue = ms_weaponEffectDataTable->getStringValue(column, row);
+			std::string const stringValue(ms_weaponEffectDataTable->getStringValue(column, row));
 			
 			if (stringValue.empty ())
 			{

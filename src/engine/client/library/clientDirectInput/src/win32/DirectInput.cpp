@@ -22,6 +22,7 @@
 
 
 #include <cstdio>
+#include <cstring>
 #include <map>
 #include <vector>
 
@@ -29,6 +30,51 @@
 #undef  DIRECTINPUT_VERSION
 #define DIRECTINPUT_VERSION 0x0800
 #include <dinput.h>
+
+namespace
+{
+// Mouse path truncates to int32 then widens back to float; MSVC /W4 C4244 on int32->float without this.
+inline float int32ToFloatMouseComponent(int32 const v)
+{
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable: 4244)
+#endif
+	float const result = static_cast<float>(v);
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
+	return result;
+}
+
+// Relative axis data is a signed 32-bit delta stored in DWORD (DirectInput); avoid C4244 on DWORD->signed.
+inline float dwordToSignedMouseDeltaFloat(DWORD const dwData)
+{
+	int32 signedBits;
+	static_assert(sizeof(dwData) == sizeof(signedBits), "");
+	std::memcpy(&signedBits, &dwData, sizeof(dwData));
+	return int32ToFloatMouseComponent(signedBits);
+}
+
+inline int32 truncateFloatTowardZeroForMouse(float const v)
+{
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable: 4244)
+#endif
+	int32 const result = static_cast<int32>(v);
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
+	return result;
+}
+
+// Integer mouse steps after accumulation are exact in float; avoid MSVC /W4 float-equality diagnostics (e.g. C5261).
+inline bool mouseAccumulatedDeltaNonZero(float const v)
+{
+	return (v < 0.0f) || (v > 0.0f);
+}
+}
 
 // ======================================================================
 
@@ -546,7 +592,7 @@ void KeyboardDevice::loadTranslationTable()
 				std::string const &fromKeyName = dataTable.getStringValue("FromKeyName", row);
 
 				m_translationTable[fromScanCode] = static_cast<uint8>(toScanCode);
-				s_scanCodeToKeyNameMap.insert(std::make_pair(toScanCode, fromKeyName));
+				s_scanCodeToKeyNameMap.emplace(static_cast<uint8>(toScanCode), fromKeyName);
 
 				DEBUG_REPORT_LOG(true, ("fromScanCode: %d toScanCode: %d fromKeyName: %s\n", fromScanCode, toScanCode, fromKeyName.c_str()));
 			}
@@ -780,6 +826,9 @@ void MouseDevice::submitEvent()
 	++m_nextEventIndex;
 
 //lint -save -e30 // Error -- Expected a constant
+#if defined(_MSC_VER)
+#pragma warning(push, 0)
+#endif
 	switch(od.dwOfs)
 	{
 		case DIMOFS_BUTTON0:
@@ -797,42 +846,45 @@ void MouseDevice::submitEvent()
 			if (m_leftHanded && button < 2)
 				button = 1 - button;
 
-			if (od.dwData & 0x80)
+			if ((od.dwData & 0x80u) != 0u)
 				IoWinManager::queueMouseButtonDown(0, button);
 			else
 				IoWinManager::queueMouseButtonUp(0, button);
 			break;
 
 		case DIMOFS_X:
-			rawValue   = static_cast<float>(static_cast<LONG>(od.dwData)) * m_ooxMickeysPerUnit + m_xRemainder;
-			newValue   = static_cast<float>(static_cast<int32>(rawValue));
+			rawValue   = dwordToSignedMouseDeltaFloat(od.dwData) * m_ooxMickeysPerUnit + m_xRemainder;
+			newValue   = int32ToFloatMouseComponent(truncateFloatTowardZeroForMouse(rawValue));
 			m_xRemainder = rawValue - newValue;
 
-			if (newValue != 0.0f)
+			if (mouseAccumulatedDeltaNonZero(newValue))
 				IoWinManager::queueMouseTranslateX(0, newValue);
 			break;
 
 		case DIMOFS_Y:
-			rawValue   = static_cast<float>(static_cast<LONG>(od.dwData)) * m_ooyMickeysPerUnit + m_yRemainder;
-			newValue   = static_cast<float>(static_cast<int32>(rawValue));
+			rawValue   = dwordToSignedMouseDeltaFloat(od.dwData) * m_ooyMickeysPerUnit + m_yRemainder;
+			newValue   = int32ToFloatMouseComponent(truncateFloatTowardZeroForMouse(rawValue));
 			m_yRemainder = rawValue - newValue;
 
-			if (newValue != 0.0f)
+			if (mouseAccumulatedDeltaNonZero(newValue))
 				IoWinManager::queueMouseTranslateY(0, newValue);
 			break;
 
 		case DIMOFS_Z:
-			rawValue   = static_cast<float>(static_cast<LONG>(od.dwData)) * m_oozMickeysPerUnit + m_zRemainder;
-			newValue   = static_cast<float>(static_cast<int32>(rawValue));
+			rawValue   = dwordToSignedMouseDeltaFloat(od.dwData) * m_oozMickeysPerUnit + m_zRemainder;
+			newValue   = int32ToFloatMouseComponent(truncateFloatTowardZeroForMouse(rawValue));
 			m_zRemainder = rawValue - newValue;
 
-			if (newValue != 0.0f)
+			if (mouseAccumulatedDeltaNonZero(newValue))
 				IoWinManager::queueMouseTranslateZ(0, newValue);
 			break;
 
 		default:
-			FATAL(true, ("unknown mouse input, (dwOfs=%d, dwData=0x%08X)\n", od.dwOfs, od.dwData));
+			FATAL(true, ("unknown mouse input, (dwOfs=%lu, dwData=0x%08lX)\n", static_cast<unsigned long>(od.dwOfs), static_cast<unsigned long>(od.dwData)));
 	}
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 //lint -restore // Error -- Expected a constant
 }
 
@@ -1065,6 +1117,9 @@ JoystickDevice::JoystickDevice(const GUID &newDeviceGuid, int newMaxBufferedEven
 
 bool JoystickDevice::update()
 {
+#if defined(_MSC_VER)
+#pragma warning(push, 0)
+#endif
 	HRESULT hr;
 
 	if (pollIsNeeded)
@@ -1135,8 +1190,6 @@ bool JoystickDevice::update()
 				axisDataPresent[5] = true;
 				axisData[5]        = m_eventData[i].dwData;
 				break;
-
-			break;
 		}
 	}
 
@@ -1164,6 +1217,9 @@ bool JoystickDevice::update()
 	}
 	
 	return true;
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 }
 
 // ----------------------------------------------------------------------
@@ -1204,34 +1260,38 @@ void JoystickDevice::submitEvent()
 
 //lint -save -e30 // Error -- Expected a constant
 
+#if defined(_MSC_VER)
+#pragma warning(push, 0)
+#endif
+
 	if (od.dwOfs == DIJOFS_X)
 	{
-		devicePercent = (static_cast<float>(static_cast<LONG>(od.dwData)) - xDeviceCenter) * ooxDeviceHalfRange;
+		devicePercent = (dwordToSignedMouseDeltaFloat(od.dwData) - xDeviceCenter) * ooxDeviceHalfRange;
 		IoWinManager::queueJoystickTranslateX(joystickNumber, xClientCenter + devicePercent * xClientHalfRange);
 	}
 	else if (od.dwOfs == DIJOFS_Y)
 	{
-		devicePercent = (static_cast<float>(static_cast<LONG>(od.dwData)) - yDeviceCenter) * ooyDeviceHalfRange;
+		devicePercent = (dwordToSignedMouseDeltaFloat(od.dwData) - yDeviceCenter) * ooyDeviceHalfRange;
 		IoWinManager::queueJoystickTranslateY(joystickNumber, yClientCenter + devicePercent * yClientHalfRange);
 	}
 	else if (od.dwOfs == DIJOFS_Z)
 	{
-		devicePercent = (static_cast<float>(static_cast<LONG>(od.dwData)) - zDeviceCenter) * oozDeviceHalfRange;
+		devicePercent = (dwordToSignedMouseDeltaFloat(od.dwData) - zDeviceCenter) * oozDeviceHalfRange;
 		IoWinManager::queueJoystickTranslateZ(joystickNumber, zClientCenter + devicePercent * zClientHalfRange);
 	}
 	else if (od.dwOfs == DIJOFS_RX)
 	{
-		devicePercent = (static_cast<float>(static_cast<LONG>(od.dwData)) - rxDeviceCenter) * oorxDeviceHalfRange;
+		devicePercent = (dwordToSignedMouseDeltaFloat(od.dwData) - rxDeviceCenter) * oorxDeviceHalfRange;
 		IoWinManager::queueJoystickRotateX(joystickNumber, rxClientCenter + devicePercent * rxClientHalfRange);
 	}
 	else if (od.dwOfs == DIJOFS_RY)
 	{
-		devicePercent = (static_cast<float>(static_cast<LONG>(od.dwData)) - ryDeviceCenter) * ooryDeviceHalfRange;
+		devicePercent = (dwordToSignedMouseDeltaFloat(od.dwData) - ryDeviceCenter) * ooryDeviceHalfRange;
 		IoWinManager::queueJoystickRotateY(joystickNumber, ryClientCenter + devicePercent * ryClientHalfRange);
 	}
 	else if (od.dwOfs == DIJOFS_RZ)
 	{
-		devicePercent = (static_cast<float>(static_cast<LONG>(od.dwData)) - rzDeviceCenter) * oorzDeviceHalfRange;
+		devicePercent = (dwordToSignedMouseDeltaFloat(od.dwData) - rzDeviceCenter) * oorzDeviceHalfRange;
 		IoWinManager::queueJoystickRotateZ(joystickNumber, rzClientCenter + devicePercent * rzClientHalfRange);
 	}
 	else if (od.dwOfs >= DIJOFS_POV(0) && od.dwOfs <= DIJOFS_POV(3))
@@ -1248,7 +1308,7 @@ void JoystickDevice::submitEvent()
 	{
 		// button press or release
 		button = static_cast<int>(od.dwOfs - static_cast<DWORD>(DIJOFS_BUTTON0));
-		if (od.dwData & 0x80)
+		if ((od.dwData & 0x80u) != 0u)
 			IoWinManager::queueJoystickButtonDown(joystickNumber, button);
 		else
 			IoWinManager::queueJoystickButtonUp(joystickNumber, button);
@@ -1256,22 +1316,26 @@ void JoystickDevice::submitEvent()
 	else if (od.dwOfs == DIJOFS_SLIDER(0))
 	{
 		Slider const & s = slider[0];
-		devicePercent = (static_cast<float>(static_cast<LONG>(od.dwData)) - s.deviceCenter) * s.deviceHalfRange;
+		devicePercent = (dwordToSignedMouseDeltaFloat(od.dwData) - s.deviceCenter) * s.deviceHalfRange;
 		float value = s.clientCenter + devicePercent * s.clientHalfRange;
 		IoWinManager::queueJoystickSlider(joystickNumber, 0, value);
 	}
 	else if (od.dwOfs == DIJOFS_SLIDER(1))
 	{
 		Slider const & s = slider[1];
-		devicePercent = (static_cast<float>(static_cast<LONG>(od.dwData)) - s.deviceCenter) * s.deviceHalfRange;
+		devicePercent = (dwordToSignedMouseDeltaFloat(od.dwData) - s.deviceCenter) * s.deviceHalfRange;
 		float value = s.clientCenter + devicePercent * s.clientHalfRange;
 		IoWinManager::queueJoystickSlider(joystickNumber, 1, value);
 	}
 	else
 	{
 		// signal that the event is not valid
-		DEBUG_REPORT_LOG(true, ("unknown joystick event %d\n", od.dwOfs));
+		DEBUG_REPORT_LOG(true, ("unknown joystick event %lu\n", static_cast<unsigned long>(od.dwOfs)));
 	}
+
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 
 //lint -restore // Error -- Expected a constant
 }

@@ -54,7 +54,7 @@ void GroundZoneManager::install ()
 
 		for (int i = 0; i < numRows; ++i)
 		{
-			const std::string &areaName           = table->getStringValue("area", i);
+			std::string const areaName(table->getStringValue("area", i));
 			const float        x                  = table->getFloatValue("x", i);
 			const float        z                  = table->getFloatValue("z", i);
 			const bool         adjustForNonSquare = table->getIntValue("adjustForNonSquare", i) != 0;

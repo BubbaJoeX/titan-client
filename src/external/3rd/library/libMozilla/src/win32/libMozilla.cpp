@@ -1,4 +1,12 @@
 #include <intrin.h>
+// Windows 10+ SDK + MSVC 14.4x: include full Windows headers before mozilla-config / NSPR (Interlocked*64, target arch in winnt.h).
+#ifndef WINVER
+#define WINVER 0x0A00
+#endif
+#ifndef _WIN32_WINNT
+#define _WIN32_WINNT 0x0A00
+#endif
+#include <windows.h>
 #include "libMozilla.h"
 
 // Define this if you want to link with the debug version of Mozilla in debug builds.  By default we link with release libs, even in
@@ -19,8 +27,6 @@
 #endif
 
 #include <mozilla-config.h>
-#undef WINVER
-#define WINVER 0x500
 
 #define MOZILLA_INTERNAL_API 1
 
@@ -74,9 +80,6 @@
 #include <nsString.h>
 #include <nsXPCOM.h>
 #include <nsXULAppAPI.h>
-
-#include <intrin.h>
-#include <windows.h>
 
 static char *s_nullString = "";
 static bool  s_bEnableMemoryCache = true;

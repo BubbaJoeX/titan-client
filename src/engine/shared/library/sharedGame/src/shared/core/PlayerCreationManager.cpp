@@ -428,8 +428,8 @@ void PlayerCreationManager::loadRacialModifiers()
 
 	for (int row = 0; row < dataTable.getNumRows(); ++row)
 	{
-		std::string const &maleTemplate   = dataTable.getStringValue("male_template",   row);
-		std::string const &femaleTemplate = dataTable.getStringValue("female_template", row);
+		std::string const maleTemplate(dataTable.getStringValue("male_template", row));
+		std::string const femaleTemplate(dataTable.getStringValue("female_template", row));
 		int health                        = dataTable.getIntValue("health",       row);
 		int constitution                  = dataTable.getIntValue("constitution", row);
 		int action                        = dataTable.getIntValue("action",       row);
@@ -475,7 +475,7 @@ void PlayerCreationManager::loadProfessionModifiers()
 
 	for (int row = 0; row < dataTable.getNumRows(); ++row)
 	{
-		std::string const &profession     = dataTable.getStringValue("profession",   row);
+		std::string const profession(dataTable.getStringValue("profession", row));
 		int health                        = dataTable.getIntValue   ("health",       row);
 		int constitution                  = dataTable.getIntValue   ("constitution", row);
 		int action                        = dataTable.getIntValue   ("action",       row);
@@ -538,8 +538,8 @@ void PlayerCreationManager::buildRacialMinsMaxes()
 	int numAttribs = dt->getNumColumns() - 1;
 	for (int row = 0; row < dt->getNumRows(); ++row)
 	{
-		const std::string & maleTemplate   = dt->getStringValue(0, row);
-		const std::string & femaleTemplate = dt->getStringValue(1, row);
+		std::string const maleTemplate(dt->getStringValue(0, row));
+		std::string const femaleTemplate(dt->getStringValue(1, row));
 		raceMinMaxes.clear();
 		int i;
 		for (i = 2; i < numAttribs; i += 2)

@@ -11,6 +11,7 @@
 
 #include "LocalizationManager.h"
 #include "sharedDebug/InstallTimer.h"
+#include "sharedDebug/Report.h"
 #include "sharedFile/TreeFile.h"
 #include "sharedFoundation/ExitChain.h"
 #include "sharedGame/AppearanceManager.h"
@@ -142,13 +143,16 @@ void SetupSharedGame::install (const SetupSharedGame::Data& data)
 	ms_installed = true;
 
 	ConfigSharedGame::install();
+	REPORT_LOG(true, ("SetupSharedGame: after ConfigSharedGame::install\n"));
 
 	//-- TODO: add to ExitChain in install functions
 	SpatialChatManager::install();
 	ExitChain::add(SpatialChatManager::remove, "SpatialChatManager::remove");
+	REPORT_LOG(true, ("SetupSharedGame: after SpatialChatManager::install\n"));
 
 	MoodManager::install();
 	ExitChain::add(MoodManager::remove, "MoodManager::remove");
+	REPORT_LOG(true, ("SetupSharedGame: after MoodManager::install\n"));
 
 	const bool displayBadStringIds   = ConfigSharedGame::getDisplayBadStringIds ();
 	const bool debugStringIds        = ConfigSharedGame::getDebugStringIds      ();
@@ -158,17 +162,27 @@ void SetupSharedGame::install (const SetupSharedGame::Data& data)
 
 	LocalizationManager::install (new TreeFile::TreeFileFactory, localeVector, debugStringIds, data.m_debugBadStringsFunc, displayBadStringIds);
 	ExitChain::add(LocalizationManager::remove, "LocalizationManager::remove");
+	REPORT_LOG(true, ("SetupSharedGame: after LocalizationManager::install\n"));
 
 	TravelManager::install ();
+	REPORT_LOG(true, ("SetupSharedGame: after TravelManager::install\n"));
 
 	if (data.getUseGameScheduler ())
 		GameScheduler::install ();
+	REPORT_LOG(true, ("SetupSharedGame: after GameScheduler (if enabled)\n"));
 
+	// Next: AppearanceManager (large datatables/appearance/appearance_table.iff). If you crash here
+	// after seeing "after GameScheduler", the failure is not GameScheduler — it is this install or
+	// heap corruption from an earlier swallowed SEH (removed from installFileManifestEntries).
+	REPORT_LOG(true, ("SetupSharedGame: before AppearanceManager::install\n"));
 	AppearanceManager::install();
+	REPORT_LOG(true, ("SetupSharedGame: after AppearanceManager::install\n"));
 	CustomizationManager::install();
+	REPORT_LOG(true, ("SetupSharedGame: after CustomizationManager::install\n"));
 	SharedBuffBuilderManager::install();
 	SharedImageDesignerManager::install();
 	TextManager::install();
+	REPORT_LOG(true, ("SetupSharedGame: after TextManager::install\n"));
 	GameLanguageManager::install();
 	ShipChassis::install ();
 	ShipComponentDescriptor::install ();
@@ -177,14 +191,18 @@ void SetupSharedGame::install (const SetupSharedGame::Data& data)
 	ShipSlotIdManager::install ();
 	ShipTurretManager::install ();
 	ObjectUsabilityManager::install();
+	REPORT_LOG(true, ("SetupSharedGame: after ship/object usability installs\n"));
 
 	AssetCustomizationManager::install ("customization/asset_customization_manager.iff");
+	REPORT_LOG(true, ("SetupSharedGame: after AssetCustomizationManager::install\n"));
 
 	if (data.getUseMountValidScaleRangeTable ())
 		MountValidScaleRangeTable::install ("datatables/mount/valid_scale_range.iff");
+	REPORT_LOG(true, ("SetupSharedGame: after MountValidScaleRangeTable (if enabled)\n"));
 
 	if (data.getUseWearableAppearanceMap ())
 		WearableAppearanceMap::install ("datatables/appearance/wearable_appearance_map.iff");
+	REPORT_LOG(true, ("SetupSharedGame: after WearableAppearanceMap (if enabled)\n"));
 
 	if (data.getUseClientCombatManagerSupport ())
 		ClientCombatManagerSupport::install ("combat/combat_manager.iff");
@@ -193,6 +211,7 @@ void SetupSharedGame::install (const SetupSharedGame::Data& data)
 	NebulaManager::install();
 	HyperspaceManager::install();
 	PlayerFormationManager::install();
+
 	CollectionsDataTable::install();
 	LfgDataTable::install();
 	GuildRankDataTable::install();
@@ -204,7 +223,9 @@ void SetupSharedGame::install (const SetupSharedGame::Data& data)
 	Waypoint::install();
 
 	SharedSaddleManager::install();
+	REPORT_LOG(true, ("SetupSharedGame: after SharedSaddleManager::install\n"));
 	CombatDataTable::install();
+	REPORT_LOG(true, ("SetupSharedGame: install complete (before ExitChain remove hook)\n"));
 	ExitChain::add (SetupSharedGameNamespace::remove, "SetupSharedGameNamespace::remove");
 }
 

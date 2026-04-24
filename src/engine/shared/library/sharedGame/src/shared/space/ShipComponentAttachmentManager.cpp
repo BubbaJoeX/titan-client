@@ -157,7 +157,7 @@ void ShipComponentAttachmentManager::load()
 		
 		for (int row = 0; row < numRows; ++row)
 		{
-			std::string const & componentName = dt.getStringValue (0, row);
+			std::string const componentName(dt.getStringValue(0, row));
 			if (componentName.empty())
 				continue;
 
@@ -176,7 +176,7 @@ void ShipComponentAttachmentManager::load()
 				if (!dt.doesColumnExist (slotName))
 					continue;
 				
-				std::string const & attachments = dt.getStringValue (slotName, row);
+				std::string const attachments(dt.getStringValue(slotName, row));
 				if (attachments.empty ())
 					continue;
 				

@@ -602,8 +602,8 @@ void FormManager::loadData()
 
 		for (int i = 0; i < numRows; ++i)
 		{
-			std::string const & formName = fileTable->getStringValue (0, i);
-			std::string const & filename = fileTable->getStringValue (1, i);
+			std::string const formName(fileTable->getStringValue(0, i));
+			std::string const filename(fileTable->getStringValue(1, i));
 
 			std::string const tableName = cs_baseDir + filename;
 			if(s_tablesLoaded)
@@ -628,8 +628,8 @@ void FormManager::loadData()
 
 		for (int i = 0; i < numRows; ++i)
 		{
-			std::string const & serverTemplateName = formMapTable->getStringValue (0, i);
-			std::string const & sharedTemplateName = formMapTable->getStringValue (1, i);
+			std::string const serverTemplateName(formMapTable->getStringValue(0, i));
+			std::string const sharedTemplateName(formMapTable->getStringValue(1, i));
 			ConstCharCrcString const & sharedCrcStr = ObjectTemplateList::lookUp(sharedTemplateName.c_str());
 			uint32 const sharedCrc = sharedCrcStr.getCrc();
 			if(sharedCrc == 0)
@@ -641,7 +641,7 @@ void FormManager::loadData()
 				}
 			}
 
-			std::string const & form = formMapTable->getStringValue (2, i);
+			std::string const form(formMapTable->getStringValue(2, i));
 			int const autoCreateObject = formMapTable->getIntValue(3, i);
 
 			if(autoCreateObject == 0)
@@ -709,18 +709,18 @@ void FormManager::loadTable(DataTable const & table, std::string const & tableNa
 
 	for (int i = 0; i < numRows; ++i)
 	{
-		std::string const & entryName                = table.getStringValue (0, i);
+		std::string const entryName(table.getStringValue(0, i));
 		int const           entryType                = table.getIntValue    (1, i);
-		std::string const & externalName             = table.getStringValue (2, i);
-		std::string const & defaultValue             = table.getStringValue (3, i);
-		std::string const & minValue                 = table.getStringValue (4, i);
-		std::string const & maxValue                 = table.getStringValue (5, i);
-		std::string const & choiceList               = table.getStringValue (6, i);
+		std::string const externalName(table.getStringValue(2, i));
+		std::string const defaultValue(table.getStringValue(3, i));
+		std::string const minValue(table.getStringValue(4, i));
+		std::string const maxValue(table.getStringValue(5, i));
+		std::string const choiceList(table.getStringValue(6, i));
 		int const           mustUseList              = table.getIntValue    (7, i);
-		std::string const & validationFilename       = table.getStringValue (8, i);
+		std::string const validationFilename(table.getStringValue(8, i));
 		int const           validationFilenameColumn = table.getIntValue    (9, i);
-		std::string const & otherValidationRules     = table.getStringValue (10, i);
-		std::string const & objvarBinding            = table.getStringValue (11, i);
+		std::string const otherValidationRules(table.getStringValue(10, i));
+		std::string const objvarBinding(table.getStringValue(11, i));
 
 		Field * const field = new Field(form);
 

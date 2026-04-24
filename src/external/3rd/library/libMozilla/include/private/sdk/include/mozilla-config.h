@@ -45,14 +45,18 @@
 #define STDC_HEADERS 1
 #define WIN32 1
 #define WIN32_LEAN_AND_MEAN 1
-#define WINVER 0x400
+/* Titan: 0x400 (NT4) breaks Windows 10+ SDK 10.0.26xxx (Interlocked*64 in winbase.h with MSVC 14.40+). */
+#define WINVER 0x0A00
 #define XP_WIN 1
 #define XP_WIN32 1
 #define X_DISPLAY_MISSING 1
 #define _WIN32 1
-#define _WIN32_WINNT 0x400
+#define _WIN32_WINNT 0x0A00
 #define _WINDOWS 1
+// Original Mozilla assumed 32-bit x86. Defining _X86_ on x64/ARM64 confuses the Win10+ SDK (e.g. winbase.h Interlocked*64).
+#if !(defined(_M_X64) || defined(_M_AMD64) || defined(_M_ARM64))
 #define _X86_ 1
+#endif
 
 #endif /* _MOZILLA_CONFIG_H_ */
 

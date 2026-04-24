@@ -70,8 +70,8 @@ namespace CutSceneNamespace
 			int const areaCount = areaCutScenesTable.getNumRows();
 			for (int areaRow = 0; areaRow < areaCount; ++areaRow)
 			{
-				const std::string &areaName = areaCutScenesTable.getStringValue("areaName", areaRow);
-				const std::string &cutSceneName = areaCutScenesTable.getStringValue("cutSceneName", areaRow);
+				std::string const areaName(areaCutScenesTable.getStringValue("areaName", areaRow));
+				std::string const cutSceneName(areaCutScenesTable.getStringValue("cutSceneName", areaRow));
 
 #ifdef _WIN64
 			s_areaCutSceneLookup.push_back(StringPair());

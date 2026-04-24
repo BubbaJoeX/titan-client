@@ -131,7 +131,7 @@ void PortalPropertyTemplateNamespace::loadEjectionPointData(char const *filename
 	for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex)
 	{
 		//-- Get pob file name.
-		std::string const &pobFileName = table->getStringValue(pobFileNameColumnNumber, rowIndex);
+		std::string const pobFileName(table->getStringValue(pobFileNameColumnNumber, rowIndex));
 		FATAL(pobFileName.empty(), ("File [%s], row [%d]: POB filename is zero-length.", filename, rowIndex + 1));
 
 		//-- Construct the transform for the ejection point.  Ejection point transforms are in the

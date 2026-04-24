@@ -85,7 +85,7 @@ void ExpertiseManagerNamespace::loadExpertiseTable(DataTable const & datatable)
 
 	for (int row = 0; row < numRows; ++row)
 	{
-		std::string const & name = s_expertiseDatatable->getStringValue(nameColumn, row);
+		std::string const name(s_expertiseDatatable->getStringValue(nameColumn, row));
 
 		SkillObject const * skill = SkillManager::getInstance().getSkill(name);
 		DEBUG_FATAL(!skill, ("ExpertiseManager: %s row %d: skill does not exist for %s", cs_expertiseDatatableName.c_str(), row, name.c_str()));
@@ -160,9 +160,9 @@ void ExpertiseManagerNamespace::loadExpertiseTreesTable(DataTable const & datata
 	for (int row = 0; row < numRows; ++row)
 	{
 		int treeId                   = s_expertiseTreesDatatable->getIntValue(treeIdColumn, row);
-		std::string const & stringId = s_expertiseTreesDatatable->getStringValue(stringIdColumn, row);
+		std::string const stringId(s_expertiseTreesDatatable->getStringValue(stringIdColumn, row));
 		s_expertiseStringForTree[treeId] = stringId;
-		std::string const & uiStringId = s_expertiseTreesDatatable->getStringValue(uiBackgroundIdColumn, row);
+		std::string const uiStringId(s_expertiseTreesDatatable->getStringValue(uiBackgroundIdColumn, row));
 		s_uiBackgroundIdForTree[treeId] = uiStringId;
 	}
 }
@@ -186,8 +186,8 @@ void ExpertiseManagerNamespace::loadSkillTemplateTable(DataTable const & datatab
 
 	for (int row = 0; row < numRows; ++row)
 	{
-		std::string const & templateName   = s_skillTemplateDatatable->getStringValue(templateNameColumn, row);
-		std::string const & expertiseTrees = s_skillTemplateDatatable->getStringValue(expertiseTreesColumn, row);
+		std::string const templateName(s_skillTemplateDatatable->getStringValue(templateNameColumn, row));
+		std::string const expertiseTrees(s_skillTemplateDatatable->getStringValue(expertiseTreesColumn, row));
 
 		if (expertiseTrees.empty())
 		{

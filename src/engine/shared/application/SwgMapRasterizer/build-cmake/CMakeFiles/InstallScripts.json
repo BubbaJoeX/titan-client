@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"D:/titan/client/src/engine/shared/application/SwgMapRasterizer/build-cmake/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

@@ -900,8 +900,8 @@ void CuiCombatManager::install ()
 			const unsigned char green = (unsigned char) conDataTable.getIntValue(greenValue, row);
 			const unsigned char blue  = (unsigned char) conDataTable.getIntValue(blueValue, row);
 
-			std::string const &fileName = conDataTable.getStringValue(strIdFile, row);
-			std::string const &stringName = conDataTable.getStringValue(strIdName, row);
+			std::string const fileName(conDataTable.getStringValue(strIdFile, row));
+			std::string const stringName(conDataTable.getStringValue(strIdName, row));
 
 			s_conLevelData[row] = std::make_pair (StringId (fileName.c_str(), stringName.c_str()), UIColor (red, green, blue));
 		}

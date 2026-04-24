@@ -91,7 +91,7 @@ namespace SwgCuiCreditsNamespace
 			bool found = false;
 			for (int j = 0; j < numColumns; ++j)
 			{
-				const std::string & str = dt.getStringValue (j, i);
+				std::string const str(dt.getStringValue(j, i));
 				if (!str.empty ())
 				{
 					if (str [0] == '@')

@@ -168,7 +168,7 @@ void ClientRegionManager::loadPlanet (const std::string& planetName)
 
 		for (int i = 0; i < numRows; ++i)
 		{
-			const std::string & stringid = table->getStringValue(0, i);
+			std::string const stringid(table->getStringValue(0, i));
 			float x                      = table->getFloatValue (1, i);
 			float z                      = table->getFloatValue (2, i);
 			float radius                 = table->getFloatValue (3, i);
@@ -207,7 +207,7 @@ void ClientRegionManager::tempLoadPlanet(const std::string& planetName)
 
 		for (int i = 0; i < numRows; ++i)
 		{
-			const std::string & stringid = table->getStringValue(0, i);
+			std::string const stringid(table->getStringValue(0, i));
 			float x                      = table->getFloatValue (1, i);
 			float z                      = table->getFloatValue (2, i);
 			float radius                 = table->getFloatValue (3, i);

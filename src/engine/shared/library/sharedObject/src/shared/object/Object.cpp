@@ -48,6 +48,9 @@
 #include <map>
 #include <typeinfo>
 #include <vector>
+#if defined(_WIN32)
+#include <windows.h>
+#endif
 
 #define ENABLE_OBJECTTOWORLDDIRTY 1
 #define PROFILE_GETTRANSFORM_O2W 0
@@ -422,6 +425,7 @@ namespace ObjectNamespace
 	Object::LeakedDpvsObjectHookFunction             ms_leakedDpvsObjectHookFunction;
 
 	char                                             ms_crashReportInfo[MAX_PATH * 2];
+	bool                                             ms_crashReportInfoRegistered;
 
 	void                    remove();
 	Transform              *newLocalTransform();
@@ -450,23 +454,81 @@ namespace ObjectNamespace
 using namespace ObjectNamespace;
 
 // ======================================================================
+#if defined(_WIN32)
+namespace
+{
+	// addDynamicText can AV if the heap is already damaged (e.g. after an SEH path that leaked a
+	// half-constructed object). /EHsc does not catch that; this keeps the client up without the
+	// live Object:: ~Object crash blurb in the crash dumper.
+	bool tryObjectCrashInfoAddDynamicText (char *const buffer)
+	{
+		__try
+		{
+			buffer[0] = '\0';
+			CrashReportInformation::addDynamicText(buffer);
+			return true;
+		}
+		__except (EXCEPTION_EXECUTE_HANDLER)
+		{
+			::OutputDebugStringA(
+				"[Titan] Object::install: CrashReportInformation::addDynamicText(object buffer) "
+				"SEH; live Object crash blurb disabled\r\n");
+			return false;
+		}
+	}
+} // namespace
+#endif
+
+// ======================================================================
 
 void Object::install(bool objectsAlterChildrenAndContents)
 {
+#if defined(_WIN32)
+	::OutputDebugStringA("[Titan] Object::install: enter\r\n");
+#endif
 	NotificationListManager::install();
+#if defined(_WIN32)
+	::OutputDebugStringA("[Titan] Object::install: after NotificationListManager::install\r\n");
+#endif
 	ms_transformMemoryBlockManager = new MemoryBlockManager("Object::ms_transformMemoryBlockManager", true, sizeof(Transform), 0, 0, 0);
+#if defined(_WIN32)
+	::OutputDebugStringA("[Titan] Object::install: after new MemoryBlockManager(Transform)\r\n");
+#endif
 	ms_objectsAlterChildrenAndContents = objectsAlterChildrenAndContents;
 	ExitChain::add(&ObjectNamespace::remove, "Object::remove");
+#if defined(_WIN32)
+	::OutputDebugStringA("[Titan] Object::install: after ExitChain::add(Object::remove)\r\n");
+#endif
 	DebugFlags::registerFlag(ms_objectsAlterChildrenAndContents, "SharedObject", "objectsAlterChildrenAndContents");
+#if defined(_WIN32)
+	::OutputDebugStringA("[Titan] Object::install: after registerFlag objectsAlterChildrenAndContents\r\n");
+#endif
 	DebugFlags::registerFlag(ms_reportPropertySearchStatistics, "SharedObject", "reportPropertySearchStatistics", reportPropertySearchStatistics);
+#if defined(_WIN32)
+	::OutputDebugStringA("[Titan] Object::install: after registerFlag reportPropertySearchStatistics\r\n");
+#endif
 	DebugFlags::registerFlag(ms_logObjectDelete, "SharedObject", "logObjectDelete");
 	DebugFlags::registerFlag(ms_validateObjectPosition, "SharedObject", "validateObjectPosition");
 #if PROFILE_GETTRANSFORM_O2W == 1
 	DebugFlags::registerFlag(ms_debugReport, "SharedObject/Object", "debugReport", ObjectNamespace::debugReport);
 #endif
 
+#if defined(_WIN32)
+	::OutputDebugStringA("[Titan] Object::install: before CrashReportInformation (last step)\r\n");
+#endif
+#if defined(_WIN32)
+	ms_crashReportInfoRegistered = tryObjectCrashInfoAddDynamicText(ms_crashReportInfo);
+#else
 	ms_crashReportInfo[0] = '\0';
 	CrashReportInformation::addDynamicText(ms_crashReportInfo);
+	ms_crashReportInfoRegistered = true;
+#endif
+#if defined(_WIN32)
+	::OutputDebugStringA(
+		ms_crashReportInfoRegistered
+			? "[Titan] Object::install: leave (CrashReportInformation object buffer registered)\r\n"
+			: "[Titan] Object::install: leave (object crash buffer not registered)\r\n");
+#endif
 }
 
 // ----------------------------------------------------------------------
@@ -504,7 +566,11 @@ void ObjectNamespace::debugReport()
 
 void ObjectNamespace::remove()
 {
-	CrashReportInformation::removeDynamicText(ms_crashReportInfo);
+	if (ms_crashReportInfoRegistered)
+	{
+		CrashReportInformation::removeDynamicText(ms_crashReportInfo);
+		ms_crashReportInfoRegistered = false;
+	}
 
 	DebugFlags::unregisterFlag(ms_objectsAlterChildrenAndContents);
 	DebugFlags::unregisterFlag(ms_reportPropertySearchStatistics);

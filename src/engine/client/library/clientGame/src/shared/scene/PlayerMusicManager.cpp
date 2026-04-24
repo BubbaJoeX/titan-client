@@ -272,7 +272,7 @@ void PlayerMusicManagerNamespace::loadFlourishParticlePaths(FlourishParticleSyst
 		for (int row = 0; row < dataTable.getNumRows(); ++row)
 		{
 			int const index = dataTable.getIntValue("index", row);
-			std::string const &path = dataTable.getStringValue("path", row);
+			std::string const path(dataTable.getStringValue("path", row));
 
 			flourishParticleSystemPaths.insert(std::make_pair(index, path));
 		}

@@ -84,6 +84,10 @@ private:
 	Tag  getBlockName(int depth) const;
 	
 	void fatal(const char *string) const;
+	/// Release-safe: ensure [current..+byteCount) lies in-chunk and within loaded file bytes.
+	void verifyInChunkRead_(int byteCount) const;
+	/// Null-terminated chunk string: exactly one of \a stdOut or \a fixedOut (MayaModern algorithm, Release-hardened).
+	void readChunkNullTerminated_(std::string *stdOut, char *fixedOut, int fixedMaxChars);
 	void read_misc(void *data, int length);
 	void growStackAsNeeded(void);
 	void adjustDataAsNeeded(int size);

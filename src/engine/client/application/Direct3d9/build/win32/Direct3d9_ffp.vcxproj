@@ -242,7 +242,7 @@ copy /Y "$(TargetPath)" "D:\titan\exe\win32_rel\gl06_d.dll"</Command>
       <DelayLoadDLLs>DllExport.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>.\..\..\..\..\..\..\compile\x64\Direct3d9_ffp\Debug/gl06_d.pdb</ProgramDatabaseFile>
-      <BaseAddress>0x62A00000</BaseAddress>
+      <BaseAddress>0x180000000</BaseAddress>
       <ImportLibrary>.\..\..\..\..\..\..\compile\x64\Direct3d9_ffp\Debug/gl06_d.lib</ImportLibrary>
       <TargetMachine>MachineX64</TargetMachine>
       <AdditionalOptions> %(AdditionalOptions)</AdditionalOptions>
@@ -353,7 +353,7 @@ copy /Y "$(TargetPath)" "D:\titan\exe\win32_rel\gl06_d.dll"</Command>
       <DelayLoadDLLs>DllExport.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>.\..\..\..\..\..\..\compile\x64\Direct3d9_ffp\Optimized/gl06_o.pdb</ProgramDatabaseFile>
-      <BaseAddress>0x62A00000</BaseAddress>
+      <BaseAddress>0x180000000</BaseAddress>
       <ImportLibrary>.\..\..\..\..\..\..\compile\x64\Direct3d9_ffp\Optimized/gl06_o.lib</ImportLibrary>
       <TargetMachine>MachineX64</TargetMachine>
       <AdditionalOptions> %(AdditionalOptions)</AdditionalOptions>
@@ -469,7 +469,7 @@ copy /Y "$(TargetPath)" "D:\titan\exe\win32_rel\gl06_d.dll"</Command>
       <DelayLoadDLLs>DllExport.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>.\..\..\..\..\..\..\compile\x64\Direct3d9_ffp\Release/gl06_r.pdb</ProgramDatabaseFile>
-      <BaseAddress>0x62A00000</BaseAddress>
+      <BaseAddress>0x180000000</BaseAddress>
       <ImportLibrary>.\..\..\..\..\..\..\compile\x64\Direct3d9_ffp\Release/gl06_r.lib</ImportLibrary>
       <TargetMachine>MachineX64</TargetMachine>
     </Link>

@@ -117,7 +117,7 @@ Command::CppFunc CommandTableNamespace::lookupCppFunc(std::string const &funcNam
 
 void CommandTableNamespace::loadCommandRow(DataTable const &t, int row)
 {
-	std::string const &commandName = Unicode::getTrim(t.getStringValue("commandName", row));
+	std::string const commandName(Unicode::getTrim(Unicode::NarrowString(t.getStringValue("commandName", row))));
 	uint32 const commandHash = Crc::normalizeAndCalculate(commandName.c_str());
 
 	Command &cmd = s_commandMap[commandHash];
@@ -224,7 +224,7 @@ void CommandTableNamespace::loadCommandRow(DataTable const &t, int row)
 		cmd.m_addToCombatQueue= t.getIntValue(queueColNumber, row) ? true : false;
 
 	// The following preserve previously set values if the default value is in the new entry
-	std::string const &stringId = Unicode::getTrim(t.getStringValue("stringId", row));
+	std::string const stringId(Unicode::getTrim(Unicode::NarrowString(t.getStringValue("stringId", row))));
 	if (!stringId.empty())
 		cmd.m_stringId = stringId;
 	int const visibleToClients = t.getIntValue("visible", row);

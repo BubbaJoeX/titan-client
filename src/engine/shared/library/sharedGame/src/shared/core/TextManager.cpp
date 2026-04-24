@@ -262,7 +262,8 @@ void TextManager::install()
 
 		for (int index = 0; index < rowCount; ++index)
 		{
-			std::string const &word = dataTable.getStringValue(0, index);
+			// getStringValue returns const char*; keep an owning std::string for UTF8_convertToUTF16 lifetime.
+			std::string const word(dataTable.getStringValue(0, index));
 			bool const allowSubStringMatch = (dataTable.getIntValue(1, index) != 0);
 
 			Unicode::UTF16 wordBuf[50];

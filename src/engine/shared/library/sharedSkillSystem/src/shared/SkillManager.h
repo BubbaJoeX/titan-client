@@ -8,6 +8,8 @@
 //---------------------------------------------------------------------
 #pragma warning (disable : 4786 )
 
+#include <string>
+
 class SkillObject;
 class DataTable;
 

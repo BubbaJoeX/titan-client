@@ -63,29 +63,19 @@ void SetWarningCallback(WarningCallback);
 
 #define WARNING_STRICT_FATAL(a, b) ((a) ? WarningStrictFatal b : NOP)
 
-#ifdef _DEBUG
+// Release used to define NOT_NULL/IS_NULL as no-ops and NON_NULL as a passthrough — any later
+// strlen/memcpy/dereference then produced 0xC0000005 with no FATAL text (x64 client startup).
+template <class T>
+inline T *NonNull(T *pointer, char const *name)
+{
+	FATAL(!pointer, ("%s pointer is null", name));
+	return pointer;
+}
 
-	template <class T>
-	inline T *NonNull(T *pointer, const char *name)
-	{
-		FATAL(!pointer, ("%s pointer is null", name));
-		return pointer;
-	}
-
-	#define NON_NULL(a) NonNull(a, #a)
-	#define NOT_NULL(a) FATAL(!a, ("%s pointer is null", #a))
-
-	// FATAL if the specified pointer is not NULL (i.e. assert that the pointer is null, the opposite of NOT_NULL).
-	#define IS_NULL(a)  FATAL(a, ("%s pointer is not null, unexpected.", #a))
-
-#else
-
-	#define NON_NULL(a) (a)
-	#define NOT_NULL(a) UNREF(a)
-
-	#define IS_NULL(a)  UNREF(a)
-
-#endif
+#define NON_NULL(a) NonNull((a), #a)
+#define NOT_NULL(a) FATAL(!(a), ("%s pointer is null", #a))
+// FATAL if the pointer is not null (expected null).
+#define IS_NULL(a)  FATAL((a), ("%s pointer is not null, unexpected.", #a))
 
 // ======================================================================
 /**

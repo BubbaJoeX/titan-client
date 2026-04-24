@@ -242,7 +242,7 @@ copy /Y "$(TargetPath)" "D:\titan\exe\win32_rel\gl05_d.dll"</Command>
       <DelayLoadDLLs>DllExport.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>.\..\..\..\..\..\..\compile\x64\Direct3d9\Debug/gl05_d.pdb</ProgramDatabaseFile>
-      <BaseAddress>0x62A00000</BaseAddress>
+      <BaseAddress>0x180000000</BaseAddress>
       <ImportLibrary>.\..\..\..\..\..\..\compile\x64\Direct3d9\Debug/gl05_d.lib</ImportLibrary>
       <TargetMachine>MachineX64</TargetMachine>
       <AdditionalOptions> %(AdditionalOptions)</AdditionalOptions>
@@ -359,7 +359,7 @@ copy /Y "$(TargetPath)" "D:\titan\exe\win32_rel\gl05_d.dll"</Command>
       <DelayLoadDLLs>DllExport.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>.\..\..\..\..\..\..\compile\x64\Direct3d9\Release/gl05_r.pdb</ProgramDatabaseFile>
-      <BaseAddress>0x62A00000</BaseAddress>
+      <BaseAddress>0x180000000</BaseAddress>
       <ImportLibrary>.\..\..\..\..\..\..\compile\x64\Direct3d9\Release/gl05_r.lib</ImportLibrary>
       <TargetMachine>MachineX64</TargetMachine>
     </Link>
@@ -468,7 +468,7 @@ copy /Y "$(TargetPath)" "D:\titan\exe\win32_rel\gl05_d.dll"</Command>
       <DelayLoadDLLs>DllExport.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>.\..\..\..\..\..\..\compile\x64\Direct3d9\Optimized/gl05_o.pdb</ProgramDatabaseFile>
-      <BaseAddress>0x62A00000</BaseAddress>
+      <BaseAddress>0x180000000</BaseAddress>
       <ImportLibrary>.\..\..\..\..\..\..\compile\x64\Direct3d9\Optimized/gl05_o.lib</ImportLibrary>
       <TargetMachine>MachineX64</TargetMachine>
       <AdditionalOptions> %(AdditionalOptions)</AdditionalOptions>

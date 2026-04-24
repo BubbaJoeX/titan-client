@@ -10,6 +10,8 @@
 #ifndef MISC_H
 #define MISC_H
 
+#include "../../include/public/sharedFoundation/Fatal.h"
+
 // ======================================================================
 /**
  * Return the square of a number.
@@ -245,7 +247,7 @@ inline void *memmove(void *destination, const void *source, int length)
 
 inline int istrlen(const char *string)
 {
-	DEBUG_FATAL(!string, ("null string arg"));
+	FATAL(!string, ("istrlen: null string arg"));
 	return static_cast<int>(strlen(string));
 }
 

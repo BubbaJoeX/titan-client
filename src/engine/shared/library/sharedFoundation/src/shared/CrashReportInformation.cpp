@@ -29,6 +29,9 @@ using namespace CrashReportInformationNamespace;
 
 void CrashReportInformation::install()
 {
+	// Reduce reallocation during startup when many subsystems call addDynamicText; on x64, a
+	// damaged heap (e.g. after earlier SEH recovery) can make vector growth fault.
+	ms_dynamicText.reserve(64);
 	ExitChain::add(&remove, "CrashReportInformation::remove");
 }
 

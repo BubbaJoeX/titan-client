@@ -247,7 +247,7 @@ void CustomizationManager::install ()
 	for (int m = 0; m < paletteDataTable.getNumRows(); ++m)
 	{
 		PaletteColumns paletteData;
-		std::string const & palette = paletteDataTable.getStringValue(PaletteDataColumnNames::palette, m);
+		std::string const palette(paletteDataTable.getStringValue(PaletteDataColumnNames::palette, m));
 		paletteData.creationColumns = paletteDataTable.getIntValue(PaletteDataColumnNames::creationColumns, m);
 		paletteData.creationIndexes = paletteDataTable.getIntValue(PaletteDataColumnNames::creationIndexes, m);
 		paletteData.noviceColumns = paletteDataTable.getIntValue(PaletteDataColumnNames::noviceColumns, m);
@@ -271,7 +271,7 @@ void CustomizationManager::install ()
 	holoemoteDataTable.load(holoemoteDataIff);
 	for (int n = 0; n < holoemoteDataTable.getNumRows(); ++n)
 	{
-		std::string const & holoemoteName = holoemoteDataTable.getStringValue(HoloemoteColumnNames::holoemoteName, n);
+		std::string const holoemoteName(holoemoteDataTable.getStringValue(HoloemoteColumnNames::holoemoteName, n));
 		int const requiredHairSkillMod = holoemoteDataTable.getIntValue(HoloemoteColumnNames::requiredHairSkillMod, n);
 		ms_holoemoteHairSkillRequired[holoemoteName] = requiredHairSkillMod;
 	}

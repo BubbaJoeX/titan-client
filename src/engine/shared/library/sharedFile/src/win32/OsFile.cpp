@@ -131,6 +131,16 @@ int OsFile::length() const
 
 // ----------------------------------------------------------------------
 
+long long OsFile::length64() const
+{
+	LARGE_INTEGER li;
+	if (!::GetFileSizeEx(m_handle, &li))
+		return -1;
+	return li.QuadPart;
+}
+
+// ----------------------------------------------------------------------
+
 void OsFile::seek(int newFilePosition)
 {
 #ifdef _DEBUG

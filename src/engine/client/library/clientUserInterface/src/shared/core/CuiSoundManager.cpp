@@ -39,8 +39,8 @@ namespace CuiSoundManagerNamespace
 
 			for (int i = 0; i < numRows; ++i)
 			{
-				const std::string & name   = table->getStringValue (0, i);
-				const std::string & path   = table->getStringValue (1, i);
+				std::string const name(table->getStringValue(0, i));
+				std::string const path(table->getStringValue(1, i));
 
 				s_pathMap.insert (std::make_pair (name, path));
 			}

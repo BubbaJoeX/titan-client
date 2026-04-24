@@ -9,6 +9,7 @@
 #include "fileInterface/AbstractFile.h"
 
 #include <assert.h>
+#include <cstddef>
 #include <cstdio>
 
 // ======================================================================
@@ -57,7 +58,14 @@ byte *AbstractFile::readEntireFileAndClose()
 	seek(SeekBegin, 0);
 
 	const int fileLength = length();
-	byte *buffer = new byte[fileLength];
+	// length() < 0 (e.g. FileStreamer in Release on null OsFile) must not pass to
+	// new[] — on x64 a negative int becomes a huge size_t and corrupts the heap.
+	if (fileLength < 0)
+	{
+		close();
+		return NULL;
+	}
+	byte *buffer = new byte[static_cast<size_t>(fileLength)];
 	const int bytesRead = read(buffer, fileLength);
 	static_cast<void>(bytesRead);
 	assert(bytesRead == fileLength);

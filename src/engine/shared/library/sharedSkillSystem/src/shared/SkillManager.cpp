@@ -202,7 +202,7 @@ void SkillManager::initXpLimits()
 	int count = m_xpLimitTable->getNumRows();
 	for (int i = 0; i < count; ++i)
 	{
-		const std::string & xpType = m_xpLimitTable->getStringValue(0, i);
+		std::string const xpType(m_xpLimitTable->getStringValue(0, i));
 		if (!xpType.empty())
 		{
 			if (xpType == "end")

@@ -294,7 +294,7 @@ const bool SkillObject::isSearchable() const
 
 void SkillObject::loadPrerequisiteSkills(DataTable &dataTable, int skillRow)
 {
-	const std::string & cellString = dataTable.getStringValue(SkillObject::ms_prerequisiteSkillsLabel, skillRow);
+	std::string const cellString(dataTable.getStringValue(SkillObject::ms_prerequisiteSkillsLabel, skillRow));
 	StringVector sv;
 	sv.clear ();
 	tokenizeList (cellString, sv, skillRow, SkillObject::ms_prerequisiteSkillsLabel);
@@ -323,7 +323,7 @@ void SkillObject::loadPrerequisiteExperience(DataTable &dataTable, int skillRow)
 	const int xpLimit = dataTable.getIntValue(SkillObject::ms_prerequisiteExperienceLimitLabel, skillRow);
 	if (xpAmount > 0 || xpLimit > 0)
 	{
-		const std::string & experienceType = dataTable.getStringValue(SkillObject::ms_prerequisiteExperienceTypeLabel, skillRow); 
+		std::string const experienceType(dataTable.getStringValue(SkillObject::ms_prerequisiteExperienceTypeLabel, skillRow)); 
 		if (!experienceType.empty ())
 			skillData.prerequisiteExperience.push_back(std::make_pair(experienceType, std::make_pair(xpAmount, xpLimit)));
 		else
@@ -335,7 +335,7 @@ void SkillObject::loadPrerequisiteExperience(DataTable &dataTable, int skillRow)
 
 void SkillObject::loadPrerequisiteSpecies(DataTable &dataTable, int skillRow)
 {
-	const std::string & cellString = dataTable.getStringValue(SkillObject::ms_prerequisiteSpeciesLabel, skillRow);
+	std::string const cellString(dataTable.getStringValue(SkillObject::ms_prerequisiteSpeciesLabel, skillRow));
 	static StringVector sv;
 	sv.clear ();
 	tokenizeList (cellString, sv, skillRow, SkillObject::ms_prerequisiteSpeciesLabel);
@@ -349,7 +349,7 @@ void SkillObject::loadPrerequisiteSpecies(DataTable &dataTable, int skillRow)
 
 void SkillObject::loadCommands(DataTable &dataTable, int skillRow)
 {
-	const std::string & cellString = dataTable.getStringValue(SkillObject::ms_commandsLabel, skillRow);
+	std::string const cellString(dataTable.getStringValue(SkillObject::ms_commandsLabel, skillRow));
 	static StringVector sv;
 	sv.clear ();
 	tokenizeList (cellString, sv, skillRow, SkillObject::ms_commandsLabel);
@@ -365,7 +365,7 @@ void SkillObject::loadCommands(DataTable &dataTable, int skillRow)
 
 void SkillObject::loadSchematicsGranted(DataTable &dataTable, int skillRow) 
 {
-	const std::string & cellString = dataTable.getStringValue(SkillObject::ms_schematicsGrantedLabel, skillRow);
+	std::string const cellString(dataTable.getStringValue(SkillObject::ms_schematicsGrantedLabel, skillRow));
 	static StringVector sv;
 	sv.clear ();
 	tokenizeList (cellString, sv, skillRow, SkillObject::ms_schematicsGrantedLabel);
@@ -381,7 +381,7 @@ void SkillObject::loadSchematicsGranted(DataTable &dataTable, int skillRow)
 
 void SkillObject::loadStatisticsModifiers(DataTable &dataTable, int skillRow)
 {
-	const std::string & cellString = dataTable.getStringValue(SkillObject::ms_statisticsModifiersLabel, skillRow);
+	std::string const cellString(dataTable.getStringValue(SkillObject::ms_statisticsModifiersLabel, skillRow));
 	static StringVector sv;
 	sv.clear ();
 	tokenizeList (cellString, sv, skillRow, SkillObject::ms_statisticsModifiersLabel);
@@ -397,7 +397,7 @@ void SkillObject::loadStatisticsModifiers(DataTable &dataTable, int skillRow)
 		else
 		{
 			const char * const statValueString = statEntry.c_str () + splitPos + 1;
-			const std::string & statValueName   = statEntry.substr (0, splitPos);
+			std::string const statValueName(statEntry.substr(0, splitPos));
 			const int32 modifier = atoi (statValueString);
 			skillData.statisticModifiers.push_back(std::make_pair(statValueName, modifier));
 		}
@@ -426,11 +426,11 @@ void SkillObject::connectLinks(DataTable &dataTable, const std::string & parentN
 	int rows = dataTable.getNumRows();
 	for (int i = 0; i < rows; i++)
 	{
-		const std::string & tmpParent = dataTable.getStringValue(SkillObject::ms_parentLabel, i);
+		std::string const tmpParent(dataTable.getStringValue(SkillObject::ms_parentLabel, i));
 
 		if (tmpParent == nextSkillSearchName)
 		{
-			const std::string & nextSkillName = dataTable.getStringValue(SkillObject::ms_skillLabel, i);
+			std::string const nextSkillName(dataTable.getStringValue(SkillObject::ms_skillLabel, i));
 			const SkillObject * const nextSkill = SkillManager::getInstance().getSkill(nextSkillName);
 			if (nextSkill)
 			{

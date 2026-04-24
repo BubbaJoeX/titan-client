@@ -18,7 +18,80 @@
 
 #include <shellapi.h>
 
+#include <cstdio>
+#include <cstring>
+
 extern void externalCommandHandler(const char*);
+
+// Config and TreeFile paths in titan_d.cfg are relative to the process working directory.
+// Visual Studio defaults the debugger CWD to $(ProjectDir) or $(OutDir), so titan_d.cfg / tres/
+// are often missing and graphics or data init fails with no visible output. Always prefer the exe directory.
+void TitanAppendBootLog(char const *line)
+{
+	char exePath[MAX_PATH];
+	if (!GetModuleFileNameA(nullptr, exePath, MAX_PATH))
+		return;
+	char *const lastSlash = strrchr(exePath, '\\');
+	if (lastSlash)
+		*lastSlash = '\0';
+	char logsDir[MAX_PATH];
+	_snprintf_s(logsDir, sizeof(logsDir), _TRUNCATE, "%s\\logs", exePath);
+	CreateDirectoryA(logsDir, nullptr);
+	char logPath[MAX_PATH];
+	_snprintf_s(logPath, sizeof(logPath), _TRUNCATE, "%s\\SwgTitan_boot.log", logsDir);
+	FILE *fp = nullptr;
+	if (fopen_s(&fp, logPath, "a") != 0 || !fp)
+		return;
+	fprintf(fp, "%s\n", line ? line : "");
+	fclose(fp);
+}
+
+static void TitanSetWorkingDirectoryToExeDirectory()
+{
+	char skip[4];
+	if (GetEnvironmentVariableA("SWGCLIENT_NO_SET_CWD", skip, sizeof(skip)) > 0)
+	{
+		TitanAppendBootLog("Titan: SWGCLIENT_NO_SET_CWD set; leaving process CWD unchanged");
+		return;
+	}
+	char module[MAX_PATH];
+	if (!GetModuleFileNameA(nullptr, module, MAX_PATH))
+		return;
+	char *const lastSlash = strrchr(module, '\\');
+	if (!lastSlash)
+		return;
+	*lastSlash = '\0';
+	if (!SetCurrentDirectoryA(module))
+	{
+		TitanAppendBootLog("Titan: SetCurrentDirectory to exe dir FAILED");
+		return;
+	}
+	char cwd[MAX_PATH];
+	if (GetCurrentDirectoryA(sizeof(cwd), cwd))
+	{
+		char msg[MAX_PATH + 64];
+		_snprintf_s(msg, sizeof(msg), _TRUNCATE, "Titan: SetCurrentDirectory OK -> %s", cwd);
+		TitanAppendBootLog(msg);
+	}
+}
+
+#ifdef _DEBUG
+// Set SWGCLIENT_ATTACH_CONSOLE=1 before launch to get a console for printf / stderr.
+// Engine log lines still need [SharedLog] logStderr=true in titan_d.cfg (or use VS Output → Debug for OutputDebugString).
+static void AttachDebugConsoleFromEnv()
+{
+	char buf[8];
+	if (GetEnvironmentVariableA("SWGCLIENT_ATTACH_CONSOLE", buf, sizeof(buf)) == 0)
+		return;
+	if (!AllocConsole())
+		return;
+	FILE *fp = nullptr;
+	IGNORE_RETURN(freopen_s(&fp, "CONOUT$", "w", stdout));
+	IGNORE_RETURN(freopen_s(&fp, "CONOUT$", "w", stderr));
+	IGNORE_RETURN(freopen_s(&fp, "CONIN$", "r", stdin));
+	SetConsoleTitleA("SWG Titan (debug console)");
+}
+#endif
 
 // ======================================================================
 
@@ -116,6 +189,22 @@ int WINAPI WinMain(
 	int       nCmdShow        // show state of window
 	)
 {
+	TitanAppendBootLog("Titan: WinMain entry");
+#ifdef _DEBUG
+	AttachDebugConsoleFromEnv();
+#endif
+	{
+		char exePath[MAX_PATH];
+		if (GetModuleFileNameA(nullptr, exePath, MAX_PATH))
+		{
+			char line[MAX_PATH + 32];
+			_snprintf_s(line, sizeof(line), _TRUNCATE, "Titan: executable path: %s", exePath);
+			TitanAppendBootLog(line);
+		}
+	}
+
+	TitanSetWorkingDirectoryToExeDirectory();
+
 	if (!SetUserSelectedMemoryManagerTarget())
 		SetDefaultMemoryManagerTargetSize();
 

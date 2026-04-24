@@ -163,9 +163,9 @@ void RoadmapManager::loadSkillClientDatatable()
 
 	for(unsigned int r = 0; r < numRows; ++r)
 	{
-		const std::string & skillName = datatable->getStringValue(skillNameColumn, r);
-		const std::string & iconPath = datatable->getStringValue(iconColumn, r);
-		const std::string & activityType = datatable->getStringValue(activityTypeColumn, r);
+		std::string const skillName(datatable->getStringValue(skillNameColumn, r));
+		std::string const iconPath(datatable->getStringValue(iconColumn, r));
+		std::string const activityType(datatable->getStringValue(activityTypeColumn, r));
 		
 		SkillClientDataRecord scdr;
 		scdr.iconPath = iconPath;
@@ -210,9 +210,9 @@ void RoadmapManager::loadTemplateDatatable()
 
 	for(unsigned int r = 0; r < numRows; ++r)
 	{
-		std::string const & templateName = datatable->getStringValue(templateNameColumn, r);
-		std::string const & templateList = datatable->getStringValue(templateColumn, r);
-		std::string const & templateStarting = datatable->getStringValue(templateStartingColumn, r);
+		std::string const templateName(datatable->getStringValue(templateNameColumn, r));
+		std::string const templateList(datatable->getStringValue(templateColumn, r));
+		std::string const templateStarting(datatable->getStringValue(templateStartingColumn, r));
 		int const templateUIPriority = datatable->getIntValue(templateUIPriorityColumn, r);
 		bool const levelBased = (datatable->getIntValue(levelBasedColumn, r) != 0);
 		
@@ -247,17 +247,17 @@ void RoadmapManager::loadRoadmapDatatable()
 	
 	for(unsigned int r = 0; r < numRows; ++r)
 	{
-		const std::string & roadmapName = datatable->getStringValue(roadmapNameColumn, r);
+		std::string const roadmapName(datatable->getStringValue(roadmapNameColumn, r));
 
 		RoadmapRecord rr;
 		rr.roadmapName = roadmapName;
-		const std::string & templateList = datatable->getStringValue(templateListColumn, r);
+		std::string const templateList(datatable->getStringValue(templateListColumn, r));
 		splitString(templateList, rr.templateNames);
 		int phase1Count = datatable->getIntValue(phaseCount1Column, r);
 		unsigned int b;
 		for(b = 0; b < MAX_NUM_BRANCHES; ++b)
 			rr.phaseCounts[b][0] = phase1Count;
-		const std::string & phaseCountsString = datatable->getStringValue(phaseCountsColumn, r);
+		std::string const phaseCountsString(datatable->getStringValue(phaseCountsColumn, r));
 		std::vector<std::string> tmp;
 		splitString(phaseCountsString, tmp);
 
@@ -272,7 +272,7 @@ void RoadmapManager::loadRoadmapDatatable()
 				rr.phaseCounts[b][p + 1] = atoi(tmp[c++].c_str());			
 		}
 		
-		const std::string &phaseIconsString = datatable->getStringValue(phaseIconsColumn, r);
+		std::string const phaseIconsString(datatable->getStringValue(phaseIconsColumn, r));
 		splitString(phaseIconsString, rr.phaseIconPaths);
 
 		m_roadmapData.insert(std::make_pair(Crc::normalizeAndCalculate(roadmapName.c_str()), rr));		
@@ -324,10 +324,10 @@ void RoadmapManager::loadItemRewardsDatatable()
 	
 	for(unsigned int r = 0; r < numRows; ++r)
 	{
-		const std::string & roadmapTemplateName = datatable->getStringValue(roadmapTemplateNameColumn, r);
-		const std::string & roadmapSkillName = datatable->getStringValue(roadmapSkillNameColumn, r);
-		const std::string & appearanceName = datatable->getStringValue(appearanceNameColumn, r);
-		const std::string & stringIdName = datatable->getStringValue(stringIdColumn, r);
+		std::string const roadmapTemplateName(datatable->getStringValue(roadmapTemplateNameColumn, r));
+		std::string const roadmapSkillName(datatable->getStringValue(roadmapSkillNameColumn, r));
+		std::string const appearanceName(datatable->getStringValue(appearanceNameColumn, r));
+		std::string const stringIdName(datatable->getStringValue(stringIdColumn, r));
 
 		ItemRewardRecord irr;
 		char tmp[512];

@@ -195,7 +195,7 @@ void SharedBuildoutAreaManager::install()
 		int const sceneCount = buildoutScenesTable.getNumRows();
 		for (int sceneRow = 0; sceneRow < sceneCount; ++sceneRow)
 		{
-			const std::string &sceneNameTemp = buildoutScenesTable.getStringValue("sceneName", sceneRow);
+			std::string const sceneNameTemp(buildoutScenesTable.getStringValue("sceneName", sceneRow));
 			// Skip server-side worldserver files in god client
 			if (sceneNameTemp.find("_ws") != std::string::npos)
 			{

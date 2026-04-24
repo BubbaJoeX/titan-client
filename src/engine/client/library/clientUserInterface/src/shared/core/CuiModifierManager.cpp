@@ -285,10 +285,10 @@ void CuiModifierManager::loadData()
 
 		for (int i = 0; i < numRows; ++i)
 		{
-			const std::string & modName     = fileTable->getStringValue (0, i);
-			const std::string & nameid      = fileTable->getStringValue (1, i);
-			const std::string & descid      = fileTable->getStringValue (2, i);
-			const std::string & iconstyle   = fileTable->getStringValue (3, i);
+			std::string const modName(fileTable->getStringValue(0, i));
+			std::string const nameid(fileTable->getStringValue(1, i));
+			std::string const descid(fileTable->getStringValue(2, i));
+			std::string const iconstyle(fileTable->getStringValue(3, i));
 
 			const ModId crc     = getModId(modName.c_str());
 			ModifierInfo * mod  = new ModifierInfo;

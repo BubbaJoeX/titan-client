@@ -1,256 +1,135 @@
 # ======================================================================
-# CMakeLists.txt for SwgMapRasterizer
-# Planet Map Image Generator Tool
+# SwgMapRasterizer — CMake entry point
 #
-# Generates top-down terrain map images from .trn files for use as
-# planet map textures in the game UI (ui_planetmap.inc).
+# On Windows, the vcxproj carries the real dependency closure (incl. dpvs,
+# sharedCollision, clientGame, Direct3D, etc.). A pure CMake link of dozens
+# of prebuilt .lib files drifts from that and breaks when a library is
+# missing (e.g. clientGame on some trees).
+#
+# Default: MSBuild the official vcxproj (Debug|x64 — full link; see SWG_MSBUILD_CONFIG)
+#   → client/src/compile/x64/SwgMapRasterizer/Debug/SwgMapRasterizer_d.exe
+#   → copy to titan/exe/win64_rel
+#
+# Tests: ctest  (e.g. -help; use cmake --build --config <same as SWG_MSBUILD_CONFIG>)
 # ======================================================================
 
-cmake_minimum_required(VERSION 3.10)
-project(SwgMapRasterizer VERSION 1.0.0 LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.20)
+project(SwgMapRasterizerDriver NONE)
 
-set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+# Paths: .../client/src/.../SwgMapRasterizer  →  client/src, titan root
+get_filename_component(SWG_THIS_DIR "${CMAKE_CURRENT_SOURCE_DIR}" ABSOLUTE)
+get_filename_component(SWG_CLIENT_SRC "${SWG_THIS_DIR}/../../../.." ABSOLUTE)
+# swg.sln and x64.props live here; required when MSBuild has no .sln (deps use $(SolutionDir)x64.props)
+get_filename_component(SWG_MSBUILD_SOLUTION_DIR "${SWG_CLIENT_SRC}/build/win32" ABSOLUTE)
+# Debug|x64 has the same link closure as SwgTitan; Release|x64 in vcxproj is a minimal
+# set and does not link dpvs, sharedCollision, clientGame, etc. On many trees
+# clientGame is only built for Debug|x64 — use Debug for a working map tool.
+set(SWG_MSBUILD_CONFIG "Debug" CACHE STRING "MSBuild configuration (x64: use Debug for full link)")
+get_filename_component(SWG_X64_OUTDIR "${SWG_CLIENT_SRC}/compile/x64/SwgMapRasterizer/${SWG_MSBUILD_CONFIG}" ABSOLUTE)
+if(SWG_MSBUILD_CONFIG STREQUAL "Debug")
+    set(SWG_BUILT_EXENAME "SwgMapRasterizer_d.exe")
+else()
+    set(SWG_BUILT_EXENAME "SwgMapRasterizer_r.exe")
 endif()
+get_filename_component(SWG_BUILT_EXE "${SWG_X64_OUTDIR}/${SWG_BUILT_EXENAME}" ABSOLUTE)
+get_filename_component(SWG_TITAN_ROOT "${SWG_THIS_DIR}/../../../../../../" ABSOLUTE)
+get_filename_component(SWG_SHIP_DIR "${SWG_TITAN_ROOT}/exe/win64_rel" ABSOLUTE)
 
-# ======================================================================
-# Engine Library Root Paths
-# ======================================================================
+set(SWG_VCXPROJ "${SWG_THIS_DIR}/build/win32/SwgMapRasterizer.vcxproj" CACHE FILEPATH "SwgMapRasterizer Visual Studio project")
 
-# Paths relative to this CMakeLists.txt location:
-# SwgMapRasterizer is at: client/src/engine/shared/application/SwgMapRasterizer/
-
-set(ENGINE_SHARED_LIB_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../library")
-set(ENGINE_CLIENT_LIB_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../client/library")
-set(EXTERNAL_OURS_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../../external/ours/library")
-set(EXTERNAL_3RD_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../../external/3rd/library")
-
-# ======================================================================
-# Source Files
-# ======================================================================
-
-set(SOURCES
-    src/shared/SwgMapRasterizer.cpp
-    src/shared/SwgMapRasterizer.h
-    src/shared/FirstSwgMapRasterizer.h
-    src/win32/WinMain.cpp
-    src/win32/FirstSwgMapRasterizer.cpp
+option(SWG_USE_VCXPROJ_MSBUILD
+    "On Windows, build via the official vcxproj (Recommended)"
+    ON
 )
 
-# ======================================================================
-# Build Target
-# ======================================================================
-
-add_executable(SwgMapRasterizer WIN32 ${SOURCES})
-
-# ======================================================================
-# Compiler Settings
-# ======================================================================
-
-if(WIN32)
-    target_compile_definitions(SwgMapRasterizer PRIVATE
-        _WIN32
-        WIN32
-        _CRT_SECURE_NO_WARNINGS
-        NOMINMAX
-        WIN32_LEAN_AND_MEAN
-    )
-    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-        target_compile_definitions(SwgMapRasterizer PRIVATE _WIN64)
+if(SWG_USE_VCXPROJ_MSBUILD AND WIN32)
+    if(NOT SWG_TITAN_ROOT)
+        message(FATAL_ERROR "Internal: SWG_TITAN_ROOT empty")
+    endif()
+    if(NOT EXISTS "${SWG_VCXPROJ}")
+        message(FATAL_ERROR "vcxproj not found: ${SWG_VCXPROJ}")
+    endif()
+    # Visual Studio: MSBuild. Prefer PATH / vswhere, then BuildTools/Community/Insiders.
+    set(_msb "$ENV{SWG_MSBUILD_PATH}")
+    if(EXISTS "${_msb}/MSBuild.exe")
+        set(SWG_MSBUILD "${_msb}/MSBuild.exe")
+    elseif(DEFINED ENV{VSINSTALLDIR} AND EXISTS "$ENV{VSINSTALLDIR}MSBuild/Current/Bin/MSBuild.exe")
+        set(SWG_MSBUILD "$ENV{VSINSTALLDIR}MSBuild/Current/Bin/MSBuild.exe")
     else()
-        target_compile_definitions(SwgMapRasterizer PRIVATE _USE_32BIT_TIME_T=1)
-    endif()
-    if(MSVC)
-        target_compile_options(SwgMapRasterizer PRIVATE /W3 /MP)
-        set_source_files_properties(src/win32/FirstSwgMapRasterizer.cpp PROPERTIES
-            COMPILE_FLAGS "/YcFirstSwgMapRasterizer.h"
-        )
-        set_source_files_properties(src/shared/SwgMapRasterizer.cpp src/win32/WinMain.cpp PROPERTIES
-            COMPILE_FLAGS "/YuFirstSwgMapRasterizer.h"
-        )
-    endif()
-endif()
-
-# ======================================================================
-# Include Directories
-#
-# Each engine library exposes public headers via include/public/<libname>/
-# Some also need src/shared/ or src/win32/ for internal headers.
-# ======================================================================
-
-# -- Shared Engine Libraries --
-set(SHARED_LIBS
-    sharedCompression
-    sharedDebug
-    sharedFile
-    sharedFoundation
-    sharedFoundationTypes
-    sharedImage
-    sharedIoWin
-    sharedLog
-    sharedMath
-    sharedMathArchive
-    sharedMemoryBlockManager
-    sharedMemoryManager
-    sharedMessageDispatch
-    sharedObject
-    sharedRandom
-    sharedRegex
-    sharedSynchronization
-    sharedTerrain
-    sharedThread
-    sharedUtility
-    sharedXml
-)
-
-foreach(LIB ${SHARED_LIBS})
-    if(EXISTS "${ENGINE_SHARED_LIB_ROOT}/${LIB}/include/public")
-        target_include_directories(SwgMapRasterizer PRIVATE
-            "${ENGINE_SHARED_LIB_ROOT}/${LIB}/include/public"
+        # Avoid $ENV{ProgramFiles(x86)} in find_program HINTS (parentheses)
+        if(DEFINED ENV{ProgramW6432})
+            set(_vs_base "$ENV{ProgramW6432}/Microsoft Visual Studio/2022")
+        else()
+            set(_vs_base "C:/Program Files/Microsoft Visual Studio/2022")
+        endif()
+        find_program(SWG_MSBUILD MSBuild
+            HINTS
+            "${_vs_base}/BuildTools/MSBuild/Current/Bin"
+            "${_vs_base}/Community/MSBuild/Current/Bin"
+            "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin"
+            "C:/Program Files (x86)/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin"
         )
     endif()
-    # Some libraries also need their src directories for internal includes
-    if(EXISTS "${ENGINE_SHARED_LIB_ROOT}/${LIB}/src/shared")
-        target_include_directories(SwgMapRasterizer PRIVATE
-            "${ENGINE_SHARED_LIB_ROOT}/${LIB}/src/shared"
-        )
+    if(NOT SWG_MSBUILD)
+        message(FATAL_ERROR
+            "MSBuild not found. Install VS/Build Tools, or set SWG_MSBUILD_PATH to the folder containing MSBuild.exe\n"
+            "  Example:  cmake -B build -DSWG_MSBUILD_PATH=\"C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin\"")
     endif()
-    if(WIN32 AND EXISTS "${ENGINE_SHARED_LIB_ROOT}/${LIB}/src/win32")
-        target_include_directories(SwgMapRasterizer PRIVATE
-            "${ENGINE_SHARED_LIB_ROOT}/${LIB}/src/win32"
-        )
-    endif()
-endforeach()
-
-# -- Client Engine Libraries (for GPU rendering mode) --
-set(CLIENT_LIBS
-    clientGraphics
-    clientObject
-    clientTerrain
-)
-
-foreach(LIB ${CLIENT_LIBS})
-    if(EXISTS "${ENGINE_CLIENT_LIB_ROOT}/${LIB}/include/public")
-        target_include_directories(SwgMapRasterizer PRIVATE
-            "${ENGINE_CLIENT_LIB_ROOT}/${LIB}/include/public"
-        )
-    endif()
-    if(EXISTS "${ENGINE_CLIENT_LIB_ROOT}/${LIB}/src/shared")
-        target_include_directories(SwgMapRasterizer PRIVATE
-            "${ENGINE_CLIENT_LIB_ROOT}/${LIB}/src/shared"
-        )
-    endif()
-    if(WIN32 AND EXISTS "${ENGINE_CLIENT_LIB_ROOT}/${LIB}/src/win32")
-        target_include_directories(SwgMapRasterizer PRIVATE
-            "${ENGINE_CLIENT_LIB_ROOT}/${LIB}/src/win32"
-        )
-    endif()
-endforeach()
-
-# External libraries (our own)
-target_include_directories(SwgMapRasterizer PRIVATE
-    "${EXTERNAL_OURS_ROOT}/fileInterface/include/public"
-    "${EXTERNAL_OURS_ROOT}/archive/include/public"
-    "${EXTERNAL_OURS_ROOT}/unicodeArchive/include/public"
-    "${EXTERNAL_OURS_ROOT}/unicode/include/public"
-    "${EXTERNAL_OURS_ROOT}/localization/include/public"
-)
-
-# Third-party libraries
-target_include_directories(SwgMapRasterizer PRIVATE
-    "${EXTERNAL_3RD_ROOT}/ati_compress"
-)
-
-# Local source directories
-target_include_directories(SwgMapRasterizer PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/shared
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/win32
-)
-
-# ======================================================================
-# Library Dependencies
-#
-# These are the engine libraries that SwgMapRasterizer links against.
-# The actual library targets should be defined by the parent build
-# system. If building standalone, these need to be built separately.
-# ======================================================================
-
-# Core shared libraries (always needed)
-set(REQUIRED_SHARED_LIBRARIES
-    sharedFoundation
-    sharedThread
-    sharedDebug
-    sharedCompression
-    sharedFile
-    sharedMath
-    sharedImage
-    sharedObject
-    sharedRandom
-    sharedRegex
-    sharedTerrain
-    sharedUtility
-    sharedSynchronization
-    sharedMemoryManager
-)
-
-# Client libraries (needed for GPU rendering mode)
-set(REQUIRED_CLIENT_LIBRARIES
-    clientGraphics
-    clientObject
-    clientTerrain
-)
-
-# Link libraries if targets exist (when part of a larger CMake build)
-foreach(LIB ${REQUIRED_SHARED_LIBRARIES})
-    if(TARGET ${LIB})
-        target_link_libraries(SwgMapRasterizer PRIVATE ${LIB})
-    endif()
-endforeach()
-
-foreach(LIB ${REQUIRED_CLIENT_LIBRARIES})
-    if(TARGET ${LIB})
-        target_link_libraries(SwgMapRasterizer PRIVATE ${LIB})
-    endif()
-endforeach()
-
-# Windows system libraries
-if(WIN32)
-    target_link_libraries(SwgMapRasterizer PRIVATE
-        kernel32
-        user32
-        gdi32
-        advapi32
+    add_custom_target(SwgMapRasterizer ALL
+        COMMAND "${SWG_MSBUILD}" "${SWG_VCXPROJ}" "/p:Configuration=${SWG_MSBUILD_CONFIG}" /p:Platform=x64
+            "/p:SolutionDir=${SWG_MSBUILD_SOLUTION_DIR}/" /m /nologo
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${SWG_SHIP_DIR}"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${SWG_BUILT_EXE}"
+            "${SWG_SHIP_DIR}/${SWG_BUILT_EXENAME}"
+        BYPRODUCTS "${SWG_BUILT_EXE}"
+        WORKING_DIRECTORY "${SWG_THIS_DIR}"
+        COMMENT "MSBuild + ship ${SWG_BUILT_EXENAME} to ${SWG_SHIP_DIR}"
+        VERBATIM
     )
+    install(FILES "${SWG_BUILT_EXE}" DESTINATION . RENAME "${SWG_BUILT_EXENAME}")
+else()
+    message(STATUS "SwgMapRasterizer: SWG_USE_VCXPROJ_MSBUILD=OFF — no default build; use Visual Studio to open build/win32/SwgMapRasterizer.vcxproj")
 endif()
 
-# ======================================================================
-# Output Configuration
-# ======================================================================
+# ----------------------------------------------------------------------
+# CTest: -help (process exits with code 0 from printUsage; no getchar with -noPause in WinMain)
+# ----------------------------------------------------------------------
+include(CTest)
+if(BUILD_TESTING AND NOT CMAKE_CROSSCOMPILING)
+    if(EXISTS "${SWG_SHIP_DIR}/${SWG_BUILT_EXENAME}")
+        set(_texe "${SWG_SHIP_DIR}/${SWG_BUILT_EXENAME}")
+    elseif(EXISTS "${SWG_BUILT_EXE}")
+        set(_texe "${SWG_BUILT_EXE}")
+    else()
+        set(_texe "")
+    endif()
+    if(_texe)
+        add_test(
+            NAME SwgMapRasterizer_help
+            COMMAND "${_texe}" -noPause -help
+            WORKING_DIRECTORY "${SWG_SHIP_DIR}"
+        )
+        set_property(TEST SwgMapRasterizer_help PROPERTY LABELS "swg;tools")
+    else()
+        message(STATUS "CTest: Skipping SwgMapRasterizer tests (build ${SWG_BUILT_EXE} first)")
+    endif()
+endif()
 
-set_target_properties(SwgMapRasterizer PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
-    RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}/bin"
-    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/bin"
-    OUTPUT_NAME "SwgMapRasterizer"
-)
-
-# ======================================================================
-# Installation
-# ======================================================================
-
-install(TARGETS SwgMapRasterizer RUNTIME DESTINATION bin)
-
-# ======================================================================
-
+if(SWG_USE_VCXPROJ_MSBUILD AND WIN32)
+    set(_m "${SWG_MSBUILD}")
+else()
+    set(_m "(n/a)")
+endif()
 message(STATUS "")
-message(STATUS "=== SwgMapRasterizer Configuration ===")
-message(STATUS "Version: ${PROJECT_VERSION}")
-message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
-message(STATUS "Shared lib root: ${ENGINE_SHARED_LIB_ROOT}")
-message(STATUS "Client lib root: ${ENGINE_CLIENT_LIB_ROOT}")
-message(STATUS "=======================================")
+message(STATUS "=== SwgMapRasterizer (CMake → MSBuild) ===")
+message(STATUS "  MSBuild:         ${_m}")
+message(STATUS "  SolutionDir:     ${SWG_MSBUILD_SOLUTION_DIR}/  (x64.props + toolchain)")
+message(STATUS "  vcxproj:         ${SWG_VCXPROJ}")
+message(STATUS "  Config:          ${SWG_MSBUILD_CONFIG}")
+message(STATUS "  Output:         ${SWG_BUILT_EXE}")
+message(STATUS "  Ship:            ${SWG_SHIP_DIR}/${SWG_BUILT_EXENAME}")
+message(STATUS "  Build+ship:     cmake --build <builddir> --config ${SWG_MSBUILD_CONFIG}")
+message(STATUS "  Test:            ctest --test-dir <builddir> -C ${SWG_MSBUILD_CONFIG}")
+message(STATUS "==========================================")
 message(STATUS "")

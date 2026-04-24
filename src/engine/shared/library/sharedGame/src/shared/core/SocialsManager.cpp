@@ -131,7 +131,7 @@ void SocialsManager::load (const std::string & filename)
 		uint32 count = 0;
 		for (int i = 0; i < numRows; ++i)
 		{
-			const std::string & name = Unicode::toLower (dt.getStringValue (DC_name, i));
+			std::string const name(Unicode::toLower(Unicode::NarrowString(dt.getStringValue(DC_name, i))));
 			++count;
 
 			s_idToNameMap.insert (std::make_pair (count, name));

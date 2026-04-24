@@ -3,6 +3,7 @@
 
 #include "config.h"
 #include <assert.h>
+#include <stdint.h>
 #include <string.h>		// CodeWarrior doesn't have memory.h
 #include <algorithm>
 #include <string>
@@ -55,7 +56,7 @@ inline unsigned int RoundUpToMultipleOf(unsigned int n, unsigned int m)
 template <class T>
 inline bool IsAligned(const void *p)
 {
-	return (unsigned int)p % sizeof(T) == 0;
+	return reinterpret_cast<uintptr_t>(p) % sizeof(T) == 0;
 }
 
 inline bool CheckEndianess(bool highFirst)

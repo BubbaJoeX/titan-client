@@ -199,14 +199,30 @@ bool FileStreamer::File::isOpen() const
 
 int FileStreamer::File::length() const
 {
+	// In Release, DEBUG_FATAL is a no-op: still guard against a null m_osFile (0xC0000005 in callers).
+	if (!m_osFile)
+		return -1;
 	DEBUG_FATAL(!isOpen(), ("file is not open"));
 	return m_osFile->length();
 }
 
 // ----------------------------------------------------------------------
 
+long long FileStreamer::File::length64() const
+{
+	if (!m_osFile)
+		return -1;
+	DEBUG_FATAL(!isOpen(), ("file is not open"));
+	return m_osFile->length64();
+}
+
+// ----------------------------------------------------------------------
+
 int FileStreamer::File::read(int offset, void *destinationBuffer, int numberOfBytes, AbstractFile::PriorityType priority)
 {
+	// In Release, DEBUG_FATAL is a no-op: do not deref a null m_osFile.
+	if (!m_osFile)
+		return -1;
 	DEBUG_FATAL(!isOpen(), ("file is not open"));
 
 	if (!ms_useThread)

@@ -9,8 +9,11 @@
 #include "sharedFoundation/FirstSharedFoundation.h"
 #include "sharedFoundation/TemporaryCrcString.h"
 
+#include "sharedFoundation/Fatal.h"
 #include "sharedFoundation/Os.h"
 #include "sharedFoundation/Crc.h"
+
+#include <cstring>
 
 // ======================================================================
 
@@ -82,7 +85,13 @@ void TemporaryCrcString::clear()
 
 void TemporaryCrcString::internalSet(char const * string, bool applyNormalize)
 {
-	DEBUG_FATAL(strlen(string)+1 > BUFFER_SIZE, ("string too long %d/%d", strlen(string)+1, BUFFER_SIZE));
+	size_t const stringLengthWithNull = std::strlen (string) + static_cast<size_t> (1);
+	// Release used to strip DEBUG_FATAL here; strcpy then overflowed m_buffer (512) and corrupted stack/heap
+	// (e.g. AppearanceManager::install with a long appearance_table path).
+	FATAL (
+		stringLengthWithNull > static_cast<size_t> (BUFFER_SIZE),
+		("TemporaryCrcString: string too long %zu/%d bytes (including NUL). Shorten path or raise TemporaryCrcString::BUFFER_SIZE.",
+		 stringLengthWithNull, BUFFER_SIZE));
 	if (applyNormalize)
 		normalize(m_buffer, string);
 	else
@@ -93,7 +102,8 @@ void TemporaryCrcString::internalSet(char const * string, bool applyNormalize)
 
 void TemporaryCrcString::set(char const * string, bool applyNormalize)
 {
-	NOT_NULL(string);
+	// Release: NOT_NULL is a no-op; strlen(nullptr) in internalSet -> 0xC0000005.
+	FATAL (!string, ("TemporaryCrcString::set: null string"));
 	internalSet(string, applyNormalize);
 	calculateCrc();
 }
@@ -102,7 +112,7 @@ void TemporaryCrcString::set(char const * string, bool applyNormalize)
 
 void TemporaryCrcString::set(char const * string, uint32 crc)
 {
-	NOT_NULL(string);
+	FATAL (!string, ("TemporaryCrcString::set(crc): null string"));
 	internalSet(string, false);
 	m_crc = crc;
 }

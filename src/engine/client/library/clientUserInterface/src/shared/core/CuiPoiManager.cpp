@@ -91,10 +91,10 @@ void CuiPoiManager::loadData()
 
 	for (int i = 0; i < numRows; ++i)
 	{
-		const std::string & name        = fileTable->getStringValue (0, i);
-		const std::string & desc        = fileTable->getStringValue (1, i);
-		const std::string & planet      = fileTable->getStringValue (2, i);
-		const std::string & appearance  = fileTable->getStringValue (3, i);
+		std::string const name(fileTable->getStringValue(0, i));
+		std::string const desc(fileTable->getStringValue(1, i));
+		std::string const planet(fileTable->getStringValue(2, i));
+		std::string const appearance(fileTable->getStringValue(3, i));
 		float x                         = fileTable->getFloatValue  (4, i);
 		float y                         = fileTable->getFloatValue  (5, i);
 		float z                         = fileTable->getFloatValue  (6, i);

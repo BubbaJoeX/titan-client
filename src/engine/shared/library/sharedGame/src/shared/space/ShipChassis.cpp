@@ -105,7 +105,7 @@ void ShipChassis::load()
 
 		chassis->setWingOpenSpeedFactor(wingOpenSpeedFactor);
 
-		std::string const & hitSoundGroup = dt.getStringValue(s_colnameHitSoundGroup, row);
+		std::string const hitSoundGroup(dt.getStringValue(s_colnameHitSoundGroup, row));
 
 		chassis->setHitSoundGroup(hitSoundGroup);
 		
@@ -117,7 +117,7 @@ void ShipChassis::load()
 			int const colNumber = dt.findColumnNumber(colnameCompatibilities);
 			if (colNumber >= 0)
 			{	
-				std::string const & compatibilities = dt.getStringValue(colNumber, row);
+				std::string const compatibilities(dt.getStringValue(colNumber, row));
 
 				if (!compatibilities.empty())
 				{

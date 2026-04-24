@@ -96,7 +96,7 @@ void ObjectUsabilityManager::install()
 			for (int row = 0; row < numberOfRows; ++row)
 			{
 				// Read the template name crc.
-				std::string const & speciesName = appearanceInfoDataTable.getStringValue(0, row);
+				std::string const speciesName(appearanceInfoDataTable.getStringValue(0, row));
 				TemporaryCrcString const tmpCrcSpeciesName(speciesName.c_str(), true);
 				uint32 const crcSpeciesName = tmpCrcSpeciesName.getCrc();
 
@@ -131,7 +131,7 @@ void ObjectUsabilityManager::install()
 			for (int row = 0; row < numberOfRows; ++row)
 			{
 				// Read the template name crc.
-				std::string const & sourceName = appearanceDataTable.getStringValue(0, row);
+				std::string const sourceName(appearanceDataTable.getStringValue(0, row));
 				TemporaryCrcString const crcSourceName(sourceName.c_str(), true);
 				uint32 const crcValue = crcSourceName.getCrc();
 				uint64 const keyValue = static_cast<uint64>(crcValue) << static_cast<uint64>(32);
@@ -145,7 +145,7 @@ void ObjectUsabilityManager::install()
 					TemporaryCrcString const tmpCrcSpeciesName(speciesName.c_str(), true);
 					uint32 const crcSpeciesName = tmpCrcSpeciesName.getCrc();
 
-					std::string const & fileName = appearanceDataTable.getStringValue(column, row);
+					std::string const fileName(appearanceDataTable.getStringValue(column, row));
 					if (fileName != ":block") // :block means "you can't use this item" in the appearance.tab
 					{
 						{

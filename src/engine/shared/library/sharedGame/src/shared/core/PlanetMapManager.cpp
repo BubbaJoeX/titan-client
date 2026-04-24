@@ -76,11 +76,11 @@ namespace PlanetMapManagerNamespace
 
 				for (int i = 0; i < numRows; ++i)
 				{
-					const std::string &     name    = dt.getStringValue (DC_name,   i);
+					std::string const name(dt.getStringValue(DC_name, i));
 					const uint8             index   = static_cast<uint8>(dt.getIntValue    (DC_index,  i));
 					const StringId & str            = StringId (table, name);
 					
-					const std::string &     faction = dt.getStringValue (DC_faction, i);
+					std::string const faction(dt.getStringValue(DC_faction, i));
 
 					s_typeNameMap.insert   (std::make_pair (index, name));
 					s_nameTypeMap.insert   (std::make_pair (name,  index));

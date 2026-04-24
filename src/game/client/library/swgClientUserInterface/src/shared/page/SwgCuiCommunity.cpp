@@ -103,7 +103,7 @@ SwgCuiCommunity::SwgCuiCommunity(UIPage &page)
 	{
 		int const row = i;
 		int const column = 1;
-		std::string const &type = dataTable.getStringValue(column, row);
+		std::string const type(dataTable.getStringValue(column, row));
 		IGNORE_RETURN(m_matchMakingTypeIndexes->insert(std::make_pair(type, i)));
 	}
 }

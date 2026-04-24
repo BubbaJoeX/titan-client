@@ -77,7 +77,7 @@ namespace CuiLoadingManagerNamespace
 
 		for (int i = 0; i < numRows; ++i)
 		{
-			std::string const & str = table->getStringValue(0, i);
+			std::string const str(table->getStringValue(0, i));
 			s_planetNamesSpaceLoading.push_back(str);
 		}
 
@@ -272,9 +272,9 @@ bool CuiLoadingManager::getLoadingData(StringId& /*OUT*/ loadingText, StringId& 
 		rand = 0;
 	}
 
-	const std::string & textString    = table->getStringValue (0, rand);
-	const std::string & pictureString = table->getStringValue (1, rand);
-	const std::string & titleString   = table->getStringValue (2, rand);
+	std::string const textString(table->getStringValue(0, rand));
+	std::string const pictureString(table->getStringValue(1, rand));
+	std::string const titleString(table->getStringValue(2, rand));
 
 	loadingText    = StringId(textString);
 	loadingPicture = pictureString;

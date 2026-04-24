@@ -226,7 +226,15 @@ namespace Unicode
 	
 	inline NarrowString wideToNarrow (const String & str)
 	{
-		return NarrowString (str.begin (), str.end ());
+		// Avoid std::string(iterator, iterator) from unicode_char_t *: MSVC 14.4x warns (C4244)
+		// on narrowing unsigned short -> char. Explicit cast matches the "ASCII / low byte only"
+		// contract documented above.
+		NarrowString result;
+		const size_t n = str.size ();
+		result.resize (n);
+		for (size_t i = 0; i < n; ++i)
+			result [i] = static_cast<char>(str [i]);
+		return result;
 	}
 
 	//-----------------------------------------------------------------
@@ -237,7 +245,11 @@ namespace Unicode
 	*/
 	inline NarrowString &  wideToNarrow (const String & str, NarrowString & nstr)
 	{ //lint !e1929 // function returning a reference
-		return nstr.assign (str.begin (), str.end ());
+		const size_t n = str.size ();
+		nstr.resize (n);
+		for (size_t i = 0; i < n; ++i)
+			nstr [i] = static_cast<char>(str [i]);
+		return nstr;
 	}
 
 	/**

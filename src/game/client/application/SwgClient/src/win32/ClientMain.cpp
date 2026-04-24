@@ -95,19 +95,37 @@
 
 extern void externalCommandHandler(const char*);
 
+#if defined(_WIN32)
+#include <windows.h>
+void TitanAppendBootLog(char const *line);
+#endif
+
 namespace ClientMainNamespace
 {
 	void installConfigFileOverride ()
 	{
 		AbstractFile * const abstractFile = TreeFile::open ("misc/override.cfg", AbstractFile::PriorityData, true);
-		if (abstractFile)
+		if (!abstractFile)
+			return;
+
+		int const length = abstractFile->length ();
+		if (length < 0)
 		{
-			int const length = abstractFile->length ();
-			byte * const data = abstractFile->readEntireFileAndClose ();
-			IGNORE_RETURN (ConfigFile::loadFromBuffer (reinterpret_cast<char const *> (data), length));
-			delete [] data;
+			REPORT_LOG(true, ("ClientMain: misc/override.cfg length()=%d (invalid), skipping override\n", length));
 			delete abstractFile;
+			return;
 		}
+
+		byte * const data = abstractFile->readEntireFileAndClose ();
+		if (!data)
+		{
+			REPORT_LOG(true, ("ClientMain: misc/override.cfg readEntireFileAndClose failed, skipping override\n"));
+			delete abstractFile;
+			return;
+		}
+		IGNORE_RETURN (ConfigFile::loadFromBuffer (reinterpret_cast<char const *> (data), length));
+		delete [] data;
+		delete abstractFile;
 	}
 }
 
@@ -191,6 +209,18 @@ int ClientMain(
 
 	SetupSharedFoundation::install(data);
 
+#if defined(_WIN32)
+	{
+		char cwd[MAX_PATH];
+		char line[MAX_PATH + 128];
+		if (GetCurrentDirectoryA(sizeof(cwd), cwd))
+			_snprintf_s(line, sizeof(line), _TRUNCATE, "ClientMain: after SetupSharedFoundation::install, cwd=%s", cwd);
+		else
+			_snprintf_s(line, sizeof(line), _TRUNCATE, "%s", "ClientMain: after SetupSharedFoundation::install, GetCurrentDirectory failed");
+		TitanAppendBootLog(line);
+	}
+#endif
+
 	REPORT_LOG(true, ("ClientMain: Command Line = \"%s\"\n", lpCmdLine));
 	REPORT_LOG(true, ("ClientMain: Memory size = %i MB\n", MemoryManager::getLimit()));
 
@@ -268,22 +298,36 @@ int ClientMain(
 
 		//-- math
 		SetupSharedMath::install();
+		REPORT_LOG(true, ("ClientMain: after SetupSharedMath::install\n"));
+#if defined(_WIN32)
+		::OutputDebugStringA("[Titan] ClientMain: ODS after SetupSharedMath REPORT, before utility stack\r\n");
+#endif
 
 		//-- utility
 		SetupSharedUtility::Data setupUtilityData;
+#if defined(_WIN32)
+		::OutputDebugStringA("[Titan] ClientMain: ODS after SetupSharedUtility::Data, before setupGameData\r\n");
+#endif
 		SetupSharedUtility::setupGameData(setupUtilityData);
 		setupUtilityData.m_allowFileCaching = true;
+#if defined(_WIN32)
+		::OutputDebugStringA("[Titan] ClientMain: ODS before SetupSharedUtility::install\r\n");
+#endif
 		SetupSharedUtility::install(setupUtilityData);
+		REPORT_LOG(true, ("ClientMain: after SetupSharedUtility::install\n"));
 
 		//-- random
 		SetupSharedRandom::install(static_cast<uint32>(time(NULL)));
+		REPORT_LOG(true, ("ClientMain: after SetupSharedRandom::install\n"));
 
 		SetupSharedLog::install("SwgClient");
+		REPORT_LOG(true, ("ClientMain: after SetupSharedLog::install\n"));
 
 		//-- image
 		SetupSharedImage::Data setupImageData;
 		SetupSharedImage::setupDefaultData(setupImageData);
 		SetupSharedImage::install(setupImageData);
+		REPORT_LOG(true, ("ClientMain: after SetupSharedImage::install\n"));
 
 		//-- network
 		SetupSharedNetwork::SetupData  networkSetupData;
@@ -296,6 +340,9 @@ int ClientMain(
 		REPORT_LOG(true, ("ClientMain: after network messages setup\n"));
 
 		//-- object
+#if defined(_WIN32)
+		::OutputDebugStringA("[Titan] ClientMain: before SetupSharedObject::Data + setup (slot/movement/customization)\r\n");
+#endif
 		SetupSharedObject::Data setupObjectData;
 		SetupSharedObject::setupDefaultGameData(setupObjectData);
 		setupObjectData.useTimedAppearanceTemplates = true;
@@ -304,16 +351,36 @@ int ClientMain(
 		// we want CustomizationData support on the client.
 		SetupSharedObject::addCustomizationSupportData(setupObjectData);
 		SetupSharedObject::addMovementTableData(setupObjectData);
+#if defined(_WIN32)
+		::OutputDebugStringA("[Titan] ClientMain: before SetupSharedObject::install (loads slot_definitions / movementstates / customization iff)\r\n");
+#endif
 		SetupSharedObject::install(setupObjectData);
+#if defined(_WIN32)
+		::OutputDebugStringA("[Titan] ClientMain: after SetupSharedObject::install\r\n");
+#endif
 		REPORT_LOG(true, ("ClientMain: after SetupSharedObject::install\n"));
 
 		//-- game
+#if defined(_WIN32)
+		::OutputDebugStringA("[Titan] ClientMain: SSG before default Data() (crash here = static init order / heap)\r\n");
+#endif
 		SetupSharedGame::Data setupSharedGameData;
-
+#if defined(_WIN32)
+		::OutputDebugStringA("[Titan] ClientMain: SSG after Data() ctor, before setters\r\n");
+#endif
 		setupSharedGameData.setUseGameScheduler(true);
 		setupSharedGameData.setUseMountValidScaleRangeTable(true);
+#if defined(_WIN32)
+		::OutputDebugStringA("[Titan] ClientMain: SSG after setters, before CuiManager::debugBadStringIdsFunc assign\r\n");
+#endif
 		setupSharedGameData.m_debugBadStringsFunc = CuiManager::debugBadStringIdsFunc;
+#if defined(_WIN32)
+		::OutputDebugStringA("[Titan] ClientMain: SSG before SetupSharedGame::install() call (see [Titan] SSG: lines inside)\r\n");
+#endif
 		SetupSharedGame::install(setupSharedGameData);
+#if defined(_WIN32)
+		::OutputDebugStringA("[Titan] ClientMain: after SetupSharedGame::install\r\n");
+#endif
 		REPORT_LOG(true, ("ClientMain: after SetupSharedGame::install\n"));
 
 		CommoditiesAdvancedSearchAttribute::install();
@@ -323,12 +390,15 @@ int ClientMain(
 		SetupSharedTerrain::Data setupSharedTerrainData;
 		SetupSharedTerrain::setupGameData(setupSharedTerrainData);
 		SetupSharedTerrain::install(setupSharedTerrainData);
+		REPORT_LOG(true, ("ClientMain: after SetupSharedTerrain::install\n"));
 
 		//-- SharedXml
 		SetupSharedXml::install();
+		REPORT_LOG(true, ("ClientMain: after SetupSharedXml::install\n"));
 
 		//-- pathfinding
 		SetupSharedPathfinding::install();
+		REPORT_LOG(true, ("ClientMain: after SetupSharedPathfinding::install\n"));
 
 		//-- setup client
 
@@ -346,53 +416,120 @@ int ClientMain(
 		REPORT_LOG(true, ("ClientMain: calling SetupClientGraphics::install (D3D / gl05_r / raster)\n"));
 		if (SetupClientGraphics::install(setupGraphicsData))
 		{
+#if defined(_WIN32)
+			::OutputDebugStringA("[Titan] PostGfx: 200 SetupClientGraphics::install true (splash->shutdown saves)\r\n");
+#endif
+			REPORT_LOG(true, ("ClientMain: SetupClientGraphics::install succeeded; splash / DirectInput / UI setup\n"));
 			// Install and render splash screen immediately after graphics initialization
+#if defined(_WIN32)
+			::OutputDebugStringA("[Titan] PostGfx: 210 SplashScreen::install ->\r\n");
+#endif
 			SplashScreen::install();
+#if defined(_WIN32)
+			::OutputDebugStringA("[Titan] PostGfx: 211 SplashScreen::install <-; render+preload ->\r\n");
+#endif
 			SplashScreen::render();
 			SplashScreen::preloadConfiguredAssets();
+#if defined(_WIN32)
+			::OutputDebugStringA("[Titan] PostGfx: 212 SplashScreen render+preload done\r\n");
+#endif
 
+#if defined(_WIN32)
+			::OutputDebugStringA("[Titan] PostGfx: 220 VideoList::install ->\r\n");
+#endif
 			VideoList::install(Audio::getMilesDigitalDriver());
+#if defined(_WIN32)
+			::OutputDebugStringA("[Titan] PostGfx: 221 VideoList::install <-; pump after VideoList\r\n");
+#endif
 			SplashScreen::pump();
 
 			//-- directinput
+#if defined(_WIN32)
+			::OutputDebugStringA("[Titan] PostGfx: 230 SetupClientDirectInput::install ->\r\n");
+#endif
 			SetupClientDirectInput::install(hInstance, Os::getWindow(), DIK_LCONTROL, Graphics::isWindowed);
 			DirectInput::setScreenShotFunction(ScreenShotHelper::screenShot);
 			DirectInput::setToggleWindowedModeFunction(Graphics::toggleWindowedMode);
 			DirectInput::setRequestDebugMenuFunction(Os::requestPopupDebugMenu);
 			Os::setLostFocusHookFunction(DirectInput::unacquireAllDevices);
+#if defined(_WIN32)
+			::OutputDebugStringA("[Titan] PostGfx: 231 directinput hooks set; pump\r\n");
+#endif
 			SplashScreen::pump();
 
 			//-- object
+#if defined(_WIN32)
+			::OutputDebugStringA("[Titan] PostGfx: 240 SetupClientObject::install ->\r\n");
+#endif
 			SetupClientObject::Data setupClientObjectData;
 			SetupClientObject::setupGameData(setupClientObjectData);
 			SetupClientObject::install(setupClientObjectData);
+#if defined(_WIN32)
+			::OutputDebugStringA("[Titan] PostGfx: 241 SetupClientObject::install <-; pump\r\n");
+#endif
 			SplashScreen::pump();
 
 			//-- animation and skeletal animation
+#if defined(_WIN32)
+			::OutputDebugStringA("[Titan] PostGfx: 250 SetupClientAnimation::install ->\r\n");
+#endif
 			SetupClientAnimation::install();
+#if defined(_WIN32)
+			::OutputDebugStringA("[Titan] PostGfx: 251 SetupClientSkeletalAnimation::install ->\r\n");
+#endif
 
 			SetupClientSkeletalAnimation::Data  saData;
 			SetupClientSkeletalAnimation::setupGameData(saData);
 			SetupClientSkeletalAnimation::install(saData);
+#if defined(_WIN32)
+			::OutputDebugStringA("[Titan] PostGfx: 252 animation/skeletal done; pump\r\n");
+#endif
 			SplashScreen::pump();
 
 			//-- texture renderer
+#if defined(_WIN32)
+			::OutputDebugStringA("[Titan] PostGfx: 260 SetupClientTextureRenderer::install ->\r\n");
+#endif
 			SetupClientTextureRenderer::install();
+#if defined(_WIN32)
+			::OutputDebugStringA("[Titan] PostGfx: 261 texture renderer done; pump\r\n");
+#endif
 			SplashScreen::pump();
 
 			//-- terrain
+#if defined(_WIN32)
+			::OutputDebugStringA("[Titan] PostGfx: 270 SetupClientTerrain::install ->\r\n");
+#endif
 			SetupClientTerrain::install();
+#if defined(_WIN32)
+			::OutputDebugStringA("[Titan] PostGfx: 271 SetupClientTerrain::install <-\r\n");
+#endif
 
 			//-- particle system
+#if defined(_WIN32)
+			::OutputDebugStringA("[Titan] PostGfx: 280 SetupClientParticle::install ->\r\n");
+#endif
 			SetupClientParticle::install();
+#if defined(_WIN32)
+			::OutputDebugStringA("[Titan] PostGfx: 281 particle done; pump\r\n");
+#endif
 			SplashScreen::pump();
 
 			//-- game
+#if defined(_WIN32)
+			::OutputDebugStringA("[Titan] PostGfx: 290 SetupClientGame::install ->\r\n");
+#endif
 			SetupClientGame::Data data;
 			SetupClientGame::setupGameData(data);
 			SetupClientGame::install(data);
+#if defined(_WIN32)
+			::OutputDebugStringA("[Titan] PostGfx: 291 SetupClientGame::install <-; pump\r\n");
+#endif
 			SplashScreen::pump();
 
+#if defined(_WIN32)
+			::OutputDebugStringA("[Titan] PostGfx: 300 CuiManager implementation + bug reporting + IoWin + UI ->\r\n");
+#endif
 			CuiManager::setImplementationInstallFunctions(SwgCuiManager::install, SwgCuiManager::remove, SwgCuiManager::update);
 			CuiManager::setImplementationTestFunction(SwgCuiManager::test);
 
@@ -403,17 +540,38 @@ int ClientMain(
 
 			//-- setup the client user interface.
 			SetupSwgClientUserInterface::install();
+			REPORT_LOG(true, ("ClientMain: after SetupSwgClientUserInterface::install (UI shell; Game::run -> login/cluster)\n"));
+#if defined(_WIN32)
+			::OutputDebugStringA("[Titan] PostGfx: 301 client UI install done; pump\r\n");
+#endif
 			SplashScreen::pump();
 
 			//-- G15 LCD
+#if defined(_WIN32)
+			::OutputDebugStringA("[Titan] PostGfx: 310 SwgCuiG15Lcd::initializeLcd ->\r\n");
+#endif
 			SwgCuiG15Lcd::initializeLcd();
+#if defined(_WIN32)
+			::OutputDebugStringA("[Titan] PostGfx: 311 G15 init <-; Game::run next\r\n");
+#endif
 
 			//-- run game
 			rootInstallTimer.manualExit();
+			REPORT_LOG(true, ("ClientMain: entering Game::run (main loop; login appears when UI reaches it)\n"));
+#if defined(_WIN32)
+			::OutputDebugStringA("[Titan] PostGfx: 400 callbackWithExceptionHandling(Game::run) ->\r\n");
+#endif
 			SetupSharedFoundation::callbackWithExceptionHandling(Game::run);
+#if defined(_WIN32)
+			::OutputDebugStringA("[Titan] PostGfx: 401 Game::run returned; shutdown save sequence\r\n");
+#endif
+			REPORT_LOG(true, ("ClientMain: Game::run returned\n"));
 
 			//-- save options
 			// @todo: write a flexible options load/save system, both of ours suck
+#if defined(_WIN32)
+			::OutputDebugStringA("[Titan] PostGfx: 500 CuiWorkspace saveAllSettings (if any)\r\n");
+#endif
 			CuiWorkspace * workspace = CuiWorkspace::getGameWorkspace();
 			if (workspace != NULL)
 			{
@@ -422,16 +580,38 @@ int ClientMain(
 				if (chatWindow != NULL)
 					chatWindow->saveSettings();
 			}
+#if defined(_WIN32)
+			::OutputDebugStringA("[Titan] PostGfx: 510 CuiSettings::save + CuiChatHistory::save + CurrentUserOptionManager::save ->\r\n");
+#endif
 			CuiSettings::save();
 			CuiChatHistory::save();
 			CurrentUserOptionManager::save();
+#if defined(_WIN32)
+			::OutputDebugStringA("[Titan] PostGfx: 520 LocalMachineOptionManager::save (next; see LMO: lines in util)\r\n");
+#endif
 			LocalMachineOptionManager::save();
+#if defined(_WIN32)
+			::OutputDebugStringA("[Titan] PostGfx: 599 post-splash path complete (all saves done)\r\n");
+#endif
 		}
 		else
 		{
 			REPORT_LOG(
 				true,
-				("ClientMain: SetupClientGraphics::install FAILED - game loop not started. Typical: ms_api->install (D3D) false, or missing gl05_r.dll / d3d9.\n"));
+				("ClientMain: SetupClientGraphics::install FAILED - game loop not started. Typical: ms_api->install (D3D) false, or missing gl05_d.dll / Direct3d9_d.dll / d3d9.\n"));
+#if defined(_WIN32)
+			TitanAppendBootLog("ClientMain: SetupClientGraphics::install returned false");
+			MessageBoxA(
+				nullptr,
+				"Graphics initialization failed (SetupClientGraphics::install returned false).\n\n"
+				"The client sets its working directory to the folder containing the exe so titan_d.cfg "
+				"and the tres\\ data trees can be found.\n\n"
+				"Check that this folder contains titan_d.cfg, a tres\\ subdirectory, and GPU DLLs "
+				"(e.g. Direct3d9_*.dll, gl05_*.dll) next to the executable.\n\n"
+				"Details are appended to logs\\SwgTitan_boot.log beside the executable.",
+				"SWG Titan — Graphics initialization failed",
+				MB_OK | MB_ICONERROR);
+#endif
 		}
 	}
 

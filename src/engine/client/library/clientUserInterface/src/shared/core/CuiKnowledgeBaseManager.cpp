@@ -196,7 +196,7 @@ void CuiKnowledgeBaseManager::loadTables()
 
 		for (int i = 0; i < numRows; ++i)
 		{
-			const std::string & filename = fileTable->getStringValue (0, i);
+			std::string const filename(fileTable->getStringValue(0, i));
 
 			const std::string & tableName = s_baseDir + filename;
 			if(s_tablesLoaded)
@@ -231,11 +231,11 @@ void CuiKnowledgeBaseManager::loadTable(const DataTable& table, const std::strin
 
 	for (int i = 0; i < numRows; ++i)
 	{
-		const std::string & parent = table.getStringValue (0, i);
-		const std::string & name   = table.getStringValue (1, i);
-		const std::string & type   = table.getStringValue (2, i);
-		const std::string & data   = table.getStringValue (3, i);
-		const std::string & data2  = table.getStringValue (4, i);
+		std::string const parent(table.getStringValue(0, i));
+		std::string const name(table.getStringValue(1, i));
+		std::string const type(table.getStringValue(2, i));
+		std::string const data(table.getStringValue(3, i));
+		std::string const data2(table.getStringValue(4, i));
 
 		BaseKBNode* parentNode = NULL;
 		if(parent.empty())

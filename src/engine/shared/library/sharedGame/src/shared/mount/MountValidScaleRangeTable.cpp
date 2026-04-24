@@ -243,9 +243,9 @@ void MountValidScaleRangeTableNamespace::loadTableData(char const *filename)
 	int const rowCount = table->getNumRows();
 	for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex)
 	{
-		//-- Get creature appearance name.
-		std::string const &mountableCreatureAppearanceName = table->getStringValue(appearanceNameColumnNumber, rowIndex);
-		TemporaryCrcString const mountableCreatureAppearanceNameCrc(mountableCreatureAppearanceName.c_str(), true);
+		//-- getStringValue returns const char*; do not bind a std::string const& to it.
+		char const *const mountableCreatureAppearanceName = table->getStringValue(appearanceNameColumnNumber, rowIndex);
+		TemporaryCrcString const mountableCreatureAppearanceNameCrc(mountableCreatureAppearanceName, true);
 
 		//-- Find or create new MountableCreature instance for this creature name.
 		MountableCreature *mountableCreature = NULL;
@@ -266,12 +266,12 @@ void MountValidScaleRangeTableNamespace::loadTableData(char const *filename)
 
 		//-- Get seating configuration and valid appearance scale range for the configuration.
 		int const saddleCapacity = table->getIntValue(saddleCapacityColumnNumber, rowIndex);
-		DEBUG_FATAL(saddleCapacity < 1, ("invalid saddle capacity [%d] for creature appearance [%s] in file [%s].", saddleCapacity, mountableCreatureAppearanceName.c_str(), filename));
+		FATAL(saddleCapacity < 1, ("invalid saddle capacity [%d] for creature appearance [%s] in file [%s].", saddleCapacity, mountableCreatureAppearanceName, filename));
 
 		float const appearanceScaleMin = table->getFloatValue(validScaleMinColumnNumber, rowIndex);
 		float const appearanceScaleMax = table->getFloatValue(validScaleMaxColumnNumber, rowIndex);
-		DEBUG_FATAL(appearanceScaleMin < 0.0f, ("invalid appearance scale min [%g] for creature appearance [%s] in file [%s].", appearanceScaleMin, mountableCreatureAppearanceName.c_str(), filename));
-		DEBUG_FATAL(appearanceScaleMax < appearanceScaleMin, ("invalid appearance scale max [%g] given scale min [%g] for creature appearance [%s] in file [%s].", appearanceScaleMax, appearanceScaleMin, mountableCreatureAppearanceName.c_str(), filename));
+		FATAL(appearanceScaleMin < 0.0f, ("invalid appearance scale min [%g] for creature appearance [%s] in file [%s].", appearanceScaleMin, mountableCreatureAppearanceName, filename));
+		FATAL(appearanceScaleMax < appearanceScaleMin, ("invalid appearance scale max [%g] given scale min [%g] for creature appearance [%s] in file [%s].", appearanceScaleMax, appearanceScaleMin, mountableCreatureAppearanceName, filename));
 
 		mountableCreature->addValidScaleRangeForSaddleCapacity(saddleCapacity, appearanceScaleMin, appearanceScaleMax);
 	}

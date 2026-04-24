@@ -42,6 +42,12 @@ static FARPROC WINAPI DliHook(unsigned dliNotify, PDelayLoadInfo  pdli)
 	return 0;
 }
 
+// Delayimp: newer MSVC (14.40+ / VS 2022 17.10+) declares __pfnDliNotifyHook2 as const; assigning in DllMain is C3892.
+// Define it once at file scope (same effect as previous DLL_PROCESS_ATTACH assignment for the hook pointer).
+#if _MSC_VER >= 1920
+extern "C" const PfnDliHook __pfnDliNotifyHook2 = DliHook;
+#endif
+
 // ======================================================================
 
 static void MaskFloatingPointExceptions()
@@ -57,7 +63,7 @@ BOOL APIENTRY DllMain(HMODULE, DWORD reason, LPVOID)
 {
 #if _MSC_VER < 1300
 	__pfnDliNotifyHook = DliHook;
-#else
+#elif _MSC_VER < 1920
 	__pfnDliNotifyHook2 = DliHook;
 #endif
 

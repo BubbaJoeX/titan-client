@@ -100,6 +100,20 @@ if ($Configuration -eq 'Release') {
 	if (Test-Path -LiteralPath $sfDebug)     { Copy-IfExists $sfDebug     'libsndfile' }   else { Copy-IfExists $sfRelease    'libsndfile (Release fallback)' }
 }
 
+# --- libVLC (x64, LGPL): drop libvlc.dll, libvlccore.dll, and plugins/ into client\src\external\3rd\library\vlc-3.0.22\ from a VideoLAN 3.x win64 build ---
+$vlcRoot = Join-Path $ext3 'vlc-3.0.22'
+Copy-IfExists (Join-Path $vlcRoot 'libvlc.dll') 'libvlc'
+Copy-IfExists (Join-Path $vlcRoot 'libvlccore.dll') 'libvlccore'
+$vlcPlugins = Join-Path $vlcRoot 'plugins'
+if (Test-Path -LiteralPath $vlcPlugins) {
+	$destPlug = Join-Path $outDir 'plugins'
+	if ($PSCmdlet.ShouldProcess($destPlug, 'Copy libVLC plugins')) {
+		New-Item -ItemType Directory -Path $destPlug -Force | Out-Null
+		Copy-Item -Path (Join-Path $vlcPlugins '*') -Destination $destPlug -Recurse -Force
+		Write-Verbose 'Copied libVLC plugins folder'
+	}
+}
+
 # --- Optional second EXE ---
 if ($IncludeGodClient) {
 	Copy-IfExists (Join-Path $srcX64 "SwgGodClient\$Configuration\SwgGodClient_r.exe") 'SwgGodClient'

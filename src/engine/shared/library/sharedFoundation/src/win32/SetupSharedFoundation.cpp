@@ -84,10 +84,38 @@ LONG __stdcall SetupSharedFoundationNamespace::MyUnhandledExceptionFilter(LPEXCE
 		return EXCEPTION_CONTINUE_SEARCH;
 	entered = true;
 
-	// log some important information
-	static char buffer[128];
-	sprintf(buffer, "Exception %08x(%d)=code %08x=addr\n", exceptionPointers->ExceptionRecord->ExceptionCode, exceptionPointers->ExceptionRecord->ExceptionCode, exceptionPointers->ExceptionRecord->ExceptionAddress);
-	OutputDebugString(buffer);
+	void *const crashAddr = exceptionPointers->ExceptionRecord->ExceptionAddress;
+	static char moduleName[MAX_PATH];
+	strcpy(moduleName, "unknown");
+	HMODULE hMods[1024];
+	DWORD cbNeeded = 0;
+	if (EnumProcessModules(GetCurrentProcess(), hMods, sizeof(hMods), &cbNeeded))
+	{
+		for (unsigned int i = 0; i < (cbNeeded / sizeof(HMODULE)); i++)
+		{
+			MODULEINFO modInfo;
+			if (GetModuleInformation(GetCurrentProcess(), hMods[i], &modInfo, sizeof(modInfo)))
+			{
+				void *const modBase = modInfo.lpBaseOfDll;
+				void *const modEnd = reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(modBase) + modInfo.SizeOfImage);
+				if (crashAddr >= modBase && crashAddr < modEnd)
+				{
+					GetModuleBaseNameA(GetCurrentProcess(), hMods[i], moduleName, sizeof(moduleName));
+					break;
+				}
+			}
+		}
+	}
+
+	// Full pointer on x64; old format used %%08x on ExceptionAddress (truncated + mislabeled as "code").
+	static char buffer[512];
+	_snprintf_s(buffer, sizeof(buffer), _TRUNCATE,
+		"Exception 0x%08x (NTSTATUS as int %d), fault at %p, module %s\n",
+		static_cast<unsigned int>(exceptionPointers->ExceptionRecord->ExceptionCode),
+		static_cast<int>(exceptionPointers->ExceptionRecord->ExceptionCode),
+		crashAddr,
+		moduleName);
+	OutputDebugStringA(buffer);
 
 	// write the minidump if we're in here for the first time
 	static bool ms_alreadyWroteMiniDump = false;
@@ -178,34 +206,10 @@ LONG __stdcall SetupSharedFoundationNamespace::MyUnhandledExceptionFilter(LPEXCE
 	// tell the Os not to abort so we can rethrow the exception
 	Os::returnFromAbort();
 
-	// Try to identify which module the crash occurred in
-	static char moduleName[MAX_PATH] = "unknown";
 	static char fatalMessage[1024];
-	HMODULE hMods[1024];
-	DWORD cbNeeded;
-	void* crashAddr = exceptionPointers->ExceptionRecord->ExceptionAddress;
-	
-	if (EnumProcessModules(GetCurrentProcess(), hMods, sizeof(hMods), &cbNeeded))
-	{
-		for (unsigned int i = 0; i < (cbNeeded / sizeof(HMODULE)); i++)
-		{
-			MODULEINFO modInfo;
-			if (GetModuleInformation(GetCurrentProcess(), hMods[i], &modInfo, sizeof(modInfo)))
-			{
-				void* modBase = modInfo.lpBaseOfDll;
-				void* modEnd = reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(modBase) + modInfo.SizeOfImage);
-				if (crashAddr >= modBase && crashAddr < modEnd)
-				{
-					GetModuleBaseNameA(GetCurrentProcess(), hMods[i], moduleName, sizeof(moduleName));
-					break;
-				}
-			}
-		}
-	}
-	
-	sprintf(fatalMessage, "ExceptionHandler invoked: Exception code 0x%08x at address 0x%08x in module %s",
+	sprintf(fatalMessage, "ExceptionHandler invoked: Exception code 0x%08x at address %p in module %s",
 		exceptionPointers->ExceptionRecord->ExceptionCode,
-		reinterpret_cast<uintptr_t>(crashAddr),
+		crashAddr,
 		moduleName);
 
 	// Let the ExitChain do its job

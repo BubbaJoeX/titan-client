@@ -16,10 +16,13 @@ class DataTableCell;
 class DataTableColumnType
 {
 public:
-	explicit DataTableColumnType(std::string const &desc);
+	/// When \a deferDefaultCell is true, call \ref finalizeDeferredDefaultCell after TYPE parsing (load_0001).
+	explicit DataTableColumnType(std::string const &desc, bool deferDefaultCell = false);
 	~DataTableColumnType ();
 	DataTableColumnType(DataTableColumnType const &rhs);
 	DataTableColumnType &operator=(DataTableColumnType const &rhs);
+
+	void finalizeDeferredDefaultCell ();
 
 	enum DataType
 	{

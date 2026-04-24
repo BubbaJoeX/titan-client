@@ -28,6 +28,8 @@ public:
 	~OsFile();
 
 	int  length() const;
+	/// Full file size (GetFileSizeEx). Prefer over length() for large files; length() wraps at 32 bits.
+	long long length64() const;
 	int  tell() const;
 	void seek(int newFilePosition);
 	int  read(void *destinationBuffer, int numberOfBytes);

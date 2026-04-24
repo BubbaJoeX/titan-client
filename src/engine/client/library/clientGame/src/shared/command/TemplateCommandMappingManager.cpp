@@ -67,9 +67,9 @@ void TemplateCommandMappingManager::install()
 
 	for(i = 0; i < numRows; ++i)
 	{
-		std::string const & templateStr = ms_datatable->getStringValue(templateColumn, i);
-		std::string const & command = ms_datatable->getStringValue(commandColumn, i);
-		std::string const & fakeCommandGroup = ms_datatable->getStringValue(fakeCommandGroupColumn, i);
+		std::string const templateStr(ms_datatable->getStringValue(templateColumn, i));
+		std::string const command(ms_datatable->getStringValue(commandColumn, i));
+		std::string const fakeCommandGroup(ms_datatable->getStringValue(fakeCommandGroupColumn, i));
 		bool executeFromToolbar = (ms_datatable->getIntValue(executeFromToolbarColumn, i) != 0);
 
 		const uint32 templateHash = Crc::normalizeAndCalculate(templateStr.c_str());

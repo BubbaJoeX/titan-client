@@ -13,6 +13,7 @@
 #include "DataTableCell.h"
 #include "DataTableColumnType.h"
 
+#include <cstddef>
 #include <string>
 #include <vector>
 
@@ -114,7 +115,10 @@ inline int DataTable::getNumRows() const
 
 inline const DataTableCell * DataTable::getDataTableCell(int column, int row) const
 {
-	return m_cells + (row * m_numCols + column);
+	// Widen before multiply/add so row*m_numCols does not overflow int before pointer offset (x64 tables).
+	const ptrdiff_t idx =
+		static_cast<ptrdiff_t>(row) * static_cast<ptrdiff_t>(m_numCols) + static_cast<ptrdiff_t>(column);
+	return m_cells + idx;
 }
 
 //----------------------------------------------------------------------

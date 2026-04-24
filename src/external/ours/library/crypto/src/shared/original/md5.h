@@ -16,7 +16,7 @@ public:
 
 protected:
 	void Init();
-	void vTransform(const word32 *data) {Transform(digest, data);}
+	virtual void vTransform(const word32 *data);
 };
 
 NAMESPACE_END

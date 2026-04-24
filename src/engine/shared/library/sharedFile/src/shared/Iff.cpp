@@ -20,7 +20,11 @@
 #include "sharedMath/Transform.h"
 #include "sharedMath/Vector.h"
 #include "sharedMath/VectorArgb.h"
+#include "sharedFoundation/Fatal.h"
 
+#include <climits>
+#include <cstdint>
+#include <cstdio>
 #include <string>
 
 // ======================================================================
@@ -101,7 +105,7 @@ bool IffNamespace::consumeUint32(byte const * & memory, int & length, uint32 & v
 
 bool IffNamespace::isValid(byte const *memory, int length)
 {
-	if (length <= 0)
+	if (!memory || length <= 0)
 		return false;
 
 	while (length > 0)
@@ -383,6 +387,13 @@ void Iff::open(AbstractFile & file, char const * const newFileName)
 	DEBUG_FATAL(data, ("causing memory leak"));
 	data = file.readEntireFileAndClose();
 
+	// readEntireFileAndClose() returns null when length() < 0 or read fails; parsing with null data AVs inside isValid/read_misc.
+	FATAL(
+		!data,
+		("Iff::open: readEntireFileAndClose returned null for %s (AbstractFile::length() was %d). Check TreeFile / archive for this path.",
+		 newFileName ? newFileName : "(memory)",
+		 length));
+
 	FATAL(ConfigSharedFile::getValidateIff() && !IffNamespace::isValid(data, length), ("File corruption detected! Iff::isValid failed for %s (size=%d, crc=%08X). Please try a \"Full Scan\" from the LaunchPad.", newFileName ? newFileName : "null", length, Crc::calculate(data, length)));
 
 	// setup the stack data to know about the data
@@ -438,6 +449,86 @@ void Iff::fatal(const char *string) const
 
 	formatLocation(buffer, sizeof(buffer));
 	FATAL(true, ("%s: %s", buffer, string));
+}
+
+// ----------------------------------------------------------------------
+
+void Iff::verifyInChunkRead_(int const byteCount) const
+{
+	FATAL (!data, ("Iff::verifyInChunkRead_: null IFF data [%s]", getFileName () ? getFileName () : "(memory)"));
+	FATAL (!inChunk, ("Iff::verifyInChunkRead_: not in chunk [%s]", getFileName () ? getFileName () : "(memory)"));
+	FATAL (byteCount < 0, ("Iff::verifyInChunkRead_: negative byteCount %d [%s]", byteCount, getFileName () ? getFileName () : "(memory)"));
+	Stack const &s = stack[stackDepth];
+	int64_t const absBase = static_cast<int64_t>(s.start) + static_cast<int64_t>(s.used);
+	int64_t const remainInChunk = static_cast<int64_t>(s.length) - static_cast<int64_t>(s.used);
+	FATAL (
+		static_cast<int64_t>(byteCount) > remainInChunk,
+		("Iff::verifyInChunkRead_: need %d bytes but only %lld remain in chunk (start=%d used=%d len=%d) [%s]",
+		 byteCount, static_cast<long long>(remainInChunk), s.start, s.used, s.length,
+		 getFileName () ? getFileName () : "(memory)"));
+	FATAL (
+		absBase < 0 || absBase + static_cast<int64_t>(byteCount) > static_cast<int64_t>(length),
+		("Iff::verifyInChunkRead_: read %d bytes past file buffer (absOffset=%lld fileLen=%d start=%d used=%d) [%s]",
+		 byteCount, static_cast<long long>(absBase), length, s.start, s.used,
+		 getFileName () ? getFileName () : "(memory)"));
+}
+
+// ----------------------------------------------------------------------
+// MayaModern walked src/data in lockstep with Stack::used; we keep one index `pos` and advance `used`
+// once by (payload + NUL), with verifyInChunkRead_ + bytesInChunk guards (Release-safe).
+
+void Iff::readChunkNullTerminated_(std::string * const stdOut, char * const fixedOut, int const fixedMaxChars)
+{
+	FATAL (
+		(stdOut != nullptr) == (fixedOut != nullptr),
+		("Iff::readChunkNullTerminated_: pass exactly one of std::string* or char* buffer"));
+
+	Stack & s = stack[stackDepth];
+	int const bytesInChunk = s.length - s.used;
+	if (bytesInChunk < 0)
+	{
+		FATAL (true, ("Iff::readChunkNullTerminated_: negative span %d [%s]", bytesInChunk, getFileName () ? getFileName () : "(memory)"));
+	}
+	verifyInChunkRead_(bytesInChunk);
+
+	char const * const base = reinterpret_cast<char const *>(data + s.start + s.used);
+
+	if (stdOut != nullptr)
+	{
+		stdOut->clear ();
+	}
+
+	int pos = 0;
+	for (;;)
+	{
+		if (pos >= bytesInChunk)
+		{
+			FATAL (true, ("Iff::read_string: hit end of chunk before '\\0' [%s]", getFileName () ? getFileName () : "(memory)"));
+		}
+		char const c = base[pos];
+		if (c == '\0')
+		{
+			s.used += pos + 1;
+			if (fixedOut != nullptr)
+			{
+				fixedOut[pos] = '\0';
+			}
+			return;
+		}
+		if (fixedOut != nullptr)
+		{
+			if (pos >= fixedMaxChars)
+			{
+				FATAL (true, ("Iff::read_string: string exceeds maxLength %d [%s]", fixedMaxChars, getFileName () ? getFileName () : "(memory)"));
+			}
+			fixedOut[pos] = c;
+		}
+		else
+		{
+			stdOut->push_back (c);
+		}
+		++pos;
+	}
 }
 
 // ----------------------------------------------------------------------
@@ -511,11 +602,19 @@ Tag Iff::getFirstTag(int depth) const
 
 	NOT_NULL(data);
 
-	if ( stack[depth].length - stack[depth].used < isizeof(Tag) + isizeof(uint32) )
+	// Frame-relative *and* absolute file bounds (Release; avoid Iff::fatal comma-arg mistakes).
+	int64_t const need = static_cast<int64_t>(sizeof(Tag) + sizeof(uint32));
+	int64_t const remainInFrame = static_cast<int64_t>(stack[depth].length) - static_cast<int64_t>(stack[depth].used);
+	int64_t const base = static_cast<int64_t>(stack[depth].start) + static_cast<int64_t>(stack[depth].used);
+	if (remainInFrame < need || base < 0 || base + need > static_cast<int64_t>(length))
 	{
 		char buf[1024];
-		sprintf( buf, "read overflow depth=[%d] length=[%d] used=[%d] want=[%d]", depth, stack[depth].length, stack[depth].used, isizeof(Tag) + isizeof(uint32) );
-		IFF_FATAL(true, buf);
+		snprintf (buf, sizeof (buf),
+			"Iff::getFirstTag: read overflow depth=%d start=%d used=%d frameLen=%d fileLen=%d need=%lld [%s]",
+			depth, stack[depth].start, stack[depth].used, stack[depth].length, length,
+			static_cast<long long>(need),
+			getFileName () ? getFileName () : "(memory)");
+		IFF_FATAL (true, buf);
 	}
 	memcpy(&t, data + stack[depth].start + stack[depth].used, sizeof(t));
 
@@ -535,7 +634,20 @@ int Iff::getLength(int depth, int offset) const
 	uint32 u;
 
 	NOT_NULL(data);
-	IFF_DEBUG_FATAL(stack[depth].length - stack[depth].used+offset < isizeof(Tag) + isizeof(uint32), ("read overflow"));
+	// IFF_FATAL must pass a single char* (see Iff::fatal); do not use ("fmt", args) — that is a comma expression.
+	int64_t const need = static_cast<int64_t>(sizeof(Tag) + sizeof(uint32));
+	int64_t const remainInFrame = static_cast<int64_t>(stack[depth].length) - static_cast<int64_t>(stack[depth].used) - static_cast<int64_t>(offset);
+	int64_t const base = static_cast<int64_t>(stack[depth].start) + static_cast<int64_t>(stack[depth].used) + static_cast<int64_t>(offset);
+	if (remainInFrame < need || base < 0 || base + need > static_cast<int64_t>(length))
+	{
+		char buf[1024];
+		snprintf (buf, sizeof (buf),
+			"Iff::getLength: read overflow depth=%d start=%d used=%d offset=%d frameLen=%d fileLen=%d need=%lld [%s]",
+			depth, stack[depth].start, stack[depth].used, offset, stack[depth].length, length,
+			static_cast<long long>(need),
+			getFileName () ? getFileName () : "(memory)");
+		IFF_FATAL (true, buf);
+	}
 	memcpy(&u, data + stack[depth].start + stack[depth].used + offset + sizeof(Tag), sizeof(u));
 
 	return static_cast<int>(ntohl(u));
@@ -548,7 +660,19 @@ Tag Iff::getSecondTag(int depth) const
 	Tag t;
 
 	NOT_NULL(data);
-	IFF_DEBUG_FATAL(stack[depth].length - stack[depth].used < isizeof(Tag) + isizeof(uint32) + isizeof(Tag), ("read overflow"));
+	int64_t const need = static_cast<int64_t>(sizeof(Tag) + sizeof(uint32) + sizeof(Tag));
+	int64_t const remainInFrame = static_cast<int64_t>(stack[depth].length) - static_cast<int64_t>(stack[depth].used);
+	int64_t const base = static_cast<int64_t>(stack[depth].start) + static_cast<int64_t>(stack[depth].used);
+	if (remainInFrame < need || base < 0 || base + need > static_cast<int64_t>(length))
+	{
+		char buf[1024];
+		snprintf (buf, sizeof (buf),
+			"Iff::getSecondTag: read overflow depth=%d start=%d used=%d frameLen=%d fileLen=%d need=%lld [%s]",
+			depth, stack[depth].start, stack[depth].used, stack[depth].length, length,
+			static_cast<long long>(need),
+			getFileName () ? getFileName () : "(memory)");
+		IFF_FATAL (true, buf);
+	}
 	memcpy(&t, data + stack[depth].start + stack[depth].used + sizeof(Tag) + sizeof(uint32), sizeof(Tag));
 
 	return ntohl(t);
@@ -789,8 +913,11 @@ void Iff::insertChunk(Tag name, bool shouldEnterChunk)
 void Iff::insertChunkData(const void *newData, int dataLength)
 {
 	NOT_NULL(data);
-	DEBUG_FATAL(dataLength < 0, ("dataLength < 0, %d", dataLength));
-	IFF_DEBUG_FATAL(!inChunk, "not in chunk");
+	FATAL (dataLength < 0, ("Iff::insertChunkData: negative length %d [%s]", dataLength, getFileName () ? getFileName () : "(memory)"));
+	if (!inChunk)
+	{
+		FATAL (true, ("Iff::insertChunkData: not in chunk [%s]", getFileName () ? getFileName () : "(memory)"));
+	}
 
 	// make sure there is some data to insert
 	if (dataLength == 0)
@@ -1422,9 +1549,23 @@ int Iff::getChunkLengthTotal(int elementSize) const
 
 int Iff::getChunkLengthLeft(int elementSize) const
 {
-	DEBUG_FATAL(!inChunk, ("not in chunk"));
+	if (!inChunk)
+	{
+		FATAL(true, ("Iff::getChunkLengthLeft: not in chunk [%s]", getFileName() ? getFileName() : "(memory)"));
+	}
+	if (elementSize <= 0)
+	{
+		FATAL(true, ("Iff::getChunkLengthLeft: bad elementSize %d [%s]", elementSize, getFileName() ? getFileName() : "(memory)"));
+	}
 	const int left = stack[stackDepth].length - stack[stackDepth].used;
-	DEBUG_FATAL(left % elementSize != 0, ("%d not a multiple of %d", left, elementSize));
+	if (left < 0)
+	{
+		FATAL(true, ("Iff::getChunkLengthLeft: negative left %d (used=%d len=%d) [%s]", left, stack[stackDepth].used, stack[stackDepth].length, getFileName() ? getFileName() : "(memory)"));
+	}
+	if ((left % elementSize) != 0)
+	{
+		FATAL(true, ("Iff::getChunkLengthLeft: %d not a multiple of %d [%s]", left, elementSize, getFileName() ? getFileName() : "(memory)"));
+	}
 	return (left / elementSize);
 }
 
@@ -1432,15 +1573,19 @@ int Iff::getChunkLengthLeft(int elementSize) const
 
 void Iff::read_misc(void *readData, int readLength)
 {
-	NOT_NULL(readData);
-	NOT_NULL(data);
-	DEBUG_FATAL(!inChunk, ("not in chunk"));
-
+	FATAL (!readData, ("Iff::read_misc: null readData [%s]", getFileName () ? getFileName () : "(memory)"));
+	FATAL (!data, ("Iff::read_misc: null IFF data [%s]", getFileName () ? getFileName () : "(memory)"));
+	if (!inChunk)
+	{
+		FATAL(true, ("Iff::read_misc: not in chunk [%s]", getFileName() ? getFileName() : "(memory)"));
+	}
+	if (readLength < 0)
+	{
+		FATAL(true, ("Iff::read_misc: negative length %d [%s]", readLength, getFileName() ? getFileName() : "(memory)"));
+	}
+	verifyInChunkRead_(readLength);
 	Stack &s = stack[stackDepth];
-
-	DEBUG_FATAL(s.used+readLength > s.length, ("overflow %d/%d in file [%s]", s.used+readLength, s.length, getFileName()));
-	memcpy(readData, data+s.start+s.used, readLength);
-
+	memcpy(readData, data + s.start + s.used, static_cast<size_t>(readLength));
 	s.used += readLength;
 }
 
@@ -1546,29 +1691,16 @@ Quaternion Iff::read_floatQuaternion(void)
 
 void Iff::read_string(char *string, int maxLength)
 {
-	NOT_NULL(string);
-	NOT_NULL(data);
-	DEBUG_FATAL(!inChunk, ("not in chunk"));
-
-	Stack &s = stack[stackDepth];
-
-	// get a pointer to the start of the source string
-	char *source = reinterpret_cast<char *>(data + s.start + s.used);
-
-	// copy the string
-	for ( ; *source; ++string, ++source, ++s.used, --maxLength)
+	// Release used to strip DEBUG_FATAL below -> read past chunk / overflow stack buffer (DataTable::_readCell, etc.).
+	FATAL (!string, ("Iff::read_string: null buffer [%s]", getFileName () ? getFileName () : "(memory)"));
+	FATAL (!data, ("Iff::read_string: null IFF data [%s]", getFileName () ? getFileName () : "(memory)"));
+	if (!inChunk)
 	{
-		DEBUG_FATAL(s.used >= s.length, ("hit end of chunk before string terminator"));
-		DEBUG_FATAL(maxLength <= 0, ("destination string too short"));
-		*string = *source;
+		FATAL (true, ("Iff::read_string: not in chunk [%s]", getFileName () ? getFileName () : "(memory)"));
 	}
+	FATAL (maxLength < 1, ("Iff::read_string: maxLength %d invalid (need >= 1) [%s]", maxLength, getFileName () ? getFileName () : "(memory)"));
 
-	// step over the null terminator on the input
-	++s.used;
-
-	// null terminate the output string
-	DEBUG_FATAL(maxLength <= 0, ("destination string too short"));
-	*string = '\0';
+	readChunkNullTerminated_(nullptr, string, maxLength);
 }
 
 // ----------------------------------------------------------------------
@@ -1588,29 +1720,35 @@ void Iff::read_string(char *string, int maxLength)
 
 char *Iff::read_string(void)
 {
-	NOT_NULL(data);
-	DEBUG_FATAL(!inChunk, ("not in chunk"));
+	FATAL (!data, ("Iff::read_string(): null IFF data [%s]", getFileName () ? getFileName () : "(memory)"));
+	if (!inChunk)
+	{
+		FATAL(true, ("Iff::read_string: not in chunk [%s]", getFileName() ? getFileName() : "(memory)"));
+	}
 
 	Stack &s = stack[stackDepth];
 
-	// get a pointer to the start of the source string
-	char *source       = reinterpret_cast<char *>(data + s.start + s.used);
-	int   maxLength    = s.length - s.used;
-	int   sourceLength = 0;
+	const int maxLength = s.length - s.used;
+	if (maxLength < 0)
+	{
+		FATAL(true, ("Iff::read_string: negative span %d in [%s]", maxLength, getFileName() ? getFileName() : "(memory)"));
+	}
+	verifyInChunkRead_(maxLength);
 
-	// search for the end of the string
-	for ( ; sourceLength < maxLength && source[sourceLength]; ++sourceLength)
+	char * const chunkBase = reinterpret_cast<char *>(data + s.start + s.used);
+	int sourceLength = 0;
+	for ( ; sourceLength < maxLength && chunkBase[sourceLength]; ++sourceLength)
 		;
 
-	// verify that we found the null terminator
-	DEBUG_FATAL(sourceLength >= maxLength, ("hit end of chunk before string terminator"));
+	if (sourceLength >= maxLength)
+	{
+		FATAL(true, ("Iff::read_string: hit end of chunk before '\\0' [%s]", getFileName() ? getFileName() : "(memory)"));
+	}
 
-	// create and copy the string
 	++sourceLength;
 	char *string = new char[static_cast<size_t>(sourceLength)];
-	memcpy(string, source, sourceLength);
+	memcpy(string, chunkBase, static_cast<size_t>(sourceLength));
 
-	// update the amount used in the chunk
 	s.used += sourceLength;
 
 	return string;
@@ -1628,29 +1766,13 @@ char *Iff::read_string(void)
 
 void Iff::read_string(std::string &string)
 {
-	NOT_NULL(data);
-	DEBUG_FATAL(!inChunk, ("not in chunk"));
+	FATAL (!data, ("Iff::read_string(std::string): null IFF data [%s]", getFileName () ? getFileName () : "(memory)"));
+	if (!inChunk)
+	{
+		FATAL(true, ("Iff::read_string(std::string): not in chunk [%s]", getFileName() ? getFileName() : "(memory)"));
+	}
 
-	Stack &s = stack[stackDepth];
-
-	// get a pointer to the start of the source string
-	char *source       = reinterpret_cast<char *>(data + s.start + s.used);
-	int   maxLength    = s.length - s.used;
-	int   sourceLength = 0;
-
-	// search for the end of the string
-	for ( ; sourceLength < maxLength && source[sourceLength]; ++sourceLength)
-		;
-
-	// verify that we found the null terminator
-	DEBUG_FATAL(sourceLength >= maxLength, ("hit end of chunk before string terminator"));
-
-	// account for the null terminator
-	++sourceLength;
-
-	s.used += sourceLength;
-	string.reserve(sourceLength);
-	string = source;
+	readChunkNullTerminated_(&string, nullptr, 0);
 }
 
 // ----------------------------------------------------------------------
@@ -1674,11 +1796,39 @@ std::string Iff::read_stdstring()
 
 void  Iff::read_string(Unicode::String &str)
 {
+	// read_int32() must not run until we know 4+ bytes exist; read_misc's overflow check was DEBUG-only.
+	if (!inChunk)
+	{
+		FATAL(true, ("Iff::read_string(Unicode): not in chunk %s", getFileName() ? getFileName() : "(memory)"));
+	}
+	{
+		const int bytesBeforeCount = getChunkLengthLeft(1);
+		if (bytesBeforeCount < 4)
+		{
+			FATAL(true, ("Iff::read_string(Unicode): need 4 byte count, %d byte(s) left in %s", bytesBeforeCount, getFileName() ? getFileName() : "(memory)"));
+		}
+	}
 	const int32 count = read_int32 ();
-	unsigned short * data = new unsigned short [count];
-	read_uint16 (count, data);
-	str.assign (data, static_cast<size_t>(count));
-	delete [] data;
+	// Truncated / corrupt options iff: `new unsigned short[count]` with count<0, or read_misc int overflow
+	if (count < 0)
+	{
+		WARNING(true, ("Iff::read_string(Unicode): negative element count %d in %s", static_cast<int>(count), getFileName() ? getFileName() : "(memory)"));
+		str.clear();
+		return;
+	}
+	if (count > (INT_MAX / 2))
+	{
+		FATAL(true, ("Iff::read_string(Unicode): element count %d too large (read_misc overflow)", static_cast<int>(count)));
+	}
+	const int bytesLeft = getChunkLengthLeft(1);
+	if (static_cast<int64_t>(count) * 2LL > static_cast<int64_t>(bytesLeft))
+	{
+		FATAL(true, ("Iff::read_string(Unicode): need %d bytes of uint16 data, %d byte(s) left in %s", static_cast<int>(count) * 2, bytesLeft, getFileName() ? getFileName() : "(memory)"));
+	}
+	unsigned short * const u16 = new unsigned short [static_cast<size_t>(count)];
+	read_uint16 (count, u16);
+	str.assign (u16, static_cast<size_t>(count));
+	delete [] u16;
 }
 
 /**

@@ -161,8 +161,8 @@ SwgCuiCommunity::Personal::Personal(UIPage &page, SwgCuiCommunity const &communi
 		for (int i = 0; i < rowCount; ++i)
 		{
 			int const row = i;
-			std::string const &category = dataTable.getStringValue("category", row);
-			std::string const &type = dataTable.getStringValue("type", row);
+			std::string const category(dataTable.getStringValue("category", row));
+			std::string const type(dataTable.getStringValue("type", row));
 
 			s_categoryEntries.insert(category);
 			s_typeEntries.push_back(std::make_pair(type, category));

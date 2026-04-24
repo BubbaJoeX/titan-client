@@ -17,6 +17,7 @@
 #include "sharedUtility/DataTableManager.h"
 
 #include <algorithm>
+#include <cstring>
 #include <string>
 
 // ======================================================================
@@ -291,13 +292,15 @@ void WearableAppearanceMapNamespace::loadTableData(char const *filename)
 
 	for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex)
 	{
-		//-- Get entry data.
-		std::string const &sourceWearableAppearanceName = table->getStringValue(sourceWearableAppearanceNameColumnNumber, rowIndex);
-		std::string const &wearerAppearanceName         = table->getStringValue(wearerAppearanceNameColumnNumber, rowIndex);
-		std::string const &mappedWearableAppearanceName = table->getStringValue(mappedWearableAppearanceNameColumnNumber, rowIndex);
+		//-- getStringValue returns const char*; do not bind a std::string const& to it (temp lifetime / x64 Release).
+		char const *const sourceWearableAppearanceName = table->getStringValue(sourceWearableAppearanceNameColumnNumber, rowIndex);
+		char const *const wearerAppearanceName         = table->getStringValue(wearerAppearanceNameColumnNumber, rowIndex);
+		char const *const mappedWearableAppearanceName = table->getStringValue(mappedWearableAppearanceNameColumnNumber, rowIndex);
+		char const *const mappedForPersistent =
+			(std::strcmp(mappedWearableAppearanceName, cs_forbiddenWearableCellContents.c_str()) == 0) ? NULL : mappedWearableAppearanceName;
 
 		//-- Create map entry, add to vector.
-		s_mapEntries.push_back(new PersistentMapEntry(sourceWearableAppearanceName.c_str(), wearerAppearanceName.c_str(), (mappedWearableAppearanceName == cs_forbiddenWearableCellContents) ? NULL : mappedWearableAppearanceName.c_str()));
+		s_mapEntries.push_back(new PersistentMapEntry(sourceWearableAppearanceName, wearerAppearanceName, mappedForPersistent));
 	}
 
 	DataTableManager::close(filename);

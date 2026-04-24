@@ -481,14 +481,14 @@ void SharedSaddleManagerNamespace::loadLogicalSaddleNameMapTableData(char const 
 
 	for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex)
 	{
-		//-- Get entry data.
-		std::string const & appearanceTemplateName = table->getStringValue(appearanceTemplateNameColumnNumber, rowIndex);
-		std::string const & logicalSaddleName      = table->getStringValue(logicalSaddleNameColumnNumber, rowIndex);
+		//-- getStringValue returns const char*; do not bind a std::string const& to it.
+		char const *const appearanceTemplateName = table->getStringValue(appearanceTemplateNameColumnNumber, rowIndex);
+		char const *const logicalSaddleName      = table->getStringValue(logicalSaddleNameColumnNumber, rowIndex);
 
 		//-- Create map entry, add to vector.
 
-		PersistentLogicalSaddleMapEntry * const entry = new PersistentLogicalSaddleMapEntry(appearanceTemplateName.c_str(), logicalSaddleName.c_str());
-		Key const key(appearanceTemplateName.c_str(), true);
+		PersistentLogicalSaddleMapEntry * const entry = new PersistentLogicalSaddleMapEntry(appearanceTemplateName, logicalSaddleName);
+		Key const key(appearanceTemplateName, true);
 		s_logicalSaddleMapTable[key] = entry;
 	}
 
@@ -516,15 +516,14 @@ void SharedSaddleManagerNamespace::loadSaddleAppearanceMapTableData(char const *
 
 	for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex)
 	{
-		//-- Get entry data.
-		std::string const &logicalSaddleName    = table->getStringValue(logicalSaddleNameColumnNumber, rowIndex);
+		char const *const logicalSaddleName    = table->getStringValue(logicalSaddleNameColumnNumber, rowIndex);
  		int         const  seatingCapacity      = table->getIntValue(seatingCapacityColumnNumber, rowIndex);
-		std::string const &saddleAppearanceName = table->getStringValue(saddleAppearanceNameColumnNumber, rowIndex);
-		std::string const &clientDataFilename   = table->getStringValue(clientDataFilenameColumnNumber,   rowIndex);
+		char const *const saddleAppearanceName = table->getStringValue(saddleAppearanceNameColumnNumber, rowIndex);
+		char const *const clientDataFilename   = table->getStringValue(clientDataFilenameColumnNumber,   rowIndex);
 
 		//-- Create map entry, add to vector.
-		PersistentSaddleAppearanceMapEntry * const entry = new PersistentSaddleAppearanceMapEntry(logicalSaddleName.c_str(), seatingCapacity, saddleAppearanceName.c_str(), clientDataFilename.c_str ());
-		Key const key(logicalSaddleName.c_str(), true);
+		PersistentSaddleAppearanceMapEntry * const entry = new PersistentSaddleAppearanceMapEntry(logicalSaddleName, seatingCapacity, saddleAppearanceName, clientDataFilename);
+		Key const key(logicalSaddleName, true);
 		s_saddleAppearanceMapTable[key] = entry;
 	}
 
@@ -551,14 +550,13 @@ void SharedSaddleManagerNamespace::loadRiderPoseMapTableData(char const * const 
 
 	for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex)
 	{
-		//-- Get entry data.
-		std::string const &saddleAppearanceName = table->getStringValue(saddleAppearanceNameColumnNumber, rowIndex);
+		char const *const saddleAppearanceName = table->getStringValue(saddleAppearanceNameColumnNumber, rowIndex);
  		int         const  riderSeatIndex       = table->getIntValue(riderSeatIndexColumnNumber, rowIndex);
-		std::string const &riderPoseName        = table->getStringValue(riderPoseNameColumnNumber, rowIndex);
+		char const *const riderPoseName        = table->getStringValue(riderPoseNameColumnNumber, rowIndex);
 
 		//-- Create map entry, add to vector.
-		PersistentRiderPoseMapEntry * const entry = new PersistentRiderPoseMapEntry(saddleAppearanceName.c_str(), riderSeatIndex, riderPoseName.c_str());
-		Key const key(saddleAppearanceName.c_str(), true);
+		PersistentRiderPoseMapEntry * const entry = new PersistentRiderPoseMapEntry(saddleAppearanceName, riderSeatIndex, riderPoseName);
+		Key const key(saddleAppearanceName, true);
 		s_riderPoseMapTable.insert(std::pair<Key, PersistentRiderPoseMapEntry *>(key, entry));
 	}
 

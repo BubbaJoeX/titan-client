@@ -61,7 +61,7 @@ void ClientObjectUsabilityManager::install()
 
 			for (int row = 0; row < numberOfRows; ++row)
 			{
-				std::string const & gotTypeName = doNotShowAsWearableDataTable.getStringValue(0, row);
+				std::string const gotTypeName(doNotShowAsWearableDataTable.getStringValue(0, row));
 
 				// Turn it into a GOT type
 				int gotType;

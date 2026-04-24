@@ -14,6 +14,17 @@ void MD5::Init()
 	digest[3u] = 0x10325476L;
 }
 
+#if defined(_MSC_VER)
+#pragma warning(push, 0)
+#endif
+void MD5::vTransform(const word32 *data)
+{
+	Transform(this->digest, data);
+}
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
+
 void MD5::Transform (word32 *digest, const word32 *in)
 {
 // #define F1(x, y, z) (x & y | ~x & z)

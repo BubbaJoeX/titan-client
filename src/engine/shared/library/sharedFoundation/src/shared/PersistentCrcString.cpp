@@ -10,6 +10,7 @@
 #include "sharedFoundation/PersistentCrcString.h"
 
 #include "sharedFoundation/Crc.h"
+#include "sharedFoundation/Fatal.h"
 #include "sharedFoundation/ExitChain.h"
 #include "sharedFoundation/MemoryBlockManager.h"
 #include "sharedFoundation/Os.h"
@@ -203,6 +204,8 @@ void PersistentCrcString::clear()
 
 void PersistentCrcString::internalSet(char const * string, bool applyNormalize)
 {
+	// Release: istrlen's DEBUG_FATAL is stripped; strlen(nullptr) is undefined.
+	FATAL (!string, ("PersistentCrcString::internalSet: null string"));
 	internalFree();
 
 	const int stringLength = istrlen(string) + 1;

@@ -265,7 +265,7 @@ void ResourceClassObject::setAttributesFromDataTable(DataTable &table, int row)
 {
 	for (int attNumber = 0; attNumber < 11; ++attNumber)
 	{
-		const std::string &attName = table.getStringValue (ms_attNameHeader[attNumber],row);
+		std::string const attName(table.getStringValue(ms_attNameHeader[attNumber], row));
 		if (attName.size() > 0)
 		{
 			IGNORE_RETURN(m_resourceAttributeRanges->insert(
@@ -330,7 +330,7 @@ void ResourceClassObject::loadTreeFromIff()
 				// in the spreadsheet, the name is indented to indicate what derives from what
 				for (int wheresTheName=0; wheresTheName < 8; ++wheresTheName)
 				{
-					const std::string &possibleName = resourceDataTable->getStringValue(classHeader[wheresTheName],row);
+					std::string const possibleName(resourceDataTable->getStringValue(classHeader[wheresTheName], row));
 					if (possibleName.size()!=0)
 					{
 						if (wheresTheName==0)

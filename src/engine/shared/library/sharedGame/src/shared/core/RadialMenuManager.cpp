@@ -71,7 +71,7 @@ namespace
 
 				s_ranges.insert (std::make_pair (i, rmi));
 
-				const std::string & caption = dt.getStringValue (DC_caption, i);
+				std::string const caption(dt.getStringValue(DC_caption, i));
 				s_names.insert  (std::make_pair (caption, i));
 			}
 		}

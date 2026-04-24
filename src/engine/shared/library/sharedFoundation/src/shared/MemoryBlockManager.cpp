@@ -8,6 +8,7 @@
 
 #include "sharedFoundation/FirstSharedFoundation.h"
 #include "sharedFoundation/MemoryBlockManager.h"
+#include "sharedFoundation/Fatal.h"
 
 #include "sharedDebug/DebugFlags.h"
 #include "sharedFoundation/ExitChain.h"
@@ -611,7 +612,12 @@ void *MemoryBlockManager::allocate(bool returnNullOnFailure)
 		if (m_allocator->isFull())
 		{
 			ms_globalCriticalSection.leave();
-			DEBUG_FATAL(!returnNullOnFailure, ("MBM %s is full %d", m_name, m_currentNumberOfElements));
+			// Release: DEBUG_FATAL was NOP — allocate() returned null; operator new then ran constructors on null → 0xC0000005.
+			FATAL (
+				!returnNullOnFailure,
+				("MemoryBlockManager '%s' is full (%d elements).",
+				 m_name ? m_name : "(null)",
+				 m_currentNumberOfElements));
 			return NULL;
 		}
 

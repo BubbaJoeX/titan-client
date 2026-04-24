@@ -50,7 +50,7 @@ void DroidProgramSizeManager::install()
 
 		for (int i = 0; i < numRows; ++i)
 		{
-			std::string const & programName = table->getStringValue("program_name", i);
+			std::string const programName(table->getStringValue("program_name", i));
 			int size = table->getIntValue("program_size", i);
 			ms_droidProgramSizes[programName] = size;
 		}
@@ -66,7 +66,7 @@ void DroidProgramSizeManager::install()
 
 		for (int i = 0; i < numRows; ++i)
 		{
-			std::string const & templateName = table->getStringValue("object_template", i);
+			std::string const templateName(table->getStringValue("object_template", i));
 			ms_programmableDroids.insert(templateName);
 		}
 		DataTableManager::close(ms_programmableDroidsFile);
