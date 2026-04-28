@@ -157,7 +157,13 @@ public:
 	static bool                getPreloadWorldSnapshot();
 	static bool                getShowMatchMakingDebug();
 
-	static float               getHackMovementSpeed();
+	static float               getHackMovementSpeed ();
+
+	/** Underwater vertical swim speed (units/sec) when ascent/descent keys used. */
+	static float               getUnderwaterSwimVerticalSpeed ();
+	static float               getUnderwaterSwimMinClearanceAboveTerrain ();
+	static float               getJumpImpulseVelocity ();
+	static float               getJumpGravity ();
 
 	static bool                isProfanityFiltered  ();
 

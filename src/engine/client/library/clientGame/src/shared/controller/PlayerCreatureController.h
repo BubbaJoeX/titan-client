@@ -149,6 +149,7 @@ public:
 
 protected:
 
+	virtual void          onJumpRequested ();
 	virtual float         realAlter (float time);
 
 private:
@@ -167,7 +168,9 @@ private:
 	void updateLookAtTargetSlot(CreatureObject & owner) const;
 	bool shouldSendUpdatedTransform() const;
 	bool shouldProcessMovement() const;
-	
+
+	void applyVerticalLocomotion(float elapsedTime, CreatureObject *movementCreatureObject);
+
 	void updateBuildingAndCellInformation(CreatureObject const * const owner);
 
 	bool hasLookAtYawChanged(bool reliable);
@@ -226,6 +229,9 @@ private:
 	uint32 m_cellNameCrc;
 	bool m_allowMovement;
 	bool m_autoPilotLocked;
+
+	float               m_jumpVerticalVelocity;
+	float               m_swimVerticalIntent;
 };         
 
 // ----------------------------------------------------------------------

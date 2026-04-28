@@ -115,6 +115,7 @@
 #include "sharedObject/PortalProperty.h"
 #include "sharedObject/VolumeContainer.h"
 #include "sharedTerrain/TerrainObject.h"
+#include "swgSharedUtility/States.h"
 #include "sharedUtility/DataTable.h"
 #include "sharedUtility/LocalMachineOptionManager.h"
 #include "sharedUtility/StartingLocationData.h"
@@ -443,7 +444,9 @@ PlayerCreatureController::PlayerCreatureController (CreatureObject* const newOwn
 	m_buildingSharedTemplateNameCrc(Crc::crcNull),
 	m_cellNameCrc(Crc::crcNull),
 	m_allowMovement(true),
-	m_autoPilotLocked(false)
+	m_autoPilotLocked(false),
+	m_jumpVerticalVelocity(0.f),
+	m_swimVerticalIntent(0.f)
 {
 }
 
@@ -457,6 +460,98 @@ PlayerCreatureController::~PlayerCreatureController ()
 	m_autoFollowTarget = 0;
 
 	m_context = 0;
+}
+
+//----------------------------------------------------------------------
+
+void PlayerCreatureController::onJumpRequested ()
+{
+	CreatureObject *const creatureObject = safe_cast<CreatureObject *>(getOwner ());
+	if (!creatureObject)
+		return;
+
+	TerrainObject const *const terrainObject = TerrainObject::getConstInstance ();
+
+	if (creatureObject->getState (States::Swimming) && terrainObject && terrainObject->isBelowWater (creatureObject->getPosition_w ()))
+	{
+		m_swimVerticalIntent += 1.f;
+		return;
+	}
+
+	if (creatureObject->getState (States::Swimming))
+		return;
+
+	CollisionProperty const *const collisionProperty = creatureObject->getCollisionProperty ();
+	Footprint const *const footprint = collisionProperty ? collisionProperty->getFootprint () : NULL;
+	if (!footprint || !footprint->isOnSolidFloor ())
+		return;
+
+	if (!creatureObject->isInWorldCell ())
+		return;
+
+	m_jumpVerticalVelocity = ConfigClientGame::getJumpImpulseVelocity ();
+}
+
+//----------------------------------------------------------------------
+
+void PlayerCreatureController::applyVerticalLocomotion (float const elapsedTime, CreatureObject *const movementCreatureObject)
+{
+	if (!movementCreatureObject || !movementCreatureObject->isInWorldCell ())
+		return;
+
+	TerrainObject const *const terrainObject = TerrainObject::getConstInstance ();
+	if (!terrainObject)
+		return;
+
+	Vector position_w = movementCreatureObject->getPosition_w ();
+
+	float combinedVerticalIntent = m_swimVerticalIntent;
+
+	if (movementCreatureObject->getState (States::Swimming) && terrainObject->isBelowWater (position_w))
+	{
+		float const dy = combinedVerticalIntent * ConfigClientGame::getUnderwaterSwimVerticalSpeed () * elapsedTime;
+		position_w.y += dy;
+
+		float terrainHeight = 0.f;
+		if (terrainObject->getHeight (position_w, terrainHeight))
+		{
+			float const floorY = terrainHeight + ConfigClientGame::getUnderwaterSwimMinClearanceAboveTerrain ();
+			if (position_w.y < floorY)
+				position_w.y = floorY;
+		}
+
+		float waterSurface = 0.f;
+		if (terrainObject->getWaterHeight (position_w, waterSurface))
+		{
+			if (position_w.y > waterSurface - 0.08f)
+				position_w.y = waterSurface - 0.08f;
+		}
+
+		movementCreatureObject->setPosition_w (position_w);
+	}
+
+	position_w = movementCreatureObject->getPosition_w ();
+
+	if (fabs (m_jumpVerticalVelocity) > 1e-4f)
+	{
+		position_w.y += m_jumpVerticalVelocity * elapsedTime;
+		m_jumpVerticalVelocity -= ConfigClientGame::getJumpGravity () * elapsedTime;
+
+		float terrainHeight = 0.f;
+		if (terrainObject->getHeight (position_w, terrainHeight))
+		{
+			float const eps = ConfigClientGame::getUnderwaterSwimMinClearanceAboveTerrain ();
+			if (position_w.y < terrainHeight + eps && m_jumpVerticalVelocity <= 0.f)
+			{
+				position_w.y = terrainHeight + eps;
+				m_jumpVerticalVelocity = 0.f;
+			}
+		}
+
+		movementCreatureObject->setPosition_w (position_w);
+	}
+
+	m_swimVerticalIntent = 0.f;
 }
 
 //----------------------------------------------------------------------
@@ -762,6 +857,13 @@ float PlayerCreatureController::realAlter (const float elapsedTime)
 
 		bool shouldOverrideMovement = false; // for strafing
 
+		TerrainObject const *const terrainObjectForMovement = TerrainObject::getConstInstance ();
+		bool const fullySubmergedSwim =
+			movementCreatureObject->isInWorldCell ()
+			&& movementCreatureObject->getState (States::Swimming)
+			&& terrainObjectForMovement
+			&& terrainObjectForMovement->isBelowWater (movementCreatureObject->getPosition_w ());
+
 		//-- read queue
 		{
 			int i;
@@ -845,12 +947,19 @@ float PlayerCreatureController::realAlter (const float elapsedTime)
 
 			case CM_down:
 
-				if ( desiredVelocity_c.z > FLT_EPSILON )
+				if (fullySubmergedSwim)
 				{
-					desiredVelocity_c.z = 0.f;
+					m_swimVerticalIntent -= 1.f;
 				}
-				
-				desiredVelocity_c.z -= 1.f;
+				else
+				{
+					if ( desiredVelocity_c.z > FLT_EPSILON )
+					{
+						desiredVelocity_c.z = 0.f;
+					}
+
+					desiredVelocity_c.z -= 1.f;
+				}
 				break;
 
 			case CM_moveLateral:
@@ -1224,6 +1333,9 @@ float PlayerCreatureController::realAlter (const float elapsedTime)
 	//-- chain up to actually move the player
 	float const baseAlterResult = CreatureController::realAlter (elapsedTime);
 	UNREF (baseAlterResult);
+
+	if (movementCreatureObject)
+		applyVerticalLocomotion (elapsedTime, movementCreatureObject);
 
 	if (shouldSendUpdatedTransform())
 	{

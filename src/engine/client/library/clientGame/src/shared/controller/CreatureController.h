@@ -76,6 +76,7 @@ public:
 
 protected:
 
+	virtual void  onJumpRequested                ();
 	virtual float realAlter                      (float time);
 	virtual void  handleMessage                  (int message, float value, const MessageQueue::Data* data, uint32 flags);
 	bool          canCreatureMove                () const;

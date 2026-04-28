@@ -21,6 +21,7 @@
 #include "sharedDebug/RemoteDebug.h"
 
 #include <cstdio>
+#include <cstdint>
 
 #ifdef _WIN32
 #include <io.h>
@@ -161,8 +162,8 @@ namespace MemoryManagerNamespace
 		bool  checkForLeaks() const;
 		void  setCheckForLeaks(bool checkForLeaks);
 
-		uint32 getOwner(int index) const;
-		void   setOwner(int index, uint32 owner);
+		std::uintptr_t getOwner(int index) const;
+		void   setOwner(int index, std::uintptr_t owner);
 		void   fillOwnerWithFreePattern();
 
 #endif
@@ -175,7 +176,7 @@ namespace MemoryManagerNamespace
 	private:
 
 #if DO_TRACK
-		uint32         m_owner[DO_TRACK];
+		std::uintptr_t m_owner[DO_TRACK];
 #endif
 	};
 
@@ -463,14 +464,14 @@ inline void AllocatedBlock::setCheckForLeaks(bool checkForLeaks)
 
 // ----------------------------------------------------------------------
 
-inline uint32 AllocatedBlock::getOwner(int index) const
+inline std::uintptr_t AllocatedBlock::getOwner(int index) const
 {
 	return m_owner[index];
 }
 
 // ----------------------------------------------------------------------
 
-inline void AllocatedBlock::setOwner(int index, uint32 owner)
+inline void AllocatedBlock::setOwner(int index, std::uintptr_t owner)
 {
 	m_owner[index] = owner;
 }
@@ -1148,11 +1149,11 @@ FreeBlock *MemoryManagerNamespace::searchFreeList(int blockSize)
  * by operator new.
  *
  * @param size  Number of bytes to allocate
- * @param owner  Line number on which the allocation was made
+ * @param owner  Return address or other uintptr token (see OsNewDel / \c _ReturnAddress); full width on x64.
  * @param array  True if the array form of operator new was used, false if the scalar form was used
  */
 
-void * MemoryManager::allocate(size_t size, uint32 owner, bool array, bool leakTest)
+void * MemoryManager::allocate(size_t size, std::uintptr_t owner, bool array, bool leakTest)
 {
 	if (!ms_installed)
 		new(ms_memoryManagerBuffer) MemoryManager;
@@ -1190,7 +1191,7 @@ void * MemoryManager::allocate(size_t size, uint32 owner, bool array, bool leakT
 		}
 		else
 		{
-			DEBUG_REPORT(true, (ms_debugReportAllocations ? Report::RF_print : 0) | (ms_debugLogAllocations ? Report::RF_log : 0), ("%08x: alloc %d=bytes %d=array\n", static_cast<int>(owner), size, static_cast<int>(array)));
+			DEBUG_REPORT(true, (ms_debugReportAllocations ? Report::RF_print : 0) | (ms_debugLogAllocations ? Report::RF_log : 0), ("%p: alloc %d=bytes %d=array\n", reinterpret_cast<void const *>(owner), size, static_cast<int>(array)));
 		}
 	}
 #endif
@@ -1256,7 +1257,7 @@ void * MemoryManager::allocate(size_t size, uint32 owner, bool array, bool leakT
 #if DO_TRACK > 1
 		{
 			enum { OFFSET = 3 };
-			uint32 owners[DO_TRACK + OFFSET];
+			std::uintptr_t owners[DO_TRACK + OFFSET];
 			DebugHelp::getCallStack(owners, DO_TRACK + OFFSET);
 
 			for (int i = 1; i < DO_TRACK; ++i)
@@ -1275,7 +1276,7 @@ void * MemoryManager::allocate(size_t size, uint32 owner, bool array, bool leakT
 					}
 					else
 					{
-						DEBUG_REPORT(true, (ms_debugReportAllocations ? Report::RF_print : 0) | (ms_debugLogAllocations ? Report::RF_log : 0), ("  %08x: caller %d\n", static_cast<int>(owners[i + OFFSET]), i));
+						DEBUG_REPORT(true, (ms_debugReportAllocations ? Report::RF_print : 0) | (ms_debugLogAllocations ? Report::RF_log : 0), ("  %p: caller %d\n", reinterpret_cast<void const *>(owners[i + OFFSET]), i));
 					}
 				}
 #endif
@@ -1376,10 +1377,10 @@ void *MemoryManager::reallocate(void *userPointer, size_t newSize)
 	}
 
 #if DO_TRACK
-	uint32 owner = allocatedBlock->getOwner(0);
+	std::uintptr_t owner = allocatedBlock->getOwner(0);
 	bool leakTest = allocatedBlock->checkForLeaks();
 #else
-	uint32 owner = 0;
+	std::uintptr_t owner = 0;
 	bool leakTest = false;
 #endif
 
@@ -1635,7 +1636,7 @@ void MemoryManager::own(void * userPointer)
 		// update the owners
 		{
 			enum { OFFSET = 2 };
-			uint32 owners[DO_TRACK + OFFSET];
+			std::uintptr_t owners[DO_TRACK + OFFSET];
 			DebugHelp::getCallStack(owners, DO_TRACK + OFFSET);
 
 			for (int i = 0; i < DO_TRACK; ++i)
@@ -1736,9 +1737,9 @@ void MemoryManager::verify(bool guardPatterns, bool freePatterns)
 void MemoryManagerNamespace::report(AllocatedBlock const * block, bool leak)
 {
 #if DO_TRACK
-	uint32 const owner = block->getOwner(0);
+	std::uintptr_t const owner = block->getOwner(0);
 #else
-	uint32 const owner = 0;
+	std::uintptr_t const owner = 0;
 #endif
 #if DO_TRACK || DO_GUARDS
 	int const requestedSize = block->getRequestedSize();;
@@ -1758,7 +1759,7 @@ void MemoryManagerNamespace::report(AllocatedBlock const * block, bool leak)
 	}
 	else
 	{
-		sprintf(buffer, "unknown(0x%08X) : %08X memory %s, %d bytes\n", static_cast<unsigned int>(owner), memory, leak ? "leak" : "allocation", static_cast<int>(requestedSize));
+		sprintf(buffer, "unknown(%p) : %p memory %s, %d bytes\n", reinterpret_cast<void const *>(owner), memory, leak ? "leak" : "allocation", static_cast<int>(requestedSize));
 	}
 
 	(*LogMessage)(buffer);
@@ -1771,7 +1772,7 @@ void MemoryManagerNamespace::report(AllocatedBlock const * block, bool leak)
 				if (ms_allowNameLookup && DebugHelp::lookupAddress(block->getOwner(i), libName, fileName, sizeof(fileName), line))
 					sprintf(buffer, "  %s(%d) : caller %d\n", fileName, line, i);
 				else
-					sprintf(buffer, "  0x%08X : caller %d\n", static_cast<int>(block->getOwner(i)), i);
+					sprintf(buffer, "  %p : caller %d\n", reinterpret_cast<void const *>(block->getOwner(i)), i);
 				(*LogMessage)(buffer);
 			}
 	}
@@ -2094,7 +2095,7 @@ void MemoryManager::report()
 
 // ----------------------------------------------------------------------
 
-void * MemoryManager::allocate(size_t size, uint32, bool, bool)
+void * MemoryManager::allocate(size_t size, std::uintptr_t, bool, bool)
 {
 #ifdef _WIN32
 	return _malloc_dbg(size, _NORMAL_BLOCK, __FILE__, __LINE__);

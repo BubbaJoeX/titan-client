@@ -105,7 +105,7 @@ void GameLanguageManager::install()
 			languageInfo.m_alphabet.push_back(dataTable.getStringValue("f", index));
 			languageInfo.m_alphabet.push_back(dataTable.getStringValue("g", index));
 			languageInfo.m_alphabet.push_back(dataTable.getStringValue("h", index));
-			languageInfo.m_alphabet.push_back(dataTable.getStringValue("h", index));
+			languageInfo.m_alphabet.push_back(dataTable.getStringValue("i", index));
 			languageInfo.m_alphabet.push_back(dataTable.getStringValue("j", index));
 			languageInfo.m_alphabet.push_back(dataTable.getStringValue("k", index));
 			languageInfo.m_alphabet.push_back(dataTable.getStringValue("l", index));

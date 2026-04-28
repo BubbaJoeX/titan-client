@@ -70,6 +70,8 @@
 #include "sharedObject/Object.h"
 #include "sharedSynchronization/Mutex.h"
 
+#include <cstdint>
+
 // ======================================================================
 
 void Fatal(const char *, ...)
@@ -148,7 +150,7 @@ void TextureFormatInfo::setSupported(TextureFormat, bool)
 
 // ======================================================================
 
-void *MemoryManager::allocate(size_t, uint32, bool, bool)
+void *MemoryManager::allocate(size_t, std::uintptr_t, bool, bool)
 {
 	__asm int 3;
 	return NULL;

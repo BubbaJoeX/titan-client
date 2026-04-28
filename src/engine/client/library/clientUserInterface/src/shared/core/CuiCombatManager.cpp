@@ -848,7 +848,9 @@ void CuiCombatManager::install ()
 			}
 			++lastPlayerLevel;
 
-			ConIndexMap conIndexMap = s_playerLevelToConColorMap[row];
+			// Fresh map per player level — do not seed from s_playerLevelToConColorMap[row]; row index
+			// is not the same as playerLevel, and operator[] would default-insert spurious keys.
+			ConIndexMap conIndexMap;
 
 			int lastConValue = 0;
 			for (int column = 1; column <= s_numConLevels; column++)

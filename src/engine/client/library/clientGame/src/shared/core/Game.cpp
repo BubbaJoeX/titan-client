@@ -141,6 +141,7 @@
 #include "sharedObject/SlotDescriptorList.h"
 #include "sharedObject/World.h"
 #include "sharedTerrain/TerrainObject.h"
+#include "sharedMath/VectorArgb.h"
 #include "sharedUtility/CurrentUserOptionManager.h"
 #include "sharedUtility/LocalMachineOptionManager.h"
 #include "swgSharedNetworkMessages/MessageQueueCombatAction.h"
@@ -153,11 +154,45 @@
 #include "LocalizedStringTable.h"
 #include "UnicodeUtils.h"
 
+#include <algorithm>
 #include <cstdio>
 
 #if 0
 #include "clientGraphics/SwgVideoCapture.h"
 #endif // PRODUCTION
+
+//-----------------------------------------------------------------
+
+namespace UnderwaterOverlayNamespace
+{
+	static void drawUnderwaterCameraTintIfNeeded ()
+	{
+		CreatureObject *const player = Game::getPlayerCreature ();
+		if (!player || !player->isInWorldCell ())
+			return;
+
+		TerrainObject const *const terrain = TerrainObject::getConstInstance ();
+		Camera const *const cam = Game::getConstCamera ();
+		if (!terrain || !cam)
+			return;
+
+		Vector const camPos_w = cam->getPosition_w ();
+		float waterHeight = 0.f;
+		if (!terrain->getWaterHeight (camPos_w, waterHeight))
+			return;
+
+		if (camPos_w.y >= waterHeight - 0.02f)
+			return;
+
+		float const depth = waterHeight - camPos_w.y;
+		float const intensity = std::min (1.f, depth / 3.0f);
+		VectorArgb const tint (intensity * 0.42f, 0.12f * intensity, 0.38f * intensity, 0.48f * intensity);
+
+		float const w = static_cast<float> (Graphics::getCurrentRenderTargetWidth ());
+		float const h = static_cast<float> (Graphics::getCurrentRenderTargetHeight ());
+		Graphics::drawRectangle (0.f, 0.f, w, h, tint);
+	}
+}
 
 //-----------------------------------------------------------------
 
@@ -1221,7 +1256,9 @@ void Game::runGameLoopOnce(bool presentToWindow, HWND hwnd, int width, int heigh
 			Appearance::beginNewFrame();
 
 			NP_PROFILER_NAMED_AUTO_BLOCK_TRANSFER(profilerDraw, "IoWinManager::draw");
-			IoWinManager::draw();
+			IoWinManager::draw ();
+
+			UnderwaterOverlayNamespace::drawUnderwaterCameraTintIfNeeded ();
 
 			NP_PROFILER_NAMED_AUTO_BLOCK_TRANSFER(profilerDraw, "Graphics::endFrame");
 

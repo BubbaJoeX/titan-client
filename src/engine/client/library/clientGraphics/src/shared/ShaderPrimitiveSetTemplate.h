@@ -42,6 +42,7 @@ public:
 	static void setAllowUpwardIndicesCreation(bool allowUpwardIndicesCreation);
 	static void setBuildingAsynchronousLoaderData(bool buildingAsynchronousLoaderData);
 	static void setCollideAgainstAllGeometry(bool collideAgainstAllGeometry);
+	static bool getCollideAgainstAllGeometry();
 
 public:
 

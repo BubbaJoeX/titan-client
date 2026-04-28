@@ -1419,6 +1419,11 @@ void ShaderPrimitiveSetTemplate::setCollideAgainstAllGeometry(bool const collide
 	ms_collideAgainstAllGeometry = collideAgainstAllGeometry;
 }
 
+bool ShaderPrimitiveSetTemplate::getCollideAgainstAllGeometry()
+{
+	return ms_collideAgainstAllGeometry;
+}
+
 // ----------------------------------------------------------------------
 
 void ShaderPrimitiveSetTemplate::setAllowUpwardIndicesCreation(bool const allowUpwardIndicesCreation)

@@ -146,6 +146,10 @@ DataTableColumnType::DataTableColumnType(std::string const &desc) :
 		while ((eqPos = enumList.find('=')) != std::string::npos)
 		{
 			std::string::size_type endPos = enumList.find(',');
+			// Without a comma after '=', find returns npos; erase(0, npos+1) wraps erase(0,0) -> infinite loop / UB (x64 Release).
+			FATAL (
+				endPos == std::string::npos || endPos <= eqPos,
+				("DataTableColumnType: corrupt 'e(...)' enum list (missing ',' after '=') near [%s]", enumList.c_str ()));
 			std::string label = enumList.substr(0, eqPos);
 			std::string val = enumList.substr(eqPos+1, endPos-eqPos-1);
 			(*m_enumMap)[label] = static_cast<int>(strtol(val.c_str(), NULL, 0));
@@ -171,6 +175,9 @@ DataTableColumnType::DataTableColumnType(std::string const &desc) :
 		while ((eqPos = enumList.find('=')) != std::string::npos)
 		{
 			std::string::size_type endPos = enumList.find(',');
+			FATAL (
+				endPos == std::string::npos || endPos <= eqPos,
+				("DataTableColumnType: corrupt 'v(...)' bitvector list (missing ',' after '=') near [%s]", enumList.c_str ()));
 			std::string label = enumList.substr(0, eqPos);
 			std::string val = enumList.substr(eqPos+1, endPos-eqPos-1);
 			int bit = static_cast<int>(strtol(val.c_str(), NULL, 0));
@@ -203,6 +210,9 @@ DataTableColumnType::DataTableColumnType(std::string const &desc) :
 		DataTable * enumTable = DataTableManager::getTable(fileName, true);
 		if (!enumTable)
 		{
+			delete m_enumMap;
+			m_enumMap = 0;
+			m_type = DT_Unknown;
 			m_basicType = DT_Unknown;
 			return;
 		}

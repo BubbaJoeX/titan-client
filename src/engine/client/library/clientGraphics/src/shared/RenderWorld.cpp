@@ -42,6 +42,7 @@
 #define DO_OBJECT_TRACKING 0
 
 #if DO_OBJECT_TRACKING
+#include <cstdint>
 #include <map>
 #endif
 
@@ -148,7 +149,7 @@ namespace RenderWorldNamespace
 	const int CALL_STACK_SIZE = 16;
 	struct CallStack
 	{
-		uint32 callers[CALL_STACK_SIZE];
+		std::uintptr_t callers[CALL_STACK_SIZE];
 	};
 	typedef std::map<DPVS::Object*, CallStack> CallStacks;
 	CallStacks            ms_callStacks;

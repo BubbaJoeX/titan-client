@@ -157,6 +157,11 @@ namespace ConfigClientGameNamespace
 
 	float           ms_hackMovementSpeed;
 
+	float           ms_underwaterSwimVerticalSpeed;
+	float           ms_underwaterSwimMinClearanceAboveTerrain;
+	float           ms_jumpImpulseVelocity;
+	float           ms_jumpGravity;
+
 	bool            ms_profanityFiltered;
 
 	float           ms_freeChaseCameraZoomSpeed;
@@ -1105,6 +1110,11 @@ void ConfigClientGame::install(void)
 
 	KEY_FLOAT  (hackMovementSpeed,         1.0f);
 
+	KEY_FLOAT  (underwaterSwimVerticalSpeed,           3.5f);
+	KEY_FLOAT  (underwaterSwimMinClearanceAboveTerrain, 0.35f);
+	KEY_FLOAT  (jumpImpulseVelocity,                   8.5f);
+	KEY_FLOAT  (jumpGravity,                           22.0f);
+
 	KEY_BOOL   (profanityFiltered,         true);
 
 	KEY_FLOAT  (freeChaseCameraZoomSpeed,  0.2f);
@@ -1263,6 +1273,34 @@ bool ConfigClientGame::getPreloadWorldSnapshot()
 float ConfigClientGame::getHackMovementSpeed()
 {
 	return ms_hackMovementSpeed;
+}
+
+//----------------------------------------------------------------------
+
+float ConfigClientGame::getUnderwaterSwimVerticalSpeed ()
+{
+	return ms_underwaterSwimVerticalSpeed;
+}
+
+//----------------------------------------------------------------------
+
+float ConfigClientGame::getUnderwaterSwimMinClearanceAboveTerrain ()
+{
+	return ms_underwaterSwimMinClearanceAboveTerrain;
+}
+
+//----------------------------------------------------------------------
+
+float ConfigClientGame::getJumpImpulseVelocity ()
+{
+	return ms_jumpImpulseVelocity;
+}
+
+//----------------------------------------------------------------------
+
+float ConfigClientGame::getJumpGravity ()
+{
+	return ms_jumpGravity;
 }
 
 //----------------------------------------------------------------------

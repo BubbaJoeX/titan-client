@@ -11,6 +11,8 @@
 #ifndef INCLUDED_CallStack_H
 #define INCLUDED_CallStack_H
 
+#include <cstdint>
+
 // ======================================================================
 
 class CallStack
@@ -40,7 +42,7 @@ private:
 
 private:
 
-	uint32 m_callStack[S_callStack];
+	std::uintptr_t m_callStack[S_callStack];
 };
 
 // ======================================================================

@@ -404,13 +404,20 @@ void Iff::open(AbstractFile & file, char const * const newFileName)
 
 void Iff::close(void)
 {
+	// Drop file bytes before fileName: keeps teardown safe if a future path ever aliased the path into the image
+	// (current TreeFile/Iff paths use DuplicateString for fileName — independent of `data`).
+	if (ownsData && data)
+	{
+		delete [] data;
+	}
+	data = NULL;
+	length = 0;
+
 	delete [] fileName;
 	fileName = NULL;
 
-	if (ownsData)
-		delete [] data;
-	data = NULL; //lint !e672 // possible memory leak in assignment to Iff::data // no, we only delete when we own it
 	stackDepth = 0;
+	inChunk = false;
 }
 
 

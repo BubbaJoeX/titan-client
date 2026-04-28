@@ -28,6 +28,9 @@
 #include "sharedCollision/CollisionInfo.h"
 #include "sharedCollision/Extent.h"
 #include "sharedCollision/ExtentList.h"
+#include "clientGraphics/StaticVertexBuffer.h"
+#include "clientGraphics/StaticIndexBuffer.h"
+#include "clientGraphics/VertexBufferIterator.h"
 #include "sharedDebug/DebugFlags.h"
 #include "sharedDebug/Profiler.h"
 #include "sharedMath/DebugShapeRenderer.h"
@@ -44,6 +47,71 @@
 #include <vector>
 
 // ======================================================================
+
+namespace
+{
+	/// Prefer drawable vertex/index buffers (actual rendered mesh faces) over authored collision triangle lists from .msh.
+	bool appendRenderableMeshTrianglesFromTemplate(ShaderPrimitiveSetTemplate const *const spsTemplate, IndexedTriangleList &out)
+	{
+		if (!spsTemplate)
+			return false;
+
+		size_t const beforeVerts = out.getVertices().size();
+		bool const collideAll = ShaderPrimitiveSetTemplate::getCollideAgainstAllGeometry();
+
+		int const numPrimitives = spsTemplate->getNumberOfShaderPrimitiveTemplates();
+		for (int i = 0; i < numPrimitives; ++i)
+		{
+			ShaderPrimitiveSetTemplate::LocalShaderPrimitiveTemplate const &prim = spsTemplate->getShaderPrimitiveTemplate(i);
+			ShaderTemplate const *const shaderTemplate = prim.getShaderTemplate();
+			if (!collideAll && shaderTemplate && !shaderTemplate->isCollidable())
+				continue;
+
+			StaticVertexBuffer const *const vb = prim.getVertexBuffer();
+			StaticIndexBuffer const *const ib = prim.getIndexBuffer();
+			if (!vb || !ib)
+				continue;
+
+			int const nv = vb->getNumberOfVertices();
+			int const ni = ib->getNumberOfIndices();
+			if (nv < 3 || ni < 3 || (ni % 3) != 0)
+				continue;
+
+			std::vector<Vector> verts(static_cast<size_t>(nv));
+			vb->lockReadOnly();
+			{
+				VertexBufferReadIterator it = vb->beginReadOnly();
+				for (int v = 0; v < nv; ++v, ++it)
+					verts[static_cast<size_t>(v)] = it.getPosition();
+			}
+			vb->unlock();
+
+			std::vector<int> indices(static_cast<size_t>(ni));
+			ib->lockReadOnly();
+			{
+				Index const *const begin = ib->beginReadOnly();
+				for (int ii = 0; ii < ni; ++ii)
+				{
+					int const idx = static_cast<int>(begin[ii]);
+					if (idx < 0 || idx >= nv)
+					{
+						indices.clear();
+						break;
+					}
+					indices[static_cast<size_t>(ii)] = idx;
+				}
+			}
+			ib->unlock();
+
+			if (indices.size() != static_cast<size_t>(ni))
+				continue;
+
+			out.addIndexedTriangleList(&verts[0], nv, &indices[0], ni);
+		}
+
+		return out.getVertices().size() > beforeVerts;
+	}
+}
 
 namespace MeshAppearanceNamespace
 {
@@ -423,6 +491,11 @@ void MeshAppearance::getMeshGeometryForCollision(IndexedTriangleList & out) cons
 	if (!spsTemplate)
 		return;
 
+	// Source of truth: drawable mesh (vertex + index buffers). Matches on-screen geometry for jump/swim collision.
+	if (appendRenderableMeshTrianglesFromTemplate(spsTemplate, out))
+		return;
+
+	// Fallback when render buffers are unavailable: legacy authored collision chunks from .msh (collision IndexedTriangleList).
 	int const numPrimitives = spsTemplate->getNumberOfShaderPrimitiveTemplates();
 	for (int i = 0; i < numPrimitives; ++i)
 	{

@@ -12,6 +12,8 @@
 
 // ======================================================================
 
+#include <cstdint>
+
 #include "../../../../../../engine/shared/library/sharedDebug/include/public/sharedDebug/DebugHelp.h"
 
 // ======================================================================
@@ -55,7 +57,8 @@ public:
 	static int             getProcessVmSizeKBytes(const int processId = 0);
 #endif
 
-	static DLLEXPORT void *allocate(size_t size, uint32 owner, bool array, bool leakTest);
+	/// Return address (e.g. \c _ReturnAddress()) or other uintptr-sized token; must not truncate on x64.
+	static DLLEXPORT void *allocate(size_t size, std::uintptr_t owner, bool array, bool leakTest);
 	static DLLEXPORT void  free(void *pointer, bool array);
 	static DLLEXPORT void  own(void *pointer);
 	static void *          reallocate(void *userPointer, size_t newSize);
