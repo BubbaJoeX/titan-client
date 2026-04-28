@@ -146,6 +146,7 @@ private:
 	LineList * const m_debugLineList;
 
 	bool m_isTutorial;
+	mutable bool m_isCameraUnderWaterForOverlay;
 
 	typedef stdset<NetworkId>::fwd DestroyObjectSet;
 	DestroyObjectSet * const m_destroyObjectSet;

@@ -947,6 +947,32 @@ bool Footprint::updateHeights ( void )
 		m_hasTerrainHeight = TerrainObject::getConstInstance ()->getLogicalHeight(getPosition_w(), m_swimHeight, logicalTerrainHeight, m_terrainHeight, terrainNormal);
 	}
 
+	// In open water, floor contacts from nearby structures can incorrectly "catch" swimmers and
+	// snap Y as if walking. Detect true underwater world-cell swimming so we can ignore floor height.
+	bool underwaterWorldSwim = false;
+	float underwaterSurface = -REAL_MAX;
+	float underwaterMinY = -REAL_MAX;
+	TerrainObject const * const terrainObject = TerrainObject::getConstInstance();
+	// Use footprint cell state instead of owner cell state here: owner and footprint can be
+	// briefly out of sync during portal transitions (e.g. leaving a house), and gating on owner
+	// causes an unintended snap to swim-plane height before world-cell state settles.
+	if (terrainObject && !isInCell())
+	{
+		Vector const objectPos_w = getPosition_w();
+		float waterSurface = 0.f;
+		float terrainHeight = 0.f;
+		if (terrainObject->getWaterHeight(objectPos_w, waterSurface) && terrainObject->getHeight(objectPos_w, terrainHeight))
+		{
+			float const swimPlaneEpsilon = 0.05f;
+			float const floorClearance = 0.35f;
+			underwaterMinY = terrainHeight + floorClearance;
+			underwaterSurface = waterSurface;
+			underwaterWorldSwim =
+				(objectPos_w.y < waterSurface - swimPlaneEpsilon) &&
+				(objectPos_w.y >= underwaterMinY);
+		}
+	}
+
 	// ----------
 	// Update floor height
 
@@ -976,6 +1002,12 @@ bool Footprint::updateHeights ( void )
 		}
 	}
 
+	if (underwaterWorldSwim)
+	{
+		m_hasFloorHeight = false;
+		m_floorHeight = -REAL_MAX;
+	}
+
 	// ----------
 	// Update ground height
 
@@ -999,6 +1031,45 @@ bool Footprint::updateHeights ( void )
 		m_hasGroundHeight = false;
 		m_groundHeight = getObjectPosition_p().y;
 		m_groundNormal = Vector::unitY;
+	}
+
+	// Swimming below the default float line: getLogicalHeight() uses (waterSurface - swimHeight)
+	// as "ground", which snaps every frame and prevents volumetric swim between surface and floor.
+	// If the owner is already deeper than that plane but still in water and above real terrain,
+	// keep that depth instead of riding back up to the swim plane.
+	if (m_hasGroundHeight && m_hasTerrainHeight)
+	{
+		if (underwaterWorldSwim)
+		{
+			Vector const objectPos_w = getPosition_w();
+			float clampedY = objectPos_w.y;
+			if (clampedY < underwaterMinY)
+				clampedY = underwaterMinY;
+			if (clampedY > underwaterSurface)
+				clampedY = underwaterSurface;
+			m_groundHeight = clampedY;
+		}
+		else
+		{
+			Object const *const ownerObject = getOwner();
+			if (ownerObject)
+			{
+				Vector const objectPos_w = ownerObject->getPosition_w();
+				float waterSurface = 0.f;
+				if (TerrainObject::getConstInstance()->getWaterHeight(objectPos_w, waterSurface))
+				{
+					float const swimPlaneEpsilon = 0.05f;
+					float const floorClearance     = 0.35f;
+
+					if (objectPos_w.y < waterSurface - swimPlaneEpsilon
+						&& objectPos_w.y < m_groundHeight
+						&& objectPos_w.y >= (m_terrainHeight + floorClearance))
+					{
+						m_groundHeight = objectPos_w.y;
+					}
+				}
+			}
+		}
 	}
 
 	// ----------

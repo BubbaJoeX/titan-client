@@ -170,6 +170,7 @@ private:
 	bool shouldProcessMovement() const;
 
 	void applyVerticalLocomotion(float elapsedTime, CreatureObject *movementCreatureObject);
+	void applyWaterEnvironmentHorizontalFlow(float elapsedTime, CreatureObject *movementCreatureObject);
 
 	void updateBuildingAndCellInformation(CreatureObject const * const owner);
 
@@ -231,7 +232,8 @@ private:
 	bool m_autoPilotLocked;
 
 	float               m_jumpVerticalVelocity;
-	float               m_swimVerticalIntent;
+	float               m_swimAmbientEffectTimer;
+	int                 m_swimAmbientEffectIndex;
 };         
 
 // ----------------------------------------------------------------------

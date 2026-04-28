@@ -24,7 +24,6 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{736AE3F5-0DC0-3003-AC0D-B55721C90F29}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
     <Platform>x64</Platform>
     <ProjectName>SwgMayaEditor</ProjectName>
     <VCProjectUpgraderObjectName>NoUpgrade</VCProjectUpgraderObjectName>
@@ -153,7 +152,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <Link>
       <AdditionalDependencies>D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMaya.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\Foundation.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaUI.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaAnim.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaFX.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaRender.lib;ws2_32.lib;Debug\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalOptions>%(AdditionalOptions) /IGNORE:4099</AdditionalOptions>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64 /IGNORE:4099</AdditionalOptions>
       <DataExecutionPrevention></DataExecutionPrevention>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
@@ -237,7 +236,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <Link>
       <AdditionalDependencies>D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMaya.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\Foundation.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaUI.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaAnim.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaFX.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaRender.lib;ws2_32.lib;Release\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalOptions>%(AdditionalOptions) /IGNORE:4099</AdditionalOptions>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64 /IGNORE:4099</AdditionalOptions>
       <DataExecutionPrevention></DataExecutionPrevention>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
@@ -321,7 +320,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <Link>
       <AdditionalDependencies>D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMaya.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\Foundation.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaUI.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaAnim.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaFX.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaRender.lib;ws2_32.lib;MinSizeRel\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalOptions>%(AdditionalOptions) /IGNORE:4099</AdditionalOptions>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64 /IGNORE:4099</AdditionalOptions>
       <DataExecutionPrevention></DataExecutionPrevention>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
@@ -404,7 +403,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <Link>
       <AdditionalDependencies>D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMaya.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\Foundation.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaUI.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaAnim.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaFX.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaRender.lib;ws2_32.lib;RelWithDebInfo\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalOptions>%(AdditionalOptions) /IGNORE:4099</AdditionalOptions>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64 /IGNORE:4099</AdditionalOptions>
       <DataExecutionPrevention></DataExecutionPrevention>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
@@ -539,6 +538,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\translators\mgn.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\translators\msh.cpp" />
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\translators\msh.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\translators\swbf_msh.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\translators\swbf_msh.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\translators\skt.cpp" />
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\translators\skt.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\translators\sat.cpp" />

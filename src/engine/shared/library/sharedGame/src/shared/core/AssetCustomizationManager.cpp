@@ -10,17 +10,23 @@
 #include "sharedGame/AssetCustomizationManager.h"
 
 #include "sharedDebug/InstallTimer.h"
+#include "sharedFile/AsynchronousLoader.h"
 #include "sharedFile/Iff.h"
 #include "sharedFoundation/CrcString.h"
 #include "sharedFoundation/ExitChain.h"
 #include "sharedFoundation/TemporaryCrcString.h"
 #include "sharedMath/PaletteArgb.h"
 #include "sharedMath/PaletteArgbList.h"
+#include "sharedObject/Appearance.h"
+#include "sharedObject/AppearanceTemplateList.h"
 #include "sharedObject/BasicRangedIntCustomizationVariable.h"
 #include "sharedObject/CustomizationData.h"
+#include "sharedObject/MemoryBlockManagedObject.h"
 #include "sharedObject/PaletteColorCustomizationVariable.h"
+#include "sharedObject/RangedIntCustomizationVariable.h"
 
 #include <stdlib.h>
+#include <set>
 
 // ======================================================================
 
@@ -177,6 +183,8 @@ namespace AssetCustomizationManagerNamespace
 
 	CrcLookupEntry  *s_crcLookupTable;
 	int              s_crcLookupEntryCount;
+	bool             s_attemptedDefaultLoad;
+	std::set<std::string> s_runtimeLookupBlacklist;
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 }
@@ -239,6 +247,8 @@ void AssetCustomizationManagerNamespace::remove()
 	delete [] s_crcLookupTable;
 	s_crcLookupTable      = NULL;
 	s_crcLookupEntryCount = 0;
+	s_attemptedDefaultLoad = false;
+	s_runtimeLookupBlacklist.clear();
 }
 
 // ----------------------------------------------------------------------
@@ -656,6 +666,154 @@ void AssetCustomizationManagerNamespace::addVariablesForAssetAndLinks(int assetI
 	}
 }
 
+// ----------------------------------------------------------------------
+
+namespace
+{
+	struct VariableCountContext
+	{
+		int count;
+	};
+
+	struct VariableCopyContext
+	{
+		CustomizationData &destination;
+		bool               skipSharedOwnerVariables;
+		int                copiedCount;
+	};
+
+	void countVariableCallback(std::string const &, CustomizationVariable const *, void *context)
+	{
+		NOT_NULL(context);
+		VariableCountContext * const variableCountContext = reinterpret_cast<VariableCountContext *>(context);
+		++variableCountContext->count;
+	}
+
+	bool isSharedOwnerVariablePath(std::string const &variablePathName)
+	{
+		return (variablePathName.compare(0, 14, "/shared_owner/") == 0);
+	}
+
+	void copyVariableCallback(std::string const &fullVariablePathName, CustomizationVariable const *customizationVariable, void *context)
+	{
+		NOT_NULL(context);
+		NOT_NULL(customizationVariable);
+		VariableCopyContext * const variableCopyContext = reinterpret_cast<VariableCopyContext *>(context);
+
+		if (variableCopyContext->skipSharedOwnerVariables && isSharedOwnerVariablePath(fullVariablePathName))
+			return;
+
+		if (variableCopyContext->destination.findConstVariable(fullVariablePathName))
+			return;
+
+		PaletteColorCustomizationVariable const * const paletteVariable = dynamic_cast<PaletteColorCustomizationVariable const *>(customizationVariable);
+		if (paletteVariable)
+		{
+			PaletteArgb const * const palette = paletteVariable->fetchPalette();
+			variableCopyContext->destination.addVariableTakeOwnership(fullVariablePathName, new PaletteColorCustomizationVariable(palette, paletteVariable->getValue()));
+			palette->release();
+			++variableCopyContext->copiedCount;
+			return;
+		}
+
+		RangedIntCustomizationVariable const * const rangedVariable = dynamic_cast<RangedIntCustomizationVariable const *>(customizationVariable);
+		if (rangedVariable)
+		{
+			int minRangeInclusive = 0;
+			int maxRangeExclusive = 0;
+			rangedVariable->getRange(minRangeInclusive, maxRangeExclusive);
+			variableCopyContext->destination.addVariableTakeOwnership(fullVariablePathName, new BasicRangedIntCustomizationVariable(minRangeInclusive, rangedVariable->getValue(), maxRangeExclusive));
+			++variableCopyContext->copiedCount;
+			return;
+		}
+
+		WARNING(true, ("AssetCustomizationManager: unsupported variable type for [%s] while copying runtime customization declarations.", fullVariablePathName.c_str()));
+	}
+
+	int getVariableCount(CustomizationData const &customizationData)
+	{
+		VariableCountContext variableCountContext;
+		variableCountContext.count = 0;
+		customizationData.iterateOverConstVariables(countVariableCallback, &variableCountContext, false);
+		return variableCountContext.count;
+	}
+
+	int addVariablesFromAppearance(CrcString const &assetName, CustomizationData &customizationData, bool skipSharedOwnerVariables)
+	{
+		char const * const assetPath = assetName.getString();
+		if (!assetPath || !*assetPath)
+			return 0;
+
+		MemoryBlockManagedObject scratchObject;
+		Appearance * const appearance = AppearanceTemplateList::createAppearance(assetPath);
+		if (!appearance)
+			return 0;
+
+		scratchObject.setAppearance(appearance);
+
+		Appearance * const ownedAppearance = scratchObject.getAppearance();
+		if (!ownedAppearance)
+			return 0;
+
+		int const beforeCount = getVariableCount(customizationData);
+
+		if (skipSharedOwnerVariables)
+		{
+			CustomizationData * const scratchCustomizationData = new CustomizationData(scratchObject);
+			scratchCustomizationData->fetch();
+			ownedAppearance->addCustomizationVariables(*scratchCustomizationData);
+
+			VariableCopyContext variableCopyContext = {customizationData, true, 0};
+			scratchCustomizationData->iterateOverConstVariables(copyVariableCallback, &variableCopyContext, false);
+			scratchCustomizationData->release();
+		}
+		else
+		{
+			ownedAppearance->addCustomizationVariables(customizationData);
+		}
+
+		int const afterCount = getVariableCount(customizationData);
+		return (afterCount >= beforeCount) ? (afterCount - beforeCount) : 0;
+	}
+
+	bool tryAddVariablesFromAppearance(CrcString const &assetName, CustomizationData &customizationData, bool skipSharedOwnerVariables, int &addedVariableCount)
+	{
+#if defined(PLATFORM_WIN32)
+		__try
+		{
+			addedVariableCount = addVariablesFromAppearance(assetName, customizationData, skipSharedOwnerVariables);
+			return true;
+		}
+		__except(EXCEPTION_EXECUTE_HANDLER)
+		{
+			addedVariableCount = 0;
+			return false;
+		}
+#else
+		addedVariableCount = addVariablesFromAppearance(assetName, customizationData, skipSharedOwnerVariables);
+		return true;
+#endif
+	}
+
+	bool shouldSkipRuntimeLookup(char const *assetPath)
+	{
+		if (!assetPath || !*assetPath)
+			return true;
+
+		std::string const path(assetPath);
+		std::string::size_type const dot = path.find_last_of('.');
+		if (dot == std::string::npos)
+			return false;
+
+		std::string ext = path.substr(dot);
+		for (std::string::size_type i = 0; i < ext.size(); ++i)
+			ext[i] = static_cast<char>(tolower(static_cast<unsigned char>(ext[i])));
+
+		return (ext == ".lmg") || (ext == ".mgn");
+	}
+
+}
+
 // ======================================================================
 // class AssetCustomizationManager: PUBLIC STATIC
 // ======================================================================
@@ -663,24 +821,18 @@ void AssetCustomizationManagerNamespace::addVariablesForAssetAndLinks(int assetI
 void AssetCustomizationManager::install(char const *filename)
 {
 	InstallTimer const installTimer("AssetCustomizationManager::install");
-
 	DEBUG_FATAL(s_installed, ("AssetCustomizationManager already installed."));
-	DEBUG_FATAL(!filename || !*filename, ("AssetCustomizationManager requires a valid filename for successful installation."));
-
-	//-- Check endian-ness of platform.  This code assumes little-endian due to the way
-	//   the data image is loaded directly into memory.  If we ever hit this,
-	//   we can do a conversion at load time to big-endian.
-	uint32 testValue = 1;
-	FATAL(*reinterpret_cast<uint8*>(&testValue) != 1, ("AssetCustomizationManager: running on a non-little-endian architecture, unsupported by this class at this time."));
-
-	Iff iff;
-	bool const openResult = iff.open(filename, true);
-	FATAL(!openResult, ("AssetCustomizationManager data file [%s] does not exist or failed to open.  This is likely a configuration file issue.", filename));
-
-	load(iff);
-
+	if (filename && *filename)
+	{
+		Iff iff;
+		bool const openResult = iff.open(filename, true);
+		if (openResult)
+			load(iff);
+	}
+	s_attemptedDefaultLoad = false;
+	s_runtimeLookupBlacklist.clear();
 	s_installed = true;
-	ExitChain::add(remove, "AssetCustomizationManager");
+	ExitChain::add(remove, "AssetCustomizationManager", 0, false);
 }
 
 // ----------------------------------------------------------------------
@@ -688,20 +840,82 @@ void AssetCustomizationManager::install(char const *filename)
 int AssetCustomizationManager::addCustomizationVariablesForAsset(CrcString const &assetName, CustomizationData &customizationData, bool skipSharedOwnerVariables)
 {
 	DEBUG_FATAL(!s_installed, ("AssetCustomizationManager not installed."));
-
-	//-- Convert asset name to internal asset id.
-	int const assetId = lookupAssetId(assetName);
-	if (!assetId)
+	if (!s_attemptedDefaultLoad && (!s_crcLookupTable || s_crcLookupEntryCount <= 0))
 	{
-		// Exit: there are no customization variables for this asset or its dependencies.
-		return 0;
+		s_attemptedDefaultLoad = true;
+		Iff iff;
+		if (iff.open("customization/asset_customization_manager.iff", true))
+			load(iff);
 	}
 
-	//-- Recursively add customization variables used directly by an asset and then check any child assets used by the asset.
-	int addedVariableCount = 0;
-	addVariablesForAssetAndLinks(assetId, customizationData, skipSharedOwnerVariables, addedVariableCount);
+	// Prefer ACM when data exists to avoid partial runtime declarations on legacy assets.
+	if (s_crcLookupTable && (s_crcLookupEntryCount > 0))
+	{
+		int const assetId = lookupAssetId(assetName);
+		if (assetId)
+		{
+			int addedVariableCount = 0;
+			addVariablesForAssetAndLinks(assetId, customizationData, skipSharedOwnerVariables, addedVariableCount);
+			return addedVariableCount;
+		}
+	}
 
-	return addedVariableCount;
+	// No ACM entry: use runtime declaration extraction for rapid iteration/new assets.
+	int runtimeAddedVariableCount = 0;
+	char const * const assetPath = assetName.getString();
+	std::string const assetKey = assetPath ? assetPath : "";
+	if (!assetKey.empty() && !shouldSkipRuntimeLookup(assetPath) && (s_runtimeLookupBlacklist.find(assetKey) == s_runtimeLookupBlacklist.end()))
+	{
+		if (!tryAddVariablesFromAppearance(assetName, customizationData, skipSharedOwnerVariables, runtimeAddedVariableCount))
+		{
+			s_runtimeLookupBlacklist.insert(assetKey);
+			WARNING(true, ("AssetCustomizationManager: runtime customization lookup crashed for [%s]; blacklisting runtime for this asset and using ACM fallback.", assetPath ? assetPath : "<null>"));
+		}
+	}
+
+	if (runtimeAddedVariableCount > 0)
+		return runtimeAddedVariableCount;
+
+	return 0;
+}
+
+// ----------------------------------------------------------------------
+
+bool AssetCustomizationManager::isAssetCustomizable(CrcString const &assetName)
+{
+	DEBUG_FATAL(!s_installed, ("AssetCustomizationManager not installed."));
+	bool result = false;
+	char const * const assetPath = assetName.getString();
+	std::string const assetKey = assetPath ? assetPath : "";
+	if (!assetKey.empty() && !shouldSkipRuntimeLookup(assetPath) && (s_runtimeLookupBlacklist.find(assetKey) == s_runtimeLookupBlacklist.end()))
+	{
+		MemoryBlockManagedObject scratchObject;
+		CustomizationData * const scratchCustomizationData = new CustomizationData(scratchObject);
+		scratchCustomizationData->fetch();
+		int runtimeAddedVariableCount = 0;
+		if (tryAddVariablesFromAppearance(assetName, *scratchCustomizationData, false, runtimeAddedVariableCount))
+			result = (runtimeAddedVariableCount > 0);
+		else
+		{
+			s_runtimeLookupBlacklist.insert(assetKey);
+			result = false;
+			WARNING(true, ("AssetCustomizationManager: runtime customizability query crashed for [%s]; blacklisting runtime for this asset and using ACM fallback.", assetPath ? assetPath : "<null>"));
+		}
+		scratchCustomizationData->release();
+	}
+	if (!result)
+	{
+		if (!s_attemptedDefaultLoad && (!s_crcLookupTable || s_crcLookupEntryCount <= 0))
+		{
+			s_attemptedDefaultLoad = true;
+			Iff iff;
+			if (iff.open("customization/asset_customization_manager.iff", true))
+				load(iff);
+		}
+	}
+	if (!result && s_crcLookupTable && (s_crcLookupEntryCount > 0))
+		result = (lookupAssetId(assetName) != 0);
+	return result;
 }
 
 // ======================================================================

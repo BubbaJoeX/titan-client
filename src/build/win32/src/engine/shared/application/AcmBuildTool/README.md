@@ -75,8 +75,15 @@ cmake --build . --config Release
 AcmBuildTool <base_path>
 ```
 
+Recommended from repo root:
+
+```bash
+AcmBuildTool --root D:/titan --verbose
+```
+
 **Parameters:**
 - `<base_path>` - Path to the base directory (e.g., `../../sku.0/sys.shared/compiled/game/`)
+- `--root <repo_root>` - Auto-configure all required paths from root (`dsrc`, `data`, `client/tools`, `exe/win32/Miff.exe`)
 
 **Example:**
 
@@ -86,6 +93,9 @@ AcmBuildTool <base_path>
 
 # Windows
 bin\AcmBuildTool.exe ..\..\sku.0\sys.shared\compiled\game\
+
+# Windows from Titan root
+bin\AcmBuildTool.exe --root D:/titan --verbose
 ```
 
 ## Output Files

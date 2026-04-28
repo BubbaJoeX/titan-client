@@ -10,6 +10,9 @@
 #include "clientTerrain/FirstClientTerrain.h"
 #include "clientTerrain/ClientGlobalWaterManager2.h"
 
+#include "clientGame/ConfigClientGame.h"
+#include "clientGame/WaterEnvironmentFlow.h"
+
 #include "clientGraphics/Camera.h"
 #include "clientGraphics/DebugPrimitive.h"
 #include "clientGraphics/DynamicIndexBuffer.h"
@@ -60,6 +63,43 @@ namespace ClientGlobalWaterManager2Namespace
 }
 
 using namespace ClientGlobalWaterManager2Namespace;
+
+namespace
+{
+	// Extra pole/wave parameters for vertex_program/water_pass2*.vsh (not used by stock shaders until extended).
+	// Maps to Graphics::setVertexShaderUserConstants indices 5..7 -> hardware user constant registers c5..c7 (see Direct3d9_VertexShaderConstantRegisters.h).
+	// Layout:
+	//   c5 = (pole0_x, pole0_z, pole0_radius, pole0_amplitude)
+	//   c6 = (pole0_speed, pole0_phase, pole1_x, pole1_z)
+	//   c7 = (pole1_radius, pole1_amplitude, pole1_speed, pole1_phase)
+	void pushWaterPoleVertexShaderConstants ()
+	{
+		if (!ConfigClientGame::getWaterEnvironmentPoleShaderConstants ()
+			|| !ConfigClientGame::getWaterEnvironmentPoleEnabled ())
+		{
+			Graphics::setVertexShaderUserConstants (5, 0.f, 0.f, 0.f, 0.f);
+			Graphics::setVertexShaderUserConstants (6, 0.f, 0.f, 0.f, 0.f);
+			Graphics::setVertexShaderUserConstants (7, 0.f, 0.f, 0.f, 0.f);
+			return;
+		}
+
+		Graphics::setVertexShaderUserConstants (5,
+			ConfigClientGame::getWaterEnvironmentPole0X (),
+			ConfigClientGame::getWaterEnvironmentPole0Z (),
+			ConfigClientGame::getWaterEnvironmentPole0Radius (),
+			ConfigClientGame::getWaterEnvironmentPole0Amplitude ());
+		Graphics::setVertexShaderUserConstants (6,
+			ConfigClientGame::getWaterEnvironmentPole0Speed (),
+			ConfigClientGame::getWaterEnvironmentPole0Phase (),
+			ConfigClientGame::getWaterEnvironmentPole1X (),
+			ConfigClientGame::getWaterEnvironmentPole1Z ());
+		Graphics::setVertexShaderUserConstants (7,
+			ConfigClientGame::getWaterEnvironmentPole1Radius (),
+			ConfigClientGame::getWaterEnvironmentPole1Amplitude (),
+			ConfigClientGame::getWaterEnvironmentPole1Speed (),
+			ConfigClientGame::getWaterEnvironmentPole1Phase ());
+	}
+}
 
 //===================================================================
 //#define FIELD_OF_VIEW (90.0f/360.0f * PI_TIMES_2)
@@ -167,6 +207,10 @@ private:
 	const float                 m_heightDelta;
 	const Rectangle2d           m_clipRegion;
 	double                      m_time;
+
+protected:
+
+	mutable bool                m_invalidateCachedWaterGeometry;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -271,6 +315,15 @@ void ClientGlobalWaterManager2::StaticShaderPrimitive::_buildGraphicsBuffers() c
 
 void ClientGlobalWaterManager2::StaticShaderPrimitive::prepareToDraw () const
 {
+	if (m_invalidateCachedWaterGeometry)
+	{
+		delete m_vertexBuffer;
+		m_vertexBuffer = 0;
+		delete m_indexBuffer;
+		m_indexBuffer = 0;
+		m_invalidateCachedWaterGeometry = false;
+	}
+
 	const Camera& camera = ShaderPrimitiveSorter::getCurrentCamera ();
 	const float fieldOfView = camera.getHorizontalFieldOfView();
 	const float farPlane = camera.getFarPlane();
@@ -315,6 +368,8 @@ void ClientGlobalWaterManager2::StaticShaderPrimitive::prepareToDraw () const
 	Graphics::setVertexShaderUserConstants(2, xref, 0.0f, zref, 0.0f);
 	Graphics::setVertexShaderUserConstants(3, _clipRegion().x0, -65536.0f, _clipRegion().y0, -65536.0f);
 	Graphics::setVertexShaderUserConstants(4, _clipRegion().x1,  65536.0f, _clipRegion().y1,  65536.0f);
+
+	pushWaterPoleVertexShaderConstants ();
 
 	Graphics::setObjectToWorldTransformAndScale(Transform::identity, Vector::xyz111); 
 	//Graphics::setObjectToWorldTransformAndScale (m_appearance.getTransform_w (), Vector::xyz111);
@@ -471,6 +526,8 @@ void ClientGlobalWaterManager2::DynamicShaderPrimitive::prepareToDraw () const
 		Graphics::setVertexShaderUserConstants(2, 0.0f, 0.0f, 0.0f, 0.0f);
 		Graphics::setVertexShaderUserConstants(3, _clipRegion().x0, -65536.0f, _clipRegion().y0, -65536.0f);
 		Graphics::setVertexShaderUserConstants(4, _clipRegion().x1,  65536.0f, _clipRegion().y1,  65536.0f);
+
+		pushWaterPoleVertexShaderConstants ();
 	}
 
 	//-- setup the data to render
@@ -519,7 +576,8 @@ ClientGlobalWaterManager2::LocalShaderPrimitive::LocalShaderPrimitive (const App
 	m_height (height),
 	m_heightDelta(m_usesClipRegion ? 0.0f : 0.03f),
 	m_clipRegion((m_usesClipRegion) ? (*clipRegion) : (Rectangle2d(-2*m_mapWidthInMeters, -2*m_mapWidthInMeters, 2*m_mapWidthInMeters, 2*m_mapWidthInMeters))),
-	m_time (0.f)
+	m_time (0.f),
+	m_invalidateCachedWaterGeometry (false)
 {
 	_reset();
 }
@@ -537,6 +595,10 @@ float ClientGlobalWaterManager2::LocalShaderPrimitive::alter (const float elapse
 {
 	m_time += elapsedTime;
 	m_shader->alter (elapsedTime);
+
+	if (ConfigClientGame::getWaterEnvironmentPoleCpuMeshDisplacement ()
+		&& (ConfigClientGame::getWaterEnvironmentPoleEnabled () || ConfigClientGame::getWaterEnvironmentFlowFieldEnabled ()))
+		m_invalidateCachedWaterGeometry = true;
 
 	return AlterResult::cms_alterNextFrame;
 }
@@ -855,6 +917,8 @@ void ClientGlobalWaterManager2::LocalShaderPrimitive::_fillGraphicsBuffersFFP(Ve
 		const float du = cos (turn) * m_heightDelta;
 		position.y += du;
 
+		position.y += WaterEnvironmentFlow::sampleWaveDisplacementYWorld (position.x, position.z, m_time);
+
 		vv.setPosition (position);
 
 		vv.setNormal(normal);
@@ -883,7 +947,8 @@ void ClientGlobalWaterManager2::LocalShaderPrimitive::_fillGraphicsBuffersVS(Ver
 
 	for (unsigned i = 0; i < numVerts; ++i, ++vv)
 	{
-		const Vector &position = verts[i];
+		Vector position = verts[i];
+		position.y += WaterEnvironmentFlow::sampleWaveDisplacementYWorld (position.x, position.z, m_time);
 		vv.setPosition(position);
 	}
 	{

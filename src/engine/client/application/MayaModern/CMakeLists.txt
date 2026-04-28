@@ -121,6 +121,8 @@ set(SOURCE_FILES
         translators/mgn.h
         translators/msh.cpp
         translators/msh.h
+        translators/swbf_msh.cpp
+        translators/swbf_msh.h
         translators/skt.cpp
         translators/skt.h
         translators/sat.cpp

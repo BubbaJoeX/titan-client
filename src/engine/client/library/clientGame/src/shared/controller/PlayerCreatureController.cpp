@@ -10,9 +10,11 @@
 #include "clientGame/FirstClientGame.h"
 #include "clientGame/PlayerCreatureController.h"
 
+#include "clientGame/WaterEnvironmentFlow.h"
 #include "clientAudio/Audio.h"
 #include "clientGame/ClientAsteroidManager.h"
 #include "clientGame/ClientCommandQueue.h"
+#include "clientGame/ClientEffectManager.h"
 #include "clientGame/ClientSecureTradeManager.h"
 #include "clientGame/ClientStringIds.h"
 #include "clientGame/ClientWorld.h"
@@ -64,7 +66,9 @@
 #include "sharedDebug/DebugFlags.h"
 #include "sharedDebug/InstallTimer.h"
 #include "sharedDebug/Profiler.h"
+#include "sharedFoundation/Clock.h"
 #include "sharedFoundation/Crc.h"
+#include "sharedFoundation/ConstCharCrcLowerString.h"
 #include "sharedFoundation/GameControllerMessage.h"
 #include "sharedFoundation/Production.h"
 #include "sharedGame/SharedBuffBuilderManager.h"
@@ -74,6 +78,13 @@
 #include "sharedGame/SlopeEffectProperty.h"
 #include "sharedMath/Quaternion.h"
 #include "sharedMessageDispatch/Transceiver.h"
+
+#if defined(PLATFORM_WIN32)
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#endif
 #include "sharedNetworkMessages/BuffBuilderChangeMessage.h"
 #include "sharedNetworkMessages/BuffBuilderStartMessage.h"
 #include "sharedNetworkMessages/ImageDesignChangeMessage.h"
@@ -120,6 +131,8 @@
 #include "sharedUtility/LocalMachineOptionManager.h"
 #include "sharedUtility/StartingLocationData.h"
 #include "sharedUtility/ValueDictionary.h"
+
+#include <cmath>
 
 #include "clientGame/GroupObject.h"
 #include "clientGame/BuildingObject.h"
@@ -199,6 +212,26 @@ namespace PlayerCreatureControllerNamespace
 	const float ms_lightLinearAttenuationMounted      = 0.05f;
 
 	const float ms_lookAtYawChangeThreshold           = 0.05f;
+	const float ms_swimAmbientEffectIntervalSeconds   = 0.42f;
+
+	ConstCharCrcLowerString const cs_swimAmbientEffects[] =
+	{
+		ConstCharCrcLowerString("appearance/pt_pocket_aquarium_fish.prt"),
+		ConstCharCrcLowerString("appearance/pt_trailing_flocking_flying_lava_fish.prt"),
+		ConstCharCrcLowerString("appearance/pt_jumping_fish_s01.prt"),
+		ConstCharCrcLowerString("appearance/pt_trailing_jumping_fish02.prt"),
+		ConstCharCrcLowerString("appearance/pt_flocking_fish_2x4cage.prt"),
+		ConstCharCrcLowerString("appearance/pt_flocking_flying_lava_fish.prt"),
+		ConstCharCrcLowerString("appearance/pt_flocking_flying_lava_fish_flaming.prt"),
+		ConstCharCrcLowerString("appearance/pt_jumping_fish_s02.prt"),
+		ConstCharCrcLowerString("appearance/pt_trailing_jumping_fish01.prt"),
+		ConstCharCrcLowerString("appearance/pt_flying_lava_fish_flock.prt"),
+		ConstCharCrcLowerString("appearance/pt_jumping_fish_s03.prt"),
+		ConstCharCrcLowerString("appearance/pt_trailing_fish_splash.prt"),
+		ConstCharCrcLowerString("appearance/pt_trailing_jumping_fish03.prt")
+	};
+
+	int const cs_swimAmbientEffectCount = sizeof(cs_swimAmbientEffects) / sizeof(cs_swimAmbientEffects[0]);
 
 #ifdef _DEBUG
 	bool        ms_printMovementSpeed;
@@ -446,7 +479,8 @@ PlayerCreatureController::PlayerCreatureController (CreatureObject* const newOwn
 	m_allowMovement(true),
 	m_autoPilotLocked(false),
 	m_jumpVerticalVelocity(0.f),
-	m_swimVerticalIntent(0.f)
+	m_swimAmbientEffectTimer(0.f),
+	m_swimAmbientEffectIndex(0)
 {
 }
 
@@ -470,14 +504,7 @@ void PlayerCreatureController::onJumpRequested ()
 	if (!creatureObject)
 		return;
 
-	TerrainObject const *const terrainObject = TerrainObject::getConstInstance ();
-
-	if (creatureObject->getState (States::Swimming) && terrainObject && terrainObject->isBelowWater (creatureObject->getPosition_w ()))
-	{
-		m_swimVerticalIntent += 1.f;
-		return;
-	}
-
+	// Swimming uses Space/Ctrl polling in applyVerticalLocomotion (), not jump impulse.
 	if (creatureObject->getState (States::Swimming))
 		return;
 
@@ -505,29 +532,61 @@ void PlayerCreatureController::applyVerticalLocomotion (float const elapsedTime,
 
 	Vector position_w = movementCreatureObject->getPosition_w ();
 
-	float combinedVerticalIntent = m_swimVerticalIntent;
-
-	if (movementCreatureObject->getState (States::Swimming) && terrainObject->isBelowWater (position_w))
+	// Underwater swim along world Y only: move within the slab between local terrain height
+	// (+ clearance) and the local planar water surface at this XZ.
+	if (movementCreatureObject->getState (States::Swimming))
 	{
-		float const dy = combinedVerticalIntent * ConfigClientGame::getUnderwaterSwimVerticalSpeed () * elapsedTime;
-		position_w.y += dy;
-
-		float terrainHeight = 0.f;
-		if (terrainObject->getHeight (position_w, terrainHeight))
-		{
-			float const floorY = terrainHeight + ConfigClientGame::getUnderwaterSwimMinClearanceAboveTerrain ();
-			if (position_w.y < floorY)
-				position_w.y = floorY;
-		}
-
 		float waterSurface = 0.f;
 		if (terrainObject->getWaterHeight (position_w, waterSurface))
 		{
-			if (position_w.y > waterSurface - 0.08f)
-				position_w.y = waterSurface - 0.08f;
-		}
+			float terrainHeight = 0.f;
+			float floorY        = -1.0e9f;
+			if (terrainObject->getHeight (position_w, terrainHeight))
+				floorY = terrainHeight + ConfigClientGame::getUnderwaterSwimMinClearanceAboveTerrain ();
 
-		movementCreatureObject->setPosition_w (position_w);
+			bool const inWaterColumn =
+				(position_w.y <= waterSurface)
+				&& (position_w.y >= floorY);
+
+			float combinedVerticalIntent = 0.f;
+
+			if (inWaterColumn)
+			{
+				// Space = rise, Ctrl = sink (swimming only). Uses raw key state while the game
+				// (not chat / modal UI) owns the keyboard — same idea as movement using the queue.
+				float keyIntent = 0.f;
+				if (shouldProcessMovement () && !CuiManager::getKeyboardInputActive ())
+				{
+#if defined(PLATFORM_WIN32)
+					bool const rise = (GetAsyncKeyState (VK_SPACE) & 0x8000) != 0;
+					bool const sink =
+						((GetAsyncKeyState (VK_LCONTROL) & 0x8000) != 0)
+						|| ((GetAsyncKeyState (VK_RCONTROL) & 0x8000) != 0);
+					if (rise)
+						keyIntent += 1.f;
+					if (sink)
+						keyIntent -= 1.f;
+#endif
+					combinedVerticalIntent = std::max (-1.f, std::min (1.f, keyIntent));
+				}
+
+				float const dy =
+					combinedVerticalIntent * ConfigClientGame::getUnderwaterSwimVerticalSpeed () * elapsedTime;
+				position_w.y += dy;
+			}
+
+			if (terrainObject->getHeight (position_w, terrainHeight))
+			{
+				float const floorClamp = terrainHeight + ConfigClientGame::getUnderwaterSwimMinClearanceAboveTerrain ();
+				if (position_w.y < floorClamp)
+					position_w.y = floorClamp;
+			}
+
+			if (position_w.y > waterSurface)
+				position_w.y = waterSurface;
+
+			movementCreatureObject->setPosition_w (position_w);
+		}
 	}
 
 	position_w = movementCreatureObject->getPosition_w ();
@@ -550,8 +609,48 @@ void PlayerCreatureController::applyVerticalLocomotion (float const elapsedTime,
 
 		movementCreatureObject->setPosition_w (position_w);
 	}
+}
 
-	m_swimVerticalIntent = 0.f;
+//----------------------------------------------------------------------
+
+void PlayerCreatureController::applyWaterEnvironmentHorizontalFlow (float const elapsedTime, CreatureObject *const movementCreatureObject)
+{
+	if (!ConfigClientGame::getWaterEnvironmentSwimFlowEnabled ())
+		return;
+
+	if (!movementCreatureObject || !movementCreatureObject->isInWorldCell ())
+		return;
+
+	if (!movementCreatureObject->getState (States::Swimming))
+		return;
+
+	TerrainObject const *const terrainObject = TerrainObject::getConstInstance ();
+	if (!terrainObject)
+		return;
+
+	Vector position_w = movementCreatureObject->getPosition_w ();
+
+	float waterSurface = 0.f;
+	if (!terrainObject->getWaterHeight (position_w, waterSurface))
+		return;
+
+	float terrainHeight = 0.f;
+	float floorY        = -1.0e9f;
+	if (terrainObject->getHeight (position_w, terrainHeight))
+		floorY = terrainHeight + ConfigClientGame::getUnderwaterSwimMinClearanceAboveTerrain ();
+
+	bool const inWaterColumn =
+		(position_w.y <= waterSurface)
+		&& (position_w.y >= floorY);
+
+	if (!inWaterColumn)
+		return;
+
+	double const t          = Clock::getCurrentTime ();
+	Vector const flowXZ     = WaterEnvironmentFlow::computeSwimFlowXZWorld (position_w, static_cast<float>(t));
+	Vector const deltaWorld (flowXZ.x * elapsedTime, 0.f, flowXZ.z * elapsedTime);
+
+	movementCreatureObject->setPosition_w (position_w + deltaWorld);
 }
 
 //----------------------------------------------------------------------
@@ -806,6 +905,40 @@ float PlayerCreatureController::realAlter (const float elapsedTime)
 
 	bool useVehicleControls = !(movementCreatureObject->getCanStrafe());
 
+	// Periodic ambient fish schools while swimming to keep open-water spaces alive.
+	if (movementCreatureObject->isInWorldCell() && movementCreatureObject->getState(States::Swimming))
+	{
+		m_swimAmbientEffectTimer -= elapsedTime;
+		if (m_swimAmbientEffectTimer <= 0.f)
+		{
+			CellProperty const * const cell = movementCreatureObject->getParentCell();
+			if (cell)
+			{
+				Vector const position_w = movementCreatureObject->getPosition_w();
+				for (int spawn = 0; spawn < 2; ++spawn)
+				{
+					float const phase = static_cast<float>(m_swimAmbientEffectIndex + spawn);
+					float const angle = phase * 0.73f;
+					float const radius = 1.5f + fmodf(phase * 1.07f, 5.0f); // 1.5..6.5m ring, staggered
+					float const yOffset = -0.8f + fmodf(phase * 0.37f, 1.6f); // around swimmer midline
+					Vector const spawnPos_w(
+						position_w.x + cosf(angle) * radius,
+						position_w.y + yOffset,
+						position_w.z + sinf(angle) * radius);
+
+					IGNORE_RETURN(ClientEffectManager::playClientEffect(cs_swimAmbientEffects[(m_swimAmbientEffectIndex + spawn) % cs_swimAmbientEffectCount], cell, spawnPos_w, Vector::unitY));
+				}
+			}
+
+			m_swimAmbientEffectIndex += 2;
+			m_swimAmbientEffectTimer = ms_swimAmbientEffectIntervalSeconds + (0.08f * static_cast<float>(m_swimAmbientEffectIndex % 3));
+		}
+	}
+	else
+	{
+		m_swimAmbientEffectTimer = 0.f;
+	}
+
 	//-- Handle the player's personal light.
 	if (m_light && creatureObject)
 	{
@@ -856,13 +989,6 @@ float PlayerCreatureController::realAlter (const float elapsedTime)
 		const bool isFirstPerson = safe_cast<const GroundScene*> (Game::getConstScene ())->isFirstPerson ();
 
 		bool shouldOverrideMovement = false; // for strafing
-
-		TerrainObject const *const terrainObjectForMovement = TerrainObject::getConstInstance ();
-		bool const fullySubmergedSwim =
-			movementCreatureObject->isInWorldCell ()
-			&& movementCreatureObject->getState (States::Swimming)
-			&& terrainObjectForMovement
-			&& terrainObjectForMovement->isBelowWater (movementCreatureObject->getPosition_w ());
 
 		//-- read queue
 		{
@@ -947,19 +1073,12 @@ float PlayerCreatureController::realAlter (const float elapsedTime)
 
 			case CM_down:
 
-				if (fullySubmergedSwim)
+				if ( desiredVelocity_c.z > FLT_EPSILON )
 				{
-					m_swimVerticalIntent -= 1.f;
+					desiredVelocity_c.z = 0.f;
 				}
-				else
-				{
-					if ( desiredVelocity_c.z > FLT_EPSILON )
-					{
-						desiredVelocity_c.z = 0.f;
-					}
 
-					desiredVelocity_c.z -= 1.f;
-				}
+				desiredVelocity_c.z -= 1.f;
 				break;
 
 			case CM_moveLateral:
@@ -1114,7 +1233,7 @@ float PlayerCreatureController::realAlter (const float elapsedTime)
 
 	#if PRODUCTION == 0
 		desiredVelocity_c *= ConfigClientGame::getHackMovementSpeed ();
-	#endif
+#endif
 
 		//-- Track initial desired velocity, used by code that issues a stand request
 		//   when a sitting player tries to move.
@@ -1333,6 +1452,9 @@ float PlayerCreatureController::realAlter (const float elapsedTime)
 	//-- chain up to actually move the player
 	float const baseAlterResult = CreatureController::realAlter (elapsedTime);
 	UNREF (baseAlterResult);
+
+	if (movementCreatureObject)
+		applyWaterEnvironmentHorizontalFlow (elapsedTime, movementCreatureObject);
 
 	if (movementCreatureObject)
 		applyVerticalLocomotion (elapsedTime, movementCreatureObject);

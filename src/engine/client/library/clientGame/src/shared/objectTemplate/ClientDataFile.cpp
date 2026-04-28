@@ -2966,8 +2966,12 @@ void ClientDataFile::applyCustomizationVariableOverrides (Object &object) const
 			{
 				DEBUG_REPORT_LOG (s_logUndeclaredCustomizations, ("ClientDataFile::apply (): client data file specifies customization int value for variable [%s] but object template [%s] does not declare that variable, creating new variable declaration now.\n", customizationInt->m_variableName.c_str (), object.getObjectTemplateName ()));
 
-				// create the customization variable.  We do the best we can here to keep things running --- no idea what range should be.
-				variable = new BasicRangedIntCustomizationVariable (std::min (0, customizationInt->m_value), customizationInt->m_value, customizationInt->m_value + 1);
+				// Create a permissive fallback range for undeclared int vars.
+				// Using [value, value+1) can freeze hue changes for palette vars (e.g. index_color_0/index_color_3)
+				// when the initial value is 0. Keep non-negative palette-style vars editable across byte-sized range.
+				int const minValueInclusive = std::min(0, customizationInt->m_value);
+				int const maxValueExclusive = std::max(customizationInt->m_value + 1, 256);
+				variable = new BasicRangedIntCustomizationVariable(minValueInclusive, customizationInt->m_value, maxValueExclusive);
 				customizationData->addVariableTakeOwnership (customizationInt->m_variableName, variable);
 			}
 			else

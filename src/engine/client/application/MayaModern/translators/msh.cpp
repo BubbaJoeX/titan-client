@@ -38,6 +38,7 @@
 #include <ios>
 #include <iostream>
 #include <exception>
+#include <cstdio>
 #include <cstring>
 #include <cctype>
 #include <set>
@@ -51,6 +52,23 @@
 
 namespace
 {
+    static bool fileStartsWithFormFourCc(char const* path)
+    {
+        FILE* f = nullptr;
+#ifdef _WIN32
+        if (fopen_s(&f, path, "rb") != 0)
+            f = nullptr;
+#else
+        f = std::fopen(path, "rb");
+#endif
+        if (!f)
+            return false;
+        unsigned char buf[4] = {};
+        const size_t n = std::fread(buf, 1, 4, f);
+        std::fclose(f);
+        return n == 4 && std::memcmp(buf, "FORM", 4) == 0;
+    }
+
     /// Parse semicolon-separated SwgMsh export options (see scripts/swgMshExportOptions.mel).
     bool parseMshExportOptionBool(const MString& options, const char* keyEq)
     {
@@ -1042,12 +1060,20 @@ MPxFileTranslator::MFileKind MshTranslator::identifyFile(const MFileObject& file
 {
     const std::string pathStr = MayaUtility::fileObjectPathForIdentify(fileName);
     const int nameLength = static_cast<int>(pathStr.size());
-    if (nameLength > 4)
-    {
-        const char* ext = pathStr.c_str() + nameLength - 4;
-        if (!strcasecmp(ext, ".msh") || !strcasecmp(ext, ".apt"))
-            return kCouldBeMyFileType;
-    }
+    if (nameLength <= 4)
+        return kNotMyFileType;
+
+    const char* ext = pathStr.c_str() + nameLength - 4;
+    const bool isMsh = !strcasecmp(ext, ".msh");
+    const bool isApt = !strcasecmp(ext, ".apt");
+    if (!isMsh && !isApt)
+        return kNotMyFileType;
+
+    // SWG static mesh / APT is IFF (starts with FORM). Battlefront .msh uses the same extension but is chunked (SwbfMsh).
+    if (size >= 4 && buffer && std::memcmp(buffer, "FORM", 4) == 0)
+        return kCouldBeMyFileType;
+    if (fileStartsWithFormFourCc(pathStr.c_str()))
+        return kCouldBeMyFileType;
     return kNotMyFileType;
 }
 

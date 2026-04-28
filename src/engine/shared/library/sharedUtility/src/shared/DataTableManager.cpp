@@ -83,13 +83,6 @@ DataTable* DataTableManager::open(const std::string& table)
 	Iff iff(table.c_str(), false);
 	retVal = new DataTable;
 	retVal->load(iff);
-#if defined(_WIN32)
-	{
-		char buf[512];
-		_snprintf_s(buf, sizeof(buf), _TRUNCATE, "open: after load ok [%s]", table.c_str());
-		TitanStartupTraceAppend("DataTableManager", buf);
-	}
-#endif
 
 	m_cachedTable = retVal;
 	m_cachedTableName = table;

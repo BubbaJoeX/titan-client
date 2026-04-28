@@ -23,6 +23,8 @@ namespace swg_translator
 	inline constexpr char const kTypeLod[] = "SwgLod";
 	inline constexpr char const kTypeLmg[] = "SwgLmg";
 	inline constexpr char const kTypeLsb[] = "SwgLsb";
+	/// Battlefront (2004/2005) toolchain chunked mesh — NOT SWG IFF .msh (same extension).
+	inline constexpr char const kTypeSwbfMsh[] = "SwbfMsh";
 
 	// MPxFileTranslator::filter() — patterns only (Maya 2026 / Qt file dialog)
 	inline constexpr char const kFilterMgn[] = "*.mgn";
@@ -36,6 +38,7 @@ namespace swg_translator
 	inline constexpr char const kFilterLod[] = "*.lod";
 	inline constexpr char const kFilterLmg[] = "*.lmg";
 	inline constexpr char const kFilterLsb[] = "*.lsb";
+	inline constexpr char const kFilterSwbfMsh[] = "*.msh";
 }
 
 #endif

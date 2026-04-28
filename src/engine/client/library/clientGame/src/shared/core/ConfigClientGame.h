@@ -165,6 +165,34 @@ public:
 	static float               getJumpImpulseVelocity ();
 	static float               getJumpGravity ();
 
+	/** Client-only swim drift from procedural water flow + ripple poles (does not change authoritative water height). */
+	static bool                getWaterEnvironmentSwimFlowEnabled ();
+	static float               getWaterEnvironmentSwimFlowMaxSpeed ();
+
+	/** Turbulence height field used for mesh displacement and swim drift sampling. */
+	static bool                getWaterEnvironmentFlowFieldEnabled ();
+	static float               getWaterEnvironmentFlowStrength ();
+	static float               getWaterEnvironmentFlowTurbulenceScale ();
+
+	/** Ripple poles (world XZ); vertical oscillation drives displacement and passing constants to water VS slots c5–c7. */
+	static bool                getWaterEnvironmentPoleEnabled ();
+	static bool                getWaterEnvironmentPoleCpuMeshDisplacement ();
+	static bool                getWaterEnvironmentPoleShaderConstants ();
+
+	static float               getWaterEnvironmentPole0X ();
+	static float               getWaterEnvironmentPole0Z ();
+	static float               getWaterEnvironmentPole0Radius ();
+	static float               getWaterEnvironmentPole0Amplitude ();
+	static float               getWaterEnvironmentPole0Speed ();
+	static float               getWaterEnvironmentPole0Phase ();
+
+	static float               getWaterEnvironmentPole1X ();
+	static float               getWaterEnvironmentPole1Z ();
+	static float               getWaterEnvironmentPole1Radius ();
+	static float               getWaterEnvironmentPole1Amplitude ();
+	static float               getWaterEnvironmentPole1Speed ();
+	static float               getWaterEnvironmentPole1Phase ();
+
 	static bool                isProfanityFiltered  ();
 
 	static float               getFreeChaseCameraZoomSpeed ();

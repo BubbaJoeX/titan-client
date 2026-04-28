@@ -23,6 +23,7 @@ public:
 	static void install(char const *filename);
 
 	static int addCustomizationVariablesForAsset(CrcString const &assetName, CustomizationData &customizationData, bool skipSharedOwnerVariables);
+	static bool isAssetCustomizable(CrcString const &assetName);
 
 };
 

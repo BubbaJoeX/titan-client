@@ -39,8 +39,9 @@ PaletteColorCustomizationVariable::PaletteColorCustomizationVariable(const Palet
 
 	if ((m_paletteIndex < 0) || (m_paletteIndex >= paletteEntryCount))
 	{
-		DEBUG_WARNING(true, ("Initializing palette var for palette=[%s] with out-of-range value [%d], valid range is [0..%d], defaulting to [%d].", m_palette->getName().getString(), m_paletteIndex, paletteEntryCount - 1, paletteEntryCount - 1));
-		m_paletteIndex = paletteEntryCount - 1;
+		int const whiteIndex = m_palette->findClosestMatch(PackedArgb::solidWhite);
+		DEBUG_WARNING(true, ("Initializing palette var for palette=[%s] with out-of-range value [%d], valid range is [0..%d], defaulting to white index [%d].", m_palette->getName().getString(), m_paletteIndex, paletteEntryCount - 1, whiteIndex));
+		m_paletteIndex = whiteIndex;
 	}
 }
 

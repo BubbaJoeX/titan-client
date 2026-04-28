@@ -349,6 +349,9 @@ void GradientSkyAppearance::render () const
 		return;
 #endif
 
+	if (ShaderPrimitiveSorter::getCurrentCamera().isUnderWater())
+		return;
+
 	if (m_localShaderPrimitive)
 		ShaderPrimitiveSorter::add (*m_localShaderPrimitive);
 }

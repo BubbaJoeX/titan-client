@@ -81,6 +81,8 @@
 #include "clientGraphics/DebugPrimitive.h"
 #include "clientGraphics/Graphics.h"
 #include "clientGraphics/RenderWorld.h"
+#include "clientGraphics/ShaderTemplateList.h"
+#include "clientGraphics/StaticShader.h"
 
 #include <dinput.h>
 #include "clientGraphics/ShaderPrimitiveSetTemplate.h"
@@ -977,6 +979,7 @@ GroundScene::GroundScene(
 	m_debugPointList (new PointList),
 	m_debugLineList (new LineList),
 	m_isTutorial (false),
+	m_isCameraUnderWaterForOverlay (false),
 	m_destroyObjectSet(new DestroyObjectSet),
 	m_destroyObjectTimer(Random::randomReal(0.5f, 1.f))
 {
@@ -1086,6 +1089,7 @@ GroundScene::GroundScene(
 	m_debugPointList (new PointList),
 	m_debugLineList (new LineList),
 	m_isTutorial (false),
+	m_isCameraUnderWaterForOverlay (false),
 	m_destroyObjectSet(new DestroyObjectSet),
 	m_destroyObjectTimer(Random::randomReal(0.5f, 1.f))
 {
@@ -1990,7 +1994,7 @@ void GroundScene::update(float elapsedTime)
 	//-- scan input map for scene messages
 	handleInputMapScan ();
 
-	//-- installation turret gunner: drive camera from replicated mount id
+	//-- Turret gunner (installations + vehicle-mounted turret): camera follows replicated CreatureObject::m_turretGunnerMountTurretId
 	{
 		CreatureObject * const playerCreature = Game::getPlayerCreature();
 		if (playerCreature)
@@ -2417,14 +2421,35 @@ void GroundScene::draw (void) const
 
 	//-- hack under water fog parameters
 	SaveCameraParameters cameraParameters [CI_COUNT];
+	bool savedFogEnabled = false;
+	float savedFogDensity = 0.0f;
+	PackedArgb savedFogColor = PackedArgb::solidBlack;
 
-	bool const isUnderWater = terrainObject->isBelowWater(getCurrentCamera()->getPosition_w());
+	// Camera-only underwater post: require the eye clearly below the local water plane so we
+	// do not tint the view when skim-diving at the surface.
+	Vector const cameraPosition_w = getCurrentCamera()->getPosition_w();
+	float waterHeightAtCamera = 0.f;
+	bool isUnderWater = false;
+	if (terrainObject->getWaterHeight(cameraPosition_w, waterHeightAtCamera))
+	{
+		float const cms_cameraFullyBelowWaterSurface = 0.15f;
+		isUnderWater = cameraPosition_w.y < (waterHeightAtCamera - cms_cameraFullyBelowWaterSurface);
+	}
+	m_isCameraUnderWaterForOverlay = isUnderWater;
 
 	//--
 	PackedRgb backgroundColor = terrainObject->getClearColor();
 
 	if (isUnderWater)
 	{
+		Graphics::getFog(savedFogEnabled, savedFogDensity, savedFogColor);
+
+		// Option 1: tighten underwater fog as camera submerges deeper so distant map/water seams fade out.
+		float const submergeDepth = waterHeightAtCamera - cameraPosition_w.y;
+		float const depth01 = clamp(0.0f, submergeDepth / 18.0f, 1.0f);
+		float const underwaterFogDensity = 0.07f + (0.07f * depth01);
+		Graphics::setFog(true, underwaterFogDensity, PackedArgb(255, 77, 115, 113));
+
 		int i;
 		for (i = 0; i < getNumberOfViews (); i++)
 		{
@@ -2510,6 +2535,8 @@ void GroundScene::draw (void) const
 		int i;
 		for (i = 0; i < getNumberOfViews (); i++)
 			cameraParameters [i].restore (const_cast<GameCamera*> (getCamera (i)));
+
+		Graphics::setFog(savedFogEnabled, savedFogDensity, savedFogColor);
 	}
 
 	const Camera* const camera = NON_NULL (m_cameras [m_currentView]);
@@ -2528,6 +2555,69 @@ void GroundScene::draw (void) const
 void GroundScene::drawOverlays (void) const
 {
 	getCurrentCamera ()->renderFlash ();
+
+	if (m_isCameraUnderWaterForOverlay)
+	{
+		Graphics::setStaticShader(ShaderTemplateList::get2dVertexColorAStaticShader().prepareToView());
+
+		int const rtWidth = Graphics::getCurrentRenderTargetWidth();
+		int const rtHeight = Graphics::getCurrentRenderTargetHeight();
+
+		// Base water tint to keep open-water views from feeling empty.
+		Graphics::drawRectangle(0, 0, rtWidth, rtHeight, VectorArgb(0.12f, 0.15f, 0.33f, 0.30f));
+
+		// Surface haze to soften hard water-plane edge near the top of the frame.
+		int const surfaceBand = std::max(24, rtHeight / 5);
+		Graphics::drawRectangle(0, 0, rtWidth, surfaceBand, VectorArgb(0.16f, 0.20f, 0.35f, 0.20f));
+
+		// Second camera pass: cheap animated striation bands for underwater color variation.
+		int const framePhase = static_cast<int>(Graphics::getFrameNumber() % 96);
+		int const bandHeight = std::max(2, rtHeight / 90);
+		for (int y = 0; y < rtHeight; y += bandHeight * 3)
+		{
+			int const stripeY = y + ((framePhase + y / 7) % (bandHeight * 2));
+			if (stripeY >= rtHeight)
+				continue;
+
+			float const stripeAlpha = 0.035f + 0.015f * static_cast<float>((y / bandHeight) % 3);
+			Graphics::drawRectangle(0, stripeY, rtWidth, std::min(rtHeight, stripeY + bandHeight), VectorArgb(stripeAlpha, 0.10f, 0.20f, 0.26f));
+		}
+
+		// Soft edge darkening without hard rectangle seams (prevents "box" artifacts on UI).
+		int const featherBands = 6;
+		for (int i = 0; i < featherBands; ++i)
+		{
+			float const t = static_cast<float>(i + 1) / static_cast<float>(featherBands);
+			int const insetX = static_cast<int>(t * static_cast<float>(rtWidth) * 0.028f);
+			int const insetY = static_cast<int>(t * static_cast<float>(rtHeight) * 0.030f);
+			float const alpha = 0.010f * (static_cast<float>(featherBands - i));
+			Graphics::drawRectangle(
+				insetX,
+				insetY,
+				std::max(insetX + 1, rtWidth - insetX),
+				std::max(insetY + 1, rtHeight - insetY),
+				VectorArgb(alpha, 0.06f, 0.12f, 0.18f));
+		}
+
+		// Option 2: underwater occluder skirt ring.
+		// Screen-space concentric veil that preserves center readability while masking far-edge
+		// terrain/water tiling boundaries.
+		int const skirtBands = 9;
+		for (int i = 0; i < skirtBands; ++i)
+		{
+			float const t = static_cast<float>(i + 1) / static_cast<float>(skirtBands);
+			int const insetX = static_cast<int>(t * static_cast<float>(rtWidth) * 0.18f);
+			int const insetY = static_cast<int>(t * static_cast<float>(rtHeight) * 0.16f);
+			float const bandAlpha = 0.0075f + (0.0045f * static_cast<float>(skirtBands - i));
+
+			Graphics::drawRectangle(
+				insetX,
+				insetY,
+				std::max(insetX + 1, rtWidth - insetX),
+				std::max(insetY + 1, rtHeight - insetY),
+				VectorArgb(bandAlpha, 0.05f, 0.11f, 0.17f));
+		}
+	}
 
 #if PRODUCTION == 0
 	if (ms_renderDetailLevel && ms_renderDetailLevelFunction)

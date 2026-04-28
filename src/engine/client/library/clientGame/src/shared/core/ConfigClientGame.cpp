@@ -162,6 +162,31 @@ namespace ConfigClientGameNamespace
 	float           ms_jumpImpulseVelocity;
 	float           ms_jumpGravity;
 
+	bool            ms_waterEnvironmentSwimFlowEnabled;
+	float           ms_waterEnvironmentSwimFlowMaxSpeed;
+
+	bool            ms_waterEnvironmentFlowFieldEnabled;
+	float           ms_waterEnvironmentFlowStrength;
+	float           ms_waterEnvironmentFlowTurbulenceScale;
+
+	bool            ms_waterEnvironmentPoleEnabled;
+	bool            ms_waterEnvironmentPoleCpuMeshDisplacement;
+	bool            ms_waterEnvironmentPoleShaderConstants;
+
+	float           ms_waterEnvironmentPole0X;
+	float           ms_waterEnvironmentPole0Z;
+	float           ms_waterEnvironmentPole0Radius;
+	float           ms_waterEnvironmentPole0Amplitude;
+	float           ms_waterEnvironmentPole0Speed;
+	float           ms_waterEnvironmentPole0Phase;
+
+	float           ms_waterEnvironmentPole1X;
+	float           ms_waterEnvironmentPole1Z;
+	float           ms_waterEnvironmentPole1Radius;
+	float           ms_waterEnvironmentPole1Amplitude;
+	float           ms_waterEnvironmentPole1Speed;
+	float           ms_waterEnvironmentPole1Phase;
+
 	bool            ms_profanityFiltered;
 
 	float           ms_freeChaseCameraZoomSpeed;
@@ -1110,10 +1135,35 @@ void ConfigClientGame::install(void)
 
 	KEY_FLOAT  (hackMovementSpeed,         1.0f);
 
-	KEY_FLOAT  (underwaterSwimVerticalSpeed,           3.5f);
+	KEY_FLOAT  (underwaterSwimVerticalSpeed,           4.0f);
 	KEY_FLOAT  (underwaterSwimMinClearanceAboveTerrain, 0.35f);
 	KEY_FLOAT  (jumpImpulseVelocity,                   8.5f);
 	KEY_FLOAT  (jumpGravity,                           22.0f);
+
+	KEY_BOOL   (waterEnvironmentSwimFlowEnabled,       false);
+	KEY_FLOAT  (waterEnvironmentSwimFlowMaxSpeed,      1.0f);
+
+	KEY_BOOL   (waterEnvironmentFlowFieldEnabled,      false);
+	KEY_FLOAT  (waterEnvironmentFlowStrength,          0.35f);
+	KEY_FLOAT  (waterEnvironmentFlowTurbulenceScale,   0.011f);
+
+	KEY_BOOL   (waterEnvironmentPoleEnabled,         false);
+	KEY_BOOL   (waterEnvironmentPoleCpuMeshDisplacement, false);
+	KEY_BOOL   (waterEnvironmentPoleShaderConstants,   true);
+
+	KEY_FLOAT  (waterEnvironmentPole0X,                0.f);
+	KEY_FLOAT  (waterEnvironmentPole0Z,                0.f);
+	KEY_FLOAT  (waterEnvironmentPole0Radius,           80.f);
+	KEY_FLOAT  (waterEnvironmentPole0Amplitude,        0.08f);
+	KEY_FLOAT  (waterEnvironmentPole0Speed,              1.2f);
+	KEY_FLOAT  (waterEnvironmentPole0Phase,              0.f);
+
+	KEY_FLOAT  (waterEnvironmentPole1X,                120.f);
+	KEY_FLOAT  (waterEnvironmentPole1Z,                -40.f);
+	KEY_FLOAT  (waterEnvironmentPole1Radius,           60.f);
+	KEY_FLOAT  (waterEnvironmentPole1Amplitude,        0.06f);
+	KEY_FLOAT  (waterEnvironmentPole1Speed,              1.45f);
+	KEY_FLOAT  (waterEnvironmentPole1Phase,              1.7f);
 
 	KEY_BOOL   (profanityFiltered,         true);
 
@@ -1301,6 +1351,146 @@ float ConfigClientGame::getJumpImpulseVelocity ()
 float ConfigClientGame::getJumpGravity ()
 {
 	return ms_jumpGravity;
+}
+
+//----------------------------------------------------------------------
+
+bool ConfigClientGame::getWaterEnvironmentSwimFlowEnabled ()
+{
+	return ms_waterEnvironmentSwimFlowEnabled;
+}
+
+//----------------------------------------------------------------------
+
+float ConfigClientGame::getWaterEnvironmentSwimFlowMaxSpeed ()
+{
+	return ms_waterEnvironmentSwimFlowMaxSpeed;
+}
+
+//----------------------------------------------------------------------
+
+bool ConfigClientGame::getWaterEnvironmentFlowFieldEnabled ()
+{
+	return ms_waterEnvironmentFlowFieldEnabled;
+}
+
+//----------------------------------------------------------------------
+
+float ConfigClientGame::getWaterEnvironmentFlowStrength ()
+{
+	return ms_waterEnvironmentFlowStrength;
+}
+
+//----------------------------------------------------------------------
+
+float ConfigClientGame::getWaterEnvironmentFlowTurbulenceScale ()
+{
+	return ms_waterEnvironmentFlowTurbulenceScale;
+}
+
+//----------------------------------------------------------------------
+
+bool ConfigClientGame::getWaterEnvironmentPoleEnabled ()
+{
+	return ms_waterEnvironmentPoleEnabled;
+}
+
+//----------------------------------------------------------------------
+
+bool ConfigClientGame::getWaterEnvironmentPoleCpuMeshDisplacement ()
+{
+	return ms_waterEnvironmentPoleCpuMeshDisplacement;
+}
+
+//----------------------------------------------------------------------
+
+bool ConfigClientGame::getWaterEnvironmentPoleShaderConstants ()
+{
+	return ms_waterEnvironmentPoleShaderConstants;
+}
+
+//----------------------------------------------------------------------
+
+float ConfigClientGame::getWaterEnvironmentPole0X ()
+{
+	return ms_waterEnvironmentPole0X;
+}
+
+//----------------------------------------------------------------------
+
+float ConfigClientGame::getWaterEnvironmentPole0Z ()
+{
+	return ms_waterEnvironmentPole0Z;
+}
+
+//----------------------------------------------------------------------
+
+float ConfigClientGame::getWaterEnvironmentPole0Radius ()
+{
+	return ms_waterEnvironmentPole0Radius;
+}
+
+//----------------------------------------------------------------------
+
+float ConfigClientGame::getWaterEnvironmentPole0Amplitude ()
+{
+	return ms_waterEnvironmentPole0Amplitude;
+}
+
+//----------------------------------------------------------------------
+
+float ConfigClientGame::getWaterEnvironmentPole0Speed ()
+{
+	return ms_waterEnvironmentPole0Speed;
+}
+
+//----------------------------------------------------------------------
+
+float ConfigClientGame::getWaterEnvironmentPole0Phase ()
+{
+	return ms_waterEnvironmentPole0Phase;
+}
+
+//----------------------------------------------------------------------
+
+float ConfigClientGame::getWaterEnvironmentPole1X ()
+{
+	return ms_waterEnvironmentPole1X;
+}
+
+//----------------------------------------------------------------------
+
+float ConfigClientGame::getWaterEnvironmentPole1Z ()
+{
+	return ms_waterEnvironmentPole1Z;
+}
+
+//----------------------------------------------------------------------
+
+float ConfigClientGame::getWaterEnvironmentPole1Radius ()
+{
+	return ms_waterEnvironmentPole1Radius;
+}
+
+//----------------------------------------------------------------------
+
+float ConfigClientGame::getWaterEnvironmentPole1Amplitude ()
+{
+	return ms_waterEnvironmentPole1Amplitude;
+}
+
+//----------------------------------------------------------------------
+
+float ConfigClientGame::getWaterEnvironmentPole1Speed ()
+{
+	return ms_waterEnvironmentPole1Speed;
+}
+
+//----------------------------------------------------------------------
+
+float ConfigClientGame::getWaterEnvironmentPole1Phase ()
+{
+	return ms_waterEnvironmentPole1Phase;
 }
 
 //----------------------------------------------------------------------

@@ -1,0 +1,4 @@
+# ninja log v6
+42	1106	7991061620527537	CMakeFiles/AcmBuildTool.dir/src/shared/main.cpp.obj	42dfeef475749dd6
+33	4665	7991061620437259	CMakeFiles/AcmBuildTool.dir/src/shared/AcmBuildTool.cpp.obj	8b00dd303ae1667a
+4667	4978	7991061666778042	bin/AcmBuildTool.exe	cca96d83b5d51309

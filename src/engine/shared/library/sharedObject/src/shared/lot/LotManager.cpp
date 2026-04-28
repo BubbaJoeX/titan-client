@@ -492,9 +492,8 @@ bool LotManager::canPlace (BoxExtent& boxExtent, const int x, const int z, const
 		return false;
 	}
 
-	//-- verify not in water
-	if (terrainObject->getWater (x, z))
-		return false;
+	// Water placement is allowed for swimming-compatible structures.
+	// Keep all other lot occupancy and extent checks unchanged.
 
 	//-- check lot types and grow extent
 	const LotType sourceLotType      = structureFootprint->getLotType (structureX, structureZ);

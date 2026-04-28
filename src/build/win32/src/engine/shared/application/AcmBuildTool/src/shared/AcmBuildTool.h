@@ -50,7 +50,13 @@ private:
 	static bool executeCommand(const std::string &command, std::string &output, std::string &error);
 	static bool fileExists(const std::string &path);
 	static bool deleteFile(const std::string &path);
+	static bool directoryExists(const std::string &path);
+	static bool ensureDirectory(const std::string &path);
 	static bool parseCommandLine(int argc, char **argv, AcmBuildConfig &config);
+	static bool configureFromRootPath(const std::string &rootPath, AcmBuildConfig &config);
+	static std::string normalizePath(const std::string &path);
+	static std::string joinPath(const std::string &left, const std::string &right);
+	static void trimTrailingSeparators(std::string &path);
 	static void printUsage();
 	static void printVersion();
 	static void printStep(int step, int total, const std::string &message);

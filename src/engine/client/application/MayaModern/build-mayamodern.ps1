@@ -75,9 +75,12 @@ $cfgArgs = @(
     '-S', $SourceRoot,
     '-B', $BuildDir,
     '-G', $Generator,
-    '-A', 'x64'
+    '-A', 'x64',
+    # Some Windows hosts report 6.2.9200; without this CMake may target SDK 8.1 and fail to find cl.
+    '-DCMAKE_SYSTEM_VERSION=10.0'
 )
 if ($MayaLocation) {
+    $env:MAYA_LOCATION = $MayaLocation
     $cfgArgs += "-DMAYA_LOCATION=$MayaLocation"
     Write-Host "Using MAYA_LOCATION: $MayaLocation" -ForegroundColor DarkGray
 }

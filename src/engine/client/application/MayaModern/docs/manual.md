@@ -551,7 +551,8 @@ importShader -i "shader/defaultappearance";
 1. **File > Import**
 2. Select file type from "Files of type" dropdown:
   - `SWG skeletal mesh (*.mgn)`
-  - `SWG static mesh (*.msh *.apt)`
+  - `SWG static mesh (*.msh *.apt)` — IFF **FORM** (Star Wars Galaxies)
+  - `SWBF msh (*.msh)` — chunked **HEDR**/**MSH2** (Battlefront 2004/2005 toolchain; same extension as SWG — pick the correct type)
   - `SWG skeleton (*.skt)`
   - `SWG animation (*.ans)`
   - `SWG skeletal appearance (*.sat)`

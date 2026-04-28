@@ -5,6 +5,7 @@
 
 #include "translators/mgn.h"
 #include "translators/msh.h"
+#include "translators/swbf_msh.h"
 #include "translators/skt.h"
 #include "translators/ans.h"
 #include "translators/flr.h"
@@ -158,7 +159,9 @@ static Translator* TRANSLATORS[] =
             new Translator(swg_translator::kTypeDds, "", &DdsTranslator::creator, nullptr, "", false),
             new Translator(swg_translator::kTypeLod, "", &LodTranslator::creator, nullptr, "preserveReferences=0", false),
             new Translator(swg_translator::kTypeLmg, "", &LmgTranslator::creator, nullptr, "preserveReferences=0", false),
-            new Translator(swg_translator::kTypeLsb, "", &LsbTranslator::creator, nullptr, "preserveReferences=0", false)
+            new Translator(swg_translator::kTypeLsb, "", &LsbTranslator::creator, nullptr, "preserveReferences=0", false),
+            // Import-only: Battlefront .msh (chunked HEDR/MSH2). Same extension as SWG — pick type via identifyFile / dialog.
+            new Translator(swg_translator::kTypeSwbfMsh, "", &SwbfMshTranslator::creator, nullptr, "", false)
         };
 
 MStatus initializePlugin(MObject obj)
