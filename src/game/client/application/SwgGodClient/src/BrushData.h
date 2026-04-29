@@ -33,6 +33,9 @@ public:
 	{
 		GodClientData::ClipboardList_t objects;
 		std::string                    name;
+		/// Terrain height at clipboard center XZ when the brush was saved (world Y). Used for relative vertical paste.
+		real                           pasteGroundAnchorY;
+		bool                           pasteGroundAnchorKnown;
 	};
 
 	//declare nested class here, define in cpp file
@@ -40,7 +43,7 @@ public:
 
 	BrushData();
 	~BrushData();
-	void                      addBrush(const std::string& name, const GodClientData::ClipboardList_t& objects);
+	void                      addBrush(const std::string& name, const GodClientData::ClipboardList_t& objects, real pasteGroundAnchorY, bool pasteGroundAnchorKnown);
 	void                      removeBrush(size_t index);
 	size_t                    getNumBrushes() const;
 	const BrushStruct&        getBrush(size_t index) const;
@@ -48,6 +51,7 @@ public:
 	void                      serialize() const;
 	void                      unserialize();
 	const GodClientData::ClipboardList_t* getSelectedBrush() const;
+	const BrushStruct*                  getSelectedBrushStruct() const;
 
 private:
 	//disabled

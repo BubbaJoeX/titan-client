@@ -66,16 +66,13 @@ BrushData::~BrushData()
 
 //-----------------------------------------------------------------
 
-void BrushData::addBrush(const std::string & name, const GodClientData::ClipboardList_t& objects)
+void BrushData::addBrush(const std::string & name, const GodClientData::ClipboardList_t& objects, real pasteGroundAnchorY, bool pasteGroundAnchorKnown)
 {
-	BrushStruct b;
-	UNREF(name);
-	UNREF(objects);
-
 	BrushStruct newBrush;
 	newBrush.name = name;
-
 	newBrush.objects = objects;
+	newBrush.pasteGroundAnchorY = pasteGroundAnchorY;
+	newBrush.pasteGroundAnchorKnown = pasteGroundAnchorKnown;
 
 	m_brushes->container.push_back(newBrush);
 
@@ -152,13 +149,20 @@ void BrushData::serialize() const
 		const Tag TAG_BRSH = TAG(B,R,S,H);
 		const Tag TAG_DATA = TAG(D,A,T,A);
 		const Tag TAG_CLIP = TAG(C,L,I,P);
+		const Tag TAG_GNDY = TAG(G,N,D,Y);
 		iff.insertForm(TAG_BRSH);
 		{
-			iff.insertForm(TAG_0002);
+			// 0004 = 0003 plus paste ground Y (terrain height at brush center for relative vertical paste).
+			iff.insertForm(TAG_0004);
 			{
 				iff.insertChunk(TAG_DATA);
 					iff.insertChunkString(name.c_str());
 				iff.exitChunk(TAG_DATA);
+
+				real const anchorForFile = brush.pasteGroundAnchorKnown ? brush.pasteGroundAnchorY : GodClientData::getInstance().computePasteGroundAnchorY(brush.objects);
+				iff.insertChunk(TAG_GNDY);
+					iff.insertChunkData(anchorForFile);
+				iff.exitChunk(TAG_GNDY);
 
 				for(GodClientData::ClipboardList_t::const_iterator itr = brush.objects.begin(); itr != brush.objects.end(); ++itr)
 				{
@@ -170,10 +174,19 @@ void BrushData::serialize() const
 						iff.insertChunkString (clipboardObject->sharedObjectTemplateName.c_str ());
 						iff.insertChunkFloatTransform (clipboardObject->transform);
 						iff.insertChunkString (clipboardObject->networkId.getValueString ().c_str ());
+						iff.insertChunkFloatVector (clipboardObject->scale);
+						int32 const scriptCount = static_cast<int32>(clipboardObject->scripts.size ());
+						iff.insertChunkData (scriptCount);
+						for (size_t si = 0; si < clipboardObject->scripts.size (); ++si)
+							iff.insertChunkString (clipboardObject->scripts[si].c_str ());
+						int32 const objvarCount = static_cast<int32>(clipboardObject->objvars.size ());
+						iff.insertChunkData (objvarCount);
+						for (size_t oi = 0; oi < clipboardObject->objvars.size (); ++oi)
+							iff.insertChunkString (clipboardObject->objvars[oi].c_str ());
 					iff.exitChunk(TAG_CLIP);
 				}
 			}
-			iff.exitForm(TAG_0002);
+			iff.exitForm(TAG_0004);
 		}
 		iff.exitForm(TAG_BRSH);
 
@@ -210,6 +223,7 @@ void BrushData::unserialize()
 	const Tag TAG_CLIP = TAG(C,L,I,P);
 	const Tag TAG_BRSH = TAG(B,R,S,H);
 	const Tag TAG_DATA = TAG(D,A,T,A);
+	const Tag TAG_GNDY = TAG(G,N,D,Y);
 
 	FilesystemTree tree;
 	tree.setRootPath(readDirBuffer);
@@ -246,6 +260,8 @@ void BrushData::unserialize()
 							{
 								iff.enterForm (TAG_0000);
 								{
+									newBrush.pasteGroundAnchorY = 0;
+									newBrush.pasteGroundAnchorKnown = false;
 									iff.enterChunk (TAG_DATA);
 										iff.read_string (newBrush.name);
 									iff.exitChunk (TAG_DATA, true);
@@ -275,6 +291,8 @@ void BrushData::unserialize()
 							{
 								iff.enterForm (TAG_0001);
 								{
+									newBrush.pasteGroundAnchorY = 0;
+									newBrush.pasteGroundAnchorKnown = false;
 									iff.enterChunk (TAG_DATA);
 										iff.read_string (newBrush.name);
 									iff.exitChunk (TAG_DATA, true);
@@ -305,6 +323,8 @@ void BrushData::unserialize()
 
 								iff.enterForm (TAG_0002);
 								{
+									newBrush.pasteGroundAnchorY = 0;
+									newBrush.pasteGroundAnchorKnown = false;
 									iff.enterChunk (TAG_DATA);
 										iff.read_string (newBrush.name);
 									iff.exitChunk (TAG_DATA, true);
@@ -326,6 +346,105 @@ void BrushData::unserialize()
 									}
 								}
 								iff.exitForm (TAG_0002);
+							}
+							break;
+
+						case TAG_0003:
+							{
+								std::string networkId;
+
+								iff.enterForm (TAG_0003);
+								{
+									newBrush.pasteGroundAnchorY = 0;
+									newBrush.pasteGroundAnchorKnown = false;
+									iff.enterChunk (TAG_DATA);
+										iff.read_string (newBrush.name);
+									iff.exitChunk (TAG_DATA, true);
+
+									while (iff.getNumberOfBlocksLeft ())
+									{
+										iff.enterChunk (TAG_CLIP);
+
+											GodClientData::ClipboardObject* const clipboardObject = new GodClientData::ClipboardObject;
+											iff.read_string (clipboardObject->serverObjectTemplateName);
+											iff.read_string (clipboardObject->sharedObjectTemplateName);
+											clipboardObject->transform = iff.read_floatTransform ();
+											iff.read_string (networkId);
+											clipboardObject->networkId = NetworkId (networkId);
+											clipboardObject->scale = iff.read_floatVector ();
+											int32 const scriptCount = iff.read_int32 ();
+											for (int si = 0; si < scriptCount; ++si)
+											{
+												std::string line;
+												iff.read_string (line);
+												clipboardObject->scripts.push_back (line);
+											}
+											int32 const objvarCount = iff.read_int32 ();
+											for (int oi = 0; oi < objvarCount; ++oi)
+											{
+												std::string line;
+												iff.read_string (line);
+												clipboardObject->objvars.push_back (line);
+											}
+
+										iff.exitChunk (TAG_CLIP);
+
+										newBrush.objects.push_back (clipboardObject);
+									}
+								}
+								iff.exitForm (TAG_0003);
+							}
+							break;
+
+						case TAG_0004:
+							{
+								std::string networkId;
+
+								iff.enterForm (TAG_0004);
+								{
+									newBrush.pasteGroundAnchorY = 0;
+									newBrush.pasteGroundAnchorKnown = false;
+									iff.enterChunk (TAG_DATA);
+										iff.read_string (newBrush.name);
+									iff.exitChunk (TAG_DATA, true);
+
+									iff.enterChunk (TAG_GNDY);
+										newBrush.pasteGroundAnchorY = iff.read_float ();
+										newBrush.pasteGroundAnchorKnown = true;
+									iff.exitChunk (TAG_GNDY, true);
+
+									while (iff.getNumberOfBlocksLeft ())
+									{
+										iff.enterChunk (TAG_CLIP);
+
+											GodClientData::ClipboardObject* const clipboardObject = new GodClientData::ClipboardObject;
+											iff.read_string (clipboardObject->serverObjectTemplateName);
+											iff.read_string (clipboardObject->sharedObjectTemplateName);
+											clipboardObject->transform = iff.read_floatTransform ();
+											iff.read_string (networkId);
+											clipboardObject->networkId = NetworkId (networkId);
+											clipboardObject->scale = iff.read_floatVector ();
+											int32 const scriptCount = iff.read_int32 ();
+											for (int si = 0; si < scriptCount; ++si)
+											{
+												std::string line;
+												iff.read_string (line);
+												clipboardObject->scripts.push_back (line);
+											}
+											int32 const objvarCount = iff.read_int32 ();
+											for (int oi = 0; oi < objvarCount; ++oi)
+											{
+												std::string line;
+												iff.read_string (line);
+												clipboardObject->objvars.push_back (line);
+											}
+
+										iff.exitChunk (TAG_CLIP);
+
+										newBrush.objects.push_back (clipboardObject);
+									}
+								}
+								iff.exitForm (TAG_0004);
 							}
 							break;
 
@@ -365,6 +484,21 @@ const GodClientData::ClipboardList_t* BrushData::getSelectedBrush() const
 	{
 		if(it->name == m_selectedBrush)
 			return &(it->objects);
+	}
+	return NULL;
+}
+
+//-----------------------------------------------------------------
+
+const BrushData::BrushStruct* BrushData::getSelectedBrushStruct() const
+{
+	if(m_selectedBrush.empty())
+		return NULL;
+
+	for(BrushContainer::Container::const_iterator it = m_brushes->container.begin(); it != m_brushes->container.end(); ++it)
+	{
+		if(it->name == m_selectedBrush)
+			return &(*it);
 	}
 	return NULL;
 }

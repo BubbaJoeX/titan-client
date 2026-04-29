@@ -16,6 +16,7 @@
 #include "sharedCollision/FloorLocator.h"
 #include "sharedGame/SharedBuildingObjectTemplate.h"
 #include "sharedGame/SharedBuildoutAreaManager.h"
+#include "sharedMath/Quaternion.h"
 #include "sharedMath/Ray3d.h"
 #include "sharedNetworkMessages/ConsoleChannelMessages.h"
 #include "sharedNetworkMessages/GenericValueTypeMessage.h"
@@ -111,6 +112,51 @@ inline bool isFiniteVector(Vector const &v)
 namespace
 {
 	typedef MessageDispatch::Message<std::pair<NetworkId, int> > ObjectMessage;
+
+	/// World-space incremental rotation; optional pivot (world) orbits position while applying the same orientation delta to all axes.
+	void rotateGhostWorldAxes(Object & ghost, real angleRadians, GodClientData::RotationType type, Vector const * pivot_w)
+	{
+		if (type == GodClientData::Rotate_none)
+			return;
+
+		Vector axis;
+		switch (type)
+		{
+		case GodClientData::Rotate_yaw:
+			axis = Vector::unitY;
+			break;
+		case GodClientData::Rotate_pitch:
+			axis = Vector::unitX;
+			break;
+		case GodClientData::Rotate_roll:
+			axis = Vector::unitZ;
+			break;
+		default:
+			return;
+		}
+
+		Quaternion const qInc(angleRadians, axis);
+		Transform const oldO2W = ghost.getTransform_o2w();
+		Quaternion qOld(oldO2W);
+		Quaternion qNew = qInc * qOld;
+		qNew.normalize();
+
+		Vector newPos = oldO2W.getPosition_p();
+		if (pivot_w)
+		{
+			Vector const pos_w = ghost.getPosition_w();
+			Transform Ronly;
+			qInc.getTransform(&Ronly);
+			Vector const delta = pos_w - *pivot_w;
+			Vector const rotatedDelta = Ronly.rotate_l2p(delta);
+			newPos = *pivot_w + rotatedDelta;
+		}
+
+		Transform newO2W;
+		qNew.getTransform(&newO2W);
+		newO2W.setPosition_p(newPos);
+		ghost.setTransform_o2w(newO2W);
+	}
 }
 
 //-----------------------------------------------------------------
@@ -265,10 +311,15 @@ GodClientData::GodClientData()
   m_toggleDropToTerrainOn(false),
   m_toggleAlignToTerrainOn(false),
   m_unrealEngineTransformGizmo(false),
+  m_transformSpace(TransformSpace_world),
   m_copyTransform(true),
   m_copyScale(false),
   m_copyScripts(false),
   m_copyObjvars(false),
+  m_clipboardPasteGroundY(0),
+  m_clipboardPasteGroundKnown(false),
+  m_brushPasteGroundY(0),
+  m_brushPasteGroundKnown(false),
   m_patrolWaypoints(),
   m_patrolWaypointPlacementMode(false),
   m_patrolPathType("cycle")
@@ -1214,8 +1265,6 @@ void GodClientData::scaleGhosts(const Vector& v)
 
 void GodClientData::rotateGhosts(const real v, RotationType type, RotationPivotType pivotType)
 {
-	UNREF(type);
-	
 	if(m_selectedObjects.empty())
 		return;
 	
@@ -1237,7 +1286,30 @@ void GodClientData::rotateGhosts(const real v, RotationType type, RotationPivotT
 		centerPoint = pivSelObj->ghost->getAppearanceSphereCenter_w();
 		useCenter = true;
 	}
-	
+
+	// World space: fixed Y / X / Z axes; optional pivot orbits all ghosts as a rigid group.
+	if (m_transformSpace == TransformSpace_world)
+	{
+		Vector const * pivotPtr = 0;
+		Vector pivotStorage;
+		if (useCenter)
+		{
+			pivotStorage = centerPoint;
+			pivotPtr = &pivotStorage;
+		}
+		for(SelectedObjectList_t::iterator it = m_selectedObjects.begin(); it != m_selectedObjects.end(); ++it) 
+		{
+			SelectedObject* const selObj = NON_NULL(*it);
+			if(selObj->ghost == 0)
+				selObj->ghost = NON_NULL(createGhost(*selObj->obj));
+			rotateGhostWorldAxes(*selObj->ghost, v, type, pivotPtr);
+		}
+		if(m_createdCount)
+			emitMessage(MessageDispatch::MessageBase(Messages::GHOSTS_CREATED));
+		return;
+	}
+
+	// Local space: object-relative yaw / pitch / roll (legacy behavior).
 	for(SelectedObjectList_t::iterator it = m_selectedObjects.begin(); it != m_selectedObjects.end(); ++it) 
 	{
 		SelectedObject* const selObj = NON_NULL(*it);
@@ -1370,6 +1442,17 @@ void GodClientData::getClipboard(GodClientData::ClipboardList_t& clip) const
 void GodClientData::setCurrentBrush(const GodClientData::ClipboardList_t& b)
 {
 	m_currentBrush = b;
+	m_brushPasteGroundKnown = false;
+	m_brushPasteGroundY = 0;
+}
+
+//-----------------------------------------------------------------
+
+void GodClientData::setCurrentBrush(const GodClientData::ClipboardList_t& b, real pasteGroundAnchorY, bool pasteGroundAnchorKnown)
+{
+	m_currentBrush = b;
+	m_brushPasteGroundY = pasteGroundAnchorY;
+	m_brushPasteGroundKnown = pasteGroundAnchorKnown;
 }
 
 //-----------------------------------------------------------------
@@ -1630,6 +1713,8 @@ void GodClientData::clearClipboard()
 		delete clipObj;
 		it = m_clipboard.erase(it);
 	}
+	m_clipboardPasteGroundKnown = false;
+	m_clipboardPasteGroundY = 0;
 	emitMessage(MessageDispatch::MessageBase(Messages::CLIPBOARD_CHANGED));
 }
 
@@ -1669,6 +1754,16 @@ void GodClientData::copySelection()
 			else
 				m_clipboard.push_back(new ClipboardObject(*obj, getCopyTransform(), getCopyScale(), getCopyScripts(), getCopyObjvars(), sel->ghost));
 		}
+	}
+	if (!m_clipboard.empty())
+	{
+		m_clipboardPasteGroundY = computePasteGroundAnchorY(m_clipboard);
+		m_clipboardPasteGroundKnown = true;
+	}
+	else
+	{
+		m_clipboardPasteGroundKnown = false;
+		m_clipboardPasteGroundY = 0;
 	}
 	
 	emitMessage(MessageDispatch::MessageBase(Messages::CLIPBOARD_CHANGED));
@@ -1988,6 +2083,45 @@ bool GodClientData::calculateClipboardBottom(const ClipboardList_t& clip, float&
 
 //-----------------------------------------------------------------
 
+real GodClientData::computePasteGroundAnchorY(const ClipboardList_t& clip) const
+{
+	if (clip.empty())
+		return 0;
+	Vector center;
+	if (!calculateClipboardCenter(clip, center))
+		return 0;
+	float bottom = 0;
+	calculateClipboardBottom(clip, bottom);
+	TerrainObject const * const terrain = TerrainObject::getConstInstance();
+	if (terrain)
+	{
+		float h = bottom;
+		Vector const probe(center.x, CONST_REAL(10000), center.z);
+		if (terrain->getHeight(probe, h))
+			return static_cast<real>(h);
+	}
+	return static_cast<real>(bottom);
+}
+
+//-----------------------------------------------------------------
+
+real GodClientData::resolvePasteGroundAnchorY(const ClipboardList_t& clip, bool pasteFromBrush) const
+{
+	if (pasteFromBrush)
+	{
+		if (m_brushPasteGroundKnown)
+			return m_brushPasteGroundY;
+	}
+	else
+	{
+		if (m_clipboardPasteGroundKnown)
+			return m_clipboardPasteGroundY;
+	}
+	return computePasteGroundAnchorY(clip);
+}
+
+//-----------------------------------------------------------------
+
 bool GodClientData::getSelectionExtent(bool ghosts, BoxExtent& extent) const
 {
 	extent.setMin(Vector::maxXYZ);
@@ -2115,13 +2249,31 @@ void GodClientData::translateSelection(real x, real y, bool alongGround)
 
 	Vector center;
 
-	// Mouse delta is in camera local space; translateGhosts() expects a world-space delta
-	// (then rotate_w2p per object for parent/cell move_p). rotate_o2p only reached camera parent.
-	const real pitch = cam->getPitch();
-	if(pitch > -PI_OVER_4 && pitch < PI_OVER_4)
-		loc = cam->rotate_o2w(Vector(x, CONST_REAL(0), -y));
+	if (m_transformSpace == TransformSpace_local && !m_selectedObjects.empty())
+	{
+		SelectedObject* const primary = NON_NULL(m_selectedObjects.front());
+		Object* const ref = primary->ghost ? static_cast<Object*>(primary->ghost) : static_cast<Object*>(primary->obj.getPointer());
+		Vector I(ref->getObjectFrameI_w());
+		Vector K(ref->getObjectFrameK_w());
+		I.y = CONST_REAL(0);
+		K.y = CONST_REAL(0);
+		if (!I.normalize())
+			I = Vector::unitX;
+		if (!K.normalize())
+			K = Vector::unitZ;
+		// Match camera-drag convention: x strafes, y (screen) moves "forward" on ground.
+		loc = I * x + K * (-y);
+	}
 	else
-		loc = cam->rotate_o2w(Vector(x, -y, CONST_REAL(0)));
+	{
+		// Mouse delta is in camera local space; translateGhosts() expects a world-space delta
+		// (then rotate_w2p per object for parent/cell move_p). rotate_o2p only reached camera parent.
+		const real pitch = cam->getPitch();
+		if(pitch > -PI_OVER_4 && pitch < PI_OVER_4)
+			loc = cam->rotate_o2w(Vector(x, CONST_REAL(0), -y));
+		else
+			loc = cam->rotate_o2w(Vector(x, -y, CONST_REAL(0)));
+	}
 
 	if(!calculateSelectionCenter(center, true))
 		return;
@@ -2186,11 +2338,28 @@ void GodClientData::scaleSelection(real dx, real dy)
 
 	Vector v;
 
-	const real pitch = cam->getPitch();
-	if(pitch > -PI_OVER_4 && pitch < PI_OVER_4)
-		v = cam->rotate_o2w(Vector(dx, CONST_REAL(0), -dy));
+	if (m_transformSpace == TransformSpace_local && !m_selectedObjects.empty())
+	{
+		SelectedObject* const primary = NON_NULL(m_selectedObjects.front());
+		Object* const ref = primary->ghost ? static_cast<Object*>(primary->ghost) : static_cast<Object*>(primary->obj.getPointer());
+		Vector I(ref->getObjectFrameI_w());
+		Vector J(ref->getObjectFrameJ_w());
+		I.y = CONST_REAL(0);
+		J.y = CONST_REAL(0);
+		if (!I.normalize())
+			I = Vector::unitX;
+		if (!J.normalize())
+			J = Vector::unitY;
+		v = I * dx + J * (-dy);
+	}
 	else
-		v = cam->rotate_o2w(Vector(dx, -dy, CONST_REAL(0)));
+	{
+		const real pitch = cam->getPitch();
+		if(pitch > -PI_OVER_4 && pitch < PI_OVER_4)
+			v = cam->rotate_o2w(Vector(dx, CONST_REAL(0), -dy));
+		else
+			v = cam->rotate_o2w(Vector(dx, -dy, CONST_REAL(0)));
+	}
 
 	Vector center;
 	if(!calculateSelectionCenter(center, true))
@@ -2279,7 +2448,10 @@ void GodClientData::saveCurrentSelectionAsBrush(const std::string& brushName)
 			newBrush.push_back(new ClipboardObject(*obj, getCopyTransform(), getCopyScale(), getCopyScripts(), getCopyObjvars(), sel->ghost));
 		}
 	}
-	BrushData::getInstance().addBrush(brushName, newBrush);
+	if (newBrush.empty())
+		return;
+	real const anchorY = computePasteGroundAnchorY(newBrush);
+	BrushData::getInstance().addBrush(brushName, newBrush, anchorY, true);
 }
 
 //-----------------------------------------------------------------
@@ -3181,6 +3353,27 @@ void GodClientData::toggleUnrealEngineTransformGizmo()
 bool GodClientData::isUnrealEngineTransformGizmoOn() const
 {
 	return m_unrealEngineTransformGizmo;
+}
+
+//-----------------------------------------------------------------
+
+void GodClientData::toggleTransformSpace()
+{
+	m_transformSpace = (m_transformSpace == TransformSpace_world) ? TransformSpace_local : TransformSpace_world;
+}
+
+//-----------------------------------------------------------------
+
+GodClientData::TransformSpace GodClientData::getTransformSpace() const
+{
+	return m_transformSpace;
+}
+
+//-----------------------------------------------------------------
+
+bool GodClientData::isTransformSpaceLocal() const
+{
+	return m_transformSpace == TransformSpace_local;
 }
 
 //-------------------------------------------------------------

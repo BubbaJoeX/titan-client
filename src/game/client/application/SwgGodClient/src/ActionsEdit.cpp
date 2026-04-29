@@ -44,8 +44,16 @@
 
 namespace ActionsEditNamespace
 {
-	const std::string headerLine1 = "TEMPLATE	X	Y	Z	YAW\n";
-	const std::string headerLine2 = "s	f	f	f	f\n";
+	static std::string sanitizeTheaterTabCell (std::string const &s)
+	{
+		std::string r = s;
+		for (size_t i = 0; i < r.size (); ++i)
+		{
+			if (r[i] == '\t' || r[i] == '\n' || r[i] == '\r')
+				r[i] = ' ';
+		}
+		return r;
+	}
 }
 // ======================================================================
 
@@ -365,7 +373,7 @@ void ActionsEdit::onPaste() const
 	GodClientData::ClipboardList_t clip;
 	gcd->getClipboard(clip);
 
-	internalPaste(clip);
+	internalPaste(clip, false);
 }
 
 //-----------------------------------------------------------------
@@ -380,23 +388,21 @@ void ActionsEdit::onPasteBrush() const
 	GodClientData::ClipboardList_t clip;
 	gcd->getCurrentBrush(clip);
 
-	internalPaste(clip);
+	internalPaste(clip, true);
 }
 
 //-----------------------------------------------------------------
 /**
  */
-void ActionsEdit::internalPaste(GodClientData::ClipboardList_t& clip) const
+void ActionsEdit::internalPaste(GodClientData::ClipboardList_t& clip, bool pasteFromBrush) const
 {
 	GodClientData * const gcd = &GodClientData::getInstance();
 
 	Vector center;
 	IGNORE_RETURN(gcd->calculateClipboardCenter(clip, center));
 
-	float clipBottomY = 0;
-	IGNORE_RETURN(gcd->calculateClipboardBottom(clip, clipBottomY));
-
-	float clipDelta = center.y - clipBottomY;
+	real const anchorY = gcd->resolvePasteGroundAnchorY(clip, pasteFromBrush);
+	Vector const pasteAnchor(center.x, anchorY, center.z);
 
 	const CellProperty* cellProperty = CellProperty::getWorldCellProperty ();
 	Vector intersection_p;
@@ -433,12 +439,11 @@ void ActionsEdit::internalPaste(GodClientData::ClipboardList_t& clip) const
 		{
 			//if we collided with something, place the object there
 			Vector objOldPosition = clipObj->transform.getPosition_p();
-			const Vector objRelativeToCenter = center - objOldPosition;
 			//initialize transform with original location and(more importantly, rotation)
 			newObjTransform = clipObj->transform;
 
-			//offset the object from the cursor by it's relative position
-			newObjTransform.setPosition_p(intersection_p - objRelativeToCenter + Vector(0, clipDelta, 0));
+			// Match saved ground at clip center (outdoor: terrain height) to paste hit; keeps relative height (e.g. +10m above ground).
+			newObjTransform.setPosition_p(intersection_p + objOldPosition - pasteAnchor);
 			Object* const newObj = ServerCommander::getInstance().createObject("toolbar pasted", clipObj->serverObjectTemplateName.empty() ? clipObj->sharedObjectTemplateName : clipObj->serverObjectTemplateName, cellProperty, newObjTransform);
 			ClientObject* const clientObj = newObj ? dynamic_cast<ClientObject*>(newObj) : 0;
 			if (clientObj)
@@ -847,8 +852,8 @@ void ActionsEdit::onCopyForPOI() const
 
 	if(outputTabFormat)
 	{
-		clipboardText += ActionsEditNamespace::headerLine1;
-		clipboardText += ActionsEditNamespace::headerLine2;
+		clipboardText += "TEMPLATE\tX\tY\tZ\tYAW\n";
+		clipboardText += "s\tf\tf\tf\tf\n";
 	}
 
 	for(GodClientData::ClipboardList_t::iterator itr = objectList.begin(); itr != objectList.end(); ++itr)
@@ -1136,8 +1141,9 @@ namespace ActionsEditNamespace
 		if (!outfile)
 			return false;
 
-		fprintf (outfile, "TEMPLATE\tX\tY\tZ\tYAW\n");
-		fprintf (outfile, "s\tf\tf\tf\tf\n");
+		// Column names align with IntangibleObject::spawnTheater resolution (template/x/y/z/heading/script/objvars).
+		fprintf (outfile, "template\tx\ty\tz\theading\tscript\tobjvars\n");
+		fprintf (outfile, "s\tf\tf\tf\tf\ts\ts\n");
 
 		GodClientData::ClipboardList_t::iterator end = objectList.end ();
 		for (GodClientData::ClipboardList_t::iterator iter = objectList.begin (); iter != end; ++iter)
@@ -1147,7 +1153,13 @@ namespace ActionsEditNamespace
 			const Transform& transform = object->transform;
 			const Vector position = transform.getPosition_p ();
 			const float theta = convertRadiansToDegrees (transform.getLocalFrameK_p ().theta ());
-			fprintf (outfile, "%s\t%1.2f\t%1.2f\t%1.2f\t%1.2f\n", serverObjectTemplateName, position.x, position.y, position.z, theta);
+			std::string const packedScripts = BuildoutAreaSupport::packScriptListForExport (object->scripts);
+			std::string const packedObjvars = BuildoutAreaSupport::packObjvarListForExport (object->objvars);
+			std::string const scriptCell = ActionsEditNamespace::sanitizeTheaterTabCell (packedScripts);
+			std::string const objvarCell = ActionsEditNamespace::sanitizeTheaterTabCell (packedObjvars);
+			fprintf (outfile, "%s\t%1.2f\t%1.2f\t%1.2f\t%1.2f\t%s\t%s\n",
+				serverObjectTemplateName, position.x, position.y, position.z, theta,
+				scriptCell.c_str (), objvarCell.c_str ());
 		}
 
 		fclose (outfile);
@@ -1295,6 +1307,9 @@ void ActionsEdit::onCreateTheater () const
 	//-- verify selection 
 	//
 
+	//-- capture scripts and objvars from server object data (same as a full brush)
+	GodClientData::getInstance ().setCopyScripts (true);
+	GodClientData::getInstance ().setCopyObjvars (true);
 	//-- put the selection in the clipboard
 	GodClientData::getInstance ().copySelection ();
 	GodClientData::ClipboardList_t objectList;

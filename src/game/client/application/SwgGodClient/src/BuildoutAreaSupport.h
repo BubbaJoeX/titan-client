@@ -11,6 +11,9 @@
 
 // ======================================================================
 
+#include <string>
+#include <vector>
+
 class CellProperty;
 class CrcString;
 class NetworkId;
@@ -46,6 +49,11 @@ public:
 	static void populateServerObjectData(NetworkId const &networkId);
 	static bool openBuildoutFilesForEditing( const std::string &areaName );
 	static void addServerOnlyObjectsToWorldSnapshot();
+
+	/// Join script names with ':' (matches buildout / unpackScriptList).
+	static std::string packScriptListForExport(std::vector<std::string> const &scripts);
+	/// Packed objvar blob for theater/poi datatable cells (buildout format).
+	static std::string packObjvarListForExport(std::vector<std::string> const &objvars);
 };
 
 // ======================================================================

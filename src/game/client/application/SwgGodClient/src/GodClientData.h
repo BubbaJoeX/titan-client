@@ -61,6 +61,13 @@ public:
 		Rotate_roll
 	};
 
+	/// Mouse / keyboard move (T/G), scale (S), and rotate (R) use either world axes or the primary selection's object axes.
+	enum TransformSpace
+	{
+		TransformSpace_world,
+		TransformSpace_local
+	};
+
 	struct Messages
 	{
 		static const char* const SELECTION_CHANGED;
@@ -214,6 +221,9 @@ public:
 	bool             calculateSelectionCenter      (Vector& center, bool ghosts) const;
 	bool             calculateClipboardCenter      (const ClipboardList_t& clip, Vector& center) const;
 	bool             calculateClipboardBottom(const ClipboardList_t& clip, float& bottom) const;
+	/// Terrain height at clipboard center XZ (else lowest object Y). Used as vertical paste anchor.
+	real             computePasteGroundAnchorY     (const ClipboardList_t& clip) const;
+	real             resolvePasteGroundAnchorY     (const ClipboardList_t& clip, bool pasteFromBrush) const;
 	bool             getSelectionExtent            (bool ghosts, BoxExtent& extent) const;
 	bool             getIsSelectionOrGhost         (const Object& obj, bool& isSelection, bool& isGhost) const;
 	void             saveCurrentSelectionAsBrush   (const std::string& brushName);
@@ -259,6 +269,7 @@ public:
 	bool             getClipboardEmpty             () const;
 	void             getClipboard                  (ClipboardList_t& objectList) const;
 	void             setCurrentBrush               (const ClipboardList_t& brush);
+	void             setCurrentBrush               (const ClipboardList_t& brush, real pasteGroundAnchorY, bool pasteGroundAnchorKnown);
 	void             getCurrentBrush               (ClipboardList_t& brush) const;
 	bool             pasteLocationKnown            () const;
 	void             setPasteLocation              (const Vector& vec);
@@ -271,6 +282,10 @@ public:
 
 	void             toggleUnrealEngineTransformGizmo ();
 	bool             isUnrealEngineTransformGizmoOn   () const;
+
+	void             toggleTransformSpace            ();
+	TransformSpace   getTransformSpace               () const;
+	bool             isTransformSpaceLocal           () const;
 
 	const Vector &   getCameraPivotPoint           ();
 
@@ -384,12 +399,20 @@ private:
 	/// When true, selection ghost draws Unreal-style translate axes plus rotation rings and scale cubes.
 	bool                          m_unrealEngineTransformGizmo;
 
+	/// World = camera/terrain-aligned moves and world-axis rotations; Local = primary selection object axes.
+	TransformSpace                m_transformSpace;
+
 	ClipboardList_t               m_currentBrush;
 
 	bool                          m_copyTransform;
 	bool                          m_copyScale;
 	bool                          m_copyScripts;
 	bool                          m_copyObjvars;
+
+	real                          m_clipboardPasteGroundY;
+	bool                          m_clipboardPasteGroundKnown;
+	real                          m_brushPasteGroundY;
+	bool                          m_brushPasteGroundKnown;
 
 	std::vector<Vector>           m_patrolWaypoints;
 	bool                          m_patrolWaypointPlacementMode;

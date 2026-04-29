@@ -122,7 +122,12 @@ void ActionsTool::onSaveAsBrush() const
 	{
 		std::string name = qName.latin1();
 		if(ok && !name.empty())
+		{
+			// Preserve scripts/objvars on pasted brush objects (theater-quality presets).
+			GodClientData::getInstance().setCopyScripts(true);
+			GodClientData::getInstance().setCopyObjvars(true);
 			GodClientData::getInstance().saveCurrentSelectionAsBrush(name);
+		}
 	}
 }
 
@@ -143,7 +148,11 @@ void ActionsTool::onDeleteBrush() const
 void ActionsTool::onPasteBrushHere() const
 {
 	//set the clipboard with the current brush
-	GodClientData::getInstance().setCurrentBrush(*BrushData::getInstance().getSelectedBrush());
+	BrushData::BrushStruct const * const bs = BrushData::getInstance().getSelectedBrushStruct();
+	if (bs)
+		GodClientData::getInstance().setCurrentBrush(bs->objects, bs->pasteGroundAnchorY, bs->pasteGroundAnchorKnown);
+	else
+		GodClientData::getInstance().setCurrentBrush(*BrushData::getInstance().getSelectedBrush());
 
 	//get the avatar's location, to use as the paste location
 	GroundScene* const gs = dynamic_cast<GroundScene*>(Game::getScene());

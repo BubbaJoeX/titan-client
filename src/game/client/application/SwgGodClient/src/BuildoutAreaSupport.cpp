@@ -2326,4 +2326,25 @@ void BuildoutAreaSupportNamespace::writeOutServerEventArea(std::string const eve
 
 // ----------------------------------------------------------------------
 
+std::string BuildoutAreaSupport::packScriptListForExport(std::vector<std::string> const &scripts)
+{
+	std::string result;
+	for (std::vector<std::string>::const_iterator i = scripts.begin(); i != scripts.end(); ++i)
+	{
+		if (!result.empty())
+			result += ':';
+		result += *i;
+	}
+	return result;
+}
+
+// ----------------------------------------------------------------------
+
+std::string BuildoutAreaSupport::packObjvarListForExport(std::vector<std::string> const &objvars)
+{
+	if (objvars.empty())
+		return std::string();
+	return BuildoutAreaSupportNamespace::packObjvarList(objvars);
+}
+
 // ======================================================================

@@ -148,7 +148,7 @@ private:
 	void                  internalDeleteSelection(bool confirm)  const;
 	void                  internalRotateDiscrete(const real rad) const;
 	void                  setSelectionControlsEnabled(bool b);
-	void                  internalPaste(GodClientData::ClipboardList_t& clip) const;
+	void                  internalPaste(GodClientData::ClipboardList_t& clip, bool pasteFromBrush) const;
 
 private:
 	std::string           m_selectedServerTemplate;

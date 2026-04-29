@@ -128,6 +128,7 @@
 #include <qmessagebox.h>
 #include <qpainter.h>
 #include <qpopupmenu.h>
+#include <qstatusbar.h>
 #include <qtimer.h>
 
 // ======================================================================
@@ -671,6 +672,20 @@ void GameWidget::keyPressEvent(QKeyEvent*keyEvent)
 			if(GodClientData::getInstance().killGhosts() == 0)
 				GodClientData::getInstance().clearSelection();
 		}
+	}
+
+	// Ctrl+Shift+L toggles God Client move/rotate/scale between world axes and primary selection local axes
+	if (!keyEvent->isAutoRepeat() &&
+		keyEvent->key() == static_cast<int>(Qt::Key_L) &&
+		hasState(keyEvent, Qt::ControlButton) &&
+		hasState(keyEvent, Qt::ShiftButton))
+	{
+		GodClientData::getInstance().toggleTransformSpace();
+		MainFrame::getInstance().statusBar()->message(
+			GodClientData::getInstance().isTransformSpaceLocal()
+				? "God Client transform: Local (object axes)"
+				: "God Client transform: World");
+		return;
 	}
 
 	if(!m_gameHasFocus)
@@ -2188,7 +2203,11 @@ void GameWidget::dropEvent(QDropEvent* evt)
 		else if(text == BrushData::Messages::BRUSH_DRAGGED)
 		{
 			//set the clipboard with the current brush
-			GodClientData::getInstance().setCurrentBrush(*BrushData::getInstance().getSelectedBrush());
+			BrushData::BrushStruct const * const bs = BrushData::getInstance().getSelectedBrushStruct();
+			if (bs)
+				GodClientData::getInstance().setCurrentBrush(bs->objects, bs->pasteGroundAnchorY, bs->pasteGroundAnchorKnown);
+			else
+				GodClientData::getInstance().setCurrentBrush(*BrushData::getInstance().getSelectedBrush());
 
 			//update the cursor before we paste, so we paste at cursor
 			GodClientData::getInstance().cursorScreenPositionChanged(pt.x(), pt.y());
