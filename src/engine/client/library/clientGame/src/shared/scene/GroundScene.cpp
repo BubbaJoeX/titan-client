@@ -33,6 +33,7 @@
 #include "clientGame/CockpitCamera.h"
 #include "clientGame/CommunityManager.h"
 #include "clientGame/ConfigClientGame.h"
+#include "clientGame/DeveloperWaterEnvironmentOverride.h"
 #include "clientGame/ContainerInterface.h"
 #include "clientGame/CreatureObject.h"
 #include "clientGame/CustomerServiceManager.h"
@@ -161,7 +162,10 @@
 #include "sharedNetworkMessages/PlayMusicMessage.h"
 #include "sharedNetworkMessages/SceneChannelMessages.h"
 #include "sharedNetworkMessages/ServerTimeMessage.h"
+#include "sharedNetworkMessages/DeveloperWaterLevelMessage.h"
+#include "sharedNetworkMessages/DeveloperWaterWaveMessage.h"
 #include "sharedNetworkMessages/ServerWeatherMessage.h"
+#include "sharedTerrain/TerrainWaterLevelDeveloperDelta.h"
 #include "sharedNetworkMessages/ShipUpdateTransformCollisionMessage.h"
 #include "sharedNetworkMessages/ShipUpdateTransformMessage.h"
 #include "sharedNetworkMessages/SlowDownEffectMessage.h"
@@ -894,6 +898,8 @@ void GroundScene::init (const char* const terrainFilename, CreatureObject* const
 	connectToMessage ("SceneEndBaselines");
 	connectToMessage ("ServerTimeMessage");
 	connectToMessage (ServerWeatherMessage::cms_name);
+	connectToMessage (DeveloperWaterWaveMessage::cms_name);
+	connectToMessage (DeveloperWaterLevelMessage::cms_name);
 	connectToMessage ("BaselinesMessage");
 	connectToMessage ("DeltasMessage");
 	connectToMessage ("UpdatePostureMessage");
@@ -3055,6 +3061,8 @@ void GroundScene::receiveMessage(const MessageDispatch::Emitter &, const Message
 		m_structurePlacementCamera->setTarget (player);
 
 		m_receivedSceneReady = true;
+
+		TerrainWaterLevelDeveloperDelta::loadPersistedForScene (Game::getSceneId ().c_str ());
 	}
 
 	//----------------------------------------------------------------------
@@ -3125,6 +3133,28 @@ void GroundScene::receiveMessage(const MessageDispatch::Emitter &, const Message
 			WeatherManager::setNormalizedWindVelocity_w(serverWeatherMessage.getWindVelocity_w());
 			GroundEnvironment::getInstance().setWeatherIndex(serverWeatherMessage.getIndex());
 		}
+	}
+
+	//----------------------------------------------------------------------
+
+	else if (message.isType (DeveloperWaterWaveMessage::cms_name))
+	{
+		Archive::ReadIterator ri = NON_NULL (safe_cast<const GameNetworkMessage*> (&message))->getByteStream ().begin ();
+		DeveloperWaterWaveMessage const developerWaterWaveMessage (ri);
+		DeveloperWaterEnvironmentOverride::applyServerWave (
+			developerWaterWaveMessage.getCenterX (),
+			developerWaterWaveMessage.getCenterZ (),
+			developerWaterWaveMessage.getRadius (),
+			developerWaterWaveMessage.getAmplitude ());
+	}
+
+	//----------------------------------------------------------------------
+
+	else if (message.isType (DeveloperWaterLevelMessage::cms_name))
+	{
+		Archive::ReadIterator ri = NON_NULL (safe_cast<const GameNetworkMessage*> (&message))->getByteStream ().begin ();
+		DeveloperWaterLevelMessage const developerWaterLevelMessage (ri);
+		TerrainWaterLevelDeveloperDelta::setPatches (developerWaterLevelMessage.getPatches ());
 	}
 
 	//----------------------------------------------------------------------

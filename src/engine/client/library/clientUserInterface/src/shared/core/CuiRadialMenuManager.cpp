@@ -113,6 +113,15 @@
 
 using namespace Cui::MenuInfoTypes;
 
+namespace
+{
+	/// GM draft schematic radial entries were gated on admin-only; include God Client so dev workflows match other god-mode bypasses.
+	inline bool canUseGmDraftSchematicMenus ()
+	{
+		return PlayerObject::isAdmin () || Game::isGodClient ();
+	}
+}
+
 namespace CuiRadialMenuManagerNamespace
 {
 	class CanBeManipulatedManager
@@ -1837,7 +1846,7 @@ bool CuiRadialMenuManager::populateMenu (CuiMenuInfoHelper & helper, const Objec
 		helper.addRootMenu (EXAMINE,      got);
 	}
 
-	if (PlayerObject::isAdmin() && clientObject)
+	if (canUseGmDraftSchematicMenus () && clientObject)
 	{
 		const DraftSchematicInfo * const draftInfo = DraftSchematicManager::findDraftSchematicForObject(*clientObject);
 		if (draftInfo)
@@ -2438,7 +2447,7 @@ void CuiRadialMenuManager::performMenuAction (int sel, int index, bool serverNot
 	}
 	else if (sel == GM_CRAFT_SCHEMATIC || sel == GM_CRATE_SCHEMATIC)
 	{
-		if (clientObject && PlayerObject::isAdmin())
+		if (clientObject && canUseGmDraftSchematicMenus ())
 		{
 			const DraftSchematicInfo * const draftInfo = DraftSchematicManager::findDraftSchematicForObject(*clientObject);
 			if (draftInfo)

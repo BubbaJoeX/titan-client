@@ -18,6 +18,7 @@
 #include "sharedMath/Sphere.h"
 #include "sharedTerrain/ConfigSharedTerrain.h"
 #include "sharedTerrain/TerrainAppearance.h"
+#include "sharedTerrain/TerrainWaterLevelDeveloperDelta.h"
 
 #include <string>
 #include <vector>
@@ -339,6 +340,8 @@ bool TerrainObject::getWaterHeight (const Vector& position_w, float& height, Ter
 
 	if (result)
 	{
+		height += TerrainWaterLevelDeveloperDelta::getDeltaAt (position_w.x, position_w.z);
+
 		m_cachedPositionWater_w     = position;
 		m_cachedPositionWaterHeight = height;
 		m_cachedPositionWaterType = waterType;
@@ -776,6 +779,13 @@ void TerrainObject::getPolygonSoup (const Rectangle2d& extent2d_w, IndexedTriang
 void TerrainObject::invalidateRegion (const Rectangle2d& extent2d)
 {
 	getCastedAppearance (this)->invalidateRegion (extent2d);
+}
+
+//----------------------------------------------------------------------
+
+void TerrainObject::flushWaterHeightCache () const
+{
+	m_cachedPositionWater_w = ms_invalidPosition_w;
 }
 
 //-------------------------------------------------------------------

@@ -16,6 +16,7 @@
 #include "sharedDebug/InstallTimer.h"
 #include "sharedFoundation/Crc.h"
 #include "sharedMessageDispatch/Transceiver.h"
+#include "sharedFoundation/NetworkId.h"
 #include "sharedNetworkMessages/MessageQueueDraftSlotsQueryResponse.h"
 #include "sharedNetworkMessages/MessageQueueResourceWeights.h"
 #include <algorithm>
@@ -268,10 +269,15 @@ const DraftSchematicInfo * DraftSchematicManager::findDraftSchematicForObject (c
 	if (!s_ready)
 		refresh ();
 
+	NetworkId const oid = obj.getNetworkId ();
+
 	for (InfoVector::iterator it = s_slots.begin (); it != s_slots.end (); ++it)
 	{
 		const DraftSchematicInfo * const info = NON_NULL (*it);
-		if (info->getClientObject () == &obj)
+		ClientObject const * const infoObj = info->getClientObject ();
+		if (infoObj == &obj)
+			return info;
+		if (infoObj && oid != NetworkId::cms_invalid && oid == infoObj->getNetworkId ())
 			return info;
 	}
 	return 0;

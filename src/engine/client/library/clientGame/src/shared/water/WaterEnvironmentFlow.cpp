@@ -8,6 +8,7 @@
 #include "clientGame/WaterEnvironmentFlow.h"
 
 #include "clientGame/ConfigClientGame.h"
+#include "clientGame/DeveloperWaterEnvironmentOverride.h"
 
 #include "sharedMath/Vector.h"
 
@@ -68,6 +69,8 @@ float WaterEnvironmentFlow::sampleWaveDisplacementYWorld (float const worldX, fl
 			ConfigClientGame::getWaterEnvironmentPole1Speed (),
 			ConfigClientGame::getWaterEnvironmentPole1Phase ());
 	}
+
+	h += DeveloperWaterEnvironmentOverride::sampleDisplacement (worldX, worldZ, timeSeconds);
 
 	return h;
 }

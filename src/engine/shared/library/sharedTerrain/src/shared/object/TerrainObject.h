@@ -118,6 +118,9 @@ public:
 
 	void                  invalidateRegion (const Rectangle2d& extent2d);
 
+	/** Clears cached water height samples (e.g. after developer water level delta changes). */
+	void                  flushWaterHeightCache () const;
+
 	//-- debugging
 	void                  drawExtents (const Vector& position_w) const;
 	void                  purgeChunks();

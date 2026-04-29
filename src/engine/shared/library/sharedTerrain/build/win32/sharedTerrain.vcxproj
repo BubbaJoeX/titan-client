@@ -310,6 +310,9 @@
     <ClCompile Include="..\..\src\shared\object\TerrainObject.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
     </ClCompile>
+    <ClCompile Include="..\..\src\shared\object\TerrainWaterLevelDeveloperDelta.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+    </ClCompile>
     <ClCompile Include="..\..\src\shared\object\TerrainReferenceObjectNotification.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
     </ClCompile>
@@ -372,6 +375,7 @@
     <ClInclude Include="..\..\src\shared\generator\TerrainGeneratorType.h" />
     <ClInclude Include="..\..\src\shared\generator\TerrainModificationHelper.h" />
     <ClInclude Include="..\..\src\shared\object\TerrainObject.h" />
+    <ClInclude Include="..\..\src\shared\object\TerrainWaterLevelDeveloperDelta.h" />
     <ClInclude Include="..\..\src\shared\object\TerrainReferenceObjectNotification.h" />
   </ItemGroup>
   <ItemGroup>
