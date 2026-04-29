@@ -27,6 +27,10 @@ Suffix convention:
 
 ## Prerequisites
 
+### Policy — do not upgrade projects
+
+**Do not upgrade the projects.** Keep them on the **Visual Studio 2013** toolset: **`PlatformToolset v120`**, **`ToolsVersion="12.0"`**, and the original solution format. When Visual Studio offers **Retarget solution** or a newer platform toolset, **decline** those changes and do not check in modified `.vcxproj` / `.sln` toolset upgrades. Install the **MSVC v120 (VS 2013) C++ build tools** (see below) so the tree builds as authored, instead of “fixing” it by retargeting to **v142** / **v143** / **v150**.
+
 ### Required tools (summary)
 
 | Item | What this tree expects | Notes |
@@ -34,29 +38,27 @@ Suffix convention:
 | **OS** | **Windows 10 or later** (64-bit) | Host is x64; you still build a **Win32 (x86)** game client. |
 | **IDE / build** | **Visual Studio 2013–2022+** (Community, Professional, Enterprise) **or** **Build Tools for Visual Studio** (no GUI) | The solution file is **Format 12.00** and lists **Visual Studio 18** in the header; any recent VS that opens the solution is fine. |
 | **C++ workload** | **Desktop development with C++** | Installs **MSBuild**, the **C++ compiler**, and the **Windows SDK** as one unit. |
-| **MSVC toolset** | **`PlatformToolset v120`** (MSVC 12.0, “Visual Studio 2013” toolset) | Set on `SwgTitan` / `SwgGodClient` and `x64.props`. **Install the v120 toolset** in the Visual Studio Installer, **or** retarget all projects to a newer toolset (e.g. **v143** for VS 2022) and resolve any new errors. |
+| **MSVC toolset** | **`PlatformToolset v120`** (MSVC 12.0, “Visual Studio 2013” toolset) | Required—follow **Policy — do not upgrade projects** (above). Install **MSVC v120 – VS 2013 C++ build tools** via Visual Studio Installer (**Individual components**). |
 | **Target platform** | **Win32** (32-bit x86) | Requires **x86 MSVC libraries** (included with desktop C++). |
 | **Windows SDK** | Whatever your workload installs (10.x / 11.x) | Native headers/libs for Win32; **DirectX 9** headers/libs are covered by **vendored** `client/src/external/3rd/library/directx9`, not only the SDK. |
 | **MSBuild** | Ships with Visual Studio | CLI builds: **Developer Command Prompt for VS** or **Developer PowerShell for VS** so `msbuild` is on `PATH`. Typical path (adjust year/channel): `.\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe`. |
-| **Runtimes (players)** | VC++ **Redistributable** matching the toolset you ship | Developers rarely install this to compile; **players** need the redist matching the MSVC version linked into `SwgTitan_r.exe`. After retargeting to **v143**, use the **VS 2022 x86** redistributable for a Win32 Release build. |
+| **Runtimes (players)** | VC++ **Redistributable** matching **v120** / VS 2013-era runtime | Developers rarely install this to compile; **players** need the **x86** redistributable that matches the MSVC runtime linked into **Release** `SwgTitan_r.exe` (typically the **Visual Studio 2013** VC++ redistributable when building with **v120**). |
 
 ### Visual Studio Installer — workloads and components
 
 1. Install **Visual Studio** (recommended: **2022** current channel) or **Build Tools for Visual Studio 2022** if you only compile from the command line.
 2. Select workload **Desktop development with C++**.
 3. On the **Installation details** panel, ensure at minimum:
-   - **MSVC v143 - VS 2022 C++ x64/x86 build tools** (or the latest offered), so you can compile **Win32** targets.
    - **Windows 10/11 SDK** (check at least one recent SDK).
-4. To build **without retargeting** projects, add the legacy toolset under **Individual components** (names vary slightly by VS version), for example:
-   - **MSVC v120 - VS 2013 C++ build tools**  
-   or search the installer for **`v120`** / **2013**.
+4. Under **Individual components**, install the legacy compiler used by this repo (names vary slightly by VS version):
+   - **MSVC v120 - VS 2013 C++ build tools** (search for **`v120`** or **2013**).
 
-If **v120** is not installed, Visual Studio will prompt to **Retarget** when you open the solution; choosing **v143** upgrades `PlatformToolset` for projects you accept—coordinate with the team so everyone uses the same toolset for reproducible binaries.
+If **v120** is missing, Visual Studio may prompt to **Retarget** the solution—**do not** apply that; install **v120** and reopen the solution so projects stay on **Visual Studio 2013** as required above.
 
 ### What the project files declare
 
 - **`ToolsVersion="12.0"`** on `.vcxproj` files (MSBuild 12 / VS 2013 era); modern MSBuild still loads these.
-- **`PlatformToolset`: `v120`** for Win32 Release/Debug/Optimized on the main executables (until retargeted).
+- **`PlatformToolset`: `v120`** for Win32 Release/Debug/Optimized on the main executables.
 - **`CharacterSet`**: `MultiByte` (not Unicode) for the game client project.
 
 ### Other tooling (optional for these exes)
