@@ -27,14 +27,47 @@ Suffix convention:
 
 ## Prerequisites
 
-### Toolchain
+### Required tools (summary)
 
-- **Windows** with sufficient disk space for `client/src/compile` (multi‑GB over a full build).
-- **Visual Studio** with **Desktop development with C++** (MSVC, Windows SDK).
+| Item | What this tree expects | Notes |
+|------|------------------------|--------|
+| **OS** | **Windows 10 or later** (64-bit) | Host is x64; you still build a **Win32 (x86)** game client. |
+| **IDE / build** | **Visual Studio 2013–2022+** (Community, Professional, Enterprise) **or** **Build Tools for Visual Studio** (no GUI) | The solution file is **Format 12.00** and lists **Visual Studio 18** in the header; any recent VS that opens the solution is fine. |
+| **C++ workload** | **Desktop development with C++** | Installs **MSBuild**, the **C++ compiler**, and the **Windows SDK** as one unit. |
+| **MSVC toolset** | **`PlatformToolset v120`** (MSVC 12.0, “Visual Studio 2013” toolset) | Set on `SwgTitan` / `SwgGodClient` and `x64.props`. **Install the v120 toolset** in the Visual Studio Installer, **or** retarget all projects to a newer toolset (e.g. **v143** for VS 2022) and resolve any new errors. |
+| **Target platform** | **Win32** (32-bit x86) | Requires **x86 MSVC libraries** (included with desktop C++). |
+| **Windows SDK** | Whatever your workload installs (10.x / 11.x) | Native headers/libs for Win32; **DirectX 9** headers/libs are covered by **vendored** `client/src/external/3rd/library/directx9`, not only the SDK. |
+| **MSBuild** | Ships with Visual Studio | CLI builds: **Developer Command Prompt for VS** or **Developer PowerShell for VS** so `msbuild` is on `PATH`. Typical path (adjust year/channel): `.\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe`. |
+| **Runtimes (players)** | VC++ **Redistributable** matching the toolset you ship | Developers rarely install this to compile; **players** need the redist matching the MSVC version linked into `SwgTitan_r.exe`. After retargeting to **v143**, use the **VS 2022 x86** redistributable for a Win32 Release build. |
 
-Projects declare **`PlatformToolset v120`** (Visual Studio 2013). Your IDE must have that toolset **or** you must **retarget** projects to an installed toolset (for example **v143** on Visual Studio 2022) and fix any warnings or compatibility issues that appear.
+### Visual Studio Installer — workloads and components
 
-The master solution file declares a recent Visual Studio format in its header; use a current Visual Studio that can open `swg.sln` and match or retarget the toolset.
+1. Install **Visual Studio** (recommended: **2022** current channel) or **Build Tools for Visual Studio 2022** if you only compile from the command line.
+2. Select workload **Desktop development with C++**.
+3. On the **Installation details** panel, ensure at minimum:
+   - **MSVC v143 - VS 2022 C++ x64/x86 build tools** (or the latest offered), so you can compile **Win32** targets.
+   - **Windows 10/11 SDK** (check at least one recent SDK).
+4. To build **without retargeting** projects, add the legacy toolset under **Individual components** (names vary slightly by VS version), for example:
+   - **MSVC v120 - VS 2013 C++ build tools**  
+   or search the installer for **`v120`** / **2013**.
+
+If **v120** is not installed, Visual Studio will prompt to **Retarget** when you open the solution; choosing **v143** upgrades `PlatformToolset` for projects you accept—coordinate with the team so everyone uses the same toolset for reproducible binaries.
+
+### What the project files declare
+
+- **`ToolsVersion="12.0"`** on `.vcxproj` files (MSBuild 12 / VS 2013 era); modern MSBuild still loads these.
+- **`PlatformToolset`: `v120`** for Win32 Release/Debug/Optimized on the main executables (until retargeted).
+- **`CharacterSet`**: `MultiByte` (not Unicode) for the game client project.
+
+### Other tooling (optional for these exes)
+
+- **Git** — to clone the repo; not part of the compile.
+- **PowerShell 5.1+** — some repo scripts; not required to run `msbuild` on the solution.
+- **CMake** — not used by `swg.sln` (engine uses `.vcxproj` / MSBuild).
+
+### Disk space
+
+- Reserve **several GB** under `client/src/compile` for object files and static libraries over a full solution build.
 
 ### Third-party and engine dependencies
 
