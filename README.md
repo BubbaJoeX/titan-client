@@ -12,34 +12,64 @@ Code is provided as/is and may be updated at any moment. Many features from thes
 
 ---
 
-## Documentation
+## Guides and Documentation
 
-First-party guides and READMEs in this tree (paths relative to `client/`).
+Technical references under **`docs/`** are a copy of **`support/docs/`** at the repository root—edit whichever tree your workflow uses, and keep them in sync if both matter.
 
-### Top level
+### Client root guides
 
 - [COMPILE_GUIDE_CLIENT.md](COMPILE_GUIDE_CLIENT.md) — Build **SwgTitan** and **SwgGodClient** (Visual Studio 2013 / `v120`, MSBuild, staging under `exe/win32_rel`).
-- [STREAMING-GIF-ETC.md](STREAMING-GIF-ETC.md) — Magic painting, magic video player, speaker emitters, and client media dependencies.
 - [MODELING.md](MODELING.md) — Maya 8 and the SWG export pipeline (static/skeletal meshes, appearance templates, naming).
+- [VLC.md](VLC.md) — Deploy **libVLC 3.0.22** (Win32), `plugins/`, and optional `yt-dlp.exe` next to the game exe (`exe/win32_rel`).
+- [STREAMING-GIF-ETC.md](STREAMING-GIF-ETC.md) — Magic painting, magic video player, speaker emitters (architecture and checklist).
+- [FEATURES.md](../FEATURES.md) — Titan-only and customized systems (monorepo index).
 
-### `tools/`
+### Planning and platform
 
-- [buildACM_README.md](tools/buildACM_README.md) — `buildACM.pl`: ACM / CIM IFF generation (Perl, cross-platform).
-- [buildACM_SUMMARY.md](tools/buildACM_SUMMARY.md) — Files produced by ACM tooling and quick usage.
-- [PERL_FILES_STATUS.md](tools/PERL_FILES_STATUS.md) — Perl path handling and Perforce removal (reference status).
+- [docs/Planning.md](docs/Planning.md) — Running notes (Magic Painting, God Client, x64 inventory, fixes).
+- [docs/X64_MIGRATION.md](docs/X64_MIGRATION.md) — Client x64 migration, **SwgTitan** checklist, bundle script.
 
-### Component READMEs
+### Gameplay and systems
 
-- [SwgCameraClient](src/game/client/application/SwgCameraClient/README.md) — Map capture / camera client, config next to `exe/win32_rel`.
-- [SwgMapRasterizer](src/engine/shared/application/SwgMapRasterizer/README.md) — Map rasterizer; [X64_MIGRATION.md](src/engine/shared/application/SwgMapRasterizer/X64_MIGRATION.md) for that tool.
-- [TerrainEditor](src/engine/client/application/TerrainEditor/README.md) — Terrain editor.
-- [MayaModern](src/engine/client/application/MayaModern/README.md) — Maya plugin and tooling; more under `MayaModern/docs/`.
-- [AcmBuildTool](src/build/win32/src/engine/shared/application/AcmBuildTool/README.md) — ACM build tool (Visual Studio project).
+- [docs/BOUNTY_HUNTER_OVERHAUL.md](docs/BOUNTY_HUNTER_OVERHAUL.md) — Bounty hunter feature plan and touchpoints.
+- [docs/CRAFTING_OVERHAUL.md](docs/CRAFTING_OVERHAUL.md) — Crafting QoL / schematic library / BOM scope.
+- [docs/CITY_GAMEPLAY_LANDSCAPING_UPDATE.md](docs/CITY_GAMEPLAY_LANDSCAPING_UPDATE.md) — City terrain painting, taxation, courts, starport, expulsion (design plan).
+- [docs/CITY_IMPLEMENTATION_SUMMARY.md](docs/CITY_IMPLEMENTATION_SUMMARY.md) — City implementation summary.
+- [docs/adding_story_companions.md](docs/adding_story_companions.md) — Story companion datatable pipeline.
+- [docs/ATMO_LANDING_POINTS.md](docs/ATMO_LANDING_POINTS.md) — Atmospheric flight landing points and docking.
 
-### Repository-wide (outside `client/`)
+### TangibleDynamics (physics on objects)
 
-- [support/docs/Planning.md](../support/docs/Planning.md) — Project planning and toolchain notes.
-- [support/docs/X64_MIGRATION.md](../support/docs/X64_MIGRATION.md) — Client x64 migration details.
+- [docs/INDEX.md](docs/INDEX.md) — Package index (start here).
+- [docs/TANGIBLE_DYNAMICS_SUMMARY.md](docs/TANGIBLE_DYNAMICS_SUMMARY.md) — Executive summary.
+- [docs/TANGIBLE_DYNAMICS.md](docs/TANGIBLE_DYNAMICS.md) — Full architecture.
+- [docs/TANGIBLE_DYNAMICS_QUICK_REFERENCE.md](docs/TANGIBLE_DYNAMICS_QUICK_REFERENCE.md) — API quick reference.
+- [docs/TANGIBLE_DYNAMICS_IMPLEMENTATION.md](docs/TANGIBLE_DYNAMICS_IMPLEMENTATION.md) — Implementation details.
+- [docs/BUILD_AND_INTEGRATION.md](docs/BUILD_AND_INTEGRATION.md) — Build and integration.
+- [docs/IMPLEMENTATION_FILES.md](docs/IMPLEMENTATION_FILES.md) — File list and dependency map.
+
+### Client engine and media
+
+- [docs/ENGINE_IMPROVEMENTS.md](docs/ENGINE_IMPROVEMENTS.md) — D3D9 instancing, occlusion queries, related optimizations.
+- [docs/TEXTURE_URL_RESOLVING.md](docs/TEXTURE_URL_RESOLVING.md) — Magic painting (remote URL textures) pipeline.
+- [docs/RT_CAMERA_SYSTEM.md](docs/RT_CAMERA_SYSTEM.md) — Real-time security cameras and screens.
+
+### Data, calendar, commands
+
+- [docs/CALENDAR_DATABASE_IMPLEMENTATION.md](docs/CALENDAR_DATABASE_IMPLEMENTATION.md) — Oracle calendar persistence.
+- [docs/commands.md](docs/commands.md) — Command reference (if maintained).
+
+### Art and interiors (Maya / buildouts)
+
+- [docs/MAYA_POB_FROM_SCRATCH.md](docs/MAYA_POB_FROM_SCRATCH.md) — POI from scratch.
+- [docs/MAYA_KITBASH_IMPORT_COMBINE.md](docs/MAYA_KITBASH_IMPORT_COMBINE.md) — Kitbash import/combine.
+- [docs/INTERIOR_STRUCTURE_CREATION.md](docs/INTERIOR_STRUCTURE_CREATION.md) — Interior structure workflow.
+
+### Project prompts and checklists
+
+- [docs/plan-inGameCalendar.prompt.md](docs/plan-inGameCalendar.prompt.md) — In-game calendar design prompt.
+- [docs/MASTER_CHECKLIST.md](docs/MASTER_CHECKLIST.md) — Master checklist.
+- [docs/COMPLETION_REPORT.md](docs/COMPLETION_REPORT.md) — TangibleDynamics completion report.
 
 ---
 
