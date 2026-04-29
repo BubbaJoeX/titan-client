@@ -1,4 +1,4 @@
-# MODELING.md - Maya 8 Asset Creation Tutorial for SWG
+# Maya 8 asset creation for SWG
 
 ## Table of Contents
 

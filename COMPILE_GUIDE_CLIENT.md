@@ -19,8 +19,8 @@ Intermediate and output folders:
 
 Suffix convention:
 
-- **`_d`** — Debug  
-- **`_o`** — Optimized  
+- **`_d`** — Debug
+- **`_o`** — Optimized
 - **`_r`** — Release (typical for deployment)
 
 ---
@@ -177,6 +177,6 @@ If post-build is configured: copies under `D:\titan\exe\win32_rel\` (or your ove
 
 ## Related documentation
 
-- `support/docs/X64_MIGRATION.md` — x64 migration notes (additive; Win32 remains primary for many trees).
-- `support/docs/Planning.md` — toolchain and client/server planning context.
-- `client/src/game/client/application/SwgCameraClient/README.md` — example of config/runtime layout next to `exe/win32_rel` (cwd and includes).
+- [support/docs/X64_MIGRATION.md](../support/docs/X64_MIGRATION.md) — x64 migration (repo-wide; additive).
+- [support/docs/Planning.md](../support/docs/Planning.md) — toolchain and client/server planning.
+- [SwgCameraClient README](src/game/client/application/SwgCameraClient/README.md) — config / runtime layout next to `exe/win32_rel` (cwd and includes).

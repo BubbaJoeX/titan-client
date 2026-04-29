@@ -1,5 +1,6 @@
-# buildACM - Files Created
-## New Files
+# buildACM — files created
+
+## New files
 
 | File | Description |
 |------|-------------|

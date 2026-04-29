@@ -1,13 +1,12 @@
-# ======================================================================
-# PERL FILES STATUS - UNIFIED PATHING
-# ======================================================================
+# Perl scripts — pathing status
 
-## SUMMARY
+Reference note: status of `client/tools` Perl for cross-platform paths and Perforce removal (historical audit).
 
-All Perl files have been reviewed and updated for cross-platform path support.
-Perforce dependencies have been removed/commented out.
+## Summary
 
-## FILES CHECKED AND STATUS:
+Perl tooling was reviewed for cross-platform path support. Perforce dependencies were removed or commented out.
+
+## Files checked
 
 ### ✅ 1. VehicleCustomizationVariableGenerator.pm
 **Location:** tools/perllib/VehicleCustomizationVariableGenerator.pm
@@ -52,7 +51,7 @@ only reached if auto-detection fails. The auto-detection should work for both:
 - Not imported by any active scripts
 - Can be left as-is or removed entirely
 
-## PATH HANDLING UNIFIED:
+## Path handling
 
 All Perl scripts now handle paths consistently:
 
@@ -72,7 +71,7 @@ All Perl scripts now handle paths consistently:
    - Works on both Windows and Linux
    - Removes double slashes
 
-## VERIFICATION:
+## Verification
 
 To verify the fixes work:
 
@@ -86,7 +85,7 @@ $env:SWG_DATATABLES_PATH = "D:/titan/dsrc/sku.0/sys.shared/compiled/game/"
     "D:/titan/dsrc/sku.0/sys.shared/compiled/game"
 ```
 
-## REMAINING WORK:
+## Remaining work
 
 The Perl files are DONE. The only remaining work is:
 
