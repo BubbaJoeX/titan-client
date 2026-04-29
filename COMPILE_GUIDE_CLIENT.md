@@ -55,6 +55,14 @@ Suffix convention:
 
 If **v120** is missing, Visual Studio may prompt to **Retarget** the solution—**do not** apply that; install **v120** and reopen the solution so projects stay on **Visual Studio 2013** as required above.
 
+### Visual Studio 2013 (optional native IDE)
+
+For an IDE that matches **`PlatformToolset v120`** without mixing in newer Visual Studio versions, you can install **Visual Studio 2013 Update 5** from Microsoft’s ISO:
+
+[Visual Studio 2013.5 Ultimate — English ISO](http://download.microsoft.com/download/E/2/A/E2ADF1BE-8FA0-4436-A260-8780444C8355/vs2013.5_ult_enu.iso?type=ISO)
+
+Mount or burn the ISO, install with **C++** workload support as offered by that installer, and verify licensing for your use case.
+
 ### What the project files declare
 
 - **`ToolsVersion="12.0"`** on `.vcxproj` files (MSBuild 12 / VS 2013 era); modern MSBuild still loads these.
