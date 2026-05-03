@@ -13,11 +13,10 @@
 #include "clientGame/CreatureObject.h"
 #include "clientGame/Game.h"
 #include "clientGame/GroundScene.h"
-#include "clientGame/FreeChaseCamera.h"
+#include "clientGame/FreeCamera.h"
 #include "clientObject/GameCamera.h"
 #include "clientUserInterface/CuiConversationManager.h"
 #include "clientUserInterface/CuiManager.h"
-#include "clientUserInterface/CuiMediatorFactory.h"
 #include "swgClientUserInterface/SwgCuiHud.h"
 #include "swgClientUserInterface/SwgCuiHudFactory.h"
 #include "clientUserInterface/CuiObjectTextManager.h"
@@ -30,7 +29,6 @@
 #include "sharedObject/CachedNetworkId.h"
 #include "sharedObject/NetworkIdManager.h"
 
-#include "swgClientUserInterface/SwgCuiMediatorTypes.h"
 #include "UIBaseObject.h"
 #include "UIButton.h"
 #include "UIData.h"
@@ -39,7 +37,37 @@
 #include "UIText.h"
 #include "UnicodeUtils.h"
 
+#include <algorithm>
 #include <cmath>
+
+//======================================================================
+
+namespace
+{
+	// FreeChaseCamera::alter() overwrites raw GameCamera transforms every frame while CI_freeChase is active.
+	// Drive the god FreeCamera (CI_free) with pivot framing (same intent as the legacy npc conversation path).
+	//
+	// updateCameraFocus() eases m_currentCameraPos / LookAt each frame. Do not use FreeCamera's internal
+	// interpolation here — setInterpolating(true) only converges ~30% per frame toward m_targetInfo, so when
+	// the target moves every frame (our easing curve), the camera lags and scripted transitions appear broken.
+	void applyShotToFreeCamera(FreeCamera * const freeCamera, Vector const & camPos, Vector const & lookAt)
+	{
+		if (!freeCamera)
+			return;
+
+		Vector const dv = lookAt - camPos;
+		float const dist = dv.magnitude();
+		if (dist < 0.001f)
+			return;
+
+		freeCamera->setInterpolating(false);
+		freeCamera->setMode(FreeCamera::M_pivot);
+		freeCamera->setPivotPoint(lookAt);
+		freeCamera->setPivotDistance(static_cast<real>(dist));
+		freeCamera->setYaw(static_cast<real>(dv.theta()));
+		freeCamera->setPitch(static_cast<real>(dv.phi()));
+	}
+}
 
 //======================================================================
 
@@ -80,6 +108,7 @@ using namespace SwgCuiCinematicConversationNamespace;
 
 bool SwgCuiCinematicConversation::ms_enabled = true;
 bool SwgCuiCinematicConversation::ms_active = false;
+SwgCuiCinematicConversation * SwgCuiCinematicConversation::ms_cameraCommandTarget = nullptr;
 
 float const SwgCuiCinematicConversation::CLOSE_UP_DISTANCE = 1.2f;
 float const SwgCuiCinematicConversation::MEDIUM_SHOT_DISTANCE = 2.5f;
@@ -258,6 +287,11 @@ m_savedHudEnabled(true)
 
 SwgCuiCinematicConversation::~SwgCuiCinematicConversation()
 {
+	if (ms_cameraCommandTarget == this)
+	{
+		CuiConversationManager::setCameraCommandHandler(nullptr);
+		ms_cameraCommandTarget = nullptr;
+	}
 	delete m_callback;
 	m_callback = nullptr;
 }
@@ -292,6 +326,7 @@ void SwgCuiCinematicConversation::performActivate()
 	m_callback->connect(*this, &SwgCuiCinematicConversation::onConversationEnded,
 		static_cast<CuiConversationManager::Messages::ConversationEnded *>(0));
 
+	ms_cameraCommandTarget = this;
 	CuiConversationManager::setCameraCommandHandler(&SwgCuiCinematicConversation::handleCameraCommand);
 
 	// Start letterbox animation
@@ -328,12 +363,21 @@ void SwgCuiCinematicConversation::performActivate()
 	getPage().SetFocus();
 	if (m_dialoguePanel)
 		m_dialoguePanel->SetFocus();
+
+	// CuiMediator::update() (camera easing, letterbox) runs only when isUpdating() is true; the base
+	// activate() path only enables that when m_maxRangeFromObject > 0, which this page does not set.
+	setIsUpdating(true);
 }
 
 //----------------------------------------------------------------------
 
 void SwgCuiCinematicConversation::performDeactivate()
 {
+	setIsUpdating(false);
+
+	CuiConversationManager::setCameraCommandHandler(nullptr);
+	ms_cameraCommandTarget = nullptr;
+
 	ms_active = false;
 
 	CuiConversationManager::setCinematicConversationUiActive(false);
@@ -357,8 +401,6 @@ void SwgCuiCinematicConversation::performDeactivate()
 		static_cast<CuiConversationManager::Messages::ResponsesChanged *>(0));
 	m_callback->disconnect(*this, &SwgCuiCinematicConversation::onConversationEnded,
 		static_cast<CuiConversationManager::Messages::ConversationEnded *>(0));
-
-	CuiConversationManager::setCameraCommandHandler(nullptr);
 
 	// Release pointer
 	CuiManager::requestPointer(false);
@@ -416,16 +458,19 @@ void SwgCuiCinematicConversation::initializeCameraControl()
 	// Save current camera state
 	m_savedCameraView = groundScene->getCurrentView();
 
-	GameCamera * const currentCamera = groundScene->getCurrentCamera();
-	if (currentCamera)
+	// Seed from FreeChaseCamera — getCurrentCamera() would keep pointing at chase until we switch views,
+	// but FreeChaseCamera::alter overwrites scripted framing every frame unless we use CI_free (FreeCamera).
+	GameCamera * const chaseCamera = groundScene->getCamera(GroundScene::CI_freeChase);
+	if (chaseCamera)
 	{
-		m_savedCameraTransform = currentCamera->getTransform_o2w();
-		m_currentCameraPos = currentCamera->getPosition_w();
+		m_savedCameraTransform = chaseCamera->getTransform_o2w();
+		m_currentCameraPos = chaseCamera->getPosition_w();
 
-		// Calculate initial look-at based on camera forward direction
-		Vector forward = currentCamera->getObjectFrameK_w();
+		Vector forward = chaseCamera->getObjectFrameK_w();
 		m_currentCameraLookAt = m_currentCameraPos + forward * 5.0f;
 	}
+
+	groundScene->activateGodClientCamera();
 
 	m_cameraControlActive = true;
 	m_timeSinceLastShotChange = 0.0f;
@@ -435,6 +480,9 @@ void SwgCuiCinematicConversation::initializeCameraControl()
 	{
 		setCameraShot(CST_MediumShot);
 	}
+
+	if (FreeCamera * const freeCamera = groundScene->getGodClientCamera())
+		applyShotToFreeCamera(freeCamera, m_currentCameraPos, m_currentCameraLookAt);
 }
 
 //----------------------------------------------------------------------
@@ -448,10 +496,10 @@ void SwgCuiCinematicConversation::restoreCameraControl()
 	if (!groundScene)
 		return;
 
+	groundScene->deactivateGodClientCamera();
+
 	// Restore the original camera view
 	groundScene->setView(m_savedCameraView);
-
-	// The FreeChaseCamera will automatically snap back to following the player
 
 	m_cameraControlActive = false;
 }
@@ -662,7 +710,7 @@ void SwgCuiCinematicConversation::transitionCamera(Vector const & targetPos, Vec
 	m_targetCameraPos = targetPos;
 	m_targetCameraLookAt = targetLookAt;
 	m_cameraTransitionTime = 0.0f;
-	m_cameraTransitionDuration = duration;
+	m_cameraTransitionDuration = std::max(duration, 0.001f);
 	m_cameraTransitioning = true;
 }
 
@@ -747,33 +795,10 @@ void SwgCuiCinematicConversation::updateCameraFocus(float deltaTime)
 		}
 	}
 
-	// Apply camera position and orientation
-	GameCamera * const camera = groundScene->getCurrentCamera();
-	if (camera)
-	{
-		// Set camera position
-		camera->setPosition_w(m_currentCameraPos);
-
-		// Calculate camera orientation to look at target
-		Vector forward = m_currentCameraLookAt - m_currentCameraPos;
-		forward.normalize();
-
-		// Calculate right vector (cross product with up)
-		Vector right = Vector::unitY.cross(forward);
-		if (right.magnitudeSquared() < 0.001f)
-		{
-			// Handle case where forward is parallel to up
-			right = Vector::unitX;
-		}
-		right.normalize();
-
-		// Calculate true up vector
-		Vector up = forward.cross(right);
-		up.normalize();
-
-		// Set camera orientation
-		camera->setTransformIJK_o2p(right, up, forward);
-	}
+	// Apply framing through god FreeCamera — FreeChaseCamera would overwrite raw GameCamera transforms.
+	FreeCamera * const freeCamera = groundScene->getGodClientCamera();
+	if (freeCamera)
+		applyShotToFreeCamera(freeCamera, m_currentCameraPos, m_currentCameraLookAt);
 
 	// Update shot hold timer and potentially change shots (only if no server override)
 	if (m_shotHoldTime > 0.0f)
@@ -797,19 +822,23 @@ void SwgCuiCinematicConversation::handleCameraCommand(MessageQueueNpcConversatio
 	if (!cmd || !ms_enabled)
 		return;
 
-	CuiMediator * const mediator = CuiMediatorFactory::getInWorkspace(CuiMediatorTypes::WS_CinematicConversation, false, false);
-	SwgCuiCinematicConversation * const cinematic = dynamic_cast<SwgCuiCinematicConversation *>(mediator);
-	if (cinematic && cinematic->isActive())
-	{
-		cinematic->applyCameraCommand(cmd);
-	}
+	// Do not rely on CuiMediatorFactory::getInWorkspace — the cinematic mediator may not appear in
+	// the workspace enumerator while still active; the handler is only registered from performActivate.
+	if (ms_cameraCommandTarget)
+		ms_cameraCommandTarget->applyCameraCommand(cmd);
 }
 
 //----------------------------------------------------------------------
 
 void SwgCuiCinematicConversation::applyCameraCommand(MessageQueueNpcConversationCameraCommand const * cmd)
 {
-	if (!cmd || !m_cameraControlActive)
+	if (!cmd)
+		return;
+
+	if (!m_cameraControlActive)
+		initializeCameraControl();
+
+	if (!m_cameraControlActive)
 		return;
 
 	float const duration = cmd->getTransitionDuration();

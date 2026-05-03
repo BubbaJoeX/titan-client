@@ -70,6 +70,7 @@
 
 #include <map>
 #include <vector>
+#include <algorithm>
 #include <cctype>
 #include <cfloat>
 #include <cstdio>
@@ -1866,10 +1867,14 @@ m_clientOnlyInteriorLayoutObjectList(0),
 m_visabilityFlag(newTemplate->getClientVisabilityFlag()),
 m_objectEffects(),
 m_passiveRevealPlayerCharacter(),
-m_mapColorOverride(0),
-m_accessList(),
-m_guildAccessList(),
-m_effectsMap()
+	m_mapColorOverride(0),
+	m_accessList(),
+	m_guildAccessList(),
+	m_effectsMap(),
+	m_mountDynamicActive(false),
+	m_mountDynamicCapacity(1),
+	m_mountDynamicSeatPose(),
+	m_mountDynamicSeatOffset()
 {
 	NOT_NULL(newTemplate);
 	m_appearanceData.setSourceObject (this);
@@ -3663,6 +3668,12 @@ void TangibleObject::dynamicHardpointsStateModified(std::string const &value)
 void TangibleObject::applyDynamicHardpointsState(std::string const &packed)
 {
 	clearDynamicHardpointObjects();
+
+	m_mountDynamicActive = false;
+	m_mountDynamicCapacity = 1;
+	m_mountDynamicSeatPose.clear();
+	m_mountDynamicSeatOffset.clear();
+
 	if (packed.empty())
 		return;
 	if (packed.size() < 2 || packed[0] != 'v' || packed[1] != '1')
@@ -3694,7 +3705,35 @@ void TangibleObject::applyDynamicHardpointsState(std::string const &packed)
 				kind[c] = static_cast<char>(kind[c] - 'A' + 'a');
 		}
 
-		if (kind == "app" && f.size() >= 3)
+		if (kind == "mount_dm" && f.size() >= 6)
+		{
+			int cap = atoi(f[1].c_str());
+			cap = std::max(cap, 1);
+			cap = std::min(cap, 8);
+			m_mountDynamicCapacity = cap;
+			m_mountDynamicActive = true;
+			m_mountDynamicSeatPose.resize(static_cast<size_t>(m_mountDynamicCapacity));
+			m_mountDynamicSeatOffset.resize(static_cast<size_t>(m_mountDynamicCapacity));
+
+			size_t idx = 2;
+			for (int s = 0; s < m_mountDynamicCapacity; ++s)
+			{
+				if (idx + 3 < f.size())
+				{
+					m_mountDynamicSeatPose[static_cast<size_t>(s)] = f[idx++];
+					float const ox = static_cast<float>(atof(f[idx++].c_str()));
+					float const oy = static_cast<float>(atof(f[idx++].c_str()));
+					float const oz = static_cast<float>(atof(f[idx++].c_str()));
+					m_mountDynamicSeatOffset[static_cast<size_t>(s)] = Vector(ox, oy, oz);
+				}
+				else
+				{
+					m_mountDynamicSeatPose[static_cast<size_t>(s)] = "normal";
+					m_mountDynamicSeatOffset[static_cast<size_t>(s)] = Vector::zero;
+				}
+			}
+		}
+		else if (kind == "app" && f.size() >= 3)
 		{
 			float ox = 0.f;
 			float oy = 0.f;
@@ -3725,6 +3764,39 @@ void TangibleObject::applyDynamicHardpointsState(std::string const &packed)
 			IGNORE_RETURN(TangibleObjectHpDynClientNamespace::attachHpDynFx(*this, f[1], f[2], Vector(ox, oy, oz), sc));
 		}
 	}
+}
+
+//-----------------------------------------------------------------------
+
+bool TangibleObject::isMountDynamicActive() const
+{
+	return m_mountDynamicActive;
+}
+
+//-----------------------------------------------------------------------
+
+int TangibleObject::getMountDynamicCapacity() const
+{
+	return m_mountDynamicCapacity;
+}
+
+//-----------------------------------------------------------------------
+
+bool TangibleObject::getMountDynamicSeatInfo(int riderSeatIndexOneBased, std::string &outPoseName, Vector &outSeatOffset_o) const
+{
+	outPoseName.clear();
+	outSeatOffset_o = Vector::zero;
+
+	if (!m_mountDynamicActive || riderSeatIndexOneBased < 1 || riderSeatIndexOneBased > m_mountDynamicCapacity)
+		return false;
+
+	int const seatIndexZeroBased = riderSeatIndexOneBased - 1;
+	if (seatIndexZeroBased < 0 || seatIndexZeroBased >= static_cast<int>(m_mountDynamicSeatPose.size()))
+		return false;
+
+	outPoseName = m_mountDynamicSeatPose[static_cast<size_t>(seatIndexZeroBased)];
+	outSeatOffset_o = m_mountDynamicSeatOffset[static_cast<size_t>(seatIndexZeroBased)];
+	return true;
 }
 
 //----------------------------------------------------------------------

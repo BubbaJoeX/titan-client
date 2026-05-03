@@ -201,6 +201,8 @@ private:
 	// Static settings
 	static bool ms_enabled;
 	static bool ms_active;
+	// Instance that registered the camera command handler (getInWorkspace lookup can fail while UI is active)
+	static SwgCuiCinematicConversation * ms_cameraCommandTarget;
 
 	// Camera configuration constants
 	static float const CLOSE_UP_DISTANCE;

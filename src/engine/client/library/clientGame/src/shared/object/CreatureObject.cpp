@@ -79,6 +79,7 @@
 #include "sharedFoundation/ExitChain.h"
 #include "sharedFoundation/Production.h"
 #include "sharedFoundation/TemporaryCrcString.h"
+#include "sharedFoundation/PersistentCrcString.h"
 #include "sharedGame/AppearanceManager.h"
 #include "sharedGame/Buff.h"
 #include "sharedGame/Command.h"
@@ -3761,7 +3762,22 @@ void CreatureObject::onRiderMountedMount()
 	// ... get riding pose.
 	// these are 1-based indices.
 	int const riderSeatIndex = SaddleManager::getRiderSeatIndex(*mountCreature, *this);
-	CrcString const *riderPoseName = SaddleManager::getRiderPoseNameForMountSeatIndex(*mountCreature, riderSeatIndex);
+	std::string dynamicPoseToken;
+	Vector dynamicSeatIgnored(Vector::zero);
+	bool const dynamicPose = mountCreature->isMountDynamicActive() && mountCreature->getMountDynamicSeatInfo(riderSeatIndex, dynamicPoseToken, dynamicSeatIgnored);
+
+	CrcString const *riderPoseName = nullptr;
+	PersistentCrcString riderPosePersist;
+	if (!dynamicPose)
+	{
+		riderPoseName = SaddleManager::getRiderPoseNameForMountSeatIndex(*mountCreature, riderSeatIndex);
+	}
+	else if (!dynamicPoseToken.empty())
+	{
+		riderPosePersist.set(dynamicPoseToken.c_str(), true);
+		riderPoseName = &riderPosePersist;
+	}
+
 	if (!riderPoseName)
 	{
 		DEBUG_WARNING(true, ("CreatureObject::onRiderMountedMount(): SaddleManager failed to find a rider pose for mount id=[%s],template=[%s], seat index=[%d].", mountCreature->getNetworkId().getValueString().c_str(), mountCreature->getObjectTemplateName(), riderSeatIndex));
@@ -4422,12 +4438,14 @@ void CreatureObject::onJustBecameMountable()
 {
 	//-- Only add the saddle dressing (the wearable part) when this is not a vehicle.
 	bool const isVehicle = GameObjectTypes::isTypeOf (getGameObjectType (), static_cast<int>(SharedObjectTemplate::GOT_vehicle));
-	if (!isVehicle)
+	bool const dmAuthoring = TangibleObject::isMountDynamicActive();
+
+	if (!isVehicle && !dmAuthoring)
 		SaddleManager::addDressingToMount(*this);
 
-	//-- Add the saddle (static mesh portion) to the mount.  For vehicles this will be
-	//   the visible portion of the vehicle.
-	UNREF(SaddleManager::addRiderSaddleToMount(*this));
+	//-- Add the saddle (static mesh portion) unless dynamic tooling already supplies hp_dyn attachments.
+	if (!dmAuthoring)
+		UNREF(SaddleManager::addRiderSaddleToMount(*this));
 }
 
 // ----------------------------------------------------------------------

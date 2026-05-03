@@ -10,7 +10,6 @@
 
 #include "clientGame/ClientCommandQueue.h"
 #include "clientGame/CreatureObject.h"
-#include "clientGame/FirstClientGame.h"
 #include "clientGame/Game.h"
 #include "clientGame/ProsePackageManagerClient.h"
 #include "clientGame/ShipStation.h"
@@ -20,11 +19,8 @@
 #include "clientUserInterface/CuiChatBubbleManager.h"
 #include "clientUserInterface/CuiMediator.h"
 #include "clientUserInterface/CuiMediatorFactory.h"
-#include "clientUserInterface/CuiObjectTextManager.h"
 #include "clientUserInterface/CuiPreferences.h"
 #include "clientUserInterface/CuiSpatialChatManager.h"
-#include "clientGame/FreeCamera.h"
-#include "clientGame/GroundScene.h"
 #include "sharedFoundation/Crc.h"
 #include "sharedFoundation/NetworkIdArchive.h"
 #include "sharedGame/NpcConversationData.h"
@@ -41,7 +37,6 @@
 #include "sharedObject/Object.h"
 
 #include <algorithm>
-#include <cmath>
 #include "sharedRandom/Random.h"
 #include "unicodeArchive/UnicodeArchive.h"
 
@@ -68,97 +63,6 @@ namespace CuiConversationManagerNamespace
 	bool s_clientOnlyMode = false;
 	std::string s_soundEffect;
 	float s_clientConvoWindowCloseTimer = 17.0f;
-
-	// When no SwgCuiCinematicConversation handler is registered, drive the god FreeCamera for scripted shots.
-	bool s_savedDefaultNpcConversationCameraViewValid = false;
-	int  s_savedDefaultNpcConversationCameraView      = 0;
-
-	void restoreDefaultNpcConversationCameraIfNeeded ()
-	{
-		if (!s_savedDefaultNpcConversationCameraViewValid)
-			return;
-
-		GroundScene * const gs = dynamic_cast<GroundScene *>(Game::getScene());
-		if (gs)
-		{
-			gs->setView (s_savedDefaultNpcConversationCameraView);
-			gs->deactivateGodClientCamera ();
-		}
-		s_savedDefaultNpcConversationCameraViewValid = false;
-	}
-
-	void applyDefaultNpcConversationCamera (MessageQueueNpcConversationCameraCommand const * const cmd)
-	{
-		if (!cmd)
-			return;
-
-		if (Game::getHudSceneType () != Game::ST_ground)
-			return;
-
-		GroundScene * const gs = dynamic_cast<GroundScene *>(Game::getScene ());
-		if (!gs)
-			return;
-
-		switch (cmd->getCommandType ())
-		{
-		case MessageQueueNpcConversationCameraCommand::CT_ReturnToSpeaker:
-			restoreDefaultNpcConversationCameraIfNeeded ();
-			break;
-
-		case MessageQueueNpcConversationCameraCommand::CT_LookAtTarget:
-		case MessageQueueNpcConversationCameraCommand::CT_LookAtPosition:
-			{
-				Vector lookAt (Vector::zero);
-
-				if (cmd->getCommandType () == MessageQueueNpcConversationCameraCommand::CT_LookAtTarget)
-				{
-					Object * const obj = NetworkIdManager::getObjectById (cmd->getTargetId ());
-					if (!obj)
-						return;
-
-					Vector head_o = CuiObjectTextManager::getCurrentObjectHeadPoint_o (*obj);
-					head_o.y += 0.1f;
-					lookAt = obj->rotateTranslate_o2w (head_o);
-				}
-				else
-					lookAt.set (cmd->getPositionX (), cmd->getPositionY (), cmd->getPositionZ ());
-
-				if (!s_savedDefaultNpcConversationCameraViewValid)
-				{
-					s_savedDefaultNpcConversationCameraView      = gs->getCurrentView ();
-					s_savedDefaultNpcConversationCameraViewValid = true;
-				}
-
-				gs->activateGodClientCamera ();
-
-				FreeCamera * const camera = gs->getGodClientCamera ();
-				if (!camera)
-					return;
-
-				Vector const cpos = camera->getPosition_w ();
-
-				FreeCamera::Info target;
-				target.translate = lookAt;
-				target.distance  = lookAt.magnitudeBetween (cpos);
-				target.yaw       = camera->getYaw ();
-
-				Vector const dv = lookAt - cpos;
-				if (fabs (dv.x) > 0.01f || fabs (dv.z) > 0.01f)
-					target.yaw = dv.theta ();
-
-				target.pitch = dv.phi ();
-
-				camera->setTargetInfo (target, CONST_REAL (1));
-				camera->setInterpolating (true);
-				camera->setMode (FreeCamera::M_pivot);
-			}
-			break;
-
-		case MessageQueueNpcConversationCameraCommand::CT_None:
-		default:
-			break;
-		}
-	}
 }
 
 using namespace CuiConversationManagerNamespace;
@@ -262,10 +166,10 @@ void CuiConversationManager::handleNpcConversationCameraCommand(MessageQueueNpcC
 	if (!cmd)
 		return;
 
+	// Cinematic conversation registers ms_cameraCommandHandler in SwgCuiCinematicConversation::performActivate.
+	// Vanilla conversations ignore scripted camera commands — avoids switching to free camera during legacy UI.
 	if (ms_cameraCommandHandler)
 		ms_cameraCommandHandler (cmd);
-	else
-		applyDefaultNpcConversationCamera (cmd);
 }
 
 //----------------------------------------------------------------------
@@ -576,8 +480,6 @@ bool  CuiConversationManager::stop ()
 	}
 
 	Transceivers::conversationEnded.emitMessage(true);
-
-	restoreDefaultNpcConversationCameraIfNeeded ();
 
 	return true;
 }

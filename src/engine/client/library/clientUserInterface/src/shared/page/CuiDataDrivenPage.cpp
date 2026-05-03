@@ -47,9 +47,11 @@
 #include "sharedFoundation/Os.h"
 #include "sharedNetworkMessages/SuiEventNotification.h"
 #include <algorithm>
+#include <cctype>
 #include <map>
 #include <set>
 #include <stdio.h>
+#include <string>
 #include <vector>
 
 // ======================================================================
@@ -344,7 +346,21 @@ void CuiDataDrivenPage::onEvent(int eventType, UIWidget const * widget)
 	REPORT_LOG(true, ("CuiDataDrivenPage::onEvent: relativePath='%s', m_subscribedEvents size=%d\n", relativePath.c_str(), m_subscribedEvents ? m_subscribedEvents->size() : -1));
 
 	SuiEventSubscription const targetEventSubscription(eventType, relativePath);
-	EventSubscriptionMap::const_iterator const i =  m_subscribedEvents->find(targetEventSubscription);
+	EventSubscriptionMap::const_iterator i = m_subscribedEvents->find(targetEventSubscription);
+	// Server listbox flow only subscribes row data to SET_onClosedOk (empty path). Row clicks emit
+	// SET_onGenericSelection with path like "listBox" — no subscription, so nothing reached scripts.
+	// Treat list selection as the same notify payload as OK so single-click applies (Java listbox APIs).
+	if (i == m_subscribedEvents->end()
+	    && eventType == SuiEventType::SET_onGenericSelection
+	    && widget != nullptr
+	    && m_subscribedEvents != nullptr)
+	{
+		std::string pathLower = relativePath;
+		for (size_t ci = 0; ci < pathLower.size(); ++ci)
+			pathLower[ci] = static_cast<char>(tolower(static_cast<unsigned char>(pathLower[ci])));
+		if (pathLower == "listbox" || pathLower.find("lstlist") != std::string::npos)
+			i = m_subscribedEvents->find(SuiEventSubscription(SuiEventType::SET_onClosedOk, std::string()));
+	}
 	if (i != m_subscribedEvents->end())
 	{
 		REPORT_LOG(true, ("CuiDataDrivenPage::onEvent: found subscription, collecting properties\n"));

@@ -220,6 +220,9 @@ Object *SaddleManagerNamespace::createAndAttachAppearance(CreatureObject &object
 
 CrcString const * SaddleManagerNamespace::getLogicalSaddleNameFromMount(CreatureObject const & mount)
 {
+	if (mount.isMountDynamicActive())
+		return nullptr;
+
 	//-- Get mount appearance.
 	Appearance const *const mountAppearance = mount.getAppearance();
 	if (!mountAppearance)
@@ -286,6 +289,9 @@ void SaddleManager::install(char const *logicalSaddleNameMapFile, char const *sa
 
 CrcString const *SaddleManager::getSaddleAppearanceNameForMount(CreatureObject const &mount, CrcString & clientDataFilename)
 {
+	if (mount.isMountDynamicActive())
+		return nullptr;
+
 	CrcString const * const logicalSaddleName = getLogicalSaddleNameFromMount(mount);
 
 	//-- Get saddle appearance name from logical saddle name and capacity.
@@ -455,7 +461,14 @@ Object *SaddleManager::getSaddleObjectFromMount(Object &mount)
 		{
 			if (childHardpointObject->getHardpointName() == cs_saddleHardpointName)
 			{
-				// Found it.
+				// Traditional mounts attach skeletal mesh directly to the saddle hardpoint.
+				// HpDynApp paths wrap the drawable on a holder child — prefer that wrapper if present.
+				if (childHardpointObject->getNumberOfChildObjects() == 1)
+				{
+					Object *const nested = childHardpointObject->getChildObject(0);
+					if (nested && nested->getAppearance())
+						return nested;
+				}
 				return childObject;
 			}
 		}
@@ -502,6 +515,9 @@ int SaddleManager::getSaddleSeatingCapacity(Object const & mount)
 		return 0;
 	}
 
+	if (creatureObject->isMountDynamicActive())
+		return creatureObject->getMountDynamicCapacity();
+
 	CrcString const * const logicalSaddleName = getLogicalSaddleNameFromMount(*creatureObject);
 	NOT_NULL(logicalSaddleName);
 	return getSaddleSeatingCapacityForLogicalSaddleName(*logicalSaddleName);
@@ -511,8 +527,12 @@ int SaddleManager::getSaddleSeatingCapacity(Object const & mount)
 
 int SaddleManager::countTotalNumberOfPassengers(Object const & mount)
 {
+	CreatureObject const * const creatureObjectMountEarlyCount = dynamic_cast<CreatureObject const *> (&mount);
+	bool const dynamicMountEarlyCount = (creatureObjectMountEarlyCount != NULL) && creatureObjectMountEarlyCount->isMountDynamicActive();
+
 	Object const * const saddleObject = SaddleManager::getSaddleObjectFromMount(mount);
-	DEBUG_FATAL(!saddleObject, ("CreatureObject::countTotalNumberOfPassengers: SaddleManager failed to retrieve the saddle for creature mount id=[%s],template=[%s]", mount.getNetworkId().getValueString().c_str(), mount.getObjectTemplateName()));
+	if (!dynamicMountEarlyCount)
+		DEBUG_FATAL(!saddleObject, ("CreatureObject::countTotalNumberOfPassengers: SaddleManager failed to retrieve the saddle for creature mount id=[%s],template=[%s]", mount.getNetworkId().getValueString().c_str(), mount.getObjectTemplateName()));
 
 	int totalNumberOfPassengers = 0;
 
@@ -527,14 +547,21 @@ int SaddleManager::countTotalNumberOfPassengers(Object const & mount)
 
 	//  Non Hovering Mount with no objects on the saddle. This means most likely a creature mount (AT-ST, AT-RT).
 	//  MIND SWAP! - swap the pointers to point to the creature since he/she/it actually contains the passengers.
-	bool useCreature = 	(isNonHoveringVehicle && saddleObject->getNumberOfChildObjects() == 0) ? true : false;
-	
-	Object const * const parentObject = useCreature ? &mount : saddleObject;
+	Object const *parentObjectForPassengers = NULL;
+	if (dynamicMountEarlyCount)
+		parentObjectForPassengers = (saddleObject != NULL) ? saddleObject : &mount;
+	else if (isNonHoveringVehicle && saddleObject != NULL && saddleObject->getNumberOfChildObjects() == 0)
+		parentObjectForPassengers = &mount;
+	else
+		parentObjectForPassengers = saddleObject;
 
-	int const childCount = parentObject->getNumberOfChildObjects();
+	if (parentObjectForPassengers == NULL)
+		return 0;
+
+	int const childCount = parentObjectForPassengers->getNumberOfChildObjects();
 	for (int i = 0; i < childCount; ++i)
 	{
-		Object const * const childObject = parentObject->getChildObject(i);
+		Object const * const childObject = parentObjectForPassengers->getChildObject(i);
 
 		// Check if it's the appropriate hardpoint object.
 		HardpointObject const * const childHardpointObject = dynamic_cast<HardpointObject const *>(childObject);
@@ -544,7 +571,9 @@ int SaddleManager::countTotalNumberOfPassengers(Object const & mount)
 
 			HardpointObject const * childHardpointObjectToTest = 0;
 
-			if (strcmp(hardpointName, cs_driverHardpointName) == 0)
+			if (dynamicMountEarlyCount && hardpointName && !*hardpointName)
+				childHardpointObjectToTest = childHardpointObject;
+			else if (strcmp(hardpointName, cs_driverHardpointName) == 0)
 			{
 				childHardpointObjectToTest = childHardpointObject;
 			}
@@ -565,7 +594,7 @@ int SaddleManager::countTotalNumberOfPassengers(Object const & mount)
 					TangibleObject const * const tangibleObject = (clientObject != 0) ? clientObject->asTangibleObject() : 0;
 					CreatureObject const * const creatureObject = (tangibleObject != 0) ? tangibleObject->asCreatureObject() : 0;
 
-					DEBUG_WARNING(hardPointChildCount != 1, ("object on mount with multiple children: %s", rider->getObjectTemplateName()));
+					DEBUG_WARNING(hardPointChildCount != 1, ("object on mount with multiple children: %s", (rider != 0) ? rider->getObjectTemplateName() : "<null rider>"));
 
 					if (creatureObject != 0)
 					{
@@ -573,7 +602,8 @@ int SaddleManager::countTotalNumberOfPassengers(Object const & mount)
 					}
 				}
 
-				DEBUG_FATAL(hardPointChildCount != 1, ("CreatureObject::countTotalNumberOfPassengers: other than one child for creature mount id=[%s],template=[%s],count=[%d]", mount.getNetworkId().getValueString().c_str(), mount.getObjectTemplateName(), hardPointChildCount));
+				if (!dynamicMountEarlyCount)
+					DEBUG_FATAL(hardPointChildCount != 1, ("CreatureObject::countTotalNumberOfPassengers: other than one child for creature mount id=[%s],template=[%s],count=[%d]", mount.getNetworkId().getValueString().c_str(), mount.getObjectTemplateName(), hardPointChildCount));
 
 			}
 		}
@@ -585,49 +615,52 @@ int SaddleManager::countTotalNumberOfPassengers(Object const & mount)
 
 int SaddleManager::getRiderSeatIndex(Object const & mount, Object const & rider)
 {
+	CreatureObject const * const creatureMount = dynamic_cast<CreatureObject const*>(&mount);
+	bool const dm = creatureMount && creatureMount->isMountDynamicActive();
+
 	Object const * const saddleObject = SaddleManager::getSaddleObjectFromMount(mount);
-	DEBUG_FATAL(!saddleObject, ("CreatureObject::getRiderSeatIndex: SaddleManager failed to retrieve the saddle for creature mount id=[%s],template=[%s]", mount.getNetworkId().getValueString().c_str(), mount.getObjectTemplateName()));
+	Object const * const scanSurface = saddleObject ? saddleObject : &mount;
 
-	int const childCount = saddleObject->getNumberOfChildObjects();
-	for (int i = 0; i < childCount; ++i)
+	if (!dm)
+		DEBUG_FATAL(!saddleObject, ("CreatureObject::getRiderSeatIndex: SaddleManager failed to retrieve the saddle for creature mount id=[%s],template=[%s]", mount.getNetworkId().getValueString().c_str(), mount.getObjectTemplateName()));
+
+	int nextDynamicSeatOrdinal = 0;
+	for (int i = 0; i < scanSurface->getNumberOfChildObjects(); ++i)
 	{
-		Object const * const childObject = saddleObject->getChildObject(i);
+		Object const *const childObject = scanSurface->getChildObject(i);
+		HardpointObject const *const childHardpointObject = dynamic_cast<HardpointObject const *>(childObject);
+		if (!childHardpointObject)
+			continue;
 
-		// Check if it's the appropriate hardpoint object.
-		HardpointObject const * const childHardpointObject = dynamic_cast<HardpointObject const *>(childObject);
-		if (childHardpointObject != 0)
+		char const *const hp = childHardpointObject->getHardpointName().getString();
+
+		if (dm && hp && !*hp)
 		{
-			char const * const hardpointName = childHardpointObject->getHardpointName().getString();
-
-			if (strcmp(hardpointName, cs_passengerHardpointName) == 0)
+			++nextDynamicSeatOrdinal;
+			for (int j = 0; j < childHardpointObject->getNumberOfChildObjects(); ++j)
 			{
-				// there should ever be one child per seat
-				int const hardPointChildCount = childHardpointObject->getNumberOfChildObjects();
-				DEBUG_FATAL(hardPointChildCount != 1, ("CreatureObject::getRiderSeatIndex: more than one child for creature mount id=[%s],template=[%s]", mount.getNetworkId().getValueString().c_str(), mount.getObjectTemplateName()));
-
-				for (int j = 0; j < hardPointChildCount; ++j)
-				{
-					if (childHardpointObject->getChildObject(j) == &rider)
-					{
-						return 1;
-					}
-				}
+				if (childHardpointObject->getChildObject(j) == &rider)
+					return nextDynamicSeatOrdinal;
 			}
-			else if (strstr(hardpointName, cs_passengerHardpointName) != 0)
-			{
-				// there should ever be one child per seat
-				int const hardPointChildCount = childHardpointObject->getNumberOfChildObjects();
-				DEBUG_FATAL(hardPointChildCount != 1, ("CreatureObject::getRiderSeatIndex: more than one child for creature mount id=[%s],template=[%s]", mount.getNetworkId().getValueString().c_str(), mount.getObjectTemplateName()));
+			continue;
+		}
 
-				for (int j = 0; j < hardPointChildCount; ++j)
-				{
-					if (childHardpointObject->getChildObject(j) == &rider)
-					{
-						int seatIndex = 0;
-						sscanf(hardpointName, "passenger_%d", &seatIndex);
-						return seatIndex + 1;
-					}
-				}
+		if (hp && strcmp(hp, cs_driverHardpointName) == 0)
+		{
+			for (int j = 0; j < childHardpointObject->getNumberOfChildObjects(); ++j)
+			{
+				if (childHardpointObject->getChildObject(j) == &rider)
+					return 1;
+			}
+		}
+		else if (hp && strstr(hp, cs_passengerHardpointName) != 0)
+		{
+			int seatIndexZeroBased = 0;
+			sscanf(hp, "passenger_%d", &seatIndexZeroBased);
+			for (int j = 0; j < childHardpointObject->getNumberOfChildObjects(); ++j)
+			{
+				if (childHardpointObject->getChildObject(j) == &rider)
+					return seatIndexZeroBased + 1;
 			}
 		}
 	}
@@ -639,10 +672,23 @@ int SaddleManager::getRiderSeatIndex(Object const & mount, Object const & rider)
 
 int SaddleManager::findFirstOpenSeat(Object const & mount)
 {
+	CreatureObject const * co = dynamic_cast<CreatureObject const*>(&mount);
+	bool const dm = co && co->isMountDynamicActive();
+
 	Object const * const saddleObject = SaddleManager::getSaddleObjectFromMount(mount);
-	DEBUG_FATAL(!saddleObject, ("CreatureObject::countTotalNumberOfPassengers: SaddleManager failed to retrieve the saddle for creature mount id=[%s],template=[%s]", mount.getNetworkId().getValueString().c_str(), mount.getObjectTemplateName()));
+	Object const * const scanSurface = saddleObject ? saddleObject : &mount;
 
 	int const capacity = getSaddleSeatingCapacity(mount);
+
+	if (dm)
+	{
+		int const occupants = countTotalNumberOfPassengers(mount);
+		if (occupants >= capacity)
+			return std::max(0, capacity - 1);
+		return occupants;
+	}
+
+	DEBUG_FATAL(!saddleObject, ("CreatureObject::countTotalNumberOfPassengers: SaddleManager failed to retrieve the saddle for creature mount id=[%s],template=[%s]", mount.getNetworkId().getValueString().c_str(), mount.getObjectTemplateName()));
 
 	typedef std::vector<bool> OccupiedSeats;
 	OccupiedSeats occupiedSeats;
@@ -651,10 +697,10 @@ int SaddleManager::findFirstOpenSeat(Object const & mount)
 	occupiedSeats.resize(capacity, false);
 
 	{
-		int const childCount = saddleObject->getNumberOfChildObjects();
+		int const childCount = scanSurface->getNumberOfChildObjects();
 		for (int i = 0; i < childCount; ++i)
 		{
-			Object const * const childObject = saddleObject->getChildObject(i);
+			Object const * const childObject = scanSurface->getChildObject(i);
 
 			// Check if it's the appropriate hardpoint object.
 			HardpointObject const * const childHardpointObject = dynamic_cast<HardpointObject const *>(childObject);
@@ -708,11 +754,32 @@ HardpointObject * SaddleManager::createRiderHardpointObjectAndAttachToSaddle(Obj
 
 	bool const thereIsRoom = totalNumberOfPassengers < capacity;
 
-	if (thereIsRoom)
-	{
-		Object * const saddleObject = SaddleManager::getSaddleObjectFromMount(mount);
+	if (!thereIsRoom)
+		return 0;
+
+	CreatureObject *const creatureObjectMount = dynamic_cast<CreatureObject *> (&mount);
+	bool const dm = creatureObjectMount && creatureObjectMount->isMountDynamicActive();
+
+	Object * const saddleObject = SaddleManager::getSaddleObjectFromMount(mount);
+
+	if (!dm)
 		DEBUG_FATAL(!saddleObject, ("CreatureObject::getSaddleObjectFromMount(): SaddleManager failed to retrieve the saddle for creature mount id=[%s],template=[%s], aborting visuals side ofmount.", mount.getNetworkId().getValueString().c_str(), mount.getObjectTemplateName()));
 
+	int const assignedSeatOrdinalOneBased = std::min(totalNumberOfPassengers + 1, capacity);
+
+	HardpointObject * riderHardpointObject = nullptr;
+	std::string dynamicPoseDiscard;
+	Vector dynamicSeatOffset(Vector::zero);
+
+	if (dm)
+	{
+		if (creatureObjectMount)
+			IGNORE_RETURN(creatureObjectMount->getMountDynamicSeatInfo(assignedSeatOrdinalOneBased, dynamicPoseDiscard, dynamicSeatOffset));
+		riderHardpointObject = new HardpointObject(ConstCharCrcString(""));
+		riderHardpointObject->setPosition_p(dynamicSeatOffset);
+	}
+	else
+	{
 		char hardpointName[256];
 
 		if (totalNumberOfPassengers != 0)
@@ -723,32 +790,35 @@ HardpointObject * SaddleManager::createRiderHardpointObjectAndAttachToSaddle(Obj
 		else
 		{
 			strncpy(hardpointName, cs_driverHardpointName, sizeof(hardpointName) - 1);
-		}
-		
-		HardpointObject * const riderHardpointObject = new HardpointObject(ConstCharCrcString(hardpointName));
-		CreatureObject* creatureObjectMount = dynamic_cast<CreatureObject *> (&mount);
-		bool isNonHoveringVehicle = false;
-		if(creatureObjectMount)
-		{
-			bool const isVehicle = GameObjectTypes::isTypeOf (creatureObjectMount->getGameObjectType (), static_cast<int>(SharedObjectTemplate::GOT_vehicle));
-			isNonHoveringVehicle = (isVehicle && (creatureObjectMount->getGameObjectType () != SharedObjectTemplate::GOT_vehicle_hover));
-
+			hardpointName[sizeof(hardpointName) - 1] = '\0';
 		}
 
-		if(isNonHoveringVehicle)
-		{
-			// for nonhovering vehicles, do not attach them to the saddle, attach them to the animating sat
-			riderHardpointObject->attachToObject_p(&mount,true);
-		}
-		else
-		{
-			riderHardpointObject->attachToObject_p((saddleObject != NULL) ? saddleObject : &mount, true);
-		}
-
-		return riderHardpointObject;
+		riderHardpointObject = new HardpointObject(ConstCharCrcString(hardpointName));
 	}
 
-	return 0;
+	bool isNonHoveringVehicle = false;
+	if(creatureObjectMount)
+	{
+		bool const isVehicle = GameObjectTypes::isTypeOf (creatureObjectMount->getGameObjectType (), static_cast<int>(SharedObjectTemplate::GOT_vehicle));
+		isNonHoveringVehicle = (isVehicle && (creatureObjectMount->getGameObjectType () != SharedObjectTemplate::GOT_vehicle_hover));
+
+	}
+
+	if(isNonHoveringVehicle)
+	{
+		riderHardpointObject->attachToObject_p(&mount,true);
+	}
+	else
+	{
+		Object * const attachmentSurface = saddleObject ? saddleObject : static_cast<Object *>(&mount);
+		if (dm && saddleObject == NULL)
+		{
+			DEBUG_WARNING(true, ("dynamic mount [%s]: missing saddle surface; attaching rider locator to creature root", mount.getNetworkId().getValueString().c_str()));
+		}
+		riderHardpointObject->attachToObject_p(attachmentSurface, true);
+	}
+
+	return riderHardpointObject;
 }
 
 // ======================================================================

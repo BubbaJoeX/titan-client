@@ -25,6 +25,8 @@
 #include "sharedObject/CachedNetworkId.h"
 #include "sharedObject/CachedNetworkIdArchive.h"
 #include "sharedUtility/CallbackReceiver.h"
+#include "sharedMath/Vector.h"
+#include <vector>
 
 class CollisionProperty;
 class CustomizationData;
@@ -38,7 +40,6 @@ class SlotDescriptor;
 class SharedTangibleObjectTemplate;
 class SlotId;
 class Texture;
-class Vector;
 
 // ======================================================================
 /**
@@ -225,6 +226,11 @@ public:
 	bool isPassiveRevealPlayerCharacter(NetworkId const & target) const;
 
 	virtual void getObjectInfo(stdmap<std::string, stdmap<std::string, Unicode::String>::fwd >::fwd & propertyMap) const;
+
+	// mount.dm replicated via DynamicHardpointsState (mount_dm row)
+	bool                          isMountDynamicActive() const;
+	int                           getMountDynamicCapacity() const;
+	bool                          getMountDynamicSeatInfo(int riderSeatIndexOneBased, std::string &outPoseName, Vector &outSeatOffset_o) const;
 
 protected:
 
@@ -423,6 +429,11 @@ private:
 
 	// The map of particle effects that should be continually playing on this object. Label, Appearance file, hardpoint, offset, scale
 	Archive::AutoDeltaMap<std::string, std::pair<std::string, std::pair<std::string, std::pair<Vector, float> > >, TangibleObject> m_effectsMap;
+
+	bool                                       m_mountDynamicActive;
+	int                                        m_mountDynamicCapacity;
+	std::vector<std::string>                   m_mountDynamicSeatPose;
+	std::vector<Vector>                        m_mountDynamicSeatOffset;
 };
 
 // ======================================================================

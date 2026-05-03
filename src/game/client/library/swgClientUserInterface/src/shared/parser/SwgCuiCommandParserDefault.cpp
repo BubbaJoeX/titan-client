@@ -139,6 +139,9 @@ namespace SwgCuiCommandParserDefaultNamespace
 		MAKE_COMMAND (copyCrashReportInformation);
 		MAKE_COMMAND (reloadTextures);
 		MAKE_COMMAND (decoratorCamera);
+		MAKE_COMMAND (mountMakerDrive);
+		MAKE_COMMAND (mountMakerRelease);
+		MAKE_COMMAND (mountMakerLockNorth);
 		MAKE_COMMAND (showSkywayPanel);
 		MAKE_COMMAND (createMail);
 #if PRODUCTION == 0
@@ -208,6 +211,9 @@ namespace SwgCuiCommandParserDefaultNamespace
 		{ Commands::copyCrashReportInformation,  0, "",                                   "Copy the test that would be sent with a client crash to the windows clipboard"},
 		{ Commands::reloadTextures,              0, "",                                   "Reload all textures from disk"},
 		{ Commands::decoratorCamera,             0, "",                                   "Toggle decorator camera mode (admin only)"},
+		{ Commands::mountMakerDrive,             0, "[network_id]",                         "Decorator+WASD drives target creature (default: look-at). Admin only"},
+		{ Commands::mountMakerRelease,           0, "",                                   "Clear mount maker creature drive"},
+		{ Commands::mountMakerLockNorth,           1, "<0|1>",                              "Lock driven mount yaw north (decorator maker)"},
 		{ Commands::showSkywayPanel,            0, "",                                   "Toggle Skyway/Airspeeder panel (for testing)"},
 		{ "",                                    0, "",                                   ""} // this must be last
 	};
@@ -1861,6 +1867,83 @@ bool SwgCuiCommandParserDefault::performParsing (const NetworkId & userId, const
 			CuiMediatorFactory::activateInWorkspace(CuiMediatorTypes::WS_DecoratorCameraPanel);
 			result += Unicode::narrowToWide("Decorator camera enabled.");
 		}
+		return true;
+	}
+
+	else if (isCommand(argv[0], Commands::mountMakerDrive))
+	{
+		if (!PlayerObject::isAdmin())
+		{
+			result += Unicode::narrowToWide("This command is only available to administrators.");
+			return true;
+		}
+
+		NetworkId targetId(NetworkId::cms_invalid);
+		if (argv.size () >= 2)
+		{
+			std::string const narrow(Unicode::wideToNarrow(argv[1]));
+			if (!narrow.empty())
+				targetId = NetworkId(narrow);
+		}
+		else
+		{
+			CreatureObject const * const pc = Game::getPlayerCreature();
+			if (pc && pc->getLookAtTarget().isValid())
+				targetId = NetworkId(pc->getLookAtTarget().getValue());
+		}
+
+		if (!targetId.isValid())
+		{
+			result += Unicode::narrowToWide("Target a creature (look-at) or use: /mountMakerDrive <networkId>");
+			return true;
+		}
+
+		Object* const hitObject = NetworkIdManager::getObjectById(targetId);
+		CreatureObject* const creature = dynamic_cast<CreatureObject*>(hitObject);
+
+		if (!creature)
+		{
+			result += Unicode::narrowToWide("Mount maker drive requires a creature id.");
+			return true;
+		}
+
+		CuiFurnitureMovementManager::setMountMakerDriveCreature(targetId);
+		result += Unicode::narrowToWide("Mount maker drive target set: use /decoratorCamera, then WASD moves this creature while gizmo is inactive. /mountMakerLockNorth 1 pins yaw north.");
+		return true;
+	}
+
+	else if (isCommand(argv[0], Commands::mountMakerRelease))
+	{
+		if (!PlayerObject::isAdmin())
+		{
+			result += Unicode::narrowToWide("This command is only available to administrators.");
+			return true;
+		}
+
+		CuiFurnitureMovementManager::clearMountMakerDriveCreature();
+		result += Unicode::narrowToWide("Mount maker drive released.");
+		return true;
+	}
+
+	else if (isCommand(argv[0], Commands::mountMakerLockNorth))
+	{
+		if (!PlayerObject::isAdmin())
+		{
+			result += Unicode::narrowToWide("This command is only available to administrators.");
+			return true;
+		}
+
+		if (argv.size () < 2)
+		{
+			result += Unicode::narrowToWide("Usage: /mountMakerLockNorth <0|1>");
+			return true;
+		}
+
+		std::string const v = Unicode::toLower(Unicode::wideToNarrow(argv[1]));
+		bool const on = (v == "1" || v == "true" || v == "on" || v == "yes");
+
+		CuiFurnitureMovementManager::setMountMakerLockDriveCreatureNorth(on);
+		result += Unicode::narrowToWide(on ? "Mount maker: north-facing lock ENABLED for driven creature.\n" : "Mount maker: north-facing lock disabled.\n");
 		return true;
 	}
 

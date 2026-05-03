@@ -137,6 +137,11 @@ namespace CuiFurnitureMovementManagerNamespace
 	int s_lastMouseY = 0;
 	Vector s_dragStartPosition;
 
+	CachedNetworkId s_mountMakerDriveCreature;
+	float s_mountMakerDriveSyncTimer = 0.f;
+	static float const cms_mountMakerDriveSyncIntervalSecs = 0.12f;
+	bool s_mountMakerLockDriveNorth = true;
+
 	// Gizmo colors
 	PackedArgb const s_colorRed(255, 255, 50, 50);
 	PackedArgb const s_colorGreen(255, 50, 255, 50);
@@ -245,6 +250,49 @@ namespace CuiFurnitureMovementManagerNamespace
 		Sphere const & sphere = appearance->getSphere();
 		return std::max(0.5f, sphere.getRadius());
 	}
+
+	void syncMountMakerDriveCreatureToServer()
+	{
+		if (!s_mountMakerDriveCreature.isValid())
+			return;
+		Object * const mountObj = s_mountMakerDriveCreature.getObject();
+		ClientObject * const co = mountObj ? mountObj->asClientObject() : NULL;
+		if (!co || !co->getNetworkId().isValid())
+			return;
+		Transform const wt = mountObj->getTransform_o2p();
+		Vector const p = wt.getPosition_p();
+		float const rx = roundToTenThousandths(p.x);
+		float const ry = roundToTenThousandths(p.y);
+		float const rz = roundToTenThousandths(p.z);
+		if ((_finite(static_cast<double>(rx)) == 0) || (_finite(static_cast<double>(ry)) == 0) || (_finite(static_cast<double>(rz)) == 0))
+			return;
+		if (rx < -100000.f || rx > 100000.f || rz < -100000.f || rz > 100000.f || ry < -10000.f || ry > 10000.f)
+			return;
+		NetworkId const nid = co->getNetworkId();
+		char buffer[256];
+		snprintf(buffer, sizeof(buffer), "BYPASS %.4f %.4f %.4f", rx, ry, rz);
+		ClientCommandQueue::enqueueCommand(s_hashMoveFurniture, nid, Unicode::narrowToWide(buffer));
+		Quaternion q(wt);
+		float magSq = q.w * q.w + q.x * q.x + q.y * q.y + q.z * q.z;
+		if (magSq < 0.0001f || magSq > 100.0f || (_finite(static_cast<double>(q.w)) == 0))
+		{
+			q = Quaternion();
+		}
+		else if (std::fabs(magSq - 1.0f) > 0.01f)
+		{
+			float const mag = std::sqrt(magSq);
+			q.w /= mag;
+			q.x /= mag;
+			q.y /= mag;
+			q.z /= mag;
+		}
+		float const rw = roundToTenThousandths(q.w);
+		float const rqx = roundToTenThousandths(q.x);
+		float const rqy = roundToTenThousandths(q.y);
+		float const rqz = roundToTenThousandths(q.z);
+		snprintf(buffer, sizeof(buffer), "BYPASS %.4f %.4f %.4f %.4f", rw, rqx, rqy, rqz);
+		ClientCommandQueue::enqueueCommand(s_hashRotateFurniture, nid, Unicode::narrowToWide(buffer));
+	}
 }
 
 using namespace CuiFurnitureMovementManagerNamespace;
@@ -268,6 +316,7 @@ void CuiFurnitureMovementManager::remove()
 {
 	DEBUG_FATAL(!s_installed, ("CuiFurnitureMovementManager not installed"));
 	if (s_active) exitMovementMode(false);
+	clearMountMakerDriveCreature();
 	s_installed = false;
 }
 
@@ -304,42 +353,89 @@ void CuiFurnitureMovementManager::update(float const deltaTimeSecs)
 		}
 	}
 	
-	// Handle WASD camera movement in decorator mode (works with or without object selected)
+	// WASD in decorator mode: optionally drive mount maker creature (creature only when no movement/gizmo sheet active); else translate free camera
 	if (s_decoratorCameraActive)
 	{
 		GroundScene * const gs = dynamic_cast<GroundScene *>(Game::getScene());
 		if (gs)
 		{
+			Object* const mountObjDrive = s_mountMakerDriveCreature.getObject();
+			CreatureObject* const mountCreatureDrive = dynamic_cast<CreatureObject*>(mountObjDrive);
+			bool const useMountMakerWasd = (mountCreatureDrive != NULL) && !s_active;
+
 			FreeCamera * const freeCamera = dynamic_cast<FreeCamera *>(gs->getCurrentCamera());
 			if (freeCamera)
 			{
 				float const speed = s_fineMode ? s_cameraSpeed * 0.2f : s_cameraSpeed;
 				float const moveAmount = speed * deltaTimeSecs;
-				
-				// Get current camera info
-				FreeCamera::Info info = freeCamera->getInfo();
-				
-				// Calculate movement in camera space
-				Vector forward = freeCamera->getObjectFrameK_w();
-				Vector right = freeCamera->getObjectFrameI_w();
 				Vector movement = Vector::zero;
-				
-				// Forward/Back (W/S)
-				if (s_cameraKeyW) movement += forward * moveAmount;
-				if (s_cameraKeyS) movement -= forward * moveAmount;
-				
-				// Strafe Left/Right (A/D)
-				if (s_cameraKeyA) movement -= right * moveAmount;
-				if (s_cameraKeyD) movement += right * moveAmount;
-				
-				// Up/Down (Space/Ctrl)
-				if (s_cameraKeySpace) movement.y += moveAmount;
-				if (s_cameraKeyCtrl) movement.y -= moveAmount;
-				
-				if (movement != Vector::zero)
+
+				if (useMountMakerWasd)
 				{
-					info.translate += movement;
-					freeCamera->setInfo(info);
+					Vector forward = freeCamera->getObjectFrameK_w();
+					forward.y = 0.0f;
+					if (forward.magnitudeSquared() > 0.0001f)
+						forward.approximateNormalize();
+					else
+						forward = Vector(0.0f, 0.0f, 1.0f);
+
+					Vector right = freeCamera->getObjectFrameI_w();
+					right.y = 0.0f;
+					if (right.magnitudeSquared() > 0.0001f)
+						right.approximateNormalize();
+					else
+						right = Vector(1.0f, 0.0f, 0.0f);
+
+					if (s_cameraKeyW) movement += forward * moveAmount;
+					if (s_cameraKeyS) movement -= forward * moveAmount;
+					if (s_cameraKeyA) movement -= right * moveAmount;
+					if (s_cameraKeyD) movement += right * moveAmount;
+					if (s_cameraKeySpace) movement.y += moveAmount;
+					if (s_cameraKeyCtrl) movement.y -= moveAmount;
+
+					if (movement != Vector::zero)
+					{
+						Transform mt = mountCreatureDrive->getTransform_o2p();
+						Vector p = mt.getPosition_p();
+						p += movement;
+						mt.setPosition_p(p);
+						mountCreatureDrive->setTransform_o2p(mt);
+					}
+				}
+				else
+				{
+					FreeCamera::Info info = freeCamera->getInfo();
+					Vector forward = freeCamera->getObjectFrameK_w();
+					Vector right = freeCamera->getObjectFrameI_w();
+					if (s_cameraKeyW) movement += forward * moveAmount;
+					if (s_cameraKeyS) movement -= forward * moveAmount;
+					if (s_cameraKeyA) movement -= right * moveAmount;
+					if (s_cameraKeyD) movement += right * moveAmount;
+					if (s_cameraKeySpace) movement.y += moveAmount;
+					if (s_cameraKeyCtrl) movement.y -= moveAmount;
+					if (movement != Vector::zero)
+					{
+						info.translate += movement;
+						freeCamera->setInfo(info);
+					}
+				}
+			}
+
+			if (mountCreatureDrive != NULL && s_mountMakerLockDriveNorth)
+			{
+				Vector const pos = mountCreatureDrive->getTransform_o2p().getPosition_p();
+				Transform nt;
+				nt.setPosition_p(pos);
+				mountCreatureDrive->setTransform_o2p(nt);
+			}
+
+			if (mountCreatureDrive != NULL)
+			{
+				s_mountMakerDriveSyncTimer += deltaTimeSecs;
+				if (s_mountMakerDriveSyncTimer >= cms_mountMakerDriveSyncIntervalSecs)
+				{
+					syncMountMakerDriveCreatureToServer();
+					s_mountMakerDriveSyncTimer = 0.f;
 				}
 			}
 		}
@@ -565,7 +661,7 @@ void CuiFurnitureMovementManager::setMouse4Down(bool down) { s_mouse4Down = down
 void CuiFurnitureMovementManager::sendControlsHelp()
 {
 	CuiSystemMessageManager::sendFakeSystemMessage(Unicode::narrowToWide("--- Decorator camera controls ---"));
-	CuiSystemMessageManager::sendFakeSystemMessage(Unicode::narrowToWide("WASD: Move camera"));
+	CuiSystemMessageManager::sendFakeSystemMessage(Unicode::narrowToWide("WASD: Free camera translate, or WASD translates mount maker creature when driver is set and gizmo inactive"));
 	CuiSystemMessageManager::sendFakeSystemMessage(Unicode::narrowToWide("Mouse 1: Gimbal drag | Mouse 4: Free drag"));
 	CuiSystemMessageManager::sendFakeSystemMessage(Unicode::narrowToWide("Mouse 2: Pan | Y: Terrain | F: Focus | ~: Snap 45 deg"));
 	CuiSystemMessageManager::sendFakeSystemMessage(Unicode::narrowToWide("TAB: Cycle gizmo (move/rotate/scale)"));
@@ -575,6 +671,7 @@ void CuiFurnitureMovementManager::sendControlsHelp()
 	CuiSystemMessageManager::sendFakeSystemMessage(Unicode::narrowToWide("J: Snap horizontal (XZ) | H: Snap vertical (Y) | G: Grid size (0.5-8m)"));
 	CuiSystemMessageManager::sendFakeSystemMessage(Unicode::narrowToWide("Shift: Fine movement"));
 	CuiSystemMessageManager::sendFakeSystemMessage(Unicode::narrowToWide("Esc: Exit decorator camera"));
+	CuiSystemMessageManager::sendFakeSystemMessage(Unicode::narrowToWide("Mount maker: /mountMakerDrive [id] (face target) | /mountMakerLockNorth <0|1> | /mountMakerRelease"));
 }
 
 Vector const & CuiFurnitureMovementManager::getPositionDelta() { return s_positionDelta; }
@@ -1617,6 +1714,7 @@ void CuiFurnitureMovementManager::disableDecoratorCamera()
 	
 	s_decoratorCameraActive = false;
 	s_previousCameraMode = -1;
+	clearMountMakerDriveCreature();
 }
 
 //----------------------------------------------------------------------
@@ -1735,6 +1833,43 @@ std::string CuiFurnitureMovementManager::getSelectionOverlaySelectionLine()
 	else
 		name = "Unknown Object";
 	return "Selection: " + name + " (" + s_selectedFurniture.getValueString() + ")";
+}
+
+//----------------------------------------------------------------------
+
+void CuiFurnitureMovementManager::setMountMakerDriveCreature(NetworkId const & creatureId)
+{
+	s_mountMakerDriveCreature = creatureId;
+	s_mountMakerDriveSyncTimer = cms_mountMakerDriveSyncIntervalSecs;
+}
+
+//----------------------------------------------------------------------
+
+void CuiFurnitureMovementManager::clearMountMakerDriveCreature()
+{
+	s_mountMakerDriveCreature = NetworkId::cms_invalid;
+	s_mountMakerDriveSyncTimer = 0.f;
+}
+
+//----------------------------------------------------------------------
+
+bool CuiFurnitureMovementManager::hasMountMakerDriveCreature()
+{
+	return s_mountMakerDriveCreature.isValid() && s_mountMakerDriveCreature.getObject();
+}
+
+//----------------------------------------------------------------------
+
+void CuiFurnitureMovementManager::setMountMakerLockDriveCreatureNorth(bool lock)
+{
+	s_mountMakerLockDriveNorth = lock;
+}
+
+//----------------------------------------------------------------------
+
+bool CuiFurnitureMovementManager::getMountMakerLockDriveCreatureNorth()
+{
+	return s_mountMakerLockDriveNorth;
 }
 
 //----------------------------------------------------------------------
