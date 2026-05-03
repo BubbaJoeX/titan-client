@@ -146,16 +146,6 @@ public:
 	// Open the decorator spawn UI (item spawner)
 	static void openSpawnUI();
 
-	// Mount maker (creature): while decorator camera is active, optionally drive a creature with the
-	// same WASD keys used for camera pan — only when movement/gizmo mode is not active on that creature.
-	static void setMountMakerDriveCreature(NetworkId const & creatureId);
-	static void clearMountMakerDriveCreature();
-	static bool hasMountMakerDriveCreature();
-
-	// Pin driven creature yaw to world "north" (identity rotation); keeps placement consistent while editing saddles/accessories.
-	static void setMountMakerLockDriveCreatureNorth(bool lock);
-	static bool getMountMakerLockDriveCreatureNorth();
-
 	// Get current accumulated deltas (for UI display)
 	static Vector const & getPositionDelta();
 	static float getYawDelta();
