@@ -765,7 +765,12 @@ void CuiRadialMenuManager::update()
 		if (camera && s_updateByOffset) 
 		{
 			Vector worldPosition = object->getCollisionSphereExtent_w().getCenter();
-			worldPosition += camera->rotate_o2w(s_radialOffset_c);
+			// s_radialOffset_c is stored in camera space. Re-applying rotate_o2w() each frame
+			// while the chase camera orbits the mount makes the projected anchor circle on screen,
+			// which reads as a "spinning" radial and prevents selecting dismount / menu actions.
+			// While RidingMount, anchor to the object's collision center only (still tracks the target).
+			if (!player->getState (States::RidingMount))
+				worldPosition += camera->rotate_o2w(s_radialOffset_c);
 
 			Vector screenVect;
 			if (camera->projectInWorldSpace(worldPosition, &screenVect.x, &screenVect.y, 0, false))

@@ -14,6 +14,7 @@
 
 #include "clientObject/GameCamera.h"
 #include "../../../../../../engine/shared/library/sharedFoundation/include/public/sharedFoundation/Watcher.h"
+#include "sharedFoundation/NetworkId.h"
 #include "swgSharedUtility/Postures.h"
 #include "swgSharedUtility/States.h"
 
@@ -123,6 +124,10 @@ private:
 
 	bool                   m_spinning;
 	bool                   m_colliding;
+
+	/** Refresh chase offsets when mount mesh/radius updates without a posture/state transition (tall mounts). */
+	NetworkId              m_lastChaseMountId;
+	float                  m_lastChaseMountSphereRadius;
 
 	float				   m_reticleOffsetCenter;
 	float				   m_reticleOffsetShoulder;

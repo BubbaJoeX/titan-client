@@ -44,6 +44,7 @@
 #include "sharedTerrain/TerrainObject.h"
 #include "sharedUtility/LocalMachineOptionManager.h"
 
+#include <algorithm>
 #include <map>
 
 //===================================================================
@@ -92,6 +93,17 @@ namespace
 		CreatureObject const * const creatureObject = clientObject ? clientObject->asCreatureObject() : 0;
 
 		return creatureObject;
+	}
+
+	// Template cameraHeight is often human-scaled; tall/scaled mounts need a pivot that tracks visible bounds.
+	float chaseCameraLiftForMount(CreatureObject const *const mountCreature)
+	{
+		if (!mountCreature)
+			return 0.f;
+		float const fromTemplate = mountCreature->getCameraHeight();
+		float const r = mountCreature->getAppearanceSphereRadius();
+		float const fromAppearance = (r > 0.25f) ? (r * 0.72f) : 0.f;
+		return std::max(fromTemplate, fromAppearance);
 	}
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -286,9 +298,16 @@ void FreeChaseCamera::alterCheckPostureOffsets ()
 		const uint64               states  = creatureObject->getStates ();
 		float const scale = ridingMount ? 1.f : creatureObject->getScaleFactor ();
 		const CreatureObject * const mountCreature = ridingMount ? creatureObject->getMountedCreature () : 0;
-		float const cameraHeight = mountCreature ? mountCreature->getCameraHeight (): 0.f;
+		float const sphereRNow = mountCreature ? mountCreature->getAppearanceSphereRadius() : -1.f;
+		NetworkId const mountIdNow = mountCreature ? mountCreature->getNetworkId() : NetworkId::cms_invalid;
+		bool const mountAppearanceChanged =
+			ridingMount && mountCreature && (
+				mountIdNow != m_lastChaseMountId
+				|| (sphereRNow >= 0.f && std::fabs(sphereRNow - m_lastChaseMountSphereRadius) > 0.05f));
 
-		if (m_currentPosture != posture || m_currentStates != states || m_currentFirstPerson != m_firstPerson || ms_cameraOffsetChanged)
+		float const cameraHeight = mountCreature ? chaseCameraLiftForMount(mountCreature) : 0.f;
+
+		if (m_currentPosture != posture || m_currentStates != states || m_currentFirstPerson != m_firstPerson || ms_cameraOffsetChanged || mountAppearanceChanged)
 		{
 			m_currentPosture = posture;
 			m_currentStates  = states;
@@ -355,6 +374,17 @@ void FreeChaseCamera::alterCheckPostureOffsets ()
 			}
 		}
 
+		if (ridingMount && mountCreature)
+		{
+			m_lastChaseMountId = mountCreature->getNetworkId();
+			m_lastChaseMountSphereRadius = sphereRNow >= 0.f ? sphereRNow : -1.f;
+		}
+		else
+		{
+			m_lastChaseMountId = NetworkId::cms_invalid;
+			m_lastChaseMountSphereRadius = -1.f;
+		}
+
 		ms_cameraOffsetChanged = false;
 	}
 	else
@@ -402,13 +432,23 @@ float FreeChaseCamera::alter (float elapsedTime)
 	PlayerCreatureController* const playerCreatureController = dynamic_cast<PlayerCreatureController*> (creatureObject ? creatureObject->getController () : 0);
 	const bool isTurnStrafe = CuiPreferences::isTurnStrafe ();
 
+	// Locomotion runs on the mount while RidingMount; camera yaw limits must use the same
+	// creature's turn rate as PlayerCreatureController::realAlter (not the rider's).
+	CreatureObject const * turnRateCreature = creatureObject;
+	if (creatureObject && creatureObject->getState (States::RidingMount))
+	{
+		CreatureObject const * const mountCreature = creatureObject->getMountedCreature ();
+		if (mountCreature && !(mountCreature->getGameObjectType () == SharedObjectTemplate::GOT_vehicle_hover))
+			turnRateCreature = mountCreature;
+	}
+
 	float  turnRate           = 0.0f;
 	float  currentSpeed       = 0.0f;
 	
 	if (playerCreatureController)
 	{
 		currentSpeed        = playerCreatureController->getCurrentSpeed ();
-		turnRate = creatureObject->getMaximumTurnRate (currentSpeed);
+		turnRate = turnRateCreature ? turnRateCreature->getMaximumTurnRate (currentSpeed) : 0.f;
 	}
 
 	const float maximumYawThisFrame = convertDegreesToRadians (turnRate) * elapsedTime;
@@ -573,9 +613,12 @@ float FreeChaseCamera::alter (float elapsedTime)
 
 		if (!playerCreatureController->getAutoPilotLocked())
 		{
-			playerCreatureController->setDesiredYaw_w(
-				m_yaw_w,
-				ms_cameraMode == CM_chase && mouseLookState != CuiIoWin::MouseLookState_Camera );
+			// Chase "face camera" applies to the rider avatar on foot. While mounted, movement
+			// and facing are driven from the mount root; do not tie shouldFaceDesiredYaw to chase.
+			bool const faceYaw =
+				!(creatureObject && creatureObject->getState (States::RidingMount))
+				&& (ms_cameraMode == CM_chase && mouseLookState != CuiIoWin::MouseLookState_Camera);
+			playerCreatureController->setDesiredYaw_w (m_yaw_w, faceYaw);
 		}
 
 	}
@@ -656,7 +699,14 @@ float FreeChaseCamera::alter (float elapsedTime)
 	}
 
 	//-- don't show the m_target if zoom distance is less than first person distance
-	const float scaledFirstPersonDistance = m_firstPersonDistance * (creatureObject ? creatureObject->getScaleFactor () : 1.f);
+	float scaleForFpCam = creatureObject ? creatureObject->getScaleFactor () : 1.f;
+	if (creatureObject && creatureObject->getState (States::RidingMount))
+	{
+		CreatureObject const *const mc = creatureObject->getMountedCreature ();
+		if (mc)
+			scaleForFpCam = std::max (scaleForFpCam, mc->getScaleFactor ());
+	}
+	const float scaledFirstPersonDistance = m_firstPersonDistance * scaleForFpCam;
 	m_colliding = false;
 	
 	// prevent shoulder cam from clipping geometry (due to near plane)
@@ -807,6 +857,8 @@ void FreeChaseCamera::setTarget (const Object* const target, bool force, bool ov
 		m_currentStates  = 0;
 		m_desiredOffset  = m_offsetDefault;
 		m_offset         = m_offsetDefault;
+		m_lastChaseMountId = NetworkId::cms_invalid;
+		m_lastChaseMountSphereRadius = -1.f;
 	}
 }
 
