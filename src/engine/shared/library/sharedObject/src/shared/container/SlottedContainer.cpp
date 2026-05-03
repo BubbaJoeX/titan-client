@@ -547,6 +547,17 @@ bool SlottedContainer::hasSlot (const SlotId &slot) const
 	return true;
 }
 
+// ------------------------------------------------------------------------
+
+void SlottedContainer::ensureSlotsPresent(std::vector<SlotId> const &slotIds)
+{
+	for (std::vector<SlotId>::const_iterator i = slotIds.begin(); i != slotIds.end(); ++i)
+	{
+		if (m_slotMap->find(*i) == m_slotMap->end())
+			IGNORE_RETURN(m_slotMap->insert(SlotMap::value_type(*i, -1)));
+	}
+}
+
 // --------------------------------------------------------------------------------
 
 /**

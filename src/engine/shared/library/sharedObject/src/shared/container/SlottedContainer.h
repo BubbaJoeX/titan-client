@@ -13,6 +13,8 @@
 
 #include "sharedObject/Container.h"
 
+#include <vector>
+
 // ======================================================================
 
 class SlottedContainer : public Container
@@ -39,6 +41,7 @@ public:
 	bool                           getFirstUnoccupiedArrangement(const Object& item, int& arrangementIndex, ContainerErrorCode& error) const;
 	void                           getValidArrangements(const Object& item, std::vector<int>& returnList, ContainerErrorCode & error, bool returnOnFirst = false, bool unoccupiedArrangementsOnly = false) const;
 	bool                           hasSlot (const SlotId &slot) const;
+	void                           ensureSlotsPresent(std::vector<SlotId> const &slotIds);
 	bool                           isSlotEmpty (const SlotId &slot, ContainerErrorCode& error) const;
 
 	virtual void                   debugPrint(std::string &buffer) const;

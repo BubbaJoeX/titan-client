@@ -3551,6 +3551,38 @@ namespace TangibleObjectHpDynClientNamespace
 		}
 	}
 
+	/**
+	 * Objvar hp "-" / empty means "on the mount", not a fixed world pose. For skeletal creature meshes,
+	 * follow the animated saddle bone (same default as SaddleManager::addRiderSaddleToMount); vehicles
+	 * keep an empty hardpoint name (mount root / layout-specific).
+	 */
+	CrcLowerString resolveHpDynHardpointCrc(TangibleObject const &owner, std::string const &hpToken)
+	{
+		if (!hpToken.empty() && hpToken != "-")
+			return CrcLowerString(hpToken.c_str());
+
+		Appearance const *const appearance = owner.getAppearance();
+		if (appearance && appearance->asSkeletalAppearance2() && !GameObjectTypes::isTypeOf(owner.getGameObjectType(), static_cast<int>(SharedObjectTemplate::GOT_vehicle)))
+			return CrcLowerString("saddle");
+
+		return CrcLowerString("");
+	}
+
+	/** Match SaddleManager::createAndAttachAppearance: counter-scale mesh children so creature scale does not double-apply. */
+	void applyHpDynMountAttachmentScale(TangibleObject &owner, HardpointObject &ho, CrcLowerString const &hpCrc)
+	{
+		if (!hpCrc.getString() || !*hpCrc.getString())
+			return;
+		CreatureObject *const creature = owner.asCreatureObject();
+		if (!creature)
+			return;
+		float const creatureScale = creature->getScaleFactor();
+		if (creatureScale <= 0.f)
+			return;
+		float const attachmentScale = 1.f / creatureScale;
+		ho.setScale(Vector(attachmentScale, attachmentScale, attachmentScale));
+	}
+
 	bool attachHpDynApp(TangibleObject &owner, std::string const &hpToken, std::string const &appearancePath, Vector const &offset_o)
 	{
 		AppearanceTemplate const *const at = AppearanceTemplateList::fetch(appearancePath.c_str());
@@ -3561,12 +3593,11 @@ namespace TangibleObjectHpDynClientNamespace
 		if (!appearance)
 			return false;
 
-		char const *hpStr = "";
-		if (!hpToken.empty() && hpToken != "-")
-			hpStr = hpToken.c_str();
-		HardpointObject *const ho = new HardpointObject(CrcLowerString(hpStr));
+		CrcLowerString const hpCrc = resolveHpDynHardpointCrc(owner, hpToken);
+		HardpointObject *const ho = new HardpointObject(hpCrc);
 		ho->setDebugName("HpDynApp");
 		RenderWorld::addObjectNotifications(*ho);
+		applyHpDynMountAttachmentScale(owner, *ho, hpCrc);
 
 		Object *const holder = new Object();
 		holder->setPosition_p(offset_o);
@@ -3586,12 +3617,11 @@ namespace TangibleObjectHpDynClientNamespace
 		light->Light::setRange(range);
 		light->setDiffuseColorScale(intensity);
 
-		char const *hpStr = "";
-		if (!hpToken.empty() && hpToken != "-")
-			hpStr = hpToken.c_str();
-		HardpointObject *const ho = new HardpointObject(CrcLowerString(hpStr));
+		CrcLowerString const hpCrc = resolveHpDynHardpointCrc(owner, hpToken);
+		HardpointObject *const ho = new HardpointObject(hpCrc);
 		ho->setDebugName("HpDynLight");
 		RenderWorld::addObjectNotifications(*ho);
+		applyHpDynMountAttachmentScale(owner, *ho, hpCrc);
 		ho->addChildObject_o(light);
 		owner.addChildObject_o(ho);
 		return true;
@@ -3604,7 +3634,7 @@ namespace TangibleObjectHpDynClientNamespace
 			return false;
 
 		Object *const fxObject = new Object();
-		fxObject->setDebugName("HpDynFx");
+		fxObject->setDebugName("HpDynFxChild");
 		RenderWorld::addObjectNotifications(*fxObject);
 
 		ParticleEffectAppearance *const newEffect = ParticleEffectAppearance::asParticleEffectAppearance(particleTemplate->createAppearance());
@@ -3620,34 +3650,16 @@ namespace TangibleObjectHpDynClientNamespace
 		newEffect->setScale(Vector(scale, scale, scale));
 		fxObject->setAppearance(newEffect);
 
-		if (owner.getCellProperty())
-		{
-			CellProperty::setPortalTransitionsEnabled(false);
-			fxObject->setParentCell(owner.getCellProperty());
-		}
+		CrcLowerString const hpCrc = resolveHpDynHardpointCrc(owner, hpToken);
+		HardpointObject *const ho = new HardpointObject(hpCrc);
+		ho->setDebugName("HpDynFx");
+		RenderWorld::addObjectNotifications(*ho);
+		applyHpDynMountAttachmentScale(owner, *ho, hpCrc);
+
+		fxObject->setPosition_p(offset);
 		fxObject->addNotification(ClientWorld::getIntangibleNotification());
-		fxObject->attachToObject_w(&owner, true);
-
-		if (hpToken.empty() || hpToken == "-")
-		{
-			Transform t(Transform::IF_none);
-			t.setPosition_p(offset);
-			fxObject->setTransform_o2p(t);
-			if (owner.getCellProperty())
-				CellProperty::setPortalTransitionsEnabled(true);
-			return true;
-		}
-
-		Appearance const *const thisApp = owner.getAppearance();
-		Transform hardpointToParent = Transform::identity;
-		if (thisApp && thisApp->findHardpoint(CrcLowerString(hpToken.c_str()), hardpointToParent))
-		{
-			Vector const finalOffset = hardpointToParent.getPosition_p() + offset;
-			hardpointToParent.setPosition_p(finalOffset);
-			fxObject->setTransform_o2p(hardpointToParent);
-		}
-		if (owner.getCellProperty())
-			CellProperty::setPortalTransitionsEnabled(true);
+		ho->addChildObject_o(fxObject);
+		owner.addChildObject_o(ho);
 		return true;
 	}
 }
