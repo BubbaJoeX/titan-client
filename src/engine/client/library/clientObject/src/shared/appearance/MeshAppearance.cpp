@@ -51,7 +51,8 @@
 namespace
 {
 	/// Prefer drawable vertex/index buffers (actual rendered mesh faces) over authored collision triangle lists from .msh.
-	bool appendRenderableMeshTrianglesFromTemplate(ShaderPrimitiveSetTemplate const *const spsTemplate, IndexedTriangleList &out)
+	/// When \a walkAndBlockingCollision is true, include every drawable primitive so collision matches what is drawn.
+	bool appendRenderableMeshTrianglesFromTemplate(ShaderPrimitiveSetTemplate const *const spsTemplate, IndexedTriangleList &out, bool walkAndBlockingCollision)
 	{
 		if (!spsTemplate)
 			return false;
@@ -64,7 +65,7 @@ namespace
 		{
 			ShaderPrimitiveSetTemplate::LocalShaderPrimitiveTemplate const &prim = spsTemplate->getShaderPrimitiveTemplate(i);
 			ShaderTemplate const *const shaderTemplate = prim.getShaderTemplate();
-			if (!collideAll && shaderTemplate && !shaderTemplate->isCollidable())
+			if (!walkAndBlockingCollision && !collideAll && shaderTemplate && !shaderTemplate->isCollidable())
 				continue;
 
 			StaticVertexBuffer const *const vb = prim.getVertexBuffer();
@@ -491,8 +492,8 @@ void MeshAppearance::getMeshGeometryForCollision(IndexedTriangleList & out) cons
 	if (!spsTemplate)
 		return;
 
-	// Source of truth: drawable mesh (vertex + index buffers). Matches on-screen geometry for jump/swim collision.
-	if (appendRenderableMeshTrianglesFromTemplate(spsTemplate, out))
+	// Source of truth: drawable mesh (vertex + index buffers). Matches on-screen geometry for walk/blocking collision.
+	if (appendRenderableMeshTrianglesFromTemplate(spsTemplate, out, true))
 		return;
 
 	// Fallback when render buffers are unavailable: legacy authored collision chunks from .msh (collision IndexedTriangleList).

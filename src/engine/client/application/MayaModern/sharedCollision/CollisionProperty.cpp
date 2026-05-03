@@ -46,6 +46,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <vector>
 
 namespace
 {
@@ -763,18 +764,27 @@ void CollisionProperty::updateExtents ( void ) const
 			}
 		}
 
-		if(!m_extent_l && appearance && ConfigSharedCollision::getUseMeshGeometryCollision())
+		if(!m_extent_l && appearance && ConfigSharedCollision::getUseMeshGeometryCollision() && !getOwner().getPortalProperty())
 		{
 			IndexedTriangleList meshTris;
 			appearance->getMeshGeometryForCollision(meshTris);
 
 			if(!meshTris.getVertices().empty() && !meshTris.getIndices().empty())
 			{
+				Vector const scale_o = getOwner().getScale();
+				std::vector<Vector> & verts = meshTris.getVertices();
+				for (size_t vi = 0; vi < verts.size(); ++vi)
+				{
+					verts[vi].x *= scale_o.x;
+					verts[vi].y *= scale_o.y;
+					verts[vi].z *= scale_o.z;
+				}
+
 				MeshExtent * meshExtent = new MeshExtent(meshTris.clone());
 				if(meshExtent)
 				{
 					BaseExtent * scaled = meshExtent->clone();
-					scaled->transform(meshExtent, Transform::identity, m_scale);
+					scaled->transform(meshExtent, Transform::identity, 1.0f);
 					attachSourceExtent(scaled);
 					delete meshExtent;
 				}

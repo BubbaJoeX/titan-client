@@ -138,7 +138,7 @@ namespace SetupSharedNetworkMessagesNamespace
 
 	MessageQueue::Data* unpackNothing(Archive::ReadIterator &)
 	{
-		return NULL;
+		return nullptr;
 	}
 
 	void packGenericShipDamageMessage(const MessageQueue::Data * data, Archive::ByteStream & target)
@@ -374,7 +374,6 @@ void SetupSharedNetworkMessages::install ()
 	MessageQueueNetworkIdAndTransform::install();
 	MessageQueueNetworkIdPair::install();
 	MessageQueueNpcConversationMessage::install();
-	MessageQueueNpcConversationCameraCommand::install();
 	MessageQueueObjectMenuRequest::install();
 	MessageQueueOpponentInfo::install();
 	MessageQueuePosture::install();
@@ -391,6 +390,7 @@ void SetupSharedNetworkMessages::install ()
 	MessageQueueSpatialChat::install();
 	MessageQueueStartNpcConversation::install();
 	MessageQueueStopNpcConversation::install();
+	MessageQueueNpcConversationCameraCommand::install();
 	MessageQueueString::install();
 	MessageQueueStringList::install();
 	MessageQueueTeleportAck::install();
