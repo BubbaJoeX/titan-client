@@ -611,16 +611,6 @@ float FreeChaseCamera::alter (float elapsedTime)
 			m_offsetYaw_w -= turnTotal;
 		}
 
-		if (!playerCreatureController->getAutoPilotLocked())
-		{
-			// Chase "face camera" applies to the rider avatar on foot. While mounted, movement
-			// and facing are driven from the mount root; do not tie shouldFaceDesiredYaw to chase.
-			bool const faceYaw =
-				!(creatureObject && creatureObject->getState (States::RidingMount))
-				&& (ms_cameraMode == CM_chase && mouseLookState != CuiIoWin::MouseLookState_Camera);
-			playerCreatureController->setDesiredYaw_w (m_yaw_w, faceYaw);
-		}
-
 	}
 	
 	m_lastTurnRate = turnTotal;
@@ -684,6 +674,19 @@ float FreeChaseCamera::alter (float elapsedTime)
 
 		//-- yaw the world yaw amount
 		yaw_o (m_yaw_w + (ms_cameraMode == CM_chase ? m_offsetYaw_w : 0.f));
+
+		// Ground locomotion projects WASD through PlayerCreatureController::m_desiredYaw_w.
+		// Use this camera's horizontal forward after the chase yaw chain (pivot can be mount
+		// while m_yaw_w is still chase-internal). Passing raw m_yaw_w desynced movement from
+		// what the player sees when RidingMount (and could drift on foot vs camera theta).
+		if (playerCreatureController && !playerCreatureController->getAutoPilotLocked ())
+		{
+			bool const faceYaw =
+				!(creatureObject && creatureObject->getState (States::RidingMount))
+				&& (ms_cameraMode == CM_chase && mouseLookState != CuiIoWin::MouseLookState_Camera);
+			float const locomotionYaw_w = getObjectFrameK_w ().theta ();
+			playerCreatureController->setDesiredYaw_w (locomotionYaw_w, faceYaw);
+		}
 
 		m_offset = Vector::linearInterpolate(m_offset, m_desiredOffset, elapsedTime);
 

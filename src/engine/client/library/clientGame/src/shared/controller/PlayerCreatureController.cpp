@@ -3129,13 +3129,14 @@ bool PlayerCreatureController::shouldProcessMovement() const
 
 	if ((owner != 0) && (owner->isRidingMount()))
 	{
-		// check if we're riding a mount that isn't ours.
 		CreatureObject const * const mount = owner->getMountedCreature();
+		if (!mount)
+			return false;
 
-		if (mount != 0 && mount->getMasterId().isValid())
-		{
-			return owner->getNetworkId() == mount->getMasterId();
-		}
+		// Driver seat sends nutwp for the mount; passengers must not predict-drive.
+		CreatureObject const * const driver = mount->getRiderDriverCreature();
+		if (driver && driver != owner)
+			return false;
 	}
 
 	return true;

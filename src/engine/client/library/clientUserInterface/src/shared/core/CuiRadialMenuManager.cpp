@@ -768,8 +768,10 @@ void CuiRadialMenuManager::update()
 			// s_radialOffset_c is stored in camera space. Re-applying rotate_o2w() each frame
 			// while the chase camera orbits the mount makes the projected anchor circle on screen,
 			// which reads as a "spinning" radial and prevents selecting dismount / menu actions.
-			// While RidingMount, anchor to the object's collision center only (still tracks the target).
-			if (!player->getState (States::RidingMount))
+			// While RidingMount (or client still has a mounted creature link), anchor without camera-offset spin.
+			bool const radialRideStable =
+				player->getState (States::RidingMount) || (player->getMountedCreature () != nullptr);
+			if (!radialRideStable)
 				worldPosition += camera->rotate_o2w(s_radialOffset_c);
 
 			Vector screenVect;
@@ -798,8 +800,13 @@ bool CuiRadialMenuManager::createMenu (Object & object, const UIPoint & pt, bool
 
 	s_updateByOffset = false;
 
+	// Normally no radial on yourself; while mounted (vehicle-style) allow it so Dismount can target the rider oid.
 	if (&object == Game::getPlayer ())
-		return false;
+	{
+		CreatureObject const * const pc = Game::getPlayerCreature ();
+		if (!pc || (!pc->getState (States::RidingMount) && !pc->getMountedCreature ()))
+			return false;
+	}
 
 	s_helper.clear ();
 
