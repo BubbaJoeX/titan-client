@@ -43,6 +43,9 @@ public:
 	/// Rider pose: used on the rider appearance for mount posture.
 	static const ConstCharCrcLowerString  cms_riderPose;
 
+	/// Optional rider pose keyframe index (float for env): used when pose specifies an .ans with \#frame suffix.
+	static const ConstCharCrcLowerString  cms_riderPoseKeyframe;
+
 	/// Mounted creature: used on the mount appearance, set to 0 when not mounted, set to 1 when mounted.
 	static const ConstCharCrcLowerString  cms_mountedCreature;
 };

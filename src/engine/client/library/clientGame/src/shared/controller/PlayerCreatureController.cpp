@@ -71,8 +71,10 @@
 #include "sharedFoundation/ConstCharCrcLowerString.h"
 #include "sharedFoundation/GameControllerMessage.h"
 #include "sharedFoundation/Production.h"
+#include "sharedGame/GameObjectTypes.h"
 #include "sharedGame/SharedBuffBuilderManager.h"
 #include "sharedGame/HyperspaceManager.h"
+#include "sharedGame/SharedObjectTemplate.h"
 #include "sharedGame/MatchMakingCharacterResult.h"
 #include "sharedGame/SharedImageDesignerManager.h"
 #include "sharedGame/SlopeEffectProperty.h"
@@ -905,6 +907,18 @@ float PlayerCreatureController::realAlter (const float elapsedTime)
 
 	bool useVehicleControls = !(movementCreatureObject->getCanStrafe());
 
+	// Yaw / turn limits: when riding, use the *rider* (this controller's owner). The mount has
+	// States::MountedCreature; its template may ship 0 turn rate, which clamps camera / strafe steering to
+	// nothing while translation still follows the camera.
+	CreatureObject * const turnSourceObject = isRidingMount ? creatureObject : movementCreatureObject;
+
+	// Used for creature-mount-only PCC fixes; vehicles keep legacy locomotion + compensator behavior unchanged.
+	bool const mountIsVehicle =
+		GameObjectTypes::isTypeOf(
+			movementCreatureObject->getGameObjectType(),
+			static_cast<int>(SharedObjectTemplate::GOT_vehicle));
+	bool const ridingCreatureMount = isRidingMount && !mountIsVehicle;
+
 	// Periodic ambient fish schools while swimming to keep open-water spaces alive.
 	if (movementCreatureObject->isInWorldCell() && movementCreatureObject->getState(States::Swimming))
 	{
@@ -1102,7 +1116,7 @@ float PlayerCreatureController::realAlter (const float elapsedTime)
 						else
 							getMessageQueue ()->appendMessage (static_cast<int>(CM_left),  0.0f);
 					}
-					else if ( !isFirstPerson && !m_shouldFaceDesiredYaw )
+					else if ( !isFirstPerson && ( !m_shouldFaceDesiredYaw || (creatureObject && creatureObject->isRidingMount ()) ) )
 						turn += value;
 				}
 				break;
@@ -1186,7 +1200,7 @@ float PlayerCreatureController::realAlter (const float elapsedTime)
 			}
 		}
 
-		const float           turnRate            = convertDegreesToRadians (movementCreatureObject->getMaximumTurnRate (m_currentSpeed));
+		const float           turnRate            = convertDegreesToRadians (turnSourceObject->getMaximumTurnRate (m_currentSpeed));
 		const float           maximumYawThisFrame = turnRate * elapsedTime;
 
 		static float m_lastTurnRate =  0.0f;
@@ -1352,10 +1366,14 @@ float PlayerCreatureController::realAlter (const float elapsedTime)
 		{
 			if (m_shouldFaceDesiredYaw || (isFirstPerson && !isMoving))
 			{
-				//-- dont turn mount to face direction when riding a mount
-				if ( !isRidingMount  )
+				// Chase camera: when not translating, inject forward in camera space so the facing code (below)
+				// can yaw the controlled object toward m_desiredYaw_w. On foot this was always done; riding used
+				// to skip *all* mounts, which left creature mounts visually locked while the camera moved.
+				// Vehicle-style mounts (no strafe) keep the old behavior; strafe-capable creature mounts get
+				// camera + A/D steering like the player.
+				if ( !isMoving )
 				{
-					if ( !isMoving )
+					if ( !isRidingMount || movementCreatureObject->getCanStrafe() )
 					{
 						desiredVelocity_c = Vector::unitZ;
 					}
@@ -1370,43 +1388,41 @@ float PlayerCreatureController::realAlter (const float elapsedTime)
 
  				t.yaw_l (m_desiredYaw_w);
 
+				// desiredVelocity_w is a world-space direction (camera yaw * input). Object::rotate_p2w / rotate_p2o
+				// expect object-local and parent-local vectors, not world — the old ship-hull branch mis-tagged
+				// frame space and broke chase/strafe movement inside POBs and ship interiors.
 				Vector const & desiredVelocity_w = t.rotate_l2p (desiredVelocity_c);
-				Vector desiredVelocity_o;
-
-				ShipObject * const ship = Game::getPlayerContainingShip();
-				if (ship)
-				{
-					movementOverrideVect = movementCreatureObject->rotate_p2w(desiredVelocity_w);
-					desiredVelocity_o = movementCreatureObject->rotate_p2o(desiredVelocity_w);
-				}
-				else
-				{
-					movementOverrideVect = desiredVelocity_w;
-					desiredVelocity_o = movementCreatureObject->rotate_w2o(desiredVelocity_w);
-				}
+				Vector const     desiredVelocity_o = movementCreatureObject->rotate_w2o(desiredVelocity_w);
+				movementOverrideVect = desiredVelocity_w;
 
 				const float  yaw = clamp (-maximumYawThisFrame, desiredVelocity_o.theta (), maximumYawThisFrame);
 				shouldOverrideMovement = (yaw > FLT_EPSILON || yaw < -FLT_EPSILON);
 				movementCreatureObject->yaw_o (yaw);
-			}
 
-			if(shouldOverrideMovement)
-			{
-				if(useVehicleControls)
-				{
-					Vector const & worldPos = movementCreatureObject->getPosition_w();
-					Transform o2w = movementCreatureObject->getTransform_o2w();
-					Vector worldDelta = o2w.rotate_l2p(Vector::unitZ) * m_currentSpeed * elapsedTime;
+				// Strafe-yaw sets shouldOverrideMovement; straight-ahead does not. Creature mounts used to rely on
+				// RemoteCreatureController::applyAnimationDrivenLocomotion for forward motion, which overlapped this
+				// controller and caused stutter. Integrate here for creature mounts only (vehicles: untouched).
+				bool const applyRidingWorldStep =
+					ridingCreatureMount
+					&& (m_currentSpeed > FLT_EPSILON);
 
-					movementCreatureObject->setPosition_w(worldPos + worldDelta);
-				}	
-				else
+				if (shouldOverrideMovement || applyRidingWorldStep)
 				{
-					movementOverrideVect.normalize();
-					movementCreatureObject->setPosition_w(
-						movementCreatureObject->getPosition_w() 
-						+ movementOverrideVect * m_currentSpeed * elapsedTime
-						);	
+					if (useVehicleControls)
+					{
+						Vector const & worldPos = movementCreatureObject->getPosition_w();
+						Transform o2w = movementCreatureObject->getTransform_o2w();
+						Vector worldDelta = o2w.rotate_l2p(Vector::unitZ) * m_currentSpeed * elapsedTime;
+
+						movementCreatureObject->setPosition_w(worldPos + worldDelta);
+					}
+					else
+					{
+						movementOverrideVect.normalize();
+						movementCreatureObject->setPosition_w(
+							movementCreatureObject->getPosition_w()
+							+ movementOverrideVect * m_currentSpeed * elapsedTime);
+					}
 				}
 			}
 		}
@@ -1439,7 +1455,10 @@ float PlayerCreatureController::realAlter (const float elapsedTime)
 			if (appearance)
 				appearance->setDesiredVelocity (Vector::unitZ * m_currentSpeed);
 
-			if(appearance && shouldOverrideMovement)
+			// Undo animation root translation when manually overriding movement. Creature mounts: PCC owns world
+			// position (see RemoteCreatureController); skipping avoids jitter. Vehicles: keep original compensator —
+			// omitting it while riding caused strafe + animation translation to stack (speed-up).
+			if (appearance && shouldOverrideMovement && !ridingCreatureMount)
 			{
 				Quaternion rot;
 				Vector trans;

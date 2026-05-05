@@ -73,6 +73,9 @@
 #include "sharedDebug/InstallTimer.h"
 #include "sharedDebug/Profiler.h"
 #include "sharedFoundation/ConstCharCrcLowerString.h"
+
+#include <cstdlib>
+#include <string>
 #include "sharedFoundation/ConstCharCrcString.h"
 #include "sharedFoundation/Crc.h"
 #include "sharedFoundation/DebugInfoManager.h"
@@ -1844,6 +1847,18 @@ float CreatureObject::getMaximumAcceleration(const float currentSpeed, bool igno
 		if (_getMountedMaximumAcceleration(mountedAcceleration, currentSpeed))
 		{
 			return mountedAcceleration;
+		}
+
+		// Local player driving a creature mount: PCC advances the mount using getMaximumAcceleration on the mount.
+		// Pet/mount templates often ship much lower walk/run accel than the player; run/walk caps already come from
+		// the rider (see _getMountedRunSpeed / _getMountedWalkSpeed). Use the rider's acceleration so start-up and
+		// walk/run transitions match on-foot responsiveness. Vehicles keep hover-dynamics accel above.
+		if (isMountForThisClientPlayer()
+			&& !GameObjectTypes::isTypeOf(getGameObjectType(), static_cast<int>(SharedObjectTemplate::GOT_vehicle)))
+		{
+			CreatureObject const *const playerCreatureObject = Game::getPlayerCreature();
+			if (playerCreatureObject != nullptr && playerCreatureObject->getMountedCreature() == this)
+				return playerCreatureObject->getMaximumAcceleration(currentSpeed, true);
 		}
 	}
 
@@ -3740,11 +3755,11 @@ void CreatureObject::onRiderMountedMount()
 	// Report log it.
 	DEBUG_REPORT_LOG(s_logMountStatusChanges, ("onRiderMountedMount(): rider id=[%s],template=[%s] mounted on mount id=[%s],template=[%s].\n", getNetworkId().getValueString().c_str(), getObjectTemplateName(), mountCreature->getNetworkId().getValueString().c_str(), mountCreature->getObjectTemplateName()));
 
-	HardpointObject * const riderHardpointObject = SaddleManager::createRiderHardpointObjectAndAttachToSaddle(*mountCreature);
+	Object * const riderAttachParent = SaddleManager::createRiderHardpointObjectAndAttachToSaddle(*mountCreature);
 
-	// Attach rider to the hardpoint object.  The rider will get an alter update from the parent.
+	// Attach rider to the snap hardpoint (or a child offset node for dynamic mount.dm seat offsets).
 	// This function removes the child from the alter scheduler.
-	attachToObject_p(riderHardpointObject, true);
+	attachToObject_p(riderAttachParent, true);
 
 	// Remove the rider from the collision world.
 	CollisionWorld::removeObject(this);
@@ -3766,21 +3781,50 @@ void CreatureObject::onRiderMountedMount()
 	Vector dynamicSeatIgnored(Vector::zero);
 	bool const dynamicPose = mountCreature->isMountDynamicActive() && mountCreature->getMountDynamicSeatInfo(riderSeatIndex, dynamicPoseToken, dynamicSeatIgnored);
 
+	std::string dynamicPoseResolved(dynamicPoseToken);
+	float riderPoseKeyframe = -1.f;
+	{
+		size_t const hashPos = dynamicPoseResolved.find_last_of('#');
+		if (hashPos != std::string::npos && hashPos + 1 < dynamicPoseResolved.size())
+		{
+			char *endPtr = nullptr;
+			long const kf = std::strtol(dynamicPoseResolved.c_str() + hashPos + 1, &endPtr, 10);
+			if (endPtr != dynamicPoseResolved.c_str() + hashPos + 1 && kf >= 0 && kf < 1000000L)
+			{
+				riderPoseKeyframe = static_cast<float>(kf);
+				dynamicPoseResolved.erase(hashPos);
+				while (dynamicPoseResolved.size() > 0)
+				{
+					char const c = dynamicPoseResolved[dynamicPoseResolved.size() - 1];
+					if (c != ' ' && c != '\t')
+						break;
+					dynamicPoseResolved.erase(dynamicPoseResolved.size() - 1, 1);
+				}
+			}
+		}
+	}
+
+	auto const dynamicPoseUnset = [](std::string const &s) -> bool
+	{
+		return s.empty() || s == "-" || s == "none";
+	};
+
 	CrcString const *riderPoseName = nullptr;
 	PersistentCrcString riderPosePersist;
 	if (!dynamicPose)
 	{
 		riderPoseName = SaddleManager::getRiderPoseNameForMountSeatIndex(*mountCreature, riderSeatIndex);
 	}
-	else if (!dynamicPoseToken.empty())
+	else if (!dynamicPoseUnset(dynamicPoseResolved))
 	{
-		riderPosePersist.set(dynamicPoseToken.c_str(), true);
+		riderPosePersist.set(dynamicPoseResolved.c_str(), true);
 		riderPoseName = &riderPosePersist;
 	}
 
 	if (!riderPoseName)
 	{
-		DEBUG_WARNING(true, ("CreatureObject::onRiderMountedMount(): SaddleManager failed to find a rider pose for mount id=[%s],template=[%s], seat index=[%d].", mountCreature->getNetworkId().getValueString().c_str(), mountCreature->getObjectTemplateName(), riderSeatIndex));
+		if (!dynamicPose || !dynamicPoseUnset(dynamicPoseResolved))
+			DEBUG_WARNING(true, ("CreatureObject::onRiderMountedMount(): SaddleManager failed to find a rider pose for mount id=[%s],template=[%s], seat index=[%d].", mountCreature->getNetworkId().getValueString().c_str(), mountCreature->getObjectTemplateName(), riderSeatIndex));
 	}
 	else
 	{
@@ -3794,13 +3838,16 @@ void CreatureObject::onRiderMountedMount()
 			// value of this variable.
 			AnimationEnvironment &riderAnimationEnvironment = riderAppearance->getAnimationEnvironment();
 			riderAnimationEnvironment.getString(AnimationEnvironmentNames::cms_riderPose).set(riderPoseName->getString(), riderPoseName->getCrc());
+			if (dynamicPose && riderPoseKeyframe >= 0.f)
+				riderAnimationEnvironment.getFloat(AnimationEnvironmentNames::cms_riderPoseKeyframe) = riderPoseKeyframe;
 		}
 		else
 			DEBUG_WARNING(true, ("onRiderMountedMount(): unexpected: rider id=[%s],template=[%s] does not have a skeletal appearance.", getNetworkId().getValueString().c_str(), getObjectTemplateName()));
 	}
 
 	//-- Force rider to set scale of 1.
-	GamePlaybackScript::sitOnSaddle(*this, *riderHardpointObject, cs_riderHardpointName);
+	if (riderAttachParent)
+		GamePlaybackScript::sitOnSaddle(*this, *riderAttachParent, cs_riderHardpointName);
 
 	//-- If we are this client's player, tell our mount it is "the player" so that
 	//   the collision system does collision for the mount like it does for the player.
@@ -3893,6 +3940,7 @@ void CreatureObject::onRiderDismountedMount(NetworkId const &oldMountId)
 	{
 		AnimationEnvironment &riderAnimationEnvironment = riderAppearance->getAnimationEnvironment();
 		riderAnimationEnvironment.getString(AnimationEnvironmentNames::cms_riderPose).set("", false);
+		riderAnimationEnvironment.getFloat(AnimationEnvironmentNames::cms_riderPoseKeyframe) = -1.f;
 	}
 	else
 		DEBUG_WARNING(true, ("onRiderDismountedMount(): unexpected: rider id=[%s],template=[%s] does not have a skeletal appearance.", getNetworkId().getValueString().c_str(), getObjectTemplateName()));

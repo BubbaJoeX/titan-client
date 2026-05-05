@@ -15,7 +15,6 @@
 
 class CrcString;
 class CreatureObject;
-class HardpointObject;
 class Object;
 
 // ======================================================================
@@ -42,7 +41,8 @@ public:
 	static int getRiderSeatIndex(Object const & mount, Object const & rider);
 	static int findFirstOpenSeat(Object const & mount);
 
-	static HardpointObject * createRiderHardpointObjectAndAttachToSaddle(Object & mount);
+	// Rider attaches here (possibly an intermediate Object under the skeletal HardpointObject when mount.dm seat offsets apply).
+	static Object * createRiderHardpointObjectAndAttachToSaddle(Object & mount);
 
 private:
 	SaddleManager();

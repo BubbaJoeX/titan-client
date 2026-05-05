@@ -2150,13 +2150,15 @@ void TangibleObject::endBaselines()
 
 	// We many not want to call the virtual method conditionModified() but
 	// TangibleObject still has some logic that needs to be performed
-	handleConditionModified (0, getCondition ());
-
 	m_lastOnOffStatus = (getCondition() & C_onOff) != 0;
 	setChildWingsOpened((getCondition() & C_wingsOpened) != 0);
 
 	applyDynamicLightState(m_dynamicLightState.get());
+	// Apply dynamic mount metadata + hp_dyn before condition callbacks so CreatureObject::onJustBecameMountable()
+	// sees isMountDynamicActive() and skips IFF saddles when mount.dm is authored.
 	applyDynamicHardpointsState(m_dynamicHardpointsState.get());
+
+	handleConditionModified (0, getCondition ());
 }
 
 // ----------------------------------------------------------------------
@@ -3740,7 +3742,7 @@ void TangibleObject::applyDynamicHardpointsState(std::string const &packed)
 				}
 				else
 				{
-					m_mountDynamicSeatPose[static_cast<size_t>(s)] = "normal";
+					m_mountDynamicSeatPose[static_cast<size_t>(s)].clear();
 					m_mountDynamicSeatOffset[static_cast<size_t>(s)] = Vector::zero;
 				}
 			}

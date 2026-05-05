@@ -93,6 +93,51 @@ namespace SaddleManagerNamespace
 using namespace SaddleManagerNamespace;
 
 // ======================================================================
+
+namespace
+{
+	/**
+	 * Rider may be parented directly under the HardpointObject, or under an intermediate offset Object
+	 * (mount.dm seat ox/oy/oz in bone-local space).
+	 */
+	CreatureObject const * creatureFromHardpointChildObject(Object const * const child)
+	{
+		if (!child)
+			return nullptr;
+		ClientObject const * const clientObject = child->asClientObject();
+		TangibleObject const * const tangibleObject = clientObject ? clientObject->asTangibleObject() : nullptr;
+		CreatureObject const * const direct = tangibleObject ? tangibleObject->asCreatureObject() : nullptr;
+		if (direct)
+			return direct;
+		if (child->getNumberOfChildObjects() == 1)
+		{
+			Object const * const nested = child->getChildObject(0);
+			if (!nested)
+				return nullptr;
+			ClientObject const * const nco = nested->asClientObject();
+			TangibleObject const * const nto = nco ? nco->asTangibleObject() : nullptr;
+			return nto ? nto->asCreatureObject() : nullptr;
+		}
+		return nullptr;
+	}
+
+	bool hardpointSubtreeHasRider(HardpointObject const * const hp, Object const & rider)
+	{
+		if (!hp)
+			return false;
+		for (int j = 0; j < hp->getNumberOfChildObjects(); ++j)
+		{
+			Object const * const child = hp->getChildObject(j);
+			if (child == &rider)
+				return true;
+			if (child && child->getNumberOfChildObjects() == 1 && child->getChildObject(0) == &rider)
+				return true;
+		}
+		return false;
+	}
+}
+
+// ======================================================================
 // namespace SaddleManagerNamespace
 // ======================================================================
 
@@ -596,12 +641,10 @@ int SaddleManager::countTotalNumberOfPassengers(Object const & mount)
 
 				for (int j = 0; j < hardPointChildCount; ++j)
 				{
-					Object const * const rider = childHardpointObjectToTest->getChildObject(j);
-					ClientObject const * const clientObject = (rider != 0) ? rider->asClientObject() : 0;
-					TangibleObject const * const tangibleObject = (clientObject != 0) ? clientObject->asTangibleObject() : 0;
-					CreatureObject const * const creatureObject = (tangibleObject != 0) ? tangibleObject->asCreatureObject() : 0;
+					Object const * const riderObj = childHardpointObjectToTest->getChildObject(j);
+					CreatureObject const * const creatureObject = creatureFromHardpointChildObject(riderObj);
 
-					DEBUG_WARNING(hardPointChildCount != 1, ("object on mount with multiple children: %s", (rider != 0) ? rider->getObjectTemplateName() : "<null rider>"));
+					DEBUG_WARNING(hardPointChildCount != 1, ("object on mount with multiple children: %s", (riderObj != 0) ? riderObj->getObjectTemplateName() : "<null rider>"));
 
 					if (creatureObject != 0)
 					{
@@ -638,31 +681,22 @@ int SaddleManager::getRiderSeatIndex(Object const & mount, Object const & rider)
 		if (dm && hp && !*hp)
 		{
 			++nextDynamicSeatOrdinal;
-			for (int j = 0; j < childHardpointObject->getNumberOfChildObjects(); ++j)
-			{
-				if (childHardpointObject->getChildObject(j) == &rider)
-					return nextDynamicSeatOrdinal;
-			}
+			if (hardpointSubtreeHasRider(childHardpointObject, rider))
+				return nextDynamicSeatOrdinal;
 			continue;
 		}
 
 		if (hp && strcmp(hp, cs_driverHardpointName) == 0)
 		{
-			for (int j = 0; j < childHardpointObject->getNumberOfChildObjects(); ++j)
-			{
-				if (childHardpointObject->getChildObject(j) == &rider)
-					return 1;
-			}
+			if (hardpointSubtreeHasRider(childHardpointObject, rider))
+				return 1;
 		}
 		else if (hp && strstr(hp, cs_passengerHardpointName) != 0)
 		{
 			int seatIndexZeroBased = 0;
 			sscanf(hp, "passenger_%d", &seatIndexZeroBased);
-			for (int j = 0; j < childHardpointObject->getNumberOfChildObjects(); ++j)
-			{
-				if (childHardpointObject->getChildObject(j) == &rider)
-					return seatIndexZeroBased + 1;
-			}
+			if (hardpointSubtreeHasRider(childHardpointObject, rider))
+				return seatIndexZeroBased + 1;
 		}
 	}
 
@@ -746,7 +780,7 @@ int SaddleManager::findFirstOpenSeat(Object const & mount)
 
 //----------------------------------------------------------------------
 
-HardpointObject * SaddleManager::createRiderHardpointObjectAndAttachToSaddle(Object & mount)
+Object * SaddleManager::createRiderHardpointObjectAndAttachToSaddle(Object & mount)
 {
 	int totalNumberOfPassengers = countTotalNumberOfPassengers(mount);
 	int const capacity = getSaddleSeatingCapacity(mount);
@@ -767,30 +801,24 @@ HardpointObject * SaddleManager::createRiderHardpointObjectAndAttachToSaddle(Obj
 	std::string dynamicPoseDiscard;
 	Vector dynamicSeatOffset(Vector::zero);
 
-	if (dm)
+	// Dynamic mounts still need named skeletal hardpoints ("player" / passenger_n); an empty hardpoint name
+	// skips HardpointObject::snapToPosition(), so the rider stays on the mount root (world/object frame).
+	char hardpointName[256];
+	if (totalNumberOfPassengers != 0)
 	{
-		if (creatureObjectMount)
-			IGNORE_RETURN(creatureObjectMount->getMountDynamicSeatInfo(assignedSeatOrdinalOneBased, dynamicPoseDiscard, dynamicSeatOffset));
-		riderHardpointObject = new HardpointObject(ConstCharCrcString(""));
-		riderHardpointObject->setPosition_p(dynamicSeatOffset);
+		int const firstOpenSeat = findFirstOpenSeat(mount);
+		snprintf(hardpointName, 256, "%s_%d", cs_passengerHardpointName, firstOpenSeat);
 	}
 	else
 	{
-		char hardpointName[256];
-
-		if (totalNumberOfPassengers != 0)
-		{
-			int const firstOpenSeat = findFirstOpenSeat(mount);
-			snprintf(hardpointName, 256, "%s_%d", cs_passengerHardpointName, firstOpenSeat);
-		}
-		else
-		{
-			strncpy(hardpointName, cs_driverHardpointName, sizeof(hardpointName) - 1);
-			hardpointName[sizeof(hardpointName) - 1] = '\0';
-		}
-
-		riderHardpointObject = new HardpointObject(ConstCharCrcString(hardpointName));
+		strncpy(hardpointName, cs_driverHardpointName, sizeof(hardpointName) - 1);
+		hardpointName[sizeof(hardpointName) - 1] = '\0';
 	}
+
+	riderHardpointObject = new HardpointObject(ConstCharCrcString(hardpointName));
+
+	if (dm && creatureObjectMount)
+		IGNORE_RETURN(creatureObjectMount->getMountDynamicSeatInfo(assignedSeatOrdinalOneBased, dynamicPoseDiscard, dynamicSeatOffset));
 
 	bool isNonHoveringVehicle = false;
 	if(creatureObjectMount)
@@ -814,7 +842,19 @@ HardpointObject * SaddleManager::createRiderHardpointObjectAndAttachToSaddle(Obj
 		riderHardpointObject->attachToObject_p(attachmentSurface, true);
 	}
 
-	return riderHardpointObject;
+	// mount.dm seat offsets (ox/oy/oz) are in the snapped hardpoint's local frame. HardpointObject::snapToPosition()
+	// overwrites o2p every alter from the skeleton — setting position on the hardpoint is lost. Apply seat offset
+	// as a child transform so the rider follows the animated bone and sits at the authored offset from it.
+	Object * riderAttachParent = riderHardpointObject;
+	if (dm)
+	{
+		Object *const offsetNode = new Object();
+		offsetNode->setPosition_p(dynamicSeatOffset);
+		riderHardpointObject->addChildObject_o(offsetNode);
+		riderAttachParent = offsetNode;
+	}
+
+	return riderAttachParent;
 }
 
 // ======================================================================
