@@ -83,6 +83,29 @@ else()
     target_compile_options(nuna PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
+# ======================================================================
+# TreBrowser — Win32 GUI (folder .tre listing / info / extract via nuna_lib)
+# ======================================================================
+
+if(WIN32)
+    add_executable(nuna_gui WIN32
+        TreBrowser/TreBrowserMain.cpp
+    )
+    target_include_directories(nuna_gui PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(nuna_gui PRIVATE nuna_lib)
+    target_compile_definitions(nuna_gui PRIVATE
+        UNICODE
+        _UNICODE
+        _CRT_SECURE_NO_WARNINGS
+        WIN32_LEAN_AND_MEAN
+        NOMINMAX
+    )
+    if(MSVC)
+        target_compile_options(nuna_gui PRIVATE /W4 /utf-8)
+    endif()
+    install(TARGETS nuna_gui DESTINATION bin)
+endif()
+
 # Installation
 install(TARGETS nuna DESTINATION bin)
 

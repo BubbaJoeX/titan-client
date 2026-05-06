@@ -1,5 +1,6 @@
 D:/titan/client/src/engine/shared/application/Nuna/build/CMakeFiles/zlib_bundled.dir
 D:/titan/client/src/engine/shared/application/Nuna/build/CMakeFiles/nuna.dir
+D:/titan/client/src/engine/shared/application/Nuna/build/CMakeFiles/nuna_gui.dir
 D:/titan/client/src/engine/shared/application/Nuna/build/CMakeFiles/nuna_lib.dir
 D:/titan/client/src/engine/shared/application/Nuna/build/CMakeFiles/edit_cache.dir
 D:/titan/client/src/engine/shared/application/Nuna/build/CMakeFiles/rebuild_cache.dir

@@ -266,6 +266,48 @@ build nuna.exe: CXX_EXECUTABLE_LINKER__nuna_Debug CMakeFiles\nuna.dir\src\Nuna.c
   TARGET_SUPPORT_DIR = CMakeFiles\nuna.dir
 
 # =============================================================================
+# Object build statements for EXECUTABLE target nuna_gui
+
+
+#############################################
+# Order-only phony target for nuna_gui
+
+build cmake_object_order_depends_target_nuna_gui: phony || cmake_object_order_depends_target_nuna_lib cmake_object_order_depends_target_zlib_bundled
+
+build CMakeFiles\nuna_gui.dir\TreBrowser\TreBrowserMain.cpp.obj: CXX_COMPILER__nuna_gui_unscanned_Debug D$:\titan\client\src\engine\shared\application\Nuna\TreBrowser\TreBrowserMain.cpp || cmake_object_order_depends_target_nuna_gui
+  CONFIG = Debug
+  DEFINES = -DNOMINMAX -DUNICODE -DWIN32_LEAN_AND_MEAN -D_CRT_SECURE_NO_WARNINGS -D_UNICODE
+  FLAGS = /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++17 -MDd /W4 /utf-8
+  INCLUDES = -ID:\titan\client\src\engine\shared\application\Nuna\src -ID:\titan\client\src\engine\shared\application\Nuna\..\..\..\..\external\3rd\library\zlib-1.2.3
+  OBJECT_DIR = CMakeFiles\nuna_gui.dir
+  OBJECT_FILE_DIR = CMakeFiles\nuna_gui.dir\TreBrowser
+  TARGET_COMPILE_PDB = CMakeFiles\nuna_gui.dir\
+  TARGET_PDB = nuna_gui.pdb
+  TARGET_SUPPORT_DIR = CMakeFiles\nuna_gui.dir
+
+
+# =============================================================================
+# Link build statements for EXECUTABLE target nuna_gui
+
+
+#############################################
+# Link the executable nuna_gui.exe
+
+build nuna_gui.exe: CXX_EXECUTABLE_LINKER__nuna_gui_Debug CMakeFiles\nuna_gui.dir\TreBrowser\TreBrowserMain.cpp.obj | nuna_lib.lib zlib_bundled.lib || nuna_lib.lib zlib_bundled.lib
+  CONFIG = Debug
+  FLAGS = /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -MDd
+  LINK_FLAGS = /machine:x64 /debug /INCREMENTAL /subsystem:windows
+  LINK_LIBRARIES = nuna_lib.lib  zlib_bundled.lib  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib
+  OBJECT_DIR = CMakeFiles\nuna_gui.dir
+  POST_BUILD = cd .
+  PRE_LINK = cd .
+  TARGET_COMPILE_PDB = CMakeFiles\nuna_gui.dir\
+  TARGET_FILE = nuna_gui.exe
+  TARGET_IMPLIB = nuna_gui.lib
+  TARGET_PDB = nuna_gui.pdb
+  TARGET_SUPPORT_DIR = CMakeFiles\nuna_gui.dir
+
+# =============================================================================
 # Object build statements for STATIC_LIBRARY target nuna_lib
 
 
@@ -375,6 +417,8 @@ build install\local: phony CMakeFiles\install\local.util
 
 build nuna: phony nuna.exe
 
+build nuna_gui: phony nuna_gui.exe
+
 build nuna_lib: phony nuna_lib.lib
 
 build zlib_bundled: phony zlib_bundled.lib
@@ -387,7 +431,7 @@ build zlib_bundled: phony zlib_bundled.lib
 #############################################
 # Folder: D:/titan/client/src/engine/shared/application/Nuna/build
 
-build all: phony zlib_bundled.lib nuna.exe nuna_lib.lib
+build all: phony zlib_bundled.lib nuna.exe nuna_gui.exe nuna_lib.lib
 
 # =============================================================================
 # Built-in targets
