@@ -1,5 +1,5 @@
 // ======================================================================
-// TreBrowser — Win32 GUI for browsing SWG .tre archives via Nuna library
+// TreBrowser — Win32 GUI: merged .tre tree, overlay history, selective extract
 // Copyright (c) Titan Project
 // ======================================================================
 
@@ -26,12 +26,15 @@
 #include <shellapi.h>
 
 #include <algorithm>
-#include <filesystem>
+#include <cctype>
 #include <cwctype>
+#include <filesystem>
 #include <functional>
 #include <iostream>
+#include <map>
 #include <sstream>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #pragma comment(lib, "comctl32.lib")
@@ -51,25 +54,73 @@ constexpr wchar_t kTitle[] = L"Nuna Tre Browser";
 
 enum ControlIds : int
 {
-    IDC_FOLDER_EDIT = 1001,
+    IDC_FOLDER_EDIT = 2001,
     IDC_BROWSE_FOLDER,
     IDC_REFRESH,
+    IDC_MERGE_ALL,
     IDC_FILE_LIST,
     IDC_LIST_CONTENTS,
     IDC_INFO,
-    IDC_EXTRACT,
+    IDC_EXTRACT_FILE,
+    IDC_EXTRACT_FOLDER,
+    IDC_EXTRACT_ARCHIVE,
     IDC_PASSWORD_LABEL,
     IDC_PASSWORD_EDIT,
+    IDC_DETAILS,
     IDC_LOG,
+    IDC_TREE,
 };
 
 HWND g_hwndMain = nullptr;
 HWND g_folderEdit = nullptr;
 HWND g_fileList = nullptr;
+HWND g_mergeAllCheck = nullptr;
+HWND g_tree = nullptr;
+HWND g_details = nullptr;
 HWND g_log = nullptr;
 HWND g_passwordEdit = nullptr;
 
-INITCOMMONCONTROLSEX g_icc = { sizeof(INITCOMMONCONTROLSEX), ICC_STANDARD_CLASSES | ICC_BAR_CLASSES };
+// ----- Overlay model (normalized path -> stack of layers, bottom .. top) -----
+
+struct OverlayLayer
+{
+    fs::path trePath;
+    Nuna::TocEntry entry{};
+};
+
+struct PathOverlay
+{
+    std::string displayPath;
+    std::vector<OverlayLayer> layers;
+};
+
+std::unordered_map<std::string, PathOverlay> g_overlay;
+
+// ----- Tree item payload -----
+
+enum class TreeKind : int
+{
+    Folder,
+    File
+};
+
+struct TreeItemData
+{
+    TreeKind kind = TreeKind::Folder;
+    std::wstring label;
+    std::string normFolderPrefix;
+    std::string normFileKey;
+};
+
+struct TrieNode
+{
+    std::map<std::string, TrieNode> subdirs;
+    std::vector<std::pair<std::string, std::string>> filesHere;
+};
+
+std::vector<TreeItemData*> g_treeAlloc;
+INITCOMMONCONTROLSEX g_icc = { sizeof(INITCOMMONCONTROLSEX),
+                                ICC_STANDARD_CLASSES | ICC_BAR_CLASSES | ICC_TREEVIEW_CLASSES };
 
 std::string WideToUtf8(std::wstring_view w)
 {
@@ -127,6 +178,22 @@ void ClearLog()
         SetWindowTextW(g_log, L"");
 }
 
+void ClearDetails()
+{
+    if (g_details)
+        SetWindowTextW(g_details, L"");
+}
+
+void AppendDetailsUtf8(std::string_view text)
+{
+    if (!g_details)
+        return;
+    std::wstring w = Utf8ToWide(std::string(text));
+    const int end = GetWindowTextLengthW(g_details);
+    SendMessageW(g_details, EM_SETSEL, static_cast<WPARAM>(end), static_cast<LPARAM>(end));
+    SendMessageW(g_details, EM_REPLACESEL, FALSE, reinterpret_cast<LPARAM>(w.c_str()));
+}
+
 bool EndsWithTreInsensitive(std::wstring_view name)
 {
     if (name.size() < 4)
@@ -135,6 +202,110 @@ bool EndsWithTreInsensitive(std::wstring_view name)
         && std::towlower(static_cast<wint_t>(name[name.size() - 3])) == L't'
         && std::towlower(static_cast<wint_t>(name[name.size() - 2])) == L'r'
         && std::towlower(static_cast<wint_t>(name[name.size() - 1])) == L'e';
+}
+
+// Match Nuna::normalizePath (pack) so keys align with extractOne / TOC paths.
+std::string NormalizeTrePath(const std::string& path)
+{
+    std::string result;
+    result.reserve(path.size());
+    const char* f = path.c_str();
+    while (*f == '\\' || *f == '/')
+        ++f;
+    while (f[0] == '.' && (f[1] == '\\' || f[1] == '/'))
+        f += 2;
+    while (f[0] == '.' && f[1] == '.' && (f[2] == '\\' || f[2] == '/'))
+        f += 3;
+    bool previousIsSlash = false;
+    for (; *f; ++f)
+    {
+        const char c = *f;
+        const bool currentIsSlash = (c == '\\' || c == '/');
+        if (currentIsSlash)
+        {
+            if (!previousIsSlash)
+            {
+                result += '/';
+                previousIsSlash = true;
+            }
+        }
+        else
+        {
+            result += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+            previousIsSlash = false;
+        }
+    }
+    return result;
+}
+
+std::vector<std::string> SplitPathSegments(const std::string& normPath)
+{
+    std::vector<std::string> parts;
+    size_t i = 0;
+    while (i < normPath.size())
+    {
+        while (i < normPath.size() && normPath[i] == '/')
+            ++i;
+        if (i >= normPath.size())
+            break;
+        const size_t j = normPath.find('/', i);
+        if (j == std::string::npos)
+        {
+            parts.push_back(normPath.substr(i));
+            break;
+        }
+        parts.push_back(normPath.substr(i, j - i));
+        i = j + 1;
+    }
+    return parts;
+}
+
+void TrieInsert(TrieNode& root, const std::string& normPath)
+{
+    const std::vector<std::string> parts = SplitPathSegments(normPath);
+    if (parts.empty())
+        return;
+    TrieNode* cur = &root;
+    for (size_t i = 0; i + 1 < parts.size(); ++i)
+        cur = &cur->subdirs[parts[i]];
+    cur->filesHere.emplace_back(parts.back(), normPath);
+}
+
+void FreeTreeItems()
+{
+    for (TreeItemData* p : g_treeAlloc)
+        delete p;
+    g_treeAlloc.clear();
+    if (g_tree)
+        TreeView_DeleteAllItems(g_tree);
+}
+
+std::string CaptureStdout(const std::function<void()>& fn)
+{
+    std::ostringstream oss;
+    std::streambuf* const old = std::cout.rdbuf(oss.rdbuf());
+    fn();
+    std::cout.rdbuf(old);
+    return oss.str();
+}
+
+Nuna::EncryptionOptions PasswordOptionsFromUi()
+{
+    Nuna::EncryptionOptions enc;
+    if (g_passwordEdit)
+    {
+        std::wstring pw = GetWindowTextStr(g_passwordEdit);
+        enc.password = WideToUtf8(pw);
+    }
+    return enc;
+}
+
+fs::path GetFolderPathFromEdit(HWND folderEdit)
+{
+    std::wstring ws = GetWindowTextStr(folderEdit);
+    if (ws.empty())
+        return {};
+    return fs::path(ws);
 }
 
 void RefreshTreList(HWND folderEdit, HWND listBox)
@@ -177,12 +348,25 @@ void RefreshTreList(HWND folderEdit, HWND listBox)
     AppendLogLine(msg);
 }
 
-fs::path GetFolderPathFromEdit(HWND folderEdit)
+std::vector<fs::path> GetAllTreSortedInFolder(HWND folderEdit)
 {
-    std::wstring ws = GetWindowTextStr(folderEdit);
-    if (ws.empty())
-        return {};
-    return fs::path(ws);
+    std::vector<fs::path> paths;
+    fs::path root = GetFolderPathFromEdit(folderEdit);
+    if (root.empty())
+        return paths;
+
+    std::error_code ec;
+    for (const fs::directory_entry& ent : fs::directory_iterator(root, ec))
+    {
+        if (!ent.is_regular_file(ec))
+            continue;
+        const std::wstring fname = ent.path().filename().wstring();
+        if (EndsWithTreInsensitive(fname))
+            paths.push_back(ent.path());
+    }
+    std::sort(paths.begin(), paths.end(), [](const fs::path& a, const fs::path& b)
+              { return a.filename().wstring() < b.filename().wstring(); });
+    return paths;
 }
 
 std::vector<fs::path> GetSelectedTrePaths(HWND folderEdit, HWND listBox)
@@ -222,69 +406,234 @@ std::vector<fs::path> GetSelectedTrePaths(HWND folderEdit, HWND listBox)
         const int cur = static_cast<int>(SendMessageW(listBox, LB_GETCARETINDEX, 0, 0));
         if (cur >= 0 && cur < n)
             pushPathForIndex(cur);
-        else
-        {
-            for (int i = 0; i < n; ++i)
-                pushPathForIndex(i);
-        }
     }
+
+    std::sort(paths.begin(), paths.end(), [](const fs::path& a, const fs::path& b)
+              { return a.filename().wstring() < b.filename().wstring(); });
     return paths;
 }
 
-Nuna::EncryptionOptions PasswordOptionsFromUi()
+std::vector<fs::path> TrePathsForListOperation()
 {
-    Nuna::EncryptionOptions enc;
-    if (g_passwordEdit)
-    {
-        std::wstring pw = GetWindowTextStr(g_passwordEdit);
-        enc.password = WideToUtf8(pw);
-    }
-    return enc;
+    if (g_mergeAllCheck && SendMessageW(g_mergeAllCheck, BM_GETCHECK, 0, 0) == BST_CHECKED)
+        return GetAllTreSortedInFolder(g_folderEdit);
+    std::vector<fs::path> sel = GetSelectedTrePaths(g_folderEdit, g_fileList);
+    if (sel.empty())
+        sel = GetAllTreSortedInFolder(g_folderEdit);
+    return sel;
 }
 
-std::string CaptureStdout(const std::function<void()>& fn)
+bool PathIsUnderFolderPrefix(const std::string& normPath, const std::string& normFolderPrefix)
 {
-    std::ostringstream oss;
-    std::streambuf* const old = std::cout.rdbuf(oss.rdbuf());
-    fn();
-    std::cout.rdbuf(old);
-    return oss.str();
+    if (normFolderPrefix.empty())
+        return true;
+    if (normPath.size() < normFolderPrefix.size())
+        return false;
+    if (normPath.compare(0, normFolderPrefix.size(), normFolderPrefix) != 0)
+        return false;
+    if (normPath.size() == normFolderPrefix.size())
+        return true;
+    return normPath[normFolderPrefix.size()] == '/';
 }
 
-void RunListOnPaths(const std::vector<fs::path>& paths)
+void BuildOverlayFromTres(const std::vector<fs::path>& treOrder)
 {
-    if (paths.empty())
-    {
-        AppendLogLine(L"No .tre files selected.");
-        return;
-    }
+    g_overlay.clear();
 
     Nuna::ListOptions opts;
-    opts.showSize = true;
-    opts.showCompressed = true;
+    opts.showSize = false;
+    opts.showCompressed = false;
     opts.showOffset = false;
     opts.encryption = PasswordOptionsFromUi();
 
-    for (const fs::path& p : paths)
+    for (const fs::path& tre : treOrder)
     {
-        AppendLogLine(L"——— List ———");
-        AppendLogUtf8(std::string("File: ") + p.u8string() + "\r\n");
-
         std::vector<std::pair<std::string, Nuna::TocEntry>> entries;
-        const std::string body = CaptureStdout([&]()
-            {
-                const Nuna::Result r = Nuna::list(p.u8string(), opts, &entries);
-                if (!r.ok())
-                    std::cout << "Error: " << r.message << "\n";
-            });
+        CaptureStdout([&]()
+                      {
+                          const Nuna::Result r = Nuna::list(tre.u8string(), opts, &entries);
+                          if (!r.ok())
+                              std::cout << r.message << "\n";
+                      });
 
-        AppendLogUtf8(body);
-
-        if (!entries.empty())
+        for (const auto& pr : entries)
         {
-            AppendLogUtf8(std::string("— Parsed ") + std::to_string(entries.size()) + " entr(y/ies) in memory.\r\n");
+            const std::string nk = NormalizeTrePath(pr.first);
+            if (nk.empty())
+                continue;
+            PathOverlay& po = g_overlay[nk];
+            po.displayPath = pr.first;
+            OverlayLayer layer;
+            layer.trePath = tre;
+            layer.entry = pr.second;
+            po.layers.push_back(std::move(layer));
         }
     }
+}
+
+HTREEITEM InsertTreeItem(HWND tv, HTREEITEM parent, TreeItemData* data)
+{
+    g_treeAlloc.push_back(data);
+    TVINSERTSTRUCTW ins{};
+    ins.hParent = parent;
+    ins.hInsertAfter = TVI_SORT;
+    ins.item.mask = TVIF_TEXT | TVIF_PARAM;
+    ins.item.pszText = data->label.data();
+    ins.item.lParam = reinterpret_cast<LPARAM>(data);
+    return TreeView_InsertItem(tv, &ins);
+}
+
+void FillTreeRecursive(HWND tv, HTREEITEM parent, TrieNode& node, const std::string& prefixNorm)
+{
+    for (auto& p : node.subdirs)
+    {
+        std::string childPrefix = prefixNorm.empty() ? p.first : prefixNorm + "/" + p.first;
+        auto* d = new TreeItemData;
+        d->kind = TreeKind::Folder;
+        d->label = Utf8ToWide(p.first);
+        d->normFolderPrefix = childPrefix;
+        const HTREEITEM h = InsertTreeItem(tv, parent, d);
+        FillTreeRecursive(tv, h, p.second, childPrefix);
+    }
+    for (const auto& fe : node.filesHere)
+    {
+        auto* d = new TreeItemData;
+        d->kind = TreeKind::File;
+        d->label = Utf8ToWide(fe.first);
+        d->normFileKey = fe.second;
+        InsertTreeItem(tv, parent, d);
+    }
+}
+
+void PopulateArchiveTree(const std::vector<fs::path>& treOrder)
+{
+    FreeTreeItems();
+    BuildOverlayFromTres(treOrder);
+
+    TrieNode root;
+    std::vector<std::string> sortedKeys;
+    sortedKeys.reserve(g_overlay.size());
+    for (const auto& kv : g_overlay)
+        sortedKeys.push_back(kv.first);
+    std::sort(sortedKeys.begin(), sortedKeys.end());
+    for (const std::string& k : sortedKeys)
+        TrieInsert(root, k);
+
+    FillTreeRecursive(g_tree, TVI_ROOT, root, std::string{});
+
+    std::ostringstream oss;
+    oss << "Merged paths: " << g_overlay.size() << " (from " << treOrder.size() << " archive(s)).\r\n";
+    oss << "Overlay order is ascending by file name; later archives replace earlier ones for the same path.\r\n";
+    AppendLogUtf8(oss.str());
+}
+
+void ShowSelectionDetails(TreeItemData* d)
+{
+    ClearDetails();
+    if (!d)
+    {
+        AppendDetailsUtf8("Select a folder or file in the tree.\r\n");
+        return;
+    }
+    if (d->kind == TreeKind::Folder)
+    {
+        std::ostringstream o;
+        o << "[Folder]\r\nNormalized prefix: " << d->normFolderPrefix << "\r\n";
+        o << "Use \"Extract folder\" to extract all files under this branch (active layer per file).\r\n";
+        AppendDetailsUtf8(o.str());
+        return;
+    }
+
+    const auto it = g_overlay.find(d->normFileKey);
+    if (it == g_overlay.end())
+    {
+        AppendDetailsUtf8("Internal error: path not in overlay map.\r\n");
+        return;
+    }
+
+    const PathOverlay& po = it->second;
+    std::ostringstream o;
+    o << "Path: " << po.displayPath << "\r\n";
+    o << "Normalized key: " << d->normFileKey << "\r\n\r\n";
+
+    if (po.layers.empty())
+    {
+        AppendDetailsUtf8(o.str());
+        return;
+    }
+
+    const OverlayLayer& win = po.layers.back();
+    o << "Active layer (winner): " << win.trePath.filename().u8string() << "\r\n";
+    o << "  length=" << win.entry.length << "  compressed=" << win.entry.compressedLength
+      << "  offset=" << win.entry.offset << "\r\n\r\n";
+
+    o << "Version history (bottom = earliest archive, top = winner):\r\n";
+    for (size_t i = 0; i < po.layers.size(); ++i)
+    {
+        const OverlayLayer& L = po.layers[i];
+        o << "  [" << (i + 1) << "] " << L.trePath.filename().u8string()
+          << "  len=" << L.entry.length << "  off=" << L.entry.offset << "\r\n";
+    }
+    AppendDetailsUtf8(o.str());
+}
+
+TreeItemData* GetSelectedTreeData()
+{
+    if (!g_tree)
+        return nullptr;
+    HTREEITEM h = TreeView_GetSelection(g_tree);
+    if (!h)
+        return nullptr;
+    TVITEMW ti{};
+    ti.hItem = h;
+    ti.mask = TVIF_PARAM;
+    if (!TreeView_GetItem(g_tree, &ti))
+        return nullptr;
+    return reinterpret_cast<TreeItemData*>(ti.lParam);
+}
+
+bool PickFolder(HWND owner, const wchar_t* title, std::wstring& outPath)
+{
+    BROWSEINFOW bi{};
+    wchar_t display[MAX_PATH]{};
+    bi.hwndOwner = owner;
+    bi.pszDisplayName = display;
+    bi.lpszTitle = title;
+    bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE;
+    PIDLIST_ABSOLUTE pidl = SHBrowseForFolderW(&bi);
+    if (!pidl)
+        return false;
+    wchar_t buf[MAX_PATH]{};
+    const bool ok = SHGetPathFromIDListW(pidl, buf);
+    CoTaskMemFree(pidl);
+    if (!ok)
+        return false;
+    outPath = buf;
+    return true;
+}
+
+bool BrowseFolderIntoEdit(HWND owner, HWND targetEdit)
+{
+    std::wstring p;
+    if (!PickFolder(owner, L"Select folder containing .tre files", p))
+        return false;
+    SetWindowTextW(targetEdit, p.c_str());
+    return true;
+}
+
+void RunListTree()
+{
+    ClearLog();
+    const std::vector<fs::path> tres = TrePathsForListOperation();
+    if (tres.empty())
+    {
+        AppendLogLine(L"No .tre archives in scope. Select archives in the list or enable \"Merge all\".");
+        FreeTreeItems();
+        return;
+    }
+
+    AppendLogUtf8("Building merged tree...\r\n");
+    PopulateArchiveTree(tres);
 }
 
 void RunInfoOnPaths(const std::vector<fs::path>& paths)
@@ -319,50 +668,40 @@ void RunInfoOnPaths(const std::vector<fs::path>& paths)
 
         AppendLogUtf8("—— analyze ——\r\n");
         const std::string az = CaptureStdout([&]()
-            {
-                const Nuna::Result ar = Nuna::analyze(p.u8string(), PasswordOptionsFromUi());
-                if (!ar.ok())
-                    std::cout << "analyze result: " << ar.message << "\n";
-            });
+                                               {
+                                                   const Nuna::Result ar = Nuna::analyze(p.u8string(), PasswordOptionsFromUi());
+                                                   if (!ar.ok())
+                                                       std::cout << "analyze result: " << ar.message << "\n";
+                                               });
         AppendLogUtf8(az);
     }
 }
 
-void RunExtractOnPaths(const std::vector<fs::path>& paths)
+void RunExtractArchive()
 {
+    ClearLog();
+    std::vector<fs::path> paths = GetSelectedTrePaths(g_folderEdit, g_fileList);
+    if (paths.empty())
+        paths = GetAllTreSortedInFolder(g_folderEdit);
     if (paths.empty())
     {
-        AppendLogLine(L"No .tre files selected.");
+        AppendLogLine(L"No .tre files to extract.");
         return;
     }
 
-    BROWSEINFOW bi{};
-    wchar_t display[MAX_PATH]{};
-    bi.hwndOwner = g_hwndMain;
-    bi.pszDisplayName = display;
-    bi.lpszTitle = L"Select folder to extract into";
-    bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE;
-
-    PIDLIST_ABSOLUTE pidl = SHBrowseForFolderW(&bi);
-    if (!pidl)
-        return;
-
-    wchar_t outDir[MAX_PATH]{};
-    bool okPath = SHGetPathFromIDListW(pidl, outDir);
-    CoTaskMemFree(pidl);
-    if (!okPath)
+    std::wstring outRoot;
+    if (!PickFolder(g_hwndMain, L"Select folder to extract full archive(s) into", outRoot))
         return;
 
     Nuna::UnpackOptions uo;
     uo.overwrite = true;
     uo.quiet = true;
-    uo.verbose = false;
     uo.encryption = PasswordOptionsFromUi();
 
     for (const fs::path& trePath : paths)
     {
         const std::wstring stem = trePath.stem().wstring();
-        fs::path dest = fs::path(outDir) / stem;
+        fs::path dest = fs::path(outRoot) / stem;
 
         std::error_code ec;
         fs::create_directories(dest, ec);
@@ -373,9 +712,7 @@ void RunExtractOnPaths(const std::vector<fs::path>& paths)
             continue;
         }
 
-        AppendLogUtf8(std::string("Extracting ") + trePath.u8string() + "\r\n");
-        AppendLogUtf8(std::string("        → ") + dest.u8string() + "\r\n");
-
+        AppendLogUtf8(std::string("Extract archive ") + trePath.u8string() + "\r\n");
         const Nuna::Result ur = Nuna::unpack(trePath.u8string(), dest.u8string(), uo);
         if (!ur.ok())
             AppendLogUtf8(std::string("Error: ") + ur.message + "\r\n");
@@ -384,65 +721,171 @@ void RunExtractOnPaths(const std::vector<fs::path>& paths)
     }
 }
 
-bool BrowseForFolder(HWND owner, HWND targetEdit)
+void RunExtractSingleFile()
 {
-    BROWSEINFOW bi{};
-    wchar_t display[MAX_PATH]{};
-    bi.hwndOwner = owner;
-    bi.pszDisplayName = display;
-    bi.lpszTitle = L"Select folder containing .tre files";
-    bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE;
-    bi.lpfn = nullptr;
-
-    PIDLIST_ABSOLUTE pidl = SHBrowseForFolderW(&bi);
-    if (!pidl)
-        return false;
-    wchar_t path[MAX_PATH]{};
-    if (!SHGetPathFromIDListW(pidl, path))
+    TreeItemData* d = GetSelectedTreeData();
+    if (!d || d->kind != TreeKind::File)
     {
-        CoTaskMemFree(pidl);
-        return false;
+        AppendLogLine(L"Select a file in the tree (leaf node).");
+        return;
     }
-    CoTaskMemFree(pidl);
-    SetWindowTextW(targetEdit, path);
-    return true;
+
+    const auto it = g_overlay.find(d->normFileKey);
+    if (it == g_overlay.end() || it->second.layers.empty())
+    {
+        AppendLogLine(L"Nothing to extract for this path.");
+        return;
+    }
+
+    const fs::path winnerTre = it->second.layers.back().trePath;
+    const std::string internalPath = it->second.displayPath;
+
+    std::wstring outDir;
+    if (!PickFolder(g_hwndMain, L"Select folder to place the extracted file", outDir))
+        return;
+
+    fs::path rel(internalPath);
+    fs::path baseName = rel.filename();
+    if (baseName.empty())
+    {
+        AppendLogLine(L"Invalid internal path.");
+        return;
+    }
+
+    const fs::path outFile = fs::path(outDir) / baseName;
+
+    std::error_code ec;
+    fs::create_directories(outFile.parent_path(), ec);
+
+    Nuna::UnpackOptions uo;
+    uo.overwrite = true;
+    uo.quiet = true;
+    uo.encryption = PasswordOptionsFromUi();
+
+    const Nuna::Result r =
+        Nuna::extractOne(winnerTre.u8string(), internalPath, outFile.u8string(), uo);
+    if (!r.ok())
+        AppendLogUtf8(std::string("Extract file: ") + r.message + "\r\n");
+    else
+        AppendLogUtf8(std::string("Wrote: ") + outFile.u8string() + "\r\n");
+}
+
+void CollectFilesUnderFolderPrefix(const std::string& normFolderPrefix, std::vector<std::string>& outKeys)
+{
+    for (const auto& kv : g_overlay)
+    {
+        if (kv.second.layers.empty())
+            continue;
+        if (!PathIsUnderFolderPrefix(kv.first, normFolderPrefix))
+            continue;
+        outKeys.push_back(kv.first);
+    }
+}
+
+void RunExtractFolder()
+{
+    TreeItemData* d = GetSelectedTreeData();
+    if (!d)
+    {
+        AppendLogLine(L"Select a folder or file in the tree.");
+        return;
+    }
+
+    std::string normPrefix;
+    if (d->kind == TreeKind::Folder)
+        normPrefix = d->normFolderPrefix;
+    else
+    {
+        const std::string k = d->normFileKey;
+        const size_t slash = k.find_last_of('/');
+        normPrefix = (slash == std::string::npos) ? std::string{} : k.substr(0, slash);
+    }
+
+    std::vector<std::string> keys;
+    CollectFilesUnderFolderPrefix(normPrefix, keys);
+    if (keys.empty())
+    {
+        AppendLogLine(L"No files under this selection.");
+        return;
+    }
+
+    std::wstring outRoot;
+    if (!PickFolder(g_hwndMain, L"Select output folder (archive paths recreated beneath it)", outRoot))
+        return;
+
+    Nuna::UnpackOptions uo;
+    uo.overwrite = true;
+    uo.quiet = true;
+    uo.encryption = PasswordOptionsFromUi();
+
+    uint32_t okCount = 0;
+    for (const std::string& key : keys)
+    {
+        const auto it = g_overlay.find(key);
+        if (it == g_overlay.end() || it->second.layers.empty())
+            continue;
+        const fs::path winnerTre = it->second.layers.back().trePath;
+        const std::string internalPath = it->second.displayPath;
+        const fs::path outPath = fs::path(outRoot) / fs::path(internalPath);
+
+        std::error_code ec;
+        fs::create_directories(outPath.parent_path(), ec);
+
+        const Nuna::Result r = Nuna::extractOne(winnerTre.u8string(), internalPath, outPath.u8string(), uo);
+        if (r.ok())
+            ++okCount;
+        else
+            AppendLogUtf8(std::string("FAIL ") + internalPath + " : " + r.message + "\r\n");
+    }
+
+    AppendLogUtf8(std::string("Folder extract finished. Files written: ") + std::to_string(okCount) + "\r\n");
 }
 
 void LayoutChildren(HWND hwnd)
 {
     RECT rc{};
     GetClientRect(hwnd, &rc);
-    const int w = rc.right - rc.left;
-    const int h = rc.bottom - rc.top;
+    const int cw = rc.right - rc.left;
+    const int ch = rc.bottom - rc.top;
     const int margin = 8;
-    const int btnW = 110;
+    const int btnW = 112;
     const int btnH = 26;
     const int editH = 22;
-    const int row1y = margin;
-    const int folderEditW = std::max(100, w - margin * 4 - btnW * 2);
+    const int treListH = 84;
 
-    MoveWindow(g_folderEdit, margin, row1y, folderEditW, editH, TRUE);
-    HWND browseFolder = GetDlgItem(hwnd, IDC_BROWSE_FOLDER);
-    MoveWindow(browseFolder, margin + folderEditW + margin, row1y, btnW, btnH, TRUE);
-    HWND refresh = GetDlgItem(hwnd, IDC_REFRESH);
-    MoveWindow(refresh, margin + folderEditW + margin + btnW + margin, row1y, btnW, btnH, TRUE);
+    int y = margin;
 
-    const int row2y = row1y + btnH + margin;
-    const int listH = std::max(120, (h - row2y - margin * 3 - editH * 6) / 2);
-    MoveWindow(g_fileList, margin, row2y, w - margin * 2, listH, TRUE);
+    const int folderEditW = std::max(120, cw - margin * 4 - btnW * 2);
+    MoveWindow(g_folderEdit, margin, y, folderEditW, editH, TRUE);
+    MoveWindow(GetDlgItem(hwnd, IDC_BROWSE_FOLDER), margin + folderEditW + margin, y, btnW, btnH, TRUE);
+    MoveWindow(GetDlgItem(hwnd, IDC_REFRESH), margin + folderEditW + margin + btnW + margin, y, btnW, btnH, TRUE);
+    y += btnH + margin;
 
-    const int row3y = row2y + listH + margin;
-    MoveWindow(GetDlgItem(hwnd, IDC_LIST_CONTENTS), margin, row3y, btnW, btnH, TRUE);
-    MoveWindow(GetDlgItem(hwnd, IDC_INFO), margin + btnW + margin, row3y, btnW, btnH, TRUE);
-    MoveWindow(GetDlgItem(hwnd, IDC_EXTRACT), margin + (btnW + margin) * 2, row3y, btnW, btnH, TRUE);
+    MoveWindow(g_mergeAllCheck, margin, y + 2, 340, editH, TRUE);
+    MoveWindow(GetDlgItem(hwnd, IDC_PASSWORD_LABEL), margin + 360, y + 3, 130, editH, TRUE);
+    MoveWindow(g_passwordEdit, margin + 490, y, std::max(160, cw - margin - 490), editH, TRUE);
+    y += editH + margin;
 
-    const int row4y = row3y + btnH + margin;
-    MoveWindow(GetDlgItem(hwnd, IDC_PASSWORD_LABEL), margin, row4y + 3, 120, editH, TRUE);
-    MoveWindow(g_passwordEdit, margin + 125, row4y, std::max(200, w - margin * 2 - 125), editH, TRUE);
+    MoveWindow(g_fileList, margin, y, cw - margin * 2, treListH, TRUE);
+    y += treListH + margin;
 
-    const int logY = row4y + editH + margin;
-    const int logH = std::max(80, h - logY - margin);
-    MoveWindow(g_log, margin, logY, w - margin * 2, logH, TRUE);
+    const int btnRowW = btnW + margin;
+    MoveWindow(GetDlgItem(hwnd, IDC_LIST_CONTENTS), margin, y, btnW, btnH, TRUE);
+    MoveWindow(GetDlgItem(hwnd, IDC_INFO), margin + btnRowW, y, btnW, btnH, TRUE);
+    MoveWindow(GetDlgItem(hwnd, IDC_EXTRACT_FILE), margin + btnRowW * 2, y, btnW + 18, btnH, TRUE);
+    MoveWindow(GetDlgItem(hwnd, IDC_EXTRACT_FOLDER), margin + btnRowW * 3 + 18, y, btnW + 24, btnH, TRUE);
+    MoveWindow(GetDlgItem(hwnd, IDC_EXTRACT_ARCHIVE), margin + btnRowW * 4 + 42, y, btnW + 24, btnH, TRUE);
+    y += btnH + margin;
+
+    const int splitLeft = std::max(200, cw * 38 / 100);
+    const int midH = std::max(120, ch - y - margin);
+    const int rightW = cw - margin * 3 - splitLeft;
+    const int detailsH = std::max(80, midH * 52 / 100);
+
+    MoveWindow(g_tree, margin, y, splitLeft, midH, TRUE);
+    MoveWindow(g_details, margin + splitLeft + margin, y, rightW, detailsH, TRUE);
+    MoveWindow(g_log, margin + splitLeft + margin, y + detailsH + margin, rightW,
+               std::max(60, midH - detailsH - margin), TRUE);
 }
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -454,8 +897,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         InitCommonControlsEx(&g_icc);
 
         g_folderEdit = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", L"",
-                                       WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
-                                       0, 0, 0, 0, hwnd, reinterpret_cast<HMENU>(static_cast<INT_PTR>(IDC_FOLDER_EDIT)), nullptr, nullptr);
+                                         WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
+                                         0, 0, 0, 0, hwnd, reinterpret_cast<HMENU>(static_cast<INT_PTR>(IDC_FOLDER_EDIT)), nullptr, nullptr);
 
         CreateWindowW(L"BUTTON", L"Browse…",
                       WS_CHILD | WS_VISIBLE,
@@ -465,9 +908,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
                       WS_CHILD | WS_VISIBLE,
                       0, 0, 0, 0, hwnd, reinterpret_cast<HMENU>(static_cast<INT_PTR>(IDC_REFRESH)), nullptr, nullptr);
 
+        g_mergeAllCheck = CreateWindowW(L"BUTTON", L"Merge all .tre in folder",
+                                        WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
+                                        0, 0, 0, 0, hwnd, reinterpret_cast<HMENU>(static_cast<INT_PTR>(IDC_MERGE_ALL)), nullptr, nullptr);
+
         g_fileList = CreateWindowExW(WS_EX_CLIENTEDGE, L"LISTBOX", L"",
-                                     WS_CHILD | WS_VISIBLE | WS_VSCROLL | LBS_EXTENDEDSEL | LBS_NOTIFY,
-                                     0, 0, 0, 0, hwnd, reinterpret_cast<HMENU>(static_cast<INT_PTR>(IDC_FILE_LIST)), nullptr, nullptr);
+                                       WS_CHILD | WS_VISIBLE | WS_VSCROLL | LBS_EXTENDEDSEL | LBS_NOTIFY,
+                                       0, 0, 0, 0, hwnd, reinterpret_cast<HMENU>(static_cast<INT_PTR>(IDC_FILE_LIST)), nullptr, nullptr);
 
         CreateWindowW(L"BUTTON", L"List contents",
                       WS_CHILD | WS_VISIBLE,
@@ -477,9 +924,17 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
                       WS_CHILD | WS_VISIBLE,
                       0, 0, 0, 0, hwnd, reinterpret_cast<HMENU>(static_cast<INT_PTR>(IDC_INFO)), nullptr, nullptr);
 
-        CreateWindowW(L"BUTTON", L"Extract…",
+        CreateWindowW(L"BUTTON", L"Extract file",
                       WS_CHILD | WS_VISIBLE,
-                      0, 0, 0, 0, hwnd, reinterpret_cast<HMENU>(static_cast<INT_PTR>(IDC_EXTRACT)), nullptr, nullptr);
+                      0, 0, 0, 0, hwnd, reinterpret_cast<HMENU>(static_cast<INT_PTR>(IDC_EXTRACT_FILE)), nullptr, nullptr);
+
+        CreateWindowW(L"BUTTON", L"Extract folder",
+                      WS_CHILD | WS_VISIBLE,
+                      0, 0, 0, 0, hwnd, reinterpret_cast<HMENU>(static_cast<INT_PTR>(IDC_EXTRACT_FOLDER)), nullptr, nullptr);
+
+        CreateWindowW(L"BUTTON", L"Extract archive",
+                      WS_CHILD | WS_VISIBLE,
+                      0, 0, 0, 0, hwnd, reinterpret_cast<HMENU>(static_cast<INT_PTR>(IDC_EXTRACT_ARCHIVE)), nullptr, nullptr);
 
         CreateWindowW(L"STATIC", L"Password (NUNA):",
                       WS_CHILD | WS_VISIBLE,
@@ -489,18 +944,30 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
                                          WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL | ES_PASSWORD,
                                          0, 0, 0, 0, hwnd, reinterpret_cast<HMENU>(static_cast<INT_PTR>(IDC_PASSWORD_EDIT)), nullptr, nullptr);
 
+        g_tree = CreateWindowExW(WS_EX_CLIENTEDGE, WC_TREEVIEWW,
+                                 L"",
+                                 WS_CHILD | WS_VISIBLE | TVS_HASBUTTONS | TVS_HASLINES | TVS_LINESATROOT | TVS_SHOWSELALWAYS | WS_TABSTOP,
+                                 0, 0, 0, 0, hwnd, reinterpret_cast<HMENU>(static_cast<INT_PTR>(IDC_TREE)), nullptr, nullptr);
+
+        g_details = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", L"",
+                                      WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | ES_WANTRETURN,
+                                      0, 0, 0, 0, hwnd, reinterpret_cast<HMENU>(static_cast<INT_PTR>(IDC_DETAILS)), nullptr, nullptr);
+
         g_log = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", L"",
                                 WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | ES_WANTRETURN,
                                 0, 0, 0, 0, hwnd, reinterpret_cast<HMENU>(static_cast<INT_PTR>(IDC_LOG)), nullptr, nullptr);
 
+        SendMessageW(g_tree, WM_SETFONT, reinterpret_cast<WPARAM>(GetStockObject(DEFAULT_GUI_FONT)), TRUE);
         SendMessageW(g_log, WM_SETFONT, reinterpret_cast<WPARAM>(GetStockObject(DEFAULT_GUI_FONT)), TRUE);
+        SendMessageW(g_details, WM_SETFONT, reinterpret_cast<WPARAM>(GetStockObject(DEFAULT_GUI_FONT)), TRUE);
         SendMessageW(g_folderEdit, WM_SETFONT, reinterpret_cast<WPARAM>(GetStockObject(DEFAULT_GUI_FONT)), TRUE);
         SendMessageW(g_fileList, WM_SETFONT, reinterpret_cast<WPARAM>(GetStockObject(DEFAULT_GUI_FONT)), TRUE);
         SendMessageW(g_passwordEdit, WM_SETFONT, reinterpret_cast<WPARAM>(GetStockObject(DEFAULT_GUI_FONT)), TRUE);
 
         LayoutChildren(hwnd);
         AppendLogLine(kTitle);
-        AppendLogLine(L"Select a folder, click Refresh, then choose .tre file(s) (Ctrl+click for multiple).");
+        AppendLogLine(L"Refresh loads .tre names. Choose merge mode, List contents for unified tree, select nodes for details.");
+        AppendDetailsUtf8("Build the tree with \"List contents\", then click items for overlay history.\r\n");
         return 0;
 
     case WM_SIZE:
@@ -508,11 +975,23 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             LayoutChildren(hwnd);
         return 0;
 
+    case WM_NOTIFY:
+        if (reinterpret_cast<LPNMHDR>(lParam)->hwndFrom == g_tree)
+        {
+            if (reinterpret_cast<LPNMHDR>(lParam)->code == TVN_SELCHANGED)
+            {
+                const auto* nmt = reinterpret_cast<LPNMTREEVIEW>(lParam);
+                auto* d = reinterpret_cast<TreeItemData*>(nmt->itemNew.lParam);
+                ShowSelectionDetails(d);
+            }
+        }
+        return 0;
+
     case WM_COMMAND:
         switch (LOWORD(wParam))
         {
         case IDC_BROWSE_FOLDER:
-            BrowseForFolder(hwnd, g_folderEdit);
+            BrowseFolderIntoEdit(hwnd, g_folderEdit);
             return 0;
 
         case IDC_REFRESH:
@@ -521,18 +1000,31 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             return 0;
 
         case IDC_LIST_CONTENTS:
-            ClearLog();
-            RunListOnPaths(GetSelectedTrePaths(g_folderEdit, g_fileList));
+            RunListTree();
             return 0;
 
         case IDC_INFO:
             ClearLog();
-            RunInfoOnPaths(GetSelectedTrePaths(g_folderEdit, g_fileList));
+            {
+                std::vector<fs::path> ip = GetSelectedTrePaths(g_folderEdit, g_fileList);
+                if (ip.empty())
+                    ip = GetAllTreSortedInFolder(g_folderEdit);
+                RunInfoOnPaths(ip);
+            }
             return 0;
 
-        case IDC_EXTRACT:
+        case IDC_EXTRACT_FILE:
             ClearLog();
-            RunExtractOnPaths(GetSelectedTrePaths(g_folderEdit, g_fileList));
+            RunExtractSingleFile();
+            return 0;
+
+        case IDC_EXTRACT_FOLDER:
+            ClearLog();
+            RunExtractFolder();
+            return 0;
+
+        case IDC_EXTRACT_ARCHIVE:
+            RunExtractArchive();
             return 0;
 
         default:
@@ -541,6 +1033,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         return 0;
 
     case WM_DESTROY:
+        FreeTreeItems();
         PostQuitMessage(0);
         return 0;
 
@@ -563,7 +1056,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInst, _In_opt_ HINSTANCE, _In_ LPWSTR, _In_ 
     if (!RegisterClassW(&wc))
         return 1;
 
-    RECT want{ 0, 0, 960, 640 };
+    RECT want{ 0, 0, 1100, 720 };
     AdjustWindowRect(&want, WS_OVERLAPPEDWINDOW, FALSE);
 
     HWND hwnd = CreateWindowExW(

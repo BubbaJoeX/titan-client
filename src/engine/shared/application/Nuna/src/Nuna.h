@@ -243,6 +243,18 @@ Result unpack(const std::string& inputTre,
               const std::string& outputDir, 
               const UnpackOptions& options = UnpackOptions());
 
+/// Extract one internal path (forward slashes; matched after the same normalization as pack uses) to a single output file.
+Result extractOne(const std::string& inputTre,
+                  const std::string& archiveInternalPath,
+                  const std::string& outputFilePath,
+                  const UnpackOptions& options = UnpackOptions());
+
+/// Extract all files under an internal directory prefix within one .tre (prefix normalized like pack; empty prefix extracts all).
+Result extractPathPrefix(const std::string& inputTre,
+                         const std::string& archiveDirPrefix,
+                         const std::string& outputRootDir,
+                         const UnpackOptions& options = UnpackOptions());
+
 Result list(const std::string& inputTre, 
             const ListOptions& options = ListOptions(),
             std::vector<std::pair<std::string, TocEntry>>* entries = nullptr);

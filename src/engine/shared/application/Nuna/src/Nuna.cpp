@@ -251,6 +251,313 @@ bool compareEntries(const FileEntry& a, const FileEntry& b)
 } // anonymous namespace
 
 // ======================================================================
+// Shared TRE directory load + selective extract (internal)
+// ======================================================================
+
+namespace
+{
+
+Result loadTreDirectoryFromOpenFile(std::ifstream& inFile, const UnpackOptions& options,
+                                    TreHeader& header, std::vector<TocEntry>& toc,
+                                    std::vector<char>& nameBlock, bool& isEncrypted,
+                                    EncryptionContext& encCtx)
+{
+    Result result;
+
+    inFile.read(reinterpret_cast<char*>(&header), sizeof(header));
+
+    if (header.token != TAG_TREE && header.token != TAG_NUNA)
+    {
+        result.code = ResultCode::InvalidArchive;
+        result.message = "Not a valid TRE archive";
+        return result;
+    }
+
+    isEncrypted = (header.token == TAG_NUNA);
+
+    EncryptionHeader encHeader = {};
+    if (isEncrypted)
+    {
+        inFile.read(reinterpret_cast<char*>(&encHeader), sizeof(encHeader));
+
+        std::string password = options.encryption.password;
+        if (password.empty())
+            password = TITANPAK_PASSWORD;
+
+        encCtx.initDecrypt(password, encHeader.salt, encHeader.iv);
+    }
+
+    if (header.version != TAG_0005 && header.version != TAG_0004 && header.version != TAG_0006)
+    {
+        result.code = ResultCode::InvalidArchive;
+        result.message = "Unsupported TRE version";
+        return result;
+    }
+
+    inFile.seekg(header.tocOffset);
+
+    std::vector<uint8_t> tocData(header.sizeOfTOC);
+    inFile.read(reinterpret_cast<char*>(tocData.data()), header.sizeOfTOC);
+    if (static_cast<size_t>(inFile.gcount()) != header.sizeOfTOC)
+    {
+        result.code = ResultCode::InvalidArchive;
+        result.message = "Short read on TOC (got " + std::to_string(inFile.gcount()) + ", expected " +
+                         std::to_string(header.sizeOfTOC) + ")";
+        return result;
+    }
+
+    if (isEncrypted)
+        encCtx.decryptAt(tocData.data(), tocData.size(), header.tocOffset);
+
+    if (header.tocCompressor == static_cast<uint32_t>(CompressionType::Zlib))
+    {
+        std::vector<uint8_t> decompressed;
+        if (!Compression::decompress(tocData.data(), tocData.size(), decompressed, 0))
+        {
+            result.code = ResultCode::DecompressionError;
+            result.message = "Failed to decompress TOC";
+            return result;
+        }
+        if (!layoutTocEntriesFromBlob(decompressed.data(), decompressed.size(), header.numberOfFiles, toc))
+        {
+            result.code = ResultCode::InvalidArchive;
+            result.message = "TOC size does not match file count (unsupported TOC row layout)";
+            return result;
+        }
+    }
+    else
+    {
+        if (!layoutTocEntriesFromBlob(tocData.data(), tocData.size(), header.numberOfFiles, toc))
+        {
+            result.code = ResultCode::InvalidArchive;
+            result.message = "TOC size does not match file count (expected uncompressed TOC blob)";
+            return result;
+        }
+    }
+
+    const uint64_t nameBlockOffset = static_cast<uint64_t>(header.tocOffset) + header.sizeOfTOC;
+    inFile.seekg(nameBlockOffset);
+
+    std::vector<uint8_t> nameBlockData(header.sizeOfNameBlock);
+    inFile.read(reinterpret_cast<char*>(nameBlockData.data()), header.sizeOfNameBlock);
+    if (static_cast<size_t>(inFile.gcount()) != header.sizeOfNameBlock)
+    {
+        result.code = ResultCode::InvalidArchive;
+        result.message = "Short read on name block (got " + std::to_string(inFile.gcount()) + ", expected " +
+                         std::to_string(header.sizeOfNameBlock) + ")";
+        return result;
+    }
+
+    if (isEncrypted)
+        encCtx.decryptAt(nameBlockData.data(), nameBlockData.size(), nameBlockOffset);
+
+    nameBlock.resize(header.uncompSizeOfNameBlock);
+
+    if (header.blockCompressor == static_cast<uint32_t>(CompressionType::Zlib))
+    {
+        std::vector<uint8_t> decompressed;
+        if (!Compression::decompress(nameBlockData.data(), nameBlockData.size(),
+                                     decompressed, header.uncompSizeOfNameBlock))
+        {
+            result.code = ResultCode::DecompressionError;
+            result.message = "Failed to decompress name block";
+            return result;
+        }
+        std::memcpy(nameBlock.data(), decompressed.data(), header.uncompSizeOfNameBlock);
+    }
+    else
+    {
+        std::memcpy(nameBlock.data(), nameBlockData.data(), header.uncompSizeOfNameBlock);
+    }
+
+    result.message = "OK";
+    return result;
+}
+
+bool pathIsUnderDirectoryPrefix(const std::string& normPath, const std::string& normPrefix)
+{
+    if (normPrefix.empty())
+        return true;
+    if (normPath.size() < normPrefix.size())
+        return false;
+    if (normPath.compare(0, normPrefix.size(), normPrefix) != 0)
+        return false;
+    if (normPath.size() == normPrefix.size())
+        return true;
+    return normPath[normPrefix.size()] == '/';
+}
+
+Result writeEntryDataToFile(std::ifstream& inFile, bool isEncrypted, EncryptionContext& encCtx,
+                            const TocEntry& entry, const std::string& outPath, bool overwrite,
+                            const std::string& displayNameForErrors)
+{
+    Result result;
+    if (entry.length == 0)
+    {
+        result.code = ResultCode::InvalidArchive;
+        result.message = "Entry is deleted (zero length): " + displayNameForErrors;
+        return result;
+    }
+
+    if (!overwrite && fs::exists(outPath))
+    {
+        result.code = ResultCode::Success;
+        result.message = "Skipped (exists)";
+        return result;
+    }
+
+    std::string parentDir = getParentPath(outPath);
+    if (!parentDir.empty() && !createDirectories(parentDir))
+    {
+        result.code = ResultCode::IOError;
+        result.message = "Failed to create directory: " + parentDir;
+        return result;
+    }
+
+    const size_t readSize = (entry.compressedLength > 0) ? static_cast<size_t>(entry.compressedLength)
+                                                           : static_cast<size_t>(entry.length);
+
+    std::vector<uint8_t> fileData(readSize);
+    inFile.seekg(entry.offset);
+    inFile.read(reinterpret_cast<char*>(fileData.data()), readSize);
+
+    if (isEncrypted)
+        encCtx.decryptAt(fileData.data(), fileData.size(), entry.offset);
+
+    std::vector<uint8_t> outputData;
+    if (entry.compressor == static_cast<int32_t>(CompressionType::Zlib))
+    {
+        if (!Compression::decompress(fileData.data(), fileData.size(), outputData, entry.length))
+        {
+            result.code = ResultCode::DecompressionError;
+            result.message = "Failed to decompress: " + displayNameForErrors;
+            return result;
+        }
+    }
+    else
+        outputData = std::move(fileData);
+
+    if (!writeFile(outPath, outputData.data(), outputData.size()))
+    {
+        result.code = ResultCode::IOError;
+        result.message = "Failed to write: " + outPath;
+        return result;
+    }
+
+    result.message = "OK";
+    return result;
+}
+
+Result detailExtractOne(const std::string& inputTre, const std::string& archiveInternalPath,
+                        const std::string& outputFilePath, const UnpackOptions& options)
+{
+    Result result;
+
+    std::ifstream inFile(inputTre, std::ios::binary);
+    if (!inFile)
+    {
+        result.code = ResultCode::FileNotFound;
+        result.message = "Cannot open file: " + inputTre;
+        return result;
+    }
+
+    TreHeader header;
+    std::vector<TocEntry> toc;
+    std::vector<char> nameBlock;
+    bool isEncrypted = false;
+    EncryptionContext encCtx;
+
+    const Result loadRes = loadTreDirectoryFromOpenFile(inFile, options, header, toc, nameBlock, isEncrypted, encCtx);
+    if (!loadRes.ok())
+        return loadRes;
+
+    const std::string want = normalizePath(archiveInternalPath);
+
+    for (uint32_t i = 0; i < header.numberOfFiles; ++i)
+    {
+        const TocEntry& entry = toc[i];
+        const std::string fileName = &nameBlock[entry.fileNameOffset];
+        if (normalizePath(fileName) != want)
+            continue;
+
+        const Result wr = writeEntryDataToFile(inFile, isEncrypted, encCtx, entry, outputFilePath, options.overwrite,
+                                                 fileName);
+        if (!wr.ok())
+            return wr;
+        result.message = "Extracted: " + fileName;
+        return result;
+    }
+
+    result.code = ResultCode::InvalidArchive;
+    result.message = "Path not found in archive: " + archiveInternalPath;
+    return result;
+}
+
+Result detailExtractPathPrefix(const std::string& inputTre, const std::string& archiveDirPrefix,
+                               const std::string& outputRootDir, const UnpackOptions& options)
+{
+    Result result;
+
+    std::ifstream inFile(inputTre, std::ios::binary);
+    if (!inFile)
+    {
+        result.code = ResultCode::FileNotFound;
+        result.message = "Cannot open file: " + inputTre;
+        return result;
+    }
+
+    TreHeader header;
+    std::vector<TocEntry> toc;
+    std::vector<char> nameBlock;
+    bool isEncrypted = false;
+    EncryptionContext encCtx;
+
+    const Result loadRes = loadTreDirectoryFromOpenFile(inFile, options, header, toc, nameBlock, isEncrypted, encCtx);
+    if (!loadRes.ok())
+        return loadRes;
+
+    if (!createDirectories(outputRootDir))
+    {
+        result.code = ResultCode::IOError;
+        result.message = "Failed to create output directory: " + outputRootDir;
+        return result;
+    }
+
+    const std::string pref = normalizePath(archiveDirPrefix);
+
+    uint32_t extractedCount = 0;
+
+    for (uint32_t i = 0; i < header.numberOfFiles; ++i)
+    {
+        const TocEntry& entry = toc[i];
+        const std::string fileName = &nameBlock[entry.fileNameOffset];
+
+        if (!pathIsUnderDirectoryPrefix(normalizePath(fileName), pref))
+            continue;
+
+        if (entry.length == 0)
+            continue;
+
+        if (!options.filter.empty() && fileName.find(options.filter) == std::string::npos)
+            continue;
+
+        const std::string outPath = outputRootDir + "/" + fileName;
+
+        const Result wr =
+            writeEntryDataToFile(inFile, isEncrypted, encCtx, entry, outPath, options.overwrite, fileName);
+        if (!wr.ok())
+            return wr;
+        if (wr.message == "OK")
+            ++extractedCount;
+    }
+
+    result.message = "Successfully extracted " + std::to_string(extractedCount) + " files";
+    return result;
+}
+
+} // anonymous namespace
+
+// ======================================================================
 // Pack Implementation
 // ======================================================================
 
@@ -599,128 +906,15 @@ Result unpack(const std::string& inputTre,
         return result;
     }
     
-    // Read header
     TreHeader header;
-    inFile.read(reinterpret_cast<char*>(&header), sizeof(header));
-    
-    if (header.token != TAG_TREE && header.token != TAG_NUNA)
-    {
-        result.code = ResultCode::InvalidArchive;
-        result.message = "Not a valid TRE archive";
-        return result;
-    }
-    
-    
-    bool isEncrypted = (header.token == TAG_NUNA);
-    
-    // Setup decryption if needed
-    EncryptionContext encCtx;
-    EncryptionHeader encHeader = {};
-    
-    if (isEncrypted)
-    {
-        inFile.read(reinterpret_cast<char*>(&encHeader), sizeof(encHeader));
-        
-        // Use provided password or fall back to default
-        std::string password = options.encryption.password;
-        if (password.empty())
-        {
-            password = TITANPAK_PASSWORD;
-        }
-        
-        encCtx.initDecrypt(password, encHeader.salt, encHeader.iv);
-    }
-    
-    if (header.version != TAG_0005 && header.version != TAG_0004 && header.version != TAG_0006)
-    {
-        result.code = ResultCode::InvalidArchive;
-        result.message = "Unsupported TRE version";
-        return result;
-    }
-    
-    // Read TOC
-    inFile.seekg(header.tocOffset);
-    
-    std::vector<uint8_t> tocData(header.sizeOfTOC);
-    inFile.read(reinterpret_cast<char*>(tocData.data()), header.sizeOfTOC);
-    if (static_cast<size_t>(inFile.gcount()) != header.sizeOfTOC)
-    {
-        result.code = ResultCode::InvalidArchive;
-        result.message = "Short read on TOC (got " + std::to_string(inFile.gcount()) + ", expected " +
-                         std::to_string(header.sizeOfTOC) + ")";
-        return result;
-    }
-
-    if (isEncrypted)
-    {
-        encCtx.decryptAt(tocData.data(), tocData.size(), header.tocOffset);
-    }
-
     std::vector<TocEntry> toc;
+    std::vector<char> nameBlock;
+    bool isEncrypted = false;
+    EncryptionContext encCtx;
 
-    if (header.tocCompressor == static_cast<uint32_t>(CompressionType::Zlib))
-    {
-        std::vector<uint8_t> decompressed;
-        if (!Compression::decompress(tocData.data(), tocData.size(), decompressed, 0))
-        {
-            result.code = ResultCode::DecompressionError;
-            result.message = "Failed to decompress TOC";
-            return result;
-        }
-        if (!layoutTocEntriesFromBlob(decompressed.data(), decompressed.size(), header.numberOfFiles, toc))
-        {
-            result.code = ResultCode::InvalidArchive;
-            result.message = "TOC size does not match file count (unsupported TOC row layout)";
-            return result;
-        }
-    }
-    else
-    {
-        if (!layoutTocEntriesFromBlob(tocData.data(), tocData.size(), header.numberOfFiles, toc))
-        {
-            result.code = ResultCode::InvalidArchive;
-            result.message = "TOC size does not match file count (expected uncompressed TOC blob)";
-            return result;
-        }
-    }
-
-    // Read name block
-    const uint64_t nameBlockOffset = static_cast<uint64_t>(header.tocOffset) + header.sizeOfTOC;
-    inFile.seekg(nameBlockOffset);
-
-    std::vector<uint8_t> nameBlockData(header.sizeOfNameBlock);
-    inFile.read(reinterpret_cast<char*>(nameBlockData.data()), header.sizeOfNameBlock);
-    if (static_cast<size_t>(inFile.gcount()) != header.sizeOfNameBlock)
-    {
-        result.code = ResultCode::InvalidArchive;
-        result.message = "Short read on name block (got " + std::to_string(inFile.gcount()) + ", expected " +
-                         std::to_string(header.sizeOfNameBlock) + ")";
-        return result;
-    }
-
-    if (isEncrypted)
-    {
-        encCtx.decryptAt(nameBlockData.data(), nameBlockData.size(), nameBlockOffset);
-    }
-
-    std::vector<char> nameBlock(header.uncompSizeOfNameBlock);
-
-    if (header.blockCompressor == static_cast<uint32_t>(CompressionType::Zlib))
-    {
-        std::vector<uint8_t> decompressed;
-        if (!Compression::decompress(nameBlockData.data(), nameBlockData.size(),
-                                       decompressed, header.uncompSizeOfNameBlock))
-        {
-            result.code = ResultCode::DecompressionError;
-            result.message = "Failed to decompress name block";
-            return result;
-        }
-        std::memcpy(nameBlock.data(), decompressed.data(), header.uncompSizeOfNameBlock);
-    }
-    else
-    {
-        std::memcpy(nameBlock.data(), nameBlockData.data(), header.uncompSizeOfNameBlock);
-    }
+    const Result loadRes = loadTreDirectoryFromOpenFile(inFile, options, header, toc, nameBlock, isEncrypted, encCtx);
+    if (!loadRes.ok())
+        return loadRes;
 
     // Create output directory
     if (!createDirectories(outputDir))
@@ -755,68 +949,18 @@ Result unpack(const std::string& inputTre,
                       << fileName << std::endl;
         }
         
-        // Create output path
         std::string outPath = outputDir + "/" + fileName;
-        std::string parentDir = getParentPath(outPath);
-        
-        if (!parentDir.empty() && !createDirectories(parentDir))
-        {
-            result.code = ResultCode::IOError;
-            result.message = "Failed to create directory: " + parentDir;
-            return result;
-        }
-        
-        // Check if file exists
-        if (!options.overwrite && fs::exists(outPath))
+
+        const Result wr =
+            writeEntryDataToFile(inFile, isEncrypted, encCtx, entry, outPath, options.overwrite, fileName);
+        if (!wr.ok())
+            return wr;
+        if (!options.overwrite && wr.message == "Skipped (exists)")
         {
             if (!options.quiet)
-            {
                 std::cout << "  Skipping (exists)" << std::endl;
-            }
             continue;
         }
-        
-        // Read file data
-        size_t readSize = (entry.compressedLength > 0) ? 
-                          static_cast<size_t>(entry.compressedLength) : 
-                          static_cast<size_t>(entry.length);
-        
-        std::vector<uint8_t> fileData(readSize);
-        inFile.seekg(entry.offset);
-        inFile.read(reinterpret_cast<char*>(fileData.data()), readSize);
-        
-        // Decrypt if needed
-        if (isEncrypted)
-        {
-            encCtx.decryptAt(fileData.data(), fileData.size(), entry.offset);
-        }
-        
-        // Decompress if needed
-        std::vector<uint8_t> outputData;
-        
-        if (entry.compressor == static_cast<int32_t>(CompressionType::Zlib))
-        {
-            if (!Compression::decompress(fileData.data(), fileData.size(),
-                                         outputData, entry.length))
-            {
-                result.code = ResultCode::DecompressionError;
-                result.message = "Failed to decompress: " + fileName;
-                return result;
-            }
-        }
-        else
-        {
-            outputData = std::move(fileData);
-        }
-        
-        // Write file
-        if (!writeFile(outPath, outputData.data(), outputData.size()))
-        {
-            result.code = ResultCode::IOError;
-            result.message = "Failed to write: " + outPath;
-            return result;
-        }
-        
         ++extractedCount;
     }
     
@@ -827,6 +971,18 @@ Result unpack(const std::string& inputTre,
     
     result.message = "Successfully extracted " + std::to_string(extractedCount) + " files";
     return result;
+}
+
+Result extractOne(const std::string& inputTre, const std::string& archiveInternalPath,
+                  const std::string& outputFilePath, const UnpackOptions& options)
+{
+    return detailExtractOne(inputTre, archiveInternalPath, outputFilePath, options);
+}
+
+Result extractPathPrefix(const std::string& inputTre, const std::string& archiveDirPrefix,
+                         const std::string& outputRootDir, const UnpackOptions& options)
+{
+    return detailExtractPathPrefix(inputTre, archiveDirPrefix, outputRootDir, options);
 }
 
 // ======================================================================
