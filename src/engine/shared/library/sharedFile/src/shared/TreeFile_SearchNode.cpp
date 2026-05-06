@@ -315,8 +315,8 @@ bool TreeFile::SearchTree::validate(const char *fileName)
 	if (header.token != TAG_TREE && header.token != TAG_NUNA)
 		return false;
 
-	// validate the version number
-	if (header.version < TAG_0004 || header.version > TAG_0005)
+	// validate the version number (0004 / 0005 / 0006 — same on-disk layout)
+	if (header.version < TAG_0004 || header.version > TAG_0006)
 		return false;
 
 	return true;
@@ -382,6 +382,7 @@ TreeFile::SearchTree::SearchTree(int priority, const char *fileName)
 	{
 		case TAG_0004:
 		case TAG_0005:
+		case TAG_0006:
 			{
 				m_tableOfContents = new TableOfContentsEntry[m_numberOfFiles];
 				m_fileNames = new char [header.uncompSizeOfNameBlock];

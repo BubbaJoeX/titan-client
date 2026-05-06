@@ -32,6 +32,7 @@ namespace Nuna
 constexpr uint32_t TAG_TREE = 'E' | ('E' << 8) | ('R' << 16) | ('T' << 24);  // "TREE"
 constexpr uint32_t TAG_0005 = '5' | ('0' << 8) | ('0' << 16) | ('0' << 24);  // "0005"
 constexpr uint32_t TAG_0004 = '4' | ('0' << 8) | ('0' << 16) | ('0' << 24);  // "0004"
+constexpr uint32_t TAG_0006 = '6' | ('0' << 8) | ('0' << 16) | ('0' << 24);  // "0006" (LE appears as "6000" after TREE/"EERT")
 constexpr uint32_t TAG_NUNA = 'A' | ('N' << 8) | ('U' << 16) | ('N' << 24);  // "NUNA" (encrypted)
 
 // TOC Format Constants
@@ -81,6 +82,10 @@ struct TocEntry
     int32_t  compressedLength;
     int32_t  fileNameOffset;
 };
+
+/// Map a raw TOC blob to `TocEntry` rows. Some SWG `.tre` archives pad each row (e.g. 32 bytes per file);
+/// only the leading fields are read into `TocEntry`.
+bool layoutTocEntriesFromBlob(const uint8_t* blob, size_t blobLen, uint32_t numberOfFiles, std::vector<TocEntry>& out);
 
 // ======================================================================
 // TOC File Header (32 bytes)
@@ -248,6 +253,10 @@ Result validate(const std::string& inputTre,
 Result getStats(const std::string& inputTre,
                 ArchiveStats& stats,
                 const EncryptionOptions& encryption = EncryptionOptions());
+
+/// Print header, encryption metadata, layout offsets, and optional TOC decrypt probe (for RE when crypto source is unavailable).
+Result analyze(const std::string& inputTre,
+               const EncryptionOptions& encryption = EncryptionOptions());
 
 // ======================================================================
 // TOC API Functions

@@ -88,36 +88,49 @@ Result createTitanlst(const std::string& outputFile, const std::vector<std::stri
         
         // Read TOC entries
         inFile.seekg(header.tocOffset);
-        std::vector<TocEntry> entries(header.numberOfFiles);
-        uint32_t tocSize = sizeof(TocEntry) * header.numberOfFiles;
-        
+        std::vector<TocEntry> entries;
+
         if (header.tocCompressor == static_cast<uint32_t>(CompressionType::Zlib))
         {
             std::vector<uint8_t> compressed(header.sizeOfTOC);
             inFile.read(reinterpret_cast<char*>(compressed.data()), header.sizeOfTOC);
-            
+
             // Decrypt if encrypted
             if (isEncrypted)
             {
                 encCtx.decryptAt(compressed.data(), header.sizeOfTOC, header.tocOffset);
             }
-            
-            uLongf destLen = tocSize;
-            if (uncompress(reinterpret_cast<Bytef*>(entries.data()), &destLen, compressed.data(), header.sizeOfTOC) != Z_OK)
+
+            std::vector<uint8_t> decompressed;
+            if (!Compression::decompress(compressed.data(), compressed.size(), decompressed, 0))
             {
                 result.code = ResultCode::DecompressionError;
                 result.message = "Failed to decompress TOC: " + treFile;
                 return result;
             }
+            if (!layoutTocEntriesFromBlob(decompressed.data(), decompressed.size(), header.numberOfFiles, entries))
+            {
+                result.code = ResultCode::DecompressionError;
+                result.message = "Invalid TOC layout in: " + treFile;
+                return result;
+            }
         }
         else
         {
-            inFile.read(reinterpret_cast<char*>(entries.data()), tocSize);
-            
+            std::vector<uint8_t> raw(header.sizeOfTOC);
+            inFile.read(reinterpret_cast<char*>(raw.data()), header.sizeOfTOC);
+
             // Decrypt if encrypted
             if (isEncrypted)
             {
-                encCtx.decryptAt(reinterpret_cast<uint8_t*>(entries.data()), tocSize, header.tocOffset);
+                encCtx.decryptAt(raw.data(), raw.size(), header.tocOffset);
+            }
+
+            if (!layoutTocEntriesFromBlob(raw.data(), raw.size(), header.numberOfFiles, entries))
+            {
+                result.code = ResultCode::DecompressionError;
+                result.message = "Invalid TOC layout in: " + treFile;
+                return result;
             }
         }
         

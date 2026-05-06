@@ -15,6 +15,7 @@
 #include "clientGame/PlayerObject.h"
 #include "clientGame/QuestJournalManager.h"
 #include "clientGraphics/RenderWorld.h"
+#include "clientUserInterface/CuiConversationManager.h"
 #include "clientUserInterface/CuiManager.h"
 #include "clientUserInterface/CuiMessageBox.h"
 #include "clientUserInterface/CuiSettings.h"
@@ -239,6 +240,13 @@ void SwgCuiQuestAcceptance::performDeactivate ()
 	m_callback->disconnect (*this, &SwgCuiQuestAcceptance::onAttributesChanged, static_cast<ObjectAttributeManager::Messages::AttributesChanged *> (0));
 	m_callback->disconnect (*this, &SwgCuiQuestAcceptance::onAttributesChanged, static_cast<CuiStaticLootItemManager::Messages::AttributesChanged *> (0));
 	setIsUpdating(false);
+}
+
+//----------------------------------------------------------------------
+
+bool SwgCuiQuestAcceptance::shouldSurviveDisabledWorkspace () const
+{
+	return CuiConversationManager::isCinematicConversationUiActive ();
 }
 
 //----------------------------------------------------------------------

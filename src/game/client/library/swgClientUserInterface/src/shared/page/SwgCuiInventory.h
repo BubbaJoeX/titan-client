@@ -85,6 +85,7 @@ public:
 protected:
 	virtual void             performActivate               ();
 	virtual void             performDeactivate             ();
+	virtual bool             shouldSurviveDisabledWorkspace () const;
 
 private:
 	//disabled

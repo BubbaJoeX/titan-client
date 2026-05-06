@@ -65,7 +65,9 @@ public:
 		static const UILowerString CameraPitch;
 		static const UILowerString CameraRoll;
 		static const UILowerString CameraTransformToObj;
+		static const UILowerString CameraOrientationZoomOffset;
 		static const UILowerString CameraYaw;
+		static const UILowerString CameraZoomMatchOrientation;
 		static const UILowerString CameraForceTarget;
 		static const UILowerString DragPitchMax;
 		static const UILowerString DragPitchMin;
@@ -134,7 +136,8 @@ public:
 		F_cameraAutoZoom         = 0x1000000,
 		F_cameraZoomInWhileTurn  = 0x2000000,
 		F_useOverrideShaderTexture = 0x4000000, // Renders the object once with the override shader.
-		F_rotateNeedsControlKey = 0x8000000
+		F_rotateNeedsControlKey = 0x8000000,
+		F_cameraZoomMatchOrientation = 0x10000000
 	};
 
 	class TextOverlay;
@@ -272,6 +275,12 @@ public:
 
 	void                      setCameraTransformToObj  (bool b);
 
+	void                      setCameraZoomMatchOrientation (bool b);
+	bool                      getCameraZoomMatchOrientation () const;
+
+	void                      setCameraOrientationZoomOffset (Vector const & offsetRadians);
+	Vector const &            getCameraOrientationZoomOffset () const;
+
 	float                     getFitDistanceFactor     () const;
 	void                      setFitDistanceFactor     (float f);
 	void                      setCameraLodBias         (float f);
@@ -305,6 +314,9 @@ private:
 	void                      updateObjectName           ();
 	void                      checkRenderLimits          ();
 	void recomputeNearAndFarPlanes();
+
+	void                      getEffectiveCameraYawPitchRollFromBase (float baseYaw, float basePitch, float baseRoll, float & outYaw, float & outPitch, float & outRoll) const;
+	float                     computeFitDistanceInternal             (float yaw, float pitch, float roll, bool & appearancesReady) const;
 
 protected:
 
@@ -352,6 +364,9 @@ private:
 	float                     m_zoomBoneInterpFactor;
 
 	Vector                    m_cameraDeflectionAngle;
+
+	/// Additive yaw (x), pitch (y), roll (z) in radians applied when CameraZoomMatchOrientation is on or any component is non-zero.
+	Vector                    m_cameraOrientationZoomOffset;
 
 	mutable bool              m_cameraLookAtBoneOk;
 

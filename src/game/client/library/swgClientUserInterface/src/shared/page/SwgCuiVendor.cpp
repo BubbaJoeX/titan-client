@@ -11,6 +11,7 @@
 #include "swgClientUserInterface/SwgCuiAuctionPaneTypes.h"
 #include "clientUserInterface/CuiStringIdsAuction.h"
 #include "clientGame/AuctionManagerClient.h"
+#include "clientUserInterface/CuiConversationManager.h"
 #include "sharedObject/CachedNetworkId.h"
 
 //======================================================================
@@ -79,6 +80,13 @@ void SwgCuiVendor::performActivate ()
 void SwgCuiVendor::performDeactivate ()
 {
 	SwgCuiAuctionListBase::performDeactivate ();
+}
+
+//----------------------------------------------------------------------
+
+bool SwgCuiVendor::shouldSurviveDisabledWorkspace () const
+{
+	return CuiConversationManager::isCinematicConversationUiActive ();
 }
 
 //======================================================================

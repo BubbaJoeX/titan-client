@@ -1220,9 +1220,10 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 
 					if (msg.Type == UIMessage::KeyDown && msg.Keystroke == UIMessage::Escape)
 					{
-						CuiMediator * const cinematicMediator = CuiMediatorFactory::getInWorkspace ("WS_CinematicConversation", false);
+						CuiMediator * const cinematicMediator = CuiConversationManager::fetchCinematicMediatorInstance ();
 						bool const cinematicEsc = CuiConversationManager::isCinematicConversationUiActive ()
-							|| (cinematicMediator && cinematicMediator->isActive ());
+							|| CuiConversationManager::hasCloseCinematicUiHandler ()
+							|| cinematicMediator;
 						if (cinematicEsc)
 						{
 							CuiConversationManager::closeCinematicConversationFromInput ();

@@ -898,26 +898,31 @@ float PlayerCreatureController::realAlter (const float elapsedTime)
 	//-- Get mount info.  Setup the movementCreatureObject to be the creature (player or mount)
 	//   that will actually do the moving.
 	bool const isRidingMount = creatureObject ? creatureObject->isRidingMount () : false;
-	CreatureObject * const movementCreatureObject = isRidingMount ? NON_NULL(creatureObject)->getMountedCreature() : creatureObject;
+	// Interiors (structure cells, ship corridors, POBs): mounts are not used — keep locomotion entirely on the
+	// player so strafe / vehicle-style mount paths and creature-mount prediction never contaminate indoor movement.
+	bool const locomotionIndoors = creatureObject && !creatureObject->isInWorldCell();
+	CreatureObject * const movementCreatureObject =
+		(isRidingMount && !locomotionIndoors) ? NON_NULL(creatureObject)->getMountedCreature() : creatureObject;
 	if (!movementCreatureObject)
 	{
 		DEBUG_WARNING (true, ("PlayerCreatureController::realAlter (): skipping rest of alter because owner is NULL, chaining up to parent class."));
 		return CreatureController::realAlter (elapsedTime);
 	}
 
-	bool useVehicleControls = !(movementCreatureObject->getCanStrafe());
+	bool useVehicleControls = locomotionIndoors ? false : !(movementCreatureObject->getCanStrafe());
 
-	// Yaw / turn limits: when riding, use the *rider* (this controller's owner). The mount has
+	// Yaw / turn limits: when riding outdoors, use the *rider* (this controller's owner). The mount has
 	// States::MountedCreature; its template may ship 0 turn rate, which clamps camera / strafe steering to
 	// nothing while translation still follows the camera.
-	CreatureObject * const turnSourceObject = isRidingMount ? creatureObject : movementCreatureObject;
+	CreatureObject * const turnSourceObject =
+		(isRidingMount && !locomotionIndoors) ? creatureObject : movementCreatureObject;
 
 	// Used for creature-mount-only PCC fixes; vehicles keep legacy locomotion + compensator behavior unchanged.
 	bool const mountIsVehicle =
 		GameObjectTypes::isTypeOf(
 			movementCreatureObject->getGameObjectType(),
 			static_cast<int>(SharedObjectTemplate::GOT_vehicle));
-	bool const ridingCreatureMount = isRidingMount && !mountIsVehicle;
+	bool const ridingCreatureMount = !locomotionIndoors && isRidingMount && !mountIsVehicle;
 
 	// Periodic ambient fish schools while swimming to keep open-water spaces alive.
 	if (movementCreatureObject->isInWorldCell() && movementCreatureObject->getState(States::Swimming))
@@ -961,7 +966,7 @@ float PlayerCreatureController::realAlter (const float elapsedTime)
 		m_light->setParentCell (creatureObject->getParentCell ());
 		m_light->setPosition_w (pos_w);
 
-		if (isRidingMount)
+		if (isRidingMount && !locomotionIndoors)
 		{
 			m_light->setRange (ms_lightRangeMounted);
 			m_light->setLinearAttenuation (ms_lightLinearAttenuationMounted);
@@ -1116,7 +1121,7 @@ float PlayerCreatureController::realAlter (const float elapsedTime)
 						else
 							getMessageQueue ()->appendMessage (static_cast<int>(CM_left),  0.0f);
 					}
-					else if ( !isFirstPerson && ( !m_shouldFaceDesiredYaw || (creatureObject && creatureObject->isRidingMount ()) ) )
+					else if ( !isFirstPerson && ( !m_shouldFaceDesiredYaw || (creatureObject && creatureObject->isRidingMount () && !locomotionIndoors) ) )
 						turn += value;
 				}
 				break;
@@ -1373,7 +1378,7 @@ float PlayerCreatureController::realAlter (const float elapsedTime)
 				// camera + A/D steering like the player.
 				if ( !isMoving )
 				{
-					if ( !isRidingMount || movementCreatureObject->getCanStrafe() )
+					if ( locomotionIndoors || !isRidingMount || movementCreatureObject->getCanStrafe() )
 					{
 						desiredVelocity_c = Vector::unitZ;
 					}
@@ -1388,12 +1393,24 @@ float PlayerCreatureController::realAlter (const float elapsedTime)
 
  				t.yaw_l (m_desiredYaw_w);
 
-				// desiredVelocity_w is a world-space direction (camera yaw * input). Object::rotate_p2w / rotate_p2o
-				// expect object-local and parent-local vectors, not world — the old ship-hull branch mis-tagged
-				// frame space and broke chase/strafe movement inside POBs and ship interiors.
-				Vector const & desiredVelocity_w = t.rotate_l2p (desiredVelocity_c);
-				Vector const     desiredVelocity_o = movementCreatureObject->rotate_w2o(desiredVelocity_w);
-				movementOverrideVect = desiredVelocity_w;
+				// Camera-relative direction in world space (horizontal plane from chase yaw + inputs).
+				Vector const desiredVelocity_w = t.rotate_l2p(desiredVelocity_c);
+
+				// Ship interiors only (not planet-side POBs): deck may be pitched/rolled vs world horizontal; project
+				// camera intent onto the tangent plane (creature up) before rotate_w2o.
+				Vector walkVelocity_w(desiredVelocity_w);
+				if (locomotionIndoors && Game::getPlayerContainingShip())
+				{
+					Vector const upW = movementCreatureObject->getObjectFrameK_w();
+					walkVelocity_w -= upW * upW.dot(walkVelocity_w);
+					float const sq = walkVelocity_w.magnitudeSquared();
+					float const thresh = Vector::NORMALIZE_THRESHOLD * Vector::NORMALIZE_THRESHOLD;
+					if (sq <= thresh)
+						walkVelocity_w = desiredVelocity_w;
+				}
+
+				Vector const desiredVelocity_o = movementCreatureObject->rotate_w2o(walkVelocity_w);
+				movementOverrideVect = walkVelocity_w;
 
 				const float  yaw = clamp (-maximumYawThisFrame, desiredVelocity_o.theta (), maximumYawThisFrame);
 				shouldOverrideMovement = (yaw > FLT_EPSILON || yaw < -FLT_EPSILON);
@@ -3146,7 +3163,8 @@ bool PlayerCreatureController::shouldProcessMovement() const
 
 	CreatureObject const * const owner = safe_cast<CreatureObject const *>(getOwner());
 
-	if ((owner != 0) && (owner->isRidingMount()))
+	// Mount driver/passenger rules apply outside world-cell only; interiors never use mount locomotion.
+	if (owner && owner->isRidingMount() && owner->isInWorldCell())
 	{
 		CreatureObject const * const mount = owner->getMountedCreature();
 		if (!mount)

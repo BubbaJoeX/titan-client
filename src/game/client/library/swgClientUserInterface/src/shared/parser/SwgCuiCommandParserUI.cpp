@@ -153,7 +153,7 @@ namespace SwgCuiCommandParserUINamespace
 		const char * const testLootBox         = "testLootBox";
 		const char * const debugStringIds      = "debugStringIds";
 		const char * const debugStringIdColor  = "debugStringIdColor";
-#if DEBUG=0
+#if DEBUG
 		const char * const debugBrowserOutput  = "mozillaBrowserOutput";
 #endif
 	}
@@ -210,7 +210,7 @@ namespace SwgCuiCommandParserUINamespace
 		{CommandNames::testLootBox,           1, "[objectId]...", "Test the loot box with existing object ids."},
 		{CommandNames::debugStringIds,        0, "[1|0]", "Debug the source string id table and entry."},
 		{CommandNames::debugStringIdColor,    0, "<ui color string>", "Set the color of the debug StringId string."},
-#if DEBUG=0
+#if DEBUG
 		{CommandNames::debugBrowserOutput,    0, "", "Prints out debug information related to the Mozilla browser."		},
 #endif
 		{"", 0, "", ""} // this must be last
@@ -1155,7 +1155,7 @@ bool SwgCuiCommandParserUI::performParsing (const NetworkId & userId, const Stri
 		LocalizationManager::debugDisplayStringColor(color);
 		return true;
 	}
-#if DEBUG=0
+#if DEBUG
 	else if(isCommand(argv[0], CommandNames::debugBrowserOutput))
 	{
 		if (!ConfigClientGame::getCSR())

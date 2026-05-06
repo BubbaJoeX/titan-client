@@ -86,6 +86,9 @@ public:
 	void           setInitializeFromFreeChaseCamera (bool val);
 	void           setInitializeFromFreeCamera (bool val);
 
+	/// Keep pivot math consistent when framing subjects move between world cell and interior cells.
+	void           alignPivotWithCell (CellProperty * cell);
+
 private:
 	//disabled
 	FreeCamera (const FreeCamera&);

@@ -45,6 +45,8 @@ public:
 
 	void                    update                     (float deltaTimeSecs);
 
+	virtual bool            shouldSurviveDisabledWorkspace () const;
+
 private:
 	                       ~SwgCuiTrade                ();
 	                        SwgCuiTrade                (const SwgCuiTrade &);

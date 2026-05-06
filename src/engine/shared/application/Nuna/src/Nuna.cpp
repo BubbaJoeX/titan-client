@@ -17,11 +17,33 @@
 #include <algorithm>
 #include <cstring>
 #include <map>
+#include <iomanip>
+#include <sstream>
 
 namespace fs = std::filesystem;
 
 namespace Nuna
 {
+
+bool layoutTocEntriesFromBlob(const uint8_t* blob, size_t blobLen, uint32_t numberOfFiles, std::vector<TocEntry>& out)
+{
+    if (numberOfFiles == 0)
+    {
+        out.clear();
+        return true;
+    }
+    if (!blob || blobLen == 0)
+        return false;
+    if (blobLen % numberOfFiles != 0)
+        return false;
+    const size_t stride = blobLen / numberOfFiles;
+    if (stride < sizeof(TocEntry))
+        return false;
+    out.resize(numberOfFiles);
+    for (uint32_t i = 0; i < numberOfFiles; ++i)
+        std::memcpy(&out[i], blob + static_cast<size_t>(i) * stride, sizeof(TocEntry));
+    return true;
+}
 
 // ======================================================================
 // Internal Helper Functions
@@ -146,6 +168,71 @@ void collectFiles(const std::string& baseDir,
 }
 
 // Compare entries by CRC then by name (for sorted TOC)
+std::string analyzeFourCcAscii(uint32_t token)
+{
+    char s[5];
+    std::memcpy(s, &token, 4);
+    s[4] = 0;
+    for (int i = 0; i < 4; ++i)
+    {
+        const unsigned char u = static_cast<unsigned char>(s[i]);
+        if (u < 32 || u > 126)
+            s[i] = '.';
+    }
+    return std::string(s);
+}
+
+std::string analyzeHexBytes(const uint8_t* data, size_t len)
+{
+    std::ostringstream oss;
+    oss << std::hex << std::setfill('0');
+    for (size_t i = 0; i < len; ++i)
+        oss << std::setw(2) << static_cast<unsigned>(data[i]) << (i + 1 < len ? " " : "");
+    return oss.str();
+}
+
+std::string analyzeCompressionLabel(uint32_t c)
+{
+    if (c == static_cast<uint32_t>(CompressionType::None))
+        return "none (0)";
+    if (c == static_cast<uint32_t>(CompressionType::Deprecated))
+        return "deprecated (1)";
+    if (c == static_cast<uint32_t>(CompressionType::Zlib))
+        return "zlib (2)";
+    return "unknown (" + std::to_string(c) + ")";
+}
+
+bool analyzeProbeTocDecrypt(std::ifstream& inFile, const TreHeader& header, EncryptionContext& encCtx)
+{
+    inFile.seekg(header.tocOffset);
+
+    if (header.tocCompressor == static_cast<uint32_t>(CompressionType::Zlib))
+    {
+        std::vector<uint8_t> compressed(header.sizeOfTOC);
+        inFile.read(reinterpret_cast<char*>(compressed.data()), header.sizeOfTOC);
+        encCtx.decryptAt(compressed.data(), compressed.size(), header.tocOffset);
+        std::vector<uint8_t> decompressed;
+        if (!Compression::decompress(compressed.data(), compressed.size(), decompressed, 0))
+            return false;
+        std::vector<TocEntry> toc;
+        if (!layoutTocEntriesFromBlob(decompressed.data(), decompressed.size(), header.numberOfFiles, toc))
+            return false;
+        if (header.numberOfFiles == 0)
+            return true;
+        return toc[0].length >= 0 && toc[0].offset >= 0;
+    }
+
+    std::vector<uint8_t> tocData(header.sizeOfTOC);
+    inFile.read(reinterpret_cast<char*>(tocData.data()), header.sizeOfTOC);
+    encCtx.decryptAt(tocData.data(), tocData.size(), header.tocOffset);
+    std::vector<TocEntry> toc;
+    if (!layoutTocEntriesFromBlob(tocData.data(), tocData.size(), header.numberOfFiles, toc))
+        return false;
+    if (header.numberOfFiles == 0)
+        return true;
+    return toc[0].length >= 0 && toc[0].offset >= 0;
+}
+
 bool compareEntries(const FileEntry& a, const FileEntry& b)
 {
     if (a.crc != b.crc)
@@ -544,7 +631,7 @@ Result unpack(const std::string& inputTre,
         encCtx.initDecrypt(password, encHeader.salt, encHeader.iv);
     }
     
-    if (header.version != TAG_0005 && header.version != TAG_0004)
+    if (header.version != TAG_0005 && header.version != TAG_0004 && header.version != TAG_0006)
     {
         result.code = ResultCode::InvalidArchive;
         result.message = "Unsupported TRE version";
@@ -556,50 +643,73 @@ Result unpack(const std::string& inputTre,
     
     std::vector<uint8_t> tocData(header.sizeOfTOC);
     inFile.read(reinterpret_cast<char*>(tocData.data()), header.sizeOfTOC);
-    
+    if (static_cast<size_t>(inFile.gcount()) != header.sizeOfTOC)
+    {
+        result.code = ResultCode::InvalidArchive;
+        result.message = "Short read on TOC (got " + std::to_string(inFile.gcount()) + ", expected " +
+                         std::to_string(header.sizeOfTOC) + ")";
+        return result;
+    }
+
     if (isEncrypted)
     {
         encCtx.decryptAt(tocData.data(), tocData.size(), header.tocOffset);
     }
-    
-    std::vector<TocEntry> toc(header.numberOfFiles);
-    size_t tocSize = header.numberOfFiles * sizeof(TocEntry);
-    
+
+    std::vector<TocEntry> toc;
+
     if (header.tocCompressor == static_cast<uint32_t>(CompressionType::Zlib))
     {
         std::vector<uint8_t> decompressed;
-        if (!Compression::decompress(tocData.data(), tocData.size(), decompressed, tocSize))
+        if (!Compression::decompress(tocData.data(), tocData.size(), decompressed, 0))
         {
             result.code = ResultCode::DecompressionError;
             result.message = "Failed to decompress TOC";
             return result;
         }
-        std::memcpy(toc.data(), decompressed.data(), tocSize);
+        if (!layoutTocEntriesFromBlob(decompressed.data(), decompressed.size(), header.numberOfFiles, toc))
+        {
+            result.code = ResultCode::InvalidArchive;
+            result.message = "TOC size does not match file count (unsupported TOC row layout)";
+            return result;
+        }
     }
     else
     {
-        std::memcpy(toc.data(), tocData.data(), tocSize);
+        if (!layoutTocEntriesFromBlob(tocData.data(), tocData.size(), header.numberOfFiles, toc))
+        {
+            result.code = ResultCode::InvalidArchive;
+            result.message = "TOC size does not match file count (expected uncompressed TOC blob)";
+            return result;
+        }
     }
-    
+
     // Read name block
-    uint64_t nameBlockOffset = static_cast<uint64_t>(header.tocOffset) + header.sizeOfTOC;
+    const uint64_t nameBlockOffset = static_cast<uint64_t>(header.tocOffset) + header.sizeOfTOC;
     inFile.seekg(nameBlockOffset);
-    
+
     std::vector<uint8_t> nameBlockData(header.sizeOfNameBlock);
     inFile.read(reinterpret_cast<char*>(nameBlockData.data()), header.sizeOfNameBlock);
-    
+    if (static_cast<size_t>(inFile.gcount()) != header.sizeOfNameBlock)
+    {
+        result.code = ResultCode::InvalidArchive;
+        result.message = "Short read on name block (got " + std::to_string(inFile.gcount()) + ", expected " +
+                         std::to_string(header.sizeOfNameBlock) + ")";
+        return result;
+    }
+
     if (isEncrypted)
     {
         encCtx.decryptAt(nameBlockData.data(), nameBlockData.size(), nameBlockOffset);
     }
-    
+
     std::vector<char> nameBlock(header.uncompSizeOfNameBlock);
-    
+
     if (header.blockCompressor == static_cast<uint32_t>(CompressionType::Zlib))
     {
         std::vector<uint8_t> decompressed;
-        if (!Compression::decompress(nameBlockData.data(), nameBlockData.size(), 
-                                     decompressed, header.uncompSizeOfNameBlock))
+        if (!Compression::decompress(nameBlockData.data(), nameBlockData.size(),
+                                       decompressed, header.uncompSizeOfNameBlock))
         {
             result.code = ResultCode::DecompressionError;
             result.message = "Failed to decompress name block";
@@ -611,7 +721,7 @@ Result unpack(const std::string& inputTre,
     {
         std::memcpy(nameBlock.data(), nameBlockData.data(), header.uncompSizeOfNameBlock);
     }
-    
+
     // Create output directory
     if (!createDirectories(outputDir))
     {
@@ -771,53 +881,76 @@ Result list(const std::string& inputTre,
     
     // Read TOC
     inFile.seekg(header.tocOffset);
-    
+
     std::vector<uint8_t> tocData(header.sizeOfTOC);
     inFile.read(reinterpret_cast<char*>(tocData.data()), header.sizeOfTOC);
-    
+    if (static_cast<size_t>(inFile.gcount()) != header.sizeOfTOC)
+    {
+        result.code = ResultCode::InvalidArchive;
+        result.message = "Short read on TOC (got " + std::to_string(inFile.gcount()) + ", expected " +
+                         std::to_string(header.sizeOfTOC) + ")";
+        return result;
+    }
+
     if (isEncrypted)
     {
         encCtx.decryptAt(tocData.data(), tocData.size(), header.tocOffset);
     }
-    
-    std::vector<TocEntry> toc(header.numberOfFiles);
-    size_t tocSize = header.numberOfFiles * sizeof(TocEntry);
-    
+
+    std::vector<TocEntry> toc;
+
     if (header.tocCompressor == static_cast<uint32_t>(CompressionType::Zlib))
     {
         std::vector<uint8_t> decompressed;
-        if (!Compression::decompress(tocData.data(), tocData.size(), decompressed, tocSize))
+        if (!Compression::decompress(tocData.data(), tocData.size(), decompressed, 0))
         {
             result.code = ResultCode::DecompressionError;
             result.message = "Failed to decompress TOC";
             return result;
         }
-        std::memcpy(toc.data(), decompressed.data(), tocSize);
+        if (!layoutTocEntriesFromBlob(decompressed.data(), decompressed.size(), header.numberOfFiles, toc))
+        {
+            result.code = ResultCode::InvalidArchive;
+            result.message = "TOC size does not match file count (unsupported TOC row layout)";
+            return result;
+        }
     }
     else
     {
-        std::memcpy(toc.data(), tocData.data(), tocSize);
+        if (!layoutTocEntriesFromBlob(tocData.data(), tocData.size(), header.numberOfFiles, toc))
+        {
+            result.code = ResultCode::InvalidArchive;
+            result.message = "TOC size does not match file count (expected uncompressed TOC blob)";
+            return result;
+        }
     }
-    
+
     // Read name block
-    uint64_t nameBlockOffset = static_cast<uint64_t>(header.tocOffset) + header.sizeOfTOC;
+    const uint64_t nameBlockOffset = static_cast<uint64_t>(header.tocOffset) + header.sizeOfTOC;
     inFile.seekg(nameBlockOffset);
-    
+
     std::vector<uint8_t> nameBlockData(header.sizeOfNameBlock);
     inFile.read(reinterpret_cast<char*>(nameBlockData.data()), header.sizeOfNameBlock);
-    
+    if (static_cast<size_t>(inFile.gcount()) != header.sizeOfNameBlock)
+    {
+        result.code = ResultCode::InvalidArchive;
+        result.message = "Short read on name block (got " + std::to_string(inFile.gcount()) + ", expected " +
+                         std::to_string(header.sizeOfNameBlock) + ")";
+        return result;
+    }
+
     if (isEncrypted)
     {
         encCtx.decryptAt(nameBlockData.data(), nameBlockData.size(), nameBlockOffset);
     }
-    
+
     std::vector<char> nameBlock(header.uncompSizeOfNameBlock);
-    
+
     if (header.blockCompressor == static_cast<uint32_t>(CompressionType::Zlib))
     {
         std::vector<uint8_t> decompressed;
-        if (!Compression::decompress(nameBlockData.data(), nameBlockData.size(), 
-                                     decompressed, header.uncompSizeOfNameBlock))
+        if (!Compression::decompress(nameBlockData.data(), nameBlockData.size(),
+                                       decompressed, header.uncompSizeOfNameBlock))
         {
             result.code = ResultCode::DecompressionError;
             result.message = "Failed to decompress name block";
@@ -829,7 +962,7 @@ Result list(const std::string& inputTre,
     {
         std::memcpy(nameBlock.data(), nameBlockData.data(), header.uncompSizeOfNameBlock);
     }
-    
+
     // Print header info
     std::cout << "TRE Archive: " << inputTre << std::endl;
     std::cout << "Files: " << header.numberOfFiles << std::endl;
@@ -909,7 +1042,7 @@ Result validate(const std::string& inputTre,
         return result;
     }
     
-    if (header.version != TAG_0005 && header.version != TAG_0004)
+    if (header.version != TAG_0005 && header.version != TAG_0004 && header.version != TAG_0006)
     {
         result.code = ResultCode::InvalidArchive;
         result.message = "Unsupported TRE version";
@@ -943,38 +1076,56 @@ Result validate(const std::string& inputTre,
         {
             std::vector<uint8_t> compressed(header.sizeOfTOC);
             inFile.read(reinterpret_cast<char*>(compressed.data()), header.sizeOfTOC);
-            
+            if (static_cast<size_t>(inFile.gcount()) != header.sizeOfTOC)
+            {
+                result.code = ResultCode::InvalidArchive;
+                result.message = "Short read on TOC during validate";
+                return result;
+            }
+
             encCtx.decryptAt(compressed.data(), header.sizeOfTOC, header.tocOffset);
-            
-            uint32_t tocSize = sizeof(TocEntry) * header.numberOfFiles;
-            std::vector<uint8_t> tocData(tocSize);
-            uLongf destLen = tocSize;
-            
-            if (uncompress(tocData.data(), &destLen, compressed.data(), header.sizeOfTOC) != Z_OK)
+
+            std::vector<uint8_t> tocData;
+            if (!Compression::decompress(compressed.data(), compressed.size(), tocData, 0))
             {
                 result.code = ResultCode::InvalidPassword;
                 result.message = "Failed to decrypt/decompress TOC - invalid password or corrupted archive";
                 return result;
             }
+            std::vector<TocEntry> tocParsed;
+            if (!layoutTocEntriesFromBlob(tocData.data(), tocData.size(), header.numberOfFiles, tocParsed))
+            {
+                result.code = ResultCode::InvalidPassword;
+                result.message = "TOC layout invalid after decrypt - wrong password or corrupted archive";
+                return result;
+            }
         }
         else
         {
-            uint32_t tocSize = sizeof(TocEntry) * header.numberOfFiles;
-            std::vector<uint8_t> tocData(tocSize);
-            inFile.read(reinterpret_cast<char*>(tocData.data()), tocSize);
-            
-            encCtx.decryptAt(tocData.data(), tocSize, header.tocOffset);
-            
-            // Basic validation: check that first entry looks reasonable
-            if (header.numberOfFiles > 0)
+            std::vector<uint8_t> tocData(header.sizeOfTOC);
+            inFile.read(reinterpret_cast<char*>(tocData.data()), header.sizeOfTOC);
+            if (static_cast<size_t>(inFile.gcount()) != header.sizeOfTOC)
             {
-                TocEntry* firstEntry = reinterpret_cast<TocEntry*>(tocData.data());
-                if (firstEntry->offset < 0 || firstEntry->length < 0)
-                {
-                    result.code = ResultCode::InvalidPassword;
-                    result.message = "TOC validation failed - invalid password or corrupted archive";
-                    return result;
-                }
+                result.code = ResultCode::InvalidArchive;
+                result.message = "Short read on TOC during validate";
+                return result;
+            }
+
+            encCtx.decryptAt(tocData.data(), tocData.size(), header.tocOffset);
+
+            std::vector<TocEntry> tocParsed;
+            if (!layoutTocEntriesFromBlob(tocData.data(), tocData.size(), header.numberOfFiles, tocParsed))
+            {
+                result.code = ResultCode::InvalidPassword;
+                result.message = "TOC layout invalid after decrypt - wrong password or corrupted archive";
+                return result;
+            }
+            if (header.numberOfFiles > 0 &&
+                (tocParsed[0].offset < 0 || tocParsed[0].length < 0))
+            {
+                result.code = ResultCode::InvalidPassword;
+                result.message = "TOC validation failed - invalid password or corrupted archive";
+                return result;
             }
         }
         
@@ -996,6 +1147,7 @@ Result getStats(const std::string& inputTre,
                 ArchiveStats& stats,
                 const EncryptionOptions& encryption)
 {
+    (void)encryption;
     Result result;
     
     std::ifstream inFile(inputTre, std::ios::binary);
@@ -1021,6 +1173,162 @@ Result getStats(const std::string& inputTre,
     stats.encrypted = (header.token == TAG_NUNA);
     
     result.message = "Stats retrieved";
+    return result;
+}
+
+// ======================================================================
+// Analyze (forensics — no original decrypt source required for metadata)
+// ======================================================================
+
+Result analyze(const std::string& inputTre, const EncryptionOptions& encryption)
+{
+    Result result;
+
+    std::ifstream inFile(inputTre, std::ios::binary | std::ios::ate);
+    if (!inFile)
+    {
+        result.code = ResultCode::FileNotFound;
+        result.message = "Cannot open file: " + inputTre;
+        return result;
+    }
+
+    const std::streamsize fileSize = inFile.tellg();
+    inFile.seekg(0);
+
+    std::vector<uint8_t> prefix(static_cast<size_t>(std::min<std::streamsize>(fileSize, 256)));
+    inFile.read(reinterpret_cast<char*>(prefix.data()), prefix.size());
+    const std::streamsize prefixGot = inFile.gcount();
+
+    TreHeader header{};
+    if (static_cast<size_t>(prefixGot) >= sizeof(TreHeader))
+        std::memcpy(&header, prefix.data(), sizeof(TreHeader));
+    else
+    {
+        std::cout << "File too small for TreHeader (" << prefixGot << " bytes)\n";
+        std::cout << "Hex: " << analyzeHexBytes(prefix.data(), static_cast<size_t>(prefixGot)) << "\n";
+        result.code = ResultCode::InvalidArchive;
+        result.message = "File too small";
+        return result;
+    }
+
+    std::cout << "\n=== Analyze: " << inputTre << " ===\n";
+    std::cout << "File size: " << fileSize << " bytes\n";
+    if (header.token == TAG_TREE)
+        std::cout << "Archive kind: SWG Tree (.tre)\n";
+    else if (header.token == TAG_NUNA)
+        std::cout << "Archive kind: NUNA encrypted Tree (TitanPak tooling)\n";
+    std::cout << "\n";
+
+    const bool magicOk = (header.token == TAG_TREE || header.token == TAG_NUNA);
+    std::cout << "--- TreHeader (" << sizeof(TreHeader) << " bytes @ 0) ---\n";
+    std::cout << "token:           0x" << std::hex << std::uppercase << header.token << std::dec << "\n";
+    std::cout << "  LE byte chars: \"" << analyzeFourCcAscii(header.token) << "\"\n";
+    std::cout << "  Note:          On little-endian, SWG magic 'TREE' is stored as bytes E E R T (often misread as \"EERT\" in dumps).\n";
+    std::cout << "                 Version tag '0006' reads as ASCII \"6000\" at bytes 4..7 — concatenated \"EERT6000\" is normal TREE + v0006, not a separate magic.\n";
+    std::cout << "  Recognized:    ";
+    if (header.token == TAG_TREE)
+        std::cout << "TREE (unencrypted)\n";
+    else if (header.token == TAG_NUNA)
+        std::cout << "NUNA (TitanPak encrypted)\n";
+    else
+        std::cout << "UNKNOWN — not standard TREE/NUNA\n";
+
+    std::cout << "version:         0x" << std::hex << std::uppercase << header.version << std::dec
+              << "  (\"" << analyzeFourCcAscii(header.version) << "\")\n";
+    const bool verOk = (header.version == TAG_0005 || header.version == TAG_0004 || header.version == TAG_0006);
+    std::cout << "  Supported:     " << (verOk ? "yes (0004 / 0005 / 0006)" : "unknown — verify against samples") << "\n";
+
+    std::cout << "numberOfFiles:   " << header.numberOfFiles << "\n";
+    std::cout << "tocOffset:       " << header.tocOffset << "\n";
+    std::cout << "tocCompressor:   " << analyzeCompressionLabel(header.tocCompressor) << "\n";
+    std::cout << "sizeOfTOC:       " << header.sizeOfTOC << "\n";
+    std::cout << "blockCompressor: " << analyzeCompressionLabel(header.blockCompressor) << "\n";
+    std::cout << "sizeOfNameBlock: " << header.sizeOfNameBlock << "\n";
+    std::cout << "uncompSizeOfNameBlock: " << header.uncompSizeOfNameBlock << "\n";
+
+    const uint64_t nameBlockOffset = static_cast<uint64_t>(header.tocOffset) + header.sizeOfTOC;
+    std::cout << "\n--- Derived layout ---\n";
+    std::cout << "Name block starts @ " << nameBlockOffset << "\n";
+    if (header.token == TAG_NUNA)
+        std::cout << "Encryption header @ " << sizeof(TreHeader) << " (" << sizeof(EncryptionHeader) << " bytes)\n";
+
+    if (!magicOk || !verOk)
+    {
+        std::cout << "\n--- First " << std::min(prefix.size(), static_cast<size_t>(64)) << " bytes (hex) ---\n";
+        std::cout << analyzeHexBytes(prefix.data(), std::min(prefix.size(), static_cast<size_t>(64))) << "\n";
+        std::cout << "\nCompare fields with a known-good SWG .tre (or NUNA TitanPak if encrypted) or hex-edit sections manually.\n";
+        result.message = "Analysis complete (non-standard header)";
+        return result;
+    }
+
+    const bool isEncrypted = (header.token == TAG_NUNA);
+    if (isEncrypted)
+    {
+        inFile.clear();
+        inFile.seekg(sizeof(TreHeader));
+        EncryptionHeader encHeader{};
+        inFile.read(reinterpret_cast<char*>(&encHeader), sizeof(encHeader));
+
+        std::cout << "\n--- EncryptionHeader (" << sizeof(EncryptionHeader) << " bytes @ " << sizeof(TreHeader) << ") ---\n";
+        std::cout << "encryptionVersion: " << encHeader.encryptionVersion << "\n";
+        std::cout << "flags:             " << encHeader.flags << "\n";
+        std::cout << "salt (hex):        " << analyzeHexBytes(encHeader.salt, sizeof(encHeader.salt)) << "\n";
+        std::cout << "iv (hex):          " << analyzeHexBytes(encHeader.iv, sizeof(encHeader.iv)) << "\n";
+        std::cout << "\nCipher layout: deriveKey(password, salt) -> keystream XOR; IV tweaked per file offset (see NunaCrypto.h EncryptionContext).\n";
+
+        std::cout << "\n--- Password probe (decrypt TOC region only) ---\n";
+
+        std::vector<std::string> passwordsToTry;
+        if (!encryption.password.empty())
+            passwordsToTry.push_back(encryption.password);
+        passwordsToTry.emplace_back(TITANPAK_PASSWORD);
+
+        std::vector<std::string> uniquePw;
+        for (const std::string& p : passwordsToTry)
+        {
+            bool dup = false;
+            for (const std::string& u : uniquePw)
+            {
+                if (u == p)
+                {
+                    dup = true;
+                    break;
+                }
+            }
+            if (!dup)
+                uniquePw.push_back(p);
+        }
+
+        for (size_t pi = 0; pi < uniquePw.size(); ++pi)
+        {
+            inFile.clear();
+            inFile.seekg(sizeof(TreHeader));
+            EncryptionHeader eh{};
+            inFile.read(reinterpret_cast<char*>(&eh), sizeof(eh));
+
+            EncryptionContext encCtx;
+            encCtx.initDecrypt(uniquePw[pi], eh.salt, eh.iv);
+
+            const bool ok = analyzeProbeTocDecrypt(inFile, header, encCtx);
+            std::cout << "  [" << (pi + 1) << "/" << uniquePw.size() << "] ";
+            if (!encryption.password.empty() && uniquePw[pi] == encryption.password)
+                std::cout << "(from -d/--decrypt) ";
+            else if (uniquePw[pi] == TITANPAK_PASSWORD)
+                std::cout << "(Nuna built-in default) ";
+            std::cout << "password \"" << uniquePw[pi] << "\": " << (ok ? "TOC decrypt OK" : "FAILED") << "\n";
+        }
+
+        std::cout << "\nIf all probes fail: wrong password, corrupted file, or encryption scheme differs from this Nuna build.\n";
+    }
+    else
+    {
+        std::cout << "\n(Unencrypted TREE — TOC/name blocks are plain zlib or raw per compressor fields.)\n";
+    }
+
+    std::cout << "\n--- Raw prefix (first 64 bytes, hex) ---\n";
+    std::cout << analyzeHexBytes(prefix.data(), std::min(prefix.size(), static_cast<size_t>(64))) << "\n";
+
+    result.message = "Analysis complete";
     return result;
 }
 

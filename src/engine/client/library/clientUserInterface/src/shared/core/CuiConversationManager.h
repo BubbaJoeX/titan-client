@@ -11,6 +11,7 @@
 //======================================================================
 
 class CachedNetworkId;
+class CuiMediator;
 class NetworkId;
 class StringId;
 class ProsePackage;
@@ -110,6 +111,22 @@ public:
 	// Escape / client cancel: end server convo if needed and always tear down cinematic workspace (restores HUD).
 	static void closeCinematicConversationFromInput();
 
+	/// Swg registers this while the cinematic page is up — bypasses workspace lookup / closeThroughWorkspace no-ops.
+	typedef void (*CloseCinematicUiHandler) ();
+	static void setCloseCinematicUiHandler (CloseCinematicUiHandler handler);
+	static bool hasCloseCinematicUiHandler ();
+
+	/// Active cinematic page may not appear in workspace enumeration; Swg registers an accessor from performActivate.
+	typedef CuiMediator * (*ActiveCinematicMediatorAccessor)();
+	static void setActiveCinematicMediatorAccessor(ActiveCinematicMediatorAccessor accessor);
+
+	/// Workspace lookup OR registered active instance (whichever is valid).
+	static CuiMediator * fetchActiveCinematicConversationMediator ();
+
+	/// Same sources as fetchActive but does not require CuiMediator::isActive(). Needed when workspace
+	/// enumeration fails (vendor / disabled workspace) while Swg still holds the registered instance.
+	static CuiMediator * fetchCinematicMediatorInstance ();
+
 private:
 
 	static void                              makeSinglePlayerResponses ();
@@ -122,6 +139,8 @@ private:
 	static uint32                            ms_appearanceOverrideSharedTemplateCrc;
 	static CameraCommandHandler              ms_cameraCommandHandler;
 	static bool                              ms_cinematicConversationUiActive;
+	static CloseCinematicUiHandler           ms_closeCinematicUiHandler;
+	static ActiveCinematicMediatorAccessor   ms_activeCinematicMediatorAccessor;
 };
 
 //----------------------------------------------------------------------

@@ -32,6 +32,9 @@
 #include <eh.h>
 #include <cstdio>
 #include <Psapi.h>
+#if defined(_MSC_VER)
+#include <delayimp.h>
+#endif
 
 // ======================================================================
 
@@ -177,11 +180,42 @@ LONG __stdcall SetupSharedFoundationNamespace::MyUnhandledExceptionFilter(LPEXCE
 			}
 		}
 	}
-	
-	sprintf(fatalMessage, "ExceptionHandler invoked: Exception code 0x%08x at address 0x%08x in module %s",
+
+	// MSVC delay-load helper raises 0xC06D007E (DLL missing) / 0xC06D007F (export missing).
+	// ExceptionInformation[0] points at DelayLoadInfo (see delayhlp.cpp).
+	char delayDetail[480] = "";
+#if defined(_MSC_VER)
+	{
+		const EXCEPTION_RECORD *const er = exceptionPointers->ExceptionRecord;
+		if ((er->ExceptionCode == 0xC06D007E || er->ExceptionCode == 0xC06D007F) &&
+		    er->NumberParameters >= 1)
+		{
+			PDelayLoadInfo const pdli = reinterpret_cast<PDelayLoadInfo>(static_cast<uintptr_t>(er->ExceptionInformation[0]));
+			if (pdli && pdli->cb >= sizeof(DelayLoadInfo) && pdli->szDll)
+			{
+				if (er->ExceptionCode == 0xC06D007E)
+				{
+					_snprintf(delayDetail, sizeof(delayDetail), " [DelayLoad: could not load DLL \"%s\"]", pdli->szDll);
+				}
+				else
+				{
+					const ULONG_PTR nameOrOrdinal = reinterpret_cast<ULONG_PTR>(pdli->dlp.szProcName);
+					if (nameOrOrdinal > 0xFFFF)
+						_snprintf(delayDetail, sizeof(delayDetail), " [DelayLoad: \"%s\" does not export \"%s\"]", pdli->szDll, pdli->dlp.szProcName);
+					else
+						_snprintf(delayDetail, sizeof(delayDetail), " [DelayLoad: \"%s\" does not export ordinal %lu]", pdli->szDll, static_cast<unsigned long>(nameOrOrdinal & 0xFFFF));
+				}
+				delayDetail[sizeof(delayDetail) - 1] = '\0';
+			}
+		}
+	}
+#endif
+
+	sprintf(fatalMessage, "ExceptionHandler invoked: Exception code 0x%08x at address %p in module %s%s",
 		exceptionPointers->ExceptionRecord->ExceptionCode,
-		reinterpret_cast<uintptr_t>(crashAddr),
-		moduleName);
+		crashAddr,
+		moduleName,
+		delayDetail);
 
 	// Let the ExitChain do its job
 	Fatal("%s", fatalMessage);

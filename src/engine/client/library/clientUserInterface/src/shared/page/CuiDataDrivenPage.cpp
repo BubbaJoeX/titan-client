@@ -31,6 +31,7 @@
 #include "clientGame/GameNetwork.h"
 #include "clientGame/ProsePackageManagerClient.h"
 #include "clientUserInterface/CuiDataDrivenPageManager.h"
+#include "clientUserInterface/CuiConversationManager.h"
 #include "clientUserInterface/CuiManager.h"
 #include "clientUserInterface/CuiMediatorFactory.h"
 #include "clientUserInterface/CuiStringIds.h"
@@ -244,6 +245,13 @@ void CuiDataDrivenPage::performDeactivate()
 			(*it)->deactivate ();
 	}
 	CuiManager::requestPointer(false);
+}
+
+//-----------------------------------------------------------------
+
+bool CuiDataDrivenPage::shouldSurviveDisabledWorkspace () const
+{
+	return CuiConversationManager::isCinematicConversationUiActive ();
 }
 
 

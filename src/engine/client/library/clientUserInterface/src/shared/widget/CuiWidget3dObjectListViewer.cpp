@@ -315,7 +315,9 @@ const UILowerString CuiWidget3dObjectListViewer::PropertyName::CameraLookAtCente
 const UILowerString CuiWidget3dObjectListViewer::PropertyName::CameraPitch            = UILowerString ("CameraPitch");
 const UILowerString CuiWidget3dObjectListViewer::PropertyName::CameraRoll             = UILowerString ("CameraRoll");
 const UILowerString CuiWidget3dObjectListViewer::PropertyName::CameraTransformToObj   = UILowerString ("CameraTransformToObj");
+const UILowerString CuiWidget3dObjectListViewer::PropertyName::CameraOrientationZoomOffset = UILowerString ("CameraOrientationZoomOffset");
 const UILowerString CuiWidget3dObjectListViewer::PropertyName::CameraYaw              = UILowerString ("CameraYaw");
+const UILowerString CuiWidget3dObjectListViewer::PropertyName::CameraZoomMatchOrientation = UILowerString ("CameraZoomMatchOrientation");
 const UILowerString CuiWidget3dObjectListViewer::PropertyName::DragPitchMax           = UILowerString ("DragPitchMax");
 const UILowerString CuiWidget3dObjectListViewer::PropertyName::DragPitchMin           = UILowerString ("DragPitchMin");
 const UILowerString CuiWidget3dObjectListViewer::PropertyName::DragPitchOk            = UILowerString ("DragPitchOk");
@@ -381,9 +383,10 @@ m_viewport                  (),
 m_fitRect                   (0, 0, 100, 100),
 m_cameraLookAtBone          (),
 m_cameraZoomLookAtBone      (),
-m_zoomBoneInterpFactor      (0.0f),
-m_cameraDeflectionAngle     (),
-m_cameraLookAtBoneOk        (false),
+	m_zoomBoneInterpFactor      (0.0f),
+	m_cameraDeflectionAngle     (),
+	m_cameraOrientationZoomOffset (),
+	m_cameraLookAtBoneOk        (false),
 m_rotateSpeed               (0.0f),
 m_lastDragTime              (0),
 m_scaleMaxOverride          (0.0f),
@@ -1588,6 +1591,26 @@ bool  CuiWidget3dObjectListViewer::SetProperty( const UILowerString & Name, cons
 		}
 		return false;
 	}
+	else if (Name == PropertyName::CameraZoomMatchOrientation)
+	{
+		bool b = false;
+		if (UIUtils::ParseBoolean (Value, b))
+		{
+			setCameraZoomMatchOrientation (b);
+			return true;
+		}
+		return false;
+	}
+	else if (Name == PropertyName::CameraOrientationZoomOffset)
+	{
+		Vector v;
+		if (CuiUtils::ParseVector (Value, v))
+		{
+			setCameraOrientationZoomOffset (v);
+			return true;
+		}
+		return false;
+	}
 	else if (Name == PropertyName::LightYaw)
 	{
 		return UIUtils::ParseFloat (Value, m_lightYaw);
@@ -1880,6 +1903,14 @@ bool  CuiWidget3dObjectListViewer::GetProperty( const UILowerString & Name, UISt
 	{
 		return UIUtils::FormatBoolean (Value, hasFlags (F_cameraTransformToObj));
 	}
+	else if (Name == PropertyName::CameraZoomMatchOrientation)
+	{
+		return UIUtils::FormatBoolean (Value, hasFlags (F_cameraZoomMatchOrientation));
+	}
+	else if (Name == PropertyName::CameraOrientationZoomOffset)
+	{
+		return CuiUtils::FormatVector (Value, m_cameraOrientationZoomOffset);
+	}
 	else if (Name == PropertyName::CameraLookAt)
 	{
 		return CuiUtils::FormatVector (Value, m_cameraLookAt);
@@ -2103,7 +2134,9 @@ void  CuiWidget3dObjectListViewer::GetPropertyNames( UIPropertyNameVector & in, 
 	in.push_back (PropertyName::CameraPitch   );
 	in.push_back (PropertyName::CameraRoll  );
 	in.push_back (PropertyName::CameraTransformToObj);
+	in.push_back (PropertyName::CameraOrientationZoomOffset);
 	in.push_back (PropertyName::CameraYaw   );
+	in.push_back (PropertyName::CameraZoomMatchOrientation);
 	in.push_back (PropertyName::DragPitchMax);
 	in.push_back (PropertyName::DragPitchMin);
 	in.push_back (PropertyName::DragPitchOk);
@@ -2277,18 +2310,29 @@ void CuiWidget3dObjectListViewer::setUnsetFlags (Flags f, bool set)
 
 //----------------------------------------------------------------------
 
-const float CuiWidget3dObjectListViewer::computeFitDistance (bool & appearancesReady) const
+void CuiWidget3dObjectListViewer::getEffectiveCameraYawPitchRollFromBase (float baseYaw, float basePitch, float baseRoll, float & outYaw, float & outPitch, float & outRoll) const
+{
+	outYaw   = baseYaw;
+	outPitch = basePitch;
+	outRoll  = baseRoll;
+
+	const bool applyOffset =
+		hasFlags (F_cameraZoomMatchOrientation) ||
+		(m_cameraOrientationZoomOffset.magnitudeSquared () > 1.0e-12f);
+
+	if (applyOffset)
+	{
+		outYaw   = angleClamp2Pi (baseYaw   + m_cameraOrientationZoomOffset.x);
+		outPitch = angleClamp2Pi (basePitch + m_cameraOrientationZoomOffset.y);
+		outRoll  = angleClamp2Pi (baseRoll  + m_cameraOrientationZoomOffset.z);
+	}
+}
+
+//----------------------------------------------------------------------
+
+float CuiWidget3dObjectListViewer::computeFitDistanceInternal (float yaw, float pitch, float roll, bool & appearancesReady) const
 {
 	static const float TANGENT_FUDGE_FACTOR = 1.00f;
-
-	//-- determine the effective FOV by comparing the fitRect to the widget's rectangle
-	//-- the effective vertical fov is:
-	//-- f' = 2 * atan ( h * tan (f / 2) / H)
-	//-- where h = the height of the fitRect
-	//--       H = the height of the widget
-	//--       f = the camera's vertical field of view
-
-	//-- m_fitRect is in percentage units
 
 	UIFloatPoint fitRect_size;
 	fitRect_size.x = static_cast<float>((m_fitRect.right - m_fitRect.left) * GetWidth()) * 0.01f * m_fitScale.x;
@@ -2310,8 +2354,9 @@ const float CuiWidget3dObjectListViewer::computeFitDistance (bool & appearancesR
 
 	Transform transformDiff = Transform::identity;
 	transformDiff.move_l  (m_cameraLookAtTarget);
-	transformDiff.yaw_l   (m_cameraYawPitchZoom.x);
-	transformDiff.pitch_l (m_cameraYawPitchZoom.y);
+	transformDiff.yaw_l   (yaw);
+	transformDiff.pitch_l (pitch);
+	transformDiff.roll_l  (roll);
 
 	static std::vector<Vector> vv;
 	vv.clear ();
@@ -2320,8 +2365,6 @@ const float CuiWidget3dObjectListViewer::computeFitDistance (bool & appearancesR
 	for (std::vector<Vector>::const_iterator it = vv.begin (); it != vv.end (); ++it)
 	{
 		const Vector transformed (transformDiff.rotateTranslate_p2l (*it));
-
-		//----------------------------------------------------------------------
 
 		float dz = 0.0f;
 
@@ -2334,8 +2377,6 @@ const float CuiWidget3dObjectListViewer::computeFitDistance (bool & appearancesR
 			max_dz = std::max (max_dz, dz);
 		}
 
-		//----------------------------------------------------------------------
-
 		{
 			if (transformed.x >= 0.0f)
 				dz = transformed.x * recip_halfTan_horizontal - transformed.z;
@@ -2346,9 +2387,18 @@ const float CuiWidget3dObjectListViewer::computeFitDistance (bool & appearancesR
 		}
 	}
 
-	
-
 	return max_dz * m_fitDistanceFactor;
+}
+
+//----------------------------------------------------------------------
+
+const float CuiWidget3dObjectListViewer::computeFitDistance (bool & appearancesReady) const
+{
+	float ey = 0.f;
+	float ep = 0.f;
+	float er = 0.f;
+	getEffectiveCameraYawPitchRollFromBase (m_cameraYawPitchZoom.x, m_cameraYawPitchZoom.y, m_cameraRoll, ey, ep, er);
+	return computeFitDistanceInternal (ey, ep, er, appearancesReady);
 }
 
 //----------------------------------------------------------------------
@@ -3050,9 +3100,14 @@ void CuiWidget3dObjectListViewer::gotoCameraPivotPoint (bool useTarget) const
 	else
 		m_camera->move_o  (m_cameraLookAt);
 
-	m_camera->yaw_o   (m_cameraYawPitchZoom.x);
-	m_camera->pitch_o (m_cameraYawPitchZoom.y);
-	m_camera->roll_o  (m_cameraRoll);
+	float yaw = 0.f;
+	float pitch = 0.f;
+	float roll = 0.f;
+	getEffectiveCameraYawPitchRollFromBase (m_cameraYawPitchZoom.x, m_cameraYawPitchZoom.y, m_cameraRoll, yaw, pitch, roll);
+
+	m_camera->yaw_o   (yaw);
+	m_camera->pitch_o (pitch);
+	m_camera->roll_o  (roll);
 }
 
 //----------------------------------------------------------------------
@@ -3065,6 +3120,38 @@ void CuiWidget3dObjectListViewer::recomputeZoom ()
 
 	if (hasFlags (F_cameraAutoZoom))
 	{
+		//-- Pick roll that minimizes required backing distance for tilted props (e.g. vendor pedestals)
+		//-- when CameraZoomMatchOrientation + CameraTransformToObj; CameraOrientationZoomOffset is applied on top.
+		if (hasFlags (F_cameraZoomMatchOrientation) && hasFlags (F_cameraTransformToObj))
+		{
+			float bestRoll     = m_cameraRoll;
+			float bestDistance = 1.0e30f;
+
+			for (int i = 0; i < 16; ++i)
+			{
+				const float trialRoll = static_cast<float>(i) * (PI_TIMES_2 / 16.0f);
+				float ey = 0.f;
+				float ep = 0.f;
+				float er = 0.f;
+				getEffectiveCameraYawPitchRollFromBase (m_cameraYawPitchZoom.x, m_cameraYawPitchZoom.y, trialRoll, ey, ep, er);
+
+				bool ready        = true;
+				const float trialDist = computeFitDistanceInternal (ey, ep, er, ready);
+
+				if (trialDist < bestDistance)
+				{
+					bestDistance = trialDist;
+					bestRoll     = trialRoll;
+				}
+
+				if (!ready)
+					appearancesReady = false;
+			}
+
+			setCameraRoll (bestRoll);
+			gotoCameraPivotPoint (true);
+		}
+
 		//-- push the distance out 0.2f meters to always leave room for the near plane
 		const float newDistance = computeFitDistance(appearancesReady) + 0.2f;
 
@@ -3188,6 +3275,36 @@ void CuiWidget3dObjectListViewer::setDrawName  (bool b)
 void CuiWidget3dObjectListViewer::setCameraTransformToObj  (bool b)
 {
 	setUnsetFlags (F_cameraTransformToObj, b);
+}
+
+//----------------------------------------------------------------------
+
+void CuiWidget3dObjectListViewer::setCameraZoomMatchOrientation (bool b)
+{
+	setUnsetFlags (F_cameraZoomMatchOrientation, b);
+	setViewDirty (true);
+}
+
+//----------------------------------------------------------------------
+
+bool CuiWidget3dObjectListViewer::getCameraZoomMatchOrientation () const
+{
+	return hasFlags (F_cameraZoomMatchOrientation);
+}
+
+//----------------------------------------------------------------------
+
+void CuiWidget3dObjectListViewer::setCameraOrientationZoomOffset (Vector const & offsetRadians)
+{
+	m_cameraOrientationZoomOffset = offsetRadians;
+	setViewDirty (true);
+}
+
+//----------------------------------------------------------------------
+
+Vector const & CuiWidget3dObjectListViewer::getCameraOrientationZoomOffset () const
+{
+	return m_cameraOrientationZoomOffset;
 }
 
 //----------------------------------------------------------------------

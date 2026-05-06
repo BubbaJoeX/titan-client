@@ -996,6 +996,7 @@ parent.btnOk.Press=t'
 				<CuiWidget3dObjectListViewer
 					BackgroundTint='#00D6FB'
 					cameraAutoZoom='true'
+					cameraZoomMatchOrientation='true'
 					cameralookatcenter='true'
 					cameratransformtoobj='true'
 					Location='9,10'

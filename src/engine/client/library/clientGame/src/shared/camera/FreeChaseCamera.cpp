@@ -432,10 +432,10 @@ float FreeChaseCamera::alter (float elapsedTime)
 	PlayerCreatureController* const playerCreatureController = dynamic_cast<PlayerCreatureController*> (creatureObject ? creatureObject->getController () : 0);
 	const bool isTurnStrafe = CuiPreferences::isTurnStrafe ();
 
-	// Locomotion runs on the mount while RidingMount; camera yaw limits must use the same
-	// creature's turn rate as PlayerCreatureController::realAlter (not the rider's).
+	// Locomotion runs on the mount while RidingMount outdoors; indoors PCC stays on-foot only (see locomotionIndoors).
 	CreatureObject const * turnRateCreature = creatureObject;
-	if (creatureObject && creatureObject->getState (States::RidingMount))
+	bool const locomotionIndoors = creatureObject && !creatureObject->isInWorldCell();
+	if (creatureObject && creatureObject->getState (States::RidingMount) && !locomotionIndoors)
 	{
 		CreatureObject const * const mountCreature = creatureObject->getMountedCreature ();
 		if (mountCreature && !(mountCreature->getGameObjectType () == SharedObjectTemplate::GOT_vehicle_hover))
@@ -626,7 +626,11 @@ float FreeChaseCamera::alter (float elapsedTime)
 			m_zoom = clamp (ms_pitch > 0.f ? 0.f : -ms_pitch, m_zoom, m_settings [m_numberOfSettings - 1]);
 	}
 
-	bool haveMount = creatureObject ? creatureObject->getState (States::RidingMount) : false;
+	// Only outdoor mounts affect chase zoom / pivot scale; interiors walk on foot (no mount scene graph).
+	bool const haveMount =
+		creatureObject
+		&& creatureObject->getState (States::RidingMount)
+		&& creatureObject->isInWorldCell ();
 
 	if ((haveMount || shipObject) && m_numberOfSettings > 1)
 	{
@@ -652,7 +656,9 @@ float FreeChaseCamera::alter (float elapsedTime)
 		else
 			targetObject = creatureObject;
 
-		if (creatureObject && (creatureObject->getState (States::RidingMount)))
+		// Outdoors: pivot chase on the mount so rider camera matches mount heading. Interiors / tilted hulls:
+		// pivot on the player — mount rigs do not apply inside cells; stale RidingMount would skew m_desiredYaw_w vs PCC.
+		if (creatureObject && creatureObject->getState (States::RidingMount) && creatureObject->isInWorldCell ())
 		{
 			const CreatureObject * const mountCreature = creatureObject->getMountedCreature ();
 			if (mountCreature && !(mountCreature->getGameObjectType () == SharedObjectTemplate::GOT_vehicle_hover))
@@ -681,8 +687,10 @@ float FreeChaseCamera::alter (float elapsedTime)
 		// what the player sees when RidingMount (and could drift on foot vs camera theta).
 		if (playerCreatureController && !playerCreatureController->getAutoPilotLocked ())
 		{
+			// faceYaw updates avatar heading with camera when not "mounted camera" mode; interiors match on-foot
+			// (see locomotionIndoors) so tilted-ship WASD stays aligned with chase forward.
 			bool const faceYaw =
-				!(creatureObject && creatureObject->getState (States::RidingMount))
+				(!(creatureObject && creatureObject->getState (States::RidingMount)) || locomotionIndoors)
 				&& (ms_cameraMode == CM_chase && mouseLookState != CuiIoWin::MouseLookState_Camera);
 			float const locomotionYaw_w = getObjectFrameK_w ().theta ();
 			playerCreatureController->setDesiredYaw_w (locomotionYaw_w, faceYaw);
@@ -703,7 +711,7 @@ float FreeChaseCamera::alter (float elapsedTime)
 
 	//-- don't show the m_target if zoom distance is less than first person distance
 	float scaleForFpCam = creatureObject ? creatureObject->getScaleFactor () : 1.f;
-	if (creatureObject && creatureObject->getState (States::RidingMount))
+	if (creatureObject && creatureObject->getState (States::RidingMount) && creatureObject->isInWorldCell ())
 	{
 		CreatureObject const *const mc = creatureObject->getMountedCreature ();
 		if (mc)

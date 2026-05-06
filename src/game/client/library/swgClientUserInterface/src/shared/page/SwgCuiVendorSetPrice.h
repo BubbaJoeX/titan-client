@@ -40,6 +40,7 @@ protected:
 
 	void                         performActivate   ();
 	void                         performDeactivate ();
+	virtual bool                 shouldSurviveDisabledWorkspace () const;
 
 	void                         OnButtonPressed              (UIWidget *context);
 	void                         onAuctionToSetPriceOnChanged (const NetworkId & auctionId);

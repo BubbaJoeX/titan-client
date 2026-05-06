@@ -17,6 +17,7 @@
 #include "clientGame/ClientSecureTradeManager.h"
 #include "clientGame/Game.h"
 #include "clientUserInterface/CuiManager.h"
+#include "clientUserInterface/CuiConversationManager.h"
 #include "clientUserInterface/CuiMenuInfoTypes.h"
 #include "clientUserInterface/CuiMessageBox.h"
 #include "clientUserInterface/CuiSecureTradeManager.h"
@@ -166,6 +167,13 @@ void            SwgCuiTrade::performDeactivate         ()
 	
 	if (m_panelOther)
 		m_panelOther->deactivate ();
+}
+
+//----------------------------------------------------------------------
+
+bool SwgCuiTrade::shouldSurviveDisabledWorkspace () const
+{
+	return CuiConversationManager::isCinematicConversationUiActive ();
 }
 
 //----------------------------------------------------------------------

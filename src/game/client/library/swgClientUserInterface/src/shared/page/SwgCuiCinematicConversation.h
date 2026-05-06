@@ -23,6 +23,7 @@
 
 class UIButton;
 class UIPage;
+class UIScrollbar;
 class UIText;
 class CuiWidget3dObjectListViewer;
 class GroundScene;
@@ -79,6 +80,12 @@ public:
 	// Handle server-driven camera commands (called from PlayerCreatureController)
 	static void handleCameraCommand(class MessageQueueNpcConversationCameraCommand const * cmd);
 
+	/// Registered with CuiConversationManager while active — workspace enumeration may not find this mediator.
+	static CuiMediator * provideActiveInstanceForConversationManager();
+
+	/// Force-dismiss cinematic UI (Escape / End Conversation); uses deactivate(), not workspace close.
+	static void executeCloseFromConversationManager();
+
 public:
 	SwgCuiCinematicConversation(UIPage & page);
 	virtual ~SwgCuiCinematicConversation();
@@ -119,17 +126,41 @@ private:
 	void setCameraShot(CameraShotType shotType, float transitionDuration);
 	void transitionCamera(Vector const & targetPos, Vector const & targetLookAt, float duration);
 	void applyCameraCommand(class MessageQueueNpcConversationCameraCommand const * cmd);
+	Vector computeScriptedLookAtPoint(Object & targetObj) const;
 	Vector computeNpcHeadPosition() const;
+	/// Dialogue camera aim point: humanoids use head; large creatures use chest / torso blend so the full figure fits.
+	Vector computeNpcDialogueFramingPosition() const;
 	Vector computePlayerPosition() const;
 
 	// Calculate ideal camera positions for different shot types
 	void calculateCloseUpShot(Vector & outCameraPos, Vector & outLookAt) const;
+	bool useWideOpenFaceEstablishingShot() const;
+	void calculateWideOpenFaceShot(Vector & outCameraPos, Vector & outLookAt) const;
 	void calculateMediumShot(Vector & outCameraPos, Vector & outLookAt) const;
 	void calculateOverShoulderShot(Vector & outCameraPos, Vector & outLookAt) const;
 	void calculateTwoShot(Vector & outCameraPos, Vector & outLookAt) const;
 
 	// Animate letterbox bars
 	void updateLetterbox(float deltaTime);
+
+	// NPC subtitle typewriter (timed with dialogue beat; cinematic mode only)
+	void beginNpcMessageTypewriter(Unicode::String const & message);
+	void updateNpcMessageTypewriter(float deltaTimeSecs);
+	void finishNpcMessageTypewriter();
+	void tryApplyDeferredNpcSubtitle();
+	void maybeStartReactionPostLineBuffer();
+	void flushPlayerReactionBeat();
+	void applyTypewriterPauseAfterReveal(size_t newRevealLen);
+	bool isNpcLinePrintingLocked() const;
+	void updateResponseAvailabilityForTypewriter();
+
+	void cacheDialogueUILayout();
+	void applyDialogueLayoutForResponseCount(size_t responseCount);
+	void restoreDialogueUILayout();
+	void updateResponseAreaVisibility(bool visible);
+	void ensureResponseSlotCount(size_t needed);
+	void releaseDynamicResponseSlots();
+	void updateResponseScrollbarVisibility();
 
 	// Setup viewer with NPC appearance
 	void setupNpcViewer();
@@ -156,22 +187,42 @@ private:
 	UIText * m_npcNameText;
 	UIText * m_npcMessageText;
 	UIPage * m_responsePanel;
+	UIScrollbar * m_responseScrollbar;
 	UIPage * m_npcViewerPage;
 	CuiWidget3dObjectListViewer * m_npcViewer;
 
-	// Response buttons (max 6 response options)
-	static int const MAX_RESPONSES = 6;
-	UIButton * m_responseButtons[MAX_RESPONSES];
-	UIText * m_responsePrefixTexts[MAX_RESPONSES];
-	UIText * m_responseTexts[MAX_RESPONSES];
-	UIPage * m_responsePages[MAX_RESPONSES];
+	struct ResponseSlot
+	{
+		UIPage * page;
+		UIButton * button;
+		UIText * prefixText;
+		UIText * text;
+		bool ownedDuplicate;
+	};
+
+	// First six rows come from ui_cinematic_conversation.inc; additional rows are DuplicateObject clones.
+	static int const BASE_RESPONSE_SLOTS = 6;
+	static int const MAX_RESPONSE_SLOTS = 64;
+
+	std::vector<ResponseSlot> m_responseSlots;
+	UIPage * m_responseClonePrototype;
 
 	// End conversation button
 	UIButton * m_endConversationButton;
 
+	// Baseline layout (before extra response rows); restored on deactivate.
+	bool m_cachedUILayoutValid;
+	UISize m_cachedDialoguePanelSize;
+	UIPoint m_cachedDialoguePanelLocation;
+	UISize m_cachedResponsePanelSize;
+	UIPoint m_cachedResponsePanelLocation;
+	UIPoint m_cachedEndButtonLocation;
+
 	// State
 	NetworkId m_targetNpcId;
 	std::vector<ResponseData> m_currentResponses;
+	/// Target cleared during TargetChanged — defer deactivateInWorkspace to update(); closing synchronously in the emit stack crashed / conflicted with workspace iterators.
+	bool m_deferCloseUntilUpdate;
 
 	// Animation state
 	float m_letterboxAnimationTime;
@@ -197,6 +248,31 @@ private:
 	float m_timeSinceLastShotChange;
 
 	bool m_savedHudEnabled;
+
+	// Dialogue-driven camera: NPC lines refresh framing; player picks a reaction shot before returning to NPC.
+	bool                                      m_playerReactionHoldActive;
+	/// After selectResponse: wait for player typewriter + buffer before applying server NPC line + response branch.
+	bool                                      m_playerReactionBeatPending;
+	/// < 0: not counting yet; >= 0: seconds until flushPlayerReactionBeat()
+	float                                     m_reactionPostLineBufferRemaining;
+	bool                                      m_haveDeferredBranchResponses;
+	std::vector<Unicode::String>              m_deferredBranchResponses;
+	Unicode::String                           m_lastNpcMessageForCamera;
+
+	// Player reaction uses the same subtitle typewriter; defer incoming NPC lines until it finishes.
+	bool                                      m_deferIncomingNpcSubtitle;
+	Unicode::String                           m_deferredNpcSubtitle;
+
+	// Server npcConversationCameraLookAtTarget — do not let setNpcMessage() snap back to NPC medium/close-up.
+	bool                                      m_scriptedLookAtFramingActive;
+
+	// Typewriter state (full text stored; widget shows progressive prefix)
+	bool                                      m_typewriterActive;
+	Unicode::String                           m_typewriterFullText;
+	size_t                                    m_typewriterRevealLength;
+	float                                     m_typewriterCharAccumulator;
+	float                                     m_typewriterCharsPerSecond;
+	float                                     m_typewriterPauseRemaining;
 
 	// Static settings
 	static bool ms_enabled;

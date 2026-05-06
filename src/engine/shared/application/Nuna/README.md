@@ -10,7 +10,7 @@ A standalone TitanPak archive packer/unpacker for the Titan project. Nuna provid
 - **Validate**: Check TitanPak archive integrity
 - **Auto-Encryption**: `.titanpak` files are automatically encrypted with built-in key
 - **Compression**: zlib compression for efficient storage
-- **Compatible**: Works with legacy SWG TRE format (version 0004/0005)
+- **Compatible**: Works with legacy SWG TRE format (versions **0004 / 0005 / 0006**)
 
 ## File Extensions
 
@@ -75,6 +75,22 @@ Check if a TitanPak archive is valid:
 nuna validate assets.titanpak
 ```
 
+### Analyze archive (reverse-engineering / unknown crypto)
+
+When you **do not have** the original decryption source or password, use **`analyze`** to print everything readable **without** secrets:
+
+- Full **TreHeader** fields (magic, version, file count, TOC/name offsets, compressors)
+- For **NUNA** archives: **encryption header** (version, flags, **salt** and **IV** as hex — these are stored in the clear)
+- **Derived layout** (where the name block starts)
+- Optional **TOC decrypt probe**: tries your `-d` password first (if any), then Nuna’s built-in default — confirms whether the archive matches **this** tool’s scheme (`NunaCrypto.h`)
+
+```bash
+nuna analyze sample.titanpak
+nuna analyze sample.titanpak -d your_guess
+```
+
+**Note:** On little-endian machines the SWG **TREE** magic is stored as the byte sequence often misread as **“EERT”** in hex editors — that is normal for unencrypted `.tre` files, not a separate format name.
+
 ## Command Line Options
 
 | Option | Description |
@@ -86,6 +102,7 @@ nuna validate assets.titanpak
 | `-o, --overwrite` | Overwrite existing files when extracting |
 | `-f, --filter <pattern>` | Filter files by pattern |
 | `--show-offset` | Show file offsets in list output |
+| `-d, --decrypt <password>` | Password for unpack/list or `analyze` TOC probe |
 | `-h, --help` | Show help |
 
 ## TitanPak Format
@@ -96,7 +113,7 @@ TitanPak uses the standard TRE format with automatic encryption:
 | Offset | Size | Description |
 |--------|------|-------------|
 | 0 | 4 | Magic ("TREE" for unencrypted, "NUNA" for encrypted) |
-| 4 | 4 | Version ("0005" or "0004") |
+| 4 | 4 | Version tag: **0004**, **0005**, or **0006** (same TOC layout). On LE, **0006** appears as the ASCII characters `6000` after `EERT`, so the first 8 bytes can read as **`EERT6000`** — that is still standard **TREE** + **0006**, not a custom magic. |
 | 8 | 4 | Number of files |
 | 12 | 4 | TOC offset |
 | 16 | 4 | TOC compressor |

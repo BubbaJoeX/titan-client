@@ -9,6 +9,7 @@
 //   nuna unpack <input.titanpak> <directory> [options]
 //   nuna list <input.titanpak> [options]
 //   nuna validate <input.titanpak> [options]
+//   nuna analyze <input.tre|.titanpak> [options]
 //   nuna toc <input.titanlst> [list|unpack|validate] [options]
 //
 // ======================================================================
@@ -54,6 +55,7 @@ Usage:
   nuna unpack <input.titanpak> <directory> [options]
   nuna list <input.titanpak> [options]
   nuna validate <input.titanpak> [options]
+  nuna analyze <input.tre|.titanpak> [options]
   nuna toc create <output.titanlst> <tre1> <tre2> ... [options]
   nuna toc list <input.titanlst> [options]
   nuna toc unpack <input.titanlst> <directory> [options]
@@ -64,6 +66,7 @@ Commands:
   unpack     Extract a TitanPak archive to a directory  
   list       List contents of a TitanPak archive
   validate   Validate a TitanPak archive
+  analyze    Dump header / encryption metadata / layout (for RE without crypto source)
   toc        Work with titanlst/TOC files (create, list, unpack, validate)
 
 Supported Formats:
@@ -80,6 +83,7 @@ Options:
   -f, --filter <pattern>      Filter files by pattern when extracting/listing
   -s, --search-path <path>    Path to search for TRE files (for toc unpack)
   --show-offset               Show file offsets in list output
+  -d, --decrypt <password>    Password for unpack/list or TOC probe in analyze
   -h, --help                  Show this help
 
 Examples:
@@ -91,6 +95,8 @@ Examples:
   nuna toc create custom.titanlst bottom.tre top.tre
   nuna toc list default.titanlst
   nuna toc unpack default.titanlst ./extracted -s ./tre_files
+  nuna analyze mystery.titanpak
+  nuna analyze mystery.titanpak -d guess_password
 
 )" << std::endl;
 }
@@ -293,6 +299,23 @@ int main(int argc, char* argv[])
         {
             std::cout << "Archive is valid" << std::endl;
         }
+    }
+    else if (cmd.command == "analyze" || cmd.command == "info")
+    {
+        if (cmd.arg1.empty())
+        {
+            std::cerr << "Error: analyze requires <input.tre|.titanpak>" << std::endl;
+            return 1;
+        }
+
+        Nuna::EncryptionOptions encryption;
+        if (!cmd.password.empty())
+        {
+            encryption.enabled = true;
+            encryption.password = cmd.password;
+        }
+
+        result = Nuna::analyze(cmd.arg1, encryption);
     }
     // TOC/titanlst commands
     else if (cmd.command == "toc" || cmd.command == "titanlst")

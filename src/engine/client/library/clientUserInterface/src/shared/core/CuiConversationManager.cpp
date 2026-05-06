@@ -11,6 +11,7 @@
 #include "clientGame/ClientCommandQueue.h"
 #include "clientGame/CreatureObject.h"
 #include "clientGame/Game.h"
+#include "clientGame/PlayerCreatureController.h"
 #include "clientGame/ProsePackageManagerClient.h"
 #include "clientGame/ShipStation.h"
 #include "clientUserInterface/CuiAction.h"
@@ -109,6 +110,8 @@ CuiConversationManager::CuiConversationManagerAction    CuiConversationManager::
 uint32                                                  CuiConversationManager::ms_appearanceOverrideSharedTemplateCrc;
 CuiConversationManager::CameraCommandHandler           CuiConversationManager::ms_cameraCommandHandler = nullptr;
 bool                                                    CuiConversationManager::ms_cinematicConversationUiActive = false;
+CuiConversationManager::CloseCinematicUiHandler         CuiConversationManager::ms_closeCinematicUiHandler = nullptr;
+CuiConversationManager::ActiveCinematicMediatorAccessor CuiConversationManager::ms_activeCinematicMediatorAccessor = nullptr;
 
 const char * const CuiConversationManager::Messages::RESPONSES_CHANGED = "CuiConversationManager::RESPONSES_CHANGED";
 const char * const CuiConversationManager::Messages::TARGET_CHANGED    = "CuiConversationManager::TARGET_CHANGED";
@@ -188,18 +191,101 @@ bool CuiConversationManager::isCinematicConversationUiActive()
 
 //----------------------------------------------------------------------
 
+void CuiConversationManager::setCloseCinematicUiHandler(CloseCinematicUiHandler handler)
+{
+	ms_closeCinematicUiHandler = handler;
+}
+
+//----------------------------------------------------------------------
+
+bool CuiConversationManager::hasCloseCinematicUiHandler()
+{
+	return ms_closeCinematicUiHandler != nullptr;
+}
+
+//----------------------------------------------------------------------
+
+void CuiConversationManager::setActiveCinematicMediatorAccessor(ActiveCinematicMediatorAccessor accessor)
+{
+	ms_activeCinematicMediatorAccessor = accessor;
+}
+
+//----------------------------------------------------------------------
+
+CuiMediator * CuiConversationManager::fetchCinematicMediatorInstance()
+{
+	if (ms_activeCinematicMediatorAccessor)
+	{
+		CuiMediator * const m = ms_activeCinematicMediatorAccessor();
+		if (m)
+			return m;
+	}
+	return CuiMediatorFactory::getInWorkspace("WS_CinematicConversation", false);
+}
+
+//----------------------------------------------------------------------
+
+CuiMediator * CuiConversationManager::fetchActiveCinematicConversationMediator()
+{
+	CuiMediator * const m = fetchCinematicMediatorInstance();
+	if (m && m->isActive())
+		return m;
+	return nullptr;
+}
+
+//----------------------------------------------------------------------
+
 void CuiConversationManager::closeCinematicConversationFromInput()
 {
-	CuiMediator * const cinematic = CuiMediatorFactory::getInWorkspace("WS_CinematicConversation", false);
-	bool const uiWasUp = ms_cinematicConversationUiActive || (cinematic && cinematic->isActive());
+	// Primary path: Swg registers a thunk that calls deactivate() on the live instance. Workspace
+	// closeThroughWorkspace() is unreliable — CuiWorkspace::close() no-ops when !isCloseable(), and
+	// default mediators are not MS_closeable.
+	if (ms_closeCinematicUiHandler)
+	{
+		if (ms_targetId.isValid())
+		{
+			stop();
+		}
+		else if (!Game::getSinglePlayer ())
+		{
+			// UI still open but target already cleared — stop() short-circuits and never sends
+			// npcConversationStop; server keeps the conversation lock → movement/action desync.
+			static const uint32 hash_req = Crc::normalizeAndCalculate("npcConversationStop");
+			ClientCommandQueue::enqueueCommand (hash_req, NetworkId::cms_invalid, Unicode::emptyString);
+			s_soundEffect.clear();
+			ms_lastTargetId = NetworkId::cms_invalid;
+			setTarget (NetworkId::cms_invalid, 0, s_soundEffect);
+			Transceivers::conversationEnded.emitMessage (true);
+		}
+
+		ms_closeCinematicUiHandler ();
+		return;
+	}
+
+	CuiMediator * cinematic = fetchCinematicMediatorInstance();
+	bool const uiWasUp = ms_cinematicConversationUiActive || cinematic;
 	if (!uiWasUp)
 		return;
 
-	if (ms_targetId.isValid())
-		IGNORE_RETURN(stop());
+	if (ms_targetId.isValid ())
+	{
+		stop ();
+	}
+	else if (!Game::getSinglePlayer ())
+	{
+		static const uint32 hash_req = Crc::normalizeAndCalculate("npcConversationStop");
+		ClientCommandQueue::enqueueCommand (hash_req, NetworkId::cms_invalid, Unicode::emptyString);
+		s_soundEffect.clear();
+		ms_lastTargetId = NetworkId::cms_invalid;
+		setTarget (NetworkId::cms_invalid, 0, s_soundEffect);
+		Transceivers::conversationEnded.emitMessage (true);
+	}
 
-	// stop() may not run (no player, etc.) or close may be deferred — force workspace teardown so performDeactivate restores HUD.
-	CuiMediatorFactory::deactivateInWorkspace("WS_CinematicConversation");
+	cinematic = fetchCinematicMediatorInstance();
+	if (cinematic && cinematic->isActive ())
+		cinematic->deactivate ();
+	else if (ms_cinematicConversationUiActive)
+		setCinematicConversationUiActive (false);
 }
 
 //----------------------------------------------------------------------
@@ -381,8 +467,25 @@ void CuiConversationManager::setTarget (NetworkId const & id, uint32 const appea
 	}
 	else if (id.isValid() && CuiPreferences::getCinematicConversationEnabled())
 	{
+		// Block locomotion immediately — mediator activation can lag a frame; movement during handoff
+		// caused sliding into portals / bad cell transitions and crash while the cinematic camera came up.
+		CuiConversationManager::setCinematicConversationUiActive (true);
+		if (Object * const player = Game::getPlayer ())
+		{
+			if (PlayerCreatureController * const pcc = dynamic_cast<PlayerCreatureController *>(player->getController ()))
+				pcc->fullStop ();
+		}
 		// Activate KOTOR-style cinematic conversation for ground
 		CuiMediatorFactory::activateInWorkspace("WS_CinematicConversation");
+	}
+
+	// Clear prep guard only when no cinematic mediator instance exists (workspace + Swg registration).
+	// Requiring isActive() here cleared the flag while the Swg page was still up when getInWorkspace failed.
+	if (!id.isValid ())
+	{
+		CuiMediator * const cinematic = fetchCinematicMediatorInstance ();
+		if (!cinematic)
+			setCinematicConversationUiActive (false);
 	}
 }
 
@@ -397,9 +500,14 @@ uint32 CuiConversationManager::getAppearanceOverrideTemplateCrc ()
 
 void CuiConversationManager::onServerStopConversing(NetworkId const & id, StringId const & finalText, Unicode::String const & finalProse, Unicode::String const & finalResponse)
 {
-	//-- must not act unless the correct target has been set
-	if (id != ms_targetId && id != ms_lastTargetId)
-		return;	
+	// No active conversation — ignore stray stop messages.
+	if (!ms_targetId.isValid())
+		return;
+
+	// Match stop to current or previous NPC. If the server sends an unset/wildcard NPC id (invalid NetworkId),
+	// still accept the stop so cinematic UI and HUD clear (server-side endConversation uses varying payloads).
+	if (id.isValid() && id != ms_targetId && id != ms_lastTargetId)
+		return;
 
 	if (!s_playerSelectedResponseSinceLastMessage)
 	{

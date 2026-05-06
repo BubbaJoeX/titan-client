@@ -1,6 +1,8 @@
 D:/titan/client/src/engine/shared/application/Nuna/build/CMakeFiles/zlib_bundled.dir
 D:/titan/client/src/engine/shared/application/Nuna/build/CMakeFiles/nuna.dir
 D:/titan/client/src/engine/shared/application/Nuna/build/CMakeFiles/nuna_lib.dir
-D:/titan/client/src/engine/shared/application/Nuna/build/CMakeFiles/INSTALL.dir
-D:/titan/client/src/engine/shared/application/Nuna/build/CMakeFiles/ALL_BUILD.dir
-D:/titan/client/src/engine/shared/application/Nuna/build/CMakeFiles/ZERO_CHECK.dir
+D:/titan/client/src/engine/shared/application/Nuna/build/CMakeFiles/edit_cache.dir
+D:/titan/client/src/engine/shared/application/Nuna/build/CMakeFiles/rebuild_cache.dir
+D:/titan/client/src/engine/shared/application/Nuna/build/CMakeFiles/list_install_components.dir
+D:/titan/client/src/engine/shared/application/Nuna/build/CMakeFiles/install.dir
+D:/titan/client/src/engine/shared/application/Nuna/build/CMakeFiles/install/local.dir

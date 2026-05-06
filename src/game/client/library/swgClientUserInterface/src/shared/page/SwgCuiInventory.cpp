@@ -22,6 +22,7 @@
 #include "clientGame/GameNetwork.h"
 #include "clientGame/PlayerObject.h"
 #include "clientGraphics/Graphics.h"
+#include "clientUserInterface/CuiConversationManager.h"
 #include "clientUserInterface/CuiInventoryManager.h"
 #include "clientUserInterface/CuiManager.h"
 #include "clientUserInterface/CuiMenuInfoTypes.h"
@@ -379,6 +380,17 @@ void SwgCuiInventory::performDeactivate ()
 	applyStates ();
 
 	m_callback->disconnect (m_containerMediator->getTransceiverSelection (), *this, &SwgCuiInventory::onSelectionChanged);
+}
+
+//----------------------------------------------------------------------
+
+bool SwgCuiInventory::shouldSurviveDisabledWorkspace () const
+{
+	if (!CuiConversationManager::isCinematicConversationUiActive ())
+		return false;
+
+	// Holiday / token NPC vendors open GOT_misc_container_public stock — classified as IT_PUBLIC (not player auction WS_Vendor UI).
+	return m_inventoryType == IT_PUBLIC;
 }
 
 //----------------------------------------------------------------------

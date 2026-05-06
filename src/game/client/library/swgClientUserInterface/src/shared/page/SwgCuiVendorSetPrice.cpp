@@ -18,6 +18,7 @@
 #include "UIUtils.h"
 #include "clientGame/AuctionManagerClient.h"
 #include "clientGame/AuctionManagerClientData.h"
+#include "clientUserInterface/CuiConversationManager.h"
 #include "clientUserInterface/CuiMoney.h"
 #include "sharedMessageDispatch/Transceiver.h"
 
@@ -68,6 +69,13 @@ void SwgCuiVendorSetPrice::performActivate   ()
 void SwgCuiVendorSetPrice::performDeactivate ()
 {
 	m_callback->disconnect (*this, &SwgCuiVendorSetPrice::onAuctionToSetPriceOnChanged, static_cast<AuctionManagerClient::Messages::AuctionToSetPriceOnChanged *> (0));
+}
+
+//----------------------------------------------------------------------
+
+bool SwgCuiVendorSetPrice::shouldSurviveDisabledWorkspace () const
+{
+	return CuiConversationManager::isCinematicConversationUiActive ();
 }
 
 //----------------------------------------------------------------------

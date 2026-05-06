@@ -557,3 +557,14 @@ void    FreeCamera::convertPivotPoint (CellProperty* cell)
 
 //-------------------------------------------------------------------
 
+void FreeCamera::alignPivotWithCell (CellProperty * cell)
+{
+	if (!cell)
+		cell = CellProperty::getWorldCellProperty ();
+
+	if (m_currentCell != cell)
+		convertPivotPoint (cell);
+}
+
+//-------------------------------------------------------------------
+
