@@ -63,6 +63,9 @@ namespace
 
 const Tag TAG_NUNA = TAG(N, U, N, A);
 const Tag TAG_TREE = TAG(T,R,E,E);
+// LEGE / NDS3: raw LE Tag values (disk matches SWG-style four-byte packing used elsewhere)
+static const Tag TAG_LEGE = static_cast<Tag>(0x4547454Cu);
+static const Tag TAG_NDS3 = static_cast<Tag>(0x3353444Eu);
 const Tag TAG_TOC  = TAG3(T,O,C);
 const Tag TAG_NTOC = TAG(N,T,O,C);  // Encrypted titanlst format
 
@@ -311,12 +314,16 @@ bool TreeFile::SearchTree::validate(const char *fileName)
 	if (readPos != isizeof(header))
 		return false;
 
-	// validate the token - accept both TREE and NUNA (encrypted)
-	if (header.token != TAG_TREE && header.token != TAG_NUNA)
+	// validate the token - TREE, NUNA, or LEGE (Legend encrypted .tres-style)
+	if (header.token != TAG_TREE && header.token != TAG_NUNA && header.token != TAG_LEGE)
 		return false;
 
-	// validate the version number (0004 / 0005 / 0006 — same on-disk layout)
-	if (header.version < TAG_0004 || header.version > TAG_0006)
+	if (header.token == TAG_LEGE)
+	{
+		if (header.version != TAG_NDS3)
+			return false;
+	}
+	else if (header.version < TAG_0004 || header.version > TAG_0006)
 		return false;
 
 	return true;
@@ -346,10 +353,10 @@ TreeFile::SearchTree::SearchTree(int priority, const char *fileName)
 	// read the header (the first 36 bytes of the tree file) 
 	Header header;
 	m_treeFile->read(0, &header, sizeof(header), AbstractFile::PriorityData);
-	DEBUG_FATAL(header.token != TAG_TREE && header.token != TAG_NUNA, ("file does not look like a tree file or titanpak"));
+	DEBUG_FATAL(header.token != TAG_TREE && header.token != TAG_NUNA && header.token != TAG_LEGE, ("file does not look like a tree file or titanpak"));
 
-	// Check if this is an encrypted TitanPak archive
-	m_encrypted = (header.token == TAG_NUNA);
+	// Encrypted TitanPak (NUNA) or Legend LEGE (.tres-style)
+	m_encrypted = (header.token == TAG_NUNA || header.token == TAG_LEGE);
 	
 	// set to the number of files that has been compressed within the tree file
 	m_numberOfFiles = static_cast<int>(header.numberOfFiles);
@@ -383,6 +390,7 @@ TreeFile::SearchTree::SearchTree(int priority, const char *fileName)
 		case TAG_0004:
 		case TAG_0005:
 		case TAG_0006:
+		case TAG_NDS3:
 			{
 				m_tableOfContents = new TableOfContentsEntry[m_numberOfFiles];
 				m_fileNames = new char [header.uncompSizeOfNameBlock];
@@ -861,9 +869,9 @@ TreeFile::SearchTOC::SearchTOC(int priority, const char *fileName)
 						Tag treeToken;
 						m_treeFiles[treeFileNameIndex]->read(0, &treeToken, sizeof(treeToken), AbstractFile::PriorityData);
 									
-						if (treeToken == TAG_NUNA)
+						if (treeToken == TAG_NUNA || treeToken == TAG_LEGE)
 						{
-						// This is an encrypted TitanPak - read encryption header and initialize context
+						// Encrypted tree (NUNA TitanPak or LEGE Legend) — encryption header after 36-byte header
 						// Encryption header follows immediately after the standard 36-byte tree header
 						const int encryptionHeaderOffset = 36;
 						TitanPakCrypto::EncryptionHeader encHeader;

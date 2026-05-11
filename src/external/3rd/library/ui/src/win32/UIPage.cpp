@@ -1678,9 +1678,15 @@ UIButton *UIPage::FindCancelButton (bool useFocusedChild)
 
 void	UIPage::ResetLocalizedStrings (void)
 {
-	for( UIObjectList::iterator i = mObjects->begin(); i != mObjects->end(); ++i )
+	// Snapshot children: nested ResetLocalizedStrings / SetProperty can add or remove siblings
+	// and invalidate iterators over mObjects.
+	if (!mObjects)
+		return;
+	UIObjectList const childrenSnapshot (*mObjects);
+	for (UIObjectList::const_iterator i = childrenSnapshot.begin (); i != childrenSnapshot.end (); ++i)
 	{
-		(*i)->ResetLocalizedStrings ();
+		if (*i)
+			(*i)->ResetLocalizedStrings ();
 	}
 }
 

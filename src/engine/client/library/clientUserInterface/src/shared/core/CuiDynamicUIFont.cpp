@@ -43,6 +43,19 @@ namespace
 {
 	char const * const CUI_UIF_FIXED_FACE = "cuiuif";
 
+	bool isAcceptableFontFaceUtf8 (std::string const &s)
+	{
+		if (s.empty () || s.size () > 260)
+			return false;
+		for (size_t i = 0; i < s.size (); ++i)
+		{
+			unsigned char const c = static_cast<unsigned char>(s[i]);
+			if (c < 0x20u || c == 0x7fu)
+				return false;
+		}
+		return true;
+	}
+
 	int nextPow2 (int v)
 	{
 		int p = 1;
@@ -352,22 +365,29 @@ namespace
 		if (!obj)
 			return;
 		char const *const tn = obj->GetTypeName ();
-		if (!strcmp (tn, CuiWidgetGroundRadar::TypeName))
-			reapplyTextStyleProperty (obj, CuiWidgetGroundRadar::PropertyName::TextStyle);
-		else if (!strcmp (tn, CuiWidget3dObjectViewer::TypeName))
-			reapplyTextStyleProperty (obj, CuiWidget3dObjectViewer::PropertyName::TextStyle);
-		else if (!strcmp (tn, CuiWidget3dObjectListViewer::TypeName))
+		if (tn)
 		{
-			reapplyTextStyleProperty (obj, CuiWidget3dObjectListViewer::PropertyName::TextStyleBottom);
-			reapplyTextStyleProperty (obj, CuiWidget3dObjectListViewer::PropertyName::TextStyleTop);
+			if (!strcmp (tn, CuiWidgetGroundRadar::TypeName))
+				reapplyTextStyleProperty (obj, CuiWidgetGroundRadar::PropertyName::TextStyle);
+			else if (!strcmp (tn, CuiWidget3dObjectViewer::TypeName))
+				reapplyTextStyleProperty (obj, CuiWidget3dObjectViewer::PropertyName::TextStyle);
+			else if (!strcmp (tn, CuiWidget3dObjectListViewer::TypeName))
+			{
+				reapplyTextStyleProperty (obj, CuiWidget3dObjectListViewer::PropertyName::TextStyleBottom);
+				reapplyTextStyleProperty (obj, CuiWidget3dObjectListViewer::PropertyName::TextStyleTop);
+			}
 		}
 
 		if (obj->IsA (TUIPage))
 		{
 			UIPage *const p = static_cast<UIPage *>(obj);
 			UIBaseObject::UIObjectList const &ch = p->GetChildrenRef ();
-			for (UIBaseObject::UIObjectList::const_iterator it = ch.begin (); it != ch.end (); ++it)
-				refreshCachedWidgetTextStyles (*it);
+			UIBaseObject::UIObjectList chSnapshot (ch.begin (), ch.end ());
+			for (UIBaseObject::UIObjectList::const_iterator it = chSnapshot.begin (); it != chSnapshot.end (); ++it)
+			{
+				if (*it)
+					refreshCachedWidgetTextStyles (*it);
+			}
 		}
 	}
 }
@@ -437,6 +457,9 @@ bool CuiDynamicUIFont::applyFontFaceUtf8 (std::string const &utf8Face)
 		return true;
 	}
 
+	if (!isAcceptableFontFaceUtf8 (utf8Face))
+		return false;
+
 	Unicode::String const faceW = Unicode::utf8ToWide (utf8Face);
 	if (faceW.empty ())
 		return false;
@@ -448,9 +471,9 @@ bool CuiDynamicUIFont::applyFontFaceUtf8 (std::string const &utf8Face)
 	static int s_gen = 1;
 	int const gen = s_gen++;
 
-	removeCuiuifStyles (fontsRoot);
-
-	UITextStyleManager::GetInstance ()->setUserDefaultFontFaceUtf8 (utf8Face);
+	// Important: do not call removeCuiuifStyles() here. buildPointSize() recreates glyph data in the
+	// existing /Fonts.cuiuif_<pt> nodes so widget UITextStyle* pointers stay valid. Removing styles
+	// firstDestroy()s TextStyles while the UI still references them → blank text / crash until refresh.
 
 	// Sizes used across HUD, options, and SUI; must cover scaled lookups (font slider + UI scale).
 	static int const s_pointSizes[] =
@@ -468,6 +491,9 @@ bool CuiDynamicUIFont::applyFontFaceUtf8 (std::string const &utf8Face)
 		}
 	}
 
+	// Only after all atlases are rebuilt: point the resolver at the new face (empty was handled above).
+	UITextStyleManager::GetInstance ()->setUserDefaultFontFaceUtf8 (utf8Face);
+
 	CuiManager::scheduleUiScaleLayoutUpdate ();
 	refreshAllUiText ();
 	return true;
@@ -482,9 +508,11 @@ void CuiDynamicUIFont::clearUserFont ()
 	UITextStyleManager *const mgr = UITextStyleManager::GetInstance ();
 	if (mgr)
 		mgr->clearUserDefaultFontFace ();
+	// Rebind all UI to stock /Fonts.* styles while cuiuif_* objects still exist, then tear them down.
+	// If we Destroy() cuiuif_* first, widgets keep dangling UITextStyle* until refresh.
+	refreshAllUiText ();
 	removeCuiuifStyles (findFontsRoot ());
 	CuiManager::scheduleUiScaleLayoutUpdate ();
-	refreshAllUiText ();
 #endif
 }
 

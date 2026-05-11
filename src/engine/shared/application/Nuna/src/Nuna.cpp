@@ -19,6 +19,7 @@
 #include <map>
 #include <iomanip>
 #include <sstream>
+#include <unordered_set>
 
 namespace fs = std::filesystem;
 
@@ -34,15 +35,29 @@ bool layoutTocEntriesFromBlob(const uint8_t* blob, size_t blobLen, uint32_t numb
     }
     if (!blob || blobLen == 0)
         return false;
-    if (blobLen % numberOfFiles != 0)
-        return false;
-    const size_t stride = blobLen / numberOfFiles;
-    if (stride < sizeof(TocEntry))
-        return false;
-    out.resize(numberOfFiles);
-    for (uint32_t i = 0; i < numberOfFiles; ++i)
-        std::memcpy(&out[i], blob + static_cast<size_t>(i) * stride, sizeof(TocEntry));
-    return true;
+
+    const size_t entrySize = sizeof(TocEntry);
+    const size_t minBytes = static_cast<size_t>(numberOfFiles) * entrySize;
+
+    // Uniform stride: blob divides evenly (includes 32-byte padded rows, etc.)
+    if (blobLen % numberOfFiles == 0)
+    {
+        const size_t stride = blobLen / numberOfFiles;
+        if (stride >= entrySize)
+        {
+            out.resize(numberOfFiles);
+            for (uint32_t i = 0; i < numberOfFiles; ++i)
+                std::memcpy(&out[i], blob + static_cast<size_t>(i) * stride, sizeof(TocEntry));
+            return true;
+        }
+    }
+
+    // Trailing slack: header.sizeOfTOC may exceed numFiles * entrySize (TreeFile reads only the entry span).
+    const size_t trimmedLen = blobLen - (blobLen % numberOfFiles);
+    if (trimmedLen >= minBytes && trimmedLen / numberOfFiles >= entrySize)
+        return layoutTocEntriesFromBlob(blob, trimmedLen, numberOfFiles, out);
+
+    return false;
 }
 
 // ======================================================================
@@ -137,6 +152,196 @@ bool createDirectories(const std::string& path)
     std::error_code ec;
     fs::create_directories(path, ec);
     return !ec;
+}
+
+// Safe filename from name block (bounds + NUL); avoids Debug vector[] and raw C-string over-read.
+bool tocEntryFileName(std::string* out, const TocEntry& entry, const std::vector<char>& nameBlock)
+{
+    if (!out)
+        return false;
+    if (entry.fileNameOffset < 0)
+        return false;
+    const size_t off = static_cast<size_t>(entry.fileNameOffset);
+    if (off >= nameBlock.size())
+        return false;
+    const char* base = nameBlock.data() + off;
+    const size_t maxLen = nameBlock.size() - off;
+    const void* nulAt = memchr(base, '\0', maxLen);
+    if (!nulAt)
+        return false;
+    out->assign(base, static_cast<const char*>(nulAt));
+    return true;
+}
+
+Nuna::Result dumpCipherRegions(const std::string& inputTre, const std::string& outputDir)
+{
+    Nuna::Result result;
+    std::ifstream inFile(inputTre, std::ios::binary);
+    if (!inFile)
+    {
+        result.code = Nuna::ResultCode::FileNotFound;
+        result.message = "Cannot open file: " + inputTre;
+        return result;
+    }
+    if (!createDirectories(outputDir))
+    {
+        result.code = Nuna::ResultCode::IOError;
+        result.message = "Cannot create output directory: " + outputDir;
+        return result;
+    }
+
+    inFile.seekg(0, std::ios::end);
+    const std::streamsize fileSize = inFile.tellg();
+    inFile.seekg(0);
+
+    std::vector<uint8_t> hdr(sizeof(Nuna::TreHeader));
+    inFile.read(reinterpret_cast<char*>(hdr.data()), sizeof(Nuna::TreHeader));
+    if (inFile.gcount() != static_cast<std::streamsize>(sizeof(Nuna::TreHeader)))
+    {
+        result.code = Nuna::ResultCode::InvalidArchive;
+        result.message = "File too small for TreHeader";
+        return result;
+    }
+
+    Nuna::TreHeader header{};
+    std::memcpy(&header, hdr.data(), sizeof(header));
+    if (!Nuna::treMagicKnown(header.token))
+    {
+        result.code = Nuna::ResultCode::InvalidArchive;
+        result.message = "Not a recognized TRE/NUNA/LEGE archive";
+        return result;
+    }
+
+    const fs::path outRoot(outputDir);
+    auto writeBin = [&](const char* leaf, const uint8_t* data, size_t size) -> bool {
+        const std::string path = (outRoot / leaf).string();
+        return writeFile(path, data, size);
+    };
+
+    if (!writeBin("00_tre_header_36.bin", hdr.data(), hdr.size()))
+    {
+        result.code = Nuna::ResultCode::IOError;
+        result.message = "Failed writing 00_tre_header_36.bin";
+        return result;
+    }
+
+    if (Nuna::treUsesEncryptionHeader(header.token))
+    {
+        std::vector<uint8_t> eh(sizeof(Nuna::EncryptionHeader));
+        inFile.seekg(sizeof(Nuna::TreHeader));
+        inFile.read(reinterpret_cast<char*>(eh.data()), eh.size());
+        if (static_cast<size_t>(inFile.gcount()) != eh.size())
+        {
+            result.code = Nuna::ResultCode::InvalidArchive;
+            result.message = "Short read on EncryptionHeader";
+            return result;
+        }
+        if (!writeBin("36_encryption_header_40.bin", eh.data(), eh.size()))
+        {
+            result.code = Nuna::ResultCode::IOError;
+            result.message = "Failed writing encryption header blob";
+            return result;
+        }
+    }
+
+    const uint64_t tocOff = static_cast<uint64_t>(header.tocOffset);
+    if (tocOff > static_cast<uint64_t>(fileSize) ||
+        static_cast<uint64_t>(header.sizeOfTOC) > static_cast<uint64_t>(fileSize) - tocOff)
+    {
+        result.code = Nuna::ResultCode::InvalidArchive;
+        result.message = "TOC region extends past end of file";
+        return result;
+    }
+
+    inFile.seekg(static_cast<std::streamoff>(tocOff));
+    std::vector<uint8_t> toc(static_cast<size_t>(header.sizeOfTOC));
+    inFile.read(reinterpret_cast<char*>(toc.data()), toc.size());
+    if (static_cast<size_t>(inFile.gcount()) != toc.size())
+    {
+        result.code = Nuna::ResultCode::InvalidArchive;
+        result.message = "Short read on TOC ciphertext";
+        return result;
+    }
+    if (!writeBin("toc_on_disk_cipher.bin", toc.data(), toc.size()))
+    {
+        result.code = Nuna::ResultCode::IOError;
+        result.message = "Failed writing TOC ciphertext";
+        return result;
+    }
+
+    const uint64_t nameOff = tocOff + static_cast<uint64_t>(header.sizeOfTOC);
+    if (nameOff > static_cast<uint64_t>(fileSize) ||
+        static_cast<uint64_t>(header.sizeOfNameBlock) > static_cast<uint64_t>(fileSize) - nameOff)
+    {
+        result.code = Nuna::ResultCode::InvalidArchive;
+        result.message = "Name block region extends past end of file";
+        return result;
+    }
+
+    inFile.seekg(static_cast<std::streamoff>(nameOff));
+    std::vector<uint8_t> nb(static_cast<size_t>(header.sizeOfNameBlock));
+    inFile.read(reinterpret_cast<char*>(nb.data()), nb.size());
+    if (static_cast<size_t>(inFile.gcount()) != nb.size())
+    {
+        result.code = Nuna::ResultCode::InvalidArchive;
+        result.message = "Short read on name block ciphertext";
+        return result;
+    }
+    if (!writeBin("name_block_on_disk_cipher.bin", nb.data(), nb.size()))
+    {
+        result.code = Nuna::ResultCode::IOError;
+        result.message = "Failed writing name block ciphertext";
+        return result;
+    }
+
+    const uint64_t payloadStart = nameOff + static_cast<uint64_t>(header.sizeOfNameBlock);
+    const uint64_t fsz = static_cast<uint64_t>(fileSize);
+    if (payloadStart <= fsz)
+    {
+        const size_t tailLen = static_cast<size_t>(fsz - payloadStart);
+        if (tailLen > 0)
+        {
+            inFile.seekg(static_cast<std::streamoff>(payloadStart));
+            std::vector<uint8_t> tail(tailLen);
+            inFile.read(reinterpret_cast<char*>(tail.data()), tail.size());
+            if (static_cast<size_t>(inFile.gcount()) != tailLen)
+            {
+                result.code = Nuna::ResultCode::InvalidArchive;
+                result.message = "Short read on payload tail";
+                return result;
+            }
+            if (!writeBin("payload_tail_cipher.bin", tail.data(), tail.size()))
+            {
+                result.code = Nuna::ResultCode::IOError;
+                result.message = "Failed writing payload tail";
+                return result;
+            }
+        }
+    }
+
+    std::ostringstream man;
+    man << "Ciphertext dump (no decryption). Same layout as TreeFile/NUNA/LEGE on-disk regions.\n"
+        << "file_size_bytes: " << fileSize << "\n"
+        << "tre_header: bytes [0, 36)\n";
+    if (Nuna::treUsesEncryptionHeader(header.token))
+        man << "encryption_header: bytes [36, 76)\n";
+    man << "toc_region: bytes [" << tocOff << ", " << (tocOff + header.sizeOfTOC) << ") size=" << header.sizeOfTOC
+        << "\n"
+        << "name_block_region: bytes [" << nameOff << ", " << (nameOff + header.sizeOfNameBlock)
+        << ") size=" << header.sizeOfNameBlock << "\n"
+        << "payload_tail: bytes [" << payloadStart << ", " << fsz << ")\n"
+        << "\nSet SWG_TRE_PASSWORD if you obtain the key; run \"nuna analyze\" for probes.\n";
+
+    const std::string manifest = man.str();
+    if (!writeBin("README_manifest.txt", reinterpret_cast<const uint8_t*>(manifest.data()), manifest.size()))
+    {
+        result.code = Nuna::ResultCode::IOError;
+        result.message = "Failed writing README_manifest.txt";
+        return result;
+    }
+
+    result.message = "Wrote ciphertext blobs to " + outputDir;
+    return result;
 }
 
 // Get parent directory
@@ -266,32 +471,30 @@ Result loadTreDirectoryFromOpenFile(std::ifstream& inFile, const UnpackOptions& 
 
     inFile.read(reinterpret_cast<char*>(&header), sizeof(header));
 
-    if (header.token != TAG_TREE && header.token != TAG_NUNA)
+    if (!treMagicKnown(header.token))
     {
         result.code = ResultCode::InvalidArchive;
         result.message = "Not a valid TRE archive";
         return result;
     }
 
-    isEncrypted = (header.token == TAG_NUNA);
+    if (!isTreHeaderSupported(header.token, header.version))
+    {
+        result.code = ResultCode::InvalidArchive;
+        result.message = "Unsupported TRE token/version";
+        return result;
+    }
+
+    isEncrypted = treUsesEncryptionHeader(header.token);
 
     EncryptionHeader encHeader = {};
     if (isEncrypted)
     {
         inFile.read(reinterpret_cast<char*>(&encHeader), sizeof(encHeader));
 
-        std::string password = options.encryption.password;
-        if (password.empty())
-            password = TITANPAK_PASSWORD;
+        const std::string password = Crypto::resolveTrePassword(options.encryption.password);
 
         encCtx.initDecrypt(password, encHeader.salt, encHeader.iv);
-    }
-
-    if (header.version != TAG_0005 && header.version != TAG_0004 && header.version != TAG_0006)
-    {
-        result.code = ResultCode::InvalidArchive;
-        result.message = "Unsupported TRE version";
-        return result;
     }
 
     inFile.seekg(header.tocOffset);
@@ -476,7 +679,13 @@ Result detailExtractOne(const std::string& inputTre, const std::string& archiveI
     for (uint32_t i = 0; i < header.numberOfFiles; ++i)
     {
         const TocEntry& entry = toc[i];
-        const std::string fileName = &nameBlock[entry.fileNameOffset];
+        std::string fileName;
+        if (!tocEntryFileName(&fileName, entry, nameBlock))
+        {
+            result.code = ResultCode::InvalidPassword;
+            result.message = "Name block does not decode (wrong password or corrupt archive)";
+            return result;
+        }
         if (normalizePath(fileName) != want)
             continue;
 
@@ -530,7 +739,9 @@ Result detailExtractPathPrefix(const std::string& inputTre, const std::string& a
     for (uint32_t i = 0; i < header.numberOfFiles; ++i)
     {
         const TocEntry& entry = toc[i];
-        const std::string fileName = &nameBlock[entry.fileNameOffset];
+        std::string fileName;
+        if (!tocEntryFileName(&fileName, entry, nameBlock))
+            continue;
 
         if (!pathIsUnderDirectoryPrefix(normalizePath(fileName), pref))
             continue;
@@ -930,19 +1141,25 @@ Result unpack(const std::string& inputTre,
     for (uint32_t i = 0; i < header.numberOfFiles; ++i)
     {
         const TocEntry& entry = toc[i];
-        std::string fileName = &nameBlock[entry.fileNameOffset];
-        
+        std::string fileName;
+        if (!tocEntryFileName(&fileName, entry, nameBlock))
+        {
+            result.code = ResultCode::InvalidPassword;
+            result.message = "Name block does not decode (wrong password or corrupt archive)";
+            return result;
+        }
+
         // Apply filter if specified
         if (!options.filter.empty())
         {
             if (fileName.find(options.filter) == std::string::npos)
                 continue;
         }
-        
+
         // Skip deleted files
         if (entry.length == 0)
             continue;
-        
+
         if (!options.quiet)
         {
             std::cout << "[" << (i + 1) << "/" << header.numberOfFiles << "] " 
@@ -1008,33 +1225,35 @@ Result list(const std::string& inputTre,
     TreHeader header;
     inFile.read(reinterpret_cast<char*>(&header), sizeof(header));
     
-    if (header.token != TAG_TREE && header.token != TAG_NUNA)
+    if (!treMagicKnown(header.token))
     {
         result.code = ResultCode::InvalidArchive;
         result.message = "Not a valid TRE archive";
         return result;
     }
-    
-    bool isEncrypted = (header.token == TAG_NUNA);
-    
+
+    if (!isTreHeaderSupported(header.token, header.version))
+    {
+        result.code = ResultCode::InvalidArchive;
+        result.message = "Unsupported TRE token/version";
+        return result;
+    }
+
+    bool isEncrypted = treUsesEncryptionHeader(header.token);
+
     // Setup decryption if needed
     EncryptionContext encCtx;
     EncryptionHeader encHeader = {};
-    
+
     if (isEncrypted)
     {
         inFile.read(reinterpret_cast<char*>(&encHeader), sizeof(encHeader));
-        
-        // Use provided password or fall back to default
-        std::string password = options.encryption.password;
-        if (password.empty())
-        {
-            password = TITANPAK_PASSWORD;
-        }
-        
+
+        const std::string password = Crypto::resolveTrePassword(options.encryption.password);
+
         encCtx.initDecrypt(password, encHeader.salt, encHeader.iv);
     }
-    
+
     // Read TOC
     inFile.seekg(header.tocOffset);
 
@@ -1127,11 +1346,19 @@ Result list(const std::string& inputTre,
     
     // List files
     uint32_t matchCount = 0;
+    bool tocDecryptLooksWrong = false;
     for (uint32_t i = 0; i < header.numberOfFiles; ++i)
     {
         const TocEntry& entry = toc[i];
-        std::string fileName = &nameBlock[entry.fileNameOffset];
-        
+        std::string fileName;
+        if (!tocEntryFileName(&fileName, entry, nameBlock))
+        {
+            if (!tocDecryptLooksWrong)
+                std::cout << "(Cannot list paths: TOC/name offsets invalid — wrong password or corrupt archive.)\n";
+            tocDecryptLooksWrong = true;
+            continue;
+        }
+
         // Apply filter if specified
         if (!options.filter.empty())
         {
@@ -1165,8 +1392,14 @@ Result list(const std::string& inputTre,
         
         std::cout << std::endl;
     }
-    
-    
+
+    if (tocDecryptLooksWrong)
+    {
+        result.code = ResultCode::InvalidPassword;
+        result.message = "TOC/name block does not decrypt cleanly (wrong password for this archive?)";
+        return result;
+    }
+
     result.message = "Listed " + std::to_string(header.numberOfFiles) + " files";
     return result;
 }
@@ -1191,21 +1424,21 @@ Result validate(const std::string& inputTre,
     TreHeader header;
     inFile.read(reinterpret_cast<char*>(&header), sizeof(header));
     
-    if (header.token != TAG_TREE && header.token != TAG_NUNA)
+    if (!treMagicKnown(header.token))
     {
         result.code = ResultCode::InvalidArchive;
         result.message = "Not a valid TRE archive (invalid magic)";
         return result;
     }
-    
-    if (header.version != TAG_0005 && header.version != TAG_0004 && header.version != TAG_0006)
+
+    if (!isTreHeaderSupported(header.token, header.version))
     {
         result.code = ResultCode::InvalidArchive;
-        result.message = "Unsupported TRE version";
+        result.message = "Unsupported TRE token/version";
         return result;
     }
-    
-    bool isEncrypted = (header.token == TAG_NUNA);
+
+    bool isEncrypted = treUsesEncryptionHeader(header.token);
     
     // For encrypted archives, verify we can decrypt the TOC
     if (isEncrypted)
@@ -1214,13 +1447,8 @@ Result validate(const std::string& inputTre,
         EncryptionHeader encHeader;
         inFile.read(reinterpret_cast<char*>(&encHeader), sizeof(encHeader));
         
-        // Use provided password or fall back to default
-        std::string password = encryption.password;
-        if (password.empty())
-        {
-            password = TITANPAK_PASSWORD;
-        }
-        
+        const std::string password = Crypto::resolveTrePassword(encryption.password);
+
         // Initialize decryption context
         EncryptionContext encCtx;
         encCtx.initDecrypt(password, encHeader.salt, encHeader.iv);
@@ -1317,16 +1545,23 @@ Result getStats(const std::string& inputTre,
     TreHeader header;
     inFile.read(reinterpret_cast<char*>(&header), sizeof(header));
     
-    if (header.token != TAG_TREE && header.token != TAG_NUNA)
+    if (!treMagicKnown(header.token))
     {
         result.code = ResultCode::InvalidArchive;
         result.message = "Not a valid TRE archive";
         return result;
     }
-    
+
+    if (!isTreHeaderSupported(header.token, header.version))
+    {
+        result.code = ResultCode::InvalidArchive;
+        result.message = "Unsupported TRE token/version";
+        return result;
+    }
+
     stats.fileCount = header.numberOfFiles;
     stats.version = header.version;
-    stats.encrypted = (header.token == TAG_NUNA);
+    stats.encrypted = treUsesEncryptionHeader(header.token);
     
     result.message = "Stats retrieved";
     return result;
@@ -1373,26 +1608,34 @@ Result analyze(const std::string& inputTre, const EncryptionOptions& encryption)
         std::cout << "Archive kind: SWG Tree (.tre)\n";
     else if (header.token == TAG_NUNA)
         std::cout << "Archive kind: NUNA encrypted Tree (TitanPak tooling)\n";
+    else if (header.token == TAG_LEGE)
+        std::cout << "Archive kind: LEGE Legend encrypted tree (.tres / alternate packaging)\n";
     std::cout << "\n";
 
-    const bool magicOk = (header.token == TAG_TREE || header.token == TAG_NUNA);
+    const bool magicOk = treMagicKnown(header.token);
     std::cout << "--- TreHeader (" << sizeof(TreHeader) << " bytes @ 0) ---\n";
     std::cout << "token:           0x" << std::hex << std::uppercase << header.token << std::dec << "\n";
     std::cout << "  LE byte chars: \"" << analyzeFourCcAscii(header.token) << "\"\n";
     std::cout << "  Note:          On little-endian, SWG magic 'TREE' is stored as bytes E E R T (often misread as \"EERT\" in dumps).\n";
     std::cout << "                 Version tag '0006' reads as ASCII \"6000\" at bytes 4..7 — concatenated \"EERT6000\" is normal TREE + v0006, not a separate magic.\n";
+    std::cout << "                 LEGE is stored as L E G E; paired version NDS3 is \"NDS3\" when read as four ASCII bytes.\n";
     std::cout << "  Recognized:    ";
     if (header.token == TAG_TREE)
         std::cout << "TREE (unencrypted)\n";
     else if (header.token == TAG_NUNA)
         std::cout << "NUNA (TitanPak encrypted)\n";
+    else if (header.token == TAG_LEGE)
+        std::cout << "LEGE (encrypted Legend / .tres-style)\n";
     else
-        std::cout << "UNKNOWN — not standard TREE/NUNA\n";
+        std::cout << "UNKNOWN — not TREE / NUNA / LEGE\n";
 
     std::cout << "version:         0x" << std::hex << std::uppercase << header.version << std::dec
               << "  (\"" << analyzeFourCcAscii(header.version) << "\")\n";
-    const bool verOk = (header.version == TAG_0005 || header.version == TAG_0004 || header.version == TAG_0006);
-    std::cout << "  Supported:     " << (verOk ? "yes (0004 / 0005 / 0006)" : "unknown — verify against samples") << "\n";
+    const bool verOk = isTreHeaderSupported(header.token, header.version);
+    std::cout << "  Supported:     "
+              << (verOk ? "yes"
+                          : "unknown — verify against samples")
+              << " (TREE/NUNA: 0004–0006; LEGE: NDS3)\n";
 
     std::cout << "numberOfFiles:   " << header.numberOfFiles << "\n";
     std::cout << "tocOffset:       " << header.tocOffset << "\n";
@@ -1405,7 +1648,7 @@ Result analyze(const std::string& inputTre, const EncryptionOptions& encryption)
     const uint64_t nameBlockOffset = static_cast<uint64_t>(header.tocOffset) + header.sizeOfTOC;
     std::cout << "\n--- Derived layout ---\n";
     std::cout << "Name block starts @ " << nameBlockOffset << "\n";
-    if (header.token == TAG_NUNA)
+    if (treUsesEncryptionHeader(header.token))
         std::cout << "Encryption header @ " << sizeof(TreHeader) << " (" << sizeof(EncryptionHeader) << " bytes)\n";
 
     if (!magicOk || !verOk)
@@ -1417,7 +1660,7 @@ Result analyze(const std::string& inputTre, const EncryptionOptions& encryption)
         return result;
     }
 
-    const bool isEncrypted = (header.token == TAG_NUNA);
+    const bool isEncrypted = treUsesEncryptionHeader(header.token);
     if (isEncrypted)
     {
         inFile.clear();
@@ -1437,7 +1680,7 @@ Result analyze(const std::string& inputTre, const EncryptionOptions& encryption)
         std::vector<std::string> passwordsToTry;
         if (!encryption.password.empty())
             passwordsToTry.push_back(encryption.password);
-        passwordsToTry.emplace_back(TITANPAK_PASSWORD);
+        passwordsToTry.push_back(Crypto::resolveTrePassword(""));
 
         std::vector<std::string> uniquePw;
         for (const std::string& p : passwordsToTry)
@@ -1469,8 +1712,8 @@ Result analyze(const std::string& inputTre, const EncryptionOptions& encryption)
             std::cout << "  [" << (pi + 1) << "/" << uniquePw.size() << "] ";
             if (!encryption.password.empty() && uniquePw[pi] == encryption.password)
                 std::cout << "(from -d/--decrypt) ";
-            else if (uniquePw[pi] == TITANPAK_PASSWORD)
-                std::cout << "(Nuna built-in default) ";
+            else if (uniquePw[pi] == Crypto::resolveTrePassword(""))
+                std::cout << "(SWG_TRE_PASSWORD env or built-in default) ";
             std::cout << "password \"" << uniquePw[pi] << "\": " << (ok ? "TOC decrypt OK" : "FAILED") << "\n";
         }
 
@@ -1485,6 +1728,315 @@ Result analyze(const std::string& inputTre, const EncryptionOptions& encryption)
     std::cout << analyzeHexBytes(prefix.data(), std::min(prefix.size(), static_cast<size_t>(64))) << "\n";
 
     result.message = "Analysis complete";
+    return result;
+}
+
+Result dumpCipher(const std::string& inputTre, const std::string& outputDir)
+{
+    return dumpCipherRegions(inputTre, outputDir);
+}
+
+Result tryPasswordWordlist(const std::string& inputTre, const std::string& wordlistPath,
+                           const PasswordGuessOptions& options)
+{
+    Result result;
+
+    std::ifstream treFile(inputTre, std::ios::binary);
+    if (!treFile)
+    {
+        result.code = ResultCode::FileNotFound;
+        result.message = "Cannot open archive: " + inputTre;
+        return result;
+    }
+
+    TreHeader header{};
+    treFile.read(reinterpret_cast<char*>(&header), sizeof(header));
+    if (!treMagicKnown(header.token) || !isTreHeaderSupported(header.token, header.version))
+    {
+        result.code = ResultCode::InvalidArchive;
+        result.message = "Unsupported or invalid TRE header";
+        return result;
+    }
+
+    if (!treUsesEncryptionHeader(header.token))
+    {
+        result.code = ResultCode::InvalidArchive;
+        result.message = "Archive is not encrypted (TREE only). Nothing to guess.";
+        return result;
+    }
+
+    treFile.seekg(sizeof(TreHeader));
+    EncryptionHeader encHeader{};
+    treFile.read(reinterpret_cast<char*>(&encHeader), sizeof(encHeader));
+
+    std::ifstream wl(wordlistPath);
+    if (!wl)
+    {
+        result.code = ResultCode::FileNotFound;
+        result.message = "Cannot open wordlist: " + wordlistPath;
+        return result;
+    }
+
+    auto trimGuessLine = [](std::string s) -> std::string {
+        while (!s.empty() && (s.back() == '\r' || s.back() == ' ' || s.back() == '\t'))
+            s.pop_back();
+        size_t i = 0;
+        while (i < s.size() && (s[i] == ' ' || s[i] == '\t'))
+            ++i;
+        return s.substr(i);
+    };
+
+    std::string line;
+    uint64_t lineNum = 0;
+    uint64_t tried = 0;
+
+    while (std::getline(wl, line))
+    {
+        ++lineNum;
+        line = trimGuessLine(line);
+        if (lineNum == 1 && line.size() >= 3 && static_cast<unsigned char>(line[0]) == 0xEF &&
+            static_cast<unsigned char>(line[1]) == 0xBB && static_cast<unsigned char>(line[2]) == 0xBF)
+            line.erase(0, 3);
+
+        if (line.empty() || line[0] == '#')
+            continue;
+
+        if (options.maxAttempts != 0 && tried >= options.maxAttempts)
+        {
+            result.code = ResultCode::InvalidPassword;
+            result.message =
+                "Stopped: --max limit reached (" + std::to_string(tried) + " candidates tried, no match)";
+            return result;
+        }
+
+        ++tried;
+
+        EncryptionContext encCtx;
+        encCtx.initDecrypt(line, encHeader.salt, encHeader.iv);
+
+        treFile.clear();
+        if (analyzeProbeTocDecrypt(treFile, header, encCtx))
+        {
+            std::cout << "\n*** MATCH - TOC decrypt validates with this candidate.\n"
+                         "*** Example: nuna list \"" << inputTre << "\" -d \"<paste_password>\"\n"
+                         "*** Password (exact line; may contain spaces - quote in shell):\n"
+                      << line << "\n\n";
+            if (!options.quiet && options.maxAttempts != 0)
+                std::cerr << "[try-passwords] trial " << tried << "/" << options.maxAttempts << " (MATCH)\n";
+            result.message = "Match at wordlist line " + std::to_string(lineNum) + " after " +
+                             std::to_string(tried) + " tries.";
+            return result;
+        }
+
+        if (!options.quiet && options.maxAttempts != 0 && options.maxAttempts <= 512 &&
+            tried <= options.maxAttempts)
+            std::cerr << "[try-passwords] trial " << tried << "/" << options.maxAttempts << " (no match)\n";
+
+        if (!options.quiet && options.progressEvery != 0 && (tried % options.progressEvery) == 0)
+            std::cerr << "[try-passwords] " << tried << " candidates tried...\n";
+    }
+
+    result.code = ResultCode::InvalidPassword;
+    result.message = "No wordlist line matched (" + std::to_string(tried) + " candidates tried)";
+    return result;
+}
+
+namespace {
+
+void hexLower16(const uint8_t* p, size_t n, std::string& out)
+{
+    static const char* digits = "0123456789abcdef";
+    out.resize(n * 2);
+    for (size_t i = 0; i < n; ++i)
+    {
+        out[i * 2] = digits[(p[i] >> 4) & 0xF];
+        out[i * 2 + 1] = digits[p[i] & 0xF];
+    }
+}
+
+void hexUpper16(const uint8_t* p, size_t n, std::string& out)
+{
+    static const char* digits = "0123456789ABCDEF";
+    out.resize(n * 2);
+    for (size_t i = 0; i < n; ++i)
+    {
+        out[i * 2] = digits[(p[i] >> 4) & 0xF];
+        out[i * 2 + 1] = digits[p[i] & 0xF];
+    }
+}
+
+bool pushUnique(std::unordered_set<std::string>& seen, std::vector<std::string>& lines, const std::string& s,
+                uint64_t maxLines)
+{
+    if (s.empty() || lines.size() >= maxLines)
+        return false;
+    if (!seen.insert(s).second)
+        return false;
+    lines.push_back(s);
+    return true;
+}
+
+void combineBaseSalt(std::unordered_set<std::string>& seen, std::vector<std::string>& lines, uint64_t maxLines,
+                     const std::string& base, const std::string& saltHex, const std::string& ivHex)
+{
+    static const char* seps[] = {"", "_", "-", ":"};
+    const std::string s8 = saltHex.size() >= 8 ? saltHex.substr(0, 8) : saltHex;
+    const std::string i8 = ivHex.size() >= 8 ? ivHex.substr(0, 8) : ivHex;
+
+    pushUnique(seen, lines, base, maxLines);
+
+    for (const char* sep : seps)
+    {
+        std::string sepStr(sep);
+        pushUnique(seen, lines, base + sepStr + saltHex, maxLines);
+        pushUnique(seen, lines, saltHex + sepStr + base, maxLines);
+        pushUnique(seen, lines, base + sepStr + ivHex, maxLines);
+        pushUnique(seen, lines, ivHex + sepStr + base, maxLines);
+        pushUnique(seen, lines, base + sepStr + s8, maxLines);
+        pushUnique(seen, lines, base + sepStr + i8, maxLines);
+        pushUnique(seen, lines, s8 + sepStr + base, maxLines);
+        pushUnique(seen, lines, i8 + sepStr + base, maxLines);
+        pushUnique(seen, lines, base + sepStr + saltHex + sepStr + ivHex, maxLines);
+    }
+}
+
+} // namespace
+
+Result generateSaltDerivedGuesslist(const std::string& inputTre, const SaltGuessGenOptions& options)
+{
+    Result result;
+
+    std::ifstream treFile(inputTre, std::ios::binary);
+    if (!treFile)
+    {
+        result.code = ResultCode::FileNotFound;
+        result.message = "Cannot open archive: " + inputTre;
+        return result;
+    }
+
+    TreHeader header{};
+    treFile.read(reinterpret_cast<char*>(&header), sizeof(header));
+    if (!treMagicKnown(header.token) || !isTreHeaderSupported(header.token, header.version))
+    {
+        result.code = ResultCode::InvalidArchive;
+        result.message = "Unsupported or invalid TRE header";
+        return result;
+    }
+
+    if (!treUsesEncryptionHeader(header.token))
+    {
+        result.code = ResultCode::InvalidArchive;
+        result.message = "Archive has no EncryptionHeader (unencrypted TREE). Nothing to derive from salt.";
+        return result;
+    }
+
+    treFile.seekg(sizeof(TreHeader));
+    EncryptionHeader enc{};
+    treFile.read(reinterpret_cast<char*>(&enc), sizeof(enc));
+
+    std::string saltHex;
+    std::string ivHex;
+    std::string saltHexU;
+    std::string ivHexU;
+    hexLower16(enc.salt, Crypto::SALT_SIZE, saltHex);
+    hexLower16(enc.iv, Crypto::IV_SIZE, ivHex);
+    hexUpper16(enc.salt, Crypto::SALT_SIZE, saltHexU);
+    hexUpper16(enc.iv, Crypto::IV_SIZE, ivHexU);
+
+    const uint64_t maxLines = options.maxCandidates == 0 ? 500000 : options.maxCandidates;
+
+    std::unordered_set<std::string> seen;
+    std::vector<std::string> lines;
+    lines.reserve(static_cast<size_t>(std::min<uint64_t>(maxLines, 100000)));
+
+    auto addRaw = [&](const std::string& s) { pushUnique(seen, lines, s, maxLines); };
+
+    // Raw header material (pipelines sometimes paste hex salt/iv alone or concatenated).
+    addRaw(saltHex);
+    addRaw(ivHex);
+    addRaw(saltHexU);
+    addRaw(ivHexU);
+    addRaw(saltHex + ivHex);
+    addRaw(ivHex + saltHex);
+    addRaw(saltHexU + ivHexU);
+
+    std::vector<std::string> bases;
+    bases.emplace_back(Crypto::resolveTrePassword(""));
+    bases.emplace_back(std::string(Crypto::getTitanPakPassword()));
+
+    static const char* stock[] = {"titan",          "Titan",      "TitanPak", "titanpak", "SWG",       "swg",
+                                  "LEGE",           "lege",       "Legend",   "legend",   "NDS3",      "nds3",
+                                  "password",       "Password",   "admin",    "secret",   "key",       "pack",
+                                  "april",          "April",      "2024",     "2025",     "tre",       "tres"};
+    for (const char* s : stock)
+        bases.emplace_back(s);
+
+    if (!options.seedsFile.empty())
+    {
+        std::ifstream sf(options.seedsFile);
+        if (!sf)
+        {
+            result.code = ResultCode::FileNotFound;
+            result.message = "Cannot open seeds file: " + options.seedsFile;
+            return result;
+        }
+        std::string ln;
+        while (std::getline(sf, ln))
+        {
+            while (!ln.empty() && (ln.back() == '\r' || ln.back() == ' ' || ln.back() == '\t'))
+                ln.pop_back();
+            size_t i = 0;
+            while (i < ln.size() && (ln[i] == ' ' || ln[i] == '\t'))
+                ++i;
+            ln = ln.substr(i);
+            if (ln.empty() || ln[0] == '#')
+                continue;
+            bases.push_back(ln);
+        }
+    }
+
+    // Dedupe bases cheaply
+    {
+        std::unordered_set<std::string> baseSeen;
+        std::vector<std::string> uniqBases;
+        for (const auto& b : bases)
+        {
+            if (b.empty())
+                continue;
+            if (baseSeen.insert(b).second)
+                uniqBases.push_back(b);
+        }
+        bases = std::move(uniqBases);
+    }
+
+    for (const auto& base : bases)
+    {
+        if (lines.size() >= maxLines)
+            break;
+        combineBaseSalt(seen, lines, maxLines, base, saltHex, ivHex);
+    }
+
+    std::ostream* os = &std::cout;
+    std::ofstream fileOut;
+    if (!options.outputPath.empty())
+    {
+        fileOut.open(options.outputPath, std::ios::binary);
+        if (!fileOut)
+        {
+            result.code = ResultCode::IOError;
+            result.message = "Cannot write: " + options.outputPath;
+            return result;
+        }
+        os = &fileOut;
+    }
+
+    for (const auto& s : lines)
+        *os << s << '\n';
+
+    result.message =
+        "Emitted " + std::to_string(lines.size()) + " unique candidates (cap " + std::to_string(maxLines) + ").";
+    if (lines.size() >= maxLines)
+        result.message += " Hit cap - increase --guess-cap or narrow seeds.";
     return result;
 }
 

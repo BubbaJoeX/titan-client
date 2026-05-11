@@ -1575,6 +1575,17 @@ void SwgCuiHud::manageTargetBoxes (const Object * intendedObject, const Camera &
 		}
 		return;
 	}
+
+	// Cinematic conversation: hide look-at / intended bracket rectangles (blue & green lines).
+	if (CuiConversationManager::isCinematicConversationUiActive())
+	{
+		for (int i = 0; i < SBT_numTypes; ++i)
+		{
+			m_selectionBoxPages[i]->SetEnabled(false);
+			m_selectionBoxPages[i]->SetOpacity(0.0f);
+		}
+		return;
+	}
 	
 	const UISize  pageSize (getPage ().GetSize ());
 	const UIPoint pageTargetMargin (16L, 16L);

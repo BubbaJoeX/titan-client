@@ -21,6 +21,7 @@
 #include "clientGraphics/Graphics.h"
 #include "clientObject/GameCamera.h"
 #include "clientUserInterface/ConfigClientUserInterface.h"
+#include "clientUserInterface/CuiConversationManager.h"
 #include "clientUserInterface/CuiDamageManager.h"
 #include "clientUserInterface/CuiGameColorManager.h"
 #include "clientUserInterface/CuiIoWin.h"
@@ -586,7 +587,7 @@ void SwgCuiAllTargets::update(const Camera & camera)
 
 	Object const * const lookAtTargetObj = lookAtTarget.getObject ();
 
-	if (lookAtTargetObj && m_arrowTarget)
+	if (lookAtTargetObj && m_arrowTarget && !CuiConversationManager::isCinematicConversationUiActive())
 	{
 		const Vector & targetPos = lookAtTargetObj->getAppearanceSphereCenter_w ();
 		const Sphere s (targetPos, lookAtTargetObj->getAppearanceSphereRadius ());

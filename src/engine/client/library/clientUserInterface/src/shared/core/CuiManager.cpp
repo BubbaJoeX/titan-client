@@ -460,6 +460,9 @@ void CuiManager::install ()
 	if (UITextStyleManager::GetInstance ())
 		UITextStyleManager::GetInstance ()->setFontScalePercent (CuiPreferences::getUiFontScalePercent ());
 
+	if (UITextStyleManager::GetInstance ())
+		UITextStyleManager::GetInstance ()->setUserFontFullReplace (CuiPreferences::getUiFontFullReplace ());
+
 	InstallTimer installTimerLink("Link");
 	rootPage->Link ();
 	installTimerLink.manualExit();

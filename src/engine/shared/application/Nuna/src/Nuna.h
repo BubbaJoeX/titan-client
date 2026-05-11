@@ -34,6 +34,28 @@ constexpr uint32_t TAG_0005 = '5' | ('0' << 8) | ('0' << 16) | ('0' << 24);  // 
 constexpr uint32_t TAG_0004 = '4' | ('0' << 8) | ('0' << 16) | ('0' << 24);  // "0004"
 constexpr uint32_t TAG_0006 = '6' | ('0' << 8) | ('0' << 16) | ('0' << 24);  // "0006" (LE appears as "6000" after TREE/"EERT")
 constexpr uint32_t TAG_NUNA = 'A' | ('N' << 8) | ('U' << 16) | ('N' << 24);  // "NUNA" (encrypted)
+/// Other server / alternate encrypted tree (e.g. `.tres`) — same TreHeader + EncryptionHeader layout as NUNA; version typically NDS3.
+constexpr uint32_t TAG_LEGE = 'L' | ('E' << 8) | ('G' << 16) | ('E' << 24);  // on-disk LE bytes "LEGE"
+constexpr uint32_t TAG_NDS3 = 'N' | ('D' << 8) | ('S' << 16) | ('3' << 24);  // version tag "NDS3"
+
+inline bool treMagicKnown(uint32_t token)
+{
+    return token == TAG_TREE || token == TAG_NUNA || token == TAG_LEGE;
+}
+
+inline bool treUsesEncryptionHeader(uint32_t token)
+{
+    return token == TAG_NUNA || token == TAG_LEGE;
+}
+
+inline bool isTreHeaderSupported(uint32_t token, uint32_t version)
+{
+    if (token == TAG_TREE || token == TAG_NUNA)
+        return version == TAG_0004 || version == TAG_0005 || version == TAG_0006;
+    if (token == TAG_LEGE)
+        return version == TAG_NDS3;
+    return false;
+}
 
 // TOC Format Constants
 constexpr uint32_t TAG_TOC  = ' ' | ('C' << 8) | ('O' << 16) | ('T' << 24);  // "TOC " (space-C-O-T in little-endian)
@@ -193,6 +215,22 @@ struct UnpackOptions
     EncryptionOptions  encryption;
 };
 
+/// Options for `tryPasswordWordlist` (dictionary recovery on encrypted archives).
+struct PasswordGuessOptions
+{
+    uint64_t maxAttempts = 0;       ///< Stop after this many tried candidates (0 = unlimited).
+    uint64_t progressEvery = 50000; ///< Stderr progress every N tries (0 = no periodic progress).
+    bool     quiet = false;
+};
+
+/// Options for `generateSaltDerivedGuesslist` — candidates derived from on-disk salt/IV (see `EncryptionHeader`).
+struct SaltGuessGenOptions
+{
+    std::string seedsFile;      ///< Optional extra newline-separated tokens to combine (trimmed; # comments).
+    std::string outputPath;     ///< Empty = write to stdout.
+    uint64_t maxCandidates = 500000; ///< Hard cap on emitted lines (deduped).
+};
+
 struct ListOptions
 {
     bool               showSize = true;
@@ -269,6 +307,16 @@ Result getStats(const std::string& inputTre,
 /// Print header, encryption metadata, layout offsets, and optional TOC decrypt probe (for RE when crypto source is unavailable).
 Result analyze(const std::string& inputTre,
                const EncryptionOptions& encryption = EncryptionOptions());
+
+/// Copy on-disk ciphertext regions (header, encryption header, TOC, names, payload tail) without decrypting — for inspection when the password is unknown.
+Result dumpCipher(const std::string& inputTre, const std::string& outputDir);
+
+/// Try each non-empty line of `wordlistPath` as the TitanPak/LEGE password until TOC decrypt validates (same checks as `analyze` TOC probe).
+Result tryPasswordWordlist(const std::string& inputTre, const std::string& wordlistPath,
+                           const PasswordGuessOptions& options = PasswordGuessOptions());
+
+/// Emit newline-separated password candidates using salt/IV from the archive header plus common bases and separators (feeds `try-passwords`).
+Result generateSaltDerivedGuesslist(const std::string& inputTre, const SaltGuessGenOptions& options = SaltGuessGenOptions());
 
 // ======================================================================
 // TOC API Functions

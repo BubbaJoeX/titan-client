@@ -1,12 +1,12 @@
 		<Page
 			Location='224,159'
-			MaximumSize='300,16384'
-			MinimumSize='300,200'
+			MaximumSize='360,16384'
+			MinimumSize='340,220'
 			Name='LootBox'
 			PackLocation='nfn,nfn'
 			PackSize='a,a'
-			ScrollExtent='300,200'
-			Size='300,200'
+			ScrollExtent='380,260'
+			Size='380,260'
 			UserMovable='true'
 			UserResizable='true'
 		>
@@ -22,7 +22,7 @@
 				IsCancelButton='true'
 				IsDefaultButton='true'
 				LocalText='[@ok]'
-				Location='181,171'
+				Location='259,221'
 				MinimumSize='0,19'
 				Name='buttonOk'
 				OpacityRelativeMin='0.70'
@@ -39,9 +39,9 @@
 				PackLocation='nnn,nnn'
 				PackSize='a,a'
 				RStyleDefault='rs_default'
-				ScrollExtent='282,138'
+				ScrollExtent='356,198'
 				Selectable='true'
-				Size='282,138'
+				Size='356,198'
 			>
 				<Composite
 					Location='18,14'
@@ -54,13 +54,13 @@
 					<Text
 						CursorMark='8'
 						CursorPoint='8'
-						Font='bold_13'
-						GetsInput='true'
-						LocalText='You have received:'
-						Margin='2,2,2,2'
-						MaximumSize='16384,30'
-						MaxLines='1'
-						MinimumSize='100,30'
+					Font='default_14'
+					GetsInput='true'
+					LocalText='You have received:'
+					Margin='4,4,6,6'
+					MaximumSize='16384,34'
+					MaxLines='1'
+					MinimumSize='100,32'
 						Name='receivedLabel'
 						PackLocation='nfn,nfn'
 						PackSize='a,f'
@@ -109,7 +109,7 @@
 							/>
 						</Page>
 						<Text
-							Font='bold_16'
+							Font='default_14'
 							Location='51,0'
 							MaximumSize='187,41'
 							MaxLines='2'
@@ -159,7 +159,7 @@
 							/>
 						</Page>
 						<Text
-							Font='bold_16'
+							Font='default_14'
 							LocalText='\\\>010- DH-9 Pistol
 - 1000 Credits
 '
@@ -210,7 +210,7 @@
 							/>
 						</Page>
 						<Text
-							Font='bold_16'
+							Font='default_14'
 							LocalText='\\\>010- DH-9 Pistol
 - 1000 Credits
 '
@@ -261,7 +261,7 @@
 							/>
 						</Page>
 						<Text
-							Font='bold_16'
+							Font='default_14'
 							LocalText='\\\>010- DH-9 Pistol
 - 1000 Credits
 '
@@ -312,7 +312,7 @@
 							/>
 						</Page>
 						<Text
-							Font='bold_16'
+							Font='default_14'
 							LocalText='\\\>010- DH-9 Pistol
 - 1000 Credits
 '
@@ -363,7 +363,7 @@
 							/>
 						</Page>
 						<Text
-							Font='bold_16'
+							Font='default_14'
 							LocalText='\\\>010- DH-9 Pistol
 - 1000 Credits
 '
@@ -414,7 +414,7 @@
 							/>
 						</Page>
 						<Text
-							Font='bold_16'
+							Font='default_14'
 							LocalText='\\\>010- DH-9 Pistol
 - 1000 Credits
 '
@@ -465,7 +465,7 @@
 							/>
 						</Page>
 						<Text
-							Font='bold_16'
+							Font='default_14'
 							LocalText='\\\>010- DH-9 Pistol
 - 1000 Credits
 '
@@ -516,7 +516,7 @@
 							/>
 						</Page>
 						<Text
-							Font='bold_16'
+							Font='default_14'
 							LocalText='\\\>010- DH-9 Pistol
 - 1000 Credits
 '
@@ -567,7 +567,7 @@
 							/>
 						</Page>
 						<Text
-							Font='bold_16'
+							Font='default_14'
 							LocalText='\\\>010- DH-9 Pistol
 - 1000 Credits
 '
@@ -618,7 +618,7 @@
 							/>
 						</Page>
 						<Text
-							Font='bold_16'
+							Font='default_14'
 							LocalText='\\\>010- DH-9 Pistol
 - 1000 Credits
 '
@@ -669,7 +669,7 @@
 							/>
 						</Page>
 						<Text
-							Font='bold_16'
+							Font='default_14'
 							LocalText='\\\>010- DH-9 Pistol
 - 1000 Credits
 '
@@ -720,7 +720,7 @@
 							/>
 						</Page>
 						<Text
-							Font='bold_16'
+							Font='default_14'
 							LocalText='\\\>010- DH-9 Pistol
 - 1000 Credits
 '
@@ -771,7 +771,7 @@
 							/>
 						</Page>
 						<Text
-							Font='bold_16'
+							Font='default_14'
 							LocalText='\\\>010- DH-9 Pistol
 - 1000 Credits
 '
@@ -822,7 +822,7 @@
 							/>
 						</Page>
 						<Text
-							Font='bold_16'
+							Font='default_14'
 							LocalText='\\\>010- DH-9 Pistol
 - 1000 Credits
 '
@@ -873,7 +873,7 @@
 							/>
 						</Page>
 						<Text
-							Font='bold_16'
+							Font='default_14'
 							LocalText='\\\>010- DH-9 Pistol
 - 1000 Credits
 '
@@ -906,12 +906,12 @@
 				</Composite>
 				<Scrollbar
 					Control='comp'
-					Location='267,3'
+					Location='345,3'
 					Name='Scroll'
 					PackLocation='fff,nfn'
 					PackSize='f,a'
-					ScrollExtent='11,129'
-					Size='11,129'
+					ScrollExtent='11,172'
+					Size='11,172'
 					Style='/Styles.scrollbar.default.vHud4.style'
 				>
 				</Scrollbar>
@@ -919,8 +919,8 @@
 					Name='bg'
 					PackLocation='nfn,nfn'
 					PackSize='a,a'
-					ScrollExtent='282,138'
-					Size='282,138'
+					ScrollExtent='356,198'
+					Size='356,198'
 				>
 					<Page
 						GetsInput='false'
@@ -929,8 +929,8 @@
 						PackLocation='nfn,nfn'
 						PackSize='a,a'
 						RStyleDefault='/Styles.New.whiteOutline.rs_default'
-						ScrollExtent='275,129'
-						Size='275,129'
+						ScrollExtent='348,185'
+						Size='348,185'
 					/>
 					<Page
 						BackgroundColor='#FFFFFF'
@@ -941,8 +941,8 @@
 						PackSize='a,a'
 						PalBgTint='line1'
 						RStyleDefault='/Styles.New.whiteOutline_palW.rs_default'
-						ScrollExtent='282,138'
-						Size='282,138'
+						ScrollExtent='356,198'
+						Size='356,198'
 					>
 						<Page
 							BackgroundColor='#FFFFFF'
@@ -955,8 +955,8 @@
 							PackSize='a,a'
 							PalBgTint='back2'
 							RStyleDefault='/Styles.New.whitebox_palW.rs_default'
-							ScrollExtent='263,126'
-							Size='263,126'
+							ScrollExtent='334,178'
+							Size='334,178'
 						/>
 					</Page>
 					<Page
@@ -969,8 +969,8 @@
 						PackSize='a,a'
 						PalBgTint='back1'
 						RStyleDefault='/Styles.New.fatFrameInside.rs_default'
-						ScrollExtent='278,134'
-						Size='278,134'
+						ScrollExtent='352,192'
+						Size='352,192'
 					/>
 				</Page>
 			</Page>
@@ -978,8 +978,8 @@
 				Name='bg'
 				PackLocation='nfn,nfn'
 				PackSize='a,a'
-				ScrollExtent='300,200'
-				Size='300,200'
+				ScrollExtent='380,260'
+				Size='380,260'
 			>
 				<Page
 					Location='289,8'
@@ -1036,9 +1036,9 @@
 					PackSize='a,a'
 					PalBgTint='baselight'
 					RStyleDefault='/Styles.New.thin_in.rs_default'
-					ScrollExtent='300,200'
+					ScrollExtent='380,260'
 					Selectable='true'
-					Size='300,200'
+					Size='380,260'
 				>
 					<Page
 						BackgroundColor='#FFFFFF'
@@ -1047,8 +1047,8 @@
 						Name='lines'
 						PackSize='a,a'
 						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
-						ScrollExtent='300,200'
-						Size='300,200'
+						ScrollExtent='380,260'
+						Size='380,260'
 					>
 						<Page
 							BackgroundColor='#FFFFFF'
@@ -1185,9 +1185,9 @@
 					PackSize='a,a'
 					PalBgTint='back1'
 					RStyleDefault='/Styles.New.thin_in.rs_default'
-					ScrollExtent='300,194'
+					ScrollExtent='380,254'
 					Selectable='true'
-					Size='300,194'
+					Size='380,254'
 				/>
 				<Page
 					BackgroundOpacity='1.00'
@@ -1198,9 +1198,9 @@
 					PackSize='a,a'
 					PalBgTint='back1'
 					RStyleDefault='/Styles.space.spaceglow.rs_default'
-					ScrollExtent='300,200'
+					ScrollExtent='380,260'
 					Selectable='true'
-					Size='300,200'
+					Size='380,260'
 				/>
 			</Page>
 		</Page>

@@ -36,6 +36,9 @@ public:
 	static std::string const & getUiDefaultFontFaceUtf8 ();
 	static void                setUiDefaultFontFaceUtf8 (std::string const &utf8);
 
+	static bool                getUiFontFullReplace ();
+	static void                setUiFontFullReplace (bool b);
+
 	static float               getTooltipDelaySecs ();
 	static void                setTooltipDelaySecs (float f);
 

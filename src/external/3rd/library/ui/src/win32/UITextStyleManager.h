@@ -66,6 +66,10 @@ public:
 	void                   clearUserDefaultFontFace ();
 	std::string const &    getUserDefaultFontFaceUtf8 () const;
 
+	/// When true (and a user font is active), all logical UI fonts resolve to /Fonts.cuiuif_<pt>.
+	void                   setUserFontFullReplace (bool fullReplace);
+	bool                   getUserFontFullReplace () const;
+
 	/// Percent of nominal point size (50–200). Affects logical font resolution for all widgets.
 	void                   setFontScalePercent (int percent);
 	int                    getFontScalePercent () const;
@@ -86,6 +90,7 @@ private:
 	LogicalFontFaces             *   m_logicalFontFaces;
 
 	std::string                    m_userDefaultFontFaceUtf8;
+	bool                           m_userFontFullReplace;
 
 	int                    m_fontScalePercent;
 

@@ -13,8 +13,12 @@
 #include "UIComposite.h"
 #include "UIData.h"
 #include "UIMessage.h"
+#include "UIPage.h"
 #include "UIScrollbar.h"
+#include "UITable.h"
+#include "UITableModelDefault.h"
 #include "UIText.h"
+#include "UIClipboard.h"
 #include "UIUtils.h"
 #include "UnicodeUtils.h"
 #include "clientGame/ClientObject.h"
@@ -27,6 +31,7 @@
 #include "clientGame/GameNetwork.h"
 #include "clientGame/ManufactureSchematicObject.h"
 #include "clientGame/ObjectAttributeManager.h"
+#include "clientGame/PlayerObject.h"
 #include "clientGame/PlayerCreatureController.h"
 #include "clientGame/PlayerObject.h"
 #include "clientGame/ResourceContainerObject.h"
@@ -116,9 +121,13 @@ m_objectProperties      (new CuiIconManagerObjectProperties),
 m_isPlayer(false),
 m_tier(NULL),
 m_unique(0),
+m_restrictionsPage(0),
 m_buttonCollections(0),
 m_hideAppearanceItems(0),
-m_container(0)
+m_container(0),
+m_isExamine(isExamine),
+m_godAttribsPage(0),
+m_godAttribTable(0)
 {
 	{
 		UIWidget * widget = 0;
@@ -139,7 +148,10 @@ m_container(0)
 	getCodeDataObject (TUIText,         m_noTrade,       "noTrade", true);
 	getCodeDataObject (TUIText,         m_tier,          "Tier", true);
 	getCodeDataObject (TUIText,         m_unique,        "unique", true);
+	getCodeDataObject (TUIPage,         m_restrictionsPage, "restrictions", true);
 	getCodeDataObject (TUIButton,       m_buttonCollections, "buttonCollections", true);
+	getCodeDataObject (TUIPage,         m_godAttribsPage,  "godAttribs", true);
+	getCodeDataObject (TUITable,        m_godAttribTable,  "tableGodObjScript", true);
 
 	if(isExamine)
 	{
@@ -147,6 +159,9 @@ m_container(0)
 
 		registerMediatorObject(*m_hideAppearanceItems, true);
 	}
+
+	if (m_godAttribTable)
+		registerMediatorObject (*m_godAttribTable, true);
 
 	
 	getCodeData()->GetPropertyBoolean(UILowerString("showBadgeText"), ms_showBadgeText);
@@ -209,7 +224,10 @@ SwgCuiInventoryInfo::~SwgCuiInventoryInfo ()
 	m_textDesc      = 0;
 	m_noTrade = 0;
 	m_unique = 0;
+	m_restrictionsPage = 0;
 	m_buttonCollections = 0;
+	m_godAttribsPage = 0;
+	m_godAttribTable = 0;
 	
 	delete m_watcher;
 	m_watcher = 0;
@@ -331,7 +349,8 @@ void SwgCuiInventoryInfo::setInfoObject (Object * object, bool requestAttributeU
 		NetworkId const & objId = object->getNetworkId();
 		if ((objId != NetworkId::cms_invalid) && (Game::getSinglePlayer() || !ClientObject::isFakeNetworkId(objId)))
 		{
-			descOk = ObjectAttributeManager::formatDescription (objId, header, desc, attribs, false);
+			bool const godExamineObjScriptTable = m_isExamine && PlayerObject::isAdmin ();
+			descOk = ObjectAttributeManager::formatDescription (objId, header, desc, attribs, false, false, godExamineObjScriptTable);
 		}
 		//-- it may be a draft schematic
 		else if (!object->isInWorld ())
@@ -377,6 +396,14 @@ void SwgCuiInventoryInfo::setInfoObject (Object * object, bool requestAttributeU
 
 
 	updateAttributeFlags();
+
+	if (m_isExamine)
+	{
+		NetworkId nid = NetworkId::cms_invalid;
+		if (object)
+			nid = object->getNetworkId ();
+		updateGodObjScriptTable (nid);
+	}
 
 	m_content->Pack ();
 
@@ -716,6 +743,10 @@ void SwgCuiInventoryInfo::setInventoryType(SwgCuiInventory::InventoryType type)
 
 void SwgCuiInventoryInfo::updateAttributeFlags()
 {
+	bool isNoTradeVisible = false;
+	bool isUniqueVisible = false;
+	bool isTierVisible = false;
+
 	if(m_noTrade)
 		m_noTrade->SetOpacity(0.0f);
 	if(m_unique)
@@ -727,7 +758,7 @@ void SwgCuiInventoryInfo::updateAttributeFlags()
 		m_noTrade->SetPreLocalized(true);
 
 		Object const * const object = getInfoObject();
-		bool const isNoTradeVisible = (object && ObjectAttributeManager::isNoTrade(object->getNetworkId()));
+		isNoTradeVisible = (object && ObjectAttributeManager::isNoTrade(object->getNetworkId()));
 		m_noTrade->SetOpacity(isNoTradeVisible ? 1.0f : 0.0f);
 
 		if (isNoTradeVisible)
@@ -756,7 +787,7 @@ void SwgCuiInventoryInfo::updateAttributeFlags()
 	if (m_unique)
 	{
 		Object const * const object = getInfoObject();
-		bool const isUniqueVisible = (object && ObjectAttributeManager::isUnique(object->getNetworkId()));
+		isUniqueVisible = (object && ObjectAttributeManager::isUnique(object->getNetworkId()));
 		m_unique->SetOpacity(isUniqueVisible ? 1.0f : 0.0f);
 
 		if (isUniqueVisible)
@@ -772,7 +803,7 @@ void SwgCuiInventoryInfo::updateAttributeFlags()
 		NetworkId const & id = object ? object->getNetworkId() : NetworkId::cms_invalid;
 		int const tier = ObjectAttributeManager::getTier(id);
 
-		bool const isTierVisible = tier >= 0;
+		isTierVisible = tier >= 0;
 		m_tier->SetOpacity(isTierVisible ? 1.0f : 0.0f);
 
 		if (isTierVisible) 
@@ -792,6 +823,9 @@ void SwgCuiInventoryInfo::updateAttributeFlags()
 			m_tier->SetTooltip(Unicode::emptyString);
 		}
 	}
+
+	if (m_restrictionsPage)
+		m_restrictionsPage->SetVisible (isNoTradeVisible || isUniqueVisible || isTierVisible);
 }
 
 //----------------------------------------------------------------------
@@ -801,10 +835,163 @@ void SwgCuiInventoryInfo::setDropThroughTarget(SwgCuiInventoryContainer *contain
 	m_container = container;
 }
 
+namespace SwgCuiInventoryInfoGodTableNamespace
+{
+	static char const cs_examineObjvarPrefix[] = "examine.objvar.";
+
+	static bool parseExamineObjvarKey (std::string const & fullKey, Unicode::String & outKeyCol, Unicode::String & outTypeCol)
+	{
+		size_t const plen = sizeof (cs_examineObjvarPrefix) - 1;
+		if (fullKey.size () <= plen || fullKey.compare (0, plen, cs_examineObjvarPrefix) != 0)
+			return false;
+		std::string const rest = fullKey.substr (plen);
+		size_t const dot = rest.find ('.');
+		if (dot == std::string::npos || dot == 0 || dot + 1 >= rest.size ())
+			return false;
+		std::string const typeRaw = rest.substr (0, dot);
+		std::string const nameRest = rest.substr (dot + 1);
+		if (nameRest.empty ())
+			return false;
+
+		outKeyCol = Unicode::narrowToWide (nameRest);
+
+		std::string pretty = typeRaw;
+		if (typeRaw == "int_arr")
+			pretty = "int[]";
+		else if (typeRaw == "float_arr")
+			pretty = "float[]";
+		else if (typeRaw == "string_arr")
+			pretty = "string[]";
+		else if (typeRaw == "networkId_arr")
+			pretty = "networkId[]";
+		else if (typeRaw == "location_arr")
+			pretty = "location[]";
+		else if (typeRaw == "stringId_arr")
+			pretty = "stringId[]";
+		else if (typeRaw == "transform_arr")
+			pretty = "transform[]";
+		else if (typeRaw == "vector_arr")
+			pretty = "vector[]";
+
+		outTypeCol = Unicode::narrowToWide (pretty);
+		return true;
+	}
+}
+
+//----------------------------------------------------------------------
+
+void SwgCuiInventoryInfo::updateGodObjScriptTable (NetworkId const & id)
+{
+	m_godAttribClipboardLines.clear ();
+
+	if (!m_godAttribsPage || !m_godAttribTable)
+		return;
+
+	if (!m_isExamine || !PlayerObject::isAdmin ())
+	{
+		m_godAttribsPage->SetVisible (false);
+		return;
+	}
+
+	if (id == NetworkId::cms_invalid)
+	{
+		m_godAttribsPage->SetVisible (false);
+		return;
+	}
+
+	UITableModelDefault * const model = dynamic_cast<UITableModelDefault *>(m_godAttribTable->GetTableModel ());
+	if (!model)
+	{
+		m_godAttribsPage->SetVisible (false);
+		return;
+	}
+
+	ObjectAttributeManager::AttributeVector av;
+	if (!ObjectAttributeManager::getAttributes (id, av, false, true))
+	{
+		model->ClearTable ();
+		m_godAttribsPage->SetVisible (false);
+		return;
+	}
+
+	ObjectAttributeManager::AttributeVector objRows;
+	ObjectAttributeManager::AttributeVector scriptRows;
+	ObjectAttributeManager::collectObjScriptVarAttributes (av, false, false, objRows, scriptRows);
+
+	model->ClearTable ();
+
+	for (size_t i = 0; i < objRows.size (); ++i)
+	{
+		Unicode::String keyCol;
+		Unicode::String typeCol;
+		if (!SwgCuiInventoryInfoGodTableNamespace::parseExamineObjvarKey (objRows[i].first, keyCol, typeCol))
+		{
+			keyCol = Unicode::narrowToWide (objRows[i].first);
+			typeCol = Unicode::narrowToWide ("objvar");
+		}
+
+		Unicode::String const val = ObjectAttributeManager::decodeAttributeValueForDisplay (objRows[i].second);
+		IGNORE_RETURN (model->AppendCell (0, 0, keyCol));
+		IGNORE_RETURN (model->AppendCell (1, 0, val));
+		IGNORE_RETURN (model->AppendCell (2, 0, typeCol));
+
+		Unicode::String line = keyCol;
+		line.append (1, '\t');
+		line += val;
+		line.append (1, '\t');
+		line += typeCol;
+		m_godAttribClipboardLines.push_back (line);
+	}
+
+	for (size_t i = 0; i < scriptRows.size (); ++i)
+	{
+		Unicode::String const keyCol = Unicode::narrowToWide (scriptRows[i].first);
+		Unicode::String const val = ObjectAttributeManager::decodeAttributeValueForDisplay (scriptRows[i].second);
+		static Unicode::String const s_typeScript = Unicode::narrowToWide ("scriptvar");
+
+		IGNORE_RETURN (model->AppendCell (0, 0, keyCol));
+		IGNORE_RETURN (model->AppendCell (1, 0, val));
+		IGNORE_RETURN (model->AppendCell (2, 0, s_typeScript));
+
+		Unicode::String line = keyCol;
+		line.append (1, '\t');
+		line += val;
+		line.append (1, '\t');
+		line += s_typeScript;
+		m_godAttribClipboardLines.push_back (line);
+	}
+
+	model->fireDataChanged ();
+
+	m_godAttribsPage->SetVisible (!objRows.empty () || !scriptRows.empty ());
+}
+
 //----------------------------------------------------------------------
 
 bool SwgCuiInventoryInfo::OnMessage       (UIWidget *context, const UIMessage & msg )
 {
+	if (m_godAttribTable && context == m_godAttribTable)
+	{
+		if (msg.IsMouseButtonMessage () && msg.Type == UIMessage::LeftMouseDown && msg.Modifiers.isControlDown ())
+		{
+			long row = -1;
+			long col = 0;
+			if (m_godAttribTable->GetCellFromPoint (msg.MouseCoords, &row, &col))
+			{
+				UITableModel * const tm = m_godAttribTable->GetTableModel ();
+				if (tm)
+				{
+					int const logical = tm->GetLogicalDataRowIndex (static_cast<int>(row));
+					if (logical >= 0 && logical < static_cast<int>(m_godAttribClipboardLines.size ()))
+					{
+						UIClipboard::gUIClipboard ().SetText (m_godAttribClipboardLines[static_cast<size_t>(logical)]);
+						return false;
+					}
+				}
+			}
+		}
+	}
+
 	if (msg.Type == UIMessage::DragEnd)
 	{
 		if(m_container && msg.DragObject)

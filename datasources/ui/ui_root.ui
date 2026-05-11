@@ -32,6 +32,7 @@
 	<include>ui_resource.inc</include>
 	<include>ui_mission.inc</include>
 	<include>ui_confirm.inc</include>
+	<include>ui_skill_hybrid.inc</include>
 	<include>ui_game_menu.inc</include>
 	<include>ui_options.inc</include>
 	<include>ui_menu_locations.inc</include>
@@ -43,6 +44,9 @@
 	<include>ui_largeloading.inc</include>
 	<include>ui_structure_placement.inc</include>
 	<include>ui_pda.inc</include>
+	<include>ui_calendar.inc</include>
+	<include>ui_calendar.inc</include>
+	<include>ui_calendar.inc</include>
 	<include>ui_calendar.inc</include>
 	<include>ui_space.inc</include>
 	<include>ui_hud_space.inc</include>
@@ -62,7 +66,7 @@
 	<include>ui_cinematic_conversation.inc</include>
 	<include>ui_scripted.inc</include>
 	<include>ui_messagebox.inc</include>
-	<include>ui_gm_sethue.inc</include>
+	<include>ui_messagebox.inc</include>
 	<include>ui_color_wheel.inc</include>
 	<include>ui_backdrop_default.inc</include>
 	<include>ui_start.inc</include>

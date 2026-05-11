@@ -13,6 +13,7 @@
 #include "clientGame/CreatureObject.h"
 #include "clientGame/Game.h"
 #include "clientGame/GroundScene.h"
+#include "clientGame/PlayerObject.h"
 #include "clientGame/FreeCamera.h"
 #include "clientObject/GameCamera.h"
 #include "clientUserInterface/CuiConversationManager.h"
@@ -23,7 +24,9 @@
 #include "clientUserInterface/CuiPreferences.h"
 #include "clientUserInterface/CuiWidget3dObjectListViewer.h"
 #include "sharedNetworkMessages/MessageQueueNpcConversationCameraCommand.h"
+#include "sharedCollision/CollisionEnums.h"
 #include "sharedCollision/CollisionProperty.h"
+#include "sharedCollision/CollisionWorld.h"
 #include "sharedFoundation/Clock.h"
 #include "sharedMessageDispatch/Transceiver.h"
 #include "sharedFoundation/NetworkId.h"
@@ -51,6 +54,148 @@
 
 namespace
 {
+	CellProperty const * getConversationCellForCamera(CreatureObject const * player, NetworkId const & npcId)
+	{
+		CellProperty const * cell = CellProperty::getWorldCellProperty();
+		if (player && player->getParentCell())
+			cell = player->getParentCell();
+		else if (npcId.isValid())
+		{
+			Object const * npcObj = NetworkIdManager::getObjectById(npcId);
+			if (npcObj && npcObj->getParentCell())
+				cell = npcObj->getParentCell();
+		}
+		return cell;
+	}
+
+	bool isDialogueParticipantExtent(Object const * hit, CreatureObject const * player, NetworkId const & npcId)
+	{
+		if (!hit)
+			return false;
+		Object const * const root = hit->getRootParent();
+		if (!root)
+			return false;
+		if (player && root == player->getRootParent())
+			return true;
+		if (!npcId.isValid())
+			return false;
+		Object const * const npcObj = NetworkIdManager::getObjectById(npcId);
+		return npcObj && root == npcObj->getRootParent();
+	}
+
+	/// Scales face close-up distance / height from approximate standing height (~1.7m human = 1.0).
+	float closeUpHeightScaleFromObject(Object const & obj, float horizontalRadius)
+	{
+		float vertSpan = 0.f;
+		if (CollisionProperty const * const cp = obj.getCollisionProperty())
+		{
+			Sphere const s = cp->getBoundingSphere_w();
+			vertSpan = std::max(vertSpan, 2.f * s.getRadius());
+		}
+
+		Vector const head_o = CuiObjectTextManager::getCurrentObjectHeadPoint_o(obj);
+		Vector const head_w = obj.rotateTranslate_o2w(head_o);
+		float const baseY = obj.getPosition_w().y;
+		vertSpan = std::max(vertSpan, std::max(0.35f, head_w.y - baseY) * 1.1f);
+
+		if (vertSpan < 0.32f)
+			vertSpan = std::max(vertSpan, horizontalRadius * 2.5f);
+
+		float const refH = 1.7f;
+		return std::max(0.88f, std::min(1.52f, vertSpan / refH));
+	}
+
+	/**
+	 * Pull camera only when LOS passes through a dialogue participant's mesh (shorten onto their hull if needed).
+	 * Terrain, buildings, cell hulls, and other statics are ignored — clipping through them is acceptable and
+	 * avoids the camera snapping into geometry on exterior / city conversations.
+	 */
+	void resolveDesiredCameraAgainstCollision(NetworkId const & npcId, Vector const & pivot_w, Vector & ioDesiredCam_w)
+	{
+		CreatureObject const * const player = Game::getPlayerCreature();
+		CellProperty const * const cell = getConversationCellForCamera(player, npcId);
+		if (!cell)
+			return;
+
+		Vector radial = ioDesiredCam_w - pivot_w;
+		float len = radial.magnitude();
+		if (len < 0.04f)
+			return;
+		Vector const dir = radial * (1.0f / len);
+
+		Object const * ignore = nullptr;
+		Vector end = pivot_w + dir * len;
+
+		for (int attempt = 0; attempt < 6; ++attempt)
+		{
+			float hitTime = 1.0f;
+			Object const * hitObject = nullptr;
+			QueryInteractionResult const r = CollisionWorld::queryInteraction(
+				cell, pivot_w,
+				cell, end,
+				ignore,
+				false,
+				false,
+				0.f,
+				0.f,
+				hitTime,
+				hitObject);
+
+			bool const solidHit =
+				r == QIR_HitTerrain
+				|| r == QIR_HitObjectExtent
+				|| r == QIR_HitObjectFloor
+				|| r == QIR_HitCellExtent
+				|| r == QIR_HitCellFloor;
+
+			if (!solidHit || hitTime >= 0.999f)
+				return;
+
+			if (hitObject && isDialogueParticipantExtent(hitObject, player, npcId))
+			{
+				ignore = hitObject->getRootParent();
+				continue;
+			}
+
+			// Not a participant — keep desired camera (may clip static world).
+			return;
+		}
+	}
+
+	/** Look-at near upper torso so the player's full height fits the frame better than head-only CU. */
+	Vector computePlayerReactionFramingLookAt_w()
+	{
+		CreatureObject * const player = Game::getPlayerCreature();
+		if (!player)
+			return Vector::zero;
+
+		Vector head_o = CuiObjectTextManager::getCurrentObjectHeadPoint_o(*player);
+		Vector head_w = player->rotateTranslate_o2w(head_o);
+		head_w.y += 0.12f;
+
+		CollisionProperty const * const cp = player->getCollisionProperty();
+		if (!cp)
+			return player->getPosition_w() * 0.42f + head_w * 0.58f;
+
+		Sphere const s = cp->getBoundingSphere_w();
+		Vector torso = s.getCenter();
+		float const r = s.getRadius();
+		if (r > 0.01f)
+			torso.y += std::max(0.08f, 0.15f * r);
+		return torso * 0.55f + head_w * 0.45f;
+	}
+
+	float computePlayerReactionCameraDistance(CreatureObject const * player)
+	{
+		float const kBaseCloseUpDistance = 1.2f;
+		if (!player)
+			return kBaseCloseUpDistance * 2.1f;
+		float r = player->getAppearanceSphereRadius();
+		if (CollisionProperty const * const cp = player->getCollisionProperty())
+			r = std::max(r, cp->getBoundingSphere_w().getRadius());
+		float const base = kBaseCloseUpDistance * 2.05f;
+		return base + std::max(0.f, r - 0.48f) * 1.55f;
+	}
 	// FreeChaseCamera::alter() overwrites raw GameCamera transforms every frame while CI_freeChase is active.
 	// Drive the god FreeCamera (CI_free) with pivot framing (same intent as the legacy npc conversation path).
 	//
@@ -81,7 +226,10 @@ namespace
 
 		alignFreeCameraToConversationCell(freeCamera, npcId);
 
-		Vector const dv = lookAt - camPos;
+		Vector resolvedCam = camPos;
+		resolveDesiredCameraAgainstCollision(npcId, lookAt, resolvedCam);
+
+		Vector const dv = lookAt - resolvedCam;
 		float const dist = dv.magnitude();
 		if (dist < 0.001f)
 			return;
@@ -93,6 +241,7 @@ namespace
 		freeCamera->setYaw(static_cast<real>(dv.theta()));
 		freeCamera->setPitch(static_cast<real>(dv.phi()));
 	}
+
 }
 
 //======================================================================
@@ -100,17 +249,19 @@ namespace
 namespace SwgCuiCinematicConversationNamespace
 {
 	// Animation constants
-	float const LETTERBOX_HEIGHT = 80.0f;
-	float const LETTERBOX_ANIMATION_DURATION = 0.5f;
-	float const DEFAULT_CAMERA_TRANSITION_DURATION = 1.0f;
+	float const LETTERBOX_HEIGHT = 76.0f;
+	float const LETTERBOX_ANIMATION_DURATION = 0.52f;
+	float const DEFAULT_CAMERA_TRANSITION_DURATION = 0.44f;
+	/// When the server omits duration on scripted look-at, avoid instant snaps through terrain.
+	float const SCRIPTED_LOOKAT_DEFAULT_DURATION = 1.15f;
 	float const SHOT_HOLD_TIME_MIN = 4.0f;
 	float const SHOT_HOLD_TIME_MAX = 8.0f;
 	// VO-style subtitle pacing (~220-260 wpm at English word lengths); scales slightly with line length.
-	float const TYPEWRITER_CHARS_PER_SECOND_BASE = 34.0f;
+	float const TYPEWRITER_CHARS_PER_SECOND_BASE = 36.0f;
 	float const TYPEWRITER_CHARS_PER_SECOND_MIN = 26.0f;
 	float const TYPEWRITER_CHARS_PER_SECOND_MAX = 44.0f;
 	// Tighter than legacy close-up: face fills frame more like KOTOR dialog framing.
-	float const CLOSE_UP_FACE_DISTANCE = 0.92f;
+	float const CLOSE_UP_FACE_DISTANCE = 0.87f;
 	float const CLOSE_UP_FACE_SIDE_OFFSET = 0.14f;
 	float const CLOSE_UP_FACE_CAMERA_Y_BIAS = 0.05f;
 	float const FACE_FOCUS_HEAD_Y_BIAS = 0.04f;
@@ -120,7 +271,9 @@ namespace SwgCuiCinematicConversationNamespace
 	float const TYPEWRITER_PAUSE_AFTER_ELLIPSIS = 5.0f;
 	float const TYPEWRITER_PAUSE_AFTER_SIX_DOTS = 6.0f;
 	/// After player line finishes printing, hold reaction camera this long before NPC line + new responses.
-	float const REACTION_POST_TYPEWRITER_BUFFER_SEC = 1.35f;
+	float const REACTION_POST_TYPEWRITER_BUFFER_SEC = 1.25f;
+	/// Direct face framing for automatic dialogue; short cut (not the slower establishing / scripted transitions).
+	float const FACE_DIALOGUE_TRANSITION_SEC = 0.17f;
 	long const RESPONSE_ROW_STRIDE_PX = 23L;
 
 	// Response prefix mappings
@@ -208,6 +361,34 @@ void SwgCuiCinematicConversation::executeCloseFromConversationManager()
 
 //----------------------------------------------------------------------
 
+void SwgCuiCinematicConversation::dispatchConversationKeystrokeFromManager(unsigned short const keystroke)
+{
+	SwgCuiCinematicConversation * const self = ms_cameraCommandTarget;
+	if (!self || !ms_enabled)
+		return;
+	if (!self->CuiMediator::isActive())
+		return;
+
+	UIMessage msg;
+	msg.Type = UIMessage::KeyDown;
+	msg.Keystroke = keystroke;
+	msg.Data = 0;
+	self->OnMessage(&self->getPage(), msg);
+}
+
+//----------------------------------------------------------------------
+
+bool SwgCuiCinematicConversation::scriptedLookAtOrbitPredicateThunk()
+{
+	if (!ms_cameraCommandTarget)
+		return false;
+	return ms_cameraCommandTarget->m_scriptedLookAtFramingActive
+		&& ms_cameraCommandTarget->m_cameraControlActive
+		&& !ms_cameraCommandTarget->m_cameraTransitioning;
+}
+
+//----------------------------------------------------------------------
+
 float SwgCuiCinematicConversation::easeInOutCubic(float t)
 {
 	return t < 0.5f
@@ -215,11 +396,15 @@ float SwgCuiCinematicConversation::easeInOutCubic(float t)
 		: 1.0f - std::pow(-2.0f * t + 2.0f, 3.0f) / 2.0f;
 }
 
-//----------------------------------------------------------------------
-
-float SwgCuiCinematicConversation::easeOutQuad(float t)
+static float easeInCubicLocal(float t)
 {
-	return 1.0f - (1.0f - t) * (1.0f - t);
+	return t * t * t;
+}
+
+static float easeOutCubicLocal(float t)
+{
+	float const u = 1.0f - t;
+	return 1.0f - u * u * u;
 }
 
 //----------------------------------------------------------------------
@@ -238,6 +423,11 @@ m_responseScrollbar(nullptr),
 m_npcViewerPage(nullptr),
 m_npcViewer(nullptr),
 m_endConversationButton(nullptr),
+m_responsePagePrevButton(nullptr),
+m_responsePageNextButton(nullptr),
+m_responsePageLabel(nullptr),
+m_scriptedLookAtCameraHint(nullptr),
+m_gmCinematicBadge(nullptr),
 m_responseClonePrototype(nullptr),
 m_cachedUILayoutValid(false),
 m_cachedDialoguePanelSize(),
@@ -247,11 +437,14 @@ m_cachedResponsePanelLocation(),
 m_cachedEndButtonLocation(),
 m_targetNpcId(),
 m_currentResponses(),
+m_responsePageStart(0),
 m_deferCloseUntilUpdate(false),
 m_letterboxAnimationTime(0.0f),
 m_letterboxTargetHeight(0.0f),
 m_currentLetterboxHeight(0.0f),
+m_letterboxAnimationStartHeight(0.0f),
 m_letterboxAnimating(false),
+m_hidePageAfterLetterboxOut(false),
 m_cameraControlActive(false),
 m_savedCameraView(0),
 m_savedCameraTransform(),
@@ -268,6 +461,7 @@ m_currentShotType(CST_CloseUp),
 m_shotHoldTime(SHOT_HOLD_TIME_MIN),
 m_timeSinceLastShotChange(0.0f),
 	m_savedHudEnabled(true),
+	m_deferHudRestoreUntilLetterboxOut(false),
 	m_playerReactionHoldActive(false),
 	m_playerReactionBeatPending(false),
 	m_reactionPostLineBufferRemaining(-1.f),
@@ -293,6 +487,23 @@ m_timeSinceLastShotChange(0.0f),
 	getCodeDataObject(TUIPage, m_responsePanel, "responsePanel");
 	getCodeDataObject(TUIScrollbar, m_responseScrollbar, "responseScrollbar", true);
 	getCodeDataObject(TUIButton, m_endConversationButton, "endConversation");
+	getCodeDataObject(TUIButton, m_responsePagePrevButton, "responsePagePrev", true);
+	getCodeDataObject(TUIButton, m_responsePageNextButton, "responsePageNext", true);
+	getCodeDataObject(TUIText, m_responsePageLabel, "responsePageLabel", true);
+	getCodeDataObject(TUIText, m_scriptedLookAtCameraHint, "scriptedLookAtCameraHint", true);
+	if (m_scriptedLookAtCameraHint)
+	{
+		m_scriptedLookAtCameraHint->SetLocalText(Unicode::narrowToWide(
+			"Shift + mouse to pan   |   Shift + scroll to zoom"));
+		m_scriptedLookAtCameraHint->SetVisible(false);
+	}
+	getCodeDataObject(TUIText, m_gmCinematicBadge, "gmCinematicBadge", true);
+	if (m_gmCinematicBadge)
+	{
+		m_gmCinematicBadge->SetLocalText(Unicode::narrowToWide("*GM*"));
+		m_gmCinematicBadge->SetPreLocalized(true);
+		m_gmCinematicBadge->SetVisible(false);
+	}
 
 	// Get optional NPC viewer (KOTOR style has no portrait)
 	UIBaseObject * viewerObj = nullptr;
@@ -347,6 +558,10 @@ m_timeSinceLastShotChange(0.0f),
 	{
 		registerMediatorObject(*m_endConversationButton, true);
 	}
+	if (m_responsePagePrevButton)
+		registerMediatorObject(*m_responsePagePrevButton, true);
+	if (m_responsePageNextButton)
+		registerMediatorObject(*m_responsePageNextButton, true);
 
 	if (m_dialoguePanel)
 	{
@@ -364,18 +579,22 @@ m_timeSinceLastShotChange(0.0f),
 
 	registerMediatorObject(getPage(), true);
 
-	// Initialize letterbox to hidden
+	// Initialize letterbox to hidden (size + fade — animated in on activate)
 	if (m_letterboxTop)
 	{
 		UISize size = m_letterboxTop->GetSize();
 		size.y = 0;
 		m_letterboxTop->SetSize(size);
+		m_letterboxTop->SetOpacity(0.0f);
+		m_letterboxTop->SetBackgroundOpacity(0.0f);
 	}
 	if (m_letterboxBottom)
 	{
 		UISize size = m_letterboxBottom->GetSize();
 		size.y = 0;
 		m_letterboxBottom->SetSize(size);
+		m_letterboxBottom->SetOpacity(0.0f);
+		m_letterboxBottom->SetBackgroundOpacity(0.0f);
 	}
 
 	// So embedded/workspace close paths can dismiss this page (same pattern as SwgCuiTrade / Vendor).
@@ -387,12 +606,16 @@ m_timeSinceLastShotChange(0.0f),
 
 SwgCuiCinematicConversation::~SwgCuiCinematicConversation()
 {
+	applyDeferredHudRestoreIfNeeded();
+
 	releaseDynamicResponseSlots();
 
 	if (ms_cameraCommandTarget == this)
 	{
 		CuiConversationManager::setCloseCinematicUiHandler(nullptr);
 		CuiConversationManager::setActiveCinematicMediatorAccessor(nullptr);
+		CuiConversationManager::setCinematicScriptedLookAtOrbitPredicate(nullptr);
+		CuiConversationManager::setCinematicConversationKeystrokeHandler(nullptr);
 		CuiConversationManager::setCameraCommandHandler(nullptr);
 		ms_cameraCommandTarget = nullptr;
 	}
@@ -404,6 +627,8 @@ SwgCuiCinematicConversation::~SwgCuiCinematicConversation()
 
 void SwgCuiCinematicConversation::performActivate()
 {
+	applyDeferredHudRestoreIfNeeded();
+
 	setStickyVisible(true);
 	CuiConversationManager::setCinematicConversationUiActive(true);
 
@@ -424,6 +649,9 @@ void SwgCuiCinematicConversation::performActivate()
 	m_deferIncomingNpcSubtitle = false;
 	m_deferredNpcSubtitle.clear();
 	m_scriptedLookAtFramingActive = false;
+	m_hidePageAfterLetterboxOut = false;
+	m_deferHudRestoreUntilLetterboxOut = false;
+	m_responsePageStart = 0;
 	if (Game::getHudSceneType() == Game::ST_ground)
 	{
 		SwgCuiHud * const hud = SwgCuiHudFactory::findMediatorForCurrentHud();
@@ -446,8 +674,11 @@ void SwgCuiCinematicConversation::performActivate()
 	CuiConversationManager::setCloseCinematicUiHandler(&SwgCuiCinematicConversation::executeCloseFromConversationManager);
 	CuiConversationManager::setActiveCinematicMediatorAccessor(&SwgCuiCinematicConversation::provideActiveInstanceForConversationManager);
 	CuiConversationManager::setCameraCommandHandler(&SwgCuiCinematicConversation::handleCameraCommand);
+	CuiConversationManager::setCinematicScriptedLookAtOrbitPredicate(&SwgCuiCinematicConversation::scriptedLookAtOrbitPredicateThunk);
+	CuiConversationManager::setCinematicConversationKeystrokeHandler(&SwgCuiCinematicConversation::dispatchConversationKeystrokeFromManager);
 
-	// Start letterbox animation
+	// Start letterbox animation (slide + fade from screen top / bottom)
+	m_letterboxAnimationStartHeight = m_currentLetterboxHeight;
 	m_letterboxTargetHeight = LETTERBOX_HEIGHT;
 	m_letterboxAnimating = true;
 	m_letterboxAnimationTime = 0.0f;
@@ -493,12 +724,12 @@ void SwgCuiCinematicConversation::performDeactivate()
 {
 	CuiConversationManager::setCloseCinematicUiHandler(nullptr);
 
-	setIsUpdating(false);
 	m_deferCloseUntilUpdate = false;
 
 	m_scriptedLookAtFramingActive = false;
 
-	m_typewriterActive = false;
+	if (m_scriptedLookAtCameraHint)
+		m_scriptedLookAtCameraHint->SetVisible(false);
 	m_typewriterFullText.clear();
 	m_typewriterRevealLength = 0;
 	m_typewriterCharAccumulator = 0.0f;
@@ -521,6 +752,8 @@ void SwgCuiCinematicConversation::performDeactivate()
 	restoreDialogueUILayout();
 	releaseDynamicResponseSlots();
 
+	CuiConversationManager::setCinematicConversationKeystrokeHandler(nullptr);
+	CuiConversationManager::setCinematicScriptedLookAtOrbitPredicate(nullptr);
 	CuiConversationManager::setCameraCommandHandler(nullptr);
 	ms_cameraCommandTarget = nullptr;
 
@@ -530,11 +763,17 @@ void SwgCuiCinematicConversation::performDeactivate()
 
 	CuiConversationManager::setCinematicConversationUiActive(false);
 
+	m_deferHudRestoreUntilLetterboxOut = false;
 	if (Game::getHudSceneType() == Game::ST_ground)
 	{
 		SwgCuiHud * const hud = SwgCuiHudFactory::findMediatorForCurrentHud();
 		if (hud)
-			hud->setHudEnabled(m_savedHudEnabled);
+		{
+			if (m_currentLetterboxHeight > 0.5f)
+				m_deferHudRestoreUntilLetterboxOut = true;
+			else
+				hud->setHudEnabled(m_savedHudEnabled);
+		}
 	}
 
 	setStickyVisible(false);
@@ -545,10 +784,22 @@ void SwgCuiCinematicConversation::performDeactivate()
 	// Release pointer
 	CuiManager::requestPointer(false);
 
-	// Animate letterbox out
-	m_letterboxTargetHeight = 0.0f;
-	m_letterboxAnimating = true;
-	m_letterboxAnimationTime = 0.0f;
+	// Parent deactivate() hid the page before this runs; letterbox bars need a visible page to render.
+	m_hidePageAfterLetterboxOut = false;
+	if (m_currentLetterboxHeight > 0.5f)
+	{
+		getPage().SetVisible(true);
+		m_hidePageAfterLetterboxOut = true;
+		m_letterboxAnimationStartHeight = m_currentLetterboxHeight;
+		m_letterboxTargetHeight = 0.0f;
+		m_letterboxAnimating = true;
+		m_letterboxAnimationTime = 0.0f;
+		setIsUpdating(true);
+	}
+	else
+	{
+		m_letterboxAnimating = false;
+	}
 
 	// Clear viewer
 	if (m_npcViewer)
@@ -557,6 +808,9 @@ void SwgCuiCinematicConversation::performDeactivate()
 	}
 
 	CuiMediator::performDeactivate();
+
+	if (!m_hidePageAfterLetterboxOut)
+		setIsUpdating(false);
 }
 
 //----------------------------------------------------------------------
@@ -592,6 +846,30 @@ bool SwgCuiCinematicConversation::OnMessage(UIWidget * /*context*/, UIMessage co
 			return true;
 		}
 	}
+	if (msg.Type == UIMessage::KeyDown)
+	{
+		unsigned short const ks = msg.Keystroke;
+		size_t const total = m_currentResponses.size();
+		size_t const totalPages =
+			(total == 0u)
+				? 1u
+				: (total + static_cast<size_t>(RESPONSES_PER_PAGE) - 1u) / static_cast<size_t>(RESPONSES_PER_PAGE);
+		if (totalPages > 1u)
+		{
+			if (ks == static_cast<unsigned short>('-') || ks == static_cast<unsigned short>('_'))
+			{
+				changeResponsePage(-1);
+				return true;
+			}
+			if (ks == static_cast<unsigned short>('=') || ks == static_cast<unsigned short>('+'))
+			{
+				changeResponsePage(1);
+				return true;
+			}
+		}
+		if (trySelectResponseByNumberKey(ks))
+			return true;
+	}
 	return true;
 }
 
@@ -625,8 +903,11 @@ void SwgCuiCinematicConversation::initializeCameraControl()
 
 	if (player && npcObj)
 	{
-		calculateTwoShot(framingPos, framingLookAt);
-		m_currentShotType = CST_TwoShot;
+		if (useWideOpenFaceEstablishingShot())
+			calculateWideOpenFaceShot(framingPos, framingLookAt);
+		else
+			calculateCloseUpShot(framingPos, framingLookAt);
+		m_currentShotType = CST_CloseUp;
 	}
 	else if (npcObj)
 	{
@@ -799,14 +1080,17 @@ void SwgCuiCinematicConversation::calculateCloseUpShot(Vector & outCameraPos, Ve
 	outLookAt = computeNpcDialogueFramingPosition();
 
 	float distScale = 1.f;
+	float horizR = 0.5f;
 	{
-		float r = targetObj->getAppearanceSphereRadius();
+		horizR = targetObj->getAppearanceSphereRadius();
 		CollisionProperty const * const cp = targetObj->getCollisionProperty();
 		if (cp)
-			r = std::max(r, cp->getBoundingSphere_w().getRadius());
-		if (r > HUMANOID_CLOSEUP_RADIUS_CAP)
-			distScale = std::max(1.f, r / HUMANOID_CLOSEUP_RADIUS_CAP);
+			horizR = std::max(horizR, cp->getBoundingSphere_w().getRadius());
+		if (horizR > HUMANOID_CLOSEUP_RADIUS_CAP)
+			distScale = std::max(1.f, horizR / HUMANOID_CLOSEUP_RADIUS_CAP);
 	}
+
+	float const hScale = closeUpHeightScaleFromObject(*targetObj, horizR);
 
 	// Camera sits on the conversation side of the face (toward the player), not behind the head.
 	// Object K points where the creature faces; offset +K moves from the face toward who they're talking to.
@@ -830,11 +1114,70 @@ void SwgCuiCinematicConversation::calculateCloseUpShot(Vector & outCameraPos, Ve
 	if (npcRight.magnitude() > 0.001f)
 		npcRight.normalize();
 
-	float const faceDist = CLOSE_UP_FACE_DISTANCE * distScale;
-	float const sideOff = CLOSE_UP_FACE_SIDE_OFFSET * std::min(distScale, 1.35f);
-	float const yBias = CLOSE_UP_FACE_CAMERA_Y_BIAS * std::min(distScale, 1.25f);
+	float const faceDist = CLOSE_UP_FACE_DISTANCE * distScale * hScale;
+	float const sideOff = CLOSE_UP_FACE_SIDE_OFFSET * std::min(distScale * hScale, 1.48f);
+	float const yBias = CLOSE_UP_FACE_CAMERA_Y_BIAS * std::min(distScale * hScale, 1.38f);
 
 	outCameraPos = outLookAt + npcForward * faceDist + npcRight * sideOff;
+	outCameraPos.y = outLookAt.y + yBias;
+}
+
+//----------------------------------------------------------------------
+
+void SwgCuiCinematicConversation::calculatePlayerFaceCloseUpShot(Vector & outCameraPos, Vector & outLookAt) const
+{
+	CreatureObject * const player = Game::getPlayerCreature();
+	Object * const npcObj = NetworkIdManager::getObjectById(m_targetNpcId);
+	if (!player || !npcObj)
+	{
+		outCameraPos = m_currentCameraPos;
+		outLookAt = m_currentCameraLookAt;
+		return;
+	}
+
+	Vector head_o = CuiObjectTextManager::getCurrentObjectHeadPoint_o(*player);
+	outLookAt = player->rotateTranslate_o2w(head_o);
+	outLookAt.y += FACE_FOCUS_HEAD_Y_BIAS;
+
+	float distScale = 1.f;
+	float horizR = 0.48f;
+	{
+		horizR = player->getAppearanceSphereRadius();
+		if (CollisionProperty const * const cp = player->getCollisionProperty())
+			horizR = std::max(horizR, cp->getBoundingSphere_w().getRadius());
+		if (horizR > HUMANOID_CLOSEUP_RADIUS_CAP)
+			distScale = std::max(1.f, horizR / HUMANOID_CLOSEUP_RADIUS_CAP);
+	}
+
+	float const hScale = closeUpHeightScaleFromObject(*player, horizR);
+
+	Vector towardNpc = computeNpcDialogueFramingPosition() - outLookAt;
+	towardNpc.y = 0.f;
+	float tn = towardNpc.magnitude();
+	if (tn < 0.001f)
+	{
+		Vector k = player->getObjectFrameK_w();
+		k.y = 0.f;
+		if (k.magnitude() > 0.001f)
+			towardNpc = k * (1.0f / k.magnitude());
+		else
+			towardNpc = Vector::unitZ;
+	}
+	else
+		towardNpc *= 1.0f / tn;
+
+	Vector playerRight = player->getObjectFrameI_w();
+	playerRight.y = 0.f;
+	if (playerRight.magnitude() > 0.001f)
+		playerRight.normalize();
+	else
+		playerRight = Vector::unitX;
+
+	float const faceDist = CLOSE_UP_FACE_DISTANCE * distScale * hScale;
+	float const sideOff = CLOSE_UP_FACE_SIDE_OFFSET * std::min(distScale * hScale, 1.48f);
+	float const yBias = CLOSE_UP_FACE_CAMERA_Y_BIAS * std::min(distScale * hScale, 1.38f);
+
+	outCameraPos = outLookAt + towardNpc * faceDist + playerRight * sideOff;
 	outCameraPos.y = outLookAt.y + yBias;
 }
 
@@ -980,6 +1323,100 @@ void SwgCuiCinematicConversation::calculateOverShoulderShot(Vector & outCameraPo
 
 //----------------------------------------------------------------------
 
+void SwgCuiCinematicConversation::calculateAxisDialogueShot(bool npcSpeaking, Vector & outCameraPos, Vector & outLookAt) const
+{
+	CreatureObject * const player = Game::getPlayerCreature();
+	Object * const npcObj = NetworkIdManager::getObjectById(m_targetNpcId);
+	if (!player || !npcObj)
+	{
+		outCameraPos = m_currentCameraPos;
+		outLookAt = m_currentCameraLookAt;
+		return;
+	}
+
+	Vector const playerFraming = computePlayerReactionFramingLookAt_w();
+	Vector const npcFraming = computeNpcDialogueFramingPosition();
+
+	Vector pn = npcFraming - playerFraming;
+	pn.y = 0.f;
+	float const sep = pn.magnitude();
+	if (sep < 0.08f)
+	{
+		if (npcSpeaking)
+			calculateCloseUpShot(outCameraPos, outLookAt);
+		else
+		{
+			outLookAt = playerFraming;
+			Vector playerForward = player->getObjectFrameK_w();
+			playerForward.y = 0.f;
+			if (playerForward.magnitude() < 0.001f)
+				playerForward = Vector::unitZ;
+			else
+				playerForward.normalize();
+			float const camDist = computePlayerReactionCameraDistance(player);
+			outCameraPos = outLookAt + playerForward * camDist;
+			outCameraPos.y = outLookAt.y + 0.22f;
+		}
+		return;
+	}
+	pn *= 1.0f / sep;
+
+	Vector perp(-pn.z, 0.f, pn.x);
+	float const pm = perp.magnitude();
+	if (pm > 0.001f)
+		perp *= 1.0f / pm;
+	else
+		perp = Vector::unitX;
+
+	Vector const mid = (playerFraming + npcFraming) * 0.5f;
+	float const sideDist = std::max(2.0f, std::min(5.4f, sep * 0.48f + 1.48f));
+
+	Vector const candPos[2] = { mid + perp * sideDist, mid - perp * sideDist };
+
+	auto axisFacingScore = [&](Vector const & cam, Vector const & subject, Vector const & flatTowardOther) -> float
+	{
+		Vector vc = cam - subject;
+		vc.y = 0.f;
+		Vector vo = flatTowardOther;
+		vo.y = 0.f;
+		float const c1 = vc.magnitude();
+		float const c2 = vo.magnitude();
+		if (c1 < 0.06f || c2 < 0.06f)
+			return -1.0e6f;
+		vc *= 1.0f / c1;
+		vo *= 1.0f / c2;
+		return vc.dot(vo);
+	};
+
+	Vector const towardPlayerFlat = playerFraming - npcFraming;
+	Vector const towardNpcFlat = npcFraming - playerFraming;
+
+	if (npcSpeaking)
+	{
+		outLookAt = npcFraming;
+		float const s0 = axisFacingScore(candPos[0], npcFraming, towardPlayerFlat);
+		float const s1 = axisFacingScore(candPos[1], npcFraming, towardPlayerFlat);
+		outCameraPos = s0 >= s1 ? candPos[0] : candPos[1];
+	}
+	else
+	{
+		outLookAt = playerFraming;
+		float const s0 = axisFacingScore(candPos[0], playerFraming, towardNpcFlat);
+		float const s1 = axisFacingScore(candPos[1], playerFraming, towardNpcFlat);
+		outCameraPos = s0 >= s1 ? candPos[0] : candPos[1];
+	}
+
+	outCameraPos.y = mid.y + 0.42f;
+
+	Vector pullTowardMid = mid - outCameraPos;
+	pullTowardMid.y = 0.f;
+	float const pullMag = pullTowardMid.magnitude();
+	if (pullMag > 0.02f)
+		outCameraPos = outCameraPos + pullTowardMid * (0.14f / pullMag);
+}
+
+//----------------------------------------------------------------------
+
 void SwgCuiCinematicConversation::calculateTwoShot(Vector & outCameraPos, Vector & outLookAt) const
 {
 	CreatureObject * const player = Game::getPlayerCreature();
@@ -1066,7 +1503,10 @@ void SwgCuiCinematicConversation::setCameraShot(CameraShotType shotType, float t
 	switch (shotType)
 	{
 	case CST_CloseUp:
-		calculateCloseUpShot(targetPos, targetLookAt);
+		if (useWideOpenFaceEstablishingShot())
+			calculateWideOpenFaceShot(targetPos, targetLookAt);
+		else
+			calculateCloseUpShot(targetPos, targetLookAt);
 		break;
 	case CST_MediumShot:
 		calculateMediumShot(targetPos, targetLookAt);
@@ -1078,42 +1518,7 @@ void SwgCuiCinematicConversation::setCameraShot(CameraShotType shotType, float t
 		calculateTwoShot(targetPos, targetLookAt);
 		break;
 	case CST_Reaction:
-		// For reaction shot, look at the player instead
-		{
-			CreatureObject * const player = Game::getPlayerCreature();
-			if (player)
-			{
-				targetLookAt = computePlayerPosition();
-				Vector playerForward = player->getObjectFrameK_w();
-				playerForward.y = 0.f;
-				if (playerForward.magnitude() < 0.001f)
-				{
-					Object * const npcObj = NetworkIdManager::getObjectById(m_targetNpcId);
-					if (npcObj)
-					{
-						Vector towardNpc = computeNpcDialogueFramingPosition() - targetLookAt;
-						towardNpc.y = 0.f;
-						float const tn = towardNpc.magnitude();
-						if (tn > 0.001f)
-							playerForward = towardNpc / tn;
-						else
-							playerForward = Vector::unitZ;
-					}
-					else
-						playerForward = Vector::unitZ;
-				}
-				else
-					playerForward.normalize();
-				// Same convention as NPC CU: +forward places the camera toward the person they're facing (see face).
-				targetPos = targetLookAt + playerForward * CLOSE_UP_DISTANCE;
-				targetPos.y = targetLookAt.y + 0.1f;
-			}
-			else
-			{
-				targetPos = m_currentCameraPos;
-				targetLookAt = m_currentCameraLookAt;
-			}
-		}
+		calculatePlayerFaceCloseUpShot(targetPos, targetLookAt);
 		break;
 	}
 
@@ -1161,6 +1566,8 @@ void SwgCuiCinematicConversation::update(float deltaTimeSecs)
 	updateLetterbox(deltaTimeSecs);
 	updateNpcMessageTypewriter(deltaTimeSecs);
 	updateCameraFocus(deltaTimeSecs);
+	updateScriptedLookAtCameraHint();
+	updateGmCinematicBadge();
 }
 
 //----------------------------------------------------------------------
@@ -1171,37 +1578,100 @@ void SwgCuiCinematicConversation::updateLetterbox(float deltaTime)
 		return;
 
 	m_letterboxAnimationTime += deltaTime;
-	float t = std::min(m_letterboxAnimationTime / LETTERBOX_ANIMATION_DURATION, 1.0f);
-	t = easeInOutCubic(t);
+	float const tRaw = std::min(m_letterboxAnimationTime / LETTERBOX_ANIMATION_DURATION, 1.0f);
 
-	float startHeight = m_currentLetterboxHeight;
-	float targetHeight = m_letterboxTargetHeight;
-	float newHeight = startHeight + (targetHeight - startHeight) * t;
+	bool const opening = m_letterboxTargetHeight > m_letterboxAnimationStartHeight + 0.5f;
+	float const tPos = opening ? easeOutCubicLocal(tRaw) : easeInCubicLocal(tRaw);
 
-	// Only update if there's a meaningful change
-	if (std::fabs(newHeight - m_currentLetterboxHeight) > 0.01f || m_letterboxAnimationTime >= LETTERBOX_ANIMATION_DURATION)
+	float const newHeight = m_letterboxAnimationStartHeight
+		+ (m_letterboxTargetHeight - m_letterboxAnimationStartHeight) * tPos;
+
+	float o = opening ? easeOutCubicLocal(std::min(1.f, tRaw * 1.2f)) : (1.0f - easeOutCubicLocal(tRaw));
+	o = std::max(0.0f, std::min(1.0f, o));
+
+	m_currentLetterboxHeight = newHeight;
+
+	if (m_letterboxTop)
 	{
-		m_currentLetterboxHeight = newHeight;
-
-		if (m_letterboxTop)
-		{
-			UISize size = m_letterboxTop->GetSize();
-			size.y = static_cast<long>(newHeight);
-			m_letterboxTop->SetSize(size);
-		}
-		if (m_letterboxBottom)
-		{
-			UISize size = m_letterboxBottom->GetSize();
-			size.y = static_cast<long>(newHeight);
-			m_letterboxBottom->SetSize(size);
-		}
+		UISize size = m_letterboxTop->GetSize();
+		size.y = static_cast<long>(newHeight);
+		m_letterboxTop->SetSize(size);
+		m_letterboxTop->SetOpacity(o);
+		m_letterboxTop->SetBackgroundOpacity(o);
+	}
+	if (m_letterboxBottom)
+	{
+		UISize size = m_letterboxBottom->GetSize();
+		size.y = static_cast<long>(newHeight);
+		m_letterboxBottom->SetSize(size);
+		m_letterboxBottom->SetOpacity(o);
+		m_letterboxBottom->SetBackgroundOpacity(o);
 	}
 
 	if (m_letterboxAnimationTime >= LETTERBOX_ANIMATION_DURATION)
 	{
 		m_letterboxAnimating = false;
-		m_currentLetterboxHeight = targetHeight;
+		m_currentLetterboxHeight = m_letterboxTargetHeight;
+		if (m_letterboxTargetHeight <= 0.5f)
+		{
+			if (m_letterboxTop)
+			{
+				m_letterboxTop->SetOpacity(0.0f);
+				m_letterboxTop->SetBackgroundOpacity(0.0f);
+			}
+			if (m_letterboxBottom)
+			{
+				m_letterboxBottom->SetOpacity(0.0f);
+				m_letterboxBottom->SetBackgroundOpacity(0.0f);
+			}
+			if (m_hidePageAfterLetterboxOut)
+			{
+				m_hidePageAfterLetterboxOut = false;
+				getPage().SetVisible(false);
+				setIsUpdating(false);
+				applyDeferredHudRestoreIfNeeded();
+			}
+		}
 	}
+}
+
+//----------------------------------------------------------------------
+
+void SwgCuiCinematicConversation::applyDeferredHudRestoreIfNeeded()
+{
+	if (!m_deferHudRestoreUntilLetterboxOut)
+		return;
+
+	m_deferHudRestoreUntilLetterboxOut = false;
+
+	if (Game::getHudSceneType() == Game::ST_ground)
+	{
+		SwgCuiHud * const hud = SwgCuiHudFactory::findMediatorForCurrentHud();
+		if (hud)
+			hud->setHudEnabled(m_savedHudEnabled);
+	}
+}
+
+//----------------------------------------------------------------------
+
+void SwgCuiCinematicConversation::updateScriptedLookAtCameraHint()
+{
+	if (!m_scriptedLookAtCameraHint)
+		return;
+
+	bool const show = m_cameraControlActive && m_scriptedLookAtFramingActive;
+	m_scriptedLookAtCameraHint->SetVisible(show);
+}
+
+//----------------------------------------------------------------------
+
+void SwgCuiCinematicConversation::updateGmCinematicBadge()
+{
+	if (!m_gmCinematicBadge)
+		return;
+
+	bool const show = PlayerObject::isAdmin() && CuiConversationManager::isCinematicConversationUiActive();
+	m_gmCinematicBadge->SetVisible(show);
 }
 
 //----------------------------------------------------------------------
@@ -1229,7 +1699,7 @@ void SwgCuiCinematicConversation::cacheDialogueUILayout()
 
 //----------------------------------------------------------------------
 
-void SwgCuiCinematicConversation::applyDialogueLayoutForResponseCount(size_t responseCount)
+void SwgCuiCinematicConversation::applyDialogueLayoutForResponseCount(size_t visibleRowsOnPage)
 {
 	cacheDialogueUILayout();
 	if (!m_cachedUILayoutValid || !m_responsePanel)
@@ -1239,7 +1709,8 @@ void SwgCuiCinematicConversation::applyDialogueLayoutForResponseCount(size_t res
 	m_responsePanel->SetSize(viewportSize);
 	m_responsePanel->SetLocation(m_cachedResponsePanelLocation);
 
-	long const contentHeight = static_cast<long>(responseCount) * RESPONSE_ROW_STRIDE_PX;
+	long const rows = static_cast<long>(std::min(visibleRowsOnPage, static_cast<size_t>(RESPONSES_PER_PAGE)));
+	long const contentHeight = rows * RESPONSE_ROW_STRIDE_PX;
 	UISize scrollExtent = viewportSize;
 	scrollExtent.y = std::max(viewportSize.y, contentHeight);
 	m_responsePanel->SetScrollExtent(scrollExtent);
@@ -1292,15 +1763,10 @@ void SwgCuiCinematicConversation::restoreDialogueUILayout()
 
 void SwgCuiCinematicConversation::updateResponseScrollbarVisibility()
 {
-	if (!m_responseScrollbar || !m_responsePanel)
+	if (!m_responseScrollbar)
 		return;
-
-	UISize viewSize = m_responsePanel->GetSize();
-	UISize scrollExtent;
-	m_responsePanel->GetScrollExtent(scrollExtent);
-
-	bool const needsScroll = scrollExtent.y > viewSize.y || scrollExtent.x > viewSize.x;
-	m_responseScrollbar->SetVisible(needsScroll);
+	// Pagination replaces vertical scrolling of the response list.
+	m_responseScrollbar->SetVisible(false);
 }
 
 //----------------------------------------------------------------------
@@ -1382,12 +1848,17 @@ bool SwgCuiCinematicConversation::isNpcLinePrintingLocked() const
 void SwgCuiCinematicConversation::updateResponseAvailabilityForTypewriter()
 {
 	bool const allow = !isNpcLinePrintingLocked();
+	size_t const visibleOnPage =
+		(m_currentResponses.size() <= m_responsePageStart)
+			? 0u
+			: std::min(static_cast<size_t>(RESPONSES_PER_PAGE), m_currentResponses.size() - m_responsePageStart);
 	for (size_t i = 0; i < m_responseSlots.size(); ++i)
 	{
 		ResponseSlot & slot = m_responseSlots[i];
 		if (!slot.button)
 			continue;
-		bool const slotInUse = i < m_currentResponses.size() && slot.page;
+		bool const slotInUse =
+			i < static_cast<size_t>(RESPONSES_PER_PAGE) && i < visibleOnPage && slot.page;
 		bool const enable = allow && slotInUse;
 		slot.button->SetEnabled(enable);
 		// Restore hit-test / paint order after toggling Enabled (UIButton should stay above sibling UIText rows).
@@ -1450,7 +1921,7 @@ void SwgCuiCinematicConversation::flushPlayerReactionBeat()
 	if (!npcLine.empty())
 		setNpcMessage(npcLine);
 
-	if (m_haveDeferredBranchResponses)
+	if (m_haveDeferredBranchResponses && !m_deferredBranchResponses.empty())
 		setResponses(m_deferredBranchResponses);
 	else
 	{
@@ -1515,16 +1986,28 @@ void SwgCuiCinematicConversation::applyTypewriterPauseAfterReveal(size_t newReve
 
 void SwgCuiCinematicConversation::beginNpcMessageTypewriter(Unicode::String const & message)
 {
+	if (message.empty())
+	{
+		m_typewriterFullText.clear();
+		m_typewriterRevealLength = 0;
+		m_typewriterCharAccumulator = 0.0f;
+		m_typewriterPauseRemaining = 0.0f;
+		m_typewriterActive = false;
+		if (m_npcMessageText)
+			m_npcMessageText->SetLocalText(Unicode::emptyString);
+		updateResponseAvailabilityForTypewriter();
+		return;
+	}
+
 	m_typewriterFullText = message;
 	m_typewriterRevealLength = 0;
 	m_typewriterCharAccumulator = 0.0f;
 	m_typewriterPauseRemaining = 0.0f;
-	m_typewriterActive = !message.empty();
+	m_typewriterActive = true;
 
 	float const len = static_cast<float>(message.length());
-	m_typewriterCharsPerSecond = message.empty()
-		? TYPEWRITER_CHARS_PER_SECOND_BASE
-		: std::max(TYPEWRITER_CHARS_PER_SECOND_MIN,
+	m_typewriterCharsPerSecond =
+		std::max(TYPEWRITER_CHARS_PER_SECOND_MIN,
 			std::min(TYPEWRITER_CHARS_PER_SECOND_MAX, TYPEWRITER_CHARS_PER_SECOND_BASE + len * 0.018f));
 
 	if (m_npcMessageText)
@@ -1615,7 +2098,7 @@ void SwgCuiCinematicConversation::updateCameraFocus(float deltaTime)
 	{
 		m_cameraTransitionTime += deltaTime;
 		float t = std::min(m_cameraTransitionTime / m_cameraTransitionDuration, 1.0f);
-		t = easeOutQuad(t);
+		t = easeInOutCubic(t);
 
 		// Interpolate camera position and look-at
 		m_currentCameraPos = m_startCameraPos + (m_targetCameraPos - m_startCameraPos) * t;
@@ -1632,7 +2115,13 @@ void SwgCuiCinematicConversation::updateCameraFocus(float deltaTime)
 	// Apply framing through god FreeCamera - FreeChaseCamera would overwrite raw GameCamera transforms.
 	FreeCamera * const freeCamera = groundScene->getGodClientCamera();
 	if (freeCamera)
-		applyShotToFreeCamera(freeCamera, m_targetNpcId, m_currentCameraPos, m_currentCameraLookAt);
+	{
+		// Scripted look-at (vendor shelf): allow FreeCamera pivot orbit/zoom — do not overwrite each frame.
+		if (m_scriptedLookAtFramingActive && !m_cameraTransitioning)
+			syncScriptedOrbitCameraFromFreeCamera(freeCamera);
+		else
+			applyShotToFreeCamera(freeCamera, m_targetNpcId, m_currentCameraPos, m_currentCameraLookAt);
+	}
 
 	// Player reaction: stay on CST_Reaction until typewriter + REACTION_POST_TYPEWRITER_BUFFER_SEC elapses,
 	// then flushPlayerReactionBeat() applies NPC subtitle + new branch (see selectResponse / onResponsesChanged).
@@ -1645,6 +2134,21 @@ void SwgCuiCinematicConversation::updateCameraFocus(float deltaTime)
 			flushPlayerReactionBeat();
 		}
 	}
+}
+
+//----------------------------------------------------------------------
+
+void SwgCuiCinematicConversation::syncScriptedOrbitCameraFromFreeCamera(FreeCamera * const freeCamera)
+{
+	if (!freeCamera)
+		return;
+
+	Vector const pivot = freeCamera->getPivotPoint();
+	Vector cam = freeCamera->getPosition_w();
+	applyShotToFreeCamera(freeCamera, m_targetNpcId, cam, pivot);
+
+	m_currentCameraPos = freeCamera->getPosition_w();
+	m_currentCameraLookAt = freeCamera->getPivotPoint();
 }
 
 //----------------------------------------------------------------------
@@ -1707,32 +2211,80 @@ void SwgCuiCinematicConversation::applyCameraCommand(MessageQueueNpcConversation
 				if (targetObj)
 				{
 					Vector lookAt = computeScriptedLookAtPoint(*targetObj);
+					float objR = 0.65f;
+					if (CollisionProperty const * const cp = targetObj->getCollisionProperty())
+						objR = std::max(objR, cp->getBoundingSphere_w().getRadius());
+					lookAt.y += std::min(0.42f, std::max(0.06f, objR * 0.14f));
+
 					Vector targetPos = m_currentCameraPos;
 
-					// Props (non-creature): zoom in along the existing view ray (shorter distance from look-at toward camera).
-					CreatureObject * const creature = CreatureObject::asCreatureObject(targetObj);
-					if (!creature)
+					Vector speakerFlat = Vector::zero;
+					if (m_targetNpcId.isValid())
 					{
-						Vector const fromLookToCam = m_currentCameraPos - lookAt;
-						float const d = fromLookToCam.magnitude();
-						if (d > 0.05f)
+						Object * const npcObj = NetworkIdManager::getObjectById(m_targetNpcId);
+						if (npcObj)
 						{
-							Vector dir = fromLookToCam;
-							dir.normalize();
-							float r = 1.0f;
-							if (CollisionProperty const * const cp = targetObj->getCollisionProperty())
-								r = std::max(0.25f, cp->getBoundingSphere_w().getRadius());
-							// Stronger zoom on smaller radius; clamp so we do not clip inside collision.
-							float const zoomFactor = 0.42f;
-							float desiredDist = d * zoomFactor;
-							float const minSafe = std::max(0.35f, std::min(r * 0.20f, 2.2f));
-							float const maxDist = std::max(minSafe, std::min(r * 2.8f, 16.0f));
-							desiredDist = std::max(minSafe, std::min(desiredDist, maxDist));
-							targetPos = lookAt + dir * desiredDist;
+							Vector sp = CuiObjectTextManager::getCurrentObjectHeadPoint_o(*npcObj);
+							sp.y += HEAD_HEIGHT_OFFSET;
+							Vector spw = npcObj->rotateTranslate_o2w(sp);
+							spw.y += 0.05f;
+							speakerFlat = spw;
+							speakerFlat.y = 0.f;
 						}
 					}
+					Vector objFlat = lookAt;
+					objFlat.y = 0.f;
 
-					transitionCamera(targetPos, lookAt, duration);
+					Vector toObj = objFlat - speakerFlat;
+					float const horiz = toObj.magnitude();
+					if (horiz > 0.25f)
+						toObj *= 1.0f / horiz;
+					else
+					{
+						Vector fallback = m_currentCameraPos - lookAt;
+						fallback.y = 0.f;
+						float const hf = fallback.magnitude();
+						if (hf > 0.15f)
+							toObj = fallback * (1.0f / hf);
+						else
+							toObj = Vector::unitZ;
+					}
+
+					Vector camFlat = -toObj;
+					Vector lateral(-camFlat.z, 0.f, camFlat.x);
+					if (lateral.magnitude() > 0.05f)
+						lateral.normalize();
+					else
+						lateral = Vector::unitX;
+
+					float const dist = std::max(2.2f, std::min(13.5f, 1.35f * objR + 3.15f));
+					Vector camDir = camFlat * 0.82f + lateral * 0.28f + Vector::unitY * 0.14f;
+					float const cd = camDir.magnitude();
+					if (cd > 0.001f)
+						camDir *= 1.0f / cd;
+
+					targetPos = lookAt + camDir * dist;
+
+					Vector blendFrom = m_currentCameraPos - lookAt;
+					float const blendMag = blendFrom.magnitude();
+					if (blendMag > 0.35f)
+					{
+						blendFrom *= 1.0f / blendMag;
+						Vector ortho = lateral * 0.35f + Vector::unitY * 0.08f;
+						Vector blended = blendFrom * 0.34f + camDir * 0.66f + ortho;
+						float bm = blended.magnitude();
+						if (bm > 0.001f)
+							blended *= 1.0f / bm;
+						targetPos = lookAt + blended * dist;
+					}
+
+					resolveDesiredCameraAgainstCollision(m_targetNpcId, lookAt, targetPos);
+
+					float transitionSecs = duration;
+					if (transitionSecs <= 0.001f)
+						transitionSecs = SCRIPTED_LOOKAT_DEFAULT_DURATION;
+
+					transitionCamera(targetPos, lookAt, transitionSecs);
 					m_scriptedLookAtFramingActive = true;
 				}
 			}
@@ -1760,30 +2312,56 @@ void SwgCuiCinematicConversation::applyCameraCommand(MessageQueueNpcConversation
 
 //----------------------------------------------------------------------
 
-void SwgCuiCinematicConversation::setupNpcViewer()
+void SwgCuiCinematicConversation::updateSpeakerTitleText()
 {
-	if (!m_npcViewer)
+	if (!m_npcNameText)
 		return;
 
-	m_npcViewer->clearObjects();
+	Object * const targetObj = NetworkIdManager::getObjectById(m_targetNpcId);
+	if (!targetObj || !m_targetNpcId.isValid())
+	{
+		m_npcNameText->SetLocalText(Unicode::emptyString);
+		return;
+	}
+
+	ClientObject * const clientObj = targetObj->asClientObject();
+	CreatureObject * const creature = clientObj ? clientObj->asCreatureObject() : nullptr;
+
+	Unicode::String name;
+	if (creature)
+		name = creature->getLocalizedName();
+	else if (clientObj)
+		name = clientObj->getLocalizedName();
+	else if (targetObj->getObjectTemplateName())
+		name = Unicode::narrowToWide(targetObj->getObjectTemplateName());
+
+	if (name.empty())
+		name = Unicode::narrowToWide("Unknown");
+
+	Unicode::String label = Unicode::narrowToWide("Conversing with ");
+	label += name;
+	m_npcNameText->SetLocalText(label);
+}
+
+//----------------------------------------------------------------------
+
+void SwgCuiCinematicConversation::setupNpcViewer()
+{
+	updateSpeakerTitleText();
 
 	Object * const targetObj = NetworkIdManager::getObjectById(m_targetNpcId);
 	ClientObject * const clientObj = targetObj ? targetObj->asClientObject() : nullptr;
 	CreatureObject * const creature = clientObj ? clientObj->asCreatureObject() : nullptr;
 
+	if (!m_npcViewer)
+		return;
+
+	m_npcViewer->clearObjects();
+
 	if (creature)
 	{
-		// Set NPC name
-		if (m_npcNameText)
-		{
-			m_npcNameText->SetLocalText(creature->getLocalizedName());
-		}
-
-		// Add to viewer - viewer will create its own copy
 		m_npcViewer->addObject(*creature);
 		m_npcViewer->setViewDirty(true);
-
-		// Focus on head
 		m_npcViewer->setCameraLookAtCenter(true);
 		m_npcViewer->recomputeZoom();
 	}
@@ -1829,8 +2407,8 @@ void SwgCuiCinematicConversation::setNpcMessage(Unicode::String const & message)
 	if (m_scriptedLookAtFramingActive)
 		return;
 
-	// New NPC line: face-focused close-up for this beat; camera holds steady while subtitle prints (typewriter).
-	setCameraShot(CST_CloseUp, DEFAULT_CAMERA_TRANSITION_DURATION);
+	// New NPC line: axis shot toward NPC (snap); holds while subtitle prints (typewriter).
+	setCameraShot(CST_CloseUp, FACE_DIALOGUE_TRANSITION_SEC);
 }
 
 //----------------------------------------------------------------------
@@ -1892,42 +2470,133 @@ SwgCuiCinematicConversation::ResponseData SwgCuiCinematicConversation::parseResp
 
 //----------------------------------------------------------------------
 
-void SwgCuiCinematicConversation::setResponses(std::vector<Unicode::String> const & responses)
+void SwgCuiCinematicConversation::clampResponsePageStart()
 {
-	m_currentResponses.clear();
-
-	int index = 0;
-	for (std::vector<Unicode::String>::const_iterator it = responses.begin(); it != responses.end(); ++it, ++index)
+	size_t const total = m_currentResponses.size();
+	if (total == 0u)
 	{
-		ResponseData data = parseResponse(*it, index);
-		m_currentResponses.push_back(data);
+		m_responsePageStart = 0u;
+		return;
 	}
+	size_t const pageSize = static_cast<size_t>(RESPONSES_PER_PAGE);
+	size_t const maxStart = ((total - 1u) / pageSize) * pageSize;
+	if (m_responsePageStart > maxStart)
+		m_responsePageStart = maxStart;
+	m_responsePageStart = (m_responsePageStart / pageSize) * pageSize;
+}
 
-	ensureResponseSlotCount(m_currentResponses.size());
-	applyDialogueLayoutForResponseCount(m_currentResponses.size());
+//----------------------------------------------------------------------
+
+void SwgCuiCinematicConversation::updateResponsePageControls()
+{
+	clampResponsePageStart();
+	size_t const total = m_currentResponses.size();
+	size_t const totalPages =
+		(total == 0u)
+			? 1u
+			: (total + static_cast<size_t>(RESPONSES_PER_PAGE) - 1u) / static_cast<size_t>(RESPONSES_PER_PAGE);
+	size_t const curPage =
+		(total == 0u) ? 0u : m_responsePageStart / static_cast<size_t>(RESPONSES_PER_PAGE);
+	bool const showNav = totalPages > 1u;
+
+	if (m_responsePagePrevButton)
+	{
+		m_responsePagePrevButton->SetVisible(showNav);
+		m_responsePagePrevButton->SetEnabled(curPage > 0u);
+	}
+	if (m_responsePageNextButton)
+	{
+		m_responsePageNextButton->SetVisible(showNav);
+		m_responsePageNextButton->SetEnabled(curPage + 1u < totalPages);
+	}
+	if (m_responsePageLabel)
+	{
+		if (total > 0u)
+		{
+			m_responsePageLabel->SetVisible(true);
+			char buf[64];
+			snprintf(buf, sizeof(buf), "Page %u / %u",
+				static_cast<unsigned>(curPage + 1u),
+				static_cast<unsigned>(totalPages));
+			m_responsePageLabel->SetLocalText(Unicode::narrowToWide(buf));
+		}
+		else
+			m_responsePageLabel->SetVisible(false);
+	}
+}
+
+//----------------------------------------------------------------------
+
+void SwgCuiCinematicConversation::changeResponsePage(int deltaPages)
+{
+	if (m_currentResponses.empty() || deltaPages == 0)
+		return;
+
+	size_t const totalPages =
+		(m_currentResponses.size() + static_cast<size_t>(RESPONSES_PER_PAGE) - 1u)
+		/ static_cast<size_t>(RESPONSES_PER_PAGE);
+	size_t curPage = m_responsePageStart / static_cast<size_t>(RESPONSES_PER_PAGE);
+	int np = static_cast<int>(curPage) + deltaPages;
+	if (np < 0)
+		np = 0;
+	if (static_cast<size_t>(np) >= totalPages)
+		np = static_cast<int>(totalPages > 0u ? totalPages - 1u : 0u);
+	m_responsePageStart = static_cast<size_t>(np) * static_cast<size_t>(RESPONSES_PER_PAGE);
+	refreshVisibleResponseRows();
+}
+
+//----------------------------------------------------------------------
+
+void SwgCuiCinematicConversation::refreshVisibleResponseRows()
+{
+	clampResponsePageStart();
+	size_t const total = m_currentResponses.size();
+
+	size_t const pageEnd = std::min(total, m_responsePageStart + static_cast<size_t>(RESPONSES_PER_PAGE));
+	size_t const visibleCount = (total == 0u) ? 0u : (pageEnd - m_responsePageStart);
+
+	applyDialogueLayoutForResponseCount(visibleCount);
 
 	for (size_t i = 0; i < m_responseSlots.size(); ++i)
 	{
 		if (!m_responseSlots[i].page)
 			continue;
 
-		if (i < m_currentResponses.size())
+		if (i >= static_cast<size_t>(RESPONSES_PER_PAGE))
 		{
-			ResponseData const & data = m_currentResponses[i];
+			m_responseSlots[i].page->SetVisible(false);
+			continue;
+		}
+
+		size_t const globalIdx = m_responsePageStart + i;
+		if (globalIdx < total)
+		{
+			ResponseData const & data = m_currentResponses[globalIdx];
 
 			m_responseSlots[i].page->SetVisible(true);
 
-			if (m_responseSlots[i].prefixText)
-				m_responseSlots[i].prefixText->SetVisible(false);
 			if (m_responseSlots[i].text)
 				m_responseSlots[i].text->SetVisible(false);
 
+			bool const hasStyledPrefix = data.prefix != RP_None && !data.prefixText.empty();
+			if (m_responseSlots[i].prefixText)
+			{
+				if (hasStyledPrefix)
+				{
+					m_responseSlots[i].prefixText->SetLocalText(data.prefixText);
+					m_responseSlots[i].prefixText->SetVisible(true);
+				}
+				else
+					m_responseSlots[i].prefixText->SetVisible(false);
+			}
+
 			if (m_responseSlots[i].button)
 			{
-				Unicode::String caption = data.responseText;
-				if (data.prefix != RP_None)
-					caption = data.prefixText + Unicode::narrowToWide(" ") + data.responseText;
-				m_responseSlots[i].button->SetText(caption);
+				char slotBuf[16];
+				snprintf(slotBuf, sizeof(slotBuf), "%u. ", static_cast<unsigned>(i + 1));
+				Unicode::String labeled = Unicode::narrowToWide(slotBuf);
+				labeled += data.responseText;
+				m_responseSlots[i].button->SetText(labeled);
 				m_responseSlots[i].page->MoveChild(m_responseSlots[i].button, UIBaseObject::Top);
 			}
 		}
@@ -1937,8 +2606,63 @@ void SwgCuiCinematicConversation::setResponses(std::vector<Unicode::String> cons
 		}
 	}
 
+	updateResponsePageControls();
 	updateResponseAreaVisibility(!m_currentResponses.empty());
 	updateResponseAvailabilityForTypewriter();
+}
+
+//----------------------------------------------------------------------
+
+bool SwgCuiCinematicConversation::trySelectResponseByNumberKey(unsigned short keystroke)
+{
+	if (isNpcLinePrintingLocked())
+		return false;
+
+	size_t const total = m_currentResponses.size();
+	if (total == 0u)
+		return false;
+
+	size_t const pageEnd = std::min(total, m_responsePageStart + static_cast<size_t>(RESPONSES_PER_PAGE));
+	size_t const visible = pageEnd - m_responsePageStart;
+	if (visible == 0u)
+		return false;
+
+	int slot = -1;
+	if (keystroke >= static_cast<unsigned short>('1') && keystroke <= static_cast<unsigned short>('9'))
+		slot = static_cast<int>(keystroke - static_cast<unsigned short>('1'));
+	else if (keystroke == static_cast<unsigned short>('0'))
+		slot = 9;
+	else
+		return false;
+
+	if (slot < 0 || static_cast<size_t>(slot) >= visible)
+		return false;
+
+	size_t const globalIdx = m_responsePageStart + static_cast<size_t>(slot);
+	if (globalIdx >= total)
+		return false;
+
+	selectResponse(m_currentResponses[globalIdx].responseIndex);
+	return true;
+}
+
+//----------------------------------------------------------------------
+
+void SwgCuiCinematicConversation::setResponses(std::vector<Unicode::String> const & responses)
+{
+	m_currentResponses.clear();
+	m_responsePageStart = 0;
+
+	int index = 0;
+	for (std::vector<Unicode::String>::const_iterator it = responses.begin(); it != responses.end(); ++it, ++index)
+	{
+		ResponseData data = parseResponse(*it, index);
+		m_currentResponses.push_back(data);
+	}
+
+	ensureResponseSlotCount(static_cast<size_t>(RESPONSES_PER_PAGE));
+
+	refreshVisibleResponseRows();
 }
 
 //----------------------------------------------------------------------
@@ -1946,6 +2670,7 @@ void SwgCuiCinematicConversation::setResponses(std::vector<Unicode::String> cons
 void SwgCuiCinematicConversation::clearResponses()
 {
 	m_currentResponses.clear();
+	m_responsePageStart = 0;
 
 	for (size_t i = 0; i < m_responseSlots.size(); ++i)
 	{
@@ -1954,6 +2679,7 @@ void SwgCuiCinematicConversation::clearResponses()
 	}
 
 	applyDialogueLayoutForResponseCount(0);
+	updateResponsePageControls();
 	updateResponseAreaVisibility(false);
 	updateResponseAvailabilityForTypewriter();
 }
@@ -1969,15 +2695,27 @@ void SwgCuiCinematicConversation::OnButtonPressed(UIWidget * context)
 		return;
 	}
 
+	if (context == m_responsePagePrevButton)
+	{
+		changeResponsePage(-1);
+		return;
+	}
+	if (context == m_responsePageNextButton)
+	{
+		changeResponsePage(1);
+		return;
+	}
+
 	if (isNpcLinePrintingLocked())
 		return;
 
-	for (size_t i = 0; i < m_responseSlots.size(); ++i)
+	for (size_t i = 0; i < m_responseSlots.size() && i < static_cast<size_t>(RESPONSES_PER_PAGE); ++i)
 	{
 		if (context == m_responseSlots[i].button)
 		{
-			if (i < m_currentResponses.size())
-				selectResponse(m_currentResponses[i].responseIndex);
+			size_t const globalIdx = m_responsePageStart + i;
+			if (globalIdx < m_currentResponses.size())
+				selectResponse(m_currentResponses[globalIdx].responseIndex);
 			return;
 		}
 	}
@@ -2011,7 +2749,7 @@ void SwgCuiCinematicConversation::selectResponse(int responseIndex)
 		m_playerReactionBeatPending = true;
 		m_haveDeferredBranchResponses = false;
 		m_deferredBranchResponses.clear();
-		setCameraShot(CST_Reaction);
+		setCameraShot(CST_Reaction, FACE_DIALOGUE_TRANSITION_SEC);
 		m_shotHoldTime = 0.0f;
 		m_timeSinceLastShotChange = 0.0f;
 		// Buffer countdown starts after player line finishes (maybeStartReactionPostLineBuffer), unless no caption.
@@ -2040,6 +2778,8 @@ void SwgCuiCinematicConversation::onTargetChanged(bool const &)
 	{
 		// Conversation ended — never close synchronously from this emit (stop()/setTarget still unwinding).
 		m_targetNpcId = NetworkId::cms_invalid;
+		if (m_npcNameText)
+			m_npcNameText->SetLocalText(Unicode::emptyString);
 		if (isActive())
 			m_deferCloseUntilUpdate = true;
 		return;
@@ -2055,7 +2795,7 @@ void SwgCuiCinematicConversation::onTargetChanged(bool const &)
 		// Re-initialize camera for new target (head close-up)
 		if (m_cameraControlActive)
 		{
-			setCameraShot(CST_CloseUp);
+			setCameraShot(CST_CloseUp, FACE_DIALOGUE_TRANSITION_SEC);
 			m_shotHoldTime = 0.0f;
 		}
 	}
@@ -2070,9 +2810,14 @@ void SwgCuiCinematicConversation::onResponsesChanged(bool const &)
 
 	if (m_playerReactionBeatPending)
 	{
-		m_deferredBranchResponses = responses;
-		m_haveDeferredBranchResponses = true;
-		m_deferredNpcSubtitle = CuiConversationManager::getLastMessage();
+		// respond() clears ms_responses and emits before the server replies; do not stash that empty snapshot
+		// as the post-reaction branch — flushPlayerReactionBeat() would apply a blank menu / wrong indices.
+		if (!responses.empty())
+		{
+			m_deferredBranchResponses = responses;
+			m_haveDeferredBranchResponses = true;
+			m_deferredNpcSubtitle = CuiConversationManager::getLastMessage();
+		}
 		return;
 	}
 

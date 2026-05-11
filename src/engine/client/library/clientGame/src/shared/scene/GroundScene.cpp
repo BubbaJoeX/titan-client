@@ -104,6 +104,8 @@
 #include "clientUserInterface/CuiActions.h"
 #include "clientUserInterface/CuiCachedAvatarManager.h"
 #include "clientUserInterface/CuiCombatManager.h"
+#include "clientUserInterface/CuiConversationManager.h"
+#include "clientUserInterface/CuiInputMessage.def"
 #include "clientUserInterface/CuiInventoryManager.h"
 #include "clientUserInterface/CuiIoWin.h"
 #include "clientUserInterface/CuiLoadingManager.h"
@@ -1691,6 +1693,17 @@ void GroundScene::handleInputMapEvent (IoEvent* event)
 	//-- handle the cursor
 	m_mouseCursor->processEvent (event);
 
+	// Cinematic scripted look-at: wheel zooms pivot distance (CI_free normally ignores wheel here).
+	if (event->type == IOET_MouseMove && event->arg2 == 2 && m_currentView == CI_free && !m_usingGodClientInteriorCamera)
+	{
+		if (CuiConversationManager::isCinematicScriptedLookAtOrbitActive ())
+		{
+			if (m_freeCameraInputMap && (m_freeCameraInputMap->getShiftState () & CuiM_BITS_SHIFT) != 0)
+				pivotZoom(static_cast<float>(event->arg3) * (-1.0f / 6800.0f));
+			return;
+		}
+	}
+
 	if (m_currentView == CI_installationTurret && event->type == IOET_KeyDown && event->arg2 == DIK_T)
 	{
 		CreatureObject const *const player = safe_cast<CreatureObject const *>(getPlayer());
@@ -1863,11 +1876,25 @@ void GroundScene::handleInputMapUpdate (void)
 				//-- send this to the freeCamera inputmap
 				NOT_NULL (m_freeCameraInputMap);
 
-				if (yawMod != CONST_REAL (0))
-					m_freeCameraInputMap->getMessageQueue ()->appendMessage (CM_cameraYawMouse,   yawMod);
+				if (CuiConversationManager::isCinematicScriptedLookAtOrbitActive ())
+				{
+					if ((m_freeCameraInputMap->getShiftState () & CuiM_BITS_SHIFT) != 0)
+					{
+						if (yawMod != CONST_REAL (0))
+							m_freeCameraInputMap->getMessageQueue ()->appendMessage (CM_cameraPivotYaw,   yawMod);
 
-				if (pitchMod != CONST_REAL (0))
-					m_freeCameraInputMap->getMessageQueue ()->appendMessage (CM_cameraPitchMouse, pitchMod);
+						if (pitchMod != CONST_REAL (0))
+							m_freeCameraInputMap->getMessageQueue ()->appendMessage (CM_cameraPivotPitch, pitchMod);
+					}
+				}
+				else
+				{
+					if (yawMod != CONST_REAL (0))
+						m_freeCameraInputMap->getMessageQueue ()->appendMessage (CM_cameraYawMouse,   yawMod);
+
+					if (pitchMod != CONST_REAL (0))
+						m_freeCameraInputMap->getMessageQueue ()->appendMessage (CM_cameraPitchMouse, pitchMod);
+				}
 			}
 		}
 		break;

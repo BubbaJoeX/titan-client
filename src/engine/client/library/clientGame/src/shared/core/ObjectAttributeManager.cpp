@@ -40,7 +40,6 @@
 #include "sharedGame/SharedStringIds.h"
 #include "sharedGame/SharedWeaponObjectTemplate.h"
 #include "sharedGame/Universe.h"
-#include "sharedMath/PackedRgb.h"
 #include "sharedMessageDispatch/Message.h"
 #include "sharedMessageDispatch/Receiver.h"
 #include "sharedMessageDispatch/Transceiver.h"
@@ -56,10 +55,14 @@
 #include "UnicodeUtils.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cstdio>
+#include <cstring>
 #include <map>
 #include <set>
 #include <sstream>
+#include <utility>
+#include <vector>
 
 //======================================================================
 
@@ -556,20 +559,20 @@ void ObjectAttributeManager::reset ()
 
 //----------------------------------------------------------------------
 
-bool   ObjectAttributeManager::formatAttributes   (const NetworkId & id, Unicode::String & str, bool minimal, bool const tooltips)
+bool   ObjectAttributeManager::formatAttributes   (const NetworkId & id, Unicode::String & str, bool minimal, bool const tooltips, bool omitObjScriptVarSections)
 {
 	int frame = 0;
-	return formatAttributesIfNewer (id, str, minimal, frame, tooltips);
+	return formatAttributesIfNewer (id, str, minimal, frame, tooltips, omitObjScriptVarSections);
 }
 
 //----------------------------------------------------------------------
 
-bool   ObjectAttributeManager::formatAttributesIfNewer   (const NetworkId & id, Unicode::String & str, bool minimal, int & frame, bool const tooltips)
+bool   ObjectAttributeManager::formatAttributesIfNewer   (const NetworkId & id, Unicode::String & str, bool minimal, int & frame, bool const tooltips, bool omitObjScriptVarSections)
 {
 	AttributeVector av;
 	if (getAttributesIfNewer(id, av, frame, false, true))
 	{
-		formatAttributes (av, str, NULL, NULL, minimal, tooltips);
+		formatAttributes (av, str, NULL, NULL, minimal, tooltips, omitObjScriptVarSections);
 		if (!tooltips) 
 		{
 			appendUsabilityInformation(str, id, true);
@@ -597,21 +600,227 @@ namespace
 
 		result.append(keyDisplayValue);
 	}
+
+	inline bool stringContainsInsensitive(std::string const & haystack, char const * const needle)
+	{
+		if (!needle || !*needle || haystack.size() < strlen(needle))
+			return false;
+		size_t const nlen = strlen(needle);
+		for (size_t i = 0; i + nlen <= haystack.size(); ++i)
+		{
+			bool match = true;
+			for (size_t j = 0; j < nlen; ++j)
+			{
+				if (std::tolower(static_cast<unsigned char>(haystack[i + j])) != std::tolower(static_cast<unsigned char>(needle[j])))
+				{
+					match = false;
+					break;
+				}
+			}
+			if (match)
+				return true;
+		}
+		return false;
+	}
+
+	inline bool isDeferredScriptVarAttribute(std::string const & fullKey)
+	{
+		return stringContainsInsensitive(fullKey, "scriptvar") || stringContainsInsensitive(fullKey, "script_var");
+	}
+
+	inline bool isDeferredObjVarAttribute(std::string const & fullKey)
+	{
+		if (isDeferredScriptVarAttribute(fullKey))
+			return false;
+		if (stringContainsInsensitive(fullKey, "objvar"))
+			return true;
+		return stringContainsInsensitive(fullKey, "obj_var");
+	}
+
+	inline void appendDecodedStringIdValue(Unicode::String & dest, Unicode::String const & value)
+	{
+		size_t pos = 0;
+		size_t dollarPos = 0;
+
+		while ((dollarPos = value.find('$', pos)) != Unicode::String::npos)
+		{
+			size_t const nextDollarPos = value.find('$', dollarPos + 1);
+			if (nextDollarPos != Unicode::String::npos)
+			{
+				Unicode::String const & first = dollarPos > pos ? value.substr(pos, dollarPos - pos) : Unicode::emptyString;
+				Unicode::String const & token = value.substr(dollarPos + 1, nextDollarPos - dollarPos - 1);
+
+				dest.append(StringId::decodeString(first));
+				dest.append(StringId::decodeString(token));
+
+				pos = nextDollarPos + 1;
+			}
+			else
+				break;
+		}
+
+		if (pos != Unicode::String::npos)
+		{
+			if (pos == 0)
+				dest.append(StringId::decodeString(value));
+			else
+				dest.append(StringId::decodeString(value.substr(pos)));
+		}
+	}
+
+	inline void padKeyColumnToLength (Unicode::String & s, size_t const targetCodeUnits)
+	{
+		while (s.size() < targetCodeUnits)
+			s.append (1, static_cast<Unicode::unicode_char_t> (' '));
+	}
+
+	// Tab stops are not reliable in UIText; align columns with spaces and a separator. Use the raw
+	// server attribute name so GM / debug keys do not go through obj_attr_n (which yields *** labels).
+	inline void appendAttribVarTableSection (Unicode::String & str, Unicode::String const & sectionTitle, ObjectAttributeManager::AttributeVector const & rows, bool const tooltips)
+	{
+		static size_t const kMaxKeyDisplayCodeUnits = 44u;
+		static Unicode::String const s_ellipsis = Unicode::narrowToWide ("...");
+		static Unicode::String const s_colGap = Unicode::narrowToWide ("  |  ");
+
+		typedef std::pair<Unicode::String, Unicode::String const *> TableRow;
+		std::vector<TableRow> tableRows;
+
+		for (ObjectAttributeManager::AttributeVector::const_iterator it = rows.begin (); it != rows.end (); ++it)
+		{
+			std::string const & fullKey = it->first;
+			size_t const dotpos = fullKey.find ('.');
+			std::string const keyPart = (dotpos != std::string::npos) ? fullKey.substr (dotpos + 1) : fullKey;
+			if (keyPart.empty () && !tooltips)
+				continue;
+			Unicode::String k = Unicode::narrowToWide (fullKey);
+			if (k.size () > kMaxKeyDisplayCodeUnits)
+				k = k.substr (0, kMaxKeyDisplayCodeUnits - s_ellipsis.size ()) + s_ellipsis;
+			tableRows.push_back (TableRow (k, &it->second));
+		}
+
+		if (tableRows.empty ())
+			return;
+
+		size_t maxKeyCodeUnits = 12u;
+		for (size_t i = 0; i < tableRows.size (); ++i)
+			maxKeyCodeUnits = std::max (maxKeyCodeUnits, tableRows[i].first.size ());
+
+		str.append (categoryColor);
+		str.append (1, '\n');
+		str.append (keyColor);
+		str.append (sectionTitle);
+		str.append (unindent);
+
+		for (size_t i = 0; i < tableRows.size (); ++i)
+		{
+			str.append (keyColor);
+			Unicode::String keyPadded = tableRows[i].first;
+			padKeyColumnToLength (keyPadded, maxKeyCodeUnits);
+			str.append (keyPadded);
+			str.append (s_colGap);
+
+			Unicode::String const & value = *tableRows[i].second;
+			if (!value.empty ())
+			{
+				appendDecodedStringIdValue (str, value);
+				str.append (unindent);
+				if (!tooltips)
+					str.append (1, '\n');
+			}
+			else
+				str.append (1, '\n');
+		}
+	}
+
+	inline void collectObjScriptVarAttributeRows (ObjectAttributeManager::AttributeVector const & av, bool const tooltips, bool const minimal, ObjectAttributeManager::AttributeVector & objOut, ObjectAttributeManager::AttributeVector & scriptOut)
+	{
+		objOut.clear ();
+		scriptOut.clear ();
+		if (minimal)
+			return;
+
+		for (ObjectAttributeManager::AttributeVector::const_iterator it = av.begin (); it != av.end (); ++it)
+		{
+			std::string const & fullKey = it->first;
+
+			if (fullKey.empty ())
+				continue;
+
+			bool const isTooltip = (fullKey.find (SharedObjectAttributes::tooltip) != std::string::npos);
+			if (isTooltip != tooltips)
+				continue;
+
+			if (fullKey.find (SharedObjectAttributes::no_trade) != std::string::npos)
+				continue;
+
+			if (fullKey.find (SharedObjectAttributes::no_trade_shared) != std::string::npos)
+				continue;
+
+			if (fullKey.find (SharedObjectAttributes::no_trade_removable) != std::string::npos)
+				continue;
+
+			if (fullKey.find (SharedObjectAttributes::unique) != std::string::npos)
+				continue;
+
+			if (fullKey.find (SharedObjectAttributes::tier) != std::string::npos)
+				continue;
+
+			size_t const dotpos = fullKey.find ('.');
+			std::string key;
+			if (dotpos != std::string::npos)
+				key = fullKey.substr (dotpos + 1);
+			else
+				key = fullKey;
+
+			if (key.empty () && !tooltips)
+				continue;
+
+			if (isDeferredScriptVarAttribute (fullKey))
+				scriptOut.push_back (*it);
+			else if (isDeferredObjVarAttribute (fullKey))
+				objOut.push_back (*it);
+		}
+	}
+
+	inline Unicode::String decodeAttributeValuePlain (Unicode::String const & value)
+	{
+		Unicode::String out;
+		appendDecodedStringIdValue (out, value);
+		return out;
+	}
 }
 
 //----------------------------------------------------------------------
 
-void ObjectAttributeManager::formatAttributes   (const AttributeVector & av, Unicode::String & str, Unicode::String * categoryDisplayValue, Unicode::String * keyDisplayValue, bool minimal, bool const tooltips)
+void ObjectAttributeManager::collectObjScriptVarAttributes (AttributeVector const & av, bool tooltips, bool minimal, AttributeVector & objVarsOut, AttributeVector & scriptVarsOut)
 {
-	UNREF (minimal);
+	collectObjScriptVarAttributeRows (av, tooltips, minimal, objVarsOut, scriptVarsOut);
+}
 
+//----------------------------------------------------------------------
+
+Unicode::String ObjectAttributeManager::decodeAttributeValueForDisplay (Unicode::String const & value)
+{
+	return decodeAttributeValuePlain (value);
+}
+
+//----------------------------------------------------------------------
+
+void ObjectAttributeManager::formatAttributes   (const AttributeVector & av, Unicode::String & str, Unicode::String * categoryDisplayValue, Unicode::String * keyDisplayValue, bool minimal, bool const tooltips, bool omitObjScriptVarSections)
+{
 	static std::string category;
 	static Unicode::String tempCategoryDisplayValue;
 	static std::string key;
 	static Unicode::String tempKeyDisplayValue;
 	static std::string inCategory;
+	static AttributeVector deferredObjVars;
+	static AttributeVector deferredScriptVars;
+
 	Unicode::String expertiseMods;
 	Unicode::String statMods;
+
+	deferredObjVars.clear();
+	deferredScriptVars.clear();
 
 	if (!categoryDisplayValue)
 		categoryDisplayValue = &tempCategoryDisplayValue;
@@ -678,6 +887,21 @@ void ObjectAttributeManager::formatAttributes   (const AttributeVector & av, Uni
 					continue;
 			}
 		}
+		else
+		{
+			bool const isScriptDefer = isDeferredScriptVarAttribute (fullKey);
+			bool const isObjDefer = !isScriptDefer && isDeferredObjVarAttribute (fullKey);
+			if (isScriptDefer || isObjDefer)
+			{
+				if (omitObjScriptVarSections)
+					continue;
+				if (isScriptDefer)
+					deferredScriptVars.push_back (*it);
+				else
+					deferredObjVars.push_back (*it);
+				continue;
+			}
+		}
 		
 		bool statModProcessing = false;
 		for(size_t i = 0; i < s_statModNames.size(); ++i)
@@ -724,6 +948,9 @@ void ObjectAttributeManager::formatAttributes   (const AttributeVector & av, Uni
 		}
 
 		Unicode::String value = it->second;
+		while (!value.empty () && (value [value.size () - 1] == '\n' || value [value.size () - 1] == '\r'))
+			value.resize (value.size () - 1);
+
 		Unicode::String* writeString = &str;
 
 		if(key.find(":expertise") != std::string::npos)
@@ -775,6 +1002,8 @@ void ObjectAttributeManager::formatAttributes   (const AttributeVector & av, Uni
 			}
 
 			writeString->append(unindent);
+			if (!tooltips)
+				writeString->append(1, '\n');
 		}
 		else
 			writeString->append (1, '\n');
@@ -797,26 +1026,34 @@ void ObjectAttributeManager::formatAttributes   (const AttributeVector & av, Uni
 		else
 			str.append(statMods);
 	}
+
+	static Unicode::String const s_objVarSectionTitle = Unicode::narrowToWide ("Objvars");
+	static Unicode::String const s_scriptVarSectionTitle = Unicode::narrowToWide ("Scriptvars");
+	if (!omitObjScriptVarSections)
+	{
+		appendAttribVarTableSection (str, s_objVarSectionTitle, deferredObjVars, tooltips);
+		appendAttribVarTableSection (str, s_scriptVarSectionTitle, deferredScriptVars, tooltips);
+	}
 }
 
 //----------------------------------------------------------------------
 
-bool ObjectAttributeManager::formatDescription (const NetworkId & id, Unicode::String & header, Unicode::String & desc, Unicode::String & attribs, bool mininalAttribs, bool const tooltips)
+bool ObjectAttributeManager::formatDescription (const NetworkId & id, Unicode::String & header, Unicode::String & desc, Unicode::String & attribs, bool mininalAttribs, bool const tooltips, bool omitObjScriptVarSections)
 {
 	int frame = 0;
-	return formatDescriptionIfNewer (id, header, desc, attribs, mininalAttribs, frame, tooltips);
+	return formatDescriptionIfNewer (id, header, desc, attribs, mininalAttribs, frame, tooltips, omitObjScriptVarSections);
 }
 
 //----------------------------------------------------------------------
 
-bool ObjectAttributeManager::formatDescriptionIfNewer (const NetworkId & id, Unicode::String & header, Unicode::String & desc, Unicode::String & attribs, bool minimalAttribs, int & frame, bool const tooltips)
+bool ObjectAttributeManager::formatDescriptionIfNewer (const NetworkId & id, Unicode::String & header, Unicode::String & desc, Unicode::String & attribs, bool minimalAttribs, int & frame, bool const tooltips, bool omitObjScriptVarSections)
 {
 	ClientObject const * const obj = safe_cast<const ClientObject *>(NetworkIdManager::getObjectById (id));
 
 	header.clear ();
 	attribs.clear ();
 
-	if (!formatAttributesIfNewer(id, attribs, minimalAttribs, frame, tooltips))
+	if (!formatAttributesIfNewer(id, attribs, minimalAttribs, frame, tooltips, omitObjScriptVarSections))
 		return false;
 
 	
@@ -1022,13 +1259,12 @@ void   ObjectAttributeManager::formatDebugInfo             (const Object & objec
 
 	const ClientObject * const clientObject = object.asClientObject();
 
-	const Unicode::String yellowColorCode(ClientTextManager::getColorCode(PackedRgb::solidYellow));
 	const Unicode::String resetColorCode(ClientTextManager::getResetTagCode());
 
 	if (clientObject)
 	{
 		snprintf (tmp, sizeof (tmp), "%s%s%s (%s): %s",
-			Unicode::wideToNarrow(yellowColorCode).c_str(),
+			Unicode::wideToNarrow(keyColor).c_str(),
 			Unicode::wideToNarrow (clientObject->getLocalizedName ()).c_str (),
 			Unicode::wideToNarrow(resetColorCode).c_str(),
 			GameObjectTypes::getCanonicalName (clientObject->getGameObjectType ()).c_str (),
@@ -1037,7 +1273,7 @@ void   ObjectAttributeManager::formatDebugInfo             (const Object & objec
 	}
 	else
 	{
-		snprintf (tmp, sizeof (tmp), "%s%s%s: %s", Unicode::wideToNarrow(yellowColorCode).c_str(), object.getDebugName (), Unicode::wideToNarrow(resetColorCode).c_str(), object.getNetworkId ().getValueString().c_str ());
+		snprintf (tmp, sizeof (tmp), "%s%s%s: %s", Unicode::wideToNarrow(keyColor).c_str(), object.getDebugName (), Unicode::wideToNarrow(resetColorCode).c_str(), object.getNetworkId ().getValueString().c_str ());
 		str += Unicode::narrowToWide (tmp);
 	}
 
@@ -1045,8 +1281,8 @@ void   ObjectAttributeManager::formatDebugInfo             (const Object & objec
 	str.append (1, '\n');
 
 	static const Unicode::String template_str_no_template = Unicode::narrowToWide ("NO OBJECT TEMPLATE");
-	static const Unicode::String template_str_prefix      = yellowColorCode + Unicode::narrowToWide ("Template: ") + resetColorCode;
-	static const Unicode::String app_str_prefix           = yellowColorCode + Unicode::narrowToWide ("Appearance: ") + resetColorCode;
+	static const Unicode::String template_str_prefix      = keyColor + Unicode::narrowToWide ("Template: ") + resetColorCode;
+	static const Unicode::String app_str_prefix           = keyColor + Unicode::narrowToWide ("Appearance: ") + resetColorCode;
 	static const Unicode::String app_str_no_app           = Unicode::narrowToWide ("NO APPEARANCE!");
 
 	str += template_str_prefix + (objectTemplateName ? Unicode::narrowToWide (objectTemplateName) : template_str_no_template);
@@ -1064,11 +1300,16 @@ void   ObjectAttributeManager::formatDebugInfo             (const Object & objec
 
 	const Vector pos = object.getPosition_w ();
 
-	snprintf (tmp, sizeof (tmp), "%sPosition:%s %5.2f,%5.2f,%5.2f\n", Unicode::wideToNarrow(yellowColorCode).c_str(), Unicode::wideToNarrow(resetColorCode).c_str(), pos.x, pos.y, pos.z);
+	snprintf (tmp, sizeof (tmp), "%sPosition:%s %5.2f,%5.2f,%5.2f\n", Unicode::wideToNarrow(keyColor).c_str(), Unicode::wideToNarrow(resetColorCode).c_str(), pos.x, pos.y, pos.z);
 
 	str += Unicode::narrowToWide (tmp);
 
+	const Vector scl = object.getScale ();
 
+	snprintf (tmp, sizeof (tmp), "%sScale:%s %5.2f,%5.2f,%5.2f\n", Unicode::wideToNarrow(keyColor).c_str(), Unicode::wideToNarrow(resetColorCode).c_str(), scl.x, scl.y, scl.z);
+
+	str += Unicode::narrowToWide (tmp);
+	str.append (1, '\n');
 
 	const TangibleObject * const tangible   = clientObject ? clientObject->asTangibleObject() : NULL;
 	const CreatureObject * const creature   = clientObject ? clientObject->asCreatureObject() : NULL;
@@ -1078,25 +1319,25 @@ void   ObjectAttributeManager::formatDebugInfo             (const Object & objec
 
 	if (creature && !isVehicle)
 	{
-		snprintf (tmp, sizeof (tmp), "%sHP:%s %3d/%3d/%3d\n", Unicode::wideToNarrow(yellowColorCode).c_str(), Unicode::wideToNarrow(resetColorCode).c_str(), creature->getAttribute (Attributes::Health), creature->getCurrentMaxAttribute (Attributes::Health), creature->getMaxAttribute (Attributes::Health));
+		snprintf (tmp, sizeof (tmp), "%sHP:%s %3d/%3d/%3d\n", Unicode::wideToNarrow(keyColor).c_str(), Unicode::wideToNarrow(resetColorCode).c_str(), creature->getAttribute (Attributes::Health), creature->getCurrentMaxAttribute (Attributes::Health), creature->getMaxAttribute (Attributes::Health));
 		str += Unicode::narrowToWide (tmp);
 	}
 	else if (tangible)
 	{
-		snprintf (tmp, sizeof (tmp), "%sHP:%s %3d/%d\n", Unicode::wideToNarrow(yellowColorCode).c_str(), Unicode::wideToNarrow(resetColorCode).c_str(), tangible->getMaxHitPoints () - tangible->getDamageTaken (), tangible->getMaxHitPoints ());
+		snprintf (tmp, sizeof (tmp), "%sHP:%s %3d/%d\n", Unicode::wideToNarrow(keyColor).c_str(), Unicode::wideToNarrow(resetColorCode).c_str(), tangible->getMaxHitPoints () - tangible->getDamageTaken (), tangible->getMaxHitPoints ());
 		str += Unicode::narrowToWide (tmp);
 	}
 
 	if (tangible)
 	{
-		snprintf (tmp, sizeof(tmp), "%sConditionBits:%s 0x%08x\n", Unicode::wideToNarrow(yellowColorCode).c_str(), Unicode::wideToNarrow(resetColorCode).c_str(), tangible->getCondition());
+		snprintf (tmp, sizeof(tmp), "%sConditionBits:%s 0x%08x\n", Unicode::wideToNarrow(keyColor).c_str(), Unicode::wideToNarrow(resetColorCode).c_str(), tangible->getCondition());
 		str += Unicode::narrowToWide (tmp);
 	}
 
 	ClientMissionObject const * const mission = dynamic_cast<ClientMissionObject const *>(&object);
 	if (mission)
 	{
-		str += Unicode::narrowToWide(Unicode::wideToNarrow(yellowColorCode) + "Internal name:  "+ Unicode::wideToNarrow(resetColorCode) + mission->getTitle().getCanonicalRepresentation() + "\n");
+		str += Unicode::narrowToWide(Unicode::wideToNarrow(keyColor) + "Internal name:  "+ Unicode::wideToNarrow(resetColorCode) + mission->getTitle().getCanonicalRepresentation() + "\n");
 	}
 }
 

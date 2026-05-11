@@ -13,6 +13,7 @@
 #define INCLUDED_TitanPakCrypto_H
 
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
 #include <string>
 
@@ -35,12 +36,25 @@ public:
     static const size_t BLOCK_SIZE = 256;
 
     // ======================================================================
-    // Get the hardcoded TitanPak password
+    // Password for decrypting archives (same rule as Nuna `Crypto::resolveTrePassword`)
     // ======================================================================
-    
+
     static const char* getPassword()
     {
-        return TITANPAK_PASSWORD;
+        static std::string s;
+        static bool init = false;
+        if (!init)
+        {
+            init = true;
+            if (const char* e = std::getenv("SWG_TRE_PASSWORD"))
+            {
+                if (e[0] != '\0')
+                    s = e;
+            }
+            if (s.empty())
+                s = TITANPAK_PASSWORD;
+        }
+        return s.c_str();
     }
 
     // ======================================================================

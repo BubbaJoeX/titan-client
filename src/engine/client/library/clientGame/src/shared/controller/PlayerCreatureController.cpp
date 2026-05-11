@@ -909,7 +909,15 @@ float PlayerCreatureController::realAlter (const float elapsedTime)
 		return CreatureController::realAlter (elapsedTime);
 	}
 
-	bool useVehicleControls = locomotionIndoors ? false : !(movementCreatureObject->getCanStrafe());
+	// Vehicle GOT mounts must always use throttle / forward projection + minimum-speed cruise logic.
+	// Strafe-capable creature mounts use camera-relative movement; if vehicle templates set canStrafe,
+	// treating them like creatures breaks dynamics (same symptom as the swimming/strafe mount fixes).
+	bool const mountIsVehicle =
+		GameObjectTypes::isTypeOf(
+			movementCreatureObject->getGameObjectType(),
+			static_cast<int>(SharedObjectTemplate::GOT_vehicle));
+	bool const useVehicleControls =
+		locomotionIndoors ? false : (mountIsVehicle || !movementCreatureObject->getCanStrafe());
 
 	// Yaw / turn limits: when riding outdoors, use the *rider* (this controller's owner). The mount has
 	// States::MountedCreature; its template may ship 0 turn rate, which clamps camera / strafe steering to
@@ -918,10 +926,6 @@ float PlayerCreatureController::realAlter (const float elapsedTime)
 		(isRidingMount && !locomotionIndoors) ? creatureObject : movementCreatureObject;
 
 	// Used for creature-mount-only PCC fixes; vehicles keep legacy locomotion + compensator behavior unchanged.
-	bool const mountIsVehicle =
-		GameObjectTypes::isTypeOf(
-			movementCreatureObject->getGameObjectType(),
-			static_cast<int>(SharedObjectTemplate::GOT_vehicle));
 	bool const ridingCreatureMount = !locomotionIndoors && isRidingMount && !mountIsVehicle;
 
 	// Periodic ambient fish schools while swimming to keep open-water spaces alive.
@@ -2814,7 +2818,7 @@ void PlayerCreatureController::handleNetUpdateTransform (const MessageQueueDataT
 			{
 				GameCamera * const gameCamera = groundScene->getCamera(GroundScene::CI_freeChase);
 				FreeChaseCamera * const freeChaseCamera = safe_cast<FreeChaseCamera * const>(gameCamera);
-				if (freeChaseCamera != 0)
+				if (freeChaseCamera != 0 && !CuiConversationManager::isCinematicConversationUiActive())
 				{
 					// If the message does not tell us explicitly to change the yaw
 					// we will keep our old yaw so the camera will stay in the same
@@ -2891,7 +2895,7 @@ void PlayerCreatureController::handleNetUpdateTransformWithParent (const Message
 			{
 				GameCamera * const gameCamera = groundScene->getCamera(GroundScene::CI_freeChase);
 				FreeChaseCamera * const freeChaseCamera = safe_cast<FreeChaseCamera * const>(gameCamera);
-				if (freeChaseCamera != 0)
+				if (freeChaseCamera != 0 && !CuiConversationManager::isCinematicConversationUiActive())
 				{
 					freeChaseCamera->setTarget(owner, true, message.getUseLookAtYaw());
 				}

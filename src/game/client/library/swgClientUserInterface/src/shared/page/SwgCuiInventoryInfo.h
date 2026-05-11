@@ -10,6 +10,9 @@
 
 // ======================================================================
 
+#include <vector>
+
+#include "Unicode.h"
 #include "UIEventCallback.h"
 #include "clientUserInterface/CuiContainerSelectionChanged.h"
 #include "clientUserInterface/CuiMediator.h"
@@ -28,7 +31,9 @@ class SwgCuiInventoryContainer;
 class UIButton;
 class UICheckbox;
 class UIComposite;
+class UIPage;
 class UIScrollbar;
+class UITable;
 class UIText;
 
 template <typename T> class Watcher;
@@ -91,6 +96,7 @@ protected:
 
 private:
 	void                    updatePlayerData();
+	void                    updateGodObjScriptTable (NetworkId const & id);
 
 private:
 	                       ~SwgCuiInventoryInfo ();
@@ -108,6 +114,7 @@ private:
 	UIText *                           m_noTrade;
 	UIText *                           m_tier;
 	UIText *                           m_unique;
+	UIPage *                           m_restrictionsPage;
 	UIButton *                         m_buttonCollections;
 	UICheckbox *                       m_hideAppearanceItems;
 
@@ -128,6 +135,11 @@ private:
 	CuiIconManagerObjectProperties *   m_objectProperties;
 
 	bool m_isPlayer;
+
+	bool m_isExamine;
+	UIPage *                           m_godAttribsPage;
+	UITable *                          m_godAttribTable;
+	std::vector<Unicode::String>       m_godAttribClipboardLines;
 
 	SwgCuiInventoryContainer *         m_container;
 };

@@ -57,11 +57,14 @@ public:
 	static bool   getAttributes               (std::string const & staticItemName, AttributeVector & av, bool forceUpdate = true, bool updateIfAttributesAreEmpty = false);
 	static bool   getAttributesIfNewer        (std::string const & staticItemName, AttributeVector & av, int & frame, bool forceUpdate, bool updateIfAttributesAreEmpty);
 
-	static void   formatAttributes            (const AttributeVector & av, Unicode::String & str, Unicode::String * categoryDisplayValue, Unicode::String * keyDisplayValue, bool minimal, bool const tooltips = false);
-	static bool   formatAttributes            (const NetworkId & id, Unicode::String & str, bool minimal, bool const tooltips = false);
-	static bool   formatAttributesIfNewer     (const NetworkId & id, Unicode::String & str, bool minimal, int & frame, bool const tooltips);
-	static bool   formatDescription           (const NetworkId & id, Unicode::String & header, Unicode::String & desc, Unicode::String & attribs, bool minimalAttribs, bool const tooltips = false);
-	static bool   formatDescriptionIfNewer    (const NetworkId & id, Unicode::String & header, Unicode::String & desc, Unicode::String & attribs, bool minimalAttribs, int & frame, bool const tooltips = false);
+	static void   formatAttributes            (const AttributeVector & av, Unicode::String & str, Unicode::String * categoryDisplayValue, Unicode::String * keyDisplayValue, bool minimal, bool const tooltips = false, bool omitObjScriptVarSections = false);
+	static bool   formatAttributes            (const NetworkId & id, Unicode::String & str, bool minimal, bool const tooltips = false, bool omitObjScriptVarSections = false);
+	static bool   formatAttributesIfNewer     (const NetworkId & id, Unicode::String & str, bool minimal, int & frame, bool const tooltips, bool omitObjScriptVarSections = false);
+	static bool   formatDescription           (const NetworkId & id, Unicode::String & header, Unicode::String & desc, Unicode::String & attribs, bool minimalAttribs, bool const tooltips = false, bool omitObjScriptVarSections = false);
+	static bool   formatDescriptionIfNewer    (const NetworkId & id, Unicode::String & header, Unicode::String & desc, Unicode::String & attribs, bool minimalAttribs, int & frame, bool const tooltips = false, bool omitObjScriptVarSections = false);
+
+	static void   collectObjScriptVarAttributes (AttributeVector const & av, bool tooltips, bool minimal, AttributeVector & objVarsOut, AttributeVector & scriptVarsOut);
+	static Unicode::String decodeAttributeValueForDisplay (Unicode::String const & value);
 
 	static void   formatHeaderAndDesc         (const ClientObject & obj, Unicode::String & header, Unicode::String & desc, bool tooltip = false);
 

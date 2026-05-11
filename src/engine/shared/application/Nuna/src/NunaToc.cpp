@@ -47,8 +47,8 @@ Result createTitanlst(const std::string& outputFile, const std::vector<std::stri
         TreHeader header;
         inFile.read(reinterpret_cast<char*>(&header), sizeof(header));
         
-        // Accept both standard TRE (TAG_TREE) and encrypted TitanPak (TAG_NUNA)
-        if (header.token != TAG_TREE && header.token != TAG_NUNA)
+        // Accept TREE, NUNA, or LEGE encrypted Legend-style archives
+        if (!treMagicKnown(header.token))
         {
             result.code = ResultCode::InvalidArchive;
             result.message = "Invalid TRE file: " + treFile;
@@ -56,7 +56,7 @@ Result createTitanlst(const std::string& outputFile, const std::vector<std::stri
         }
         
         // Skip encryption header if this is an encrypted TitanPak
-        bool isEncrypted = (header.token == TAG_NUNA);
+        bool isEncrypted = treUsesEncryptionHeader(header.token);
         if (isEncrypted)
         {
             EncryptionHeader encHeader;
@@ -77,12 +77,7 @@ Result createTitanlst(const std::string& outputFile, const std::vector<std::stri
             EncryptionHeader encHeader;
             inFile.read(reinterpret_cast<char*>(&encHeader), sizeof(encHeader));
             
-            // Use provided password or fall back to default TitanPak password
-            std::string password = options.encryption.password;
-            if (password.empty())
-            {
-                password = TITANPAK_PASSWORD;
-            }
+            const std::string password = Crypto::resolveTrePassword(options.encryption.password);
             encCtx.initDecrypt(password, encHeader.salt, encHeader.iv);
         }
         
@@ -436,7 +431,7 @@ Result listTitanlst(const std::string& inputFile, const ListOptions& options)
     {
         EncryptionHeader encHeader;
         inFile.read(reinterpret_cast<char*>(&encHeader), sizeof(encHeader));
-        encContext.initDecrypt(Crypto::getTitanPakPassword(), encHeader.salt, encHeader.iv);
+        encContext.initDecrypt(Crypto::resolveTrePassword(""), encHeader.salt, encHeader.iv);
         currentOffset += sizeof(encHeader);
     }
     
@@ -567,7 +562,7 @@ Result unpackTitanlst(const std::string& inputFile, const std::string& outputDir
     {
         EncryptionHeader encHeader;
         inFile.read(reinterpret_cast<char*>(&encHeader), sizeof(encHeader));
-        encContext.initDecrypt(Crypto::getTitanPakPassword(), encHeader.salt, encHeader.iv);
+        encContext.initDecrypt(Crypto::resolveTrePassword(""), encHeader.salt, encHeader.iv);
         currentOffset += sizeof(encHeader);
     }
     
@@ -587,7 +582,7 @@ Result unpackTitanlst(const std::string& inputFile, const std::string& outputDir
     
     if (encrypted)
     {
-        encContext.decryptAt(reinterpret_cast<uint8_t*>(treeNames.data()), treeNames.size(), currentOffset);
+        encContext.decryptAt(reinterpret_cast<uint8_t*>(treeNames.data()), treeNames.size(), currentOffset); 
     }
     currentOffset += header.sizeOfTreeFileNameBlock;
     

@@ -45,6 +45,19 @@ namespace UITextStyleManagerNamespace
 	int SmallestJapaneseFontSize = 12;
 }
 using namespace UITextStyleManagerNamespace;
+
+namespace
+{
+	/// Custom font atlases (cuiuif_*) share one typeface; template logical pt sizes still span a wide
+	/// range. Compress toward the HUD baseline so grids/buttons don't dwarf nearby labels (same fix for
+	/// full UI replace and for default/bold/starwars when only partial routing uses the custom atlas).
+	inline int dampenPointTowardBaselineForCustomAtlas (int scaledPoint, int baselinePt)
+	{
+		int const d = scaledPoint - baselinePt;
+		int const out = baselinePt + d / 2;
+		return std::max (MIN_POINT_SIZE, std::min (MAX_POINT_SIZE, out));
+	}
+}
 //======================================================================================
 
 //----------------------------------------------------------------------
@@ -62,6 +75,7 @@ UIBaseObject         (),
 m_logicalToFixedFaceMap(new LogicalFontFaceToFontFaceMap),
 m_logicalFontFaces(new LogicalFontFaces),
 m_userDefaultFontFaceUtf8 (),
+m_userFontFullReplace (false),
 m_fontScalePercent(100),
 m_initialized(false)
 {
@@ -264,58 +278,78 @@ UITextStyle * UITextStyleManager::GetFontForLogicalFont (const UILowerString &lo
 		scaledLogicalPoint = std::max (MIN_POINT_SIZE, std::min (MAX_POINT_SIZE, scaledLogicalPoint));
 	}
 
+	bool const userFontActive = !m_userDefaultFontFaceUtf8.empty ();
+	if (userFontActive)
+	{
+		bool const resolveViaCuiuifAtlas = m_userFontFullReplace
+			|| !_stricmp (logicalFontFace.c_str (), "default")
+			|| !_stricmp (logicalFontFace.c_str (), "bold")
+			|| !_stricmp (logicalFontFace.c_str (), "starwars");
+		if (resolveViaCuiuifAtlas && _stricmp (logicalFontFace.c_str (), "stockui") != 0)
+			scaledLogicalPoint = dampenPointTowardBaselineForCustomAtlas (scaledLogicalPoint, fontSizeToMoveTowards);
+	}
+
 	if(logicalFontName.startsWith('/'))
 	{
-		//It's already decomposed into a fixed font
-		int tryPointSize = scaledLogicalPoint;
-		int dir = 0;
-		if (tryPointSize < fontSizeToMoveTowards)
-			dir = 1;
-		else
-			dir = -1;
-		while((tryPointSize >= MIN_POINT_SIZE) && (tryPointSize <= MAX_POINT_SIZE))
+		if (!(userFontActive && m_userFontFullReplace))
 		{
-			UI_IGNORE_RETURN(_snprintf(buffer, buffer_size, "%s_%d", logicalFontFace.c_str(), tryPointSize));
-			UITextStyle *  textStyle = reinterpret_cast<UITextStyle *>(GetObjectFromPath(buffer, TUITextStyle)); //lint !e740 have to cast
-			if(textStyle)
-			{				
-				textStyle->SetLogicalName(Unicode::narrowToWide(logicalFontName.c_str()));
-				return textStyle;
+			//It's already decomposed into a fixed font
+			int tryPointSize = scaledLogicalPoint;
+			int dir = 0;
+			if (tryPointSize < fontSizeToMoveTowards)
+				dir = 1;
+			else
+				dir = -1;
+			while((tryPointSize >= MIN_POINT_SIZE) && (tryPointSize <= MAX_POINT_SIZE))
+			{
+				UI_IGNORE_RETURN(_snprintf(buffer, buffer_size, "%s_%d", logicalFontFace.c_str(), tryPointSize));
+				UITextStyle *  textStyle = reinterpret_cast<UITextStyle *>(GetObjectFromPath(buffer, TUITextStyle)); //lint !e740 have to cast
+				if(textStyle)
+				{				
+					textStyle->SetLogicalName(Unicode::narrowToWide(logicalFontName.c_str()));
+					return textStyle;
+				}
+				tryPointSize += dir;
 			}
-			tryPointSize += dir;
 		}
-
 	}
 	
 	//turn the font face into a fixed font face
 	UILowerString fixedFontFace;
 	// Nameplates and flytext use logical "starwars_*"; route to generated user atlases when a user font is active.
-	if (!m_userDefaultFontFaceUtf8.empty () && (!_stricmp (logicalFontFace.c_str (), "default") || !_stricmp (logicalFontFace.c_str (), "bold") || !_stricmp (logicalFontFace.c_str (), "starwars")))
+	// Logical face "stockui" is reserved for picker chrome that must keep shipped fonts (not cuiuif).
 	{
-		fixedFontFace = UILowerString ("cuiuif");
-	}
-	else
-	{
-		LogicalFontFaceToFontFaceMap::iterator logicalIterator = m_logicalToFixedFaceMap->find(UILowerString(logicalFontFace));
-		if(logicalIterator == m_logicalToFixedFaceMap->end())
+		bool const forceStockUiChrome = !_stricmp (logicalFontFace.c_str (), "stockui");
+		if (!forceStockUiChrome && userFontActive && (m_userFontFullReplace || !_stricmp (logicalFontFace.c_str (), "default") || !_stricmp (logicalFontFace.c_str (), "bold") || !_stricmp (logicalFontFace.c_str (), "starwars")))
 		{
-			logicalIterator = m_logicalToFixedFaceMap->find(UILowerString("default"));
-			if(logicalIterator == m_logicalToFixedFaceMap->end())
-				logicalIterator = m_logicalToFixedFaceMap->begin();
+			fixedFontFace = UILowerString ("cuiuif");
+		}
+		else
+		{
+			std::string mapKeyStr = logicalFontFace;
+			if (!_stricmp (mapKeyStr.c_str (), "stockui"))
+				mapKeyStr = "default";
+			LogicalFontFaceToFontFaceMap::iterator logicalIterator = m_logicalToFixedFaceMap->find(UILowerString(mapKeyStr));
 			if(logicalIterator == m_logicalToFixedFaceMap->end())
 			{
-				//Well, now we're really screwed
-				UITextStyle *  textStyle = static_cast<UITextStyle *>(GetObjectFromPath("/Fonts.aurabesh_12", TUITextStyle)); //lint !e740 have to cast
-				if(textStyle)
+				logicalIterator = m_logicalToFixedFaceMap->find(UILowerString("default"));
+				if(logicalIterator == m_logicalToFixedFaceMap->end())
+					logicalIterator = m_logicalToFixedFaceMap->begin();
+				if(logicalIterator == m_logicalToFixedFaceMap->end())
 				{
-					UI_REPORT_LOG_PRINT(true, ("Returned bogus aurabesh_12 font because there was no default font"));
-					textStyle->SetLogicalName(Unicode::narrowToWide(logicalFontName.c_str()));
-					return textStyle;
+					//Well, now we're really screwed
+					UITextStyle *  textStyle = static_cast<UITextStyle *>(GetObjectFromPath("/Fonts.aurabesh_12", TUITextStyle)); //lint !e740 have to cast
+					if(textStyle)
+					{
+						UI_REPORT_LOG_PRINT(true, ("Returned bogus aurabesh_12 font because there was no default font"));
+						textStyle->SetLogicalName(Unicode::narrowToWide(logicalFontName.c_str()));
+						return textStyle;
+					}
+					assert(logicalIterator != m_logicalToFixedFaceMap->end());	//This error means there's no fonts at all
 				}
-				assert(logicalIterator != m_logicalToFixedFaceMap->end());	//This error means there's no fonts at all
 			}
+			fixedFontFace = logicalIterator->second;
 		}
-		fixedFontFace = logicalIterator->second;
 	}
 	
 	//look for the widget start at the suggested point and head towards 14 (with 14 going down)
@@ -361,6 +395,20 @@ void UITextStyleManager::clearUserDefaultFontFace ()
 std::string const & UITextStyleManager::getUserDefaultFontFaceUtf8 () const
 {
 	return m_userDefaultFontFaceUtf8;
+}
+
+//----------------------------------------------------------------------
+
+void UITextStyleManager::setUserFontFullReplace (bool fullReplace)
+{
+	m_userFontFullReplace = fullReplace;
+}
+
+//----------------------------------------------------------------------
+
+bool UITextStyleManager::getUserFontFullReplace () const
+{
+	return m_userFontFullReplace;
 }
 
 //----------------------------------------------------------------------

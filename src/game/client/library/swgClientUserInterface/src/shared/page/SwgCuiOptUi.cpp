@@ -14,7 +14,12 @@
 #include "UISliderbar.h"
 #include "UIComboBox.h"
 #include "UIButton.h"
+#include "UIText.h"
 #include "UITextbox.h"
+#include "UITextboxStyle.h"
+#include "UITextStyleManager.h"
+#include "UIMessage.h"
+#include "UIWidget.h"
 #include "clientDirectInput/DirectInput.h"
 #include "clientUserInterface/ConfigClientUserInterface.h"
 #include "clientUserInterface/CuiDynamicUIFont.h"
@@ -238,6 +243,9 @@ m_comboUiFont (0),
 m_textUiFontFilter (0),
 m_buttonUiFontSearch (0),
 m_buttonUiFontApply (0),
+m_textUiFontSample (0),
+m_ownedComboTextboxStyleClone (0),
+m_ownedFilterTextboxStyleClone (0),
 m_callbackReceiverWaypointMonitor (0),
 m_callbackReceiverExpMonitor (0)
 {
@@ -263,10 +271,14 @@ m_callbackReceiverExpMonitor (0)
 	getCodeDataObject (TUISliderbar, slider, "sliderUiFontScale");
 	registerSlider (*slider, CuiPreferences::setUiFontScalePercent, CuiPreferences::getUiFontScalePercent, ConfigClientUserInterface::getUiFontScalePercent, 50, 200, 200);
 
+	getCodeDataObject (TUICheckbox, checkbox, "checkUiFontFullReplace");
+	registerCheckbox (*checkbox, CuiPreferences::setUiFontFullReplace, CuiPreferences::getUiFontFullReplace, ConfigClientUserInterface::getUiFontFullReplace);
+
 	getCodeDataObject (TUITextbox, m_textUiFontFilter, "textUiFontFilter");
 	getCodeDataObject (TUIButton, m_buttonUiFontSearch, "buttonUiFontSearch");
 	getCodeDataObject (TUIComboBox, m_comboUiFont, "comboUiDefaultFont");
 	getCodeDataObject (TUIButton, m_buttonUiFontApply, "buttonUiFontApply");
+	getCodeDataObject (TUIText, m_textUiFontSample, "textUiFontSample");
 	if (m_buttonUiFontSearch)
 		registerMediatorObject (*m_buttonUiFontSearch, true);
 	if (m_buttonUiFontApply)
@@ -493,7 +505,8 @@ void SwgCuiOptUi::performActivate ()
 		else
 			m_textUiFontFilter->SetText (Unicode::emptyString);
 		rebuildUiFontCombo ();
-		selectComboFaceUtf8 (saved);
+		syncComboSelectionAfterRebuild ();
+		refreshFontPickerChrome ();
 	}
 }
 
@@ -501,6 +514,7 @@ void SwgCuiOptUi::performActivate ()
 
 void SwgCuiOptUi::performDeactivate ()
 {
+	releaseOwnedFontPickerTextboxStyles ();
 	SwgCuiOptBase::performDeactivate ();
 }
 
@@ -534,20 +548,29 @@ void SwgCuiOptUi::onComboPaletteSet    (const SwgCuiOptBase & , const UIComboBox
 
 void SwgCuiOptUi::resetDefaults   (bool confirmed)
 {
-	SwgCuiOptBase::resetDefaults(confirmed);
-	if(confirmed)
+	if (confirmed)
 	{
-		if(CuiWorkspace::getGameWorkspace())
-			CuiWorkspace::getGameWorkspace()->resetAllToDefaultSizeAndLocation();	
+		// Base class resets sliders/checkboxes next; their setters call refreshAllUiText(). If custom
+		// /Fonts.cuiuif_* styles still exist, that refresh binds them to widgets, then clearUserFont()
+		// would Destroy those TextStyles and leave dangling pointers (blank text / crash). Tear down
+		// user fonts first so all refreshes use stock font styles.
 		CuiPreferences::setUiDefaultFontFaceUtf8 ("");
 		CuiDynamicUIFont::clearUserFont ();
+		CuiPreferences::setUiFontFullReplace (false);
+	}
+	SwgCuiOptBase::resetDefaults (confirmed);
+	if (confirmed)
+	{
+		if (CuiWorkspace::getGameWorkspace ())
+			CuiWorkspace::getGameWorkspace ()->resetAllToDefaultSizeAndLocation ();
 		if (m_textUiFontFilter)
 			m_textUiFontFilter->SetText (Unicode::emptyString);
 		if (m_comboUiFont)
 		{
 			rebuildUiFontCombo ();
-			selectComboFaceUtf8 ("");
+			syncComboSelectionAfterRebuild ();
 		}
+		refreshFontPickerChrome ();
 	}
 }
 
@@ -557,9 +580,7 @@ void SwgCuiOptUi::OnButtonPressed (UIWidget * context)
 {
 	if (context == m_buttonUiFontSearch)
 	{
-		s_allFontFacesCachePopulated = false;
-		rebuildUiFontCombo ();
-		selectComboFaceUtf8 (CuiPreferences::getUiDefaultFontFaceUtf8 ());
+		performFontSearchRefresh ();
 		return;
 	}
 	if (context == m_buttonUiFontApply)
@@ -573,13 +594,20 @@ void SwgCuiOptUi::OnButtonPressed (UIWidget * context)
 		{
 			CuiPreferences::setUiDefaultFontFaceUtf8 ("");
 			CuiDynamicUIFont::clearUserFont ();
+			if (m_textUiFontFilter)
+				m_textUiFontFilter->SetText (Unicode::emptyString);
 		}
 		else
 		{
 			if (!CuiDynamicUIFont::applyFontFaceUtf8 (name))
 				return;
 			CuiPreferences::setUiDefaultFontFaceUtf8 (name);
+			if (m_textUiFontFilter)
+				m_textUiFontFilter->SetText (Unicode::utf8ToWide (name));
 		}
+		rebuildUiFontCombo ();
+		syncComboSelectionAfterRebuild ();
+		refreshFontPickerChrome ();
 		return;
 	}
 	SwgCuiOptBase::OnButtonPressed (context);
@@ -592,7 +620,8 @@ void SwgCuiOptUi::OnTextboxChanged (UIWidget * context)
 	if (context == m_textUiFontFilter && isActive ())
 	{
 		rebuildUiFontCombo ();
-		selectComboFaceUtf8 (CuiPreferences::getUiDefaultFontFaceUtf8 ());
+		syncComboSelectionAfterRebuild ();
+		refreshFontPickerChrome ();
 		return;
 	}
 	UIEventCallback::OnTextboxChanged (context);
@@ -615,12 +644,20 @@ void SwgCuiOptUi::rebuildUiFontCombo ()
 	m_comboUiFont->Clear ();
 	m_comboUiFont->AddItem (Unicode::narrowToWide ("(Game default)"), "");
 
+	ensureAllFontFacesCached ();
+
+	// Empty filter means "show everything" so players can browse installed faces (previously we aborted and only showed "(Game default)").
 	if (filterUtf8.empty ())
+	{
+		for (size_t i = 0; i < s_allFontFacesCache.size (); ++i)
+		{
+			Unicode::String const faceW = Unicode::utf8ToWide (s_allFontFacesCache[i]);
+			m_comboUiFont->AddItem (faceW, s_allFontFacesCache[i]);
+		}
 		return;
+	}
 
 	Unicode::String const filterW = Unicode::utf8ToWide (filterUtf8);
-
-	ensureAllFontFacesCached ();
 
 	for (size_t i = 0; i < s_allFontFacesCache.size (); ++i)
 	{
@@ -654,8 +691,165 @@ void SwgCuiOptUi::selectComboFaceUtf8 (std::string const &utf8Face)
 
 //----------------------------------------------------------------------
 
+void SwgCuiOptUi::performFontSearchRefresh ()
+{
+	s_allFontFacesCachePopulated = false;
+	rebuildUiFontCombo ();
+	syncComboSelectionAfterRebuild ();
+	refreshFontPickerChrome ();
+}
+
+//----------------------------------------------------------------------
+
+void SwgCuiOptUi::syncComboSelectionAfterRebuild ()
+{
+	if (!m_comboUiFont || !m_textUiFontFilter)
+		return;
+
+	Unicode::String filterWide;
+	m_textUiFontFilter->GetText (filterWide);
+	if (filterWide.empty ())
+		m_textUiFontFilter->GetLocalText (filterWide);
+	std::string filterUtf8 = Unicode::wideToUTF8 (filterWide);
+	trimAsciiInPlace (filterUtf8);
+
+	if (!filterUtf8.empty ())
+	{
+		Unicode::String const filterW = Unicode::utf8ToWide (filterUtf8);
+		int bestExact = -1;
+		int firstSubstring = -1;
+		int const n = m_comboUiFont->GetItemCount ();
+		for (int i = 0; i < n; ++i)
+		{
+			std::string name;
+			if (!m_comboUiFont->GetIndexName (i, name) || name.empty ())
+				continue;
+			if (!_stricmp (name.c_str (), filterUtf8.c_str ()))
+			{
+				bestExact = i;
+				break;
+			}
+			if (firstSubstring < 0)
+			{
+				Unicode::String const faceW = Unicode::utf8ToWide (name);
+				if (wideContainsSubstringI (faceW, filterW))
+					firstSubstring = i;
+			}
+		}
+		if (bestExact >= 0)
+			m_comboUiFont->SetSelectedIndex (bestExact, true);
+		else if (firstSubstring >= 0)
+			m_comboUiFont->SetSelectedIndex (firstSubstring, true);
+		else
+			m_comboUiFont->SetSelectedIndex (0, true);
+		return;
+	}
+
+	selectComboFaceUtf8 (CuiPreferences::getUiDefaultFontFaceUtf8 ());
+}
+
+//----------------------------------------------------------------------
+
+bool SwgCuiOptUi::OnMessage (UIWidget * context, UIMessage const & msg)
+{
+	if (m_textUiFontFilter && context == m_textUiFontFilter && isActive ())
+	{
+		if (msg.IsKeyMessage () && msg.Type == UIMessage::KeyDown && msg.Keystroke == UIMessage::Enter)
+		{
+			performFontSearchRefresh ();
+			return false;
+		}
+	}
+	return UIEventCallback::OnMessage (context, msg);
+}
+
+//----------------------------------------------------------------------
+
+namespace
+{
+	void cloneTextboxStyleWithStockUiFont (UITextbox *tb, UITextboxStyle **ownedCloneSlot, std::string const &restoreStylePathUtf8)
+	{
+		if (!tb || !UITextStyleManager::GetInstance ())
+			return;
+		IGNORE_RETURN (tb->SetProperty (UITextbox::PropertyName::Style, Unicode::narrowToWide (restoreStylePathUtf8)));
+		if (*ownedCloneSlot)
+		{
+			(*ownedCloneSlot)->Destroy ();
+			*ownedCloneSlot = 0;
+		}
+		UITextboxStyle *const orig = tb->GetTextboxStyle ();
+		if (!orig)
+			return;
+		UITextboxStyle *const dup = dynamic_cast<UITextboxStyle *>(orig->Clone ());
+		if (!dup)
+			return;
+		UITextStyleManager *const mgr = UITextStyleManager::GetInstance ();
+		UITextStyle * stk = mgr ? mgr->GetFontForLogicalFont (std::string ("stockui_12")) : 0;
+		if (!stk && mgr)
+			stk = mgr->GetFontForLogicalFont (std::string ("default_12"));
+		if (!stk)
+		{
+			dup->Destroy ();
+			return;
+		}
+		for (int vs = 0; vs < static_cast<int>(UIWidget::LastState); ++vs)
+			dup->SetTextStyle (static_cast<UITextboxStyle::VisualState>(vs), stk);
+		tb->SetStyle (dup);
+		*ownedCloneSlot = dup;
+	}
+}
+
+void SwgCuiOptUi::releaseOwnedFontPickerTextboxStyles ()
+{
+	static std::string const kStylePath ("/Styles.textbox.combo.Style_new");
+	Unicode::String const styleW (Unicode::narrowToWide (kStylePath));
+	if (m_comboUiFont)
+	{
+		UIBaseObject *const ch = m_comboUiFont->GetChild ("ComboTextbox");
+		if (ch && ch->IsA (TUITextbox))
+			IGNORE_RETURN (static_cast<UITextbox *>(ch)->SetProperty (UITextbox::PropertyName::Style, styleW));
+	}
+	if (m_textUiFontFilter)
+		IGNORE_RETURN (m_textUiFontFilter->SetProperty (UITextbox::PropertyName::Style, styleW));
+	if (m_ownedComboTextboxStyleClone)
+	{
+		m_ownedComboTextboxStyleClone->Destroy ();
+		m_ownedComboTextboxStyleClone = 0;
+	}
+	if (m_ownedFilterTextboxStyleClone)
+	{
+		m_ownedFilterTextboxStyleClone->Destroy ();
+		m_ownedFilterTextboxStyleClone = 0;
+	}
+}
+
+void SwgCuiOptUi::updateFontSampleText ()
+{
+	if (!m_textUiFontSample)
+		return;
+	m_textUiFontSample->SetText (Unicode::String (L"Sample  Aa Bb Mm 012345"));
+	IGNORE_RETURN (m_textUiFontSample->SetProperty (UIText::PropertyName::Style, Unicode::narrowToWide (std::string ("default_12"))));
+}
+
+void SwgCuiOptUi::refreshFontPickerChrome ()
+{
+	static std::string const kStylePath ("/Styles.textbox.combo.Style_new");
+	if (m_textUiFontFilter)
+		cloneTextboxStyleWithStockUiFont (m_textUiFontFilter, &m_ownedFilterTextboxStyleClone, kStylePath);
+	if (m_comboUiFont)
+	{
+		UIBaseObject *const ch = m_comboUiFont->GetChild ("ComboTextbox");
+		if (ch && ch->IsA (TUITextbox))
+			cloneTextboxStyleWithStockUiFont (static_cast<UITextbox *>(ch), &m_ownedComboTextboxStyleClone, kStylePath);
+	}
+	updateFontSampleText ();
+}
+
+//----------------------------------------------------------------------
+
 SwgCuiOptUi::~SwgCuiOptUi ()
 {
+	releaseOwnedFontPickerTextboxStyles ();
 	CuiPreferences::getUseWaypointMonitorCallback ().detachReceiver    (*m_callbackReceiverWaypointMonitor);
 	delete m_callbackReceiverWaypointMonitor;
 	m_callbackReceiverWaypointMonitor = 0;

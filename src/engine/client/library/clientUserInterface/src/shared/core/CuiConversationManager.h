@@ -127,6 +127,16 @@ public:
 	/// enumeration fails (vendor / disabled workspace) while Swg still holds the registered instance.
 	static CuiMediator * fetchCinematicMediatorInstance ();
 
+	/// Swg registers while cinematic UI is up — true only during server scripted look-at (orbit/zoom on prop).
+	typedef bool (*CinematicScriptedLookAtOrbitPredicate) ();
+	static void setCinematicScriptedLookAtOrbitPredicate (CinematicScriptedLookAtOrbitPredicate predicate);
+	static bool isCinematicScriptedLookAtOrbitActive ();
+
+	/// Direct route for digit / paging keys — UIManager focus chain sometimes skips cinematic OnMessage.
+	typedef void (*CinematicConversationKeystrokeHandler)(unsigned short keystroke);
+	static void setCinematicConversationKeystrokeHandler (CinematicConversationKeystrokeHandler handler);
+	static void dispatchCinematicConversationKeystroke (unsigned short keystroke);
+
 private:
 
 	static void                              makeSinglePlayerResponses ();
@@ -141,6 +151,8 @@ private:
 	static bool                              ms_cinematicConversationUiActive;
 	static CloseCinematicUiHandler           ms_closeCinematicUiHandler;
 	static ActiveCinematicMediatorAccessor   ms_activeCinematicMediatorAccessor;
+	static CinematicScriptedLookAtOrbitPredicate ms_scriptedLookAtOrbitPredicate;
+	static CinematicConversationKeystrokeHandler   ms_cinematicKeystrokeHandler;
 };
 
 //----------------------------------------------------------------------

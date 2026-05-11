@@ -24,6 +24,7 @@
 #include "clientGame/Game.h"
 #include "clientGame/PlayerObject.h"
 #include "clientGraphics/Graphics.h"
+#include "clientUserInterface/CuiConversationManager.h"
 #include "clientUserInterface/CuiLayer.h"
 #include "clientUserInterface/CuiObjectTextManager.h"
 #include "clientUserInterface/CuiPreferences.h"
@@ -301,8 +302,8 @@ void  CuiTextManager::render (UICanvas & canvas)
 	int const logicalW = static_cast<int>(s_screenSize.x * inv + 0.5f);
 	int const logicalH = static_cast<int>(s_screenSize.y * inv + 0.5f);
 
-	//-- display "GOD MODE" text if necessary
-	if (PlayerObject::isAdmin ())
+	//-- display "GAME MASTER" banner if necessary (cinematic conversation uses a compact *GM* label instead)
+	if (PlayerObject::isAdmin () && !CuiConversationManager::isCinematicConversationUiActive ())
 	{
 		TextEnqueueInfo godinfo_tq;
 		static bool init = false;

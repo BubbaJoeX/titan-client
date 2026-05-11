@@ -13,6 +13,7 @@
 #define NUNA_CRYPTO_H
 
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -42,10 +43,21 @@ public:
     static constexpr size_t KEY_SIZE = 32;
     static constexpr size_t BLOCK_SIZE = 256;
 
-    // Get the hardcoded TitanPak password
+    // Get the hardcoded TitanPak password (literal; does not read environment).
     static const char* getTitanPakPassword()
     {
         return TITANPAK_PASSWORD;
+    }
+
+    /// Empty explicitPassword → `SWG_TRE_PASSWORD` env (if set), else built-in TitanPak key.
+    static std::string resolveTrePassword(const std::string& explicitPassword)
+    {
+        if (!explicitPassword.empty())
+            return explicitPassword;
+        if (const char* e = std::getenv("SWG_TRE_PASSWORD"))
+            if (e[0] != '\0')
+                return std::string(e);
+        return std::string(TITANPAK_PASSWORD);
     }
 
     // Generate random bytes for salt/IV

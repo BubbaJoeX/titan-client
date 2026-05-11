@@ -119,6 +119,7 @@ namespace
 	bool              ms_showCompletedCollections;
 	int               ms_uiScalePercent;
 	int               ms_uiFontScalePercent;
+	bool              ms_uiFontFullReplace;
 }
 
 //----------------------------------------------------------------------
@@ -260,6 +261,7 @@ void ConfigClientUserInterface::install ()
 	KEY_BOOL   (showCompletedCollections,         true);
 	KEY_INT    (uiScalePercent,                   100);
 	KEY_INT    (uiFontScalePercent,               100);
+	KEY_BOOL   (uiFontFullReplace,               false);
 }
 
 //----------------------------------------------------------------------
@@ -946,6 +948,13 @@ float ConfigClientUserInterface::getUiScaleFactor ()
 int ConfigClientUserInterface::getUiFontScalePercent ()
 {
 	return ms_uiFontScalePercent;
+}
+
+//----------------------------------------------------------------------
+
+bool ConfigClientUserInterface::getUiFontFullReplace ()
+{
+	return ms_uiFontFullReplace;
 }
 
 //======================================================================

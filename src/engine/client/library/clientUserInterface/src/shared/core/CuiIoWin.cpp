@@ -96,6 +96,28 @@ namespace CuiIoWinNamespace
 			code == DIK_NEXT;
 	}
 
+	/// Maps DirectInput scancodes to WM-style keystrokes for cinematic dialogue (no ui_inputmap binding required).
+	inline unsigned short mapDikToCinematicConversationKeystroke (int dik)
+	{
+		switch (dik)
+		{
+		case DIK_1: case DIK_NUMPAD1: return static_cast<unsigned short>('1');
+		case DIK_2: case DIK_NUMPAD2: return static_cast<unsigned short>('2');
+		case DIK_3: case DIK_NUMPAD3: return static_cast<unsigned short>('3');
+		case DIK_4: case DIK_NUMPAD4: return static_cast<unsigned short>('4');
+		case DIK_5: case DIK_NUMPAD5: return static_cast<unsigned short>('5');
+		case DIK_6: case DIK_NUMPAD6: return static_cast<unsigned short>('6');
+		case DIK_7: case DIK_NUMPAD7: return static_cast<unsigned short>('7');
+		case DIK_8: case DIK_NUMPAD8: return static_cast<unsigned short>('8');
+		case DIK_9: case DIK_NUMPAD9: return static_cast<unsigned short>('9');
+		case DIK_0: case DIK_NUMPAD0: return static_cast<unsigned short>('0');
+		case DIK_MINUS: case DIK_SUBTRACT: return static_cast<unsigned short>('-');
+		case DIK_EQUALS: case DIK_ADD: return static_cast<unsigned short>('=');
+		default:
+			return 0;
+		}
+	}
+
 	bool s_debugShiftStates = false;
 
 	float s_lastClickTimes [3] = { 0.0f, 0.0f, 0.0f };
@@ -837,6 +859,13 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 				
 				CuiManager::InputManager::setPointerMotionCapturedByUiX (true);
 				CuiManager::InputManager::setPointerMotionCapturedByUiY (true);
+
+				// Cinematic scripted look-at: orbit/zoom only while Shift is held (otherwise mouse selects dialogue).
+				if (CuiConversationManager::isCinematicScriptedLookAtOrbitActive () && (shiftState & CuiM_BITS_SHIFT) != 0)
+				{
+					CuiManager::InputManager::setPointerMotionCapturedByUiX (false);
+					CuiManager::InputManager::setPointerMotionCapturedByUiY (false);
+				}
 				
 				// Modeless UI skips the block below unless we include turret views. If pointer
 				// motion stays "captured", IoWin returns IOR_Block here and GroundScene never
@@ -1239,6 +1268,21 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 					}
 				}
 			}
+		}
+	}
+
+	// Cinematic conversation UI listens for UIMessage::KeyDown; digits and -/= are often not wired through the input map.
+	if (event->type == IOET_KeyDown)
+	{
+		unsigned short const cinematicKs = mapDikToCinematicConversationKeystroke (event->arg2);
+		if (cinematicKs != 0
+			&& CuiConversationManager::isCinematicConversationUiActive ()
+			&& (shiftState & (CuiM_BITS_CTRL | CuiM_BITS_MENU)) == 0
+			&& !textIsFocused
+			&& !(navigationIsFocused && isNavigationCode (event->arg2)))
+		{
+			CuiConversationManager::dispatchCinematicConversationKeystroke (cinematicKs);
+			retval = true;
 		}
 	}
 

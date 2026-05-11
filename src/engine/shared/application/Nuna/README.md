@@ -14,10 +14,15 @@ A standalone TitanPak archive packer/unpacker for the Titan project. Nuna provid
 
 ## File Extensions
 
+Extension is only a **convention**. What matters is the **header magic** (`TREE` vs `NUNA` vs `LEGE`) and **version** — run `nuna analyze <file>` if unsure.
+
 | Extension | Encrypted | Description |
 |-----------|-----------|-------------|
-| `.titanpak` | **Yes** | TitanPak format - auto-encrypted with built-in key |
-| `.tre` | No | Legacy TRE format - unencrypted, SWG compatible |
+| `.titanpak` | Usually **yes** (`NUNA`) | Pack defaults to encrypted TitanPak (same crypto as LEGE below). |
+| `.tre` | **Often no** (`TREE` + `0004`–`0006`) | Classic SWG tree — unencrypted. Same extension has been used for other payloads; use **analyze** to see magic. |
+| `.tres` / Legend `.tre` | **Yes** (`LEGE` + **NDS3**) | Legend encrypted tree — **same** `EncryptionHeader`, `deriveKey`, and password plumbing as **NUNA** `.titanpak` in engine/Nuna (`TitanPakCrypto` / `SWG_TRE_PASSWORD`). The writer may still choose a **custom** password at pack time; it is not a different cipher family. |
+
+**`.titanlst`** references trees by path; referenced trees can be `TREE`, `NUNA`, or `LEGE` — encryption follows each embedded tree file’s magic, not the list extension.
 
 ## Building
 

@@ -86,6 +86,12 @@ public:
 	/// Force-dismiss cinematic UI (Escape / End Conversation); uses deactivate(), not workspace close.
 	static void executeCloseFromConversationManager();
 
+	/// Registered with CuiConversationManager — GroundScene / IoWin use for scripted-look-at orbit only.
+	static bool scriptedLookAtOrbitPredicateThunk ();
+
+	/// IoWin / CuiConversationManager route digit and paging keys here (UIManager focus is unreliable).
+	static void dispatchConversationKeystrokeFromManager (unsigned short keystroke);
+
 public:
 	SwgCuiCinematicConversation(UIPage & page);
 	virtual ~SwgCuiCinematicConversation();
@@ -122,6 +128,7 @@ private:
 	void initializeCameraControl();
 	void restoreCameraControl();
 	void updateCameraFocus(float deltaTime);
+	void syncScriptedOrbitCameraFromFreeCamera(class FreeCamera * freeCamera);
 	void setCameraShot(CameraShotType shotType);
 	void setCameraShot(CameraShotType shotType, float transitionDuration);
 	void transitionCamera(Vector const & targetPos, Vector const & targetLookAt, float duration);
@@ -134,14 +141,19 @@ private:
 
 	// Calculate ideal camera positions for different shot types
 	void calculateCloseUpShot(Vector & outCameraPos, Vector & outLookAt) const;
+	void calculatePlayerFaceCloseUpShot(Vector & outCameraPos, Vector & outLookAt) const;
 	bool useWideOpenFaceEstablishingShot() const;
 	void calculateWideOpenFaceShot(Vector & outCameraPos, Vector & outLookAt) const;
+	/// KOTOR/TOR-style: camera sits between participant heads on alternating sides of the P–N axis by speaker.
+	void calculateAxisDialogueShot(bool npcSpeaking, Vector & outCameraPos, Vector & outLookAt) const;
 	void calculateMediumShot(Vector & outCameraPos, Vector & outLookAt) const;
 	void calculateOverShoulderShot(Vector & outCameraPos, Vector & outLookAt) const;
 	void calculateTwoShot(Vector & outCameraPos, Vector & outLookAt) const;
 
 	// Animate letterbox bars
 	void updateLetterbox(float deltaTime);
+	void updateScriptedLookAtCameraHint();
+	void updateGmCinematicBadge();
 
 	// NPC subtitle typewriter (timed with dialogue beat; cinematic mode only)
 	void beginNpcMessageTypewriter(Unicode::String const & message);
@@ -161,9 +173,16 @@ private:
 	void ensureResponseSlotCount(size_t needed);
 	void releaseDynamicResponseSlots();
 	void updateResponseScrollbarVisibility();
+	void refreshVisibleResponseRows();
+	void changeResponsePage(int deltaPages);
+	void updateResponsePageControls();
+	void clampResponsePageStart();
+	bool trySelectResponseByNumberKey(unsigned short keystroke);
 
 	// Setup viewer with NPC appearance
 	void setupNpcViewer();
+	/// Sets npcName from current conversation target (localized name or template fallback).
+	void updateSpeakerTitleText();
 
 	// Callbacks for conversation events
 	void onTargetChanged(bool const & value);
@@ -175,7 +194,6 @@ private:
 
 	// Easing functions
 	static float easeInOutCubic(float t);
-	static float easeOutQuad(float t);
 
 private:
 	MessageDispatch::Callback * m_callback;
@@ -200,17 +218,23 @@ private:
 		bool ownedDuplicate;
 	};
 
-	// First six rows come from ui_cinematic_conversation.inc; additional rows are DuplicateObject clones.
+	// First six rows come from ui_cinematic_conversation.inc; pagination uses up to four visible rows.
 	static int const BASE_RESPONSE_SLOTS = 6;
 	static int const MAX_RESPONSE_SLOTS = 64;
+	static int const RESPONSES_PER_PAGE = 4;
 
 	std::vector<ResponseSlot> m_responseSlots;
 	UIPage * m_responseClonePrototype;
 
 	// End conversation button
 	UIButton * m_endConversationButton;
-
-	// Baseline layout (before extra response rows); restored on deactivate.
+	UIButton * m_responsePagePrevButton;
+	UIButton * m_responsePageNextButton;
+	UIText * m_responsePageLabel;
+	/// Shown only during server scripted look-at (Shift+mouse orbit).
+	UIText * m_scriptedLookAtCameraHint;
+	/// Compact admin marker when world "GAME MASTER" banner is suppressed by cinematic UI.
+	UIText * m_gmCinematicBadge;
 	bool m_cachedUILayoutValid;
 	UISize m_cachedDialoguePanelSize;
 	UIPoint m_cachedDialoguePanelLocation;
@@ -221,6 +245,8 @@ private:
 	// State
 	NetworkId m_targetNpcId;
 	std::vector<ResponseData> m_currentResponses;
+	/// First visible response index in `m_currentResponses` (multiples of RESPONSES_PER_PAGE when paginated).
+	size_t m_responsePageStart;
 	/// Target cleared during TargetChanged — defer deactivateInWorkspace to update(); closing synchronously in the emit stack crashed / conflicted with workspace iterators.
 	bool m_deferCloseUntilUpdate;
 
@@ -228,7 +254,10 @@ private:
 	float m_letterboxAnimationTime;
 	float m_letterboxTargetHeight;
 	float m_currentLetterboxHeight;
+	float m_letterboxAnimationStartHeight;
 	bool m_letterboxAnimating;
+	/// After deactivate, re-show page for letterbox closing animation; then hide and clear updating.
+	bool m_hidePageAfterLetterboxOut;
 
 	// Camera state
 	bool m_cameraControlActive;
@@ -248,6 +277,10 @@ private:
 	float m_timeSinceLastShotChange;
 
 	bool m_savedHudEnabled;
+	/// Ground HUD was left disabled until letterbox-out finishes so HUD and conversation chrome never overlap.
+	bool m_deferHudRestoreUntilLetterboxOut;
+
+	void applyDeferredHudRestoreIfNeeded();
 
 	// Dialogue-driven camera: NPC lines refresh framing; player picks a reaction shot before returning to NPC.
 	bool                                      m_playerReactionHoldActive;

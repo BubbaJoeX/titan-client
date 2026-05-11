@@ -20,18 +20,23 @@
 			letterboxTop='letterboxTop'
 			letterboxBottom='letterboxBottom'
 			dialoguePanel='dialoguePanel'
-			npcName='dialoguePanel.npcName'
-			npcMessage='dialoguePanel.npcMessage'
-			responseArea='dialoguePanel.responseArea'
-			responsePanel='dialoguePanel.responseArea.responsePanel'
-			responseScrollbar='dialoguePanel.responseArea.responseScrollbar'
-			response1='dialoguePanel.responseArea.responsePanel.response1'
-			response2='dialoguePanel.responseArea.responsePanel.response2'
-			response3='dialoguePanel.responseArea.responsePanel.response3'
-			response4='dialoguePanel.responseArea.responsePanel.response4'
-			response5='dialoguePanel.responseArea.responsePanel.response5'
-			response6='dialoguePanel.responseArea.responsePanel.response6'
-			endConversation='dialoguePanel.endConversation'
+			npcName='dialoguePanel.dialogueColumn.npcName'
+			npcMessage='dialoguePanel.dialogueColumn.npcMessage'
+			responseArea='dialoguePanel.dialogueColumn.responseArea'
+			responsePanel='dialoguePanel.dialogueColumn.responseArea.responsePanel'
+			responseScrollbar='dialoguePanel.dialogueColumn.responseArea.responseScrollbar'
+			response1='dialoguePanel.dialogueColumn.responseArea.responsePanel.response1'
+			response2='dialoguePanel.dialogueColumn.responseArea.responsePanel.response2'
+			response3='dialoguePanel.dialogueColumn.responseArea.responsePanel.response3'
+			response4='dialoguePanel.dialogueColumn.responseArea.responsePanel.response4'
+			response5='dialoguePanel.dialogueColumn.responseArea.responsePanel.response5'
+			response6='dialoguePanel.dialogueColumn.responseArea.responsePanel.response6'
+			responsePagePrev='dialoguePanel.dialogueColumn.responseArea.responsePageNav.responsePagePrev'
+			responsePageNext='dialoguePanel.dialogueColumn.responseArea.responsePageNav.responsePageNext'
+			responsePageLabel='dialoguePanel.dialogueColumn.responseArea.responsePageNav.responsePageLabel'
+			endConversation='dialoguePanel.dialogueColumn.endConversation'
+			scriptedLookAtCameraHint='dialoguePanel.dialogueColumn.scriptedLookAtCameraHint'
+			gmCinematicBadge='gmCinematicBadge'
 		/>
 
 		<Page
@@ -63,69 +68,86 @@
 		/>
 
 		<Page
-			BackgroundColor='#0d0d12'
-			BackgroundOpacity='1.00'
+			BackgroundColor='#FFFFFF'
+			BackgroundTint='#00D6FB'
+			PalBgTint='back1'
+			BackgroundOpacity='0.52'
 			GetsInput='true'
 			AbsorbsInput='true'
-			Location='0,486'
+			Location='0,456'
 			Name='dialoguePanel'
 			PackLocation='nfn,fff'
 			PackSize='a,f'
 			RStyleDefault='/Styles.New.fatFrameInside_palW.rs_default'
-			ScrollExtent='1024,282'
-			Size='1024,282'
+			ScrollExtent='1024,312'
+			Size='1024,312'
 		>
-			<Text Font='bold_12' Location='36,14' Name='npcName' PalText='header' ScrollExtent='952,20' Size='952,20' TextColor='#FFCC55' TextAlignment='Left' TextAlignmentVertical='Center'/>
-			<Text Font='bold_12' Location='36,40' Multiline='true' Name='npcMessage' PalText='text1' ScrollExtent='952,70' Size='952,70' TextAlignment='Left' TextAlignmentVertical='Top' TextColor='#FFFFFF' Wrap='true'/>
+			<!-- Fixed-width column centered horizontally on the screen (parent is full width). -->
+			<Page
+				Name='dialogueColumn'
+				PackLocation='cfc,nfn'
+				ScrollExtent='952,312'
+				Size='952,312'
+				GetsInput='true'
+				AbsorbsInput='false'
+			>
+			<Text Font='bold_13' Location='0,12' Name='npcName' PalText='text1' ScrollExtent='952,22' Size='952,22' TextAlignment='Left' TextAlignmentVertical='Center'/>
+			<Text Font='bold_12' Location='0,38' Margin='0,0,0,4' Multiline='true' Name='npcMessage' PalText='text1' ScrollExtent='952,74' Size='952,74' TextAlignment='Left' TextAlignmentVertical='Top' Wrap='true'/>
 
-			<!-- Fixed viewport; inner responsePanel scrolls vertically when rows exceed height. -->
-			<!-- GetsInput required: UIPage::GetWidgetFromPoint(mustGetInput=true) only recurses when GetsInput && Enabled. -->
-			<Page Location='36,118' Name='responseArea' ScrollExtent='952,138' Size='952,138' GetsInput='true' AbsorbsInput='false'>
-				<Page Location='0,0' Name='responsePanel' GetsInput='true' ScrollExtent='940,138' Size='940,138'>
-				<Page Location='0,0' Name='response1' ScrollExtent='940,22' Size='940,22' Visible='false'>
-					<Button Name='button' Location='0,0' ScrollExtent='940,22' Size='940,22' Style='/Styles.New.buttons.hud.style' TextAlignment='Left' TextAlignmentVertical='Center' TextColor='#FFFFFF' TextColorHighlight='#FFEB9A'/>
-					<Text Name='prefix' GetsInput='false' Location='10,1' ScrollExtent='138,20' Size='138,20' TextAlignment='Left' TextAlignmentVertical='Center' TextColor='#6CD6FF' Visible='false'/>
-					<Text Name='text' GetsInput='false' Location='152,1' ScrollExtent='780,20' Size='780,20' TextAlignment='Left' TextAlignmentVertical='Center' PalText='text1'/>
+			<Page Location='0,114' Name='dialogueDivider' PackSize='a,f' ScrollExtent='952,4' Size='952,4' BackgroundOpacity='0.75' BackgroundTint='#00D6FB' GetsInput='false' AbsorbsInput='false' PalBgTint='line1'/>
+
+			<!-- Response rows: full width, text centered; scrollbar at right edge -->
+			<Page Location='0,122' Name='responseArea' ScrollExtent='952,158' Size='952,158' GetsInput='true' AbsorbsInput='false'>
+				<Page Location='0,0' Name='responsePanel' GetsInput='true' ScrollExtent='952,92' Size='952,92'>
+				<Page Location='0,0' Name='response1' ScrollExtent='952,22' Size='952,22' Visible='false'>
+					<Button Name='button' Location='0,0' ScrollExtent='952,22' Size='952,22' Style='/Styles.New.buttons.hud.style' TextAlignment='Center' TextAlignmentVertical='Center' TextColor='#000000' TextColorHighlight='#000000'/>
+					<Text Name='prefix' Font='bold_11' GetsInput='false' Location='8,1' ScrollExtent='120,20' Size='120,20' TextAlignment='Left' TextAlignmentVertical='Center' PalText='highlight' Visible='false'/>
+					<Text Name='text' GetsInput='false' Location='132,1' ScrollExtent='812,20' Size='812,20' TextAlignment='Left' TextAlignmentVertical='Center' PalText='text1' Visible='false'/>
 				</Page>
-				<Page Location='0,23' Name='response2' ScrollExtent='940,22' Size='940,22' Visible='false'>
-					<Button Name='button' Location='0,0' ScrollExtent='940,22' Size='940,22' Style='/Styles.New.buttons.hud.style' TextAlignment='Left' TextAlignmentVertical='Center' TextColor='#FFFFFF' TextColorHighlight='#FFEB9A'/>
-					<Text Name='prefix' GetsInput='false' Location='10,1' ScrollExtent='138,20' Size='138,20' TextAlignment='Left' TextAlignmentVertical='Center' TextColor='#6CD6FF' Visible='false'/>
-					<Text Name='text' GetsInput='false' Location='152,1' ScrollExtent='780,20' Size='780,20' TextAlignment='Left' TextAlignmentVertical='Center' PalText='text1'/>
+				<Page Location='0,23' Name='response2' ScrollExtent='952,22' Size='952,22' Visible='false'>
+					<Button Name='button' Location='0,0' ScrollExtent='952,22' Size='952,22' Style='/Styles.New.buttons.hud.style' TextAlignment='Center' TextAlignmentVertical='Center' TextColor='#000000' TextColorHighlight='#000000'/>
+					<Text Name='prefix' Font='bold_11' GetsInput='false' Location='8,1' ScrollExtent='120,20' Size='120,20' TextAlignment='Left' TextAlignmentVertical='Center' PalText='highlight' Visible='false'/>
+					<Text Name='text' GetsInput='false' Location='132,1' ScrollExtent='812,20' Size='812,20' TextAlignment='Left' TextAlignmentVertical='Center' PalText='text1' Visible='false'/>
 				</Page>
-				<Page Location='0,46' Name='response3' ScrollExtent='940,22' Size='940,22' Visible='false'>
-					<Button Name='button' Location='0,0' ScrollExtent='940,22' Size='940,22' Style='/Styles.New.buttons.hud.style' TextAlignment='Left' TextAlignmentVertical='Center' TextColor='#FFFFFF' TextColorHighlight='#FFEB9A'/>
-					<Text Name='prefix' GetsInput='false' Location='10,1' ScrollExtent='138,20' Size='138,20' TextAlignment='Left' TextAlignmentVertical='Center' TextColor='#6CD6FF' Visible='false'/>
-					<Text Name='text' GetsInput='false' Location='152,1' ScrollExtent='780,20' Size='780,20' TextAlignment='Left' TextAlignmentVertical='Center' PalText='text1'/>
+				<Page Location='0,46' Name='response3' ScrollExtent='952,22' Size='952,22' Visible='false'>
+					<Button Name='button' Location='0,0' ScrollExtent='952,22' Size='952,22' Style='/Styles.New.buttons.hud.style' TextAlignment='Center' TextAlignmentVertical='Center' TextColor='#000000' TextColorHighlight='#000000'/>
+					<Text Name='prefix' Font='bold_11' GetsInput='false' Location='8,1' ScrollExtent='120,20' Size='120,20' TextAlignment='Left' TextAlignmentVertical='Center' PalText='highlight' Visible='false'/>
+					<Text Name='text' GetsInput='false' Location='132,1' ScrollExtent='812,20' Size='812,20' TextAlignment='Left' TextAlignmentVertical='Center' PalText='text1' Visible='false'/>
 				</Page>
-				<Page Location='0,69' Name='response4' ScrollExtent='940,22' Size='940,22' Visible='false'>
-					<Button Name='button' Location='0,0' ScrollExtent='940,22' Size='940,22' Style='/Styles.New.buttons.hud.style' TextAlignment='Left' TextAlignmentVertical='Center' TextColor='#FFFFFF' TextColorHighlight='#FFEB9A'/>
-					<Text Name='prefix' GetsInput='false' Location='10,1' ScrollExtent='138,20' Size='138,20' TextAlignment='Left' TextAlignmentVertical='Center' TextColor='#6CD6FF' Visible='false'/>
-					<Text Name='text' GetsInput='false' Location='152,1' ScrollExtent='780,20' Size='780,20' TextAlignment='Left' TextAlignmentVertical='Center' PalText='text1'/>
+				<Page Location='0,69' Name='response4' ScrollExtent='952,22' Size='952,22' Visible='false'>
+					<Button Name='button' Location='0,0' ScrollExtent='952,22' Size='952,22' Style='/Styles.New.buttons.hud.style' TextAlignment='Center' TextAlignmentVertical='Center' TextColor='#000000' TextColorHighlight='#000000'/>
+					<Text Name='prefix' Font='bold_11' GetsInput='false' Location='8,1' ScrollExtent='120,20' Size='120,20' TextAlignment='Left' TextAlignmentVertical='Center' PalText='highlight' Visible='false'/>
+					<Text Name='text' GetsInput='false' Location='132,1' ScrollExtent='812,20' Size='812,20' TextAlignment='Left' TextAlignmentVertical='Center' PalText='text1' Visible='false'/>
 				</Page>
-				<Page Location='0,92' Name='response5' ScrollExtent='940,22' Size='940,22' Visible='false'>
-					<Button Name='button' Location='0,0' ScrollExtent='940,22' Size='940,22' Style='/Styles.New.buttons.hud.style' TextAlignment='Left' TextAlignmentVertical='Center' TextColor='#FFFFFF' TextColorHighlight='#FFEB9A'/>
-					<Text Name='prefix' GetsInput='false' Location='10,1' ScrollExtent='138,20' Size='138,20' TextAlignment='Left' TextAlignmentVertical='Center' TextColor='#6CD6FF' Visible='false'/>
-					<Text Name='text' GetsInput='false' Location='152,1' ScrollExtent='780,20' Size='780,20' TextAlignment='Left' TextAlignmentVertical='Center' PalText='text1'/>
+				<Page Location='0,92' Name='response5' ScrollExtent='952,22' Size='952,22' Visible='false'>
+					<Button Name='button' Location='0,0' ScrollExtent='952,22' Size='952,22' Style='/Styles.New.buttons.hud.style' TextAlignment='Center' TextAlignmentVertical='Center' TextColor='#000000' TextColorHighlight='#000000'/>
+					<Text Name='prefix' Font='bold_11' GetsInput='false' Location='8,1' ScrollExtent='120,20' Size='120,20' TextAlignment='Left' TextAlignmentVertical='Center' PalText='highlight' Visible='false'/>
+					<Text Name='text' GetsInput='false' Location='132,1' ScrollExtent='812,20' Size='812,20' TextAlignment='Left' TextAlignmentVertical='Center' PalText='text1' Visible='false'/>
 				</Page>
-				<Page Location='0,115' Name='response6' ScrollExtent='940,22' Size='940,22' Visible='false'>
-					<Button Name='button' Location='0,0' ScrollExtent='940,22' Size='940,22' Style='/Styles.New.buttons.hud.style' TextAlignment='Left' TextAlignmentVertical='Center' TextColor='#FFFFFF' TextColorHighlight='#FFEB9A'/>
-					<Text Name='prefix' GetsInput='false' Location='10,1' ScrollExtent='138,20' Size='138,20' TextAlignment='Left' TextAlignmentVertical='Center' TextColor='#6CD6FF' Visible='false'/>
-					<Text Name='text' GetsInput='false' Location='152,1' ScrollExtent='780,20' Size='780,20' TextAlignment='Left' TextAlignmentVertical='Center' PalText='text1'/>
+				<Page Location='0,115' Name='response6' ScrollExtent='952,22' Size='952,22' Visible='false'>
+					<Button Name='button' Location='0,0' ScrollExtent='952,22' Size='952,22' Style='/Styles.New.buttons.hud.style' TextAlignment='Center' TextAlignmentVertical='Center' TextColor='#000000' TextColorHighlight='#000000'/>
+					<Text Name='prefix' Font='bold_11' GetsInput='false' Location='8,1' ScrollExtent='120,20' Size='120,20' TextAlignment='Left' TextAlignmentVertical='Center' PalText='highlight' Visible='false'/>
+					<Text Name='text' GetsInput='false' Location='132,1' ScrollExtent='812,20' Size='812,20' TextAlignment='Left' TextAlignmentVertical='Center' PalText='text1' Visible='false'/>
 				</Page>
 				</Page>
 				<Scrollbar
 					Name='responseScrollbar'
 					Control='responsePanel'
 					Location='940,0'
-					ScrollExtent='12,138'
-					Size='12,138'
+					ScrollExtent='12,92'
+					Size='12,92'
 					Style='/Styles.scrollbar.default.vHud4.style'
 					AutoVisibility='true'
 				/>
+				<Page Location='0,94' Name='responsePageNav' ScrollExtent='952,22' Size='952,22' GetsInput='true' AbsorbsInput='false'>
+					<Button Location='0,0' Name='responsePagePrev' ScrollExtent='96,22' Size='96,22' Style='/Styles.New.buttons.hud.style' Text='Prev' TextAlignment='Center' TextAlignmentVertical='Center' Visible='false'/>
+					<Text Font='bold_11' Location='200,2' Name='responsePageLabel' ScrollExtent='552,18' Size='552,18' PalText='text1' TextAlignment='Center' TextAlignmentVertical='Center' Visible='false'/>
+					<Button Location='856,0' Name='responsePageNext' ScrollExtent='96,22' Size='96,22' Style='/Styles.New.buttons.hud.style' Text='Next' TextAlignment='Center' TextAlignmentVertical='Center' Visible='false'/>
+				</Page>
 			</Page>
 
 			<Button
-				Location='792,246'
+				Location='378,246'
 				Name='endConversation'
 				ScrollExtent='196,28'
 				Size='196,28'
@@ -133,9 +155,13 @@
 				Style='/Styles.New.buttons.hud.style'
 				Text='End Conversation'
 				TextAlignment='Center'
-				PalText='header'
+				PalText='text1'
+				TextColor='#000000'
 				TextAlignmentVertical='Center'
 			/>
+			<Text Font='bold_10' GetsInput='false' Location='0,280' Name='scriptedLookAtCameraHint' PalText='highlight' ScrollExtent='952,14' Size='952,14' TextAlignment='Center' TextAlignmentVertical='Center' Visible='false'/>
+			</Page>
 		</Page>
+		<Text Font='bold_10' GetsInput='false' PackLocation='fff,nfn' Name='gmCinematicBadge' ScrollExtent='44,16' Size='44,16' Text='*GM*' TextAlignment='Right' TextAlignmentVertical='Center' TextColor='#FF2222' Visible='false' Margin='8,8,8,0'/>
 	</Page>
 </Page>

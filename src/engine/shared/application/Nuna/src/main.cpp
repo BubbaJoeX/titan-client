@@ -22,6 +22,8 @@
 #include <string>
 #include <vector>
 #include <cstring>
+#include <cstdlib>
+#include <cstdint>
 
 // ======================================================================
 // Command Line Parsing
@@ -42,6 +44,11 @@ struct CommandLine
     bool overwrite = false;
     bool showHelp = false;
     bool showOffset = false;
+    uint64_t maxGuesses = 0;      ///< 0 = unlimited (try-passwords)
+    uint64_t progressEvery = 0;   ///< 0 = use Nuna default
+    std::string guessOutPath;     ///< salt-guesses --guess-out
+    std::string guessSeedsPath;   ///< salt-guesses --seeds
+    uint64_t guessCap = 0;        ///< 0 = default max in generator
 };
 
 void printUsage()
@@ -56,6 +63,9 @@ Usage:
   nuna list <input.titanpak> [options]
   nuna validate <input.titanpak> [options]
   nuna analyze <input.tre|.titanpak> [options]
+  nuna dump-cipher <input.tre> <output_dir>
+  nuna try-passwords <input.tre> <wordlist.txt> [options]
+  nuna salt-guesses <input.tre> [--guess-out <file>] [--seeds <file>] [--guess-cap N]
   nuna toc create <output.titanlst> <tre1> <tre2> ... [options]
   nuna toc list <input.titanlst> [options]
   nuna toc unpack <input.titanlst> <directory> [options]
@@ -67,6 +77,9 @@ Commands:
   list       List contents of a TitanPak archive
   validate   Validate a TitanPak archive
   analyze    Dump header / encryption metadata / layout (for RE without crypto source)
+  dump-cipher Copy ciphertext regions to files (no password; offline inspection)
+  try-passwords Dictionary attack: try each wordlist line until TOC decrypt OK (NUNA/LEGE)
+  salt-guesses Build candidate passwords from archive salt/IV + bases (pipe to try-passwords)
   toc        Work with titanlst/TOC files (create, list, unpack, validate)
 
 Supported Formats:
@@ -84,6 +97,13 @@ Options:
   -s, --search-path <path>    Path to search for TRE files (for toc unpack)
   --show-offset               Show file offsets in list output
   -d, --decrypt <password>    Password for unpack/list or TOC probe in analyze
+                              If omitted, uses SWG_TRE_PASSWORD env or built-in TitanPak key
+  --max <n>                   Stop try-passwords after n candidates (default: unlimited).
+                              If n<=512, stderr shows trial k/n after each probe (e.g. 7/8).
+  --progress-every <n>        Print stderr progress every n tries (default: 50000; 0 = off)
+  --guess-out <file>          salt-guesses: write candidates to file (default: stdout)
+  --seeds <file>              salt-guesses: extra newline-separated tokens to combine
+  --guess-cap <n>             salt-guesses: max unique lines (default: 500000)
   -h, --help                  Show this help
 
 Examples:
@@ -164,6 +184,31 @@ CommandLine parseCommandLine(int argc, char* argv[])
         else if (arg == "--show-offset")
         {
             cmd.showOffset = true;
+        }
+        else if (arg == "--max" || arg == "--max-guesses")
+        {
+            if (i + 1 < argc)
+                cmd.maxGuesses = std::strtoull(argv[++i], nullptr, 10);
+        }
+        else if (arg == "--progress-every")
+        {
+            if (i + 1 < argc)
+                cmd.progressEvery = std::strtoull(argv[++i], nullptr, 10);
+        }
+        else if (arg == "--guess-out")
+        {
+            if (i + 1 < argc)
+                cmd.guessOutPath = argv[++i];
+        }
+        else if (arg == "--seeds")
+        {
+            if (i + 1 < argc)
+                cmd.guessSeedsPath = argv[++i];
+        }
+        else if (arg == "--guess-cap")
+        {
+            if (i + 1 < argc)
+                cmd.guessCap = std::strtoull(argv[++i], nullptr, 10);
         }
         else if (cmd.command.empty())
         {
@@ -252,9 +297,8 @@ int main(int argc, char* argv[])
         // Always enable encryption with hardcoded password for encrypted archives
         // The unpack function will detect if the archive is actually encrypted
         options.encryption.enabled = true;
-        options.encryption.password = cmd.password.empty() ? 
-            Nuna::Crypto::getTitanPakPassword() : cmd.password;
-        
+        options.encryption.password = Nuna::Crypto::resolveTrePassword(cmd.password);
+
         result = Nuna::unpack(cmd.arg1, cmd.arg2, options);
     }
     // List command
@@ -272,9 +316,8 @@ int main(int argc, char* argv[])
         
         // Always enable encryption with hardcoded password for encrypted archives
         options.encryption.enabled = true;
-        options.encryption.password = cmd.password.empty() ? 
-            Nuna::Crypto::getTitanPakPassword() : cmd.password;
-        
+        options.encryption.password = Nuna::Crypto::resolveTrePassword(cmd.password);
+
         result = Nuna::list(cmd.arg1, options);
     }
     // Validate command
@@ -287,12 +330,8 @@ int main(int argc, char* argv[])
         }
         
         Nuna::EncryptionOptions encryption;
-        if (!cmd.password.empty())
-        {
-            encryption.enabled = true;
-            encryption.password = cmd.password;
-        }
-        
+        encryption.password = cmd.password;
+
         result = Nuna::validate(cmd.arg1, encryption);
         
         if (result.ok())
@@ -309,13 +348,53 @@ int main(int argc, char* argv[])
         }
 
         Nuna::EncryptionOptions encryption;
-        if (!cmd.password.empty())
-        {
-            encryption.enabled = true;
-            encryption.password = cmd.password;
-        }
+        encryption.password = cmd.password;
 
         result = Nuna::analyze(cmd.arg1, encryption);
+    }
+    else if (cmd.command == "dump-cipher" || cmd.command == "dumpcipher")
+    {
+        if (cmd.arg1.empty() || cmd.arg2.empty())
+        {
+            std::cerr << "Error: dump-cipher requires <input.tre> <output_directory>" << std::endl;
+            return 1;
+        }
+
+        result = Nuna::dumpCipher(cmd.arg1, cmd.arg2);
+    }
+    else if (cmd.command == "try-passwords" || cmd.command == "guess-password" || cmd.command == "try-password")
+    {
+        if (cmd.arg1.empty() || cmd.arg2.empty())
+        {
+            std::cerr << "Error: try-passwords requires <input.tre> <wordlist.txt>" << std::endl;
+            std::cerr << "  Options: --max N  --progress-every N  -q" << std::endl;
+            return 1;
+        }
+
+        Nuna::PasswordGuessOptions guessOpts;
+        guessOpts.maxAttempts = cmd.maxGuesses;
+        if (cmd.progressEvery != 0)
+            guessOpts.progressEvery = cmd.progressEvery;
+        guessOpts.quiet = cmd.quiet;
+
+        result = Nuna::tryPasswordWordlist(cmd.arg1, cmd.arg2, guessOpts);
+    }
+    else if (cmd.command == "salt-guesses" || cmd.command == "salt-guess")
+    {
+        if (cmd.arg1.empty())
+        {
+            std::cerr << "Error: salt-guesses requires <input.tre>" << std::endl;
+            std::cerr << "  Optional: --guess-out <file>  --seeds <extra_tokens.txt>  --guess-cap N" << std::endl;
+            return 1;
+        }
+
+        Nuna::SaltGuessGenOptions genOpts;
+        genOpts.outputPath = cmd.guessOutPath;
+        genOpts.seedsFile = cmd.guessSeedsPath;
+        if (cmd.guessCap != 0)
+            genOpts.maxCandidates = cmd.guessCap;
+
+        result = Nuna::generateSaltDerivedGuesslist(cmd.arg1, genOpts);
     }
     // TOC/titanlst commands
     else if (cmd.command == "toc" || cmd.command == "titanlst")

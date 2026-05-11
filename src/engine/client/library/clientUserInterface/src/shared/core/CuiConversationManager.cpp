@@ -112,6 +112,8 @@ CuiConversationManager::CameraCommandHandler           CuiConversationManager::m
 bool                                                    CuiConversationManager::ms_cinematicConversationUiActive = false;
 CuiConversationManager::CloseCinematicUiHandler         CuiConversationManager::ms_closeCinematicUiHandler = nullptr;
 CuiConversationManager::ActiveCinematicMediatorAccessor CuiConversationManager::ms_activeCinematicMediatorAccessor = nullptr;
+CuiConversationManager::CinematicScriptedLookAtOrbitPredicate CuiConversationManager::ms_scriptedLookAtOrbitPredicate = nullptr;
+CuiConversationManager::CinematicConversationKeystrokeHandler CuiConversationManager::ms_cinematicKeystrokeHandler = nullptr;
 
 const char * const CuiConversationManager::Messages::RESPONSES_CHANGED = "CuiConversationManager::RESPONSES_CHANGED";
 const char * const CuiConversationManager::Messages::TARGET_CHANGED    = "CuiConversationManager::TARGET_CHANGED";
@@ -208,6 +210,35 @@ bool CuiConversationManager::hasCloseCinematicUiHandler()
 void CuiConversationManager::setActiveCinematicMediatorAccessor(ActiveCinematicMediatorAccessor accessor)
 {
 	ms_activeCinematicMediatorAccessor = accessor;
+}
+
+//----------------------------------------------------------------------
+
+void CuiConversationManager::setCinematicScriptedLookAtOrbitPredicate(CinematicScriptedLookAtOrbitPredicate predicate)
+{
+	ms_scriptedLookAtOrbitPredicate = predicate;
+}
+
+//----------------------------------------------------------------------
+
+bool CuiConversationManager::isCinematicScriptedLookAtOrbitActive()
+{
+	return ms_scriptedLookAtOrbitPredicate != nullptr && ms_scriptedLookAtOrbitPredicate();
+}
+
+//----------------------------------------------------------------------
+
+void CuiConversationManager::setCinematicConversationKeystrokeHandler(CinematicConversationKeystrokeHandler handler)
+{
+	ms_cinematicKeystrokeHandler = handler;
+}
+
+//----------------------------------------------------------------------
+
+void CuiConversationManager::dispatchCinematicConversationKeystroke(unsigned short const keystroke)
+{
+	if (ms_cinematicKeystrokeHandler)
+		ms_cinematicKeystrokeHandler(keystroke);
 }
 
 //----------------------------------------------------------------------

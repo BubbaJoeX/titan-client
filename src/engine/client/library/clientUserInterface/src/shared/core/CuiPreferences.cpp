@@ -84,6 +84,7 @@ namespace
 	float       ms_objectNameFontSizeFactor         = 1.0f;
 	std::string ms_paletteName                      = "";
 	std::string ms_uiDefaultFontFaceUtf8            = "";
+	bool        ms_uiFontFullReplace                = false;
 
 	bool        ms_drawObjectNamesPlayers           = false;
 	bool        ms_drawObjectNamesGroup             = false;
@@ -496,6 +497,7 @@ void CuiPreferences::install ()
 	ms_hudOpacity                       = ConfigClientUserInterface::getHudOpacity ();
 	ms_uiScalePercent                   = ConfigClientUserInterface::getUiScalePercent ();
 	ms_uiFontScalePercent               = ConfigClientUserInterface::getUiFontScalePercent ();
+	ms_uiFontFullReplace                = ConfigClientUserInterface::getUiFontFullReplace ();
 	ms_flyTextSize                      = 1.0f;
 	ms_confirmObjDelete                 = ConfigClientUserInterface::getConfirmObjDelete ();
 	ms_tooltipDelaySecs                 = ConfigClientUserInterface::getTooltipDelaySecs ();
@@ -809,8 +811,10 @@ void CuiPreferences::install ()
 	REGISTER_OPTION_USER(paletteName);
 	REGISTER_OPTION_USER(hudOpacity);
 	REGISTER_OPTION_USER(uiScalePercent);
-	REGISTER_OPTION_USER(uiFontScalePercent);
-	REGISTER_OPTION_USER(uiDefaultFontFaceUtf8);
+	// Per-machine UI font override (custom face + scale) — stored in local_machine_options.iff
+	REGISTER_OPTION(uiFontScalePercent);
+	REGISTER_OPTION(uiDefaultFontFaceUtf8);
+	REGISTER_OPTION(uiFontFullReplace);
 	REGISTER_OPTION_USER(flyTextSize);
 	REGISTER_OPTION_USER(modalChat[Game::ST_ground]);
 	REGISTER_OPTION_USER(modalChat[Game::ST_space]);
@@ -890,6 +894,7 @@ void CuiPreferences::install ()
 	REGISTER_OPTION(overheadMapShowBuildings);
 
 	REGISTER_OPTION(hideCharactersOnClosedGalaxies);
+	REGISTER_OPTION(cinematicConversationEnabled);
 
 	// disable all voice preferences by default
 	CuiVoiceChatManager::setVoiceChatEnabled(false);
@@ -1645,6 +1650,26 @@ std::string const & CuiPreferences::getUiDefaultFontFaceUtf8 ()
 void CuiPreferences::setUiDefaultFontFaceUtf8 (std::string const &utf8)
 {
 	ms_uiDefaultFontFaceUtf8 = utf8;
+}
+
+//----------------------------------------------------------------------
+
+bool CuiPreferences::getUiFontFullReplace ()
+{
+	return ms_uiFontFullReplace;
+}
+
+//----------------------------------------------------------------------
+
+void CuiPreferences::setUiFontFullReplace (bool b)
+{
+	if (ms_uiFontFullReplace == b)
+		return;
+	ms_uiFontFullReplace = b;
+	if (UITextStyleManager::GetInstance ())
+		UITextStyleManager::GetInstance ()->setUserFontFullReplace (b);
+	CuiDynamicUIFont::refreshAllUiText ();
+	CuiManager::scheduleUiScaleLayoutUpdate ();
 }
 
 //----------------------------------------------------------------------
