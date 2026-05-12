@@ -190,8 +190,8 @@ void CachedFileManager::preloadSomeAssets ()
 		unsigned long const bytesBefore = MemoryManager::getCurrentNumberOfBytesAllocated();
 #endif
 
-		//-- preloading occurs in one second slices
-		while (ms_filenamesCurrentPos < ms_filenamesLength && Clock::timeMs () - startTime < 1000)
+		int const budgetMs = ConfigSharedUtility::getLoadingScreenPreloadBudgetMs();
+		while (ms_filenamesCurrentPos < ms_filenamesLength && Clock::timeMs () - startTime < static_cast<unsigned long>(budgetMs))
 		{
 			char const * const fileName = ms_filenames + ms_filenamesCurrentPos;
 

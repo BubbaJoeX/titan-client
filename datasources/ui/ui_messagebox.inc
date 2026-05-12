@@ -217,7 +217,6 @@ parent.compBg.location=location'
 						BackgroundOpacity='1.00'
 						Location='40,4'
 						Name='p'
-						Opacity='0.00'
 						ScrollExtent='15,14'
 						Size='15,14'
 					/>
@@ -226,7 +225,6 @@ parent.compBg.location=location'
 						BackgroundOpacity='1.00'
 						Location='57,4'
 						Name='p'
-						Opacity='0.00'
 						ScrollExtent='15,14'
 						Size='15,14'
 					/>
@@ -1021,14 +1019,15 @@ parent.compBg.location=location'
 		>Window scale (%)</Text>
 		<Sliderbar
 			Location='10,28'
+			LowerLimit='50'
 			Name='slider'
 			ScrollExtent='248,14'
 			Size='248,14'
 			Style='/Styles.New.Slider.default.horizontal.style_test'
-			LowerLimit='50'
 			UpperLimit='200'
 			Value='100'
-		/>
+		>
+		</Sliderbar>
 		<Button
 			LocalText='[@ok]'
 			Location='56,52'

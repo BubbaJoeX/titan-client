@@ -23,6 +23,7 @@
 #include "sharedFile/TreeFile.h"
 #include "sharedFoundation/ExitChain.h"
 #include "sharedFoundation/Os.h"
+#include "sharedUtility/ConfigSharedUtility.h"
 #include "sharedObject/AppearanceTemplate.h"
 #include "sharedObject/AppearanceTemplateList.h"
 #include "sharedObject/PortalPropertyTemplate.h"
@@ -68,10 +69,6 @@ namespace SpacePreloadedAssetManagerNamespace
 		PersistentCrcString const m_name;
 		void const * m_template;
 	};
-
-	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-	float const cms_callbackTime = 1.f;
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -297,8 +294,9 @@ void SpacePreloadedAssetManager::preloadSomeAssets()
 {
 	PerformanceTimer preloadTimer;
 	preloadTimer.start();
+	float const budgetSec = static_cast<float>(ConfigSharedUtility::getLoadingScreenPreloadBudgetMs()) * 0.001f;
 
-	while (ms_numberOfAssetsLoaded < static_cast<int>(ms_assetList.size()) && preloadTimer.getSplitTime() < cms_callbackTime)
+	while (ms_numberOfAssetsLoaded < static_cast<int>(ms_assetList.size()) && preloadTimer.getSplitTime() < budgetSec)
 	{
 		ms_assetList[ms_numberOfAssetsLoaded]->fetch();
 		++ms_numberOfAssetsLoaded;

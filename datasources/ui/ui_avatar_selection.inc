@@ -104,7 +104,6 @@
 							PalBgTint='back2'
 							RStyleDefault='/Styles.New.whitebox_square.rs_default'
 							ScrollExtent='395,22'
-							ScrollLocation='0,1'
 							Size='395,21'
 							Style='/Styles.textbox.login.Style_13'
 						>abcdefgABCDEFG</Textbox>

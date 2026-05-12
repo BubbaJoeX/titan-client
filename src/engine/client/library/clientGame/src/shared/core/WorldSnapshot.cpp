@@ -39,6 +39,7 @@
 #include "sharedObject/ObjectTemplateList.h"
 #include "sharedObject/PortalProperty.h"
 #include "sharedObject/PortalPropertyTemplate.h"
+#include "sharedUtility/ConfigSharedUtility.h"
 #include "sharedUtility/WorldSnapshotReaderWriter.h"
 #include "sharedUtility/DataTable.h"
 #include <algorithm>
@@ -114,7 +115,6 @@ namespace WorldSnapshotNamespace
 	int  ms_numberOfObjectTemplates;
 
 	const float ms_closeToOriginDistance = 10.f;
-	float const cms_callbackTime = 1.f;
 
 	CellProperty const * ms_lastCellProperty;
 	Vector ms_lastPosition_w (0.f, -9999.f, 0.f);
@@ -734,8 +734,9 @@ void WorldSnapshot::preloadSomeAssets ()
 		PerformanceTimer preloadTimer;
 		preloadTimer.start();
 		int objectsLoaded = 0;
+		float const budgetSec = static_cast<float>(ConfigSharedUtility::getLoadingScreenPreloadBudgetMs()) * 0.001f;
 
-		while (ms_preloadObjectTemplate < ms_numberOfObjectTemplates && preloadTimer.getSplitTime () < cms_callbackTime)
+		while (ms_preloadObjectTemplate < ms_numberOfObjectTemplates && preloadTimer.getSplitTime () < budgetSec)
 		{
 #if PRODUCTION == 0
 			const int numberOfFilesOpenedTotal = TreeFile::getNumberOfFilesOpenedTotal ();

@@ -9,10 +9,12 @@
 #include "swgClientUserInterface/SwgCuiInventory.h"
 
 #include "UIButton.h"
+#include "UIComposite.h"
 #include "UIData.h"
 #include "UILoader.h"
 #include "UIManager.h"
 #include "UIMessage.h"
+#include "UIPage.h"
 #include "UIScriptEngine.h"
 #include "clientGame/ClientObject.h"
 #include "clientGame/ConfigClientGame.h"
@@ -176,6 +178,9 @@ void SwgCuiInventoryNamespace::loadSortSettings(SwgCuiInventoryContainer * const
 
 using namespace SwgCuiInventoryNamespace;
 
+long const SwgCuiInventory::ms_splitterMinExamWidth      = 150;
+long const SwgCuiInventory::ms_splitterMinContainerWidth = 150;
+
 // ======================================================================
 
 SwgCuiInventory::SwgCuiInventory (UIPage & page, ClientObject * container, const std::string & slotName, bool usePaperDoll, bool dontClose) :
@@ -196,7 +201,14 @@ m_alreadyNotifiedUnsetContainer (false),
 m_info                          (0),
 m_callback                      (new MessageDispatch::Callback),
 m_inventoryType                 (IT_NORMAL),
-m_onlyStoreBaseMediatorSettings (false)
+m_onlyStoreBaseMediatorSettings (false),
+m_splitter                      (0),
+m_examPane                      (0),
+m_containerPane                 (0),
+m_paneComposite                 (0),
+m_splitterDragging              (false),
+m_splitterDragStartX            (0),
+m_examPaneStartWidth            (0)
 {
 	//Get type
 
@@ -259,6 +271,15 @@ m_onlyStoreBaseMediatorSettings (false)
 	m_info->fetch ();
 	m_info->setInventoryType(m_inventoryType);
 	m_info->setDropThroughTarget(m_containerMediator);
+
+	// Splitter elements for resizing Exam/Container panes
+	getCodeDataObject (TUIPage,      m_splitter,       "splitter", true);
+	getCodeDataObject (TUIPage,      m_examPane,       "examPane", true);
+	getCodeDataObject (TUIPage,      m_containerPane,  "containerPane", true);
+	getCodeDataObject (TUIComposite, m_paneComposite,  "paneComposite", true);
+
+	if (m_splitter)
+		registerMediatorObject (*m_splitter, true);
 				
 	setSettingsAutoSizeLocation (true, true);
 	setState (MS_closeable);
@@ -443,6 +464,55 @@ void SwgCuiInventory::OnButtonPressed( UIWidget *context )
 			}
 		}
 	}
+}
+
+//----------------------------------------------------------------------
+
+bool SwgCuiInventory::OnMessage (UIWidget *context, const UIMessage & msg)
+{
+	// Handle splitter dragging
+	if (m_splitter && context == m_splitter)
+	{
+		if (msg.Type == UIMessage::LeftMouseDown)
+		{
+			m_splitterDragging = true;
+			m_splitterDragStartX = msg.MouseCoords.x;
+			if (m_examPane)
+				m_examPaneStartWidth = m_examPane->GetWidth ();
+			return false;
+		}
+		else if (msg.Type == UIMessage::LeftMouseUp)
+		{
+			m_splitterDragging = false;
+			return false;
+		}
+		else if (msg.Type == UIMessage::MouseMove && m_splitterDragging)
+		{
+			if (m_examPane && m_containerPane && m_paneComposite)
+			{
+				long const delta = msg.MouseCoords.x - m_splitterDragStartX;
+				long const newExamWidth = m_examPaneStartWidth + delta;
+				
+				long const compositeWidth = m_paneComposite->GetWidth ();
+				long const splitterWidth = m_splitter->GetWidth ();
+				long const maxExamWidth = compositeWidth - splitterWidth - ms_splitterMinContainerWidth;
+				
+				if (newExamWidth >= ms_splitterMinExamWidth && newExamWidth <= maxExamWidth)
+				{
+					// Update exam pane width - composite will handle positioning
+					m_examPane->SetWidth (newExamWidth);
+					m_examPane->SetMinimumSize (UISize (newExamWidth, 0));
+					m_examPane->SetMaximumSize (UISize (newExamWidth, 16384));
+					
+					// Tell composite to re-layout
+					m_paneComposite->Pack ();
+				}
+			}
+			return false;
+		}
+	}
+
+	return true;
 }
 
 //-----------------------------------------------------------------

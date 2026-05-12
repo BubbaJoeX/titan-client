@@ -21,6 +21,9 @@ public:
 	static char const * getUseCacheFile();
 	static int getChunkSize();
 	static bool getLogOptionManager();
+
+	/// Milliseconds per frame spent on loading-screen preload slices (file cache, world snapshot, space preload lists).
+	static int getLoadingScreenPreloadBudgetMs();
 };
 
 // ======================================================================

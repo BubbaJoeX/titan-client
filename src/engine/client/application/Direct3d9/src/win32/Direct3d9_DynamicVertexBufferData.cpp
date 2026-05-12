@@ -21,8 +21,9 @@
 
 bool                     Direct3d9_DynamicVertexBufferData::ms_newFrame;
 int                      Direct3d9_DynamicVertexBufferData::ms_size;
-int                      Direct3d9_DynamicVertexBufferData::ms_used;
-IDirect3DVertexBuffer9 * Direct3d9_DynamicVertexBufferData::ms_d3dVertexBuffer;
+int                      Direct3d9_DynamicVertexBufferData::ms_used[] = { 0, 0 };
+int                      Direct3d9_DynamicVertexBufferData::ms_activeBufferIndex = 0;
+IDirect3DVertexBuffer9 * Direct3d9_DynamicVertexBufferData::ms_d3dVertexBuffers[] = { NULL, NULL };
 MemoryBlockManager *     Direct3d9_DynamicVertexBufferData::ms_memoryBlockManager;
 int                      Direct3d9_DynamicVertexBufferData::ms_locksSinceBeginFrame;
 int                      Direct3d9_DynamicVertexBufferData::ms_discardsSinceBeginFrame;
@@ -65,7 +66,9 @@ void Direct3d9_DynamicVertexBufferData::install()
 	}
 	//ms_size = ConfigDirect3d9::getDynamicVertexBufferSize() * 1024;
 
-	ms_used = 0;
+	ms_used[0] = 0;
+	ms_used[1] = 0;
+	ms_activeBufferIndex = 0;
 	restoreDevice();
 }
 
@@ -86,6 +89,11 @@ void Direct3d9_DynamicVertexBufferData::beginFrame()
 	ms_newFrame = ConfigDirect3d9::getDiscardDynamicBuffersAtBeginningOfFrame();
 	ms_locksSinceBeginFrame = 0;
 	ms_discardsSinceBeginFrame = 0;
+
+	// Ping-pong buffers so the GPU can finish consuming last frame's uploads while the CPU fills the other buffer.
+	ms_activeBufferIndex = (ms_activeBufferIndex + 1) & 1;
+	ms_used[ms_activeBufferIndex] = 0;
+	ms_newFrame = true;
 }
 
 // ----------------------------------------------------------------------
@@ -112,13 +120,16 @@ void Direct3d9_DynamicVertexBufferData::operator delete(void *memory)
 
 void Direct3d9_DynamicVertexBufferData::lostDevice()
 {
-	if (ms_d3dVertexBuffer)
+	for (int b = 0; b < 2; ++b)
 	{
-		IGNORE_RETURN(ms_d3dVertexBuffer->Release());
-		ms_d3dVertexBuffer = NULL;
-		ms_locksSinceResourceCreation = 0;
-		ms_discardsSinceResourceCreation = 0;
+		if (ms_d3dVertexBuffers[b])
+		{
+			IGNORE_RETURN(ms_d3dVertexBuffers[b]->Release());
+			ms_d3dVertexBuffers[b] = NULL;
+		}
 	}
+	ms_locksSinceResourceCreation = 0;
+	ms_discardsSinceResourceCreation = 0;
 }
 
 // ----------------------------------------------------------------------
@@ -127,9 +138,14 @@ void Direct3d9_DynamicVertexBufferData::restoreDevice()
 {
 	ms_newFrame = ConfigDirect3d9::getDiscardDynamicBuffersAtBeginningOfFrame();
 	IDirect3DDevice9 *device = Direct3d9::getDevice();
-	HRESULT hresult = device->CreateVertexBuffer(ms_size, D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY, 0, D3DPOOL_DEFAULT, &ms_d3dVertexBuffer, NULL);
-	FATAL_DX_HR("Could not create dynamic VB %s", hresult);
-	ms_used = 0;
+	for (int b = 0; b < 2; ++b)
+	{
+		HRESULT const hresult = device->CreateVertexBuffer(ms_size, D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY, 0, D3DPOOL_DEFAULT, &ms_d3dVertexBuffers[b], NULL);
+		FATAL_DX_HR("Could not create dynamic VB %s", hresult);
+	}
+	ms_used[0] = 0;
+	ms_used[1] = 0;
+	ms_activeBufferIndex = 0;
 	ms_locksSinceResourceCreation = 0;
 	ms_discardsSinceResourceCreation = 0;
 }
@@ -164,7 +180,8 @@ const VertexBufferDescriptor &Direct3d9_DynamicVertexBufferData::getDescriptor()
 void Direct3d9_DynamicVertexBufferData::roundUpUsed() const
 {
 	const int vertexSize = getVertexSize();
-	ms_used = ((ms_used + vertexSize - 1) / vertexSize) * vertexSize;
+	int & used = ms_used[ms_activeBufferIndex];
+	used = ((used + vertexSize - 1) / vertexSize) * vertexSize;
 }
 
 // ----------------------------------------------------------------------
@@ -175,6 +192,8 @@ void *Direct3d9_DynamicVertexBufferData::lock(int numberOfVertices, bool forceDi
 
 	const int vertexSize = getVertexSize();
 	const int length = numberOfVertices * vertexSize;
+	int & used = ms_used[ms_activeBufferIndex];
+	IDirect3DVertexBuffer9 *const activeBuffer = ms_d3dVertexBuffers[ms_activeBufferIndex];
 
 	++ms_locksSinceBeginFrame;
 	++ms_locksSinceResourceCreation;
@@ -183,7 +202,7 @@ void *Direct3d9_DynamicVertexBufferData::lock(int numberOfVertices, bool forceDi
 	// check for space
 	DWORD lockFlag = D3DLOCK_NOOVERWRITE;
 	int discard = 0;
-	if (ms_newFrame || forceDiscard || ms_used + length > ms_size)
+	if (ms_newFrame || forceDiscard || used + length > ms_size)
 	{
 		ms_newFrame = false;
 		++ms_discardsSinceBeginFrame;
@@ -200,12 +219,12 @@ void *Direct3d9_DynamicVertexBufferData::lock(int numberOfVertices, bool forceDi
 
 		// lock with discard contents
 		lockFlag = D3DLOCK_DISCARD;
-		ms_used = 0;
+		used = 0;
 	}
 
 	void *data = NULL;
-	HRESULT const hresult = ms_d3dVertexBuffer->Lock(ms_used, length, &data, lockFlag);
-	FATAL(FAILED(hresult), ("Could not lock dynamic %s %d=err %d=discard %d=offset %d=length %d/%d/%d=locks %d/%d/%d=discards", "vb", HRESULT_CODE(hresult), discard, ms_used, length, ms_locksSinceBeginFrame, ms_locksSinceResourceCreation, ms_locksEver, ms_discardsSinceBeginFrame, ms_discardsSinceResourceCreation, ms_discardsEver));
+	HRESULT const hresult = activeBuffer->Lock(used, length, &data, lockFlag);
+	FATAL(FAILED(hresult), ("Could not lock dynamic %s %d=err %d=discard %d=offset %d=length %d/%d/%d=locks %d/%d/%d=discards", "vb", HRESULT_CODE(hresult), discard, used, length, ms_locksSinceBeginFrame, ms_locksSinceResourceCreation, ms_locksEver, ms_discardsSinceBeginFrame, ms_discardsSinceResourceCreation, ms_discardsEver));
 	NOT_NULL(data);
 
 	// handle bad NVidia drivers
@@ -214,7 +233,7 @@ void *Direct3d9_DynamicVertexBufferData::lock(int numberOfVertices, bool forceDi
 
 	// use up vertices from this dynamic vb
 	m_numberOfVertices = numberOfVertices;
-	m_offset = ms_used / vertexSize;
+	m_offset = used / vertexSize;
 
 	return data;
 }
@@ -230,7 +249,8 @@ void Direct3d9_DynamicVertexBufferData::unlock()
 
 void Direct3d9_DynamicVertexBufferData::unlock(int numberOfVertices)
 {
-	const HRESULT hresult = ms_d3dVertexBuffer->Unlock();
+	IDirect3DVertexBuffer9 *const activeBuffer = ms_d3dVertexBuffers[ms_activeBufferIndex];
+	const HRESULT hresult = activeBuffer->Unlock();
 	FATAL_DX_HR("Could not unlock vb %s", hresult);
 
 	m_numberOfVertices = numberOfVertices;
@@ -241,7 +261,7 @@ void Direct3d9_DynamicVertexBufferData::unlock(int numberOfVertices)
 	Direct3d9_Metrics::vertexBufferMemoryDynamic += length;
 #endif
 
-	ms_used += length;
+	ms_used[ms_activeBufferIndex] += length;
 }
 
 // ------------------------------------------------------------------	----
@@ -250,16 +270,17 @@ int Direct3d9_DynamicVertexBufferData::getNumberOfLockableDynamicVertices(bool w
 {
 	roundUpUsed();
 
+	int const used = ms_used[ms_activeBufferIndex];
 	// with a discard, they can get all the vertices
 	// without discard, they can only get access to the remaining ones
-	return (ms_size - (withDiscard ? 0 : ms_used)) / getVertexSize();
+	return (ms_size - (withDiscard ? 0 : used)) / getVertexSize();
 }
 
 // ----------------------------------------------------------------------
 
 int Direct3d9_DynamicVertexBufferData::getSortKey()
 {
-	return reinterpret_cast<int>(ms_d3dVertexBuffer);
+	return reinterpret_cast<int>(ms_d3dVertexBuffers[ms_activeBufferIndex]);
 }
 
 // ----------------------------------------------------------------------
@@ -273,7 +294,7 @@ int Direct3d9_DynamicVertexBufferData::getVertexSize() const
 
 IDirect3DVertexBuffer9 *Direct3d9_DynamicVertexBufferData::getVertexBuffer() const
 {
-	return ms_d3dVertexBuffer;
+	return ms_d3dVertexBuffers[ms_activeBufferIndex];
 }
 
 // ======================================================================

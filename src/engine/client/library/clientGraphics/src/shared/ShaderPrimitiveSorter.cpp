@@ -14,6 +14,7 @@
 #include "clientGraphics/GraphicsOptionTags.h"
 #include "clientGraphics/Light.h"
 #include "clientGraphics/PostProcessingEffectsManager.h"
+#include "clientGraphics/RenderBatchManager.h"
 #include "clientGraphics/ShaderPrimitive.h"
 #include "clientGraphics/ShaderTemplateList.h"
 #include "clientGraphics/StaticShader.h"
@@ -26,6 +27,7 @@
 #include "sharedFoundation/ExitChain.h"
 #include "sharedMath/Rectangle2d.h"
 #include "sharedMath/Rectangle2d.h"
+#include "sharedMath/Transform.h"
 #include "sharedMath/VectorRgba.h"
 #include "sharedObject/CellProperty.h"
 #include "sharedUtility/LocalMachineOptionManager.h"
@@ -115,6 +117,8 @@ private:
 	void sort_z();
 
 	void add(const ShaderPrimitive &shaderPrimitive, const StaticShader &staticShader, bool alphaFadeEnabled, float alphaFadeOpacity, const LightBitSet &lightBitVector);
+
+	static void drawEntry(Entry const & entry);
 
 	static void getSortKeys_unknown(Entry &);
 	static void getSortKeys_none(Entry &);
@@ -698,14 +702,18 @@ void ShaderPrimitiveSorter::Phase::draw()
 
 	NP_PROFILER_AUTO_BLOCK_DEFINE("ShaderPrimitiveSorter::Phase::draw");
 
+	bool const useOrderedBatch = RenderBatchManager::isInstalled() && RenderBatchManager::getUsePhaseOrderedBatching();
+
+	if (useOrderedBatch)
+		RenderBatchManager::beginPhaseOrderedBatch(ShaderPrimitiveSorter::getCurrentCameraPosition());
+
 	ShaderPrimitives::iterator end = m_shaderPrimitives.end();
-	for (ShaderPrimitives::iterator i = m_shaderPrimitives.begin() + m_stackOffsets.back(); i != end; ++i)
+	for (ShaderPrimitives::iterator iter = m_shaderPrimitives.begin() + m_stackOffsets.back(); iter != end; ++iter)
 	{
-		Entry const           &entry           = *i;
+		Entry const           &entry           = *iter;
 		StaticShader const    &staticShader    = *entry.staticShader;
 		ShaderPrimitive const &shaderPrimitive = *entry.shaderPrimitive;
 		bool const alphaFadeOpacityEnabled     = entry.alphaFadeOpacityEnabled;
-		float const alphaFadeOpacity           = entry.alphaFadeOpacity;
 		int const              numberOfPasses  = staticShader.getNumberOfPasses();
 
 #if PRODUCTION == 0
@@ -715,105 +723,43 @@ void ShaderPrimitiveSorter::Phase::draw()
 			NP_PROFILER_BLOCK_ENTER(profilerBlockByTime);
 #endif
 
-		ShaderPrimitiveSorter::setLights(i->lightBitSet);
-
-#if PRODUCTION == 0
-		if (ms_profilePrepareToDraw)
-			NP_PROFILER_BLOCK_ENTER(ms_profilerBlockPrepareToDraw);
-#endif
-
-		shaderPrimitive.prepareToDraw();
-
-#if PRODUCTION == 0
-		if (ms_profilePrepareToDraw)
-			NP_PROFILER_BLOCK_LEAVE(ms_profilerBlockPrepareToDraw);
-#endif
-
-		Texture * const primaryBuffer = PostProcessingEffectsManager::getPrimaryBuffer();
-
-		int const destinationWidth = primaryBuffer ? primaryBuffer->getWidth() : 0;
-		int const destinationHeight = primaryBuffer ? primaryBuffer->getHeight() : 0;
-
-		int sectionRectX0 = 0;
-		int sectionRectY0 = 0;
-		int sectionRectX1 = destinationWidth;
-		int sectionRectY1 = destinationHeight;
-		
-		Graphics::setAlphaFadeOpacity(alphaFadeOpacityEnabled, alphaFadeOpacity);
-		
-		for (int i = 0; i < numberOfPasses; ++i)
+		bool deferredOk = false;
+		if (useOrderedBatch)
 		{
-			Graphics::setStaticShader(staticShader, i);
-						
-			bool const isHeat = entry.staticShader->isHeatPass(i);
-			
-			if (isHeat)
-			{
-				if (!ms_heatShadersEnabled)
-				{
-					continue;
-				}
-				
-#if PRODUCTION == 0
-				if (ms_profileDraw)
-					NP_PROFILER_BLOCK_ENTER(ms_profilerBlockCompositeStart);
-#endif
-				
-				bool const result = startCompositing(shaderPrimitive, sectionRectX0, sectionRectY0, sectionRectX1, sectionRectY1);
-				
-#if PRODUCTION == 0
-				if (ms_profileDraw)
-					NP_PROFILER_BLOCK_LEAVE(ms_profilerBlockCompositeStart);
-#endif
-				
-				if (!result)
-					continue;
+			Transform batchTransform;
+			Vector batchScale;
+			unsigned long const lightMask = entry.lightBitSet.to_ulong();
+			deferredOk =
+				(numberOfPasses == 1)
+				&& !alphaFadeOpacityEnabled
+				&& !staticShader.isHeatPass(0)
+				&& shaderPrimitive.getWorldTransformForBatching(batchTransform, batchScale);
 
-				Graphics::setAlphaFadeOpacity(false, alphaFadeOpacity);
-			}
-			
-			
-#if PRODUCTION == 0
-			if (ms_profileDraw)
-				NP_PROFILER_BLOCK_ENTER(ms_profilerBlockDraw);
-#endif
-
-			shaderPrimitive.draw();
-			
-#if PRODUCTION == 0
-			if (ms_profileDraw)
-				NP_PROFILER_BLOCK_LEAVE(ms_profilerBlockDraw);
-#endif
-
-			if (isHeat)
-			{
-				//-- @todo: this should probably be specified by the shader primitive's shader
-				StaticShader * const compositingShader = PostProcessingEffectsManager::getHeatCompositingShader();
-				
-				if (compositingShader)
-				{
-
-#if PRODUCTION == 0
-				if (ms_profileDraw)
-					NP_PROFILER_BLOCK_ENTER(ms_profilerBlockCompositeFinish);
-#endif
-					
-					finishCompositing(sectionRectX0, sectionRectY0, sectionRectX1, sectionRectY1, *compositingShader);
-
-#if PRODUCTION == 0
-				if (ms_profileDraw)
-					NP_PROFILER_BLOCK_LEAVE(ms_profilerBlockCompositeFinish);
-#endif
-
-				}
-				
-			}
+			if (deferredOk)
+				RenderBatchManager::submitPhaseOrderedPrimitive(&shaderPrimitive, batchTransform, batchScale, static_cast<uint32>(lightMask));
 		}
-		
+
+		if (!deferredOk)
+		{
+			if (useOrderedBatch)
+				RenderBatchManager::flushPhaseOrderedBatch();
+
+			drawEntry(entry);
+
+			if (useOrderedBatch)
+				RenderBatchManager::beginPhaseOrderedBatchResume();
+		}
+
 #if PRODUCTION == 0
 		if (typeName)
 			NP_PROFILER_BLOCK_LEAVE(profilerBlockByTime);
 #endif
+	}
+
+	if (useOrderedBatch)
+	{
+		RenderBatchManager::flushPhaseOrderedBatch();
+		RenderBatchManager::endPhaseOrderedBatchIntegration();
 	}
 
 	Graphics::setAlphaFadeOpacity(false, 1.0f);
@@ -1127,7 +1073,7 @@ void ShaderPrimitiveSorter::disableLight(const Light &light)
 
 // ----------------------------------------------------------------------
 
-void ShaderPrimitiveSorter::setLights(const LightBitSet &lightBitSet)
+void ShaderPrimitiveSorter::setLights(LightBitSet const &lightBitSet)
 {
 	ms_activeLightList.clear();	
 
@@ -1142,6 +1088,118 @@ void ShaderPrimitiveSorter::setLights(const LightBitSet &lightBitSet)
 		}
 
 	Graphics::setLights(ms_activeLightList);
+}
+
+// ----------------------------------------------------------------------
+
+void ShaderPrimitiveSorter::applyLightBitSetForDrawing(LightBitSet const & lightBitSet)
+{
+	setLights(lightBitSet);
+}
+
+// ----------------------------------------------------------------------
+
+void ShaderPrimitiveSorter::Phase::drawEntry(Entry const & entry)
+{
+	StaticShader const    &staticShader    = *entry.staticShader;
+	ShaderPrimitive const &shaderPrimitive = *entry.shaderPrimitive;
+	bool const alphaFadeOpacityEnabled     = entry.alphaFadeOpacityEnabled;
+	float const alphaFadeOpacity           = entry.alphaFadeOpacity;
+	int const              numberOfPasses  = staticShader.getNumberOfPasses();
+
+	ShaderPrimitiveSorter::setLights(entry.lightBitSet);
+
+#if PRODUCTION == 0
+	if (ms_profilePrepareToDraw)
+		NP_PROFILER_BLOCK_ENTER(ms_profilerBlockPrepareToDraw);
+#endif
+
+	shaderPrimitive.prepareToDraw();
+
+#if PRODUCTION == 0
+	if (ms_profilePrepareToDraw)
+		NP_PROFILER_BLOCK_LEAVE(ms_profilerBlockPrepareToDraw);
+#endif
+
+	Texture * const primaryBuffer = PostProcessingEffectsManager::getPrimaryBuffer();
+
+	int const destinationWidth = primaryBuffer ? primaryBuffer->getWidth() : 0;
+	int const destinationHeight = primaryBuffer ? primaryBuffer->getHeight() : 0;
+
+	int sectionRectX0 = 0;
+	int sectionRectY0 = 0;
+	int sectionRectX1 = destinationWidth;
+	int sectionRectY1 = destinationHeight;
+	
+	Graphics::setAlphaFadeOpacity(alphaFadeOpacityEnabled, alphaFadeOpacity);
+	
+	for (int passIndex = 0; passIndex < numberOfPasses; ++passIndex)
+	{
+		Graphics::setStaticShader(staticShader, passIndex);
+					
+		bool const isHeat = entry.staticShader->isHeatPass(passIndex);
+		
+		if (isHeat)
+		{
+			if (!ms_heatShadersEnabled)
+			{
+				continue;
+			}
+			
+#if PRODUCTION == 0
+			if (ms_profileDraw)
+				NP_PROFILER_BLOCK_ENTER(ms_profilerBlockCompositeStart);
+#endif
+			
+			bool const result = startCompositing(shaderPrimitive, sectionRectX0, sectionRectY0, sectionRectX1, sectionRectY1);
+			
+#if PRODUCTION == 0
+			if (ms_profileDraw)
+				NP_PROFILER_BLOCK_LEAVE(ms_profilerBlockCompositeStart);
+#endif
+			
+			if (!result)
+				continue;
+
+			Graphics::setAlphaFadeOpacity(false, alphaFadeOpacity);
+		}
+		
+		
+#if PRODUCTION == 0
+		if (ms_profileDraw)
+			NP_PROFILER_BLOCK_ENTER(ms_profilerBlockDraw);
+#endif
+
+		shaderPrimitive.draw();
+		
+#if PRODUCTION == 0
+		if (ms_profileDraw)
+			NP_PROFILER_BLOCK_LEAVE(ms_profilerBlockDraw);
+#endif
+
+		if (isHeat)
+		{
+			StaticShader * const compositingShader = PostProcessingEffectsManager::getHeatCompositingShader();
+			
+			if (compositingShader)
+			{
+
+#if PRODUCTION == 0
+			if (ms_profileDraw)
+				NP_PROFILER_BLOCK_ENTER(ms_profilerBlockCompositeFinish);
+#endif
+				
+				finishCompositing(sectionRectX0, sectionRectY0, sectionRectX1, sectionRectY1, *compositingShader);
+
+#if PRODUCTION == 0
+				if (ms_profileDraw)
+					NP_PROFILER_BLOCK_LEAVE(ms_profilerBlockCompositeFinish);
+#endif
+
+			}
+			
+		}
+	}
 }
 
 // ----------------------------------------------------------------------

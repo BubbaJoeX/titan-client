@@ -230,7 +230,7 @@ void SplashScreenNamespace::renderColorFallbackQuad(float x0, float y0, float x1
 
 	VectorArgb const fill(255, 35, 42, 65);
 	VertexBufferWriteIterator v = vertexBuffer.begin();
-	// Triangle strip order matches CuiLayerRenderer (CW): TL, TR, BR, BL
+	// Quad list order matches CuiLayerRenderer / Graphics::drawQuadList: TL, TR, BL, BR
 	v.setPosition(x0 - 0.5f, y0 - 0.5f, 0.0f);
 	v.setOoz(1.0f);
 	v.setColor0(fill);
@@ -239,11 +239,11 @@ void SplashScreenNamespace::renderColorFallbackQuad(float x0, float y0, float x1
 	v.setOoz(1.0f);
 	v.setColor0(fill);
 	++v;
-	v.setPosition(x1 - 0.5f, y1 - 0.5f, 0.0f);
+	v.setPosition(x0 - 0.5f, y1 - 0.5f, 0.0f);
 	v.setOoz(1.0f);
 	v.setColor0(fill);
 	++v;
-	v.setPosition(x0 - 0.5f, y1 - 0.5f, 0.0f);
+	v.setPosition(x1 - 0.5f, y1 - 0.5f, 0.0f);
 	v.setOoz(1.0f);
 	v.setColor0(fill);
 	++v;
@@ -251,7 +251,7 @@ void SplashScreenNamespace::renderColorFallbackQuad(float x0, float y0, float x1
 	vertexBuffer.unlock();
 
 	Graphics::setVertexBuffer(vertexBuffer);
-	Graphics::drawTriangleStrip();
+	Graphics::drawQuadList();
 }
 
 // ----------------------------------------------------------------------
@@ -269,7 +269,7 @@ void SplashScreenNamespace::renderTexturedSplashQuad(float x0, float y0, float x
 
 	VertexBufferWriteIterator v = vertexBuffer.begin();
 
-	// Triangle strip order matches CuiLayerRenderer (CW): TL, TR, BR, BL
+	// Quad list order matches CuiLayerRenderer / Graphics::drawQuadList: TL, TR, BL, BR
 	v.setPosition(x0 - 0.5f, y0 - 0.5f, 0.0f);
 	v.setOoz(1.0f);
 	v.setTextureCoordinates(0, 0.0f, 0.0f);
@@ -278,19 +278,19 @@ void SplashScreenNamespace::renderTexturedSplashQuad(float x0, float y0, float x
 	v.setOoz(1.0f);
 	v.setTextureCoordinates(0, 1.0f, 0.0f);
 	++v;
-	v.setPosition(x1 - 0.5f, y1 - 0.5f, 0.0f);
-	v.setOoz(1.0f);
-	v.setTextureCoordinates(0, 1.0f, 1.0f);
-	++v;
 	v.setPosition(x0 - 0.5f, y1 - 0.5f, 0.0f);
 	v.setOoz(1.0f);
 	v.setTextureCoordinates(0, 0.0f, 1.0f);
+	++v;
+	v.setPosition(x1 - 0.5f, y1 - 0.5f, 0.0f);
+	v.setOoz(1.0f);
+	v.setTextureCoordinates(0, 1.0f, 1.0f);
 	++v;
 
 	vertexBuffer.unlock();
 
 	Graphics::setVertexBuffer(vertexBuffer);
-	Graphics::drawTriangleStrip();
+	Graphics::drawQuadList();
 }
 
 // ======================================================================

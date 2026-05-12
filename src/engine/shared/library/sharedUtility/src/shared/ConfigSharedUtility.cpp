@@ -24,6 +24,7 @@ namespace ConfigSharedUtilityNamespace
 	char const * ms_useCacheFile;
 	int ms_chunkSize;
 	bool ms_logOptionManager;
+	int ms_loadingScreenPreloadBudgetMs;
 }
 
 using namespace ConfigSharedUtilityNamespace;
@@ -36,6 +37,7 @@ void ConfigSharedUtility::install()
 	KEY_STRING(useCacheFile, "");
 	KEY_INT(chunkSize, 32);
 	KEY_BOOL(logOptionManager, false);
+	KEY_INT(loadingScreenPreloadBudgetMs, 1000);
 }
 
 // ----------------------------------------------------------------------
@@ -64,6 +66,18 @@ int ConfigSharedUtility::getChunkSize()
 bool ConfigSharedUtility::getLogOptionManager()
 {
 	return ms_logOptionManager;
+}
+
+// ----------------------------------------------------------------------
+
+int ConfigSharedUtility::getLoadingScreenPreloadBudgetMs()
+{
+	int const budget = ms_loadingScreenPreloadBudgetMs;
+	if (budget < 1)
+		return 1;
+	if (budget > 60000)
+		return 60000;
+	return budget;
 }
 
 // ======================================================================

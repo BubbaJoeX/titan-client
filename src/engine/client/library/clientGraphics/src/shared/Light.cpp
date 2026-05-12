@@ -21,6 +21,8 @@
 #include "dpvsObject.hpp"
 #include "dpvsModel.hpp"
 
+#include <vector>
+
 // ======================================================================
 // Create a new light
 //
@@ -176,13 +178,16 @@ void Light::updateGhostLights()
 
 		if (isInWorld())
 		{
-			//-- find all visible cells
-			RenderWorld::CellPropertyList const & cellPropertyList = RenderWorld::getVisibleCells();
+			CellProperty const * const parentCell = getParentCell();
+			Sphere const influenceSphere(getPosition_w(), m_range);
 
-			for (size_t i = 0; i < cellPropertyList.size(); ++i)
+			std::vector<CellProperty const *> ghostCells;
+			CellProperty::collectPortalReachableCellsOverlappingSphere(parentCell, influenceSphere, ghostCells);
+
+			for (size_t i = 0; i < ghostCells.size(); ++i)
 			{
-				CellProperty const * const cellProperty = cellPropertyList[i];
-				if (!cellProperty || cellProperty == getParentCell())
+				CellProperty const * const cellProperty = ghostCells[i];
+				if (!cellProperty)
 					continue;
 
 				Light *newLight = 0;

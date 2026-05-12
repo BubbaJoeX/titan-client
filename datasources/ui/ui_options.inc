@@ -6722,6 +6722,8 @@ parent.combohours.enabled=true
 					>
 						<Data
 							buttonDefaults='buttonDefaults'
+							buttonUiFontApply='main.comp.uiDefaultFont.buttonUiFontApply'
+							buttonUiFontSearch='main.comp.uiDefaultFont.buttonUiFontSearch'
 							checkAllowOverheadMapRotation='main.comp.checkAllowOverheadMapRotation'
 							checkAlwaysShowRangeInGroundRadar='main.comp.checkAlwaysShowRangeInGroundRadar'
 							checkAutoSortDataPadContents='main.comp.checkAutoSortDataPadContents'
@@ -6754,12 +6756,14 @@ parent.combohours.enabled=true
 							checkShowTargetArrow='main.comp.checkShowTargetArrow'
 							checkShowToolbarCommandCooldownTimer='main.comp.checkShowToolbarCommandCooldownTimer'
 							checkShowVisibleEnemyDamagerArrow='main.comp.checkShowVisibleEnemyDamagerArrow'
+							checkUiFontFullReplace='main.comp.uiDefaultFont.checkUiFontFullReplace'
 							checkWaypointMonitor='main.comp.checkWaypointMonitor'
 							checkWaypointOnscreen='main.comp.checkWaypointOnscreen'
 							checkWinKeyFullscreen='main.comp.checkWinKeyFullscreen'
 							checkWinKeyWindowed='main.comp.checkWinKeyWindowed'
 							comboPalette='main.comp.pal.combo'
 							comboSecondaryTarget='main.comp.secondaryStatusWindow.combo'
+							comboUiDefaultFont='main.comp.uiDefaultFont.comboUiDefaultFont'
 							entangle_resistance='main.comp.entangle_resistance'
 							localPageName='[@ui_opt:page_ui]'
 							Name='CodeData'
@@ -6782,18 +6786,14 @@ parent.combohours.enabled=true
 							sliderCommandButtonOpacity='main.comp.commandButtonOpacity.slider'
 							sliderFlyTextSize='main.comp.flyTextSize.slider'
 							sliderHudOpacity='main.comp.hudOpacity.slider'
-							sliderUiScale='main.comp.uiScale.sliderUiScale'
-							sliderUiFontScale='main.comp.uiScale.sliderUiFontScale'
-							buttonUiFontSearch='main.comp.uiDefaultFont.buttonUiFontSearch'
-							buttonUiFontApply='main.comp.uiDefaultFont.buttonUiFontApply'
-							checkUiFontFullReplace='main.comp.uiDefaultFont.checkUiFontFullReplace'
-							comboUiDefaultFont='main.comp.uiDefaultFont.comboUiDefaultFont'
-							textUiFontFilter='main.comp.uiDefaultFont.textUiFontFilter'
-							textUiFontSample='main.comp.uiDefaultFont.textUiFontSample'
 							sliderObjectIconSize='main.comp.objectIconSize.slider'
 							sliderOverheadMapOpacity='main.comp.overheadMap.comp.sliderOverheadMapOpacity.slider'
 							sliderSpaceCameraElasticity='main.comp.sliderSpaceCameraElasticity.slider'
+							sliderUiFontScale='main.comp.uiScale.sliderUiFontScale'
+							sliderUiScale='main.comp.uiScale.sliderUiScale'
 							sliderVariableTargetingReticlePercentage='main.comp.sliderVariableTargetingReticlePercentage.slider'
+							textUiFontFilter='main.comp.uiDefaultFont.textUiFontFilter'
+							textUiFontSample='main.comp.uiDefaultFont.textUiFontSample'
 						/>
 						<Button
 							LocalText='[@ui_opt:reset_defaults]'
@@ -6825,7 +6825,7 @@ parent.combohours.enabled=true
 								Padding='Both'
 								PalBgTint='back2'
 								RStyleDefault='/Styles.New.whitebox_palW.rs_default'
-								ScrollExtent='493,2013'
+								ScrollExtent='493,2049'
 								ScrollSizeLine='1,16'
 								Size='493,504'
 								Spacing='4'
@@ -6907,6 +6907,7 @@ parent.combohours.enabled=true
 									>UI Scale</Text>
 									<Sliderbar
 										Location='0,20'
+										LowerLimit='75'
 										Name='sliderUiScale'
 										OnDisable='visible=false'
 										OnEnable='visible=true'
@@ -6915,7 +6916,6 @@ parent.combohours.enabled=true
 										ScrollExtent='481,14'
 										Size='481,14'
 										Style='/Styles.New.Slider.default.horizontal.style_test'
-										LowerLimit='75'
 										UpperLimit='200'
 										Value='100'
 									>
@@ -6939,6 +6939,7 @@ parent.combohours.enabled=true
 									>Font size</Text>
 									<Sliderbar
 										Location='0,54'
+										LowerLimit='50'
 										Name='sliderUiFontScale'
 										OnDisable='visible=false'
 										OnEnable='visible=true'
@@ -6947,7 +6948,6 @@ parent.combohours.enabled=true
 										ScrollExtent='481,14'
 										Size='481,14'
 										Style='/Styles.New.Slider.default.horizontal.style_test'
-										LowerLimit='50'
 										UpperLimit='200'
 										Value='100'
 									>
@@ -6973,7 +6973,6 @@ parent.combohours.enabled=true
 										Font='bold_11'
 										LocalText='Custom UI font'
 										LocalTooltip='Windows only. Type part of a font name, click Search, choose a row, then Apply. OK saves.'
-										Location='0,0'
 										MinimumSize='0,19'
 										Name='labelUiFont'
 										PackSize='a,f'
@@ -6993,7 +6992,7 @@ parent.combohours.enabled=true
 										ScrollExtent='360,22'
 										Size='360,22'
 										Style='/Styles.textbox.combo.Style_new'
-									/>
+									></Textbox>
 									<Button
 										LocalText='Search'
 										LocalTooltip='List installed fonts whose names contain the filter text.'
@@ -7007,7 +7006,6 @@ parent.combohours.enabled=true
 									>Search</Button>
 									<Checkbox
 										Font='bold_11'
-										LocalText='Fully replace font for all UI text'
 										LocalTooltip='When checked, every on-screen UI style uses this font. When unchecked, only the usual HUD faces change; decorative or specialty fonts stay as designed.'
 										Location='0,48'
 										MinimumSize='0,22'
@@ -7041,7 +7039,7 @@ parent.combohours.enabled=true
 									<Text
 										ColorCarat='#FFFFFF'
 										ColorSelection='#FFFFFF'
-										Font='default_12'
+										Font='normal_12'
 										LocalText='Sample'
 										Location='278,72'
 										MinimumSize='0,19'
@@ -7051,12 +7049,10 @@ parent.combohours.enabled=true
 										RStyleDefault='rs_default'
 										ScrollExtent='90,19'
 										Size='90,19'
-										TextColor='#FFFFFF'
-									>Sample</Text>
+									></Text>
 									<DataSource
 										Name='dsUiFont'
-									>
-									</DataSource>
+									/>
 									<Button
 										LocalText='Apply'
 										LocalTooltip='Apply the selected font and refresh the UI. Use OK on the options window to save settings.'
@@ -7070,7 +7066,7 @@ parent.combohours.enabled=true
 									>Apply</Button>
 								</Page>
 								<Page
-									Location='7,208'
+									Location='7,212'
 									Name='overheadMap'
 									ScrollExtent='490,177'
 									Size='490,177'
@@ -7232,7 +7228,7 @@ parent.combohours.enabled=true
 									Checked='true'
 									Color='#96F4FC'
 									LocalTooltip='[@ui_opt:tooltip_double_toolbar]'
-									Location='6,387'
+									Location='6,393'
 									MaximumSize='16384,20'
 									MinimumSize='0,19'
 									Name='checkDoubleToolbar'
@@ -7248,7 +7244,7 @@ parent.combohours.enabled=true
 									Checked='true'
 									Color='#96F4FC'
 									LocalTooltip='[@ui_opt:tooltip_toolbar_cooldown_timer]'
-									Location='6,411'
+									Location='6,417'
 									MaximumSize='16384,20'
 									MinimumSize='0,19'
 									Name='checkShowToolbarCommandCooldownTimer'
@@ -7264,7 +7260,7 @@ parent.combohours.enabled=true
 									Checked='true'
 									Color='#96F4FC'
 									LocalTooltip='[@ui_opt:tooltip_location_display]'
-									Location='6,435'
+									Location='6,441'
 									MaximumSize='16384,20'
 									MinimumSize='0,19'
 									Name='checkLocationDisplay'
@@ -7280,7 +7276,7 @@ parent.combohours.enabled=true
 									Checked='true'
 									Color='#96F4FC'
 									LocalTooltip='[@ui_opt:tooltip_dps_meter]'
-									Location='6,459'
+									Location='6,465'
 									MaximumSize='16384,20'
 									MinimumSize='0,19'
 									Name='checkDpsMeter'
@@ -7296,7 +7292,7 @@ parent.combohours.enabled=true
 									Checked='true'
 									Color='#96F4FC'
 									LocalTooltip='[@ui_opt:tooltip_radar_terrain]'
-									Location='6,483'
+									Location='6,489'
 									MaximumSize='16384,20'
 									MinimumSize='0,19'
 									Name='checkRadarTerrain'
@@ -7312,7 +7308,7 @@ parent.combohours.enabled=true
 									Checked='true'
 									Color='#96F4FC'
 									LocalTooltip='[@ui_opt:tooltip_radar_blink_combat]'
-									Location='6,507'
+									Location='6,513'
 									MaximumSize='16384,20'
 									MinimumSize='0,19'
 									Name='checkRadarBlinkCombat'
@@ -7345,7 +7341,7 @@ parent.combohours.enabled=true
 									Checked='true'
 									Color='#96F4FC'
 									LocalTooltip='[@ui_opt:tooltip_show_status_over_intended_target]'
-									Location='6,531'
+									Location='6,537'
 									MaximumSize='16384,20'
 									MinimumSize='0,19'
 									Name='checkShowStatusOverIntendedTarget'
@@ -7361,7 +7357,7 @@ parent.combohours.enabled=true
 									Checked='true'
 									Color='#96F4FC'
 									LocalTooltip='[@ui_opt:tooltip_winkey_windowed]'
-									Location='6,555'
+									Location='6,561'
 									MaximumSize='16384,20'
 									MinimumSize='0,19'
 									Name='checkWinKeyWindowed'
@@ -7377,7 +7373,7 @@ parent.combohours.enabled=true
 									Checked='true'
 									Color='#96F4FC'
 									LocalTooltip='[@ui_opt:tooltip_winkey_fullscreen]'
-									Location='6,579'
+									Location='6,585'
 									MaximumSize='16384,20'
 									MinimumSize='0,19'
 									Name='checkWinKeyFullScreen'
@@ -7393,7 +7389,7 @@ parent.combohours.enabled=true
 									Checked='true'
 									Color='#96F4FC'
 									LocalTooltip='[@ui_opt:tooltip_show_notifications]'
-									Location='6,603'
+									Location='6,609'
 									MaximumSize='16384,20'
 									MinimumSize='0,19'
 									Name='checkShowNotifications'
@@ -7409,7 +7405,7 @@ parent.combohours.enabled=true
 									Checked='true'
 									Color='#96F4FC'
 									LocalTooltip='[@ui_opt:tooltip_allow_overhead_map_rotation]'
-									Location='6,627'
+									Location='6,633'
 									MaximumSize='16384,20'
 									MinimumSize='0,19'
 									Name='checkAllowOverHeadMapRotation'
@@ -7425,7 +7421,7 @@ parent.combohours.enabled=true
 									Checked='true'
 									Color='#96F4FC'
 									LocalTooltip='[@ui_opt:tooltip_rotate_inventory_objects]'
-									Location='6,651'
+									Location='6,657'
 									MaximumSize='16384,20'
 									MinimumSize='0,19'
 									Name='checkRotateInventoryObjects'
@@ -7441,7 +7437,7 @@ parent.combohours.enabled=true
 									Checked='true'
 									Color='#96F4FC'
 									LocalTooltip='[@ui_opt:tooltip_show_interesting_appearance]'
-									Location='6,675'
+									Location='6,681'
 									MaximumSize='16384,20'
 									MinimumSize='0,19'
 									Name='checkShowInterestingAppearance'
@@ -7457,7 +7453,7 @@ parent.combohours.enabled=true
 									Checked='true'
 									Color='#96F4FC'
 									LocalTooltip='[@ui_opt:tooltip_show_auto_sort_inventory_contents]'
-									Location='6,699'
+									Location='6,705'
 									MaximumSize='16384,20'
 									MinimumSize='0,19'
 									Name='checkAutoSortInventoryContents'
@@ -7473,7 +7469,7 @@ parent.combohours.enabled=true
 									Checked='true'
 									Color='#96F4FC'
 									LocalTooltip='[@ui_opt:tooltip_show_auto_sort_data_pad_contents]'
-									Location='6,723'
+									Location='6,729'
 									MaximumSize='16384,20'
 									MinimumSize='0,19'
 									Name='checkAutoSortDataPadContents'
@@ -7489,7 +7485,7 @@ parent.combohours.enabled=true
 									Checked='true'
 									Color='#96F4FC'
 									LocalTooltip='[@ui_opt:tooltip_show_radar_arrows]'
-									Location='6,747'
+									Location='6,753'
 									MaximumSize='16384,20'
 									MinimumSize='0,20'
 									Name='checkShowGameObjectArrowsOnRadar'
@@ -7505,7 +7501,7 @@ parent.combohours.enabled=true
 									Checked='true'
 									Color='#96F4FC'
 									LocalTooltip='[@ui_opt:tooltip_show_radar_npc]'
-									Location='6,771'
+									Location='6,777'
 									MaximumSize='16384,20'
 									MinimumSize='0,20'
 									Name='checkShowRadarNPCs'
@@ -7520,7 +7516,7 @@ parent.combohours.enabled=true
 								<Checkbox
 									Checked='true'
 									Color='#96F4FC'
-									Location='5,761'
+									Location='5,801'
 									MaximumSize='16384,19'
 									MinimumSize='0,19'
 									Name='checkExpMonitor'
@@ -7536,7 +7532,7 @@ parent.combohours.enabled=true
 									Color='#96F4FC'
 									Font='bold_12'
 									LocalTooltip='[@ui_opt:tooltip_waypoint_mon]'
-									Location='6,818'
+									Location='6,824'
 									MaximumSize='16384,20'
 									MinimumSize='0,20'
 									Name='checkWaypointMonitor'
@@ -7552,7 +7548,7 @@ parent.combohours.enabled=true
 									Color='#96F4FC'
 									Font='bold_12'
 									LocalTooltip='[@ui_opt:tooltip_waypoint_onscreen]'
-									Location='6,842'
+									Location='6,848'
 									MaximumSize='16384,20'
 									MinimumSize='0,20'
 									Name='checkWaypointOnscreen'
@@ -7568,7 +7564,7 @@ parent.combohours.enabled=true
 									Color='#96F4FC'
 									Font='bold_12'
 									LocalTooltip='[@ui_opt:tooltip_chat_bar_fades_out]'
-									Location='6,866'
+									Location='6,872'
 									MaximumSize='16384,20'
 									MinimumSize='0,20'
 									Name='checkChatBarFadesOut'
@@ -7584,7 +7580,7 @@ parent.combohours.enabled=true
 									Color='#96F4FC'
 									Font='bold_12'
 									LocalTooltip='[@ui_opt:tooltip_drag_onto_containers]'
-									Location='6,890'
+									Location='6,896'
 									MaximumSize='16384,20'
 									MinimumSize='0,20'
 									Name='checkDragOntoContainers'
@@ -7600,7 +7596,7 @@ parent.combohours.enabled=true
 									Color='#96F4FC'
 									Font='bold_12'
 									LocalTooltip='[@ui_opt:tooltip_always_show_range_in_ground_radar]'
-									Location='6,914'
+									Location='6,920'
 									MaximumSize='16384,20'
 									MinimumSize='0,20'
 									Name='checkAlwaysShowRangeInGroundRadar'
@@ -7616,7 +7612,7 @@ parent.combohours.enabled=true
 									Color='#96F4FC'
 									Font='bold_12'
 									LocalTooltip='[@ui_opt:tooltip_show_target_arrow]'
-									Location='6,938'
+									Location='6,944'
 									MaximumSize='16384,20'
 									MinimumSize='0,20'
 									Name='checkShowTargetArrow'
@@ -7632,7 +7628,7 @@ parent.combohours.enabled=true
 									Color='#96F4FC'
 									Font='bold_12'
 									LocalTooltip='[@ui_opt:tooltip_show_damager_arrow]'
-									Location='6,962'
+									Location='6,968'
 									MaximumSize='16384,20'
 									MinimumSize='0,20'
 									Name='checkShowDamagerArrow'
@@ -7648,7 +7644,7 @@ parent.combohours.enabled=true
 									Color='#96F4FC'
 									Font='bold_12'
 									LocalTooltip='[@ui_opt:tooltip_show_visible_enemy_damager_arrow]'
-									Location='6,986'
+									Location='6,992'
 									MaximumSize='16384,20'
 									MinimumSize='0,20'
 									Name='checkShowVisibleEnemyDamagerArrow'
@@ -7664,7 +7660,7 @@ parent.combohours.enabled=true
 									Color='#96F4FC'
 									Font='bold_12'
 									LocalTooltip='[@ui_opt:tooltip_new_vendor_examine]'
-									Location='6,1010'
+									Location='6,1016'
 									MaximumSize='16384,20'
 									MinimumSize='0,20'
 									Name='checkNewVendorExamine'
@@ -7680,7 +7676,7 @@ parent.combohours.enabled=true
 									Color='#96F4FC'
 									Font='bold_12'
 									LocalTooltip='[@ui_opt:tooltip_show_quest_helper]'
-									Location='6,1034'
+									Location='6,1040'
 									MaximumSize='16384,20'
 									MinimumSize='0,20'
 									Name='checkShowQuestHelper'
@@ -7692,7 +7688,7 @@ parent.combohours.enabled=true
 									Tooltip='@ui_opt:tooltip_show_quest_helper'
 								>@ui_opt:show_quest_helper</Checkbox>
 								<Page
-									Location='6,1058'
+									Location='6,1064'
 									MaximumSize='16384,22'
 									MinimumSize='0,22'
 									Name='spacer'
@@ -7703,7 +7699,7 @@ parent.combohours.enabled=true
 								<Page
 									BackgroundColor='#FFFFFF'
 									BackgroundTint='#03546B'
-									Location='6,1084'
+									Location='6,1090'
 									MaximumSize='16384,33'
 									Name='secondaryStatusWindow'
 									PackLocation='nfn,nfn'
@@ -7771,7 +7767,7 @@ parent.combohours.enabled=true
 									>@ui_opt:secondary_status</Text>
 								</Page>
 								<Page
-									Location='6,1121'
+									Location='6,1127'
 									MaximumSize='16384,22'
 									MinimumSize='0,22'
 									Name='spacer'
@@ -7782,7 +7778,7 @@ parent.combohours.enabled=true
 								<Page
 									BackgroundColor='#FFFFFF'
 									BackgroundTint='#03546B'
-									Location='6,1147'
+									Location='6,1153'
 									MaximumSize='16384,33'
 									Name='pal'
 									PackLocation='nfn,nfn'
@@ -7839,7 +7835,7 @@ parent.combohours.enabled=true
 									>@ui_opt:ui_palette</Text>
 								</Page>
 								<Page
-									Location='6,1150'
+									Location='6,1190'
 									MaximumSize='16384,22'
 									MinimumSize='0,22'
 									Name='spacer'
@@ -7851,7 +7847,7 @@ parent.combohours.enabled=true
 									Checked='true'
 									Color='#96F4FC'
 									LocalTooltip='[@ui_opt:tooltip_show_icon_names]'
-									Location='6,1176'
+									Location='6,1216'
 									MaximumSize='16384,20'
 									MinimumSize='0,20'
 									Name='checkIconNames'
@@ -7866,7 +7862,7 @@ parent.combohours.enabled=true
 								<Page
 									BackgroundColor='#FFFFFF'
 									BackgroundTint='#03546B'
-									Location='6,1200'
+									Location='6,1240'
 									MaximumSize='16384,34'
 									MinimumSize='0,34'
 									Name='objectIconSize'
@@ -7911,7 +7907,7 @@ parent.combohours.enabled=true
 								<Page
 									BackgroundColor='#FFFFFF'
 									BackgroundTint='#03546B'
-									Location='6,1238'
+									Location='6,1278'
 									MaximumSize='16384,34'
 									MinimumSize='0,34'
 									Name='commandButtonOpacity'
@@ -7956,7 +7952,7 @@ parent.combohours.enabled=true
 								<Page
 									BackgroundColor='#FFFFFF'
 									BackgroundTint='#03546B'
-									Location='6,1276'
+									Location='6,1316'
 									MaximumSize='16384,34'
 									MinimumSize='0,34'
 									Name='flyTextSize'
@@ -7999,7 +7995,7 @@ parent.combohours.enabled=true
 									</Sliderbar>
 								</Page>
 								<Page
-									Location='6,1314'
+									Location='6,1354'
 									MaximumSize='16384,22'
 									MinimumSize='0,22'
 									Name='spacer'
@@ -8010,7 +8006,7 @@ parent.combohours.enabled=true
 								<Page
 									BackgroundColor='#FFFFFF'
 									BackgroundTint='#03546B'
-									Location='6,1340'
+									Location='6,1380'
 									MaximumSize='16384,34'
 									MinimumSize='0,34'
 									Name='sliderSpaceCameraElasticity'
@@ -8053,7 +8049,7 @@ parent.combohours.enabled=true
 									</Sliderbar>
 								</Page>
 								<Page
-									Location='6,1378'
+									Location='6,1418'
 									MaximumSize='16384,22'
 									MinimumSize='0,22'
 									Name='spacer'
@@ -8065,7 +8061,7 @@ parent.combohours.enabled=true
 									Checked='true'
 									Color='#96F4FC'
 									LocalTooltip='[@ui_opt:tooltip_render_variable_target_reticle]'
-									Location='6,1404'
+									Location='6,1444'
 									MaximumSize='16384,20'
 									MinimumSize='0,19'
 									Name='checkRenderVariableTargetingReticle'
@@ -8080,7 +8076,7 @@ parent.combohours.enabled=true
 								<Page
 									BackgroundColor='#FFFFFF'
 									BackgroundTint='#03546B'
-									Location='6,1428'
+									Location='6,1468'
 									MaximumSize='16384,34'
 									MinimumSize='0,34'
 									Name='sliderVariableTargetingReticlePercentage'
@@ -8123,7 +8119,7 @@ parent.combohours.enabled=true
 									</Sliderbar>
 								</Page>
 								<Page
-									Location='6,1466'
+									Location='6,1506'
 									MaximumSize='16384,15'
 									MinimumSize='0,15'
 									Name='spacer'
@@ -8132,7 +8128,7 @@ parent.combohours.enabled=true
 									Size='481,15'
 								/>
 								<Page
-									Location='0,1379'
+									Location='0,1525'
 									Name='buffIcon'
 									ScrollExtent='490,200'
 									Size='490,200'
@@ -8395,7 +8391,7 @@ parent.combohours.enabled=true
 									</Composite>
 								</Page>
 								<Page
-									Location='6,1689'
+									Location='6,1729'
 									MaximumSize='16384,15'
 									MinimumSize='0,15'
 									Name='spacer'
@@ -8409,7 +8405,7 @@ parent.combohours.enabled=true
 									Font='bold_11'
 									LocalText='[@ui_opt:ui_res]'
 									LocalTooltip='[@ui_opt:tooltip_res]'
-									Location='6,1708'
+									Location='6,1748'
 									MinimumSize='0,19'
 									Name='Label'
 									PackSize='a,f'
@@ -8421,7 +8417,7 @@ parent.combohours.enabled=true
 									Tooltip='@ui_opt:tooltip_res'
 								>@ui_opt:ui_res</Text>
 								<Page
-									Location='6,1731'
+									Location='6,1771'
 									MaximumSize='16384,12'
 									MinimumSize='0,12'
 									Name='spacer'
@@ -8432,7 +8428,7 @@ parent.combohours.enabled=true
 								<Checkbox
 									Color='#96F4FC'
 									LocalTooltip='[@ui_opt:tooltip_entangle_resistance]'
-									Location='6,1747'
+									Location='6,1787'
 									MaximumSize='16384,20'
 									MinimumSize='0,20'
 									Name='entangle_resistance'
@@ -8447,7 +8443,7 @@ parent.combohours.enabled=true
 								<Checkbox
 									Color='#96F4FC'
 									LocalTooltip='[@ui_opt:tooltip_res_cold_resist]'
-									Location='6,1771'
+									Location='6,1811'
 									MaximumSize='16384,20'
 									MinimumSize='0,20'
 									Name='res_cold_resist'
@@ -8462,7 +8458,7 @@ parent.combohours.enabled=true
 								<Checkbox
 									Color='#96F4FC'
 									LocalTooltip='[@ui_opt:tooltip_res_conductivitiy]'
-									Location='6,1795'
+									Location='6,1835'
 									MaximumSize='16384,20'
 									MinimumSize='0,20'
 									Name='res_conductivity'
@@ -8477,7 +8473,7 @@ parent.combohours.enabled=true
 								<Checkbox
 									Color='#96F4FC'
 									LocalTooltip='[@ui_opt:tooltip_res_decay_resist]'
-									Location='6,1819'
+									Location='6,1859'
 									MaximumSize='16384,20'
 									MinimumSize='0,20'
 									Name='res_decay_resist'
@@ -8492,7 +8488,7 @@ parent.combohours.enabled=true
 								<Checkbox
 									Color='#96F4FC'
 									LocalTooltip='[@ui_opt:tooltip_res_flavor]'
-									Location='6,1843'
+									Location='6,1883'
 									MaximumSize='16384,20'
 									MinimumSize='0,20'
 									Name='res_flavor'
@@ -8507,7 +8503,7 @@ parent.combohours.enabled=true
 								<Checkbox
 									Color='#96F4FC'
 									LocalTooltip='[@ui_opt:tooltip_res_heat_resist]'
-									Location='6,1867'
+									Location='6,1907'
 									MaximumSize='16384,20'
 									MinimumSize='0,20'
 									Name='res_heat_resist'
@@ -8522,7 +8518,7 @@ parent.combohours.enabled=true
 								<Checkbox
 									Color='#96F4FC'
 									LocalTooltip='[@ui_opt:tooltip_res_malleability]'
-									Location='6,1891'
+									Location='6,1931'
 									MaximumSize='16384,20'
 									MinimumSize='0,20'
 									Name='res_malleability'
@@ -8537,7 +8533,7 @@ parent.combohours.enabled=true
 								<Checkbox
 									Color='#96F4FC'
 									LocalTooltip='[@ui_opt:tooltip_res_potential_energy]'
-									Location='6,1915'
+									Location='6,1955'
 									MaximumSize='16384,20'
 									MinimumSize='0,20'
 									Name='res_potential_energy'
@@ -8552,7 +8548,7 @@ parent.combohours.enabled=true
 								<Checkbox
 									Color='#96F4FC'
 									LocalTooltip='[@ui_opt:tooltip_res_quality]'
-									Location='6,1939'
+									Location='6,1979'
 									MaximumSize='16384,20'
 									MinimumSize='0,20'
 									Name='res_quality'
@@ -8567,7 +8563,7 @@ parent.combohours.enabled=true
 								<Checkbox
 									Color='#96F4FC'
 									LocalTooltip='[@ui_opt:tooltip_res_shock_resistance]'
-									Location='6,1963'
+									Location='6,2003'
 									MaximumSize='16384,20'
 									MinimumSize='0,20'
 									Name='res_shock_resistance'
@@ -8582,7 +8578,7 @@ parent.combohours.enabled=true
 								<Checkbox
 									Color='#96F4FC'
 									LocalTooltip='[@ui_opt:tooltip_res_toughness]'
-									Location='6,1987'
+									Location='6,2027'
 									MaximumSize='16384,20'
 									MinimumSize='0,20'
 									Name='res_toughness'
@@ -9702,6 +9698,7 @@ parent.snapAngle.enabled=false'
 							buttonDefaults='buttonDefaults'
 							checkAutoInviteReject='main.comp.checkAutoInviteReject'
 							checkAutoLootCorpses='main.comp.checkAutoLootCorpses'
+							checkCinematicConversation='main.comp.checkCinematicConversation'
 							checkCollectionShowServerFirst='main.comp.checkCollectionShowServerFirst'
 							checkConfirmCrafting='main.comp.checkConfirmCrafting'
 							checkConfirmObjDelete='main.comp.checkConfirmObjDelete'
@@ -9718,19 +9715,18 @@ parent.snapAngle.enabled=false'
 							checkObjectNameShowSigns='main.comp.checkObjectNameShowSigns'
 							checkScreenShake='main.comp.checkScreenShake'
 							checkShowAppearanceInventory='main.comp.checkShowAppearanceItemsInInventory'
-							checkCinematicConversation='main.comp.checkCinematicConversation'
 							checkShowBackpack='main.comp.checkShowBackpack'
 							checkShowCockpit='main.comp.checkShowCockpit'
 							checkShowCorpseLootIcon='main.comp.checkShowCorpseLootIcon'
 							checkShowHelmet='main.comp.checkShowHelmet'
 							checkShowSystemMessages='main.comp.checkSystemMessages'
 							currencyFormat='main.comp.currencyFormat.combo'
-							nameplateNeutralColor='main.comp.nameplateNeutralColor.combo'
-							nameplateFriendlyColor='main.comp.nameplateFriendlyColor.combo'
-							nameplateHostileColor='main.comp.nameplateHostileColor.combo'
-							nameplateDangerColor='main.comp.nameplateDangerColor.combo'
 							localPageName='[@ui_opt:page_misc]'
 							Name='CodeData'
+							nameplateDangerColor='main.comp.nameplateDangerColor.combo'
+							nameplateFriendlyColor='main.comp.nameplateFriendlyColor.combo'
+							nameplateHostileColor='main.comp.nameplateHostileColor.combo'
+							nameplateNeutralColor='main.comp.nameplateNeutralColor.combo'
 							PageName='@ui_opt:page_misc'
 							sliderFurnitureRotationDegree='main.comp.FurnitureRotationDegree.slider'
 							SliderObjectNameFontSize='main.comp.ObjectNameFontSize.slider'
@@ -9783,7 +9779,7 @@ parent.snapAngle.enabled=false'
 								Padding='Both'
 								PalBgTint='back2'
 								RStyleDefault='/Styles.New.whitebox_palW.rs_default'
-								ScrollExtent='493,765'
+								ScrollExtent='493,913'
 								ScrollSizeLine='1,16'
 								Size='493,504'
 								Spacing='4'
@@ -10290,7 +10286,7 @@ parent.snapAngle.enabled=false'
 									Size='481,20'
 									Style='/Styles.New.Checkbox2.Style'
 									Tooltip='@ui_opt:tooltip_cinematic_conversation'
-								>@ui_opt:check_cinematic_conversation</Checkbox>
+								>Cinematic Conversations</Checkbox>
 								<Page
 									BackgroundColor='#FFFFFF'
 									BackgroundTint='#03546B'
@@ -10341,7 +10337,7 @@ parent.snapAngle.enabled=false'
 								<Page
 									BackgroundColor='#FFFFFF'
 									BackgroundTint='#03546B'
-									Location='6,706'
+									Location='6,730'
 									MaximumSize='16384,33'
 									Name='currencyFormat'
 									PackLocation='nfn,nfn'
@@ -10416,7 +10412,7 @@ parent.snapAngle.enabled=false'
 								<Page
 									BackgroundColor='#FFFFFF'
 									BackgroundTint='#03546B'
-									Location='6,744'
+									Location='6,767'
 									MaximumSize='16384,33'
 									Name='nameplateNeutralColor'
 									PackLocation='nfn,nfn'
@@ -10450,17 +10446,42 @@ parent.snapAngle.enabled=false'
 									<DataSource
 										Name='ds'
 									>
-										<Data Name='default' Text='Default'/>
-										<Data Name='white' Text='White'/>
-										<Data Name='green' Text='Green'/>
-										<Data Name='cyan' Text='Cyan'/>
-										<Data Name='yellow' Text='Yellow'/>
-										<Data Name='orange' Text='Orange'/>
-										<Data Name='red' Text='Red'/>
-										<Data Name='purple' Text='Purple'/>
+										<Data
+											Name='default'
+											Text='Default'
+										/>
+										<Data
+											Name='white'
+											Text='White'
+										/>
+										<Data
+											Name='green'
+											Text='Green'
+										/>
+										<Data
+											Name='cyan'
+											Text='Cyan'
+										/>
+										<Data
+											Name='yellow'
+											Text='Yellow'
+										/>
+										<Data
+											Name='orange'
+											Text='Orange'
+										/>
+										<Data
+											Name='red'
+											Text='Red'
+										/>
+										<Data
+											Name='purple'
+											Text='Purple'
+										/>
 									</DataSource>
 									<Text
 										Font='bold_11'
+										LocalText='Nameplate Neutral Color'
 										Location='0,-3'
 										Margin='2,0,0,0'
 										MinimumSize='0,19'
@@ -10476,7 +10497,7 @@ parent.snapAngle.enabled=false'
 								<Page
 									BackgroundColor='#FFFFFF'
 									BackgroundTint='#03546B'
-									Location='6,782'
+									Location='6,804'
 									MaximumSize='16384,33'
 									Name='nameplateFriendlyColor'
 									PackLocation='nfn,nfn'
@@ -10510,17 +10531,42 @@ parent.snapAngle.enabled=false'
 									<DataSource
 										Name='ds'
 									>
-										<Data Name='default' Text='Default'/>
-										<Data Name='white' Text='White'/>
-										<Data Name='green' Text='Green'/>
-										<Data Name='cyan' Text='Cyan'/>
-										<Data Name='yellow' Text='Yellow'/>
-										<Data Name='orange' Text='Orange'/>
-										<Data Name='red' Text='Red'/>
-										<Data Name='purple' Text='Purple'/>
+										<Data
+											Name='default'
+											Text='Default'
+										/>
+										<Data
+											Name='white'
+											Text='White'
+										/>
+										<Data
+											Name='green'
+											Text='Green'
+										/>
+										<Data
+											Name='cyan'
+											Text='Cyan'
+										/>
+										<Data
+											Name='yellow'
+											Text='Yellow'
+										/>
+										<Data
+											Name='orange'
+											Text='Orange'
+										/>
+										<Data
+											Name='red'
+											Text='Red'
+										/>
+										<Data
+											Name='purple'
+											Text='Purple'
+										/>
 									</DataSource>
 									<Text
 										Font='bold_11'
+										LocalText='Nameplate Friendly Color'
 										Location='0,-3'
 										Margin='2,0,0,0'
 										MinimumSize='0,19'
@@ -10536,7 +10582,7 @@ parent.snapAngle.enabled=false'
 								<Page
 									BackgroundColor='#FFFFFF'
 									BackgroundTint='#03546B'
-									Location='6,820'
+									Location='6,841'
 									MaximumSize='16384,33'
 									Name='nameplateHostileColor'
 									PackLocation='nfn,nfn'
@@ -10570,17 +10616,42 @@ parent.snapAngle.enabled=false'
 									<DataSource
 										Name='ds'
 									>
-										<Data Name='default' Text='Default'/>
-										<Data Name='white' Text='White'/>
-										<Data Name='green' Text='Green'/>
-										<Data Name='cyan' Text='Cyan'/>
-										<Data Name='yellow' Text='Yellow'/>
-										<Data Name='orange' Text='Orange'/>
-										<Data Name='red' Text='Red'/>
-										<Data Name='purple' Text='Purple'/>
+										<Data
+											Name='default'
+											Text='Default'
+										/>
+										<Data
+											Name='white'
+											Text='White'
+										/>
+										<Data
+											Name='green'
+											Text='Green'
+										/>
+										<Data
+											Name='cyan'
+											Text='Cyan'
+										/>
+										<Data
+											Name='yellow'
+											Text='Yellow'
+										/>
+										<Data
+											Name='orange'
+											Text='Orange'
+										/>
+										<Data
+											Name='red'
+											Text='Red'
+										/>
+										<Data
+											Name='purple'
+											Text='Purple'
+										/>
 									</DataSource>
 									<Text
 										Font='bold_11'
+										LocalText='Nameplate Hostile (Yellow) Color'
 										Location='0,-3'
 										Margin='2,0,0,0'
 										MinimumSize='0,19'
@@ -10596,7 +10667,7 @@ parent.snapAngle.enabled=false'
 								<Page
 									BackgroundColor='#FFFFFF'
 									BackgroundTint='#03546B'
-									Location='6,858'
+									Location='6,878'
 									MaximumSize='16384,33'
 									Name='nameplateDangerColor'
 									PackLocation='nfn,nfn'
@@ -10630,17 +10701,42 @@ parent.snapAngle.enabled=false'
 									<DataSource
 										Name='ds'
 									>
-										<Data Name='default' Text='Default'/>
-										<Data Name='white' Text='White'/>
-										<Data Name='green' Text='Green'/>
-										<Data Name='cyan' Text='Cyan'/>
-										<Data Name='yellow' Text='Yellow'/>
-										<Data Name='orange' Text='Orange'/>
-										<Data Name='red' Text='Red'/>
-										<Data Name='purple' Text='Purple'/>
+										<Data
+											Name='default'
+											Text='Default'
+										/>
+										<Data
+											Name='white'
+											Text='White'
+										/>
+										<Data
+											Name='green'
+											Text='Green'
+										/>
+										<Data
+											Name='cyan'
+											Text='Cyan'
+										/>
+										<Data
+											Name='yellow'
+											Text='Yellow'
+										/>
+										<Data
+											Name='orange'
+											Text='Orange'
+										/>
+										<Data
+											Name='red'
+											Text='Red'
+										/>
+										<Data
+											Name='purple'
+											Text='Purple'
+										/>
 									</DataSource>
 									<Text
 										Font='bold_11'
+										LocalText='Nameplate Hostile (Red) Color'
 										Location='0,-3'
 										Margin='2,0,0,0'
 										MinimumSize='0,19'

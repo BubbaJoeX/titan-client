@@ -11,6 +11,7 @@
 
 #include "clientGame/ClientObjectTemplate.h"
 #include "clientGame/ConfigClientGame.h"
+#include "clientGame/ShipObject.h"
 #include "clientGraphics/Light.h"
 #include "clientGraphics/RenderWorld.h"
 #include "sharedMath/VectorArgb.h"
@@ -154,7 +155,6 @@ void CellObjectNamespace::swapBuildingToDarkPob(CellProperty * cellProperty)
 		REPORT_LOG(true, ("swapBuildingToDarkPob: building already swapped, skipping\n"));
 		return;
 	}
-	ms_swappedBuildings.insert(portalProperty);
 
 	const char * pobName = portalProperty->getPobName();
 	if (!pobName || !*pobName)
@@ -198,6 +198,10 @@ void CellObjectNamespace::swapBuildingToDarkPob(CellProperty * cellProperty)
 	}
 
 	PortalProperty * mutablePortalProperty = const_cast<PortalProperty *>(portalProperty);
+	Object const & portalOwner = mutablePortalProperty->getOwner();
+	ClientObject const * const portalOwnerClient = portalOwner.asClientObject();
+	bool const portalOwnerIsShip = portalOwnerClient && portalOwnerClient->asShipObject();
+
 	const int numCells = mutablePortalProperty->getNumberOfCells();
 	const int darkNumCells = darkTemplate->getNumberOfCells();
 	REPORT_LOG(true, ("swapBuildingToDarkPob: numCells=%d darkNumCells=%d\n", numCells, darkNumCells));
@@ -235,8 +239,9 @@ void CellObjectNamespace::swapBuildingToDarkPob(CellProperty * cellProperty)
 		}
 	}
 
+	// Housing structures swap exterior mesh at lights-off (dark pob). Ship hull appearance must stay the flyable mesh.
 	const char * darkExteriorName = darkTemplate->getExteriorAppearanceName();
-	if (darkExteriorName && *darkExteriorName)
+	if (!portalOwnerIsShip && darkExteriorName && *darkExteriorName)
 	{
 		REPORT_LOG(true, ("swapBuildingToDarkPob: swapping exterior to [%s]\n", darkExteriorName));
 		Object & buildingObj = mutablePortalProperty->getOwner();
@@ -247,6 +252,8 @@ void CellObjectNamespace::swapBuildingToDarkPob(CellProperty * cellProperty)
 			buildingObj.setAppearance(darkExterior);
 		}
 	}
+
+	ms_swappedBuildings.insert(portalProperty);
 
 	darkTemplate->release();
 	REPORT_LOG(true, ("swapBuildingToDarkPob: COMPLETE\n"));

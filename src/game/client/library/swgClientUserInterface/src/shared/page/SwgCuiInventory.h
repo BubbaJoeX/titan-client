@@ -23,6 +23,8 @@ class SwgCuiInventoryContainer;
 class SwgCuiInventoryEquipment;
 class SwgCuiInventoryInfo;
 class UIButton;
+class UIComposite;
+class UIPage;
 class SwgCuiContainerProviderDefault;
 class SwgCuiContainerProviderFilter;
 
@@ -54,6 +56,7 @@ public:
 	explicit                 SwgCuiInventory               (UIPage & page, ClientObject * container = 0, const std::string & slotName = std::string (), bool usePaperDoll = true, bool dontClose = false);
 
 	virtual void             OnButtonPressed               (UIWidget *context );
+	virtual bool             OnMessage                     (UIWidget *context, const UIMessage & msg);
 
 	//-- CuiMediator
 	bool                     close                         ();
@@ -115,6 +118,17 @@ private:
 	MessageDispatch::Callback *        m_callback;
 	InventoryType                      m_inventoryType;
 	bool                               m_onlyStoreBaseMediatorSettings;
+
+	// Horizontal splitter for resizing Exam/Container panes
+	UIPage *                           m_splitter;
+	UIPage *                           m_examPane;
+	UIPage *                           m_containerPane;
+	UIComposite *                      m_paneComposite;
+	bool                               m_splitterDragging;
+	long                               m_splitterDragStartX;
+	long                               m_examPaneStartWidth;
+	static long const                  ms_splitterMinExamWidth;
+	static long const                  ms_splitterMinContainerWidth;
 };
 
 // ======================================================================

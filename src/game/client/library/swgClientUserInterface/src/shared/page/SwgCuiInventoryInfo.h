@@ -139,9 +139,23 @@ private:
 	bool m_isExamine;
 	UIPage *                           m_godAttribsPage;
 	UITable *                          m_godAttribTable;
+	UIPage *                           m_godScriptvarsPage;
+	UITable *                          m_godScriptvarTable;
 	std::vector<Unicode::String>       m_godAttribClipboardLines;
+	UIButton *                         m_buttonPopoutTable;
 
 	SwgCuiInventoryContainer *         m_container;
+
+	// Horizontal splitter for resizing details/viewer panes
+	UIPage *                           m_splitter;
+	UIPage *                           m_leftPane;
+	UIPage *                           m_rightPane;
+	UIComposite *                      m_paneComposite;
+	bool                               m_splitterDragging;
+	long                               m_splitterDragStartX;
+	long                               m_leftPaneStartWidth;
+	static long const                  ms_splitterMinLeftWidth;
+	static long const                  ms_splitterMinRightWidth;
 };
 
 // ======================================================================

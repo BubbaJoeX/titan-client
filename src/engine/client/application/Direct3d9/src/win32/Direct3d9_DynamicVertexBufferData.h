@@ -66,8 +66,9 @@ private:
 
 	static bool                    ms_newFrame;
 	static int                     ms_size;
-	static int                     ms_used;
-	static IDirect3DVertexBuffer9 *ms_d3dVertexBuffer;
+	static int                     ms_used[2];
+	static int                     ms_activeBufferIndex;
+	static IDirect3DVertexBuffer9 *ms_d3dVertexBuffers[2];
 	static MemoryBlockManager     *ms_memoryBlockManager;
 
 	static int                     ms_locksSinceBeginFrame;

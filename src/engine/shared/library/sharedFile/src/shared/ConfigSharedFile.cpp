@@ -28,6 +28,7 @@ namespace ConfigSharedFileNamespace
 	bool           ms_enableAsynchronousLoader;
 	int            ms_asynchronousLoaderPriority;
 	int            ms_asynchronousLoaderCallbacksPerFrame;
+	int            ms_asynchronousLoaderPostponeThresholdBytes;
 	bool		   ms_validateIff;
 	StringPtrArray ms_preloads; // ConfigFile owns the pointer
 }
@@ -41,6 +42,7 @@ void ConfigSharedFile::install()
 	KEY_BOOL(enableAsynchronousLoader, true);
 	KEY_INT(asynchronousLoaderPriority, 0);
 	KEY_INT(asynchronousLoaderCallbacksPerFrame, 0);
+	KEY_INT(asynchronousLoaderPostponeThresholdBytes, 8388608);
 	KEY_BOOL(validateIff, false);
 
 	int index = 0;
@@ -73,6 +75,14 @@ int ConfigSharedFile::getAsynchronousLoaderPriority()
 int ConfigSharedFile::getAsynchronousLoaderCallbacksPerFrame()
 {
 	return ms_asynchronousLoaderCallbacksPerFrame;
+}
+
+// ----------------------------------------------------------------------
+
+int ConfigSharedFile::getAsynchronousLoaderPostponeThresholdBytes()
+{
+	int const v = ms_asynchronousLoaderPostponeThresholdBytes;
+	return v < 0 ? 0 : v;
 }
 
 // ----------------------------------------------------------------------

@@ -67,6 +67,8 @@ public:
 
 	virtual void                getCostEstimate(int &numberOfVertices, int &numberOfTriangles, float &complexity) const;
 
+	virtual bool                getWorldTransformForBatching(Transform & transform_w, Vector & objectScale) const;
+
 	void                        setTexture(Tag tag, const Texture &texture);
 	void                        setTextureScroll(Tag tag, float u1, float v1, float u2, float v2);
 
@@ -297,6 +299,15 @@ ShaderPrimitiveSetTemplate::LocalShaderPrimitiveTemplate const & ShaderPrimitive
 void ShaderPrimitiveSet::LocalShaderPrimitive::getCostEstimate(int &numberOfVertices, int &numberOfTriangles, float &complexity) const
 {
 	m_template.getCostEstimate(numberOfVertices, numberOfTriangles, complexity);
+}
+
+// ----------------------------------------------------------------------
+
+bool ShaderPrimitiveSet::LocalShaderPrimitive::getWorldTransformForBatching(Transform & transform_w, Vector & objectScale) const
+{
+	transform_w = m_owner.getTransform_w();
+	objectScale = m_owner.getScale();
+	return true;
 }
 
 // ----------------------------------------------------------------------

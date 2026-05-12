@@ -33,7 +33,7 @@ const UILowerString UITextStyleManager::PropertyName::FontLocale        = UILowe
 UITextStyleManager * UITextStyleManager::s_theManager = 0;
 Unicode::String UITextStyleManager::s_fontLocale = Unicode::emptyString;
 
-#define MIN_POINT_SIZE 11
+#define MIN_POINT_SIZE 10
 #define MAX_POINT_SIZE 120
 
 //======================================================================================
@@ -57,6 +57,7 @@ namespace
 		int const out = baselinePt + d / 2;
 		return std::max (MIN_POINT_SIZE, std::min (MAX_POINT_SIZE, out));
 	}
+
 }
 //======================================================================================
 
@@ -267,9 +268,18 @@ UITextStyle * UITextStyleManager::GetFontForLogicalFont (const UILowerString &lo
 		oldPos = newPos + 1;
 		newPos = logicalFontNameAsString.find('_', oldPos);
 	}
-	std::string const & logicalFontFace = logicalFontNameAsString.substr(0, oldPos - 1);
-	std::string const & logicalFontPoint = logicalFontNameAsString.substr(oldPos, logicalFontNameAsString.length());
-	int const logicalPointSize = atoi(logicalFontPoint.c_str());
+	std::string logicalFontFace;
+	std::string logicalFontPoint;
+	if (oldPos == 0)
+		logicalFontFace = logicalFontNameAsString;
+	else
+	{
+		logicalFontFace = logicalFontNameAsString.substr (0, oldPos - 1);
+		logicalFontPoint = logicalFontNameAsString.substr (oldPos, logicalFontNameAsString.length ());
+	}
+	int logicalPointSize = atoi (logicalFontPoint.c_str ());
+	if (logicalPointSize <= 0)
+		logicalPointSize = DefaultFontSize;
 
 	int scaledLogicalPoint = logicalPointSize;
 	if (m_fontScalePercent != 100)
@@ -289,7 +299,9 @@ UITextStyle * UITextStyleManager::GetFontForLogicalFont (const UILowerString &lo
 			scaledLogicalPoint = dampenPointTowardBaselineForCustomAtlas (scaledLogicalPoint, fontSizeToMoveTowards);
 	}
 
-	if(logicalFontName.startsWith('/'))
+	scaledLogicalPoint = std::max (MIN_POINT_SIZE, std::min (MAX_POINT_SIZE, scaledLogicalPoint));
+
+	if (logicalFontName.startsWith ('/'))
 	{
 		if (!(userFontActive && m_userFontFullReplace))
 		{
@@ -373,7 +385,7 @@ UITextStyle * UITextStyleManager::GetFontForLogicalFont (const UILowerString &lo
 		}
 		tryPointSize += dir;
 	}
-	return 0;	
+	return 0;
 }
 
 //----------------------------------------------------------------------

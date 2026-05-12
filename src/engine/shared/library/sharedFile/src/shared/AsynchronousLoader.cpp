@@ -114,7 +114,6 @@ namespace AsynchronousLoaderNamespace
 #endif
 	int                                         ms_numberOfCachedBytes;
 	int                                         ms_numberOfPostponedRequests;
-	int const                                   cms_postponeThreshold = 8 * 1024 * 1024;
 	int                                         ms_enabled;
 	ThreadHandle                                ms_threadHandle;
 	Semaphore                                   ms_eventsPending;
@@ -442,7 +441,8 @@ void AsynchronousLoaderNamespace::threadRoutine()
 			Request *request = ms_pendingRequests.front();
 			const FileRecordList *fileRecordList = request->fileRecordList;
 
-			if (fileRecordList && ms_numberOfCachedBytes > cms_postponeThreshold)
+			int const postponeThresholdBytes = ConfigSharedFile::getAsynchronousLoaderPostponeThresholdBytes();
+			if (fileRecordList && postponeThresholdBytes > 0 && ms_numberOfCachedBytes > postponeThresholdBytes)
 			{
 				postpone = true;
 				ms_numberOfPostponedRequests += 1;

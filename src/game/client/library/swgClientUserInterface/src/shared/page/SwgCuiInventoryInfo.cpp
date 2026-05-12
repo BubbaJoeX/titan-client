@@ -100,6 +100,9 @@ namespace SwgCuiInventoryInfoNamespace
 
 using namespace SwgCuiInventoryInfoNamespace;
 
+long const SwgCuiInventoryInfo::ms_splitterMinLeftWidth  = 150;
+long const SwgCuiInventoryInfo::ms_splitterMinRightWidth = 100;
+
 //----------------------------------------------------------------------
 
 
@@ -127,7 +130,17 @@ m_hideAppearanceItems(0),
 m_container(0),
 m_isExamine(isExamine),
 m_godAttribsPage(0),
-m_godAttribTable(0)
+m_godAttribTable(0),
+m_godScriptvarsPage(0),
+m_godScriptvarTable(0),
+m_buttonPopoutTable(0),
+m_splitter(0),
+m_leftPane(0),
+m_rightPane(0),
+m_paneComposite(0),
+m_splitterDragging(false),
+m_splitterDragStartX(0),
+m_leftPaneStartWidth(0)
 {
 	{
 		UIWidget * widget = 0;
@@ -152,6 +165,18 @@ m_godAttribTable(0)
 	getCodeDataObject (TUIButton,       m_buttonCollections, "buttonCollections", true);
 	getCodeDataObject (TUIPage,         m_godAttribsPage,  "godAttribs", true);
 	getCodeDataObject (TUITable,        m_godAttribTable,  "tableGodObjScript", true);
+	getCodeDataObject (TUIPage,         m_godScriptvarsPage,  "godScriptvars", true);
+	getCodeDataObject (TUITable,        m_godScriptvarTable,  "tableGodScriptvar", true);
+	getCodeDataObject (TUIButton,       m_buttonPopoutTable, "buttonPopoutTable", true);
+
+	// Splitter elements for resizable panes
+	getCodeDataObject (TUIPage,         m_splitter,        "splitter", true);
+	getCodeDataObject (TUIPage,         m_leftPane,        "leftPane", true);
+	getCodeDataObject (TUIPage,         m_rightPane,       "rightPane", true);
+	getCodeDataObject (TUIComposite,    m_paneComposite,   "paneComposite", true);
+
+	if (m_splitter)
+		registerMediatorObject (*m_splitter, true);
 
 	if(isExamine)
 	{
@@ -162,6 +187,9 @@ m_godAttribTable(0)
 
 	if (m_godAttribTable)
 		registerMediatorObject (*m_godAttribTable, true);
+	
+	if (m_buttonPopoutTable)
+		registerMediatorObject (*m_buttonPopoutTable, true);
 
 	
 	getCodeData()->GetPropertyBoolean(UILowerString("showBadgeText"), ms_showBadgeText);
@@ -228,6 +256,9 @@ SwgCuiInventoryInfo::~SwgCuiInventoryInfo ()
 	m_buttonCollections = 0;
 	m_godAttribsPage = 0;
 	m_godAttribTable = 0;
+	m_godScriptvarsPage = 0;
+	m_godScriptvarTable = 0;
+	m_buttonPopoutTable = 0;
 	
 	delete m_watcher;
 	m_watcher = 0;
@@ -256,6 +287,9 @@ void SwgCuiInventoryInfo::performActivate ()
 
 	if (m_buttonCollections)
 		m_buttonCollections->AddCallback(this);
+	
+	if (m_buttonPopoutTable)
+		m_buttonPopoutTable->AddCallback(this);
 }
 
 //-----------------------------------------------------------------
@@ -273,6 +307,8 @@ void SwgCuiInventoryInfo::performDeactivate ()
 	setIsUpdating (false);
 	if (m_buttonCollections)
 		m_buttonCollections->RemoveCallback(this);
+	if (m_buttonPopoutTable)
+		m_buttonPopoutTable->RemoveCallback(this);
 }
 
 //-----------------------------------------------------------------
@@ -349,7 +385,7 @@ void SwgCuiInventoryInfo::setInfoObject (Object * object, bool requestAttributeU
 		NetworkId const & objId = object->getNetworkId();
 		if ((objId != NetworkId::cms_invalid) && (Game::getSinglePlayer() || !ClientObject::isFakeNetworkId(objId)))
 		{
-			bool const godExamineObjScriptTable = m_isExamine && PlayerObject::isAdmin ();
+			bool const godExamineObjScriptTable = PlayerObject::isAdmin ();
 			descOk = ObjectAttributeManager::formatDescription (objId, header, desc, attribs, false, false, godExamineObjScriptTable);
 		}
 		//-- it may be a draft schematic
@@ -397,7 +433,7 @@ void SwgCuiInventoryInfo::setInfoObject (Object * object, bool requestAttributeU
 
 	updateAttributeFlags();
 
-	if (m_isExamine)
+	if (PlayerObject::isAdmin ())
 	{
 		NetworkId nid = NetworkId::cms_invalid;
 		if (object)
@@ -884,92 +920,145 @@ void SwgCuiInventoryInfo::updateGodObjScriptTable (NetworkId const & id)
 {
 	m_godAttribClipboardLines.clear ();
 
-	if (!m_godAttribsPage || !m_godAttribTable)
-		return;
+	bool const isAdmin = PlayerObject::isAdmin ();
 
-	if (!m_isExamine || !PlayerObject::isAdmin ())
-	{
+	if (m_godAttribsPage)
 		m_godAttribsPage->SetVisible (false);
+	if (m_godScriptvarsPage)
+		m_godScriptvarsPage->SetVisible (false);
+
+	if (!isAdmin)
 		return;
-	}
 
 	if (id == NetworkId::cms_invalid)
-	{
-		m_godAttribsPage->SetVisible (false);
 		return;
-	}
-
-	UITableModelDefault * const model = dynamic_cast<UITableModelDefault *>(m_godAttribTable->GetTableModel ());
-	if (!model)
-	{
-		m_godAttribsPage->SetVisible (false);
-		return;
-	}
 
 	ObjectAttributeManager::AttributeVector av;
 	if (!ObjectAttributeManager::getAttributes (id, av, false, true))
-	{
-		model->ClearTable ();
-		m_godAttribsPage->SetVisible (false);
 		return;
-	}
 
 	ObjectAttributeManager::AttributeVector objRows;
 	ObjectAttributeManager::AttributeVector scriptRows;
 	ObjectAttributeManager::collectObjScriptVarAttributes (av, false, false, objRows, scriptRows);
 
-	model->ClearTable ();
-
-	for (size_t i = 0; i < objRows.size (); ++i)
+	// Populate objvars table
+	if (m_godAttribsPage && m_godAttribTable && !objRows.empty ())
 	{
-		Unicode::String keyCol;
-		Unicode::String typeCol;
-		if (!SwgCuiInventoryInfoGodTableNamespace::parseExamineObjvarKey (objRows[i].first, keyCol, typeCol))
+		UITableModelDefault * const model = dynamic_cast<UITableModelDefault *>(m_godAttribTable->GetTableModel ());
+		if (model)
 		{
-			keyCol = Unicode::narrowToWide (objRows[i].first);
-			typeCol = Unicode::narrowToWide ("objvar");
+			model->ClearTable ();
+
+			for (size_t i = 0; i < objRows.size (); ++i)
+			{
+				// Skip header entries like "***OBJVARS***"
+				if (objRows[i].first.find ("***") != std::string::npos)
+					continue;
+
+				Unicode::String keyCol;
+				Unicode::String typeCol;
+				if (!SwgCuiInventoryInfoGodTableNamespace::parseExamineObjvarKey (objRows[i].first, keyCol, typeCol))
+				{
+					keyCol = Unicode::narrowToWide (objRows[i].first);
+					typeCol = Unicode::narrowToWide ("objvar");
+				}
+
+				Unicode::String const val = ObjectAttributeManager::decodeAttributeValueForDisplay (objRows[i].second);
+				IGNORE_RETURN (model->AppendCell (0, 0, keyCol));
+				IGNORE_RETURN (model->AppendCell (1, 0, val));
+				IGNORE_RETURN (model->AppendCell (2, 0, typeCol));
+
+				Unicode::String line = keyCol;
+				line.append (1, '\t');
+				line += val;
+				line.append (1, '\t');
+				line += typeCol;
+				m_godAttribClipboardLines.push_back (line);
+			}
+
+			model->fireDataChanged ();
+			m_godAttribsPage->SetVisible (true);
 		}
-
-		Unicode::String const val = ObjectAttributeManager::decodeAttributeValueForDisplay (objRows[i].second);
-		IGNORE_RETURN (model->AppendCell (0, 0, keyCol));
-		IGNORE_RETURN (model->AppendCell (1, 0, val));
-		IGNORE_RETURN (model->AppendCell (2, 0, typeCol));
-
-		Unicode::String line = keyCol;
-		line.append (1, '\t');
-		line += val;
-		line.append (1, '\t');
-		line += typeCol;
-		m_godAttribClipboardLines.push_back (line);
 	}
 
-	for (size_t i = 0; i < scriptRows.size (); ++i)
+	// Populate scriptvars table
+	if (m_godScriptvarsPage && m_godScriptvarTable && !scriptRows.empty ())
 	{
-		Unicode::String const keyCol = Unicode::narrowToWide (scriptRows[i].first);
-		Unicode::String const val = ObjectAttributeManager::decodeAttributeValueForDisplay (scriptRows[i].second);
-		static Unicode::String const s_typeScript = Unicode::narrowToWide ("scriptvar");
+		UITableModelDefault * const model = dynamic_cast<UITableModelDefault *>(m_godScriptvarTable->GetTableModel ());
+		if (model)
+		{
+			model->ClearTable ();
 
-		IGNORE_RETURN (model->AppendCell (0, 0, keyCol));
-		IGNORE_RETURN (model->AppendCell (1, 0, val));
-		IGNORE_RETURN (model->AppendCell (2, 0, s_typeScript));
+			for (size_t i = 0; i < scriptRows.size (); ++i)
+			{
+				// Skip header entries like "***SCRIPTVARS***"
+				if (scriptRows[i].first.find ("***") != std::string::npos)
+					continue;
 
-		Unicode::String line = keyCol;
-		line.append (1, '\t');
-		line += val;
-		line.append (1, '\t');
-		line += s_typeScript;
-		m_godAttribClipboardLines.push_back (line);
+				Unicode::String const keyCol = Unicode::narrowToWide (scriptRows[i].first);
+				Unicode::String const val = ObjectAttributeManager::decodeAttributeValueForDisplay (scriptRows[i].second);
+
+				IGNORE_RETURN (model->AppendCell (0, 0, keyCol));
+				IGNORE_RETURN (model->AppendCell (1, 0, val));
+
+				Unicode::String line = keyCol;
+				line.append (1, '\t');
+				line += val;
+				m_godAttribClipboardLines.push_back (line);
+			}
+
+			model->fireDataChanged ();
+			m_godScriptvarsPage->SetVisible (true);
+		}
 	}
-
-	model->fireDataChanged ();
-
-	m_godAttribsPage->SetVisible (!objRows.empty () || !scriptRows.empty ());
 }
 
 //----------------------------------------------------------------------
 
 bool SwgCuiInventoryInfo::OnMessage       (UIWidget *context, const UIMessage & msg )
 {
+	// Handle splitter dragging
+	if (m_splitter && context == m_splitter)
+	{
+		if (msg.Type == UIMessage::LeftMouseDown)
+		{
+			m_splitterDragging = true;
+			m_splitterDragStartX = msg.MouseCoords.x;
+			if (m_leftPane)
+				m_leftPaneStartWidth = m_leftPane->GetWidth ();
+			return false;
+		}
+		else if (msg.Type == UIMessage::LeftMouseUp)
+		{
+			m_splitterDragging = false;
+			return false;
+		}
+		else if (msg.Type == UIMessage::MouseMove && m_splitterDragging)
+		{
+			if (m_leftPane && m_rightPane && m_paneComposite)
+			{
+				long const delta = msg.MouseCoords.x - m_splitterDragStartX;
+				long const newLeftWidth = m_leftPaneStartWidth + delta;
+				
+				long const compositeWidth = m_paneComposite->GetWidth ();
+				long const splitterWidth = m_splitter->GetWidth ();
+				long const maxLeftWidth = compositeWidth - splitterWidth - ms_splitterMinRightWidth;
+				
+				if (newLeftWidth >= ms_splitterMinLeftWidth && newLeftWidth <= maxLeftWidth)
+				{
+					// Update left pane width - composite will handle positioning
+					m_leftPane->SetWidth (newLeftWidth);
+					m_leftPane->SetMinimumSize (UISize (newLeftWidth, 0));
+					m_leftPane->SetMaximumSize (UISize (newLeftWidth, 16384));
+					
+					// Tell composite to re-layout
+					m_paneComposite->Pack ();
+				}
+			}
+			return false;
+		}
+	}
+
 	if (m_godAttribTable && context == m_godAttribTable)
 	{
 		if (msg.IsMouseButtonMessage () && msg.Type == UIMessage::LeftMouseDown && msg.Modifiers.isControlDown ())
@@ -982,10 +1071,20 @@ bool SwgCuiInventoryInfo::OnMessage       (UIWidget *context, const UIMessage & 
 				if (tm)
 				{
 					int const logical = tm->GetLogicalDataRowIndex (static_cast<int>(row));
-					if (logical >= 0 && logical < static_cast<int>(m_godAttribClipboardLines.size ()))
+					if (logical >= 0 && col >= 0)
 					{
-						UIClipboard::gUIClipboard ().SetText (m_godAttribClipboardLines[static_cast<size_t>(logical)]);
-						return false;
+						UITableModelDefault * const tmd = dynamic_cast<UITableModelDefault *>(tm);
+						if (tmd)
+						{
+							UIData * const cellData = tmd->GetCellDataLogical (logical, static_cast<int>(col));
+							if (cellData)
+							{
+								Unicode::String cellText;
+								cellData->GetProperty (UITableModelDefault::DataProperties::Value, cellText);
+								UIClipboard::gUIClipboard ().SetText (cellText);
+								return false;
+							}
+						}
 					}
 				}
 			}
@@ -1015,6 +1114,20 @@ void SwgCuiInventoryInfo::OnButtonPressed(UIWidget *context)
 	if (m_buttonCollections && context == m_buttonCollections && getInfoObject())
 	{
 		CuiActionManager::performAction(CuiActions::collections, Unicode::narrowToWide(getInfoObject()->getNetworkId().getValueString()));
+	}
+	else if (m_buttonPopoutTable && context == m_buttonPopoutTable)
+	{
+		if (!m_godAttribClipboardLines.empty ())
+		{
+			Unicode::String allData;
+			allData += Unicode::narrowToWide ("Key\tValue\tType\n");
+			for (size_t i = 0; i < m_godAttribClipboardLines.size (); ++i)
+			{
+				allData += m_godAttribClipboardLines[i];
+				allData.append (1, '\n');
+			}
+			UIClipboard::gUIClipboard ().SetText (allData);
+		}
 	}
 }
 

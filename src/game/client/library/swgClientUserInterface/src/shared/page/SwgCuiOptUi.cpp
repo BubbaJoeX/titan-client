@@ -592,6 +592,9 @@ void SwgCuiOptUi::OnButtonPressed (UIWidget * context)
 			m_comboUiFont->GetSelectedIndexName (name);
 		if (name.empty ())
 		{
+			// Restore picker textboxes to stock styles BEFORE clearUserFont() destroys cuiuif_* styles.
+			// Otherwise refreshFontPickerChrome() accesses destroyed UITextStyle pointers and crashes.
+			releaseOwnedFontPickerTextboxStyles ();
 			CuiPreferences::setUiDefaultFontFaceUtf8 ("");
 			CuiDynamicUIFont::clearUserFont ();
 			if (m_textUiFontFilter)

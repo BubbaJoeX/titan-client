@@ -23,6 +23,8 @@ class Vector;
 
 #include "../../../../../../engine/shared/library/sharedFoundation/include/public/sharedFoundation/Tag.h"
 
+#include <bitset>
+
 // ======================================================================
 
 class ShaderPrimitiveSorter
@@ -93,6 +95,8 @@ public:
 	static void               popCell();
 
 	static void               setPrepareToViewOverrideFunction(PrepareToViewOverrideFunction prepareToViewOverrideFunction);
+
+	static void               applyLightBitSetForDrawing(LightBitSet const & lightBitSet);
 
 	static void               setBelowTransparentWaterFunctionAndPhases(BelowTransparentWaterFunction belowTransparentWaterFunction, int belowTransparentWaterTestPhase, int belowTransparentWaterPhase, int aboveWaterPhase);
 

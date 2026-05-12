@@ -39,6 +39,7 @@
 #include "clientGame/ShipObject.h"
 #include "clientGame/ShipObjectAttachments.h"
 #include "clientGame/ShipStation.h"
+#include "clientGraphics/Camera.h"
 #include "clientGraphics/DebugPrimitive.h"
 #include "clientGraphics/Graphics.h"
 #include "clientGraphics/Light.h"
@@ -1393,24 +1394,36 @@ float PlayerCreatureController::realAlter (const float elapsedTime)
 			
 			if ( desiredVelocity_c.magnitude () > Vector::NORMALIZE_THRESHOLD)
 			{
+				float const threshSq = Vector::NORMALIZE_THRESHOLD * Vector::NORMALIZE_THRESHOLD;
+
 				Transform t;
+				t.yaw_l(m_desiredYaw_w);
 
- 				t.yaw_l (m_desiredYaw_w);
+				// Camera-relative direction in world space: outdoors / flat interiors use horizontal yaw only.
+				Vector desiredVelocity_w = t.rotate_l2p(desiredVelocity_c);
 
-				// Camera-relative direction in world space (horizontal plane from chase yaw + inputs).
-				Vector const desiredVelocity_w = t.rotate_l2p(desiredVelocity_c);
-
-				// Ship interiors only (not planet-side POBs): deck may be pitched/rolled vs world horizontal; project
-				// camera intent onto the tangent plane (creature up) before rotate_w2o.
+				// Atmospheric (or landed) ship interior: hull may pitch/roll vs world; chase cam stays cell-relative
+				// (FreeChaseCamera skips world-unbend yaw when getPlayerContainingShip()). WASD must follow full camera
+				// axes then flatten onto deck using biped up (local Y / object frame J), not world yaw + wrong tangent plane.
 				Vector walkVelocity_w(desiredVelocity_w);
 				if (locomotionIndoors && Game::getPlayerContainingShip())
 				{
-					Vector const upW = movementCreatureObject->getObjectFrameK_w();
-					walkVelocity_w -= upW * upW.dot(walkVelocity_w);
-					float const sq = walkVelocity_w.magnitudeSquared();
-					float const thresh = Vector::NORMALIZE_THRESHOLD * Vector::NORMALIZE_THRESHOLD;
-					if (sq <= thresh)
+					Camera * const chaseCam = Game::getCamera();
+					if (chaseCam)
+						walkVelocity_w = chaseCam->rotate_o2w(desiredVelocity_c);
+
+					Vector const deckNormalW = movementCreatureObject->getObjectFrameJ_w();
+					walkVelocity_w -= deckNormalW * deckNormalW.dot(walkVelocity_w);
+
+					float sq = walkVelocity_w.magnitudeSquared();
+					if (sq <= threshSq)
+					{
 						walkVelocity_w = desiredVelocity_w;
+						walkVelocity_w -= deckNormalW * deckNormalW.dot(walkVelocity_w);
+						sq = walkVelocity_w.magnitudeSquared();
+						if (sq <= threshSq)
+							walkVelocity_w = desiredVelocity_w;
+					}
 				}
 
 				Vector const desiredVelocity_o = movementCreatureObject->rotate_w2o(walkVelocity_w);

@@ -15,6 +15,7 @@
 // ======================================================================
 
 #include "sharedMath/Transform.h"
+#include "sharedMath/Vector.h"
 #include "sharedMath/VectorRgba.h"
 
 #include <vector>
@@ -51,6 +52,7 @@ public:
 		uint32 shaderHash;        // Shader identifier
 		uint32 textureHash;       // Primary texture identifier
 		uint32 vertexFormatHash;  // Vertex format identifier
+		uint32 lightHash;         // Active lights bitmask (phase integration) or 0
 		uint32 blendState;        // Blend mode (opaque first, then alpha)
 		float  depth;             // Distance from camera (for alpha sorting)
 
@@ -62,9 +64,12 @@ public:
 	{
 		ShaderPrimitive const * primitive;
 		Transform               transform;
+		Vector                  objectScale;
 		VectorRgba              color;
 		float                   depth;
 		BatchKey                key;
+		bool                    replayLightsFromMask;
+		uint32                  lightMask;
 	};
 
 	// Batch statistics
@@ -104,6 +109,16 @@ public:
 	static void submitPrimitive(ShaderPrimitive const * primitive, Transform const & transform, VectorRgba const & color);
 	static void submitPrimitiveImmediate(ShaderPrimitive const * primitive, Transform const & transform);  // Bypass batching
 
+	// ShaderPrimitiveSorter: preserves phase sort order and optional light replay (DebugFlags ClientGraphics/usePhaseOrderedBatching)
+	static bool isInstalled();
+	static bool getUsePhaseOrderedBatching();
+
+	static void beginPhaseOrderedBatch(Vector const & depthSortOrigin);
+	static void flushPhaseOrderedBatch();
+	static void beginPhaseOrderedBatchResume();
+	static void endPhaseOrderedBatchIntegration();
+	static void submitPhaseOrderedPrimitive(ShaderPrimitive const * primitive, Transform const & transform, Vector const & objectScale, uint32 lightMask);
+
 	// Configuration
 	static void setSortMode(SortMode mode);
 	static SortMode getSortMode();
@@ -132,8 +147,9 @@ private:
 	static void renderBatches();
 	static void renderSingleItem(RenderItem const & item);
 	static void renderInstancedBatch(std::vector<RenderItem> const & items, int start, int count);
+	static void renderItemsInSubmissionOrder();
 
-	static BatchKey computeBatchKey(ShaderPrimitive const * primitive, float depth);
+	static BatchKey computeBatchKey(ShaderPrimitive const * primitive, float depth, uint32 lightMask);
 	static uint32 computeShaderHash(StaticShader const * shader);
 	static uint32 computeTextureHash(Texture const * texture);
 	static uint32 computeVertexFormatHash(StaticVertexBuffer const * vb);

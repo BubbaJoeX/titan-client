@@ -343,6 +343,7 @@ inline void Direct3d9_StateCache::forceVertexDeclaration(IDirect3DVertexDeclarat
 	++Direct3d9_Metrics::setVertexDeclarationCacheMisses;
 #endif
 
+	ms_vertexDeclaration = vertexDeclaration;
 	HRESULT hresult = ms_device->SetVertexDeclaration(vertexDeclaration);
 	FATAL_DX_HR("SetVertexDeclaration failed %s", hresult);
 }

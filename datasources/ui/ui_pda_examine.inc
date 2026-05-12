@@ -1,10 +1,10 @@
 		<Page
 			comp.eq.visible='parent.comp.eq.visible'
-			Location='200,160'
-			MinimumSize='600,500'
+			Location='178,202'
+			MinimumSize='366,170'
 			Name='examine'
-			ScrollExtent='620,535'
-			Size='620,535'
+			ScrollExtent='617,430'
+			Size='617,430'
 			UserMovable='true'
 			UserResizable='true'
 		>
@@ -12,552 +12,769 @@
 				buttonclose='bg.mmc.close'
 				info='info'
 				Name='CodeData'
-				StartSize='460,420'
+				StartSize='366,213'
 			/>
-			<Page
-				BackgroundColor='#FFFFFF'
-				BackgroundOpacity='1.00'
-				BackgroundTint='#01687E'
-				Location='10,8'
-				Name='info'
+			<Button
+				DragType='uicommand'
+				IsDefaultButton='true'
+				Location='9,23'
+				Name='buttonInfo'
+				oldDetailsVisible='false'
+				oldDetailsVisibleTmp='false'
+				OnPress='olddetailsVisibleTmp=parent.info.comp.details.visible
+
+
+
+
+parent.info.comp.details.visible=olddetailsVisible
+
+
+
+
+olddetailsVisible=olddetailsVisibleTmp
+
+
+
+
+parent.info.comp.pack=t'
 				PackLocation='nfn,nfn'
+				PackSize='f,f'
+				ScrollExtent='28,8'
+				Size='28,8'
+				Style='/Styles.New.buttons.pane_arrow.style'
+			></Button>
+			<Page
+				Location='11,32'
+				Name='info'
 				PackSize='a,a'
-				PalBgTint='back2'
-				RStyleDefault='/Styles.New.fatFrameInside_palW.rs_default'
-				ScrollExtent='600,519'
+				RStyleDefault='/Styles.New.whiteOutline.rs_default'
+				ScrollExtent='596,382'
 				Selectable='true'
-				Size='600,519'
+				Size='596,382'
 			>
 				<Data
 					buttonCollections='comp.page.details.content.buttonPage.buttonCollections'
 					checkHideAppearance='comp.right.viewerpage.checkHideAppearance'
 					content='comp.page.details.content'
-					Label='comp.page.details.content.label'
+					Label='bg.caption.text'
 					Name='CodeData'
 					noTrade='comp.page.details.content.restrictions.comp.noTrade'
 					showBadgeText='false'
 					textAttribs='comp.page.details.content.textAttribs'
 					textDesc='comp.page.details.content.textDesc'
-					godAttribs='comp.page.details.content.godAttribs'
-					tableGodObjScript='comp.page.details.content.godAttribs.tableGodObjScript'
 					Tier='comp.page.details.content.restrictions.comp.Tier'
 					unique='comp.page.details.content.restrictions.comp.unique'
-					restrictions='comp.page.details.content.restrictions'
 					viewer='comp.right.viewerpage.viewer'
 				/>
 				<Composite
 					Name='comp'
 					Orientation='Horizontal'
-					PackLocation='nfn,nfn'
 					PackSize='a,a'
-					ScrollExtent='584,495'
+					ScrollExtent='596,382'
 					Selectable='true'
-					Size='584,495'
-					Spacing='16'
+					Size='596,382'
 					SpacingType='Fill'
 				>
 					<Page
-						BackgroundColor='#FFFFFF'
-						BackgroundOpacity='1.00'
-						BackgroundTint='#00D6FB'
-						MinimumSize='248,0'
-						Name='right'
-						OnHide='parent.pack=t'
-						OnShow='parent.pack=t'
-						PackLocation='nfn,nfn'
-						PackSize='f,a'
-						PalBgTint='back1'
-						RStyleDefault='/Styles.New.whiteOutline_palW.rs_default'
-						ScrollExtent='278,495'
-						Size='278,495'
-					>
-						<Page
-							BackgroundColor='#FFFFFF'
-							BackgroundOpacity='1.00'
-							BackgroundTint='#03546B'
-							Location='0,8'
-							Name='viewerpage'
-							PackLocation='nfn,nfn'
-							PackSize='a,a'
-							PalBgTint='back3'
-							RStyleDefault='/Styles.New.whiteOutline_palW.rs_default'
-							ScrollExtent='278,479'
-							Size='278,479'
-						>
-							<Page
-								BackgroundColor='#FFFFFF'
-								BackgroundOpacity='0.50'
-								BackgroundTint='#001A22'
-								GetsInput='false'
-								Location='10,36'
-								Name='box'
-								PackLocation='nfn,nfn'
-								PackSize='a,a'
-								PalBgTint='back3'
-								RStyleDefault='/Styles.New.viewer.rs_default'
-								ScrollExtent='254,410'
-								Size='254,410'
-							/>
-							<CuiWidget3dObjectListViewer
-								BackgroundColor='#FFFFFF'
-								BackgroundOpacity='1.00'
-								BackgroundTint='#021E28'
-								CameraPitch='0.2'
-								Dragable='true'
-								dragpitchok='true'
-								Location='14,40'
-								Name='Viewer'
-								PackLocation='nfn,nfn'
-								PackSize='a,a'
-								PalBgTint='back3'
-								RStyleDefault='/Styles.New.viewer.rs_default'
-								ScrollExtent='246,398'
-								Size='246,398'
-							/>
-							<Checkbox
-								Checked='true'
-								Color='#96F4FC'
-								LocalTooltip='[@ui_appearance:tooltip_check_hide_appearance]'
-								Location='14,12'
-								MaxLines='-1'
-								MinimumSize='0,21'
-								Name='checkHideAppearance'
-								PackLocation='nfn,fff'
-								PackSize='a,f'
-								PalColor='text1'
-								RStyleDefault='rs_default'
-								ScrollExtent='248,21'
-								Size='248,21'
-								Style='/Styles.New.Checkbox.Style2'
-								Tooltip='@ui_appearance:tooltip_check_hide_appearance'
-							>@ui_appearance:check_hide_appearance</Checkbox>
-						</Page>
-					</Page>
-					<Page
-						MaximumSize='292,16384'
-						MinimumSize='280,0'
+						MaximumSize='250,16384'
+						MinimumSize='250,0'
 						Name='page'
 						OnHide='parent.pack=t'
 						OnShow='parent.pack=t'
 						PackLocation='nfn,nfn'
 						PackSize='f,a'
-						ScrollExtent='292,495'
-						Size='292,495'
+						RStyleDefault='rs'
+						ScrollExtent='250,382'
+						Size='250,382'
 					>
 						<Page
 							AbsorbsInput='false'
-							MaximumSize='292,16384'
-							MinimumSize='280,0'
+							MaximumSize='250,16384'
+							MinimumSize='250,0'
 							Name='details'
 							OnHide='parent.pack=t'
 							OnShow='parent.pack=t'
 							PackLocation='nfn,nfn'
 							PackSize='f,a'
-							ScrollExtent='292,495'
-							Size='292,495'
+							RStyleDefault='rs'
+							ScrollExtent='250,382'
+							Size='250,382'
 						>
 							<Composite
-								Location='12,30'
-								MaximumSize='320,16384'
+								Location='4,8'
+								MaximumSize='293,16384'
 								Name='content'
 								OnDisableEffector='/effectors.opacity.fast.fadeout'
 								OnEnableEffector='/effectors.opacity.fast.fadefull'
 								PackLocation='nfn,nfn'
 								PackSize='a,a'
-								ScrollExtent='260,540'
-								Size='260,440'
-								Spacing='16'
+								ScrollExtent='227,1365'
+								Size='227,370'
+								Spacing='10'
 								SpacingType='Constant'
 								UserDragScrollable='true'
 							>
-								<Text
-									Font='default_22'
-									LocalText='XXX ITEM NAME'
-									Margin='4,4,4,8'
-									MaxLines='3'
-									MinimumSize='0,32'
-									Name='label'
-									PackSize='a,f'
-									PalColor='contrast1'
-									ScrollExtent='260,64'
-									Size='260,64'
-									TextCapital='true'
-									TextColor='#FFFFFF'
-								>xxx item name</Text>
 								<Page
-									BackgroundOpacity='0.75'
-									BackgroundTint='#011018'
 									GetsInput='false'
-									Location='0,76'
+									MaximumSize='16384,16'
+									MinimumSize='0,16'
 									Name='restrictions'
 									PackLocation='nfn,nfn'
-									PackSize='a,f'
-									PalBgTint='back3'
-									RStyleDefault='/Styles.New.whitebox_palW.rs_default'
-									ScrollExtent='260,84'
-									Size='260,84'
+									PackSize='a,a'
+									ScrollExtent='227,16'
+									Size='227,16'
 								>
 									<Composite
 										Name='comp'
-										Location='6,6'
-										PackSize='a,f'
-										ScrollExtent='248,70'
-										Size='248,70'
-										Spacing='3'
-										SpacingType='Constant'
+										Orientation='Horizontal'
+										ScrollExtent='375,16'
+										Size='227,16'
 									>
 										<Text
-											Font='default_13'
+											Font='bold_11'
 											LocalText='[@object_usability:tier_unknown]'
+											MaximumSize='125,16384'
 											MaxLines='1'
-											MinimumSize='0,20'
+											MinimumSize='76,0'
 											Name='Tier'
-											OpacityRelativeMin='0.90'
-											PackSize='a,f'
-											ScrollExtent='248,20'
-											Size='248,20'
-											TextColor='#A8D8EC'
+											OpacityRelativeMin='0.20'
+											PackSize='a,a'
+											ScrollExtent='125,16'
+											Size='125,16'
+											TextAlignment='Right'
 										>@object_usability:tier_unknown</Text>
 										<Text
-											Font='default_13'
+											Font='bold_11'
 											LocalText='[@object_usability:unique]'
-											Location='0,24'
+											Location='125,0'
+											MaximumSize='125,16384'
 											MaxLines='1'
-											MinimumSize='0,20'
-											Name='unique'
-											OpacityRelativeMin='0.90'
-											PackSize='a,f'
-											ScrollExtent='248,20'
-											Size='248,20'
-											TextColor='#FF8A8A'
+											MinimumSize='45,0'
+											Name='Unique'
+											OpacityRelativeMin='0.20'
+											PackSize='a,a'
+											ScrollExtent='45,16'
+											Size='45,16'
+											TextAlignment='Right'
+											TextColor='#FF0000'
 										>@object_usability:unique</Text>
 										<Text
 											ColorSelection='#FF0000'
-											Font='default_13'
+											Font='bold_11'
 											LocalText='[@object_usability:no_trade]'
-											Location='0,46'
+											Location='250,0'
+											MaximumSize='125,16384'
 											MaxLines='1'
-											MinimumSize='0,20'
+											MinimumSize='102,0'
 											Name='noTrade'
-											OpacityRelativeMin='0.90'
-											PackSize='a,f'
-											ScrollExtent='248,20'
-											Size='248,20'
-											TextColor='#FFB4B4'
+											OpacityRelativeMin='0.20'
+											PackSize='a,a'
+											ScrollExtent='102,16'
+											Size='102,16'
+											TextColor='#FF0000'
 										>@object_usability:no_trade</Text>
 									</Composite>
 								</Page>
 								<Text
-									Font='default_13'
+									Font='bold_11'
 									LocalText='xxx attrib 1:    info here
-
 xxx attrib 2:    info here
-
 xxx attrib 3:    info here
-
 xxx attrib 4:    info here
-
 xxx attrib 5:    info here
-
 xxx attrib 6:    info here
-
 xxx attrib 7:    info here
-
 xxx attrib 8:    info here
-
 '
-									Location='0,168'
-									Margin='10,14,10,16'
+									Location='0,26'
+									Margin='4,4,4,4'
 									Name='textAttribs'
 									PackSize='a,f'
 									PalText='text1'
-									RStyleDefault='/Styles.New.whitebox_palW.rs_default'
-									ScrollExtent='260,232'
-									Selectable='true'
-									Size='260,232'
+									RStyleDefault='/Styles.New.whitebox.rs_default'
+									ScrollExtent='227,125'
+									Size='227,125'
+									TextColor='#96F4FC'
 								>xxx attrib 1:    info here
+
+
+
 
 xxx attrib 2:    info here
 
+
+
+
 xxx attrib 3:    info here
+
+
+
 
 xxx attrib 4:    info here
 
+
+
+
 xxx attrib 5:    info here
+
+
+
 
 xxx attrib 6:    info here
 
+
+
+
 xxx attrib 7:    info here
+
+
+
 
 xxx attrib 8:    info here
 
+
+
+
 </Text>
 								<Page
-									BackgroundOpacity='0.85'
-									BackgroundTint='#011018'
-									Name='godAttribs'
-									PackLocation='nfn,nfn'
-									PackSize='a,f'
-									MinimumSize='0,120'
-									PalBgTint='back3'
-									RStyleDefault='/Styles.New.whitebox_palW.rs_default'
-									ScrollExtent='260,128'
-									Size='260,128'
-									Visible='false'
-								>
-									<Table
-										BackgroundOpacity='0.00'
-										CellHeight='22'
-										CellPadding='4,2'
-										DefaultTextColor='#96F4FC'
-										DefaultTextStyle='default_11'
-										DrawGridLines='true'
-										Location='4,6'
-										Name='tableGodObjScript'
-										PackLocation='nfn,nfn'
-										PackSize='a,a'
-										GridColorHorizontal='#1CFFFF'
-										GridColorVertical='#1CFFFF'
-										PalGridH='line1'
-										PalGridV='line1'
-										PalText='text1'
-										ScrollExtent='248,108'
-										SelectionAllowedRow='true'
-										Size='248,108'
-										TableModel='modelGodObjScript'
-									/>
-									<TableModelDefault
-										DataSourceContainer='godVarColumns'
-										Name='modelGodObjScript'
-									/>
-									<DataSourceContainer
-										Name='godVarColumns'
-									>
-										<DataSource
-											Label='Key'
-											Name='key'
-											Type='text'
-										/>
-										<DataSource
-											Label='Value'
-											Name='val'
-											Type='text'
-										/>
-										<DataSource
-											Label='Type'
-											Name='typ'
-											Type='text'
-										/>
-									</DataSourceContainer>
-									<Scrollbar
-										Control='tableGodObjScript'
-										Location='250,6'
-										MaximumSize='11,120'
-										MinimumSize='11,0'
-										Name='scrollGodObjScript'
-										PackLocation='fff,nfn'
-										PackSize='f,a'
-										PalColor='scrollDefault'
-										ScrollExtent='11,108'
-										Size='11,108'
-										Style='/Styles.scrollbar.default.vHud4.style'
-									/>
-								</Page>
-								<Page
-									Location='0,418'
-									MaximumSize='16384,48'
-									MinimumSize='0,44'
+									Location='0,161'
+									MaximumSize='16384,46'
+									MinimumSize='0,46'
 									Name='buttonPage'
 									PackSize='a'
-									ScrollExtent='260,48'
-									Size='260,48'
+									ScrollExtent='227,46'
+									Size='227,46'
 									Visible='false'
 								>
 									<Button
 										LocalText='[@ui:show_collections]'
-										Location='50,12'
-										MaximumSize='168,24'
-										MinimumSize='0,24'
+										Location='39,13'
+										MaximumSize='150,19'
+										MinimumSize='0,19'
 										Name='buttonCollections'
 										PackLocation='cfc,nfn'
 										PackSize='f,f'
-										ScrollExtent='168,24'
-										Size='168,24'
+										ScrollExtent='150,19'
+										Size='150,19'
 										Style='/Styles.New.buttons.hud.style'
 										TextColor='#000000'
 									>@ui:show_collections</Button>
 								</Page>
 								<Text
-									Font='default_13'
+									Font='bold_11'
 									LocalText='xxx Description goes into this field with all the other text ok you can stop now.
 xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
 xxx Description goes into this field with all the other text ok you can stop now.'
-									Location='0,474'
-									Margin='10,14,10,18'
+									Location='0,161'
+									Margin='4,4,4,4'
 									Name='textDesc'
 									PackLocation='nfn,fff'
 									PackSize='a,f'
 									PalText='text1'
-									RStyleDefault='/Styles.New.whitebox_palW.rs_default'
-									ScrollExtent='260,128'
-									Size='260,128'
+									RStyleDefault='/Styles.New.whitebox.rs_default'
+									ScrollExtent='227,1204'
+									Size='227,1204'
+									TextColor='#96F4FC'
 									TruncateElipsis='false'
 								>xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
+xxx Description goes into this field with all the other text ok you can stop now.
 xxx Description goes into this field with all the other text ok you can stop now.
 xxx Description goes into this field with all the other text ok you can stop now.</Text>
 							</Composite>
 						</Page>
 						<Scrollbar
 							Control='details.content'
-							Location='272,32'
+							Location='233,5'
 							Name='Scroll'
+							Opacity='0.90'
 							PackLocation='fff,nfn'
 							PackSize='f,a'
-							PalColor='scrollDefault'
-							ScrollExtent='14,448'
-							Size='14,448'
+							ScrollExtent='11,372'
+							Size='11,372'
 							Style='/Styles.scrollbar.default.vHud4.style'
 						>
 						</Scrollbar>
+						<Page
+							BackgroundTint='#1CFFFF'
+							GetsInput='false'
+							Name='outline'
+							PackLocation='nfn,nfn'
+							PackSize='a,a'
+							PalBgTint='line1'
+							ScrollExtent='248,382'
+							Selectable='true'
+							Size='248,382'
+						>
+							<Page
+								BackgroundColor='#FFFFFF'
+								BackgroundOpacity='0.80'
+								BackgroundTint='#1CFFFF'
+								Name='outline'
+								PackLocation='nfn,nfn'
+								PackSize='a,a'
+								PalBgTint='line1'
+								RStyleDefault='/Styles.New.whiteOutline_palW.rs_default'
+								ScrollExtent='248,382'
+								Size='248,382'
+							/>
+							<Page
+								BackgroundColor='#FFFFFF'
+								BackgroundOpacity='0.30'
+								BackgroundTint='#00D6FB'
+								Location='4,6'
+								Name='box'
+								PackLocation='nfn,nfn'
+								PackSize='a,a'
+								PalBgTint='back1'
+								RStyleDefault='/Styles.New.whitebox_palW.rs_default'
+								ScrollExtent='228,372'
+								Size='228,372'
+							/>
+							<Page
+								BackgroundColor='#FFFFFF'
+								BackgroundOpacity='0.60'
+								BackgroundTint='#00D6FB'
+								Name='inFrame'
+								PackLocation='nfn,nfn'
+								PackSize='a,a'
+								PalBgTint='back1'
+								RStyleDefault='/Styles.New.fatFrameInside_palW.rs_default'
+								ScrollExtent='246,382'
+								Size='246,382'
+							/>
+						</Page>
+					</Page>
+					<Page
+						Location='250,0'
+						MinimumSize='148,0'
+						Name='right'
+						PackLocation='nfn,nfn'
+						PackSize='f,a'
+						RStyleDefault='rs_default'
+						ScrollExtent='346,382'
+						Size='346,382'
+					>
+						<Page
+							Name='ViewerPage'
+							PackSize='a,a'
+							RStyleDefault='/Styles.New.whiteOutline.rs_default'
+							ScrollExtent='346,382'
+							Size='346,382'
+						>
+							<Checkbox
+								Checked='true'
+								Color='#96F4FC'
+								LocalTooltip='[@ui_appearance:tooltip_check_hide_appearance]'
+								Location='4,361'
+								MaxLines='-1'
+								MinimumSize='0,19'
+								Name='checkHideAppearance'
+								PackLocation='nfn,fff'
+								PackSize='a,f'
+								PalColor='text1'
+								RStyleDefault='rs_default'
+								ScrollExtent='299,19'
+								Size='299,19'
+								Style='/Styles.New.Checkbox.Style2'
+								Tooltip='@ui_appearance:tooltip_check_hide_appearance'
+							>@ui_appearance:check_hide_appearance</Checkbox>
+							<CuiWidget3dObjectListViewer
+								BackgroundColor='#FFFFFF'
+								BackgroundOpacity='0.60'
+								BackgroundTint='#00D6FB'
+								CameraPitch='0.2'
+								Dragable='true'
+								dragpitchok='true'
+								Location='4,4'
+								Name='Viewer'
+								PackLocation='fff,nfn'
+								PackSize='a,a'
+								PalBgTint='back1'
+								RStyleDefault='/Styles.New.viewer.rs_default'
+								ScrollExtent='339,374'
+								Size='339,374'
+							/>
+							<Image
+								Color='#00D6FB'
+								Location='108,124'
+								Name='New Image'
+								PackLocation='cfc,cfc'
+								PackSize='f,f'
+								PalColor='back1'
+								ScrollExtent='127,127'
+								Size='127,127'
+								SourceRect='266,0,512,252'
+								SourceResource='ui_viewer_back'
+							/>
+							<Page
+								BackgroundColor='#FFFFFF'
+								BackgroundOpacity='0.50'
+								BackgroundTint='#00D6FB'
+								Location='8,12'
+								Name='box'
+								PackLocation='nfn,nfn'
+								PackSize='a,a'
+								PalBgTint='back1'
+								RStyleDefault='/Styles.New.pill_lrg.rs_default'
+								ScrollExtent='331,347'
+								Size='331,347'
+							/>
+							<Page
+								BackgroundColor='#FFFFFF'
+								BackgroundOpacity='0.50'
+								BackgroundTint='#00D6FB'
+								Name='bg_viewer'
+								PackLocation='nfn,nfn'
+								PackSize='a,a'
+								PalBgTint='back1'
+								RStyleDefault='/Styles.New.fatFrameInside.rs_default'
+								ScrollExtent='346,382'
+								Size='346,382'
+							>
+								<Page
+									BackgroundColor='#FFFFFF'
+									BackgroundOpacity='0.60'
+									BackgroundTint='#03546B'
+									Location='3,4'
+									Name='box'
+									PackLocation='nfn,nfn'
+									PackSize='a,a'
+									PalBgTint='back3'
+									RStyleDefault='/Styles.New.whitebox_palW.rs_default'
+									ScrollExtent='339,373'
+									Size='339,373'
+									Visible='false'
+								/>
+								<Page
+									BackgroundColor='#FFFFFF'
+									BackgroundOpacity='0.80'
+									BackgroundTint='#1CFFFF'
+									Name='outline'
+									PackLocation='nfn,nfn'
+									PackSize='a,a'
+									PalBgTint='line1'
+									RStyleDefault='/Styles.New.whiteOutline.rs_default'
+									ScrollExtent='346,382'
+									Size='346,382'
+								/>
+							</Page>
+						</Page>
 					</Page>
 				</Composite>
 			</Page>
 			<Page
-				BackgroundColor='#FFFFFF'
-				BackgroundOpacity='1.00'
-				BackgroundTint='#00D6FB'
 				Name='bg'
 				PackLocation='nfn,nfn'
 				PackSize='a,a'
-				PalBgTint='back1'
-				ScrollExtent='620,535'
-				Size='620,535'
+				ScrollExtent='617,430'
+				Size='617,430'
 			>
 				<Page
-					BackgroundColor='#FFFFFF'
-					BackgroundOpacity='1.00'
+					Location='606,8'
+					Name='mmc'
+					PackLocation='fff,nfn'
+					PackSize='f,f'
+					RStyleDefault='/Styles.New.thin_mmc.rs_default'
+					ScrollExtent='12,10'
+					Size='12,10'
+				>
+					<Button
+						BackgroundColor='#FFFFFF'
+						BackgroundOpacity='0.80'
+						IsCancelButton='true'
+						Location='-3,-3'
+						Name='close'
+						PackLocation='fff,cfc'
+						PackSize='f,f'
+						ScrollExtent='16,16'
+						Size='16,16'
+						Style='/Styles.Frame.buttonClose.style'
+					></Button>
+				</Page>
+				<Page
+					MinimumSize='0,19'
+					Name='caption'
+					PackLocation='nfn,nfn'
+					PackSize='a,f'
+					ScrollExtent='480,19'
+					Size='480,19'
+				>
+					<Text
+						Enabled='false'
+						Font='bold_13'
+						LocalText='XXX ITEM NAME'
+						Margin='6,-2,0,0'
+						MaxLines='1'
+						MinimumSize='0,19'
+						Name='text'
+						PackSize='a,f'
+						PalText='titletext'
+						ScrollExtent='480,19'
+						Size='480,19'
+						TextAlignmentVertical='Center'
+						TextCapital='true'
+						TextColor='#00354F'
+					>xxx item name</Text>
+				</Page>
+				<Page
 					BackgroundTint='#00D6FB'
+					GetsInput='false'
+					Location='1,0'
 					Name='frame'
 					PackLocation='nfn,nfn'
 					PackSize='a,a'
-					PalBgTint='back1'
+					PalBgTint='baselight'
 					RStyleDefault='/Styles.New.thin_in.rs_default'
-					ScrollExtent='620,535'
-					Size='620,535'
+					ScrollExtent='616,430'
+					Selectable='true'
+					Size='616,430'
 				>
 					<Page
+						BackgroundColor='#FFFFFF'
+						GetsInput='false'
+						Location='1,0'
+						Name='lines'
+						PackSize='a,a'
+						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						ScrollExtent='616,430'
+						Size='616,430'
+					>
+						<Page
+							BackgroundColor='#FFFFFF'
+							GetsInput='false'
+							Location='0,408'
+							Name='outlineBL'
+							OpacityRelativeMin='0.80'
+							PackLocation='nfn,fff'
+							PackSize='p,f'
+							ScrollExtent='484,22'
+							Size='484,22'
+						>
+							<Page
+								BackgroundColor='#FFFFFF'
+								BackgroundOpacity='1.00'
+								BackgroundTint='#1CFFFF'
+								GetsInput='false'
+								Location='0,13'
+								Name='outline1'
+								OpacityRelativeMin='0.80'
+								PackSize='a,a'
+								PalBgTint='line1'
+								RStyleDefault='/Styles.space.boxes.boxlinebottomLeft2.rs_default'
+								ScrollExtent='484,9'
+								Size='484,9'
+							/>
+						</Page>
+						<Page
+							BackgroundColor='#FFFFFF'
+							GetsInput='false'
+							Location='170,408'
+							Name='outlineBR'
+							OpacityRelativeMin='0.80'
+							PackLocation='fff,fff'
+							PackSize='p,f'
+							RStyleDefault='/Styles.space.boxes.boxlineTopLeft.rs_default'
+							ScrollExtent='446,22'
+							Size='446,22'
+						>
+							<Page
+								BackgroundColor='#FFFFFF'
+								BackgroundOpacity='1.00'
+								BackgroundTint='#1CFFFF'
+								GetsInput='false'
+								Location='0,13'
+								Name='outline1'
+								OpacityRelativeMin='0.80'
+								PackSize='a,a'
+								PalBgTint='line1'
+								RStyleDefault='/Styles.space.boxes.boxlinebottomRight2.rs_default'
+								ScrollExtent='446,9'
+								Size='446,9'
+							/>
+						</Page>
+						<Page
+							BackgroundColor='#FFFFFF'
+							GetsInput='false'
+							Location='170,0'
+							Name='outlineTR'
+							OpacityRelativeMin='0.80'
+							PackLocation='fff,nfn'
+							PackSize='p,f'
+							ScrollExtent='446,22'
+							Size='446,22'
+						>
+							<Page
+								BackgroundColor='#FFFFFF'
+								BackgroundOpacity='1.00'
+								BackgroundTint='#1CFFFF'
+								GetsInput='false'
+								Name='outline1'
+								OpacityRelativeMin='0.80'
+								PackSize='a,a'
+								PalBgTint='line1'
+								RStyleDefault='/Styles.space.boxes.boxlineTopRight2.rs_default'
+								ScrollExtent='446,9'
+								Size='446,9'
+							/>
+						</Page>
+						<Page
+							BackgroundColor='#FFFFFF'
+							GetsInput='false'
+							Name='outlineTL'
+							OpacityRelativeMin='0.80'
+							PackLocation='nfn,nfn'
+							PackSize='p,f'
+							RStyleDefault='/Styles.space.boxes.boxlineTopLeft.rs_default'
+							ScrollExtent='484,22'
+							Size='484,22'
+						>
+							<Page
+								BackgroundColor='#FFFFFF'
+								BackgroundOpacity='1.00'
+								BackgroundTint='#1CFFFF'
+								GetsInput='false'
+								Name='outline1'
+								OpacityRelativeMin='0.80'
+								PackSize='a,a'
+								PalBgTint='line1'
+								RStyleDefault='/Styles.space.boxes.boxlineTopLeft2.rs_default'
+								ScrollExtent='484,9'
+								Size='484,9'
+							/>
+						</Page>
+					</Page>
+					<Page
 						BackgroundOpacity='1.00'
-						BackgroundTint='#1FE6F5'
 						Location='-1,0'
 						Name='top'
 						PackLocation='nfn,nfn'
 						PackSize='a,f'
-						PalBgTint='titleBar'
-						RStyleDefault='/Styles.New.thin_in.rs_default'
-						ScrollExtent='620,34'
-						Size='620,34'
+						RStyleDefault='/Styles.New.main_TR.rs_default'
+						ScrollExtent='617,29'
+						Size='617,29'
 					/>
 					<Page
 						BackgroundOpacity='1.00'
-						BackgroundTint='#1FE6F5'
-						Location='0,508'
+						Location='0,407'
 						Name='bottom'
 						PackLocation='nfn,fff'
 						PackSize='a,f'
-						PalBgTint='bottomBar'
-						RStyleDefault='/Styles.New.thin_in.rs_default'
-						ScrollExtent='620,27'
-						Size='620,27'
+						RStyleDefault='/Styles.New.main_BR.rs_default'
+						ScrollExtent='616,23'
+						Size='616,23'
 					/>
 				</Page>
 				<Page
-					BackgroundOpacity='0.92'
-					BackgroundTint='#01425A'
+					BackgroundOpacity='1.00'
+					BackgroundTint='#00D6FB'
 					GetsInput='false'
-					Location='6,6'
+					Location='0,5'
 					Name='back'
 					PackLocation='nfn,nfn'
 					PackSize='a,a'
-					PalBgTint='back2'
+					PalBgTint='back1'
 					RStyleDefault='/Styles.New.thin_in.rs_default'
-					ScrollExtent='608,523'
+					ScrollExtent='617,422'
 					Selectable='true'
-					Size='608,523'
+					Size='617,422'
 				/>
 				<Page
-					BackgroundColor='#FFFFFF'
-					BackgroundOpacity='1.00'
-					BackgroundTint='#2DAAC6'
-					Location='-128,-2'
-					Name='mmc'
-					PackLocation='fff,nfn'
-					PackSize='f,f'
-					PalBgTint='default'
-					RStyleDefault='/Styles.New.thin_mmc.rs_default'
-					ScrollExtent='28,28'
-					Size='28,28'
-				>
-					<Button
-						BackgroundColor='#FFFFFF'
-						BackgroundOpacity='1.00'
-						BackgroundTint='#2DAAC6'
-						IsCancelButton='true'
-						Name='close'
-						PackLocation='fff,cfc'
-						PackSize='f,f'
-						PalBgTint='default'
-						ScrollExtent='22,22'
-						Size='22,22'
-						Style='/Styles.Frame.buttonClose.style'
-						TextColor='#000000'
-					></Button>
-				</Page>
-				<Page
-					Location='14,8'
-					MinimumSize='0,24'
-					Name='caption'
+					BackgroundOpacity='0.80'
+					BackgroundTint='#00D6FB'
+					GetsInput='false'
+					Name='back'
 					PackLocation='nfn,nfn'
-					PackSize='a,f'
-					ScrollExtent='520,24'
-					Size='520,24'
-				>
-					<Text
-						Enabled='false'
-						Font='bold_15'
-						LocalText='EXAMINE'
-						Margin='10,0,0,4'
-						MaxLines='1'
-						MinimumSize='0,24'
-						Name='text'
-						OpacityRelativeMin='0.92'
-						PackSize='a,f'
-						PalText='titletext'
-						ScrollExtent='520,24'
-						Size='520,24'
-						TextAlignmentVertical='Bottom'
-						TextCapital='true'
-						TextColor='#001F2E'
-					>Examine</Text>
-				</Page>
-				<Button
-					Color='#2DAAC6'
-					DragType='uicommand'
-					IsDefaultButton='true'
-					Location='-92,8'
-					Name='buttonInfo'
-					oldDetailsVisible='false'
-					oldDetailsVisibleTmp='false'
-					OnPress='olddetailsVisibleTmp=parent.parent.info.comp.details.visible
-parent.parent.info.comp.details.visible=olddetailsVisible
-olddetailsVisible=olddetailsVisibleTmp
-parent.parent.info.comp.pack=t'
-					PackLocation='fff,nfn'
-					PackSize='f,f'
-					PalColor='default'
-					ScrollExtent='32,12'
-					Size='32,12'
-					Style='/Styles.New.buttons.pane_arrow.style'
-					TextColor='#000000'
-				></Button>
+					PackSize='a,a'
+					PalBgTint='back1'
+					RStyleDefault='/Styles.space.spaceglow.rs_default'
+					ScrollExtent='617,430'
+					Selectable='true'
+					Size='617,430'
+				/>
 			</Page>
 		</Page>

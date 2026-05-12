@@ -1626,6 +1626,20 @@ void ShadowVolume::render(Object const * const object, const Appearance *const a
 	if (!ShadowManager::volumetricShouldRender (camera, appearance->getTransform_w().getPosition_p(), appearance->getSphere().getRadius()))
 		return;
 
+	//-- interiors normally extrude with a local "up" skew instead of the parallel sun direction.
+	//-- When portals connect this cell to the world within shadow influence, use real light direction (same portal sphere reachability as multicell lights).
+	bool useWorldParallelLightDirectionForExtrusion = isInWorldCell;
+	if (!useWorldParallelLightDirectionForExtrusion)
+	{
+		CellProperty const * const casterCell = object->getParentCell ();
+		if (casterCell && !casterCell->isWorldCell ())
+		{
+			float const influenceRadius = std::max (ShadowManager::getVolumetricShadowDistance (), appearance->getSphere ().getRadius ());
+			Sphere const influenceSphere (appearance->getTransform_w ().getPosition_p (), influenceRadius);
+			useWorldParallelLightDirectionForExtrusion = CellProperty::portalGraphIncludesWorldCellWithinSphere (casterCell, influenceSphere);
+		}
+	}
+
 	//-- add the shadow
 	NOT_NULL (ms_proxyLocalShaderPrimitiveList);
 
@@ -1635,7 +1649,7 @@ void ShadowVolume::render(Object const * const object, const Appearance *const a
 
 	if (ms_supportsTwoSidedStencil)
 	{
-		ProxyLocalShaderPrimitive* proxyLocalShaderPrimitive = NON_NULL (new ProxyLocalShaderPrimitive (*ms_shadowVolumeTwoSidedShader, *this, *object, *appearance, isInWorldCell, ProxyLocalShaderPrimitive::M_extrude));
+		ProxyLocalShaderPrimitive* proxyLocalShaderPrimitive = NON_NULL (new ProxyLocalShaderPrimitive (*ms_shadowVolumeTwoSidedShader, *this, *object, *appearance, useWorldParallelLightDirectionForExtrusion, ProxyLocalShaderPrimitive::M_extrude));
 		ms_proxyLocalShaderPrimitiveList->push_back (proxyLocalShaderPrimitive);
 		ShaderPrimitiveSorter::add (*proxyLocalShaderPrimitive);
 
@@ -1648,7 +1662,7 @@ void ShadowVolume::render(Object const * const object, const Appearance *const a
 #if SHADOW_EXTRUDE_TO_POINT == 0
 		if (m_localShaderPrimitiveRenderBackCapsTwoSided)
 		{
-			proxyLocalShaderPrimitive = NON_NULL (new ProxyLocalShaderPrimitive (*ms_shadowVolumeTwoSidedShader, *this, *object, *appearance, isInWorldCell, ProxyLocalShaderPrimitive::M_prepareFarCap));
+			proxyLocalShaderPrimitive = NON_NULL (new ProxyLocalShaderPrimitive (*ms_shadowVolumeTwoSidedShader, *this, *object, *appearance, useWorldParallelLightDirectionForExtrusion, ProxyLocalShaderPrimitive::M_prepareFarCap));
 			ms_proxyLocalShaderPrimitiveList->push_back (proxyLocalShaderPrimitive);
 			ShaderPrimitiveSorter::add (*proxyLocalShaderPrimitive);
 
@@ -1659,7 +1673,7 @@ void ShadowVolume::render(Object const * const object, const Appearance *const a
 	}
 	else
 	{
-		ProxyLocalShaderPrimitive* proxyLocalShaderPrimitive = NON_NULL (new ProxyLocalShaderPrimitive (*ms_shadowVolumeOneSidedIncrementShader, *this, *object, *appearance, isInWorldCell, ProxyLocalShaderPrimitive::M_extrude));
+		ProxyLocalShaderPrimitive* proxyLocalShaderPrimitive = NON_NULL (new ProxyLocalShaderPrimitive (*ms_shadowVolumeOneSidedIncrementShader, *this, *object, *appearance, useWorldParallelLightDirectionForExtrusion, ProxyLocalShaderPrimitive::M_extrude));
 		ms_proxyLocalShaderPrimitiveList->push_back (proxyLocalShaderPrimitive);
 		ShaderPrimitiveSorter::add (*proxyLocalShaderPrimitive);
 
@@ -1678,7 +1692,7 @@ void ShadowVolume::render(Object const * const object, const Appearance *const a
 #if SHADOW_EXTRUDE_TO_POINT == 0
 		if (m_localShaderPrimitiveRenderBackCapsOneSidedCullClockwise)
 		{
-			proxyLocalShaderPrimitive = NON_NULL (new ProxyLocalShaderPrimitive (*ms_shadowVolumeOneSidedIncrementShader, *this, *object, *appearance, isInWorldCell, ProxyLocalShaderPrimitive::M_prepareFarCap));
+			proxyLocalShaderPrimitive = NON_NULL (new ProxyLocalShaderPrimitive (*ms_shadowVolumeOneSidedIncrementShader, *this, *object, *appearance, useWorldParallelLightDirectionForExtrusion, ProxyLocalShaderPrimitive::M_prepareFarCap));
 			ms_proxyLocalShaderPrimitiveList->push_back (proxyLocalShaderPrimitive);
 			ShaderPrimitiveSorter::add (*proxyLocalShaderPrimitive);
 

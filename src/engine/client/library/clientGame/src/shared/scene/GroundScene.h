@@ -83,6 +83,8 @@ private:
 
 	//-- input
 	InputMap*               m_inputMap;
+	/// Last Game::getHudSceneType() used when building m_inputMap (ground vs space IFF + ship elevator bindings).
+	int                     m_inputMapHudSceneType;
 	InputMap*               m_debugPortalCameraInputMap;
 	InputMap*               m_structurePlacementCameraInputMap;
 

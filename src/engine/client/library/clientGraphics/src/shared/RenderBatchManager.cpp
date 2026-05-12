@@ -13,6 +13,7 @@
 
 #include "clientGraphics/Graphics.h"
 #include "clientGraphics/ShaderPrimitive.h"
+#include "clientGraphics/ShaderPrimitiveSorter.h"
 #include "clientGraphics/StaticShader.h"
 #include "clientGraphics/StaticVertexBuffer.h"
 #include "clientGraphics/Texture.h"
@@ -35,6 +36,7 @@ namespace RenderBatchManagerNamespace
 	// State
 	bool ms_installed = false;
 	bool ms_inFrame = false;
+	bool ms_preserveSubmissionOrder = false;
 
 	// Settings
 	RenderBatchManager::SortMode ms_sortMode = RenderBatchManager::SM_hybrid;
@@ -53,6 +55,7 @@ namespace RenderBatchManagerNamespace
 	// Debug
 	bool ms_debugShowBatches = false;
 	bool ms_debugShowInstancing = false;
+	bool ms_usePhaseOrderedBatching = false;
 
 	// Hash function (FNV-1a)
 	uint32 fnv1aHash(void const * data, size_t size, uint32 hash = 2166136261u)
@@ -89,11 +92,17 @@ bool RenderBatchManager::BatchKey::operator<(BatchKey const & other) const
 		if (vertexFormatHash != other.vertexFormatHash)
 			return vertexFormatHash < other.vertexFormatHash;
 
+		if (lightHash != other.lightHash)
+			return lightHash < other.lightHash;
+
 		// Same state: sort front-to-back
 		return depth < other.depth;
 	}
 	else  // Transparent
 	{
+		if (lightHash != other.lightHash)
+			return lightHash < other.lightHash;
+
 		// Sort back-to-front for correct blending
 		return depth > other.depth;
 	}
@@ -128,6 +137,8 @@ void RenderBatchManager::install()
 
 	ExitChain::add(remove, "RenderBatchManager::remove");
 
+	DebugFlags::registerFlag(ms_usePhaseOrderedBatching, "ClientGraphics", "usePhaseOrderedBatching");
+
 	DEBUG_REPORT_LOG(true, ("RenderBatchManager installed: instancing=%s, maxBatch=%d\n",
 		ms_instancingEnabled ? "enabled" : "disabled", ms_maxBatchSize));
 }
@@ -141,6 +152,8 @@ void RenderBatchManager::remove()
 	ms_items.clear();
 	ms_opaqueItems.clear();
 	ms_transparentItems.clear();
+	ms_inFrame = false;
+	ms_preserveSubmissionOrder = false;
 	ms_installed = false;
 }
 
@@ -197,9 +210,12 @@ void RenderBatchManager::submitPrimitive(ShaderPrimitive const * primitive,
 	RenderItem item;
 	item.primitive = primitive;
 	item.transform = transform;
+	item.objectScale = Vector::xyz111;
 	item.color = color;
 	item.depth = depth;
-	item.key = computeBatchKey(primitive, depth);
+	item.replayLightsFromMask = false;
+	item.lightMask = 0;
+	item.key = computeBatchKey(primitive, depth, 0);
 
 	ms_items.push_back(item);
 	++ms_stats.totalPrimitives;
@@ -217,11 +233,93 @@ void RenderBatchManager::submitPrimitiveImmediate(ShaderPrimitive const * primit
 	RenderItem item;
 	item.primitive = primitive;
 	item.transform = transform;
+	item.objectScale = Vector::xyz111;
 	item.color = VectorRgba::solidWhite;
 	item.depth = 0.0f;
+	item.replayLightsFromMask = false;
+	item.lightMask = 0;
 
 	renderSingleItem(item);
 	++ms_stats.totalDrawCalls;
+}
+
+// ----------------------------------------------------------------------
+
+bool RenderBatchManager::isInstalled()
+{
+	return ms_installed;
+}
+
+// ----------------------------------------------------------------------
+
+bool RenderBatchManager::getUsePhaseOrderedBatching()
+{
+	return ms_usePhaseOrderedBatching;
+}
+
+// ----------------------------------------------------------------------
+
+void RenderBatchManager::beginPhaseOrderedBatch(Vector const & depthOrigin)
+{
+	DEBUG_FATAL(!ms_installed, ("RenderBatchManager not installed"));
+	DEBUG_FATAL(ms_inFrame, ("beginPhaseOrderedBatch while batch frame active"));
+	DEBUG_FATAL(ms_preserveSubmissionOrder, ("Nested RenderBatchManager ordered phase batch"));
+	ms_preserveSubmissionOrder = true;
+	setDepthSortOrigin(depthOrigin);
+	beginFrame();
+}
+
+// ----------------------------------------------------------------------
+
+void RenderBatchManager::flushPhaseOrderedBatch()
+{
+	if (!ms_inFrame)
+		return;
+	endFrame();
+}
+
+// ----------------------------------------------------------------------
+
+void RenderBatchManager::beginPhaseOrderedBatchResume()
+{
+	DEBUG_FATAL(!ms_installed, ("RenderBatchManager not installed"));
+	DEBUG_FATAL(!ms_preserveSubmissionOrder, ("beginPhaseOrderedBatchResume without active integration"));
+	beginFrame();
+}
+
+// ----------------------------------------------------------------------
+
+void RenderBatchManager::endPhaseOrderedBatchIntegration()
+{
+	DEBUG_FATAL(!ms_preserveSubmissionOrder, ("endPhaseOrderedBatchIntegration without active integration"));
+	ms_preserveSubmissionOrder = false;
+}
+
+// ----------------------------------------------------------------------
+
+void RenderBatchManager::submitPhaseOrderedPrimitive(ShaderPrimitive const * primitive,
+                                                      Transform const & transform,
+                                                      Vector const & objectScale,
+                                                      uint32 lightMask)
+{
+	if (!primitive || !ms_inFrame)
+		return;
+
+	Vector const position = transform.getPosition_p();
+	float const depth = (position - ms_depthSortOrigin).magnitudeSquared();
+
+	RenderItem item;
+	item.primitive = primitive;
+	item.transform = transform;
+	item.objectScale = objectScale;
+	item.color = VectorRgba::solidWhite;
+	item.depth = depth;
+	item.replayLightsFromMask = true;
+	item.lightMask = lightMask;
+	item.key = computeBatchKey(primitive, depth, lightMask);
+
+	ms_items.push_back(item);
+	++ms_stats.totalPrimitives;
 }
 
 // ----------------------------------------------------------------------
@@ -301,6 +399,13 @@ void RenderBatchManager::sortItems()
 	PerformanceTimer timer;
 	timer.start();
 
+	if (ms_preserveSubmissionOrder)
+	{
+		timer.stop();
+		ms_stats.sortTime = timer.getElapsedTime() * 1000.0f;
+		return;
+	}
+
 	// Separate opaque and transparent items
 	for (size_t i = 0; i < ms_items.size(); ++i)
 	{
@@ -366,6 +471,14 @@ void RenderBatchManager::renderBatches()
 	PerformanceTimer timer;
 	timer.start();
 
+	if (ms_preserveSubmissionOrder)
+	{
+		renderItemsInSubmissionOrder();
+		timer.stop();
+		ms_stats.renderTime = timer.getElapsedTime() * 1000.0f;
+		return;
+	}
+
 	uint32 currentShaderHash = 0;
 	uint32 currentTextureHash = 0;
 
@@ -395,7 +508,8 @@ void RenderBatchManager::renderBatches()
 			       batchCount < ms_maxBatchSize &&
 			       ms_opaqueItems[i + batchCount].key.shaderHash == item.key.shaderHash &&
 			       ms_opaqueItems[i + batchCount].key.textureHash == item.key.textureHash &&
-			       ms_opaqueItems[i + batchCount].key.vertexFormatHash == item.key.vertexFormatHash)
+			       ms_opaqueItems[i + batchCount].key.vertexFormatHash == item.key.vertexFormatHash &&
+			       ms_opaqueItems[i + batchCount].key.lightHash == item.key.lightHash)
 			{
 				++batchCount;
 			}
@@ -441,10 +555,14 @@ void RenderBatchManager::renderBatches()
 
 void RenderBatchManager::renderSingleItem(RenderItem const & item)
 {
-	// Set transform
-	Graphics::setObjectToWorldTransformAndScale(item.transform, Vector::xyz111);
+	if (item.replayLightsFromMask)
+	{
+		ShaderPrimitiveSorter::LightBitSet const lights(static_cast<unsigned long>(item.lightMask));
+		ShaderPrimitiveSorter::applyLightBitSetForDrawing(lights);
+	}
 
-	// Render the primitive
+	Graphics::setObjectToWorldTransformAndScale(item.transform, item.objectScale);
+
 	if (item.primitive)
 	{
 		item.primitive->prepareToDraw();
@@ -468,12 +586,68 @@ void RenderBatchManager::renderInstancedBatch(std::vector<RenderItem> const & it
 
 // ----------------------------------------------------------------------
 
+void RenderBatchManager::renderItemsInSubmissionOrder()
+{
+	uint32 currentShaderHash = 0;
+	uint32 currentTextureHash = 0;
+
+	for (size_t i = 0; i < ms_items.size(); )
+	{
+		RenderItem const & item = ms_items[i];
+
+		if (item.key.shaderHash != currentShaderHash)
+		{
+			++ms_stats.stateChanges;
+			currentShaderHash = item.key.shaderHash;
+		}
+		if (item.key.textureHash != currentTextureHash)
+		{
+			++ms_stats.stateChanges;
+			currentTextureHash = item.key.textureHash;
+		}
+
+		if (ms_instancingEnabled && item.key.blendState == 0)
+		{
+			int batchCount = 1;
+			while (i + batchCount < ms_items.size() &&
+			       batchCount < ms_maxBatchSize &&
+			       ms_items[i + batchCount].key.shaderHash == item.key.shaderHash &&
+			       ms_items[i + batchCount].key.textureHash == item.key.textureHash &&
+			       ms_items[i + batchCount].key.vertexFormatHash == item.key.vertexFormatHash &&
+			       ms_items[i + batchCount].key.lightHash == item.key.lightHash &&
+			       ms_items[i + batchCount].replayLightsFromMask == item.replayLightsFromMask &&
+			       ms_items[i + batchCount].lightMask == item.lightMask)
+			{
+				++batchCount;
+			}
+
+			if (batchCount >= cs_instancingThreshold)
+			{
+				renderInstancedBatch(ms_items, static_cast<int>(i), batchCount);
+				++ms_stats.instancedDrawCalls;
+				ms_stats.instancedPrimitives += batchCount;
+				++ms_stats.totalBatches;
+				i += batchCount;
+				continue;
+			}
+		}
+
+		renderSingleItem(item);
+		++ms_stats.totalDrawCalls;
+		++i;
+	}
+}
+
+// ----------------------------------------------------------------------
+
 RenderBatchManager::BatchKey RenderBatchManager::computeBatchKey(ShaderPrimitive const * primitive,
-                                                                   float depth)
+                                                                   float depth,
+                                                                   uint32 lightMask)
 {
 	BatchKey key;
 	key.depth = depth;
 	key.blendState = 0;
+	key.lightHash = lightMask;
 
 	if (primitive)
 	{

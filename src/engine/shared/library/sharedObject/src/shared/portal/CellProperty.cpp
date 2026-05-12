@@ -28,8 +28,10 @@
 #include "sharedObject/PortalPropertyTemplate.h"
 #include "sharedUtility/Location.h"
 
-#include <vector>
 #include <algorithm>
+#include <queue>
+#include <set>
+#include <vector>
 
 // ======================================================================
 
@@ -855,6 +857,100 @@ bool CellProperty::getDestinationCells(const Sphere &sphere, std::vector<CellPro
 	}
 
 	return hitPortal;
+}
+
+// ----------------------------------------------------------------------
+/**
+ * Cells reachable from startCell by crossing portals that intersect worldSphere.
+ * Unlike camera-visible cell lists, this follows portal connectivity only.
+ * Results exclude startCell (ghost-cell consumers treat these as additional cells).
+ */
+
+void CellProperty::collectPortalReachableCellsOverlappingSphere(CellProperty const *startCell, Sphere const &worldSphere, std::vector<CellProperty const *> &outGhostCellsExcludeStart)
+{
+	outGhostCellsExcludeStart.clear();
+
+	if (!startCell)
+		return;
+
+	typedef std::set<CellProperty const *> VisitedSet;
+	VisitedSet visited;
+	std::queue<CellProperty const *> q;
+
+	q.push(startCell);
+	visited.insert(startCell);
+
+	while (!q.empty())
+	{
+		CellProperty const *cell = q.front();
+		q.pop();
+
+		std::vector<CellProperty *> neighbors;
+		IGNORE_RETURN(cell->getDestinationCells(worldSphere, neighbors));
+
+		for (size_t ni = 0; ni < neighbors.size(); ++ni)
+		{
+			CellProperty *neighborCell = neighbors[ni];
+			if (!neighborCell)
+				continue;
+
+			if (visited.insert(neighborCell).second)
+				q.push(neighborCell);
+		}
+	}
+
+	for (VisitedSet::const_iterator vi = visited.begin(); vi != visited.end(); ++vi)
+	{
+		if (*vi != startCell)
+			outGhostCellsExcludeStart.push_back(*vi);
+	}
+}
+
+// ----------------------------------------------------------------------
+/**
+ * True when startCell can reach the world cell along portals whose overlap with worldSphere
+ * supports traversal (same sphere query as getDestinationCells).
+ */
+
+bool CellProperty::portalGraphIncludesWorldCellWithinSphere(CellProperty const *startCell, Sphere const &worldSphere)
+{
+	if (!startCell)
+		return false;
+
+	CellProperty const *const worldCell = getWorldCellProperty();
+	if (startCell == worldCell || startCell->isWorldCell())
+		return true;
+
+	typedef std::set<CellProperty const *> VisitedSet;
+	VisitedSet visited;
+	std::queue<CellProperty const *> q;
+
+	q.push(startCell);
+	visited.insert(startCell);
+
+	while (!q.empty())
+	{
+		CellProperty const *cell = q.front();
+		q.pop();
+
+		std::vector<CellProperty *> neighbors;
+		IGNORE_RETURN(cell->getDestinationCells(worldSphere, neighbors));
+
+		for (size_t ni = 0; ni < neighbors.size(); ++ni)
+		{
+			CellProperty *neighborCell = neighbors[ni];
+			if (!neighborCell)
+				continue;
+
+			if (neighborCell == worldCell || neighborCell->isWorldCell())
+				return true;
+
+			if (visited.insert(neighborCell).second)
+				q.push(neighborCell);
+		}
+	}
+
+	return false;
 }
 
 // ----------------------------------------------------------------------

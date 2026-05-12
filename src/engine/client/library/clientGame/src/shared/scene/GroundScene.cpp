@@ -953,6 +953,7 @@ GroundScene::GroundScene(
 	)
 :	NetworkScene("GroundScene"),
 	m_inputMap (0),
+	m_inputMapHudSceneType (-1),
 	m_debugPortalCameraInputMap (0),
 	m_structurePlacementCameraInputMap (0),
 	m_freeCameraInputMap (0),
@@ -1063,6 +1064,7 @@ GroundScene::GroundScene(
 	)
 :	NetworkScene ("GroundScene"),
 	m_inputMap (0),
+	m_inputMapHudSceneType (-1),
 	m_debugPortalCameraInputMap (0),
 	m_structurePlacementCameraInputMap (0),
 	m_freeCameraInputMap (0),
@@ -2023,6 +2025,15 @@ void GroundScene::updateCuiLoading()
 void GroundScene::update(float elapsedTime)
 {
 	NP_PROFILER_AUTO_BLOCK_DEFINE("GroundScene update");
+
+	// Atmospheric flight uses space HUD (ship station) while the planet uses GroundScene; InputScheme picks ground vs
+	// space IFF and injects elevator / landing commands only when those maps are first loaded. Reload when HUD type
+	// crosses ST_ground <-> ST_space so Mouse4/Mouse5 elevator and other ship bindings match the active mode.
+	{
+		int const hudSceneForInput = static_cast<int>(Game::getHudSceneType());
+		if (m_inputMapHudSceneType != hudSceneForInput)
+			loadInputMap();
+	}
 
 	//-- scan input map for scene messages
 	handleInputMapScan ();
@@ -4236,6 +4247,7 @@ void GroundScene::loadInputMap()
 	NOT_NULL (m_inputMap);
 	m_inputMap->setMessageQueue (getPlayer()->getController()->getMessageQueue ());
 
+	m_inputMapHudSceneType = static_cast<int>(Game::getHudSceneType ());
 }
 
 //----------------------------------------------------------------------

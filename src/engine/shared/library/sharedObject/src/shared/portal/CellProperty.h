@@ -23,6 +23,7 @@ class Object;
 class Portal;
 class PortalProperty;
 class PortalPropertyTemplateCell;
+class Sphere;
 class Texture;
 class Vector;
 class VectorArgb;
@@ -90,6 +91,9 @@ public:
 	static Appearance *        createForceField(VertexList const & verts, const VectorArgb &color);
 
 	static bool                areAdjacent(const CellProperty *cellProperty1, const CellProperty *cellProperty2);
+
+	static void                collectPortalReachableCellsOverlappingSphere(CellProperty const *startCell, Sphere const &worldSphere, stdvector<CellProperty const *>::fwd &outGhostCellsExcludeStart);
+	static bool                portalGraphIncludesWorldCellWithinSphere(CellProperty const *startCell, Sphere const &worldSphere);
 
 	static float               getMaximumValidCellSpaceCoordinate();
 

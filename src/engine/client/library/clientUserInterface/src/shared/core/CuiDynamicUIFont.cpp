@@ -476,10 +476,12 @@ bool CuiDynamicUIFont::applyFontFaceUtf8 (std::string const &utf8Face)
 	// firstDestroy()s TextStyles while the UI still references them → blank text / crash until refresh.
 
 	// Sizes used across HUD, options, and SUI; must cover scaled lookups (font slider + UI scale).
+	// Include every integer 10–40 plus 9 and common larger sizes so lookups never miss after scaling.
 	static int const s_pointSizes[] =
 	{
-		10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
-		25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 36, 40
+		9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+		25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+		41, 42, 44, 48
 	};
 	for (size_t i = 0; i < sizeof (s_pointSizes) / sizeof (s_pointSizes[0]); ++i)
 	{
