@@ -184,7 +184,9 @@ void CellObjectNamespace::swapBuildingToDarkPob(CellProperty * cellProperty)
 
 	if (!TreeFile::exists(darkPobStr.c_str()))
 	{
-		REPORT_LOG(true, ("swapBuildingToDarkPob: _dark.pob does NOT exist in TreeFile\n"));
+		REPORT_LOG(true, ("swapBuildingToDarkPob: _dark.pob does NOT exist in TreeFile; using dynamic interior lighting (no baked pob swap)\n"));
+		// Same bookkeeping as a successful swap: avoid retrying per-cell custom-light initialization on this portal.
+		ms_swappedBuildings.insert(portalProperty);
 		return;
 	}
 

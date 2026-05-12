@@ -828,6 +828,27 @@ namespace ShaderPrimitiveSorterNamespace
 
 using namespace ShaderPrimitiveSorterNamespace;
 
+namespace
+{
+	/**
+	 * _dark.pob meshes disable baked cell lighting so remote/custom lights control the room.
+	 * When no _dark asset exists, Interior cells still set CellProperty custom-lighting override and rebuild
+	 * runtime lights from the pob template; route precalculated-vertex shaders through the dynamic-light mask
+	 * so those lights apply like the dark pob variant.
+	 */
+	inline ShaderPrimitiveSorter::LightBitSet const & selectLightBitSetForInteriorShader(StaticShader const & staticShader)
+	{
+		if (!staticShader.containsPrecalculatedVertexLighting())
+			return ShaderPrimitiveSorter::getLightsAffectingShadersWithoutPrecalculatedVertexLighting();
+
+		CellProperty const * const cell = (!ms_cellPropertyStack.empty()) ? ms_cellPropertyStack.back() : NULL;
+		if (cell && cell->hasCustomLightingOverride())
+			return ShaderPrimitiveSorter::getLightsAffectingShadersWithoutPrecalculatedVertexLighting();
+
+		return ShaderPrimitiveSorter::getLightsAffectingShadersWithPrecalculatedVertexLighting();
+	}
+}
+
 ShaderPrimitiveSorter::Phases                    ShaderPrimitiveSorter::ms_phase;
 ShaderPrimitiveSorter::PhaseMap                  ShaderPrimitiveSorter::ms_phaseMap;
 const Camera                                    *ShaderPrimitiveSorter::ms_currentCamera;
@@ -1253,10 +1274,7 @@ void ShaderPrimitiveSorter::add(const ShaderPrimitive &shaderPrimitive)
 	{
 		NP_PROFILER_AUTO_BLOCK_DEFINE("ShaderPrimitiveSorter::add simple insertion");
 
-		if (staticShader.containsPrecalculatedVertexLighting())
-			ms_phase[phase].add(shaderPrimitive, staticShader, ms_lightsAffectingShadersWithPrecalculatedVertexLighting);
-		else
-			ms_phase[phase].add(shaderPrimitive, staticShader, ms_lightsAffectingShadersWithoutPrecalculatedVertexLighting);
+		ms_phase[phase].add(shaderPrimitive, staticShader, selectLightBitSetForInteriorShader(staticShader));
 	}
 }
 
@@ -1291,10 +1309,7 @@ void ShaderPrimitiveSorter::add(const ShaderPrimitive &shaderPrimitive, const in
 	StaticShader const & staticShader = ms_prepareToViewFunction(shaderPrimitive);
 	DEBUG_FATAL(phase < 0 || phase >= static_cast<int>(ms_phase.size()), ("Invalid phase %d/%d", phase, ms_phase.size()));
 
-	if (staticShader.containsPrecalculatedVertexLighting())
-		ms_phase[phase].add(shaderPrimitive, staticShader, ms_lightsAffectingShadersWithPrecalculatedVertexLighting);
-	else
-		ms_phase[phase].add(shaderPrimitive, staticShader, ms_lightsAffectingShadersWithoutPrecalculatedVertexLighting);
+	ms_phase[phase].add(shaderPrimitive, staticShader, selectLightBitSetForInteriorShader(staticShader));
 }
 
 // ----------------------------------------------------------------------
@@ -1325,10 +1340,7 @@ void ShaderPrimitiveSorter::addWithAlphaFadeOpacity(const ShaderPrimitive &shade
 	{
 		if (!opaqueEnable)
 		{
-			if (staticShader.containsPrecalculatedVertexLighting())
-				ms_phase[phase].add(shaderPrimitive, staticShader, ms_lightsAffectingShadersWithPrecalculatedVertexLighting);
-			else
-				ms_phase[phase].add(shaderPrimitive, staticShader, ms_lightsAffectingShadersWithoutPrecalculatedVertexLighting);
+			ms_phase[phase].add(shaderPrimitive, staticShader, selectLightBitSetForInteriorShader(staticShader));
 			return;
 		}
 
@@ -1340,10 +1352,7 @@ void ShaderPrimitiveSorter::addWithAlphaFadeOpacity(const ShaderPrimitive &shade
 		{
 			if (!alphaEnable)
 			{
-				if (staticShader.containsPrecalculatedVertexLighting())
-					ms_phase[phase].add(shaderPrimitive, staticShader, ms_lightsAffectingShadersWithPrecalculatedVertexLighting);
-				else
-					ms_phase[phase].add(shaderPrimitive, staticShader, ms_lightsAffectingShadersWithoutPrecalculatedVertexLighting);
+				ms_phase[phase].add(shaderPrimitive, staticShader, selectLightBitSetForInteriorShader(staticShader));
 				return;
 			}
 
@@ -1361,10 +1370,7 @@ void ShaderPrimitiveSorter::addWithAlphaFadeOpacity(const ShaderPrimitive &shade
 			phase = ms_aboveWaterPhase;
 	}
 
-	if (staticShader.containsPrecalculatedVertexLighting())
-		ms_phase[phase].addWithAlphaFadeOpacity(shaderPrimitive, staticShader, alphaFadeOpacity, ms_lightsAffectingShadersWithPrecalculatedVertexLighting);
-	else
-		ms_phase[phase].addWithAlphaFadeOpacity(shaderPrimitive, staticShader, alphaFadeOpacity, ms_lightsAffectingShadersWithoutPrecalculatedVertexLighting);
+	ms_phase[phase].addWithAlphaFadeOpacity(shaderPrimitive, staticShader, alphaFadeOpacity, selectLightBitSetForInteriorShader(staticShader));
 }
 
 // ----------------------------------------------------------------------
