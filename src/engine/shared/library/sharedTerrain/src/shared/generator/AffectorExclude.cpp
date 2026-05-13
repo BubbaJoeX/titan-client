@@ -74,11 +74,16 @@ void AffectorExclude::load_0000 (Iff& iff)
 		//-- load the base data
 		LayerItem::load (iff);
 
-		//-- load specific data
-		iff.enterChunk (TAG_DATA);
-		iff.exitChunk (TAG_DATA);
+		//-- Recover from truncated Generator IFF: dangling bytes before the sibling DATA chunk
+		// would otherwise assert in getFirstTag() when probing the next chunk header.
+		iff.discardIncompleteTrailingIFFBlockHeadersInCurrentForm ();
 
-	iff.exitForm (TAG_0000);
+		if (iff.enterChunk (TAG_DATA, true))
+			iff.exitChunk (TAG_DATA, true);
+
+		iff.discardIncompleteTrailingIFFBlockHeadersInCurrentForm ();
+
+	iff.exitForm (TAG_0000, true);
 }
 
 //-------------------------------------------------------------------

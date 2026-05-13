@@ -448,7 +448,7 @@ TerrainGenerator::Affector* TerrainGeneratorLoader::createAffector (Iff& iff, Te
 				affector = new AffectorExclude ();
 				affector->load (iff);
 
-			iff.exitForm (TAG_AEXC);
+			iff.exitForm (TAG_AEXC, true);
 		}
 		break;
 
@@ -459,7 +459,7 @@ TerrainGenerator::Affector* TerrainGeneratorLoader::createAffector (Iff& iff, Te
 				affector = new AffectorPassable();
 				affector->load (iff);
 
-			iff.exitForm (TAG_APAS);
+			iff.exitForm (TAG_APAS, true);
 		}
 		break;
 

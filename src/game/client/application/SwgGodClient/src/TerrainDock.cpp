@@ -22,6 +22,8 @@
 #include "sharedTerrain/ShaderGroup.h"
 #include "sharedTerrain/FloraGroup.h"
 #include "sharedTerrain/RadialGroup.h"
+#include "sharedTerrain/EnvironmentGroup.h"
+#include "sharedTerrain/BitmapGroup.h"
 
 #include "clientGame/Game.h"
 #include "clientGame/GroundScene.h"
@@ -69,6 +71,9 @@
 #include <qsettings.h>
 
 #include <cmath>
+#if defined(_MSC_VER)
+#include <windows.h>
+#endif
 #include <algorithm>
 #include <map>
 #include <vector>
@@ -170,6 +175,69 @@ namespace
 			if (scanBudgetRemaining <= 0)
 				return;
 		}
+	}
+
+	// Load one .trn for the global shader catalog (can AV on corrupted IFF; SEH wrapper below).
+	void terrainDockAppendCatalogEntriesForTrnFile(QListView* const globalShaderList, QString const& fileCanon)
+	{
+		if (!globalShaderList)
+			return;
+
+		Iff iff(1024 * 1024);
+		QCString const pathBytes(QFile::encodeName(fileCanon));
+		if (!iff.open(pathBytes.data(), true))
+			return;
+
+		SamplerProceduralTerrainAppearanceTemplate sampler(pathBytes.data(), &iff);
+		TerrainGenerator const* const srcGen(sampler.getTerrainGenerator());
+		if (!srcGen)
+			return;
+
+		ShaderGroup const& sg(srcGen->getShaderGroup());
+		int const famCount(sg.getNumberOfFamilies());
+		if (!famCount)
+			return;
+
+		QFileInfo const fiPath(fileCanon);
+		QString const terrainLabel(fiPath.baseName());
+
+		for (int fi = 0; fi < famCount; ++fi)
+		{
+			int const familyId(sg.getFamilyId(fi));
+			char const* const familyName(sg.getFamilyName(familyId));
+
+			QString primaryShaderName;
+			if (sg.getFamilyNumberOfChildren(familyId) > 0)
+			{
+				ShaderGroup::FamilyChildData const ch(sg.getFamilyChild(familyId, 0));
+				primaryShaderName = ch.shaderTemplateName ? QString::fromLatin1(ch.shaderTemplateName) : QString("(unnamed template)");
+			}
+			else if (familyName && *familyName)
+				primaryShaderName = QString::fromLatin1(familyName);
+			else
+				primaryShaderName = "(empty family)";
+
+			QString idTxt;
+			idTxt.sprintf("%d", familyId);
+
+			new QListViewItem(globalShaderList, idTxt, primaryShaderName, terrainLabel, fileCanon);
+		}
+	}
+
+	// No C++ unwinding in this function (MSVC); keep AVs from bad .trn from killing the god client.
+	void terrainDockAppendCatalogEntriesForTrnFileWithSehGuard(QListView* const globalShaderList, QString const& fileCanon)
+	{
+#if defined(_MSC_VER)
+		__try
+		{
+			terrainDockAppendCatalogEntriesForTrnFile(globalShaderList, fileCanon);
+		}
+		__except (EXCEPTION_EXECUTE_HANDLER)
+		{
+		}
+#else
+		terrainDockAppendCatalogEntriesForTrnFile(globalShaderList, fileCanon);
+#endif
 	}
 
 	bool terrainDockCopyFamilyIntoShaderGroup(ShaderGroup const& src, ShaderGroup& dst, int familyId, bool overwriteExisting)
@@ -479,6 +547,8 @@ void TerrainDock::initializeUI()
 		IGNORE_RETURN(connect(m_btnRescanGlobalShaders, SIGNAL(clicked()), this, SLOT(onRescanGlobalShadersClicked())));
 	if (m_btnAddTerrainScanFolder)
 		IGNORE_RETURN(connect(m_btnAddTerrainScanFolder, SIGNAL(clicked()), this, SLOT(onAddTerrainScanFolderClicked())));
+	if (m_btnClearTerrainScanFolders)
+		IGNORE_RETURN(connect(m_btnClearTerrainScanFolders, SIGNAL(clicked()), this, SLOT(onClearTerrainScanFoldersClicked())));
 	if (m_btnImportShaderFamily)
 		IGNORE_RETURN(connect(m_btnImportShaderFamily, SIGNAL(clicked()), this, SLOT(onMergeGlobalShaderIntoSceneClicked())));
 	
@@ -563,7 +633,9 @@ void TerrainDock::receiveMessage(const MessageDispatch::Emitter&, const MessageD
 	if (message.isType(Game::Messages::SCENE_CHANGED))
 	{
 		m_terrainCacheValid = false;
-		onRefreshFromScene();
+		// Never scan/load arbitrary .trn files on scene change; that can AV on bad assets.
+		// User refreshes the dock (Refresh) or uses "Rescan..." for the global shader catalog.
+		refreshFromScene(true);
 	}
 	else if (message.isType(GodClientData::Messages::SELECTION_CHANGED))
 	{
@@ -577,7 +649,9 @@ void TerrainDock::showEvent(QShowEvent* event)
 {
 	BaseTerrainDock::showEvent(event);
 	resizeQt3ScrollViewToContents(m_scrollAreaContents, m_contentScrollView);
-	onRefreshFromScene();
+	// Do not scan/load other .trn files here (rebuildGlobalShaderCatalog): bad or huge trees AV or hang.
+	// User clicks "Rescan..." or changes scene for a full global catalog rebuild.
+	refreshFromScene(true);
 	syncGodClientEditorBrushSettings();
 }
 
@@ -645,6 +719,7 @@ void TerrainDock::syncGodClientEditorBrushSettings()
 	editor.setFloraCollidable(m_floraCollidable);
 	editor.setFloraDensity(static_cast<float>(m_floraDensity) / 100.0f);
 	editor.setBrushPreviewEnabled(m_showBrushPreview);
+	editor.setBitmapShaderFamily(m_selectedShaderFamilyId);
 }
 
 // ----------------------------------------------------------------------
@@ -808,6 +883,15 @@ void TerrainDock::onToolPlaceEnvironment()
 void TerrainDock::onToolStampBitmap()
 {
 	setToolMode(m_toolMode == TM_StampBitmap ? TM_None : TM_StampBitmap);
+	if (m_toolMode == TM_StampBitmap && GodClientTerrainEditor::isInstalled())
+	{
+		int const ci = m_bitmapStampCombo ? m_bitmapStampCombo->currentItem() : 0;
+		if (ci >= 0 && ci < static_cast<int>(m_bitmapStampFamilyIds.size()))
+		{
+			GodClientTerrainEditor::getInstance().reloadBitmapStampFromTerrainFamily(m_bitmapStampFamilyIds[static_cast<size_t>(ci)]);
+			GodClientTerrainEditor::getInstance().setBitmapShaderFamily(m_selectedShaderFamilyId);
+		}
+	}
 }
 
 void TerrainDock::onToolSelect()
@@ -930,7 +1014,7 @@ void TerrainDock::onLoadTerrain()
 		m_terrainFileLabel->setText(filename);
 	m_terrainModified = false;
 	
-	onRefreshFromScene();
+	refreshFromScene(true);
 	
 	MainFrame::getInstance().textToConsole("Terrain loaded from file.");
 }
@@ -1003,7 +1087,7 @@ void TerrainDock::onReloadTerrain()
 			return;
 	}
 	
-	onRefreshFromScene();
+	refreshFromScene(true);
 }
 
 // ======================================================================
@@ -1224,6 +1308,13 @@ void TerrainDock::onRadialGroupChanged(int index)
 
 void TerrainDock::onRefreshFromScene()
 {
+	refreshFromScene(false);
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::refreshFromScene(bool const skipGlobalShaderCatalogScan)
+{
 	m_terrainCacheValid = false;
 	
 	ProceduralTerrainAppearanceTemplate* terrainTemplate = getTerrainTemplate();
@@ -1238,7 +1329,9 @@ void TerrainDock::onRefreshFromScene()
 		if (m_shaderList)
 			m_shaderList->clear();
 
-		syncGlobalShaderCatalog();
+		if (!skipGlobalShaderCatalogScan)
+			syncGlobalShaderCatalog();
+		syncGodClientEditorBrushSettings();
 
 		resizeQt3ScrollViewToContents(m_scrollAreaContents, m_contentScrollView);
 		return;
@@ -1258,10 +1351,13 @@ void TerrainDock::onRefreshFromScene()
 	}
 	
 	populateLayerList();
-	populateShaderList();
+	populateShaderList(skipGlobalShaderCatalogScan);
 	populateFloraList();
 	populateRadialList();
 	populateWaterShaderList();
+	populatePolylineShaderCombo();
+	populateEnvironmentFamilyCombo();
+	populateBitmapStampCombo();
 
 	resizeQt3ScrollViewToContents(m_scrollAreaContents, m_contentScrollView);
 }
@@ -1297,7 +1393,7 @@ void TerrainDock::populateLayerList()
 	}
 }
 
-void TerrainDock::populateShaderList()
+void TerrainDock::populateShaderList(bool const skipGlobalShaderCatalogScan)
 {
 	if (!m_shaderList)
 		return;
@@ -1308,7 +1404,8 @@ void TerrainDock::populateShaderList()
 
 	if (!generator)
 	{
-		syncGlobalShaderCatalog();
+		if (!skipGlobalShaderCatalogScan)
+			syncGlobalShaderCatalog();
 		syncGodClientEditorBrushSettings();
 		return;
 	}
@@ -1330,7 +1427,8 @@ void TerrainDock::populateShaderList()
 
 	updateSceneShaderListSelectionAfterPopulate(generator);
 
-	syncGlobalShaderCatalog();
+	if (!skipGlobalShaderCatalogScan)
+		syncGlobalShaderCatalog();
 
 	syncGodClientEditorBrushSettings();
 }
@@ -1425,6 +1523,32 @@ void TerrainDock::syncGlobalShaderCatalog()
 			m_globalShaderList->setSelected(pickRestore, true);
 			m_shaderUiSyncGuard = false;
 		}
+		else
+		{
+			// Removed .trn / scan dirs no longer expose this row: keep painting a non-scene family
+			// would leave m_selectedShaderFamilyId invalid and can AV in terrain render paths.
+			m_globalShaderPaintingSelection = false;
+			m_savedGlobalPickFamilyId = 0;
+			m_savedGlobalPickTrnCanon = QString();
+
+			m_shaderUiSyncGuard = true;
+			m_globalShaderList->clearSelection();
+			m_shaderUiSyncGuard = false;
+
+			TerrainGenerator* const generator = getTerrainGenerator();
+			if (generator && m_shaderList)
+			{
+				ShaderGroup const& shaderGroup(generator->getShaderGroup());
+				if (shaderGroup.getNumberOfFamilies() > 0)
+					updateSceneShaderListSelectionAfterPopulate(generator);
+				else
+					m_selectedShaderFamilyId = 0;
+			}
+			else
+				m_selectedShaderFamilyId = 0;
+
+			syncGodClientEditorBrushSettings();
+		}
 	}
 }
 
@@ -1475,45 +1599,7 @@ void TerrainDock::rebuildGlobalShaderCatalogBody(QString const& sceneTerrainTrnC
 		if (!sceneTerrainTrnCanon.isEmpty() && fileCanon == sceneTerrainTrnCanon)
 			continue;
 
-		Iff iff(1024 * 1024);
-		QCString const pathBytes(QFile::encodeName(fileCanon));
-		if (!iff.open(pathBytes.data(), true))
-			continue;
-
-		SamplerProceduralTerrainAppearanceTemplate sampler(pathBytes.data(), &iff);
-		TerrainGenerator const* const srcGen(sampler.getTerrainGenerator());
-		if (!srcGen)
-			continue;
-
-		ShaderGroup const& sg(srcGen->getShaderGroup());
-		int const famCount(sg.getNumberOfFamilies());
-		if (!famCount)
-			continue;
-
-		QFileInfo const fiPath(fileCanon);
-		QString const terrainLabel(fiPath.baseName());
-
-		for (int fi = 0; fi < famCount; ++fi)
-		{
-			int const familyId(sg.getFamilyId(fi));
-			char const* const familyName(sg.getFamilyName(familyId));
-
-			QString primaryShaderName;
-			if (sg.getFamilyNumberOfChildren(familyId) > 0)
-			{
-				ShaderGroup::FamilyChildData const ch(sg.getFamilyChild(familyId, 0));
-				primaryShaderName = ch.shaderTemplateName ? QString::fromLatin1(ch.shaderTemplateName) : QString("(unnamed template)");
-			}
-			else if (familyName && *familyName)
-				primaryShaderName = QString::fromLatin1(familyName);
-			else
-				primaryShaderName = "(empty family)";
-
-			QString idTxt;
-			idTxt.sprintf("%d", familyId);
-
-			new QListViewItem(m_globalShaderList, idTxt, primaryShaderName, terrainLabel, fileCanon);
-		}
+		terrainDockAppendCatalogEntriesForTrnFileWithSehGuard(m_globalShaderList, fileCanon);
 	}
 }
 
@@ -1644,6 +1730,57 @@ void TerrainDock::onAddTerrainScanFolderClicked()
 
 // ----------------------------------------------------------------------
 
+void TerrainDock::onClearTerrainScanFoldersClicked()
+{
+	if (m_globalShaderScanExtraRoots.isEmpty())
+	{
+		IGNORE_RETURN(QMessageBox::information(this, "Terrain scan folders", "No extra scan folders are configured (already cleared)."));
+		return;
+	}
+
+	int const answer(QMessageBox::question(this, "Terrain scan folders",
+		"Remove all extra .trn scan folder paths?\n\n"
+		"This clears QSettings (TerrainDock/extraTrnScanRootsCanon). "
+		"The folder that contains the loaded scene terrain is still scanned as long as a terrain is active.",
+		QMessageBox::Yes, QMessageBox::No));
+	if (answer != QMessageBox::Yes)
+		return;
+
+	m_globalShaderScanExtraRoots.clear();
+	saveTerrainShaderScanRootsToSettings();
+
+	m_globalShaderPaintingSelection = false;
+	m_savedGlobalPickFamilyId = 0;
+	m_savedGlobalPickTrnCanon = QString();
+
+	if (m_globalShaderList)
+	{
+		m_shaderUiSyncGuard = true;
+		m_globalShaderList->clearSelection();
+		m_shaderUiSyncGuard = false;
+	}
+
+	TerrainGenerator* const generator = getTerrainGenerator();
+	if (generator && m_shaderList)
+	{
+		ShaderGroup const& sg(generator->getShaderGroup());
+		if (sg.getNumberOfFamilies() > 0)
+			updateSceneShaderListSelectionAfterPopulate(generator);
+		else
+			m_selectedShaderFamilyId = 0;
+	}
+	else
+		m_selectedShaderFamilyId = 0;
+
+	++m_globalShaderCatalogStamp;
+	syncGlobalShaderCatalog();
+	syncGodClientEditorBrushSettings();
+
+	MainFrame::getInstance().textToConsole("Cleared extra terrain .trn scan folders.");
+}
+
+// ----------------------------------------------------------------------
+
 void TerrainDock::onMergeGlobalShaderIntoSceneClicked()
 {
 	if (!m_globalShaderList)
@@ -1720,7 +1857,7 @@ void TerrainDock::onMergeGlobalShaderIntoSceneClicked()
 	m_savedGlobalPickFamilyId = 0;
 	m_savedGlobalPickTrnCanon = QString();
 
-	populateShaderList();
+	populateShaderList(false);
 
 	QString done;
 	done.sprintf("Merged shader family %d from %s into the scene terrain.", familyId, srcPath.latin1());
@@ -1787,6 +1924,114 @@ void TerrainDock::populateWaterShaderList()
 	m_waterShaderCombo->insertItem("swamp_water");
 	m_waterShaderCombo->insertItem("river_water");
 	m_waterShaderCombo->insertItem("lake_water");
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::populatePolylineShaderCombo()
+{
+	m_polylineShaderFamilyIds.clear();
+	if (!m_polylineShaderCombo)
+		return;
+
+	m_polylineShaderCombo->clear();
+
+	TerrainGenerator* const generator = getTerrainGenerator();
+	if (!generator)
+		return;
+
+	ShaderGroup const& shaderGroup(generator->getShaderGroup());
+	int const nFamilies = shaderGroup.getNumberOfFamilies();
+	for (int i = 0; i < nFamilies; ++i)
+	{
+		int const familyId = shaderGroup.getFamilyId(i);
+		char const* familyName = shaderGroup.getFamilyName(familyId);
+		QString const label = (familyName && *familyName)
+			? QString::fromLatin1(familyName)
+			: QString("Family %1").arg(familyId);
+		m_polylineShaderCombo->insertItem(label);
+		m_polylineShaderFamilyIds.push_back(familyId);
+	}
+
+	if (nFamilies > 0)
+	{
+		m_polylineShaderCombo->setCurrentItem(0);
+		m_polylineShaderIndex = 0;
+		if (GodClientTerrainEditor::isInstalled())
+			GodClientTerrainEditor::getInstance().setPolylineShaderFamily(m_polylineShaderFamilyIds[0]);
+	}
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::populateEnvironmentFamilyCombo()
+{
+	m_environmentFamilyIds.clear();
+	if (!m_environmentFamilyCombo)
+		return;
+
+	m_environmentFamilyCombo->clear();
+
+	TerrainGenerator* const generator = getTerrainGenerator();
+	if (!generator)
+		return;
+
+	EnvironmentGroup const& eg(generator->getEnvironmentGroup());
+	int const nFamilies = eg.getNumberOfFamilies();
+	for (int i = 0; i < nFamilies; ++i)
+	{
+		int const familyId = eg.getFamilyId(i);
+		char const* name = eg.getFamilyName(familyId);
+		QString const label = (name && *name)
+			? QString::fromLatin1(name)
+			: QString("Environment %1").arg(familyId);
+		m_environmentFamilyCombo->insertItem(label);
+		m_environmentFamilyIds.push_back(familyId);
+	}
+
+	if (nFamilies > 0)
+	{
+		m_environmentFamilyCombo->setCurrentItem(0);
+		m_environmentFamilyIndex = 0;
+		if (GodClientTerrainEditor::isInstalled())
+			GodClientTerrainEditor::getInstance().setEnvironmentFamily(m_environmentFamilyIds[0]);
+	}
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::populateBitmapStampCombo()
+{
+	m_bitmapStampFamilyIds.clear();
+	if (!m_bitmapStampCombo)
+		return;
+
+	m_bitmapStampCombo->clear();
+
+	TerrainGenerator* const generator = getTerrainGenerator();
+	if (!generator)
+		return;
+
+	BitmapGroup const& bg(generator->getBitmapGroup());
+	int const nFamilies = bg.getNumberOfFamilies();
+	for (int i = 0; i < nFamilies; ++i)
+	{
+		int const familyId = bg.getFamilyId(i);
+		char const* name = bg.getFamilyName(familyId);
+		QString const label = (name && *name)
+			? QString::fromLatin1(name)
+			: QString("Bitmap %1").arg(familyId);
+		m_bitmapStampCombo->insertItem(label);
+		m_bitmapStampFamilyIds.push_back(familyId);
+	}
+
+	if (nFamilies > 0 && GodClientTerrainEditor::isInstalled())
+	{
+		m_bitmapStampCombo->setCurrentItem(0);
+		m_bitmapStampIndex = 0;
+		GodClientTerrainEditor::getInstance().reloadBitmapStampFromTerrainFamily(m_bitmapStampFamilyIds[0]);
+		GodClientTerrainEditor::getInstance().setBitmapShaderFamily(m_selectedShaderFamilyId);
+	}
 }
 
 // ======================================================================
@@ -2099,7 +2344,11 @@ void TerrainDock::onBeginRoad()
 		GodClientTerrainEditor& editor = GodClientTerrainEditor::getInstance();
 		editor.beginPolyline(false);
 		editor.setPolylineWidth(m_polylineWidth);
-		editor.setPolylineShaderFamily(m_polylineShaderIndex);
+		int polyFid = m_selectedShaderFamilyId;
+		int const ci = m_polylineShaderCombo ? m_polylineShaderCombo->currentItem() : 0;
+		if (ci >= 0 && ci < static_cast<int>(m_polylineShaderFamilyIds.size()))
+			polyFid = m_polylineShaderFamilyIds[static_cast<size_t>(ci)];
+		editor.setPolylineShaderFamily(polyFid);
 		editor.setPolylineFeatherDistance(m_polylineFeather);
 		editor.setPolylineUseFixedHeights(m_polylineFixedHeights);
 		
@@ -2114,7 +2363,11 @@ void TerrainDock::onBeginRibbon()
 		GodClientTerrainEditor& editor = GodClientTerrainEditor::getInstance();
 		editor.beginPolyline(true);
 		editor.setPolylineWidth(m_polylineWidth);
-		editor.setPolylineShaderFamily(m_polylineShaderIndex);
+		int polyFid = m_selectedShaderFamilyId;
+		int const ci = m_polylineShaderCombo ? m_polylineShaderCombo->currentItem() : 0;
+		if (ci >= 0 && ci < static_cast<int>(m_polylineShaderFamilyIds.size()))
+			polyFid = m_polylineShaderFamilyIds[static_cast<size_t>(ci)];
+		editor.setPolylineShaderFamily(polyFid);
 		editor.setPolylineFeatherDistance(m_polylineFeather);
 		editor.setPolylineUseFixedHeights(m_polylineFixedHeights);
 		
@@ -2167,10 +2420,11 @@ void TerrainDock::onPolylineShaderChanged(int index)
 {
 	m_polylineShaderIndex = index;
 	
-	if (GodClientTerrainEditor::isInstalled())
-	{
-		GodClientTerrainEditor::getInstance().setPolylineShaderFamily(index);
-	}
+	if (!GodClientTerrainEditor::isInstalled())
+		return;
+	if (index < 0 || index >= static_cast<int>(m_polylineShaderFamilyIds.size()))
+		return;
+	GodClientTerrainEditor::getInstance().setPolylineShaderFamily(m_polylineShaderFamilyIds[static_cast<size_t>(index)]);
 }
 
 void TerrainDock::onPolylineFixedHeightsToggled(bool enabled)
@@ -2193,7 +2447,11 @@ void TerrainDock::onBeginEnvironmentZone()
 	{
 		GodClientTerrainEditor& editor = GodClientTerrainEditor::getInstance();
 		editor.beginEnvironmentZone();
-		editor.setEnvironmentFamily(m_environmentFamilyIndex);
+		int envFid = 0;
+		int const ci = m_environmentFamilyCombo ? m_environmentFamilyCombo->currentItem() : 0;
+		if (ci >= 0 && ci < static_cast<int>(m_environmentFamilyIds.size()))
+			envFid = m_environmentFamilyIds[static_cast<size_t>(ci)];
+		editor.setEnvironmentFamily(envFid);
 		
 		setToolMode(TM_PlaceEnvironment);
 	}
@@ -2222,10 +2480,11 @@ void TerrainDock::onEnvironmentFamilyChanged(int index)
 {
 	m_environmentFamilyIndex = index;
 	
-	if (GodClientTerrainEditor::isInstalled())
-	{
-		GodClientTerrainEditor::getInstance().setEnvironmentFamily(index);
-	}
+	if (!GodClientTerrainEditor::isInstalled())
+		return;
+	if (index < 0 || index >= static_cast<int>(m_environmentFamilyIds.size()))
+		return;
+	GodClientTerrainEditor::getInstance().setEnvironmentFamily(m_environmentFamilyIds[static_cast<size_t>(index)]);
 }
 
 // ======================================================================
@@ -2235,12 +2494,13 @@ void TerrainDock::onEnvironmentFamilyChanged(int index)
 void TerrainDock::onBitmapStampSelected(int index)
 {
 	m_bitmapStampIndex = index;
-	
-	// Get bitmap name from the list and set it on the editor
-	// For now, just log the selection
-	QString msg;
-	msg.sprintf("Bitmap stamp %d selected", index);
-	MainFrame::getInstance().textToConsole(msg.latin1());
+	if (!GodClientTerrainEditor::isInstalled())
+		return;
+	if (index < 0 || index >= static_cast<int>(m_bitmapStampFamilyIds.size()))
+		return;
+	int const fid = m_bitmapStampFamilyIds[static_cast<size_t>(index)];
+	GodClientTerrainEditor::getInstance().reloadBitmapStampFromTerrainFamily(fid);
+	GodClientTerrainEditor::getInstance().setBitmapShaderFamily(m_selectedShaderFamilyId);
 }
 
 void TerrainDock::onBitmapRotationChanged(int value)
@@ -3242,9 +3502,13 @@ bool TerrainDock::handleMousePress(int screenX, int screenY, int button, int qtB
 				return true;
 			}
 
+			int polyFid = m_selectedShaderFamilyId;
+			int const pci = m_polylineShaderCombo ? m_polylineShaderCombo->currentItem() : 0;
+			if (pci >= 0 && pci < static_cast<int>(m_polylineShaderFamilyIds.size()))
+				polyFid = m_polylineShaderFamilyIds[static_cast<size_t>(pci)];
 			editor.beginPolyline(m_toolMode == TM_PlaceRibbon);
 			editor.setPolylineWidth(m_polylineWidth);
-			editor.setPolylineShaderFamily(m_polylineShaderIndex);
+			editor.setPolylineShaderFamily(polyFid);
 			editor.setPolylineFeatherDistance(m_polylineFeather);
 			editor.setPolylineUseFixedHeights(m_polylineFixedHeights);
 			editor.addPolylinePoint(worldX, worldZ);
@@ -3261,8 +3525,12 @@ bool TerrainDock::handleMousePress(int screenX, int screenY, int button, int qtB
 			}
 			else
 			{
+				int envFid = 0;
+				int const eci = m_environmentFamilyCombo ? m_environmentFamilyCombo->currentItem() : 0;
+				if (eci >= 0 && eci < static_cast<int>(m_environmentFamilyIds.size()))
+					envFid = m_environmentFamilyIds[static_cast<size_t>(eci)];
 				editor.beginEnvironmentZone();
-				editor.setEnvironmentFamily(m_environmentFamilyIndex);
+				editor.setEnvironmentFamily(envFid);
 				editor.addEnvironmentZonePoint(worldX, worldZ);
 				return true;
 			}
@@ -3434,6 +3702,9 @@ bool TerrainDock::handleMouseMove(int screenX, int screenY, int qtButtonState)
 void TerrainDock::updateFrame(float elapsedTime)
 {
 	UNREF(elapsedTime);
+
+	if (!isVisible())
+		return;
 	
 	if (!GodClientTerrainEditor::isInstalled())
 		return;

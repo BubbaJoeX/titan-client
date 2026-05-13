@@ -10,6 +10,8 @@
 #include "SwgGodClient/FirstSwgGodClient.h"
 #include "GodClientTerrainEditor.h"
 
+#include <cstdio>
+
 #include "clientGame/Game.h"
 #include "clientGame/FreeCamera.h"
 #include "clientGame/GroundScene.h"
@@ -21,6 +23,7 @@
 #include "sharedFile/Iff.h"
 #include "sharedFoundation/Clock.h"
 #include "sharedFoundation/ExitChain.h"
+#include "sharedImage/Image.h"
 #include "sharedMath/Rectangle2d.h"
 #include "sharedMath/Transform.h"
 #include "sharedMath/VectorArgb.h"
@@ -104,7 +107,7 @@ using namespace GodClientTerrainEditorNamespace;
 
 GodClientTerrainEditor* GodClientTerrainEditor::ms_instance = 0;
 const float GodClientTerrainEditor::MIN_MODIFICATION_INTERVAL = 0.012f; // slight headroom above 60Hz
-const float GodClientTerrainEditor::REALTIME_INVALIDATION_INTERVAL = 0.045f; // ~22Hz live mesh refresh while stroking
+const float GodClientTerrainEditor::REALTIME_INVALIDATION_INTERVAL = 0.025f; // ~40Hz coalesced chunk invalidation while stroking heights
 
 // ======================================================================
 
@@ -416,6 +419,9 @@ void GodClientTerrainEditor::continueBrushStroke(float worldX, float worldZ)
 	float minFrac = 0.1f;
 	if (m_toolMode == TM_PaintShader || m_toolMode == TM_PaintFlora || m_toolMode == TM_PlaceWater)
 		minFrac = 0.004f;
+	else if (m_toolMode == TM_Raise || m_toolMode == TM_Lower || m_toolMode == TM_Flatten ||
+	         m_toolMode == TM_Smooth || m_toolMode == TM_Noise || m_toolMode == TM_SetHeight)
+		minFrac = 0.03f;
 	const float minDist = std::max(0.05f, m_brushSize * minFrac);
 	const float minDistSq = minDist * minDist;
 	
@@ -568,8 +574,35 @@ void GodClientTerrainEditor::applyBrushAtPoint(float worldX, float worldZ)
 			m_dirtyRegionMaxZ = worldZ + regionRadius;
 	}
 
-	invalidateTerrainRegion(worldX, worldZ, regionRadius);
-	m_lastInvalidationTime = currentTime;
+	// Height brushing: coalesce chunk invalidations. The procedural generator clears pending requests per
+	// invalidate — flooding invalidateRegion() makes distant geometry/streaming drop until rebuild.
+	const bool heightStrokeTool =
+		m_brushStrokeActive &&
+		(m_toolMode == TM_Raise || m_toolMode == TM_Lower || m_toolMode == TM_Flatten ||
+		 m_toolMode == TM_Smooth || m_toolMode == TM_Noise || m_toolMode == TM_SetHeight);
+
+	if (heightStrokeTool)
+	{
+		if (currentTime - m_lastInvalidationTime >= REALTIME_INVALIDATION_INTERVAL && m_hasDirtyRegion)
+		{
+			TerrainObject* const terrainObject = TerrainObject::getInstance();
+			if (terrainObject)
+			{
+				Rectangle2d const extent2d(
+					m_dirtyRegionMinX,
+					m_dirtyRegionMinZ,
+					m_dirtyRegionMaxX,
+					m_dirtyRegionMaxZ);
+				terrainObject->invalidateRegion(extent2d);
+			}
+			m_lastInvalidationTime = currentTime;
+		}
+	}
+	else
+	{
+		invalidateTerrainRegion(worldX, worldZ, regionRadius);
+		m_lastInvalidationTime = currentTime;
+	}
 }
 
 // ----------------------------------------------------------------------
@@ -1899,21 +1932,45 @@ bool GodClientTerrainEditor::getModifiedShaderInternal(float x, float z, int ori
 		return false;
 	}
 
-	const int ix = static_cast<int>(std::floor(x));
-	const int iz = static_cast<int>(std::floor(z));
-	const uint64 key = (static_cast<uint64>(ix + 32768) << 32) | static_cast<uint64>(iz + 32768);
+	// Sample positions from procedural chunk shading do not land on exact 1m integer grid points
+	// used when painting; search a small neighborhood so painted edits actually show up.
+	const int cx = static_cast<int>(floorf(x));
+	const int cz = static_cast<int>(floorf(z));
 
-	ShaderModificationMap::const_iterator it = m_shaderModifications.find(key);
-	if (it != m_shaderModifications.end())
+	int bestFamily = originalFamilyId;
+	float bestFeather = -1.0f;
+	bool found = false;
+
+	for (int dz = -2; dz <= 2; ++dz)
 	{
-		outFamilyId = it->second.modifiedFamilyId;
-		outFeather = it->second.featherAmount;
-		return true;
+		for (int dx = -2; dx <= 2; ++dx)
+		{
+			const int ix = cx + dx;
+			const int iz = cz + dz;
+			const uint64 key = (static_cast<uint64>(ix + 32768) << 32) | static_cast<uint64>(iz + 32768);
+			ShaderModificationMap::const_iterator const it = m_shaderModifications.find(key);
+			if (it == m_shaderModifications.end())
+				continue;
+			const float f = it->second.featherAmount;
+			if (f > bestFeather)
+			{
+				bestFeather = f;
+				bestFamily = it->second.modifiedFamilyId;
+				found = true;
+			}
+		}
 	}
 
-	outFamilyId = originalFamilyId;
-	outFeather = 0.0f;
-	return false;
+	if (!found || bestFeather <= 0.0f)
+	{
+		outFamilyId = originalFamilyId;
+		outFeather = 0.0f;
+		return false;
+	}
+
+	outFamilyId = bestFamily;
+	outFeather = bestFeather;
+	return true;
 }
 
 // ======================================================================
@@ -2030,21 +2087,42 @@ bool GodClientTerrainEditor::getModifiedFloraInternal(float x, float z, int orig
 		return false;
 	}
 
-	const int ix = static_cast<int>(std::floor(x));
-	const int iz = static_cast<int>(std::floor(z));
-	const uint64 key = (static_cast<uint64>(ix + 32768) << 32) | static_cast<uint64>(iz + 32768);
+	const int cx = static_cast<int>(floorf(x));
+	const int cz = static_cast<int>(floorf(z));
+	int bestFamily = originalFamilyId;
+	float bestDensity = -1.0f;
+	bool found = false;
 
-	FloraModificationMap::const_iterator it = m_floraModifications.find(key);
-	if (it != m_floraModifications.end())
+	for (int dz = -2; dz <= 2; ++dz)
 	{
-		outFamilyId = it->second.modifiedFamilyId;
-		outDensity = it->second.density;
-		return true;
+		for (int dx = -2; dx <= 2; ++dx)
+		{
+			const int ix = cx + dx;
+			const int iz = cz + dz;
+			const uint64 key = (static_cast<uint64>(ix + 32768) << 32) | static_cast<uint64>(iz + 32768);
+			FloraModificationMap::const_iterator const it = m_floraModifications.find(key);
+			if (it == m_floraModifications.end())
+				continue;
+			const float d = it->second.density;
+			if (d > bestDensity)
+			{
+				bestDensity = d;
+				bestFamily = it->second.modifiedFamilyId;
+				found = true;
+			}
+		}
 	}
 
-	outFamilyId = originalFamilyId;
-	outDensity = 0.0f;
-	return false;
+	if (!found || bestDensity < 0.0f)
+	{
+		outFamilyId = originalFamilyId;
+		outDensity = 0.0f;
+		return false;
+	}
+
+	outFamilyId = bestFamily;
+	outDensity = bestDensity;
+	return true;
 }
 
 // ======================================================================
@@ -2540,6 +2618,88 @@ void GodClientTerrainEditor::loadBitmapStampData(const char* filename)
 
 // ----------------------------------------------------------------------
 
+void GodClientTerrainEditor::loadBitmapStampDataFromImage(Image const* image)
+{
+	m_bitmapHeightData.clear();
+	m_bitmapShaderData.clear();
+	m_bitmapWidth = 0;
+	m_bitmapHeight = 0;
+
+	if (!image)
+		return;
+
+	int const w = image->getWidth();
+	int const h = image->getHeight();
+	if (w <= 0 || h <= 0)
+		return;
+
+	uint8 const* base = image->lockReadOnly(true);
+	if (!base)
+		return;
+
+	Image::UnlockGuard const guard(image);
+
+	m_bitmapWidth = w;
+	m_bitmapHeight = h;
+	m_bitmapHeightData.resize(static_cast<size_t>(w * h));
+
+	Image::PixelFormat const pf = image->getPixelFormat();
+	int const bpp = image->getBytesPerPixel();
+	int const stride = image->getStride();
+
+	for (int z = 0; z < h; ++z)
+	{
+		uint8 const* row = base + z * stride;
+		uint8 const* p = row;
+		for (int x = 0; x < w; ++x)
+		{
+			uint8 r = 0;
+			uint8 g = 0;
+			uint8 b = 0;
+			uint8 a = 255;
+			Image::getPixel(r, g, b, a, p, pf);
+			float const lum = (0.299f * static_cast<float>(r) + 0.587f * static_cast<float>(g) + 0.114f * static_cast<float>(b)) / 255.0f;
+			m_bitmapHeightData[static_cast<size_t>(z * w + x)] = lum;
+			p += bpp;
+		}
+	}
+}
+
+// ----------------------------------------------------------------------
+
+void GodClientTerrainEditor::reloadBitmapStampFromTerrainFamily(int familyId)
+{
+	TerrainGenerator* const generator = getTerrainGenerator();
+	if (!generator || familyId < 0)
+	{
+		loadBitmapStampData(0);
+		return;
+	}
+
+	BitmapGroup const& bg = generator->getBitmapGroup();
+	if (!bg.hasFamily(familyId))
+	{
+		loadBitmapStampData(0);
+		MainFrame::getInstance().textToConsole("Bitmap stamp family not in scene terrain.");
+		return;
+	}
+
+	Image const* const image = bg.getFamilyBitmap(familyId);
+	loadBitmapStampDataFromImage(image);
+
+	char const* const n = bg.getFamilyName(familyId);
+	if (n && *n)
+		m_bitmapStamp.bitmapName = n;
+	else
+	{
+		char buf[64];
+		snprintf(buf, sizeof(buf), "bitmap_family_%d", familyId);
+		m_bitmapStamp.bitmapName = buf;
+	}
+}
+
+// ----------------------------------------------------------------------
+
 float GodClientTerrainEditor::sampleBitmapHeight(float normalizedX, float normalizedZ) const
 {
 	if (m_bitmapHeightData.empty() || m_bitmapWidth == 0 || m_bitmapHeight == 0)
@@ -2576,7 +2736,7 @@ void GodClientTerrainEditor::applyBitmapStamp(float worldX, float worldZ)
 {
 	if (m_bitmapHeightData.empty() && m_bitmapShaderData.empty())
 	{
-		MainFrame::getInstance().textToConsole("No bitmap stamp loaded");
+		MainFrame::getInstance().textToConsole("No bitmap stamp loaded — choose a stamp family in the Terrain dock.");
 		return;
 	}
 
@@ -2644,20 +2804,34 @@ void GodClientTerrainEditor::applyBitmapStamp(float worldX, float worldZ)
 				}
 			}
 
-			if (m_bitmapStamp.affectsShader && !m_bitmapShaderData.empty())
+			if (m_bitmapStamp.affectsShader)
 			{
-				const int shaderId = sampleBitmapShader(normalizedX, normalizedZ);
-				if (shaderId >= 0)
-				{
-					ShaderModification mod;
-					mod.worldX = x;
-					mod.worldZ = z;
-					mod.modifiedFamilyId = shaderId;
-					mod.featherAmount = 1.0f;
-					mod.originalFamilyId = -1;
+				int shaderFamilyToApply = m_bitmapStamp.shaderFamilyId;
+				if (shaderFamilyToApply == 0)
+					shaderFamilyToApply = m_selectedShaderFamily;
 
-					m_shaderModifications[key] = mod;
+				if (!m_bitmapShaderData.empty())
+				{
+					const int shaderId = sampleBitmapShader(normalizedX, normalizedZ);
+					if (shaderId < 0)
+						continue;
+					shaderFamilyToApply = shaderId;
 				}
+				else
+				{
+					const float maskAmt = m_bitmapHeightData.empty() ? 1.0f : sampleBitmapHeight(normalizedX, normalizedZ);
+					if (maskAmt <= 0.001f)
+						continue;
+				}
+
+				ShaderModification mod;
+				mod.worldX = x;
+				mod.worldZ = z;
+				mod.modifiedFamilyId = shaderFamilyToApply;
+				mod.featherAmount = 1.0f;
+				mod.originalFamilyId = -1;
+
+				m_shaderModifications[key] = mod;
 			}
 		}
 	}

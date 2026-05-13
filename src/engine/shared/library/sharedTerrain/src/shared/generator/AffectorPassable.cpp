@@ -70,19 +70,25 @@ void AffectorPassable::load (Iff& iff)
 void AffectorPassable::load_0000 (Iff& iff)
 {
 	iff.enterForm (TAG_0000);
-	{
-		//-- load the base data
-		LayerItem::load (iff);
 
-		//-- load specific data
-		iff.enterChunk (TAG_DATA);
-		{
-			m_passable = iff.read_bool8();
-			m_featherThreshold = iff.read_float();
-		}
-		iff.exitChunk (TAG_DATA);
+	//-- load the base data
+	LayerItem::load (iff);
+
+	iff.discardIncompleteTrailingIFFBlockHeadersInCurrentForm ();
+
+	bool const haveDataChunk = iff.enterChunk (TAG_DATA, true);
+
+	if (haveDataChunk)
+	{
+		m_passable           = iff.read_bool8 ();
+		m_featherThreshold   = iff.read_float ();
+
+		iff.exitChunk (TAG_DATA, true);
 	}
-	iff.exitForm (TAG_0000);
+
+	iff.discardIncompleteTrailingIFFBlockHeadersInCurrentForm ();
+
+	iff.exitForm (TAG_0000, true);
 }
 
 //-------------------------------------------------------------------

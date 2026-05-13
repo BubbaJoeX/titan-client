@@ -18,6 +18,7 @@
 
 #include <qstring.h>
 #include <qstringlist.h>
+#include <vector>
 
 // ======================================================================
 
@@ -189,13 +190,14 @@ public slots:
 	void onFloraPlacementModeChanged(int index);
 	void onRadialGroupChanged(int index);
 
-	// Refresh from scene
+	// Refresh from scene (slot: full refresh including global .trn shader catalog scan)
 	void onRefreshFromScene();
 
 	// Shader catalog (cross-planet .trn sources)
 	void onGlobalShaderSelectionChanged(QListViewItem* item);
 	void onRescanGlobalShadersClicked();
 	void onAddTerrainScanFolderClicked();
+	void onClearTerrainScanFoldersClicked();
 	void onMergeGlobalShaderIntoSceneClicked();
 
 	// Region operations
@@ -244,8 +246,10 @@ private:
 
 	// Internal helpers
 	void initializeUI();
+	/// @param skipGlobalShaderCatalogScan if true, skips rebuildGlobalShaderCatalog (no recursive .trn load). Used when showing the dock to avoid AV from bad .trn on disk.
+	void refreshFromScene(bool skipGlobalShaderCatalogScan);
 	void populateLayerList();
-	void populateShaderList();
+	void populateShaderList(bool skipGlobalShaderCatalogScan);
 	void syncGlobalShaderCatalog();
 	void rebuildGlobalShaderCatalogBody(QString const& sceneTerrainTrnCanon);
 	void updateSceneShaderListSelectionAfterPopulate(TerrainGenerator const* generator);
@@ -258,6 +262,9 @@ private:
 	void populateFloraList();
 	void populateRadialList();
 	void populateWaterShaderList();
+	void populatePolylineShaderCombo();
+	void populateEnvironmentFamilyCombo();
+	void populateBitmapStampCombo();
 
 	void updateToolButtonStates();
 	void updateUndoRedoState();
@@ -411,6 +418,13 @@ private:
 
 	/// When true, paint Shader uses \ref m_selectedShaderFamilyId from the global shader catalog list.
 	bool                       m_globalShaderPaintingSelection;
+
+	/// Combo index -> shader family id (Scene shaders list); polyline road/ribbon used wrong row index as id before.
+	std::vector<int>           m_polylineShaderFamilyIds;
+	/// Combo index -> environment family id.
+	std::vector<int>           m_environmentFamilyIds;
+	/// Combo index -> bitmap stamp family id (BitmapGroup).
+	std::vector<int>           m_bitmapStampFamilyIds;
 
 	/// Extra folders recursively scanned for .trn files (persisted via QSettings /SOE/SwgGodClient TerrainDock group).
 	QStringList                m_globalShaderScanExtraRoots;

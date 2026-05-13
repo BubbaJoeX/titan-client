@@ -164,6 +164,11 @@ public:
 	// Unconsumed bytes in the current enclosing form (do not call while inside a chunk).
 	int getBytesRemainingInForm(void) const;
 
+	// If fewer than sizeof(Tag)+sizeof(uint32) bytes remain in the enclosing form, skip them and
+	// treat the form as ended. Avoids IFF read-overflow fatals from mildly corrupt IFF (e.g.
+	// some legacy terrain Generator layers with truncated tail bytes after LayerItem payloads).
+	void discardIncompleteTrailingIFFBlockHeadersInCurrentForm ();
+
 	// get the number of blocks left in the current enclosing form	
 	int getNumberOfBlocksLeft(void) const;
 

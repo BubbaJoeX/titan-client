@@ -1027,6 +1027,25 @@ int Iff::getBytesRemainingInForm(void) const
 }
 
 // ----------------------------------------------------------------------
+
+void Iff::discardIncompleteTrailingIFFBlockHeadersInCurrentForm ()
+{
+	DEBUG_FATAL(inChunk, ("discardIncompleteTrailingIFFBlockHeadersInCurrentForm called inside a chunk"));
+
+	int const remainder = stack[stackDepth].length - stack[stackDepth].used;
+	static int const kBlockHeaderBytes = isizeof(Tag) + isizeof(uint32);
+
+	if (remainder > 0 && remainder < kBlockHeaderBytes)
+	{
+		char location [768];
+		formatLocation(location, sizeof(location));
+		WARNING(true, ("Iff: discarding %d trailing byte(s) (incomplete IFF block header); continuing tolerant load [%s]", remainder, location));
+
+		stack[stackDepth].used = stack[stackDepth].length;
+	}
+}
+
+// ----------------------------------------------------------------------
 /**
  * Get the number of blocks left in the current enclosing form.
  * 

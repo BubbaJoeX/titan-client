@@ -352,6 +352,8 @@ public:
 	void setBitmapShaderFamily(int familyId);
 	int getBitmapShaderFamily() const;
 	void applyBitmapStamp(float worldX, float worldZ);
+	/// Load raster for TM_StampBitmap from the active terrain's BitmapGroup (by family id).
+	void reloadBitmapStampFromTerrainFamily(int familyId);
 
 	// ======================================================================
 	// TerrainGenerator Integration
@@ -426,6 +428,7 @@ private:
 
 	// Bitmap stamp helpers
 	void loadBitmapStampData(const char* filename);
+	void loadBitmapStampDataFromImage(class Image const* image);
 	float sampleBitmapHeight(float normalizedX, float normalizedZ) const;
 	int sampleBitmapShader(float normalizedX, float normalizedZ) const;
 

@@ -478,6 +478,14 @@
                                         </widget>
                                         <widget class="QPushButton">
                                             <property name="name">
+                                                <cstring>m_btnClearTerrainScanFolders</cstring>
+                                            </property>
+                                            <property name="text">
+                                                <string>Clear scan folders</string>
+                                            </property>
+                                        </widget>
+                                        <widget class="QPushButton">
+                                            <property name="name">
                                                 <cstring>m_btnImportShaderFamily</cstring>
                                             </property>
                                             <property name="text">
