@@ -310,14 +310,15 @@ void Direct3d9_ShaderImplementationData::Pass::construct(const ShaderImplementat
 #undef RSV
 
 #ifdef VSPS
-#ifdef FFP
 	if (pass.m_pixelShader)
-#endif
 	{
 #if PRODUCTION == 0
 		m_pixelShaderProgram = pass.m_pixelShader->m_program;
 #else
-		m_pixelShader = safe_cast<Direct3d9_PixelShaderProgramData const *>(pass.m_pixelShader->m_program->m_graphicsData)->getPixelShader();
+		if (pass.m_pixelShader->m_program && pass.m_pixelShader->m_program->m_graphicsData)
+			m_pixelShader = safe_cast<Direct3d9_PixelShaderProgramData const *>(pass.m_pixelShader->m_program->m_graphicsData)->getPixelShader();
+		else
+			WARNING(true, ("Direct3d9_ShaderImplementationData::Pass::construct: pixel shader program or graphics data is NULL"));
 #endif
 	}
 #ifdef FFP
@@ -354,8 +355,9 @@ void Direct3d9_ShaderImplementationData::Pass::apply() const
 
 #ifdef VSPS
 #if PRODUCTION == 0
-	IDirect3DPixelShader9 *pixelShader = m_pixelShaderProgram == 0 ?
-		0 : static_cast<Direct3d9_PixelShaderProgramData const *>(m_pixelShaderProgram->m_graphicsData)->getPixelShader();
+	IDirect3DPixelShader9 *pixelShader = NULL;
+	if (m_pixelShaderProgram && m_pixelShaderProgram->m_graphicsData)
+		pixelShader = static_cast<Direct3d9_PixelShaderProgramData const *>(m_pixelShaderProgram->m_graphicsData)->getPixelShader();
 	Direct3d9_StateCache::setPixelShader(pixelShader);
 #else
 	Direct3d9_StateCache::setPixelShader(m_pixelShader);

@@ -14,6 +14,7 @@
 
 #include "sharedDebug/DebugFlags.h"
 #include "Direct3d9.h"
+#include "ConfigDirect3d9.h"
 
 // ======================================================================
 
@@ -138,7 +139,7 @@ void Direct3d9_StateCache::install(int maxStreamCount)
 	RS(D3DRS_COLORWRITEENABLE2,                 D3DCOLORWRITEENABLE_ALPHA | D3DCOLORWRITEENABLE_BLUE | D3DCOLORWRITEENABLE_GREEN | D3DCOLORWRITEENABLE_RED);
 	RS(D3DRS_COLORWRITEENABLE3,                 D3DCOLORWRITEENABLE_ALPHA | D3DCOLORWRITEENABLE_BLUE | D3DCOLORWRITEENABLE_GREEN | D3DCOLORWRITEENABLE_RED);
 	RS(D3DRS_BLENDFACTOR,                       static_cast<DWORD>(0xffffffff));
-	RS(D3DRS_SRGBWRITEENABLE,                   0);
+	RS(D3DRS_SRGBWRITEENABLE,                   ConfigDirect3d9::getSrgbWriteEnable() ? TRUE : FALSE);
 	RS(D3DRS_DEPTHBIAS,                         0.0f);
 	RS(D3DRS_WRAP8,                             0);
 	RS(D3DRS_WRAP9,                             0);

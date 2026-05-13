@@ -719,6 +719,11 @@ float FreeChaseCamera::alter (float elapsedTime)
 	}
 	const float scaledFirstPersonDistance = m_firstPersonDistance * scaleForFpCam;
 	m_colliding = false;
+
+	// Interior pob/building cells need more clearance along chase rays or thin hull polygons won't consistently hit sample rays—camera slips inside ceilings/view neighboring rooms near elevators/portals.
+	float const camSurfBias     = locomotionIndoors ? 0.58f : 0.28f;
+	float const lateralProbe    = locomotionIndoors ? 0.34f : 0.25f;
+	float const verticalProbe   = locomotionIndoors ? 0.48f : 0.25f;
 	
 	// prevent shoulder cam from clipping geometry (due to near plane)
 	if (creatureObject && m_currentZoom >= scaledFirstPersonDistance)
@@ -753,20 +758,21 @@ float FreeChaseCamera::alter (float elapsedTime)
 			if (ClientWorld::collide (getParentCell (), start_w, end_w, CollideParameters::cms_default, result, ClientWorld::CF_allCamera))
 			{
 				const float lineDistance = start_w.magnitudeBetween (end_w);
-				const float t = clamp (0.f, (start_w.magnitudeBetween (result.getPoint ()) / lineDistance) - (0.25f / lineDistance), 1.f);
-				m_currentZoom = Vector::linearInterpolate (start_w, end_w, t).magnitudeBetween (start_w);
+				float hitFraction = lineDistance > 1e-4f ? (start_w.magnitudeBetween (result.getPoint ()) / lineDistance) : 1.f;
+				hitFraction = clamp (0.f, hitFraction - (camSurfBias / std::max (lineDistance, 1e-4f)), 1.f);
+				m_currentZoom = Vector::linearInterpolate (start_w, end_w, hitFraction).magnitudeBetween (start_w);
 				m_colliding = true;
 			}
 		}
 		else
 		{
-			//-- we're going to fire 4 rays in a diamond pattern to see what gets collided with
+			//-- Multiple rays from pivoted chase origins catch hull polygons missed when sampling dead-center (tight elevators/curved pob corridors).
 			const Vector offsets [4] =
 			{
-				Vector::unitX * 0.25f,
-				Vector::negativeUnitX * 0.25f,
-				Vector::unitY * 0.25f,
-				Vector::negativeUnitY * 0.25f
+				Vector::unitX * lateralProbe,
+				Vector::negativeUnitX * lateralProbe,
+				Vector::unitY * verticalProbe,
+				Vector::negativeUnitY * verticalProbe
 			};
 
 			const Vector cameraZ_p = Vector::negativeUnitZ * m_zoom;
@@ -786,7 +792,10 @@ float FreeChaseCamera::alter (float elapsedTime)
 				CollisionInfo interimResult;
 				if (ClientWorld::collide (getParentCell (), interimStart_w, interimEnd_w, CollideParameters::cms_default, interimResult, ClientWorld::CF_allCamera))
 				{
-					const float t = clamp (0.f, interimStart_w.magnitudeBetween (interimResult.getPoint ()) / interimStart_w.magnitudeBetween (interimEnd_w), 1.f);
+					const float rayLen = interimStart_w.magnitudeBetween (interimEnd_w);
+					float hitDist = rayLen > 1e-4f ? interimStart_w.magnitudeBetween (interimResult.getPoint ()) : rayLen;
+					hitDist = std::max (0.f, hitDist - camSurfBias);
+					const float t = rayLen > 1e-4f ? clamp (0.f, hitDist / rayLen, 1.f) : 1.f;
 
 					if (t < minimumT)
 					{

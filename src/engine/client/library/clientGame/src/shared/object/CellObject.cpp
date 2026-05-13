@@ -465,6 +465,10 @@ const std::vector<Vector>* CellObject::getRadarPortalEdges () const
 
 void CellObject::setCellLightColor(float r, float g, float b, float brightness)
 {
+	// Volume lighting path (engine): CellProperty RGB drives Graphics::setOverrideFullAmbient inside ShaderPrimitiveSorter::pushCell,
+	// precalc shaders get dynamic-light routing while override is on, LightManager fills uplight from the same RGB, and
+	// Direct3d9_StaticShaderData tints material channels. Template lights below stay numerically consistent with that tint.
+
 	REPORT_LOG(true, ("setCellLightColor: r=%.2f g=%.2f b=%.2f brightness=%.2f\n", r, g, b, brightness));
 
 	for (std::vector<Light *>::iterator it = m_cellLights.begin(); it != m_cellLights.end(); ++it)

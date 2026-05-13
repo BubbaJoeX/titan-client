@@ -13,6 +13,7 @@
 #include "clientGraphics/Camera.h"
 #include "clientGraphics/DynamicIndexBuffer.h"
 #include "clientGraphics/DynamicVertexBuffer.h"
+#include "clientGraphics/AtmosphericEffects.h"
 #include "clientGraphics/ConfigClientGraphics.h"
 #include "clientGraphics/Gl_dll.def"
 #include "clientGraphics/Graphics.def"
@@ -1449,7 +1450,18 @@ void Graphics::setFog(bool enabled, float density, const PackedArgb &color)
 {
 	NOT_NULL(ms_api);
 	NOT_NULL(ms_api->setFog);
-	ms_api->setFog(ms_disableFog ? false : enabled, density, color);
+
+	float apiDensity = density;
+	if (enabled && !ms_disableFog)
+	{
+		apiDensity = density * AtmosphericEffects::getFogDensityScale();
+		float const fogExp = AtmosphericEffects::getFogExponentScale();
+		if (fogExp != 1.0f && apiDensity > 0.0f)
+			apiDensity = pow(apiDensity, fogExp);
+		apiDensity = clamp(0.0f, apiDensity, 100.0f);
+	}
+
+	ms_api->setFog(ms_disableFog ? false : enabled, apiDensity, color);
 
 	ms_fogEnabled = enabled;
 	ms_fogDensity = density;
@@ -3653,6 +3665,16 @@ bool Graphics::writeImage(char const * file, int const width, int const height, 
 	UNREF(subRect);
 	return true;
 #endif
+}
+
+// ----------------------------------------------------------------------
+
+bool Graphics::getDevicePresentationCaps(Gl_devicePresentationCaps & outCaps)
+{
+	NOT_NULL(ms_api);
+	if (!ms_api->getDevicePresentationCaps)
+		return false;
+	return ms_api->getDevicePresentationCaps(&outCaps);
 }
 
 // ----------------------------------------------------------------------

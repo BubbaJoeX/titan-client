@@ -133,6 +133,26 @@ public:
 	static void clearPaintResponseCallback();
 	static void dispatchPaintResponse(bool success, std::string const & regionId, std::string const & errorMessage);
 
+	// External height modifier callback (for God Client terrain editing, etc.)
+	// Return true if the height was modified, false otherwise
+	typedef bool (*ExternalHeightModifierCallback)(float x, float z, float originalHeight, float & outHeight);
+	static void setExternalHeightModifierCallback(ExternalHeightModifierCallback callback);
+	static void clearExternalHeightModifierCallback();
+
+	// External shader modifier callback (for God Client terrain editing, etc.)
+	// Return true if shader was modified, outFamilyId will contain the new family, outFeather the blend amount
+	typedef bool (*ExternalShaderModifierCallback)(float x, float z, int originalFamilyId, int & outFamilyId, float & outFeather);
+	static void setExternalShaderModifierCallback(ExternalShaderModifierCallback callback);
+	static void clearExternalShaderModifierCallback();
+	static bool getModifiedShader(float x, float z, int originalFamilyId, int & outFamilyId, float & outFeather);
+
+	// External flora modifier callback (for God Client terrain editing, etc.)
+	// Return true if flora was modified
+	typedef bool (*ExternalFloraModifierCallback)(float x, float z, int originalFamilyId, int & outFamilyId, float & outDensity);
+	static void setExternalFloraModifierCallback(ExternalFloraModifierCallback callback);
+	static void clearExternalFloraModifierCallback();
+	static bool getModifiedFlora(float x, float z, int originalFamilyId, int & outFamilyId, float & outDensity);
+
 	// Optional UI refresh (registered by game UI; clientGame must not include SWG headers).
 	// cityId 0 means "refresh if the active UI matches" (e.g. paint response has no city id).
 	typedef void (*CityTerrainUiRefreshFn)(int32 cityId);
@@ -167,6 +187,9 @@ private:
 	static CityTerrainUiRefreshFn ms_cityTerrainUiRefreshSecondaryFn;
 	static OpenCityTerrainPainterAlreadyActiveFn ms_openCityTerrainPainterAlreadyActiveFn;
 	static OpenTerraformingAlreadyActiveFn ms_openTerraformingAlreadyActiveFn;
+	static ExternalHeightModifierCallback ms_externalHeightModifierCallback;
+	static ExternalShaderModifierCallback ms_externalShaderModifierCallback;
+	static ExternalFloraModifierCallback ms_externalFloraModifierCallback;
 	static bool ms_paintTileGridVisible;
 	static int32 ms_paintTileGridCityId;
 

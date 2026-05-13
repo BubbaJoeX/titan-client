@@ -504,6 +504,13 @@ for /r "D:\titan\client\src\compile\win32" %%f in (*_r.dll) do copy /Y "%%f" "D:
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\..\compile\win32\SwgGodClient\Debug\BaseTerrainDock_d.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+      </PrecompiledHeader>
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Level3</WarningLevel>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\..\..\..\..\..\compile\win32\SwgGodClient\Debug\BaseSnapToGridSettings_d.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
       </PrecompiledHeader>
@@ -623,6 +630,13 @@ for /r "D:\titan\client\src\compile\win32" %%f in (*_r.dll) do copy /Y "%%f" "D:
       <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">Level3</WarningLevel>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\..\compile\win32\SwgGodClient\Optimized\BaseTerrainDock_o.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">
+      </PrecompiledHeader>
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">Level3</WarningLevel>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\..\..\..\..\..\compile\win32\SwgGodClient\Optimized\BaseSnapToGridSettings_o.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">
@@ -736,6 +750,13 @@ for /r "D:\titan\client\src\compile\win32" %%f in (*_r.dll) do copy /Y "%%f" "D:
       <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Level3</WarningLevel>
     </ClCompile>
     <ClCompile Include="..\..\..\..\..\..\compile\win32\SwgGodClient\Release\BaseStackerTool_r.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">true</ExcludedFromBuild>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+      </PrecompiledHeader>
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Level3</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\..\compile\win32\SwgGodClient\Release\BaseTerrainDock_r.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">true</ExcludedFromBuild>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -1160,6 +1181,18 @@ for /r "D:\titan\client\src\compile\win32" %%f in (*_r.dll) do copy /Y "%%f" "D:
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
     </ClCompile>
+    <ClCompile Include="..\..\src\TerrainDock.cpp">
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="..\..\src\GodClientTerrainEditor.cpp">
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+    </ClCompile>
     <ClCompile Include="..\..\src\SnapToGridSettings.cpp">
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
@@ -1224,6 +1257,7 @@ for /r "D:\titan\client\src\compile\win32" %%f in (*_r.dll) do copy /Y "%%f" "D:
     <ClInclude Include="..\..\..\..\..\..\compile\win32\SwgGodClient\Debug\BaseObjectTransformWindow.h" />
     <ClInclude Include="..\..\..\..\..\..\compile\win32\SwgGodClient\Debug\BaseRegionBrowser.h" />
     <ClInclude Include="..\..\..\..\..\..\compile\win32\SwgGodClient\Debug\BaseStackerTool.h" />
+    <ClInclude Include="..\..\..\..\..\..\compile\win32\SwgGodClient\Debug\BaseTerrainDock.h" />
     <ClInclude Include="..\..\..\..\..\..\compile\win32\SwgGodClient\Debug\BaseSnapToGridSettings.h" />
     <ClInclude Include="..\..\..\..\..\..\compile\win32\SwgGodClient\Debug\BaseSplashScreen.h" />
     <ClInclude Include="..\..\..\..\..\..\compile\win32\SwgGodClient\Debug\BaseSystemMessageWidget.h" />
@@ -1241,6 +1275,7 @@ for /r "D:\titan\client\src\compile\win32" %%f in (*_r.dll) do copy /Y "%%f" "D:
     <ClInclude Include="..\..\..\..\..\..\compile\win32\SwgGodClient\Optimized\BaseObjectTransformWindow.h" />
     <ClInclude Include="..\..\..\..\..\..\compile\win32\SwgGodClient\Optimized\BaseRegionBrowser.h" />
     <ClInclude Include="..\..\..\..\..\..\compile\win32\SwgGodClient\Optimized\BaseStackerTool.h" />
+    <ClInclude Include="..\..\..\..\..\..\compile\win32\SwgGodClient\Optimized\BaseTerrainDock.h" />
     <ClInclude Include="..\..\..\..\..\..\compile\win32\SwgGodClient\Optimized\BaseSnapToGridSettings.h" />
     <ClInclude Include="..\..\..\..\..\..\compile\win32\SwgGodClient\Optimized\BaseSplashScreen.h" />
     <ClInclude Include="..\..\..\..\..\..\compile\win32\SwgGodClient\Optimized\BaseSystemMessageWidget.h" />
@@ -1258,6 +1293,7 @@ for /r "D:\titan\client\src\compile\win32" %%f in (*_r.dll) do copy /Y "%%f" "D:
     <ClInclude Include="..\..\..\..\..\..\compile\win32\SwgGodClient\Release\BaseObjectTransformWindow.h" />
     <ClInclude Include="..\..\..\..\..\..\compile\win32\SwgGodClient\Release\BaseRegionBrowser.h" />
     <ClInclude Include="..\..\..\..\..\..\compile\win32\SwgGodClient\Release\BaseStackerTool.h" />
+    <ClInclude Include="..\..\..\..\..\..\compile\win32\SwgGodClient\Release\BaseTerrainDock.h" />
     <ClInclude Include="..\..\..\..\..\..\compile\win32\SwgGodClient\Release\BaseSnapToGridSettings.h" />
     <ClInclude Include="..\..\..\..\..\..\compile\win32\SwgGodClient\Release\BaseSplashScreen.h" />
     <ClInclude Include="..\..\..\..\..\..\compile\win32\SwgGodClient\Release\BaseSystemMessageWidget.h" />
@@ -1735,6 +1771,17 @@ for /r "D:\titan\client\src\compile\win32" %%f in (*_r.dll) do copy /Y "%%f" "D:
       <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
     </CustomBuild>
+    <CustomBuild Include="..\..\src\TerrainDock.h">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+    </CustomBuild>
     <CustomBuild Include="..\..\src\SplashScreen.h">
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">moc %(Filename)</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
@@ -1747,6 +1794,7 @@ for /r "D:\titan\client\src\compile\win32" %%f in (*_r.dll) do copy /Y "%%f" "D:
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
     </CustomBuild>
     <ClInclude Include="..\..\src\StringFilesystemTree.h" />
+    <ClInclude Include="..\..\src\GodClientTerrainEditor.h" />
     <CustomBuild Include="..\..\src\SystemMessageWidget.h">
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">moc %(Filename)</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
@@ -1982,6 +2030,23 @@ for /r "D:\titan\client\src\compile\win32" %%f in (*_r.dll) do copy /Y "%%f" "D:
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(TargetDir)%(Filename).h;$(TargetDir)%(Filename)_r.cpp;%(Outputs)</Outputs>
     </CustomBuild>
     <CustomBuild Include="..\..\src\shared\ui\BaseStackerTool.ui">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">ui %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\uic -o $(TargetDir)%(Filename).h %(FullPath)
+..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\uic -o $(TargetDir)%(Filename)_d.cpp -impl $(TargetDir)%(Filename).h %(FullPath)
+..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc  $(TargetDir)%(Filename).h &gt;&gt; $(TargetDir)%(Filename)_d.cpp</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(TargetDir)%(Filename).h;$(TargetDir)%(Filename)_d.cpp;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">ui %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\uic -o $(TargetDir)%(Filename).h %(FullPath)
+..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\uic -o $(TargetDir)%(Filename)_o.cpp -impl $(TargetDir)%(Filename).h %(FullPath)
+..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc  $(TargetDir)%(Filename).h &gt;&gt; $(TargetDir)%(Filename)_o.cpp</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">$(TargetDir)%(Filename).h;$(TargetDir)%(Filename)_o.cpp;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">ui %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\uic -o $(TargetDir)%(Filename).h %(FullPath)
+..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\uic -o $(TargetDir)%(Filename)_r.cpp -impl $(TargetDir)%(Filename).h %(FullPath)
+..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc  $(TargetDir)%(Filename).h &gt;&gt; $(TargetDir)%(Filename)_r.cpp</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(TargetDir)%(Filename).h;$(TargetDir)%(Filename)_r.cpp;%(Outputs)</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="..\..\src\shared\ui\BaseTerrainDock.ui">
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">ui %(Filename)</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\uic -o $(TargetDir)%(Filename).h %(FullPath)
 ..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\uic -o $(TargetDir)%(Filename)_d.cpp -impl $(TargetDir)%(Filename).h %(FullPath)

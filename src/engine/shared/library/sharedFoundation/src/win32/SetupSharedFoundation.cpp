@@ -62,6 +62,13 @@ LONG __stdcall SetupSharedFoundationNamespace::MyUnhandledExceptionFilter(LPEXCE
 		return EXCEPTION_CONTINUE_SEARCH;
 	entered = true;
 
+	if (!exceptionPointers || !exceptionPointers->ExceptionRecord)
+	{
+		OutputDebugStringA("MyUnhandledExceptionFilter: invalid EXCEPTION_POINTERS\n");
+		entered = false;
+		return EXCEPTION_CONTINUE_SEARCH;
+	}
+
 	// log some important information
 	static char buffer[128];
 	sprintf(buffer, "Exception %08x(%d)=code %08x=addr\n", exceptionPointers->ExceptionRecord->ExceptionCode, exceptionPointers->ExceptionRecord->ExceptionCode, exceptionPointers->ExceptionRecord->ExceptionAddress);

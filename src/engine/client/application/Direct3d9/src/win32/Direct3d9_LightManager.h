@@ -50,6 +50,9 @@ public:
 	static void setFullAmbientOn(bool on);
 	static void setOverrideFullAmbient(bool enabled, float r, float g, float b);
 
+	/// When rendering inside a custom-lit interior cell, scale material ambient/diffuse (albedo), emissive, and specular (highlight strength) by this RGB multiplier so surfaces track remote brightness/color together with lighting (see pipeline comment in Direct3d9_LightManager.cpp).
+	static bool                getMaterialInteriorTintMultiply(VectorRgba &outRgbMultiply);
+
 private:
 
 	// disabled
@@ -203,30 +206,36 @@ private:
 
 inline void Direct3d9_LightManager::setFullAmbientOn(bool on)
 {
+	float nr = 0.0f;
+	float ng = 0.0f;
+	float nb = 0.0f;
+	float na = 0.0f;
+
 	if (on)
 	{
 		if (ms_overrideFullAmbient)
 		{
-			ms_fullAmbient.r = ms_overrideFullAmbientColor.r;
-			ms_fullAmbient.g = ms_overrideFullAmbientColor.g;
-			ms_fullAmbient.b = ms_overrideFullAmbientColor.b;
-			ms_fullAmbient.a = 0.0f;
+			nr = ms_overrideFullAmbientColor.r;
+			ng = ms_overrideFullAmbientColor.g;
+			nb = ms_overrideFullAmbientColor.b;
+			na = 0.0f;
 		}
 		else
 		{
-			ms_fullAmbient.r = 1.0f;
-			ms_fullAmbient.g = 1.0f;
-			ms_fullAmbient.b = 1.0f;
-			ms_fullAmbient.a = 0.0f;
+			nr = 1.0f;
+			ng = 1.0f;
+			nb = 1.0f;
+			na = 0.0f;
 		}
 	}
-	else
-	{
-		ms_fullAmbient.r = 0.0f;
-		ms_fullAmbient.g = 0.0f;
-		ms_fullAmbient.b = 0.0f;
-		ms_fullAmbient.a = 0.0f;
-	}
+
+	if (nr != ms_fullAmbient.r || ng != ms_fullAmbient.g || nb != ms_fullAmbient.b || na != ms_fullAmbient.a)
+		ms_dirty = true;
+
+	ms_fullAmbient.r = nr;
+	ms_fullAmbient.g = ng;
+	ms_fullAmbient.b = nb;
+	ms_fullAmbient.a = na;
 }
 
 inline void Direct3d9_LightManager::setOverrideFullAmbient(bool enabled, float r, float g, float b)

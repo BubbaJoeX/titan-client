@@ -94,6 +94,9 @@ public:
 	static void               pushCell(CellProperty const & cellProperty);
 	static void               popCell();
 
+	/// Top of the cell stack during DPVS traversal (NULL if empty).
+	static CellProperty const * getCurrentCellProperty();
+
 	static void               setPrepareToViewOverrideFunction(PrepareToViewOverrideFunction prepareToViewOverrideFunction);
 
 	static void               applyLightBitSetForDrawing(LightBitSet const & lightBitSet);

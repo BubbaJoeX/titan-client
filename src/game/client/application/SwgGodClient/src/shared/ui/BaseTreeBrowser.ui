@@ -130,7 +130,38 @@ on the object in the world.</string>
                             <string>Refresh</string>
                         </property>
                     </widget>
-                    <spacer row="0" column="1">
+                    <widget class="QLineEdit" row="0" column="1">
+                        <property name="name">
+                            <cstring>m_objectSearchEdit</cstring>
+                        </property>
+                        <property name="text">
+                            <string></string>
+                        </property>
+                        <property name="toolTip" stdset="0">
+                            <string>Type to filter objects (case-insensitive)</string>
+                        </property>
+                        <property name="whatsThis" stdset="0">
+                            <string>Live search filter - type to filter the object list by template name.</string>
+                        </property>
+                    </widget>
+                    <widget class="QPushButton" row="0" column="2">
+                        <property name="name">
+                            <cstring>m_objectSearchClearButton</cstring>
+                        </property>
+                        <property name="text">
+                            <string>X</string>
+                        </property>
+                        <property name="maximumSize">
+                            <size>
+                                <width>24</width>
+                                <height>32767</height>
+                            </size>
+                        </property>
+                        <property name="toolTip" stdset="0">
+                            <string>Clear search filter</string>
+                        </property>
+                    </widget>
+                    <spacer row="0" column="3">
                         <property name="name" stdset="0">
                             <cstring>objectsSpacer</cstring>
                         </property>
@@ -174,7 +205,35 @@ on the object in the world.</string>
                             <string>Refresh</string>
                         </property>
                     </widget>
-                    <spacer row="0" column="1">
+                    <widget class="QLineEdit" row="0" column="1">
+                        <property name="name">
+                            <cstring>m_scriptSearchEdit</cstring>
+                        </property>
+                        <property name="text">
+                            <string></string>
+                        </property>
+                        <property name="toolTip" stdset="0">
+                            <string>Type to filter scripts (case-insensitive)</string>
+                        </property>
+                    </widget>
+                    <widget class="QPushButton" row="0" column="2">
+                        <property name="name">
+                            <cstring>m_scriptSearchClearButton</cstring>
+                        </property>
+                        <property name="text">
+                            <string>X</string>
+                        </property>
+                        <property name="maximumSize">
+                            <size>
+                                <width>24</width>
+                                <height>32767</height>
+                            </size>
+                        </property>
+                        <property name="toolTip" stdset="0">
+                            <string>Clear search filter</string>
+                        </property>
+                    </widget>
+                    <spacer row="0" column="3">
                         <property name="name" stdset="0">
                             <cstring>scriptsSpacer</cstring>
                         </property>
@@ -191,7 +250,7 @@ on the object in the world.</string>
                             </size>
                         </property>
                     </spacer>
-                    <widget class="ScriptListView" row="1" column="0" rowspan="1" colspan="2">
+                    <widget class="ScriptListView" row="1" column="0" rowspan="1" colspan="4">
                         <property name="name">
                             <cstring>m_scriptList</cstring>
                         </property>
@@ -223,7 +282,38 @@ on the object in the world.</string>
                             <string>Refresh</string>
                         </property>
                     </widget>
-                    <spacer row="0" column="1">
+                    <widget class="QLineEdit" row="0" column="1">
+                        <property name="name">
+                            <cstring>m_serverTemplateSearchEdit</cstring>
+                        </property>
+                        <property name="text">
+                            <string></string>
+                        </property>
+                        <property name="toolTip" stdset="0">
+                            <string>Type to filter templates (case-insensitive)</string>
+                        </property>
+                        <property name="whatsThis" stdset="0">
+                            <string>Live search filter - type to filter the template tree. Matching items and their parent folders will remain visible.</string>
+                        </property>
+                    </widget>
+                    <widget class="QPushButton" row="0" column="2">
+                        <property name="name">
+                            <cstring>m_serverTemplateSearchClearButton</cstring>
+                        </property>
+                        <property name="text">
+                            <string>X</string>
+                        </property>
+                        <property name="maximumSize">
+                            <size>
+                                <width>24</width>
+                                <height>32767</height>
+                            </size>
+                        </property>
+                        <property name="toolTip" stdset="0">
+                            <string>Clear search filter</string>
+                        </property>
+                    </widget>
+                    <spacer row="0" column="3">
                         <property name="name" stdset="0">
                             <cstring>serverTemplateSpacer</cstring>
                         </property>
@@ -272,7 +362,35 @@ on the object in the world.</string>
                             <string>Refresh</string>
                         </property>
                     </widget>
-                    <spacer row="0" column="1">
+                    <widget class="QLineEdit" row="0" column="1">
+                        <property name="name">
+                            <cstring>m_clientTemplateSearchEdit</cstring>
+                        </property>
+                        <property name="text">
+                            <string></string>
+                        </property>
+                        <property name="toolTip" stdset="0">
+                            <string>Type to filter templates (case-insensitive)</string>
+                        </property>
+                    </widget>
+                    <widget class="QPushButton" row="0" column="2">
+                        <property name="name">
+                            <cstring>m_clientTemplateSearchClearButton</cstring>
+                        </property>
+                        <property name="text">
+                            <string>X</string>
+                        </property>
+                        <property name="maximumSize">
+                            <size>
+                                <width>24</width>
+                                <height>32767</height>
+                            </size>
+                        </property>
+                        <property name="toolTip" stdset="0">
+                            <string>Clear search filter</string>
+                        </property>
+                    </widget>
+                    <spacer row="0" column="3">
                         <property name="name" stdset="0">
                             <cstring>clientTemplateSpacer</cstring>
                         </property>
@@ -289,7 +407,7 @@ on the object in the world.</string>
                             </size>
                         </property>
                     </spacer>
-                    <widget class="ClientTemplateListView" row="1" column="0" rowspan="1" colspan="2">
+                    <widget class="ClientTemplateListView" row="1" column="0" rowspan="1" colspan="4">
                         <property name="name">
                             <cstring>m_clientTemplateList</cstring>
                         </property>

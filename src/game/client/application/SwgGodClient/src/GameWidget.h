@@ -16,6 +16,7 @@ class GroundScene;
 class QPopupMenu;
 class QTimer;
 class Object;
+class TerrainDock;
 class Vector;
 
 struct UpdateObjects

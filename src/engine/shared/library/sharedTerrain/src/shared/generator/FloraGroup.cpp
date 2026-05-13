@@ -1408,7 +1408,11 @@ void FloraGroup::Family::setFloats (bool newFloats)
 bool FloraGroup::getFamilyFloats (int familyId) const
 {
 	int familyIndex = findFamilyIndex (familyId);
-	DEBUG_FATAL (familyIndex == -1, ("family with id %i not found", familyId));
+	if (familyIndex == -1)
+	{
+		DEBUG_REPORT_LOG_PRINT (true, ("FloraGroup::getFamilyFloats: familyId %i not found, returning false\n", familyId));
+		return false;
+	}
 
 	return familyList [familyIndex]->getFloats ();
 }

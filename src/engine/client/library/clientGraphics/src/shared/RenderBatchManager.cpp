@@ -566,7 +566,17 @@ void RenderBatchManager::renderSingleItem(RenderItem const & item)
 	if (item.primitive)
 	{
 		item.primitive->prepareToDraw();
-		item.primitive->draw();
+
+		// Phase-ordered batching bypasses ShaderPrimitiveSorter::Phase::drawEntry(), which normally binds each pass via
+		// Graphics::setStaticShader before draw(). Without this, skeletal meshes inherit stale VS constants/material packs
+		// (broken lighting, black silhouettes) while precalc world geometry keeps updating state from earlier draws.
+		StaticShader const &staticShader = item.primitive->prepareToView();
+		int const numberOfPasses = staticShader.getNumberOfPasses();
+		for (int passIndex = 0; passIndex < numberOfPasses; ++passIndex)
+		{
+			Graphics::setStaticShader(staticShader, passIndex);
+			item.primitive->draw();
+		}
 	}
 }
 

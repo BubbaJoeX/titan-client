@@ -82,10 +82,14 @@ public:
 	float                          calculateResourceMatch           (const NetworkId &resourceTypeId, int slot) const;
 
 	/// Above this many player drafts, datapad uses a single lightweight preview template per row (no crafted skeletal mesh).
-	enum { ms_maxDraftsFullSkeletalAppearance = 80 };
+	enum { ms_maxDraftsFullSkeletalAppearance = 500 };
 
 	static void                    setUseMinimalClientPreviewsForDatapad (bool useMinimal);
 	static bool                    getUseMinimalClientPreviewsForDatapad ();
+
+	/// Look up the draft schematic CRC for a ClientObject created by DraftSchematicInfo
+	/// Returns true if found, false if the object is not a draft schematic preview
+	static bool                    getSchematicCrcForClientObject (ClientObject const * obj, std::pair<uint32, uint32> & outCrc);
 
 private:
 

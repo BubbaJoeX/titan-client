@@ -32,6 +32,8 @@ public:
 
 public slots:
 	void onRefreshList();
+	void onSearchTextChanged(const QString& text);
+	void onClearSearch();
 
 protected:
 	QDragObject* dragObject();
@@ -41,6 +43,13 @@ protected slots:
 
 private slots:
 	void onSelectionChanged() const;
+
+private:
+	bool filterTreeItem(QListViewItem* item, const QString& filterText) const;
+	void showAllItems(QListViewItem* item) const;
+
+private:
+	QString m_currentSearchText;
 
 private:
 	//disabled

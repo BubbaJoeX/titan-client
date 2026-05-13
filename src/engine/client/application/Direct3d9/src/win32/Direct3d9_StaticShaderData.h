@@ -134,6 +134,8 @@ private:
 
 	private:
 
+		static void copyMaterialApplyingInteriorTint(PaddedMaterial &dest, PaddedMaterial const &src);
+
 #ifdef _DEBUG
 		static bool                 ms_useDefaultMaterial;
 		static PaddedMaterial       ms_defaultMaterial;

@@ -26,6 +26,7 @@
 #include "MainFrame.h"
 #include "ObjectEditor.h"
 #include "ServerCommander.h"
+#include "TerrainDock.h"
 #include "TreeBrowser.h"
 #include "Unicode.h"
 
@@ -51,7 +52,8 @@ ActionsWindow::ActionsWindow()
   m_gameWindow(0),
   m_regionsView(0),
   m_stackTool(0),
-  m_fileServerTree(0)
+  m_fileServerTree(0),
+  m_terrainDock(0)
 {
 	QWidget * const p = &MainFrame::getInstance();
 
@@ -68,6 +70,7 @@ ActionsWindow::ActionsWindow()
 	m_regionsView       = new ActionHack("Region Viewer",       IL_PIXMAP(hi16_action_window_new),   "&Region Viewer",        0, p, "regionviewer",      true);
 	m_stackTool         = new ActionHack("Stacker",             IL_PIXMAP(hi16_action_window_new),   "Stac&ker",              0, p, "stacker",           true);
 	m_fileServerTree    = new ActionHack("File Server Tree",   IL_PIXMAP(hi16_action_window_new),   "File Server T&ree",     0, p, "fileservertree",    true);
+	m_terrainDock       = new ActionHack("Terrain Editor",      IL_PIXMAP(hi16_action_window_new),   "Te&rrain Editor",       0, p, "terraindock",       true);
 
 	//connect the actions to slots
 	IGNORE_RETURN(connect(m_treeBrowser,       SIGNAL(toggled(bool)), this, SLOT(onTreeBrowser      (bool))));
@@ -82,6 +85,7 @@ ActionsWindow::ActionsWindow()
 	IGNORE_RETURN(connect(m_regionsView,       SIGNAL(toggled(bool)), this, SLOT(onRegionsView      (bool))));
 	IGNORE_RETURN(connect(m_stackTool,         SIGNAL(toggled(bool)), this, SLOT(onStackTool        (bool))));
 	IGNORE_RETURN(connect(m_fileServerTree,    SIGNAL(toggled(bool)), this, SLOT(onFileServerTree   (bool))));
+	IGNORE_RETURN(connect(m_terrainDock,       SIGNAL(toggled(bool)), this, SLOT(onTerrainDock      (bool))));
 
 
 	//set up initial state of togglable actions
@@ -101,6 +105,8 @@ ActionsWindow::ActionsWindow()
 	m_stackTool->setOn         (false);
 	//file server tree starts hidden
 	m_fileServerTree->setOn    (false);
+	//terrain dock starts hidden
+	m_terrainDock->setOn       (false);
 }
 
 //----------------------------------------------------------------------
@@ -119,6 +125,7 @@ ActionsWindow::~ActionsWindow()
 	m_regionsView       = 0;
 	m_stackTool         = 0;
 	m_fileServerTree    = 0;
+	m_terrainDock       = 0;
 }
 
 //----------------------------------------------------------------------
@@ -255,6 +262,16 @@ void ActionsWindow::onFileServerTree(bool b) const
 	{
 		mf.m_fileServerTreeDock->hide();
 	}
+}
+
+//----------------------------------------------------------------------
+
+void ActionsWindow::onTerrainDock(bool b) const
+{
+	if(b)
+		MainFrame::getInstance().m_terrainDock->show();
+	else
+		MainFrame::getInstance().m_terrainDock->hide();
 }
 
 //----------------------------------------------------------------------

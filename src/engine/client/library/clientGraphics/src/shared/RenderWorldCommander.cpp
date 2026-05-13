@@ -257,7 +257,7 @@ void RenderWorldCommander::command(DPVS::Commander::Command c)
 
 				// calculate our form of the scissor rect
 				int const scissorRectX      = ms_scissorRectOffsetX + left;
-				int const scissorRectY      = ms_scissorRectOffsetY + + top;
+				int const scissorRectY      = ms_scissorRectOffsetY + top;
 				int const scissorRectWidth  = right - left;
 				int const scissorRectHeight = bottom - top;
 				Graphics::setScissorRect(true, scissorRectX, scissorRectY, scissorRectWidth, scissorRectHeight);

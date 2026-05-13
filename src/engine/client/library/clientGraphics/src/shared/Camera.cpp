@@ -21,10 +21,7 @@
 #include "sharedObject/Appearance.h"
 
 #include <limits>
-
-#ifdef _DEBUG
 #include <vector>
-#endif
 
 // ======================================================================
 
@@ -71,9 +68,10 @@ Camera::Camera()
 #ifdef _DEBUG
 	,
 	numberOfSphereTests(0),
-	numberOfObjectsAdded(0),
-	debugPrimitives(NULL)
+	numberOfObjectsAdded(0)
 #endif
+	,
+	debugPrimitives(NULL)
 //lint -save -esym(1926, Camera::frustumVertex, Camera::frustumPlane) // default constructur implicitly called
 {
 //lint -restore
@@ -87,9 +85,7 @@ Camera::Camera()
 
 Camera::~Camera(void)
 {
-#ifdef _DEBUG
 	delete debugPrimitives;
-#endif
 }
 
 // ----------------------------------------------------------------------
@@ -684,8 +680,6 @@ void Camera::drawScene(void) const
  * @param light  Light to add to the scene
  */
 
-#ifdef _DEBUG
-
 void Camera::addDebugPrimitive(DebugPrimitive *debugPrimitive) const
 {
 	if (!debugPrimitives)
@@ -693,8 +687,6 @@ void Camera::addDebugPrimitive(DebugPrimitive *debugPrimitive) const
 
 	debugPrimitives->push_back(debugPrimitive);
 }
-
-#endif
 
 // ----------------------------------------------------------------------
 /**
@@ -712,7 +704,6 @@ void Camera::endScene(void) const
 {
 	ShaderPrimitiveSorter::clearCurrentCamera();
 
-#ifdef _DEBUG
 	if (debugPrimitives)
 	{
 		DebugPrimitives::iterator end = debugPrimitives->end();
@@ -723,7 +714,6 @@ void Camera::endScene(void) const
 		}
 		debugPrimitives->clear();
 	}
-#endif
 
 #ifdef _DEBUG
 	DEBUG_REPORT_PRINT(reportCamera, ("cam: %d=tested %d=added\n", numberOfSphereTests, numberOfObjectsAdded));

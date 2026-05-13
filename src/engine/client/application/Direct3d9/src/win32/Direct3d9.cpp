@@ -58,6 +58,15 @@
 
 #include <ddraw.h>
 #include <d3dx9.h>
+
+// Some minimal / legacy D3D9 headers omit newer caps bits; values match the Windows SDK d3d9caps.h.
+#if !defined(D3DPMISCCAPS_FLOATBLEND)
+#define D3DPMISCCAPS_FLOATBLEND (0x00004000L)
+#endif
+#if !defined(D3DDEVCAPS2_ADAPTIVERTLPATCH)
+#define D3DDEVCAPS2_ADAPTIVERTLPATCH (0x00000008L)
+#endif
+
 #include <stdio.h>
 #include <float.h>
 
@@ -966,6 +975,13 @@ const D3DFORMAT *Direct3d9Namespace::getMatchingDepthStencilFormats(int z, int s
 
 // ----------------------------------------------------------------------
 
+namespace
+{
+	bool getDevicePresentationCaps(Gl_devicePresentationCaps * const outCaps);
+}
+
+// ----------------------------------------------------------------------
+
 bool Direct3d9::install(Gl_install *gl_install)
 {
 	// Reset FPU/SSE state and mask all floating-point exceptions
@@ -1036,6 +1052,7 @@ bool Direct3d9::install(Gl_install *gl_install)
 	ms_glApi.supportsTwoSidedStencil           = supportsTwoSidedStencil;
 	ms_glApi.supportsStreamOffsets             = supportsStreamOffsets;
 	ms_glApi.supportsDynamicTextures           = supportsDynamicTextures;
+	ms_glApi.getDevicePresentationCaps         = getDevicePresentationCaps;
 
 	ms_glApi.resize                            = resize;
 	ms_glApi.setWindowedMode                   = setWindowedMode;
@@ -1935,6 +1952,27 @@ bool Direct3d9::supportsStreamOffsets()
 
 // ----------------------------------------------------------------------
 
+namespace
+{
+	bool getDevicePresentationCaps(Gl_devicePresentationCaps * const outCaps)
+	{
+		if (!outCaps)
+			return false;
+		Zero(*outCaps);
+		if (!ms_installed)
+			return false;
+		outCaps->floatBlend = (ms_deviceCaps.PrimitiveMiscCaps & D3DPMISCCAPS_FLOATBLEND) != 0;
+		outCaps->vertexTextureFetch = ms_deviceCaps.VertexTextureFilterCaps != 0;
+		outCaps->maxSimultaneousRenderTargets = static_cast<int>(ms_deviceCaps.NumSimultaneousRTs);
+		outCaps->maxUserClipPlanes = static_cast<int>(ms_deviceCaps.MaxUserClipPlanes);
+		outCaps->adaptiveTesselation = (ms_deviceCaps.DevCaps2 & D3DDEVCAPS2_ADAPTIVERTLPATCH) != 0;
+		outCaps->conservativeDepthTextureSampling = false;
+		return true;
+	}
+}
+
+// ----------------------------------------------------------------------
+
 bool Direct3d9::supportsDynamicTextures()
 {
 	return ms_supportsDynamicTextures;
@@ -2146,9 +2184,15 @@ void Direct3d9Namespace::setPresentParameters()
 	if(!ms_windowed && ms_supportsMultiSample && ConfigDirect3d9::getAntiAlias() && ms_antialiasEnabled)
 	{
 		ms_presentParameters.MultiSampleType = D3DMULTISAMPLE_NONMASKABLE;
-		ms_presentParameters.MultiSampleQuality = ms_multiSampleQualityLevels - 1;
-		if(ms_presentParameters.MultiSampleQuality > 2)
-			ms_presentParameters.MultiSampleQuality = 2;
+		ms_presentParameters.MultiSampleQuality = 0;
+		if (ms_multiSampleQualityLevels > 0)
+		{
+			DWORD q = ms_multiSampleQualityLevels - 1;
+			int const cap = ConfigDirect3d9::getMultiSampleQualityCap();
+			if (cap >= 0 && static_cast<int>(q) > cap)
+				q = static_cast<DWORD>(cap);
+			ms_presentParameters.MultiSampleQuality = q;
+		}
 		ms_presentParameters.SwapEffect = D3DSWAPEFFECT_DISCARD;
 	}
 
@@ -2984,6 +3028,11 @@ void Direct3d9::setStaticShader(const StaticShader &shader, int pass)
 #endif
 
 	const Direct3d9_StaticShaderData *d3dShader = static_cast<const Direct3d9_StaticShaderData *>(shader.m_graphicsData);
+	if (!d3dShader)
+	{
+		WARNING(true, ("Direct3d9::setStaticShader: shader graphics data is NULL"));
+		return;
+	}
 #if defined(FFP) && defined(VSPS)
 	ms_usingVertexShader = d3dShader->apply(pass);
 	Direct3d9_LightManager::setUsingVertexShaderProgram(ms_usingVertexShader);
@@ -3306,12 +3355,15 @@ void Direct3d9Namespace::setFog(bool enabled, float density, const PackedArgb &c
 		Direct3d9_StateCache::setRenderState(D3DRS_FOGCOLOR, ms_fogColor);
 		Direct3d9_StateCache::setRenderState(D3DRS_FOGVERTEXMODE, D3DFOG_EXP2);
 
+		// Density is finalized in Graphics::setFog (clientGraphics) so this DLL stays independent of AtmosphericEffects.
+		float const scaledDensity = clamp(0.0f, density, 100.0f);
+
 #ifdef FFP
-		Direct3d9_StateCache::setRenderState(D3DRS_FOGDENSITY, density);
+		Direct3d9_StateCache::setRenderState(D3DRS_FOGDENSITY, scaledDensity);
 #endif
 
 #ifdef VSPS
-		const float fog[4] = { 0.0f, 0.0f, density, sqr(density) };
+		const float fog[4] = { 0.0f, 0.0f, scaledDensity, sqr(scaledDensity) };
 		Direct3d9_StateCache::setVertexShaderConstants(VSCR_fog, fog, 1);
 #endif
 	}

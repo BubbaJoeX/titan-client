@@ -1294,6 +1294,12 @@ void ProceduralTerrainAppearance::createFlora (const Chunk* const chunk)
 
 	FloraGroup const & floraGroup = getFloraGroup();
 
+	if (!floraGroup.hasFamily(mapFgi.getFamilyId()))
+	{
+		DEBUG_REPORT_LOG_PRINT (true, ("ProceduralTerrainAppearance::createFlora: static collidable flora family %i missing from FloraGroup; skipping\n", mapFgi.getFamilyId()));
+		return;
+	}
+
 	//-- family data
 	data.floats       = floraGroup.getFamilyFloats(mapFgi.getFamilyId());
 	data.childChoice  = mapFgi.getChildChoice ();

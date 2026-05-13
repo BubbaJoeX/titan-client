@@ -230,6 +230,8 @@ struct Gl_api
 	
 	bool (*writeImage)(char const * file, int const width, int const height, int const pitch, int const * pixelsARGB, bool const alphaExtend, Gl_imageFormat const imageFormat, Rectangle2d const * subRect);
 	
+	bool (*getDevicePresentationCaps)(Gl_devicePresentationCaps * outCaps);
+
 	bool (*supportsAntialias)();
 	void (*setAntialiasEnabled)(bool enabled);
 	

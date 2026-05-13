@@ -342,6 +342,23 @@ bool ClientProceduralTerrainAppearance::ClientChunk::getHeightAt (const Vector& 
 
 //-------------------------------------------------------------------
 
+namespace
+{
+	void applyGodClientFloraModifier(float positionX, float positionZ, FloraGroup::Info& groupInfo)
+	{
+		int fid = groupInfo.getFamilyId();
+		float density = 0.f;
+		if (CityTerrainLayerManager::getModifiedFlora(positionX, positionZ, fid, fid, density))
+		{
+			groupInfo.setFamilyId(fid);
+			const float c = std::max(0.f, std::min(1.f, density));
+			groupInfo.setChildChoice(c);
+		}
+	}
+}
+
+//-------------------------------------------------------------------
+
 struct PrioritizedFamily
 {
 	int key;
@@ -353,6 +370,7 @@ struct PrioritizedFamily
 void ClientProceduralTerrainAppearance::ClientChunk::createTileShader (ShaderData& shaderData, int x, int z, bool useFirstChild) const
 {
 	NOT_NULL (shaderCache);
+	NOT_NULL (shaderMap);
 
 	Zero (shaderData);
 
@@ -369,6 +387,45 @@ void ClientProceduralTerrainAppearance::ClientChunk::createTileShader (ShaderDat
 		sgi [0][2] = shaderMap->getData (x - 2, z - 2);
 		sgi [1][2] = shaderMap->getData (x,     z - 2);
 		sgi [2][2] = shaderMap->getData (x + 2, z - 2);
+	}
+
+	// God Client: apply live shader paint at each blended sample pole (world XZ matches modifier grid).
+	{
+		const float chunk2Meters = m_proceduralTerrainAppearance.getChunkWidthInMeters();
+		const float minXw = static_cast<float>(chunkX) * chunk2Meters;
+		const float minZw = static_cast<float>(chunkZ) * chunk2Meters;
+		const int nTiles2 = m_proceduralTerrainAppearance.getNumberOfTilesPerChunk() * 2;
+		if (nTiles2 > 0)
+		{
+			const float nTiles2f = static_cast<float>(nTiles2);
+
+			for (int j = 0; j < 3; ++j)
+			{
+				for (int i = 0; i < 3; ++i)
+				{
+					static const int kOffset[3] = { -2, 0, 2 };
+					const int mapX = x + kOffset[i];
+					const int mapZ = z + kOffset[2 - j];
+					ShaderGroup::Info& cell = sgi[i][j];
+					const float ratioX = static_cast<float>(mapX - originOffset) / nTiles2f;
+					const float ratioZ = static_cast<float>(mapZ - originOffset) / nTiles2f;
+					const float wx = minXw + ratioX * chunkWidthInMeters;
+					const float wz = minZw + ratioZ * chunkWidthInMeters;
+					int fid = cell.getFamilyId();
+					float feather = 0.f;
+					if (CityTerrainLayerManager::getModifiedShader(wx, wz, fid, fid, feather))
+					{
+						cell.setFamilyId(fid);
+						if (!useFirstChild)
+						{
+							const float f = std::max(0.f, std::min(1.f, feather));
+							if (f > 0.f)
+								cell.setChildChoice(f);
+						}
+					}
+				}
+			}
+		}
 	}
 
 	//-- find out how many unique families there are other than me
@@ -636,7 +693,7 @@ void ClientProceduralTerrainAppearance::ClientChunk::create (const ClientCreateC
 	int const numberOfTilesPerChunk = createChunkData.numberOfTilesPerChunk;
 	const Array2d<PackedRgb>* const         ccd_colorMap   = &createChunkData.createChunkBuffer->colorMap;
 	const Array2d<ShaderGroup::Info>* const ccd_shaderMap  = &createChunkData.createChunkBuffer->shaderMap;
-	//const Array2d<FloraGroup::Info>* const  ccd_floraStaticCollidableMap    = &createChunkData.createChunkBuffer->floraStaticCollidableMap;
+	const Array2d<FloraGroup::Info>* const  ccd_floraStaticCollidableMap    = &createChunkData.createChunkBuffer->floraStaticCollidableMap;
 	const Array2d<FloraGroup::Info>* const  ccd_floraStaticNonCollidableMap = &createChunkData.createChunkBuffer->floraStaticNonCollidableMap;
 	const Array2d<RadialGroup::Info>* const ccd_floraDynamicNearMap         = &createChunkData.createChunkBuffer->floraDynamicNearMap;
 	const Array2d<RadialGroup::Info>* const ccd_floraDynamicFarMap          = &createChunkData.createChunkBuffer->floraDynamicFarMap;
@@ -655,7 +712,7 @@ void ClientProceduralTerrainAppearance::ClientChunk::create (const ClientCreateC
 	ClientProceduralTerrainAppearance::Cache::lock ();
 		vertexNormalMap             = ClientProceduralTerrainAppearance::Cache::createNormalMap (ccd_vertexNormalMap->getWidth (), ccd_vertexNormalMap->getHeight ());
 		shaderMap                   = ClientProceduralTerrainAppearance::Cache::createShaderMap (ccd_shaderMap->getWidth (), ccd_shaderMap->getHeight ());
-		//floraStaticCollidableMap    = ClientProceduralTerrainAppearance::Cache::createFloraMap (ccd_floraStaticCollidableMap->getWidth (), ccd_floraStaticCollidableMap->getHeight ());
+		m_floraStaticCollidableMap  = ClientProceduralTerrainAppearance::Cache::createFloraMap (ccd_floraStaticCollidableMap->getWidth (), ccd_floraStaticCollidableMap->getHeight ());
 		floraStaticNonCollidableMap = ClientProceduralTerrainAppearance::Cache::createFloraMap (ccd_floraStaticNonCollidableMap->getWidth (), ccd_floraStaticNonCollidableMap->getHeight ());
 		floraDynamicNearMap         = ClientProceduralTerrainAppearance::Cache::createRadialMap (ccd_floraDynamicNearMap->getWidth (), ccd_floraDynamicNearMap->getHeight ());
 		floraDynamicFarMap          = ClientProceduralTerrainAppearance::Cache::createRadialMap (ccd_floraDynamicFarMap->getWidth (), ccd_floraDynamicFarMap->getHeight ());
@@ -665,7 +722,7 @@ void ClientProceduralTerrainAppearance::ClientChunk::create (const ClientCreateC
 
 	shaderMap->makeCopy (*ccd_shaderMap);
 	vertexNormalMap->makeCopy (*ccd_vertexNormalMap);
-	//floraStaticCollidableMap->makeCopy (*ccd_floraStaticCollidableMap);
+	m_floraStaticCollidableMap->makeCopy (*ccd_floraStaticCollidableMap);
 	floraStaticNonCollidableMap->makeCopy (*ccd_floraStaticNonCollidableMap);
 	floraDynamicNearMap->makeCopy (*ccd_floraDynamicNearMap);
 	floraDynamicFarMap->makeCopy (*ccd_floraDynamicFarMap);
@@ -971,7 +1028,12 @@ void ClientProceduralTerrainAppearance::ClientChunk::render () const
 bool ClientProceduralTerrainAppearance::ClientChunk::findStaticNonCollidableFlora (float positionX, float positionZ, StaticFloraData& data, bool& floraAllowed) const
 {
 	NOT_NULL (floraStaticNonCollidableMap);
-	return _findStaticFlora (*floraStaticNonCollidableMap, positionX, positionZ, data, floraAllowed);
+	FloraGroup::Info groupInfo;
+	if (!_findStaticFlora (*floraStaticNonCollidableMap, positionX, positionZ, groupInfo, floraAllowed))
+		return false;
+	applyGodClientFloraModifier(positionX, positionZ, groupInfo);
+	_makeStaticFloraData(data, groupInfo);
+	return true;
 }
 
 //-------------------------------------------------------------------

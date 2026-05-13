@@ -442,6 +442,7 @@ public:
 	void                 setChunkLotShader (int chunkX, int chunkZ, const Shader* lotShader) const;
 	void                 clearLotShaders ();
 
+	virtual bool         findStaticCollidableFlora (const Vector& position, StaticFloraData& data, bool& floraAllowed) const;
 	bool                 findStaticNonCollidableFlora (float positionX, float positionZ, StaticFloraData& data, bool& floraAllowed) const;
 	bool                 findDynamicNearFlora         (float positionX, float positionZ, DynamicFloraData& data, bool& floraAllowed) const;
 	bool                 findDynamicFarFlora          (float positionX, float positionZ, DynamicFloraData& data, bool& floraAllowed) const;

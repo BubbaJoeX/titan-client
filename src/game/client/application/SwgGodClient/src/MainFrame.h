@@ -38,6 +38,7 @@ class MainToolBar;
 class RegionBrowser;
 class ObjectEditor;
 class StackerTool;
+class TerrainDock;
 class TemplateEditorWindow;
 class QDockWidget;
 class QSettings;
@@ -76,6 +77,7 @@ public:
 
 	RegionBrowser*   getRegionBrowser();
 	FavoritesWindow* getFavoritesWindow();
+	TerrainDock*     getTerrainDock();
 
 	void showEvent(QShowEvent * event);
 public slots:
@@ -167,6 +169,7 @@ private:
 	BookmarkBrowser*   m_bookmarkBrowser;
 	FavoritesWindow*   m_favoritesWindow;
 	StackerTool*       m_stackTool;
+	TerrainDock*       m_terrainDockWidget;
 
 	QDockWindow*       m_consoleDock;
 	QDockWindow*       m_treeBrowserDock;
@@ -179,6 +182,7 @@ private:
 	QDockWindow*       m_favoritesWindowDock;
 	QDockWindow*       m_stackToolDock;
 	QDockWindow*       m_fileServerTreeDock;
+	QDockWindow*       m_terrainDock;
 
 	FileServerTreeWindow*    m_fileServerTree;
 	TemplateEditorWindow*    m_templateEditor;
@@ -225,6 +229,13 @@ inline RegionBrowser * MainFrame::getRegionBrowser()
 inline FavoritesWindow * MainFrame::getFavoritesWindow()
 {
 	return m_favoritesWindow;
+}
+
+//----------------------------------------------------------------------
+
+inline TerrainDock * MainFrame::getTerrainDock()
+{
+	return m_terrainDockWidget;
 }
 
 //----------------------------------------------------------------------

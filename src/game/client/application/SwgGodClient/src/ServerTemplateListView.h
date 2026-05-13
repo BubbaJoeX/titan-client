@@ -35,6 +35,8 @@ public:
 
 public slots:
 	void onRefreshList();
+	void onSearchTextChanged(const QString& text);
+	void onClearSearch();
 
 protected:
 	QDragObject* dragObject();
@@ -45,9 +47,14 @@ protected slots:
 private:
 	void populateTemplateTree(const char* name, const QPixmap* pix, const QPixmap* folderPix, QListView* parent, const AbstractFilesystemTree* afst) const;
 	const std::string constructRelativePath(const QListViewItem* item, bool& isLeaf, bool& isNew, bool& isEdit) const;
+	bool filterTreeItem(QListViewItem* item, const QString& filterText) const;
+	void showAllItems(QListViewItem* item) const;
 
 private slots:
 	void onSelectionChanged() const;
+
+private:
+	QString m_currentSearchText;
 
 private:
 	//disabled

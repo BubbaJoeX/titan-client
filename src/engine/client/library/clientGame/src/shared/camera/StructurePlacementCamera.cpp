@@ -264,9 +264,12 @@ StructurePlacementCamera::~StructurePlacementCamera ()
 
 	delete m_light;
 
-	m_lotOccupiedShader->release ();
-	m_allowedFootprintShader->release ();
-	m_disallowedFootprintShader->release ();
+	if (m_lotOccupiedShader)
+		m_lotOccupiedShader->release ();
+	if (m_allowedFootprintShader)
+		m_allowedFootprintShader->release ();
+	if (m_disallowedFootprintShader)
+		m_disallowedFootprintShader->release ();
 
 	DebugFlags::unregisterFlag (ms_renderLotManager);
 	DebugFlags::unregisterFlag (ms_alwaysAllowStructurePlacement);
@@ -520,7 +523,7 @@ void StructurePlacementCamera::drawScene () const
 				int j;
 				for (j = z - 15; j < z + 15; ++j)
 					for (i = x - 15; i < x + 15; ++i)
-						if (lotManager->getLotType (i, j) == LT_illegal || terrainObject->getWater (i, j))
+						if (m_lotOccupiedShader && (lotManager->getLotType (i, j) == LT_illegal || terrainObject->getWater (i, j)))
 							cpta->setChunkLotShader (i, j, m_lotOccupiedShader);
 			}
 		}

@@ -39,6 +39,7 @@
 #include "ServerTemplateListView.h"
 
 #include <qdragobject.h>
+#include <qlineedit.h>
 #include <qlistview.h>
 #include <qmessagebox.h>
 #include <qpushbutton.h>
@@ -153,7 +154,8 @@ TreeBrowser::TreeBrowser(QWidget* theParent, const char* theName)
 : BaseTreeBrowser(theParent, theName),
   MessageDispatch::Receiver(),
   m_refreshTimer(0),
-  m_updatingSelectionFromWorld(false)
+  m_updatingSelectionFromWorld(false),
+  m_objectSearchText()
 {
 	m_objectList->clear();
 	m_objectList->setResizeMode(QListView::NoColumn);
@@ -165,6 +167,26 @@ TreeBrowser::TreeBrowser(QWidget* theParent, const char* theName)
 	IGNORE_RETURN(connect(m_clientTemplateRefreshButton, SIGNAL(clicked()), ActionsObjectTemplate::getInstance().m_clientRefresh, SLOT(doActivate())));
 	IGNORE_RETURN(connect(m_scriptRefreshButton,   SIGNAL(clicked()), ActionsScript::getInstance().refresh, SLOT(doActivate())));
 	IGNORE_RETURN(connect(m_buildoutAreaRefreshButton,   SIGNAL(clicked()), ActionsBuildoutArea::getInstance().actionRefresh, SLOT(doActivate())));
+
+	//connect the search field for live filtering of server templates
+	IGNORE_RETURN(connect(m_serverTemplateSearchEdit, SIGNAL(textChanged(const QString&)), m_serverTemplateList, SLOT(onSearchTextChanged(const QString&))));
+	IGNORE_RETURN(connect(m_serverTemplateSearchClearButton, SIGNAL(clicked()), m_serverTemplateSearchEdit, SLOT(clear())));
+	IGNORE_RETURN(connect(m_serverTemplateSearchClearButton, SIGNAL(clicked()), m_serverTemplateList, SLOT(onClearSearch())));
+
+	//connect the search field for live filtering of client templates
+	IGNORE_RETURN(connect(m_clientTemplateSearchEdit, SIGNAL(textChanged(const QString&)), m_clientTemplateList, SLOT(onSearchTextChanged(const QString&))));
+	IGNORE_RETURN(connect(m_clientTemplateSearchClearButton, SIGNAL(clicked()), m_clientTemplateSearchEdit, SLOT(clear())));
+	IGNORE_RETURN(connect(m_clientTemplateSearchClearButton, SIGNAL(clicked()), m_clientTemplateList, SLOT(onClearSearch())));
+
+	//connect the search field for live filtering of scripts
+	IGNORE_RETURN(connect(m_scriptSearchEdit, SIGNAL(textChanged(const QString&)), m_scriptList, SLOT(onSearchTextChanged(const QString&))));
+	IGNORE_RETURN(connect(m_scriptSearchClearButton, SIGNAL(clicked()), m_scriptSearchEdit, SLOT(clear())));
+	IGNORE_RETURN(connect(m_scriptSearchClearButton, SIGNAL(clicked()), m_scriptList, SLOT(onClearSearch())));
+
+	//connect the search field for live filtering of objects
+	IGNORE_RETURN(connect(m_objectSearchEdit, SIGNAL(textChanged(const QString&)), this, SLOT(onObjectSearchTextChanged(const QString&))));
+	IGNORE_RETURN(connect(m_objectSearchClearButton, SIGNAL(clicked()), m_objectSearchEdit, SLOT(clear())));
+	IGNORE_RETURN(connect(m_objectSearchClearButton, SIGNAL(clicked()), this, SLOT(onObjectSearchClear())));
 
 	IGNORE_RETURN(connect(m_refreshButton, SIGNAL(clicked()), this, SLOT(refreshObjects())));
 	IGNORE_RETURN(connect(m_objectList,    SIGNAL(selectionChanged()), this, SLOT(onObjectSelectionChanged())));
@@ -331,6 +353,13 @@ void TreeBrowser::refreshObjects()
 			}
 		}
 	}
+
+	//apply the current search filter to any new items
+	if(!m_objectSearchText.isEmpty())
+	{
+		filterObjectList(m_objectSearchText);
+	}
+
 	updateSelectionFromWorld();
 
 }
@@ -574,6 +603,72 @@ void TreeBrowser::updateSelectionFromWorld()
 	m_objectList->triggerUpdate();
 
 	m_updatingSelectionFromWorld = false;
+}
+
+//-----------------------------------------------------------------
+
+/**
+ * Handle live search text changes for the object list.
+ * Filters objects while preserving visibility of matches.
+ */
+void TreeBrowser::onObjectSearchTextChanged(const QString& text)
+{
+	m_objectSearchText = text.lower();
+	filterObjectList(m_objectSearchText);
+}
+
+//-----------------------------------------------------------------
+
+/**
+ * Clear the object search filter and show all items.
+ */
+void TreeBrowser::onObjectSearchClear()
+{
+	m_objectSearchText = "";
+	showAllObjectItems();
+}
+
+//-----------------------------------------------------------------
+
+/**
+ * Filter the object list based on the search text.
+ * Objects whose template name contains the search string remain visible.
+ */
+void TreeBrowser::filterObjectList(const QString& filterText)
+{
+	if(filterText.isEmpty())
+	{
+		showAllObjectItems();
+		return;
+	}
+
+	QListViewItem* item = m_objectList->firstChild();
+	while(item)
+	{
+		const QString itemText = item->text(0).lower();
+		const bool matches = itemText.contains(filterText);
+		item->setVisible(matches);
+		item = item->nextSibling();
+	}
+	
+	m_objectList->triggerUpdate();
+}
+
+//-----------------------------------------------------------------
+
+/**
+ * Show all items in the object list - used when clearing the filter.
+ */
+void TreeBrowser::showAllObjectItems()
+{
+	QListViewItem* item = m_objectList->firstChild();
+	while(item)
+	{
+		item->setVisible(true);
+		item = item->nextSibling();
+	}
+	
+	m_objectList->triggerUpdate();
 }
 
 //======================================================================

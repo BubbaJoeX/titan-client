@@ -170,6 +170,8 @@
 #include "clientGraphics/Camera.h"
 #include "clientGraphics/DebugPrimitive.h"
 #include "clientGraphics/DebugPrimitive.h"
+#include "clientGraphics/AtmosphericEffects.h"
+#include "clientGraphics/ClientPresentation.h"
 #include "clientGraphics/PostProcessingEffectsManager.h"
 #include "clientGraphics/RenderWorld.h"
 #include "clientGraphics/ShaderPrimitiveSorter.h"
@@ -533,6 +535,8 @@ void SetupClientGame::install (const Data &data)
 
 	LightsaberCollisionManager::install ();
 
+	ClientPresentation::install();
+	AtmosphericEffects::install();
 	PostProcessingEffectsManager::install();
 	Bloom::install ();
 

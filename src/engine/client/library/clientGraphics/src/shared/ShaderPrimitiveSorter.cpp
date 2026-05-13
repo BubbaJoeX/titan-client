@@ -14,6 +14,7 @@
 #include "clientGraphics/GraphicsOptionTags.h"
 #include "clientGraphics/Light.h"
 #include "clientGraphics/PostProcessingEffectsManager.h"
+#include "clientGraphics/AtmosphericEffects.h"
 #include "clientGraphics/RenderBatchManager.h"
 #include "clientGraphics/ShaderPrimitive.h"
 #include "clientGraphics/ShaderTemplateList.h"
@@ -512,8 +513,16 @@ void ShaderPrimitiveSorter::finishCompositing(int sectionRectX0, int sectionRect
 	Texture * const secondaryBuffer = PostProcessingEffectsManager::getSecondaryBuffer();
 	Texture * const heatBuffer = PostProcessingEffectsManager::getTertiaryBuffer();
 
-	if (ms_showDebugHeatShaders || ms_debugDisableHeatShaders || !ms_heatShadersEnabled || !heatBuffer || !primaryBuffer)
+	if (ms_showDebugHeatShaders || ms_debugDisableHeatShaders || !ms_heatShadersEnabled || !heatBuffer || !primaryBuffer || !secondaryBuffer)
+	{
+		// startCompositing may have bound the heat RT; avoid leaving a stale target or scissor if we bail out.
+		if (primaryBuffer)
+			Graphics::setRenderTarget(primaryBuffer, CF_none, 0);
+		else
+			Graphics::setRenderTarget(NULL, CF_none, 0);
+		Graphics::setScissorRect(false, 0, 0, 0, 0);
 		return;
+	}
 
 	int const sectionRectWidth = sectionRectX1 - sectionRectX0;
 	int const sectionRectHeight = sectionRectY1 - sectionRectY0;
@@ -578,7 +587,7 @@ void ShaderPrimitiveSorter::finishCompositing(int sectionRectX0, int sectionRect
 	compositingShader.setTexture(TAG(M,A,I,N), *secondaryBuffer);
 	compositingShader.setTexture(TAG(H,E,A,T), *heatBuffer);
 	Graphics::setStaticShader(compositingShader);
-	VectorRgba const pixelShaderUserConstants(ms_elapsedTime, ms_showDebugHeatShaderRects ? 1.0f : 0.0f, 0.0f, 0.0f);
+	VectorRgba const pixelShaderUserConstants(ms_elapsedTime, ms_showDebugHeatShaderRects ? 1.0f : 0.0f, AtmosphericEffects::getHeatShimmerStrength(), AtmosphericEffects::getHeatShimmerFrequency());
 	Graphics::setPixelShaderUserConstants(&pixelShaderUserConstants, 1);
 	Graphics::setObjectToWorldTransformAndScale(Transform::identity, Vector::xyz111);
 	Graphics::setVertexBuffer(vertexBuffer);
@@ -599,9 +608,19 @@ bool ShaderPrimitiveSorter::startCompositing(ShaderPrimitive const & shaderPrimi
 
 	Texture * const primaryBuffer = PostProcessingEffectsManager::getPrimaryBuffer();
 	Texture * const heatBuffer = PostProcessingEffectsManager::getTertiaryBuffer();
+	Texture * const secondaryBuffer = PostProcessingEffectsManager::getSecondaryBuffer();
 	
 	if (!heatBuffer || !primaryBuffer)
 		return false;
+
+	// finishCompositing copies via secondary; without it we must not bind the heat RT or we never return to the scene target
+#if PRODUCTION == 0
+	if (!ms_showDebugHeatShaders && !secondaryBuffer)
+		return false;
+#else
+	if (!secondaryBuffer)
+		return false;
+#endif
 	
 	//-- if we are showing debug heat shaders, just render them normally
 	if (ms_showDebugHeatShaders)
@@ -831,10 +850,17 @@ using namespace ShaderPrimitiveSorterNamespace;
 namespace
 {
 	/**
-	 * _dark.pob meshes disable baked cell lighting so remote/custom lights control the room.
-	 * When no _dark asset exists, Interior cells still set CellProperty custom-lighting override and rebuild
-	 * runtime lights from the pob template; route precalculated-vertex shaders through the dynamic-light mask
-	 * so those lights apply like the dark pob variant.
+	 * Interior volume lighting without _dark.pob:
+	 *
+	 * Precalc / prelit shaders normally consume pob lights only through the "with precalculated vertex lighting"
+	 * bitmask, while their verts still carry baked irradiance from export.
+	 *
+	 * When CellProperty::hasCustomLightingOverride() is true, CellObject has rebuilt template lights with the
+	 * remote tint and we must drive hull shading from those runtime lights. Route those shaders through the
+	 * same bitmask as fully dynamic meshes so parallel/point contributions reach the VS/PS constant pack.
+	 *
+	 * (_dark.pob is an alternate mesh swap with darker baked verts; when absent, this bitmask routing plus
+	 * override ambient / material tint carries room brightness.)
 	 */
 	inline ShaderPrimitiveSorter::LightBitSet const & selectLightBitSetForInteriorShader(StaticShader const & staticShader)
 	{
@@ -1166,6 +1192,15 @@ void ShaderPrimitiveSorter::Phase::drawEntry(Entry const & entry)
 			{
 				continue;
 			}
+
+			// Normal heat path composites back using 2d_heat_composite; if it failed to load, skip the pass (same as missing RTs).
+#if PRODUCTION == 0
+			if (!ms_showDebugHeatShaders && !PostProcessingEffectsManager::getHeatCompositingShader())
+				continue;
+#else
+			if (!PostProcessingEffectsManager::getHeatCompositingShader())
+				continue;
+#endif
 			
 #if PRODUCTION == 0
 			if (ms_profileDraw)
@@ -1399,6 +1434,9 @@ void ShaderPrimitiveSorter::pushCell(CellProperty const * cellProperty, Texture 
 {
 	NP_PROFILER_AUTO_BLOCK_DEFINE("ShaderPrimitiveSorter::pushCell");
 
+	// Interior tint gate: enables Direct3d9_LightManager override ambient/material multiply for all draws until popCell.
+	// Nested cells restore parent CellProperty values on pop (see popCell).
+
 #ifdef _DEBUG
 	{
 		const int count = static_cast<int>(ms_phase.size());
@@ -1539,6 +1577,13 @@ void ShaderPrimitiveSorter::popCell()
 
 	DEBUG_REPORT_PRINT(ms_reportPixelsComposited && ms_pixelsCompositedThisFrame > 0, 
 		("Composited [%8d] KiloPixels in [%4d] passes\n", ms_pixelsCompositedThisFrame / 1000, ms_compositePasses));
+}
+
+// ----------------------------------------------------------------------
+
+CellProperty const * ShaderPrimitiveSorter::getCurrentCellProperty()
+{
+	return ms_cellPropertyStack.empty() ? NULL : ms_cellPropertyStack.back();
 }
 
 // ----------------------------------------------------------------------

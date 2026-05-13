@@ -25,10 +25,15 @@
 #include "sharedDebug/DebugFlags.h"
 #include "sharedFoundation/Os.h"
 #include "sharedFoundation/CrcLowerString.h"
+#include "sharedFoundation/ConfigFile.h"
+
+#include "ConfigDirect3d9.h"
 
 #include <d3d9.h>
 #include <d3dx9.h>
-#include <stdio.h>
+#include <algorithm>
+#include <cstdio>
+#include <cstring>
 
 #ifdef _DEBUG
 #include <string>
@@ -42,6 +47,37 @@ namespace Direct3d9_StaticShaderDataNamespace
 	const Tag TAG_A128 = TAG(A,1,2,8);
 	const Tag TAG_A001 = TAG(A,0,0,1);
 	const Tag TAG_A000 = TAG(A,0,0,0);
+
+	inline DWORD presentationMipLodBiasDw()
+	{
+		float const b = clamp(-3.f, ConfigDirect3d9::getPresentationTextureMipLodBias(), 3.f);
+		DWORD dw = 0;
+		std::memcpy(&dw, &b, sizeof(DWORD));
+		return dw;
+	}
+
+	inline DWORD presentationAnisoFloorLevel()
+	{
+		static bool loaded = false;
+		static DWORD floorLevel = 1;
+		if (!loaded)
+		{
+			loaded = true;
+			if (ConfigFile::getKeyBool("ClientGraphics/Presentation", "enable", true))
+				floorLevel = static_cast<DWORD>(clamp(1, ConfigFile::getKeyInt("ClientGraphics/Presentation", "minimumTextureAnisotropy", 4), 16));
+			else
+				floorLevel = 1;
+		}
+		return floorLevel;
+	}
+
+	inline DWORD presentationAdjustedMaxAnisotropy(DWORD textureMaxAniso)
+	{
+		DWORD const deviceCap = Direct3d9::getMaxAnisotropy();
+		DWORD const floorLevel = presentationAnisoFloorLevel();
+		DWORD const boosted = (std::max)(textureMaxAniso, (std::min)(floorLevel, deviceCap));
+		return clamp(static_cast<DWORD>(1), boosted, deviceCap);
+	}
 
 	static const D3DTEXTUREADDRESS TextureAddress[] =
 	{
@@ -197,7 +233,10 @@ void Direct3d9_StaticShaderData::Stage::construct(const StaticShader &shader, co
 
 #undef TF
 
-		m_samplerStates.push_back(SamplerState(D3DSAMP_MAXANISOTROPY, clamp(static_cast<DWORD>(1), static_cast<DWORD>(textureData.maxAnisotropy), Direct3d9::getMaxAnisotropy())));
+		m_samplerStates.push_back(SamplerState(D3DSAMP_MAXANISOTROPY, presentationAdjustedMaxAnisotropy(static_cast<DWORD>(textureData.maxAnisotropy))));
+		m_samplerStates.push_back(SamplerState(D3DSAMP_MIPMAPLODBIAS, presentationMipLodBiasDw()));
+		if (ConfigDirect3d9::getSrgbTextureSampling())
+			m_samplerStates.push_back(SamplerState(D3DSAMP_SRGBTEXTURE, TRUE));
 
 #define TSSM(tss, v, m) m_samplerStates.push_back(SamplerState(tss, m[v]))
 
@@ -351,7 +390,10 @@ void Direct3d9_StaticShaderData::Stage::construct(const StaticShader &shader, co
 
 #undef TF
 
-		m_samplerStates.push_back(SamplerState(D3DSAMP_MAXANISOTROPY, clamp(static_cast<DWORD>(1), static_cast<DWORD>(textureData.maxAnisotropy), Direct3d9::getMaxAnisotropy())));
+		m_samplerStates.push_back(SamplerState(D3DSAMP_MAXANISOTROPY, presentationAdjustedMaxAnisotropy(static_cast<DWORD>(textureData.maxAnisotropy))));
+		m_samplerStates.push_back(SamplerState(D3DSAMP_MIPMAPLODBIAS, presentationMipLodBiasDw()));
+		if (ConfigDirect3d9::getSrgbTextureSampling())
+			m_samplerStates.push_back(SamplerState(D3DSAMP_SRGBTEXTURE, TRUE));
 
 #define TSSM(tss, v, m) m_samplerStates.push_back(SamplerState(tss, m[v]))
 
@@ -550,6 +592,11 @@ void Direct3d9_StaticShaderData::Pass::construct(const StaticShader &shader, con
 		uint32 textureCoordinateSetKey = 0;
 		ShaderImplementation::Pass::VertexShader const & vertexShader = *pass.m_vertexShader;
 		Direct3d9_VertexShaderData const * vertexShaderData = safe_cast<Direct3d9_VertexShaderData const *>(vertexShader.m_graphicsData);
+		if (!vertexShaderData)
+		{
+			WARNING(true, ("Direct3d9_StaticShaderData::Pass::construct: vertex shader graphics data is NULL"));
+			return;
+		}
 		Direct3d9_VertexShaderData::TextureCoordinateSetTags const * textureCoordinateSetTags = vertexShaderData->getTextureCoordinateSetTags();
 		if (textureCoordinateSetTags)
 		{
@@ -817,6 +864,47 @@ bool Direct3d9_StaticShaderData::Pass::getTextureSortKey(int &value) const
 
 // ----------------------------------------------------------------------
 
+void Direct3d9_StaticShaderData::Pass::copyMaterialApplyingInteriorTint(PaddedMaterial &dest, PaddedMaterial const &src)
+{
+	dest = src;
+	VectorRgba tint;
+	if (!Direct3d9_LightManager::getMaterialInteriorTintMultiply(tint))
+		return;
+
+	// Part of interior volume pipeline: same RGB as CellProperty / setOverrideFullAmbient, matching pob lights rebuilt in CellObject::setCellLightColor.
+
+	// Albedo (ambient + diffuse material channels modulate lit textured surfaces in VS/FFP).
+	dest.material.Ambient.r *= tint.r;
+	dest.material.Ambient.g *= tint.g;
+	dest.material.Ambient.b *= tint.b;
+
+	dest.material.Diffuse.r *= tint.r;
+	dest.material.Diffuse.g *= tint.g;
+	dest.material.Diffuse.b *= tint.b;
+
+	// Self-illumination and specular color (Blinn–Phong / dot3 ks term uses material Specular rgb).
+	dest.material.Emissive.r *= tint.r;
+	dest.material.Emissive.g *= tint.g;
+	dest.material.Emissive.b *= tint.b;
+
+	dest.material.Specular.r *= tint.r;
+	dest.material.Specular.g *= tint.g;
+	dest.material.Specular.b *= tint.b;
+
+	// Many skeletal/dot3 templates ship Ambient/Diffuse at or near zero (lighting intended to come purely from dynamic terms).
+	// After multiplying by interior tint, channels can still round to effective black in the VS, yielding silhouettes while pob hull
+	// stays readable from precalc/emissive. Clamp albedo channels to a small fraction of the tint per axis (zero when tint is zero).
+	static float const cms_interiorAlbedoFloorScale = 0.11f;
+	dest.material.Ambient.r  = std::max(dest.material.Ambient.r,  tint.r * cms_interiorAlbedoFloorScale);
+	dest.material.Ambient.g  = std::max(dest.material.Ambient.g,  tint.g * cms_interiorAlbedoFloorScale);
+	dest.material.Ambient.b  = std::max(dest.material.Ambient.b,  tint.b * cms_interiorAlbedoFloorScale);
+	dest.material.Diffuse.r  = std::max(dest.material.Diffuse.r,  tint.r * cms_interiorAlbedoFloorScale);
+	dest.material.Diffuse.g  = std::max(dest.material.Diffuse.g,  tint.g * cms_interiorAlbedoFloorScale);
+	dest.material.Diffuse.b  = std::max(dest.material.Diffuse.b,  tint.b * cms_interiorAlbedoFloorScale);
+}
+
+// ----------------------------------------------------------------------
+
 bool Direct3d9_StaticShaderData::Pass::apply() const
 {
 #ifdef FFP
@@ -825,8 +913,9 @@ bool Direct3d9_StaticShaderData::Pass::apply() const
 
 #ifdef VSPS
 #if PRODUCTION == 0
-	IDirect3DVertexShader9 * vertexShader = m_vertexShader == 0 ?
-		0 : static_cast<Direct3d9_VertexShaderData const *>(m_vertexShader->m_graphicsData)->getVertexShader(m_textureCoordinateSetKey);
+	IDirect3DVertexShader9 * vertexShader = NULL;
+	if (m_vertexShader && m_vertexShader->m_graphicsData)
+		vertexShader = static_cast<Direct3d9_VertexShaderData const *>(m_vertexShader->m_graphicsData)->getVertexShader(m_textureCoordinateSetKey);
 	Direct3d9_StateCache::setVertexShader(vertexShader);
 #else
 	Direct3d9_StateCache::setVertexShader(m_vertexShader);
@@ -837,31 +926,37 @@ bool Direct3d9_StaticShaderData::Pass::apply() const
 #ifdef _DEBUG
 		if (ms_useDefaultMaterial)
 		{
+			PaddedMaterial tintedMaterial;
+			copyMaterialApplyingInteriorTint(tintedMaterial, ms_defaultMaterial);
+
 #ifdef FFP
-			const HRESULT hresult = device->SetMaterial(&ms_defaultMaterial.material);
+			const HRESULT hresult = device->SetMaterial(&tintedMaterial.material);
 			FATAL_DX_HR("SetMaterial failed %s", hresult);
 #endif
 
 #ifdef VSPS
 			DEBUG_FATAL(sizeof(m_material) != sizeof(float) * 4 * 5, ("PaddedMaterial size is wrong %d/%d", sizeof(m_material), sizeof(float) * 4 * 5));
-			Direct3d9_StateCache::setVertexShaderConstants(VSCR_material, &ms_defaultMaterial, 5);
-			Direct3d9_StateCache::setPixelShaderConstants(PSCR_materialSpecularColor, &ms_defaultMaterial.material.Specular, 1);
-			Direct3d9_StateCache::setSpecularPower(ms_defaultMaterial.material.Power);
+			Direct3d9_StateCache::setVertexShaderConstants(VSCR_material, &tintedMaterial, 5);
+			Direct3d9_StateCache::setPixelShaderConstants(PSCR_materialSpecularColor, &tintedMaterial.material.Specular, 1);
+			Direct3d9_StateCache::setSpecularPower(tintedMaterial.material.Power);
 #endif
 		}
 		else
 #endif
 		{
+			PaddedMaterial tintedMaterial;
+			copyMaterialApplyingInteriorTint(tintedMaterial, m_material);
+
 #ifdef FFP
-			const HRESULT hresult = device->SetMaterial(&m_material.material);
+			const HRESULT hresult = device->SetMaterial(&tintedMaterial.material);
 			FATAL_DX_HR("SetMaterial failed %s", hresult);
 #endif
 
 #ifdef VSPS
 			DEBUG_FATAL(sizeof(m_material) != sizeof(float) * 4 * 5, ("PaddedMaterial size is wrong %d/%d", sizeof(m_material), sizeof(float) * 4 * 5));
-			Direct3d9_StateCache::setVertexShaderConstants(VSCR_material, &m_material, 5);
-			Direct3d9_StateCache::setPixelShaderConstants(PSCR_materialSpecularColor, &m_material.material.Specular, 1);
-			Direct3d9_StateCache::setSpecularPower(m_material.material.Power);
+			Direct3d9_StateCache::setVertexShaderConstants(VSCR_material, &tintedMaterial, 5);
+			Direct3d9_StateCache::setPixelShaderConstants(PSCR_materialSpecularColor, &tintedMaterial.material.Specular, 1);
+			Direct3d9_StateCache::setSpecularPower(tintedMaterial.material.Power);
 #endif
 		}
 
@@ -872,16 +967,19 @@ bool Direct3d9_StaticShaderData::Pass::apply() const
 #if DEBUG_LEVEL == DEBUG_LEVEL_DEBUG
 	else
 	{
+		PaddedMaterial tintedMaterial;
+		copyMaterialApplyingInteriorTint(tintedMaterial, ms_debugMaterial);
+
 #ifdef FFP
-		const HRESULT hresult = device->SetMaterial(&ms_debugMaterial.material);
+		const HRESULT hresult = device->SetMaterial(&tintedMaterial.material);
 		FATAL_DX_HR("SetMaterial failed %s", hresult);
 #endif
 
 #ifdef VSPS
 		DEBUG_FATAL(sizeof(m_material) != sizeof(float) * 4 * 5, ("PaddedMaterial size is wrong %d/%d", sizeof(m_material), sizeof(float) * 4 * 5));
-		Direct3d9_StateCache::setVertexShaderConstants(VSCR_material, &ms_debugMaterial, 5);
-		Direct3d9_StateCache::setPixelShaderConstants(PSCR_materialSpecularColor, &ms_debugMaterial.material.Specular, 1);
-		Direct3d9_StateCache::setSpecularPower(ms_debugMaterial.material.Power);
+		Direct3d9_StateCache::setVertexShaderConstants(VSCR_material, &tintedMaterial, 5);
+		Direct3d9_StateCache::setPixelShaderConstants(PSCR_materialSpecularColor, &tintedMaterial.material.Specular, 1);
+		Direct3d9_StateCache::setSpecularPower(tintedMaterial.material.Power);
 #endif
 	}
 #endif
@@ -1044,6 +1142,12 @@ void Direct3d9_StaticShaderData::update(const StaticShader &shader)
 
 bool Direct3d9_StaticShaderData::apply(int pass) const
 {
+	if (!m_implementation || !m_implementation->m_graphicsData)
+	{
+		WARNING(true, ("Direct3d9_StaticShaderData::apply: implementation or graphics data is NULL"));
+		return false;
+	}
+
 	if (
 #ifdef _DEBUG
 		ms_disableStaticShaderCaching ||  

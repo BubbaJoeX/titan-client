@@ -238,6 +238,12 @@
     <ClCompile Include="..\..\src\shared\Material.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
     </ClCompile>
+    <ClCompile Include="..\..\src\shared\AtmosphericEffects.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+    </ClCompile>
+    <ClCompile Include="..\..\src\shared\ClientPresentation.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+    </ClCompile>
     <ClCompile Include="..\..\src\shared\PostProcessingEffectsManager.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
     </ClCompile>
@@ -405,6 +411,8 @@
     <ClInclude Include="..\..\src\shared\Light.h" />
     <ClInclude Include="..\..\src\shared\LodDistanceTable.h" />
     <ClInclude Include="..\..\src\shared\Material.h" />
+    <ClInclude Include="..\..\src\shared\AtmosphericEffects.h" />
+    <ClInclude Include="..\..\src\shared\ClientPresentation.h" />
     <ClInclude Include="..\..\src\shared\PostProcessingEffectsManager.h" />
     <ClInclude Include="..\..\src\shared\RenderWorld.h" />
     <ClInclude Include="..\..\src\shared\RenderWorldCamera.h" />

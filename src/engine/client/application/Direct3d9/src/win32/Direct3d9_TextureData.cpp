@@ -45,7 +45,7 @@ static const D3DFORMAT translationTable[] =
 	D3DFMT_DXT4,          // TF_DXT4,
 	D3DFMT_DXT5,          // TF_DXT5,
 	D3DFMT_A8,            // TF_A_8,
-	D3DFMT_L8,            // TF_L_8
+	D3DFMT_L8,            // TF_L_8,
 	D3DFMT_P8,            // TF_P_8,
 	D3DFMT_A16B16G16R16F, // TF_ABGR_16F
 	D3DFMT_A32B32G32R32F, // TF_ABGR_32F
@@ -75,7 +75,7 @@ void Direct3d9_TextureData::install(void)
 		D3DFORMAT native = translationTable[i];
 		if (native != D3DFMT_UNKNOWN)
 		{
-			const HRESULT hresult = direct3d->CheckDeviceFormat(Direct3d9::getAdapter(),	Direct3d9::getDeviceType(), Direct3d9::getAdapterFormat(), 0, D3DRTYPE_TEXTURE, native);
+			HRESULT hresult = direct3d->CheckDeviceFormat(Direct3d9::getAdapter(),	Direct3d9::getDeviceType(), Direct3d9::getAdapterFormat(), 0, D3DRTYPE_TEXTURE, native);
 			if (hresult == D3D_OK)
 				supported = true;
 			else
@@ -85,6 +85,13 @@ void Direct3d9_TextureData::install(void)
 				{
 					FATAL_DX_HR("CheckDeviceFormat failed %s", hresult);
 				}
+
+			if (supported && (native == D3DFMT_A16B16G16R16F || native == D3DFMT_A32B32G32R32F))
+			{
+				HRESULT const hrt = direct3d->CheckDeviceFormat(Direct3d9::getAdapter(), Direct3d9::getDeviceType(), Direct3d9::getAdapterFormat(), D3DUSAGE_RENDERTARGET, D3DRTYPE_TEXTURE, native);
+				if (hrt != D3D_OK)
+					supported = false;
+			}
 		}
 
 		TextureFormatInfo::setSupported(static_cast<TextureFormat>(i), supported);

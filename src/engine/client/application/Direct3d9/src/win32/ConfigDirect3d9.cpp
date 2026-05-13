@@ -45,6 +45,12 @@ namespace ConfigDirect3d9Namespace
 
 	bool ms_antiAlias;
 
+	int  ms_multiSampleQualityCap;
+	bool ms_srgbWriteEnable;
+	bool ms_srgbTextureSampling;
+
+	float ms_presentationTextureMipLodBias;
+
 	// Engine optimization settings
 	bool ms_enableInstancing;
 	int  ms_maxInstancesPerBatch;
@@ -91,6 +97,20 @@ void ConfigDirect3d9::install()
 	KEY_BOOL(discardDynamicBuffersAtBeginningOfFrame, false);
 	
 	KEY_BOOL(antiAlias, true);
+
+	ms_multiSampleQualityCap = ConfigFile::getKeyInt("Direct3d9", "multiSampleQualityCap", -1);
+	ms_srgbWriteEnable       = ConfigFile::getKeyBool("Direct3d9", "srgbWriteEnable", false);
+	ms_srgbTextureSampling   = ConfigFile::getKeyBool("Direct3d9", "srgbTextureSampling", false);
+
+	// Same delay-load / exe-export surface as getKeyInt — avoid getKeyFloat from gl DLL (needs matching exe export).
+	{
+		int milli = ConfigFile::getKeyInt("ClientGraphics/Presentation", "textureMipLodBiasMilli", 0);
+		if (milli < -3000)
+			milli = -3000;
+		else if (milli > 3000)
+			milli = 3000;
+		ms_presentationTextureMipLodBias = static_cast<float>(milli) / 1000.f;
+	}
 
 	// Engine optimization settings
 	KEY_BOOL(enableInstancing, true);
@@ -208,6 +228,34 @@ int ConfigDirect3d9::getDynamicVertexBufferSize()
 bool ConfigDirect3d9::getAntiAlias()
 {
 	return ms_antiAlias;
+}
+
+// ----------------------------------------------------------------------
+
+int ConfigDirect3d9::getMultiSampleQualityCap()
+{
+	return ms_multiSampleQualityCap;
+}
+
+// ----------------------------------------------------------------------
+
+bool ConfigDirect3d9::getSrgbWriteEnable()
+{
+	return ms_srgbWriteEnable;
+}
+
+// ----------------------------------------------------------------------
+
+bool ConfigDirect3d9::getSrgbTextureSampling()
+{
+	return ms_srgbTextureSampling;
+}
+
+// ----------------------------------------------------------------------
+
+float ConfigDirect3d9::getPresentationTextureMipLodBias()
+{
+	return ms_presentationTextureMipLodBias;
 }
 
 // ----------------------------------------------------------------------

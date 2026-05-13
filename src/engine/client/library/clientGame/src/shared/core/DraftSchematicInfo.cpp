@@ -55,6 +55,12 @@ namespace
 	}
 
 	const uint16 s_magic_ending_char = 16384;
+	
+	// Map from ClientObject pointer to draft schematic CRC for stable radial menu matching
+	// This handles the case where DraftSchematicInfo is recreated (e.g., after refresh) 
+	// but the old ClientObject is still referenced by the UI
+	typedef stdmap<ClientObject const *, std::pair<uint32, uint32> >::fwd ClientObjectToSchematicCrcMap;
+	ClientObjectToSchematicCrcMap s_clientObjectToSchematicCrc;
 
 	//----------------------------------------------------------------------
 
@@ -101,6 +107,22 @@ void DraftSchematicInfo::setUseMinimalClientPreviewsForDatapad (bool const useMi
 bool DraftSchematicInfo::getUseMinimalClientPreviewsForDatapad ()
 {
 	return s_useMinimalClientPreviewsForDatapad;
+}
+
+//----------------------------------------------------------------------
+
+bool DraftSchematicInfo::getSchematicCrcForClientObject (ClientObject const * obj, std::pair<uint32, uint32> & outCrc)
+{
+	if (!obj)
+		return false;
+
+	const ClientObjectToSchematicCrcMap::const_iterator it = s_clientObjectToSchematicCrc.find (obj);
+	if (it != s_clientObjectToSchematicCrc.end ())
+	{
+		outCrc = it->second;
+		return true;
+	}
+	return false;
 }
 
 //----------------------------------------------------------------------
@@ -191,6 +213,10 @@ DraftSchematicInfo::~DraftSchematicInfo ()
 	m_assemblyWeights       = 0;
 	m_resourceMaxWeights    = 0;
 
+	// Remove from the ClientObject->CRC map before deleting
+	if (m_clientObject)
+		s_clientObjectToSchematicCrc.erase (m_clientObject);
+
 	delete m_clientObject;
 	m_clientObject = 0;
 
@@ -237,6 +263,8 @@ void DraftSchematicInfo::createClientObject   () const
 			m_clientObject->endBaselines ();
 			m_clientObject->setObjectName (displayName);
 			m_clientObject->setNetworkId (ClientObject::getNextFakeNetworkId ());
+			// Register mapping from ClientObject to schematic CRC for stable radial menu matching
+			s_clientObjectToSchematicCrc[m_clientObject] = m_draftSchematicTemplate;
 		}
 		DEBUG_FATAL (!m_clientObject, ("DraftSchematicInfo minimal datapad preview: could not create [%s]\n", draft_fallbackObject.c_str ()));
 		return;
@@ -269,6 +297,8 @@ void DraftSchematicInfo::createClientObject   () const
 				m_clientObject->endBaselines ();
 				m_clientObject->setObjectNameStringId (sdsot->getCraftedName ());		
 				m_clientObject->setNetworkId(ClientObject::getNextFakeNetworkId());
+				// Register mapping from ClientObject to schematic CRC for stable radial menu matching
+				s_clientObjectToSchematicCrc[m_clientObject] = m_draftSchematicTemplate;
 			}
 			
 			sot->releaseReference ();
@@ -291,6 +321,8 @@ void DraftSchematicInfo::createClientObject   () const
 		
 		m_clientObject->setObjectName (localizedName);
 		m_clientObject->setNetworkId(ClientObject::getNextFakeNetworkId());
+		// Register mapping from ClientObject to schematic CRC for stable radial menu matching
+		s_clientObjectToSchematicCrc[m_clientObject] = m_draftSchematicTemplate;
 	}
 	
 	{

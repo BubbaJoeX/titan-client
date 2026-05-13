@@ -36,6 +36,7 @@
 #include "clientGame/Game.h"
 #include "sharedCollision/CollideParameters.h"
 #include "sharedCollision/CollisionInfo.h"
+#include "sharedObject/CellProperty.h"
 #include "sharedDebug/DebugFlags.h"
 #include "sharedDebug/PerformanceTimer.h"
 #include "sharedDebug/Profiler.h"
@@ -1211,8 +1212,10 @@ void ClientProceduralTerrainAppearance::preRender (const Camera* camera) const
 
 	if (traverseTree)
 	{
-		//-- frustum volume in world space (used for culling)
-		m_worldFrustum.transform (ms_referenceCamera->getFrustumVolume (), ms_referenceCamera->getTransform_o2w ());
+		const Camera* const frustumCamera = ms_referenceCamera ? ms_referenceCamera : camera;
+		if (frustumCamera)
+		{
+			m_worldFrustum.transform (frustumCamera->getFrustumVolume (), frustumCamera->getTransform_o2w ());
 
  		TerrainQuadTree::ConstIterator node_iter (getChunkTree ()->getTopNode ());
 
@@ -1293,6 +1296,7 @@ void ClientProceduralTerrainAppearance::preRender (const Camera* camera) const
 
 			IGNORE_RETURN (node_iter.advance ());
 		}
+		}
 	}
 
 	{
@@ -1313,6 +1317,35 @@ DPVS::Object* ClientProceduralTerrainAppearance::getDpvsObject() const
 void ClientProceduralTerrainAppearance::render () const
 {
 	NP_PROFILER_AUTO_BLOCK_DEFINE ("ClientProceduralTerrainAppearance::render");
+
+	// DPVS sometimes reports exterior terrain visible without a portal-enter; interior tint would then multiply open-world splats toward black.
+	struct TerrainWorldLightingScope
+	{
+		bool const m_active;
+		explicit TerrainWorldLightingScope(bool active) : m_active(active)
+		{
+			if (m_active)
+				ShaderPrimitiveSorter::pushCell(*CellProperty::getWorldCellProperty());
+		}
+		~TerrainWorldLightingScope()
+		{
+			if (m_active)
+				ShaderPrimitiveSorter::popCell();
+		}
+	private:
+		TerrainWorldLightingScope(TerrainWorldLightingScope const &);
+		TerrainWorldLightingScope &operator=(TerrainWorldLightingScope const &);
+	};
+
+	CellProperty const * const worldCell = CellProperty::getWorldCellProperty();
+	CellProperty const * const activeCell = ShaderPrimitiveSorter::getCurrentCellProperty();
+	bool const needWorldCell =
+		worldCell &&
+		activeCell &&
+		activeCell != worldCell &&
+		activeCell->hasCustomLightingOverride();
+
+	TerrainWorldLightingScope const terrainWorldLightingScope(needWorldCell);
 
 	//-- render the environment
 	GroundEnvironment::getInstance().draw();
@@ -1516,6 +1549,37 @@ bool ClientProceduralTerrainAppearance::approximateCollideObjects (const Vector&
 {
 	return m_staticNonCollidableFloraManager && m_staticNonCollidableFloraManager->approximateCollide (start_w, end_w, result);
 }
+
+//-----------------------------------------------------------------
+
+bool ClientProceduralTerrainAppearance::findStaticCollidableFlora (const Vector& position, ProceduralTerrainAppearance::StaticFloraData& data, bool& floraAllowed) const
+{
+	const Chunk* const chunk = ProceduralTerrainAppearance::findFirstRenderableChunk (position);
+	if (!chunk)
+		return false;
+
+	FloraGroup::Info groupInfo;
+	if (!chunk->findStaticCollidableFlora (position, groupInfo, floraAllowed))
+		return false;
+
+	int fid = groupInfo.getFamilyId();
+	float density = 0.f;
+	if (CityTerrainLayerManager::getModifiedFlora(position.x, position.z, fid, fid, density))
+	{
+		groupInfo.setFamilyId(fid);
+		const float c = std::max(0.f, std::min(1.f, density));
+		groupInfo.setChildChoice(c);
+	}
+
+	FloraGroup const & floraGroup = getFloraGroup();
+	if (!floraGroup.hasFamily(groupInfo.getFamilyId()))
+		return false;
+
+	data.floats          = floraGroup.getFamilyFloats(groupInfo.getFamilyId());
+	data.childChoice     = groupInfo.getChildChoice ();
+	data.familyChildData = &floraGroup.createFlora(groupInfo);
+	return true;
+}  //lint !e1763  // function marked as const modifies class
 
 //-----------------------------------------------------------------
 

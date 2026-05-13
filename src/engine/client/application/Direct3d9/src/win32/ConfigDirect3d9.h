@@ -54,6 +54,15 @@ public:
 
 	static bool getAntiAlias();
 
+	/// Caps multisample quality index when anti-aliasing is enabled (-1 = use driver maximum).
+	static int  getMultiSampleQualityCap();
+
+	static bool getSrgbWriteEnable();
+	static bool getSrgbTextureSampling();
+
+	/// Mip LOD bias from [ClientGraphics/Presentation] textureMipLodBiasMilli (-3000..3000 => -3..3).
+	static float getPresentationTextureMipLodBias();
+
 	// Engine optimization settings
 	static bool getEnableInstancing();
 	static int  getMaxInstancesPerBatch();

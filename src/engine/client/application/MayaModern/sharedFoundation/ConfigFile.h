@@ -148,9 +148,9 @@ public:
     static const char     *getKeyString(const char *section, const char *key, int index, const char *defaultValue);
     static Tag             getKeyTag   (const char *section, const char *key, int index, Tag defaultValue);
     //accessors defaulting to retrieving the last entered value
-    static DLLEXPORT int   getKeyInt   (const char *section, const char *key, int defaultValue, bool overrideLazyAdds = false);
-    static DLLEXPORT bool  getKeyBool  (const char *section, const char *key, bool defaultValue, bool overrideLazyAdds = false);
-    static float           getKeyFloat (const char *section, const char *key, float defaultValue, bool overrideLazyAdds = false);
+        static DLLEXPORT int   getKeyInt   (const char *section, const char *key, int defaultValue, bool overrideLazyAdds = false);
+        static DLLEXPORT bool  getKeyBool  (const char *section, const char *key, bool defaultValue, bool overrideLazyAdds = false);
+        static DLLEXPORT float getKeyFloat (const char *section, const char *key, float defaultValue, bool overrideLazyAdds = false);
     static const char     *getKeyString(const char *section, const char *key, const char *defaultValue, bool overrideLazyAdds = false);
     static Tag             getKeyTag   (const char *section, const char *key, Tag defaultValue, bool overrideLazyAdds = false);
 

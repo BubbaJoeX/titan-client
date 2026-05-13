@@ -135,6 +135,18 @@ struct Gl_rect
 	int x0, y0, x1, y1;
 };
 
+/// Optional probes for D3D9-era capabilities (deferred/shadow/VTF planning); filled by the raster DLL when a device exists.
+struct Gl_devicePresentationCaps
+{
+	bool floatBlend;
+	bool vertexTextureFetch;
+	int  maxSimultaneousRenderTargets;
+	int  maxUserClipPlanes;
+	bool adaptiveTesselation;
+	/// D3D9 depth-as-SRV is vendor/format specific (often unavailable without hacks); left false for conservative tooling.
+	bool conservativeDepthTextureSampling;
+};
+
 // ======================================================================
 
 #endif

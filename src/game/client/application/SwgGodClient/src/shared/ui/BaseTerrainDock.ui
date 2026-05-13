@@ -1,0 +1,1176 @@
+<!DOCTYPE UI><UI version="3.0" stdsetdef="1">
+<class>BaseTerrainDock</class>
+<widget class="QWidget">
+    <property name="name">
+        <cstring>BaseTerrainDock</cstring>
+    </property>
+    <property name="geometry">
+        <rect>
+            <x>0</x>
+            <y>0</y>
+            <width>340</width>
+            <height>720</height>
+        </rect>
+    </property>
+    <property name="caption">
+        <string>Terrain Editor</string>
+    </property>
+    <vbox>
+        <property name="name">
+            <cstring>unnamed</cstring>
+        </property>
+        <property name="margin">
+            <number>6</number>
+        </property>
+        <property name="spacing">
+            <number>4</number>
+        </property>
+        <widget class="QGroupBox">
+            <property name="name">
+                <cstring>m_fileGroup</cstring>
+            </property>
+            <property name="title">
+                <string>Terrain File</string>
+            </property>
+            <vbox>
+                <property name="margin">
+                    <number>6</number>
+                </property>
+                <property name="spacing">
+                    <number>4</number>
+                </property>
+                <widget class="QLabel">
+                    <property name="name">
+                        <cstring>m_terrainFileLabel</cstring>
+                    </property>
+                    <property name="text">
+                        <string>No terrain loaded</string>
+                    </property>
+                </widget>
+                <widget class="QLayoutWidget">
+                    <property name="name">
+                        <cstring>m_fileButtonLayout</cstring>
+                    </property>
+                    <hbox>
+                        <property name="spacing">
+                            <number>4</number>
+                        </property>
+                        <widget class="QPushButton">
+                            <property name="name">
+                                <cstring>m_loadButton</cstring>
+                            </property>
+                            <property name="text">
+                                <string>Load...</string>
+                            </property>
+                        </widget>
+                        <widget class="QPushButton">
+                            <property name="name">
+                                <cstring>m_saveButton</cstring>
+                            </property>
+                            <property name="text">
+                                <string>Save</string>
+                            </property>
+                        </widget>
+                        <widget class="QPushButton">
+                            <property name="name">
+                                <cstring>m_saveAsButton</cstring>
+                            </property>
+                            <property name="text">
+                                <string>Save As...</string>
+                            </property>
+                        </widget>
+                        <widget class="QPushButton">
+                            <property name="name">
+                                <cstring>m_refreshButton</cstring>
+                            </property>
+                            <property name="text">
+                                <string>Refresh</string>
+                            </property>
+                        </widget>
+                    </hbox>
+                </widget>
+            </vbox>
+        </widget>
+        <widget class="QGroupBox">
+            <property name="name">
+                <cstring>m_toolsGroup</cstring>
+            </property>
+            <property name="title">
+                <string>Height Tools</string>
+            </property>
+            <grid>
+                <property name="margin">
+                    <number>6</number>
+                </property>
+                <property name="spacing">
+                    <number>4</number>
+                </property>
+                <widget class="QPushButton" row="0" column="0">
+                    <property name="name">
+                        <cstring>m_toolRaise</cstring>
+                    </property>
+                    <property name="text">
+                        <string>Raise</string>
+                    </property>
+                    <property name="toggleButton">
+                        <bool>true</bool>
+                    </property>
+                </widget>
+                <widget class="QPushButton" row="0" column="1">
+                    <property name="name">
+                        <cstring>m_toolLower</cstring>
+                    </property>
+                    <property name="text">
+                        <string>Lower</string>
+                    </property>
+                    <property name="toggleButton">
+                        <bool>true</bool>
+                    </property>
+                </widget>
+                <widget class="QPushButton" row="0" column="2">
+                    <property name="name">
+                        <cstring>m_toolFlatten</cstring>
+                    </property>
+                    <property name="text">
+                        <string>Flatten</string>
+                    </property>
+                    <property name="toggleButton">
+                        <bool>true</bool>
+                    </property>
+                </widget>
+                <widget class="QPushButton" row="1" column="0">
+                    <property name="name">
+                        <cstring>m_toolSmooth</cstring>
+                    </property>
+                    <property name="text">
+                        <string>Smooth</string>
+                    </property>
+                    <property name="toggleButton">
+                        <bool>true</bool>
+                    </property>
+                </widget>
+                <widget class="QPushButton" row="1" column="1">
+                    <property name="name">
+                        <cstring>m_toolNoise</cstring>
+                    </property>
+                    <property name="text">
+                        <string>Noise</string>
+                    </property>
+                    <property name="toggleButton">
+                        <bool>true</bool>
+                    </property>
+                </widget>
+                <widget class="QPushButton" row="1" column="2">
+                    <property name="name">
+                        <cstring>m_toolSetHeight</cstring>
+                    </property>
+                    <property name="text">
+                        <string>Set Height</string>
+                    </property>
+                    <property name="toggleButton">
+                        <bool>true</bool>
+                    </property>
+                </widget>
+            </grid>
+        </widget>
+        <widget class="QGroupBox">
+            <property name="name">
+                <cstring>m_brushGroup</cstring>
+            </property>
+            <property name="title">
+                <string>Brush Settings</string>
+            </property>
+            <grid>
+                <property name="margin">
+                    <number>6</number>
+                </property>
+                <property name="spacing">
+                    <number>4</number>
+                </property>
+                <widget class="QLabel" row="0" column="0">
+                    <property name="name">
+                        <cstring>m_sizeLabel</cstring>
+                    </property>
+                    <property name="text">
+                        <string>Size:</string>
+                    </property>
+                </widget>
+                <widget class="QSlider" row="0" column="1">
+                    <property name="name">
+                        <cstring>m_brushSizeSlider</cstring>
+                    </property>
+                    <property name="minValue">
+                        <number>1</number>
+                    </property>
+                    <property name="maxValue">
+                        <number>256</number>
+                    </property>
+                    <property name="value">
+                        <number>32</number>
+                    </property>
+                    <property name="orientation">
+                        <enum>Horizontal</enum>
+                    </property>
+                </widget>
+                <widget class="QLabel" row="0" column="2">
+                    <property name="name">
+                        <cstring>m_brushSizeValue</cstring>
+                    </property>
+                    <property name="text">
+                        <string>32m</string>
+                    </property>
+                    <property name="minimumSize">
+                        <size>
+                            <width>40</width>
+                            <height>0</height>
+                        </size>
+                    </property>
+                </widget>
+                <widget class="QLabel" row="1" column="0">
+                    <property name="name">
+                        <cstring>m_strengthLabel</cstring>
+                    </property>
+                    <property name="text">
+                        <string>Strength:</string>
+                    </property>
+                </widget>
+                <widget class="QSlider" row="1" column="1">
+                    <property name="name">
+                        <cstring>m_brushStrengthSlider</cstring>
+                    </property>
+                    <property name="minValue">
+                        <number>1</number>
+                    </property>
+                    <property name="maxValue">
+                        <number>100</number>
+                    </property>
+                    <property name="value">
+                        <number>50</number>
+                    </property>
+                    <property name="orientation">
+                        <enum>Horizontal</enum>
+                    </property>
+                </widget>
+                <widget class="QLabel" row="1" column="2">
+                    <property name="name">
+                        <cstring>m_brushStrengthValue</cstring>
+                    </property>
+                    <property name="text">
+                        <string>50%</string>
+                    </property>
+                </widget>
+                <widget class="QLabel" row="2" column="0">
+                    <property name="name">
+                        <cstring>m_shapeLabel</cstring>
+                    </property>
+                    <property name="text">
+                        <string>Shape:</string>
+                    </property>
+                </widget>
+                <widget class="QComboBox" row="2" column="1" rowspan="1" colspan="2">
+                    <property name="name">
+                        <cstring>m_brushShapeCombo</cstring>
+                    </property>
+                    <item>
+                        <property name="text">
+                            <string>Circle</string>
+                        </property>
+                    </item>
+                    <item>
+                        <property name="text">
+                            <string>Square</string>
+                        </property>
+                    </item>
+                </widget>
+                <widget class="QLabel" row="3" column="0">
+                    <property name="name">
+                        <cstring>m_falloffLabel</cstring>
+                    </property>
+                    <property name="text">
+                        <string>Falloff:</string>
+                    </property>
+                </widget>
+                <widget class="QComboBox" row="3" column="1" rowspan="1" colspan="2">
+                    <property name="name">
+                        <cstring>m_falloffCombo</cstring>
+                    </property>
+                    <item>
+                        <property name="text">
+                            <string>Linear</string>
+                        </property>
+                    </item>
+                    <item>
+                        <property name="text">
+                            <string>Smooth</string>
+                        </property>
+                    </item>
+                    <item>
+                        <property name="text">
+                            <string>Sharp</string>
+                        </property>
+                    </item>
+                    <item>
+                        <property name="text">
+                            <string>Flat</string>
+                        </property>
+                    </item>
+                </widget>
+                <widget class="QLabel" row="4" column="0">
+                    <property name="name">
+                        <cstring>m_featherLabel</cstring>
+                    </property>
+                    <property name="text">
+                        <string>Feather:</string>
+                    </property>
+                </widget>
+                <widget class="QSlider" row="4" column="1">
+                    <property name="name">
+                        <cstring>m_brushFeatherSlider</cstring>
+                    </property>
+                    <property name="minValue">
+                        <number>5</number>
+                    </property>
+                    <property name="maxValue">
+                        <number>100</number>
+                    </property>
+                    <property name="value">
+                        <number>100</number>
+                    </property>
+                    <property name="orientation">
+                        <enum>Horizontal</enum>
+                    </property>
+                </widget>
+                <widget class="QLabel" row="4" column="2">
+                    <property name="name">
+                        <cstring>m_brushFeatherValue</cstring>
+                    </property>
+                    <property name="text">
+                        <string>100%</string>
+                    </property>
+                </widget>
+            </grid>
+        </widget>
+        <widget class="QTabWidget">
+            <property name="name">
+                <cstring>m_editorTabs</cstring>
+            </property>
+            <widget class="QWidget">
+                <property name="name">
+                    <cstring>m_shaderTab</cstring>
+                </property>
+                <attribute name="title">
+                    <string>Shaders</string>
+                </attribute>
+                <vbox>
+                    <property name="margin">
+                        <number>6</number>
+                    </property>
+                    <property name="spacing">
+                        <number>4</number>
+                    </property>
+                    <widget class="QPushButton">
+                        <property name="name">
+                            <cstring>m_toolPaintShader</cstring>
+                        </property>
+                        <property name="text">
+                            <string>Paint Shader</string>
+                        </property>
+                        <property name="toggleButton">
+                            <bool>true</bool>
+                        </property>
+                    </widget>
+                    <widget class="QListView">
+                        <property name="name">
+                            <cstring>m_shaderList</cstring>
+                        </property>
+                        <column>
+                            <property name="text">
+                                <string>Shader</string>
+                            </property>
+                            <property name="clickable">
+                                <bool>true</bool>
+                            </property>
+                            <property name="resizable">
+                                <bool>true</bool>
+                            </property>
+                        </column>
+                        <column>
+                            <property name="text">
+                                <string>Family</string>
+                            </property>
+                            <property name="clickable">
+                                <bool>true</bool>
+                            </property>
+                            <property name="resizable">
+                                <bool>true</bool>
+                            </property>
+                        </column>
+                        <property name="selectionMode">
+                            <enum>Single</enum>
+                        </property>
+                    </widget>
+                </vbox>
+            </widget>
+            <widget class="QWidget">
+                <property name="name">
+                    <cstring>m_waterTab</cstring>
+                </property>
+                <attribute name="title">
+                    <string>Water</string>
+                </attribute>
+                <vbox>
+                    <property name="margin">
+                        <number>6</number>
+                    </property>
+                    <property name="spacing">
+                        <number>4</number>
+                    </property>
+                    <widget class="QPushButton">
+                        <property name="name">
+                            <cstring>m_toolPlaceWater</cstring>
+                        </property>
+                        <property name="text">
+                            <string>Place Water Plane</string>
+                        </property>
+                        <property name="toggleButton">
+                            <bool>true</bool>
+                        </property>
+                    </widget>
+                    <widget class="QLayoutWidget">
+                        <property name="name">
+                            <cstring>m_waterHeightLayout</cstring>
+                        </property>
+                        <hbox>
+                            <widget class="QLabel">
+                                <property name="name">
+                                    <cstring>m_waterHeightLabel</cstring>
+                                </property>
+                                <property name="text">
+                                    <string>Water Height:</string>
+                                </property>
+                            </widget>
+                            <widget class="QLineEdit">
+                                <property name="name">
+                                    <cstring>m_waterHeightEdit</cstring>
+                                </property>
+                                <property name="text">
+                                    <string>0.0</string>
+                                </property>
+                            </widget>
+                        </hbox>
+                    </widget>
+                    <widget class="QLabel">
+                        <property name="name">
+                            <cstring>m_waterShaderLabel</cstring>
+                        </property>
+                        <property name="text">
+                            <string>Water Shader:</string>
+                        </property>
+                    </widget>
+                    <widget class="QComboBox">
+                        <property name="name">
+                            <cstring>m_waterShaderCombo</cstring>
+                        </property>
+                    </widget>
+                    <widget class="QPushButton">
+                        <property name="name">
+                            <cstring>m_applyWaterButton</cstring>
+                        </property>
+                        <property name="text">
+                            <string>Apply Water Changes</string>
+                        </property>
+                    </widget>
+                    <spacer>
+                        <property name="name">
+                            <cstring>m_waterSpacer</cstring>
+                        </property>
+                        <property name="orientation">
+                            <enum>Vertical</enum>
+                        </property>
+                        <property name="sizeType">
+                            <enum>Expanding</enum>
+                        </property>
+                    </spacer>
+                </vbox>
+            </widget>
+            <widget class="QWidget">
+                <property name="name">
+                    <cstring>m_floraTab</cstring>
+                </property>
+                <attribute name="title">
+                    <string>Flora</string>
+                </attribute>
+                <vbox>
+                    <property name="margin">
+                        <number>6</number>
+                    </property>
+                    <property name="spacing">
+                        <number>4</number>
+                    </property>
+                    <widget class="QPushButton">
+                        <property name="name">
+                            <cstring>m_toolPaintFlora</cstring>
+                        </property>
+                        <property name="text">
+                            <string>Paint Flora</string>
+                        </property>
+                        <property name="toggleButton">
+                            <bool>true</bool>
+                        </property>
+                    </widget>
+                    <widget class="QLabel">
+                        <property name="name">
+                            <cstring>m_floraFamilyLabel</cstring>
+                        </property>
+                        <property name="text">
+                            <string>Flora Family:</string>
+                        </property>
+                    </widget>
+                    <widget class="QComboBox">
+                        <property name="name">
+                            <cstring>m_floraFamilyCombo</cstring>
+                        </property>
+                    </widget>
+                    <widget class="QPushButton">
+                        <property name="name">
+                            <cstring>m_toolPlaceRadial</cstring>
+                        </property>
+                        <property name="text">
+                            <string>Place Radial Group</string>
+                        </property>
+                        <property name="toggleButton">
+                            <bool>true</bool>
+                        </property>
+                    </widget>
+                    <widget class="QLabel">
+                        <property name="name">
+                            <cstring>m_radialGroupLabel</cstring>
+                        </property>
+                        <property name="text">
+                            <string>Radial Group:</string>
+                        </property>
+                    </widget>
+                    <widget class="QComboBox">
+                        <property name="name">
+                            <cstring>m_radialGroupCombo</cstring>
+                        </property>
+                    </widget>
+                    <spacer>
+                        <property name="name">
+                            <cstring>m_floraSpacer</cstring>
+                        </property>
+                        <property name="orientation">
+                            <enum>Vertical</enum>
+                        </property>
+                        <property name="sizeType">
+                            <enum>Expanding</enum>
+                        </property>
+                    </spacer>
+                </vbox>
+            </widget>
+            <widget class="QWidget">
+                <property name="name">
+                    <cstring>m_advancedToolsTab</cstring>
+                </property>
+                <attribute name="title">
+                    <string>Advanced</string>
+                </attribute>
+                <vbox>
+                    <property name="margin">
+                        <number>6</number>
+                    </property>
+                    <property name="spacing">
+                        <number>4</number>
+                    </property>
+                    <widget class="QGroupBox">
+                        <property name="name">
+                            <cstring>m_polylineToolsGroup</cstring>
+                        </property>
+                        <property name="title">
+                            <string>Roads / Ribbons</string>
+                        </property>
+                        <vbox>
+                            <property name="margin">
+                                <number>6</number>
+                            </property>
+                            <property name="spacing">
+                                <number>4</number>
+                            </property>
+                            <widget class="QLayoutWidget">
+                                <property name="name">
+                                    <cstring>m_polylineToolButtonLayout</cstring>
+                                </property>
+                                <hbox>
+                                    <property name="spacing">
+                                        <number>4</number>
+                                    </property>
+                                    <widget class="QPushButton">
+                                        <property name="name">
+                                            <cstring>m_toolPlaceRibbon</cstring>
+                                        </property>
+                                        <property name="text">
+                                            <string>Ribbon</string>
+                                        </property>
+                                        <property name="toggleButton">
+                                            <bool>true</bool>
+                                        </property>
+                                    </widget>
+                                    <widget class="QPushButton">
+                                        <property name="name">
+                                            <cstring>m_toolPlaceRoad</cstring>
+                                        </property>
+                                        <property name="text">
+                                            <string>Road</string>
+                                        </property>
+                                        <property name="toggleButton">
+                                            <bool>true</bool>
+                                        </property>
+                                    </widget>
+                                </hbox>
+                            </widget>
+                            <widget class="QLayoutWidget">
+                                <property name="name">
+                                    <cstring>m_polylineWidthLayout</cstring>
+                                </property>
+                                <hbox>
+                                    <widget class="QLabel">
+                                        <property name="name">
+                                            <cstring>m_polylineWidthLabel</cstring>
+                                        </property>
+                                        <property name="text">
+                                            <string>Width:</string>
+                                        </property>
+                                    </widget>
+                                    <widget class="QSpinBox">
+                                        <property name="name">
+                                            <cstring>m_polylineWidthSpin</cstring>
+                                        </property>
+                                        <property name="minValue">
+                                            <number>1</number>
+                                        </property>
+                                        <property name="maxValue">
+                                            <number>128</number>
+                                        </property>
+                                        <property name="value">
+                                            <number>8</number>
+                                        </property>
+                                    </widget>
+                                </hbox>
+                            </widget>
+                            <widget class="QLayoutWidget">
+                                <property name="name">
+                                    <cstring>m_polylineFeatherLayout</cstring>
+                                </property>
+                                <hbox>
+                                    <widget class="QLabel">
+                                        <property name="name">
+                                            <cstring>m_polylineFeatherLabel</cstring>
+                                        </property>
+                                        <property name="text">
+                                            <string>Feather:</string>
+                                        </property>
+                                    </widget>
+                                    <widget class="QSpinBox">
+                                        <property name="name">
+                                            <cstring>m_polylineFeatherSpin</cstring>
+                                        </property>
+                                        <property name="minValue">
+                                            <number>0</number>
+                                        </property>
+                                        <property name="maxValue">
+                                            <number>64</number>
+                                        </property>
+                                        <property name="value">
+                                            <number>4</number>
+                                        </property>
+                                    </widget>
+                                </hbox>
+                            </widget>
+                            <widget class="QCheckBox">
+                                <property name="name">
+                                    <cstring>m_polylineFixedHeightsCheck</cstring>
+                                </property>
+                                <property name="text">
+                                    <string>Use Fixed Heights</string>
+                                </property>
+                            </widget>
+                            <widget class="QLabel">
+                                <property name="name">
+                                    <cstring>m_polylineShaderLabel</cstring>
+                                </property>
+                                <property name="text">
+                                    <string>Shader:</string>
+                                </property>
+                            </widget>
+                            <widget class="QComboBox">
+                                <property name="name">
+                                    <cstring>m_polylineShaderCombo</cstring>
+                                </property>
+                            </widget>
+                            <widget class="QLayoutWidget">
+                                <property name="name">
+                                    <cstring>m_polylineActionLayout</cstring>
+                                </property>
+                                <hbox>
+                                    <property name="spacing">
+                                        <number>4</number>
+                                    </property>
+                                    <widget class="QPushButton">
+                                        <property name="name">
+                                            <cstring>m_polylineAddPointButton</cstring>
+                                        </property>
+                                        <property name="text">
+                                            <string>Add Point</string>
+                                        </property>
+                                    </widget>
+                                    <widget class="QPushButton">
+                                        <property name="name">
+                                            <cstring>m_polylineFinishButton</cstring>
+                                        </property>
+                                        <property name="text">
+                                            <string>Finish</string>
+                                        </property>
+                                    </widget>
+                                    <widget class="QPushButton">
+                                        <property name="name">
+                                            <cstring>m_polylineCancelButton</cstring>
+                                        </property>
+                                        <property name="text">
+                                            <string>Cancel</string>
+                                        </property>
+                                    </widget>
+                                </hbox>
+                            </widget>
+                        </vbox>
+                    </widget>
+                    <widget class="QGroupBox">
+                        <property name="name">
+                            <cstring>m_envZoneGroup</cstring>
+                        </property>
+                        <property name="title">
+                            <string>Environment Zones</string>
+                        </property>
+                        <vbox>
+                            <property name="margin">
+                                <number>6</number>
+                            </property>
+                            <property name="spacing">
+                                <number>4</number>
+                            </property>
+                            <widget class="QPushButton">
+                                <property name="name">
+                                    <cstring>m_toolPlaceEnvironment</cstring>
+                                </property>
+                                <property name="text">
+                                    <string>Place Environment Zone</string>
+                                </property>
+                                <property name="toggleButton">
+                                    <bool>true</bool>
+                                </property>
+                            </widget>
+                            <widget class="QLabel">
+                                <property name="name">
+                                    <cstring>m_environmentFamilyLabel</cstring>
+                                </property>
+                                <property name="text">
+                                    <string>Environment Family:</string>
+                                </property>
+                            </widget>
+                            <widget class="QComboBox">
+                                <property name="name">
+                                    <cstring>m_environmentFamilyCombo</cstring>
+                                </property>
+                            </widget>
+                            <widget class="QLayoutWidget">
+                                <property name="name">
+                                    <cstring>m_envZoneActionLayout</cstring>
+                                </property>
+                                <hbox>
+                                    <property name="spacing">
+                                        <number>4</number>
+                                    </property>
+                                    <widget class="QPushButton">
+                                        <property name="name">
+                                            <cstring>m_envZoneFinishButton</cstring>
+                                        </property>
+                                        <property name="text">
+                                            <string>Finish Zone</string>
+                                        </property>
+                                    </widget>
+                                    <widget class="QPushButton">
+                                        <property name="name">
+                                            <cstring>m_envZoneCancelButton</cstring>
+                                        </property>
+                                        <property name="text">
+                                            <string>Cancel</string>
+                                        </property>
+                                    </widget>
+                                </hbox>
+                            </widget>
+                        </vbox>
+                    </widget>
+                    <widget class="QGroupBox">
+                        <property name="name">
+                            <cstring>m_bitmapStampGroup</cstring>
+                        </property>
+                        <property name="title">
+                            <string>Bitmap Stamps</string>
+                        </property>
+                        <vbox>
+                            <property name="margin">
+                                <number>6</number>
+                            </property>
+                            <property name="spacing">
+                                <number>4</number>
+                            </property>
+                            <widget class="QPushButton">
+                                <property name="name">
+                                    <cstring>m_toolStampBitmap</cstring>
+                                </property>
+                                <property name="text">
+                                    <string>Stamp Bitmap</string>
+                                </property>
+                                <property name="toggleButton">
+                                    <bool>true</bool>
+                                </property>
+                            </widget>
+                            <widget class="QLabel">
+                                <property name="name">
+                                    <cstring>m_bitmapStampLabel</cstring>
+                                </property>
+                                <property name="text">
+                                    <string>Bitmap:</string>
+                                </property>
+                            </widget>
+                            <widget class="QComboBox">
+                                <property name="name">
+                                    <cstring>m_bitmapStampCombo</cstring>
+                                </property>
+                            </widget>
+                            <widget class="QLayoutWidget">
+                                <property name="name">
+                                    <cstring>m_bitmapRotationLayout</cstring>
+                                </property>
+                                <hbox>
+                                    <widget class="QLabel">
+                                        <property name="name">
+                                            <cstring>m_bitmapRotationLabel</cstring>
+                                        </property>
+                                        <property name="text">
+                                            <string>Rotation:</string>
+                                        </property>
+                                    </widget>
+                                    <widget class="QSlider">
+                                        <property name="name">
+                                            <cstring>m_bitmapRotationSlider</cstring>
+                                        </property>
+                                        <property name="minValue">
+                                            <number>0</number>
+                                        </property>
+                                        <property name="maxValue">
+                                            <number>360</number>
+                                        </property>
+                                        <property name="value">
+                                            <number>0</number>
+                                        </property>
+                                        <property name="orientation">
+                                            <enum>Horizontal</enum>
+                                        </property>
+                                    </widget>
+                                    <widget class="QLabel">
+                                        <property name="name">
+                                            <cstring>m_bitmapRotationValue</cstring>
+                                        </property>
+                                        <property name="text">
+                                            <string>0°</string>
+                                        </property>
+                                    </widget>
+                                </hbox>
+                            </widget>
+                            <widget class="QLayoutWidget">
+                                <property name="name">
+                                    <cstring>m_bitmapScaleLayout</cstring>
+                                </property>
+                                <hbox>
+                                    <widget class="QLabel">
+                                        <property name="name">
+                                            <cstring>m_bitmapScaleLabel</cstring>
+                                        </property>
+                                        <property name="text">
+                                            <string>Scale:</string>
+                                        </property>
+                                    </widget>
+                                    <widget class="QSlider">
+                                        <property name="name">
+                                            <cstring>m_bitmapScaleSlider</cstring>
+                                        </property>
+                                        <property name="minValue">
+                                            <number>10</number>
+                                        </property>
+                                        <property name="maxValue">
+                                            <number>500</number>
+                                        </property>
+                                        <property name="value">
+                                            <number>100</number>
+                                        </property>
+                                        <property name="orientation">
+                                            <enum>Horizontal</enum>
+                                        </property>
+                                    </widget>
+                                    <widget class="QLabel">
+                                        <property name="name">
+                                            <cstring>m_bitmapScaleValue</cstring>
+                                        </property>
+                                        <property name="text">
+                                            <string>100%</string>
+                                        </property>
+                                    </widget>
+                                </hbox>
+                            </widget>
+                            <widget class="QCheckBox">
+                                <property name="name">
+                                    <cstring>m_bitmapAffectsHeightCheck</cstring>
+                                </property>
+                                <property name="text">
+                                    <string>Affects Height</string>
+                                </property>
+                                <property name="checked">
+                                    <bool>true</bool>
+                                </property>
+                            </widget>
+                            <widget class="QCheckBox">
+                                <property name="name">
+                                    <cstring>m_bitmapAffectsShaderCheck</cstring>
+                                </property>
+                                <property name="text">
+                                    <string>Affects Shader</string>
+                                </property>
+                            </widget>
+                        </vbox>
+                    </widget>
+                    <spacer>
+                        <property name="name">
+                            <cstring>m_advancedSpacer</cstring>
+                        </property>
+                        <property name="orientation">
+                            <enum>Vertical</enum>
+                        </property>
+                        <property name="sizeType">
+                            <enum>Expanding</enum>
+                        </property>
+                    </spacer>
+                </vbox>
+            </widget>
+            <widget class="QWidget">
+                <property name="name">
+                    <cstring>m_layersTab</cstring>
+                </property>
+                <attribute name="title">
+                    <string>Layers</string>
+                </attribute>
+                <vbox>
+                    <property name="margin">
+                        <number>6</number>
+                    </property>
+                    <property name="spacing">
+                        <number>4</number>
+                    </property>
+                    <widget class="QListView">
+                        <property name="name">
+                            <cstring>m_layerList</cstring>
+                        </property>
+                        <column>
+                            <property name="text">
+                                <string>Layer</string>
+                            </property>
+                            <property name="clickable">
+                                <bool>true</bool>
+                            </property>
+                            <property name="resizable">
+                                <bool>true</bool>
+                            </property>
+                        </column>
+                        <column>
+                            <property name="text">
+                                <string>Type</string>
+                            </property>
+                            <property name="clickable">
+                                <bool>true</bool>
+                            </property>
+                            <property name="resizable">
+                                <bool>true</bool>
+                            </property>
+                        </column>
+                        <column>
+                            <property name="text">
+                                <string>Active</string>
+                            </property>
+                            <property name="clickable">
+                                <bool>true</bool>
+                            </property>
+                            <property name="resizable">
+                                <bool>true</bool>
+                            </property>
+                        </column>
+                        <property name="selectionMode">
+                            <enum>Single</enum>
+                        </property>
+                    </widget>
+                </vbox>
+            </widget>
+        </widget>
+        <widget class="QGroupBox">
+            <property name="name">
+                <cstring>m_visualGroup</cstring>
+            </property>
+            <property name="title">
+                <string>Visualization</string>
+            </property>
+            <grid>
+                <property name="margin">
+                    <number>6</number>
+                </property>
+                <property name="spacing">
+                    <number>4</number>
+                </property>
+                <widget class="QCheckBox" row="0" column="0">
+                    <property name="name">
+                        <cstring>m_wireframeCheck</cstring>
+                    </property>
+                    <property name="text">
+                        <string>Wireframe Overlay</string>
+                    </property>
+                </widget>
+                <widget class="QCheckBox" row="0" column="1">
+                    <property name="name">
+                        <cstring>m_heightColorsCheck</cstring>
+                    </property>
+                    <property name="text">
+                        <string>Height Colors</string>
+                    </property>
+                </widget>
+                <widget class="QCheckBox" row="1" column="0">
+                    <property name="name">
+                        <cstring>m_chunkGridCheck</cstring>
+                    </property>
+                    <property name="text">
+                        <string>Chunk Grid</string>
+                    </property>
+                </widget>
+                <widget class="QCheckBox" row="1" column="1">
+                    <property name="name">
+                        <cstring>m_brushPreviewCheck</cstring>
+                    </property>
+                    <property name="text">
+                        <string>Brush Preview</string>
+                    </property>
+                    <property name="checked">
+                        <bool>true</bool>
+                    </property>
+                </widget>
+            </grid>
+        </widget>
+        <widget class="QGroupBox">
+            <property name="name">
+                <cstring>m_regionGroup</cstring>
+            </property>
+            <property name="title">
+                <string>Region Operations</string>
+            </property>
+            <hbox>
+                <property name="margin">
+                    <number>6</number>
+                </property>
+                <property name="spacing">
+                    <number>4</number>
+                </property>
+                <widget class="QPushButton">
+                    <property name="name">
+                        <cstring>m_selectRegionButton</cstring>
+                    </property>
+                    <property name="text">
+                        <string>Select</string>
+                    </property>
+                    <property name="toggleButton">
+                        <bool>true</bool>
+                    </property>
+                </widget>
+                <widget class="QPushButton">
+                    <property name="name">
+                        <cstring>m_copyRegionButton</cstring>
+                    </property>
+                    <property name="text">
+                        <string>Copy</string>
+                    </property>
+                </widget>
+                <widget class="QPushButton">
+                    <property name="name">
+                        <cstring>m_pasteRegionButton</cstring>
+                    </property>
+                    <property name="text">
+                        <string>Paste</string>
+                    </property>
+                </widget>
+                <widget class="QPushButton">
+                    <property name="name">
+                        <cstring>m_fillRegionButton</cstring>
+                    </property>
+                    <property name="text">
+                        <string>Fill</string>
+                    </property>
+                </widget>
+            </hbox>
+        </widget>
+        <widget class="QGroupBox">
+            <property name="name">
+                <cstring>m_undoGroup</cstring>
+            </property>
+            <property name="title">
+                <string>History</string>
+            </property>
+            <hbox>
+                <property name="margin">
+                    <number>6</number>
+                </property>
+                <property name="spacing">
+                    <number>4</number>
+                </property>
+                <widget class="QPushButton">
+                    <property name="name">
+                        <cstring>m_undoButton</cstring>
+                    </property>
+                    <property name="text">
+                        <string>Undo</string>
+                    </property>
+                    <property name="enabled">
+                        <bool>false</bool>
+                    </property>
+                </widget>
+                <widget class="QPushButton">
+                    <property name="name">
+                        <cstring>m_redoButton</cstring>
+                    </property>
+                    <property name="text">
+                        <string>Redo</string>
+                    </property>
+                    <property name="enabled">
+                        <bool>false</bool>
+                    </property>
+                </widget>
+                <widget class="QPushButton">
+                    <property name="name">
+                        <cstring>m_clearHistoryButton</cstring>
+                    </property>
+                    <property name="text">
+                        <string>Clear History</string>
+                    </property>
+                </widget>
+            </hbox>
+        </widget>
+        
+    </vbox>
+</widget>
+<customwidgets>
+</customwidgets>
+<layoutdefaults spacing="6" margin="11"/>
+</UI>

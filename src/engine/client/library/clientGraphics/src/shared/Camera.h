@@ -104,10 +104,10 @@ private:
 #ifdef _DEBUG
 	mutable int               numberOfSphereTests;
 	mutable int               numberOfObjectsAdded;
+#endif
 
 	typedef stdvector<DebugPrimitive *>::fwd  DebugPrimitives;
 	mutable DebugPrimitives  *debugPrimitives;
-#endif
 
 protected:
 
@@ -140,9 +140,7 @@ public:
 	Camera();
 	virtual ~Camera(void);
 
-#ifdef _DEBUG
 	void              addDebugPrimitive(DebugPrimitive *debugPrimitive) const;
-#endif
 
 	void              applyState() const;
 

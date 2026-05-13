@@ -106,16 +106,25 @@
 #include "FilesystemTree.h"
 #include "FormWindow.h"
 #include "GodClientData.h"
+#include "GodClientTerrainEditor.h"
 #include "MainFrame.h"
 #include "ObjectTemplateData.h"
 #include "RecentDirectory.h"
 #include "ServerCommander.h"
+#include "TerrainDock.h"
 
 
 //system includes
 #include <ctime>
-#include <dinput.h>
-#include <sstream> 
+#include <sstream>
+
+// God Client must not include <dinput.h> in this TU: include order vs Qt/STLport reintroduces
+// Windows "far"/COM issues. SetupClientDirectInput only needs the menu key scan code here;
+// value matches DIK_LCONTROL from dinput.h (0x1D).
+namespace
+{
+	uint32 const kGodClientDirectInputMenuScanCode = 0x1D;
+}
 
 
 //QT includes
@@ -438,7 +447,7 @@ GameWidget::GameWidget(QWidget* theParent, const char*theName)
 		Graphics::setTranslatePointFromGameToScreen(translatePointFromGameToScreen);
 
 		//-- directinput
-		SetupClientDirectInput::install(GetModuleHandle(NULL), Os::getWindow(), DIK_LCONTROL, Graphics::isWindowed);
+		SetupClientDirectInput::install(GetModuleHandle(NULL), Os::getWindow(), kGodClientDirectInputMenuScanCode, Graphics::isWindowed);
 		DirectInput::setScreenShotFunction(ScreenShotHelper::screenShot);
 		DirectInput::suspendInput();
 
@@ -491,6 +500,9 @@ GameWidget::GameWidget(QWidget* theParent, const char*theName)
 	// setup the game
 	Game::install(Game::A_godClient);
 	applyObjectUpdateRangeCapFromConfig();
+
+	// Install the God Client terrain editor
+	GodClientTerrainEditor::install();
 
 	// turn off the mousemode being default
 	CuiPreferences::setMouseModeDefault (false);
@@ -630,6 +642,15 @@ void GameWidget::runGameLoop()
 	Game::runGameLoopOnce(true, static_cast<HWND>(winId()), width(), height());
 
 	++m_frameCounter;
+
+	// Update terrain dock for brush preview rendering
+	{
+		TerrainDock* terrainDock = MainFrame::getInstance().getTerrainDock();
+		if (terrainDock)
+		{
+			terrainDock->updateFrame(static_cast<float>(elapsedTime) * 0.001f);
+		}
+	}
 
 	//-- @todo: this drawing should be moved into the GodClientIoWin to prevent flicker
 
@@ -939,6 +960,20 @@ void GameWidget::mouseMoveEvent(QMouseEvent*mouseEvent)
 
 	const QPoint pt(mouseEvent->pos());
 	GodClientData::getInstance().cursorScreenPositionChanged(pt.x(), pt.y());
+
+	// Forward mouse movement to terrain editing system
+	{
+		TerrainDock* terrainDock = MainFrame::getInstance().getTerrainDock();
+		if (terrainDock && terrainDock->isTerrainEditingActive())
+		{
+			if (terrainDock->handleMouseMove(pt.x(), pt.y()))
+			{
+				// Terrain editing handled the mouse move
+				m_lastMousePoint = mouseEvent->pos();
+				return;
+			}
+		}
+	}
 
 	const real dx =(mouseEvent->x() - m_lastMousePoint.x())* CONST_REAL(0.01);
 	const real dy =(mouseEvent->y() - m_lastMousePoint.y())* CONST_REAL(0.01);
@@ -1274,6 +1309,20 @@ void GameWidget::mousePressEvent(QMouseEvent*mouseEvent)
 			return;
 		}
 
+		// Check for terrain editing - forward to TerrainDock if active
+		if (mouseEvent->button() == Qt::LeftButton)
+		{
+			TerrainDock* terrainDock = MainFrame::getInstance().getTerrainDock();
+			if (terrainDock && terrainDock->isTerrainEditingActive())
+			{
+				if (terrainDock->handleMousePress(mouseEvent->x(), mouseEvent->y(), 1, static_cast<int>(mouseEvent->state())))
+				{
+					m_discardNextMouseRelease = true;
+					return;
+				}
+			}
+		}
+
 		m_mouseDownPoint = m_lastMousePoint = mouseEvent->pos();
 
 		//-- rubberbanding can only performed with the left mouse button, and
@@ -1329,6 +1378,16 @@ void GameWidget::mouseReleaseEvent(QMouseEvent*mouseEvent)
 	if(mouseEvent->button() == Qt::LeftButton)
 	{
 		m_autoDraggingObjects = false;
+		
+		// Forward terrain editing release event
+		if (!m_gameHasFocus)
+		{
+			TerrainDock* terrainDock = MainFrame::getInstance().getTerrainDock();
+			if (terrainDock && terrainDock->isTerrainEditingActive())
+			{
+				terrainDock->handleMouseRelease(mouseEvent->x(), mouseEvent->y(), 1);
+			}
+		}
 	}
 
 	if(m_discardNextMouseRelease)

@@ -294,7 +294,7 @@ public:
 	int                   getNumberOfTilesPerChunk () const;
 
 	bool                  findSurface (const Vector& position, SurfaceData& data) const;
-	bool                  findStaticCollidableFlora (const Vector& position, StaticFloraData& data, bool& floraAllowed) const;
+	virtual bool          findStaticCollidableFlora (const Vector& position, StaticFloraData& data, bool& floraAllowed) const;
 	virtual bool          isPassable(const Vector& position) const;
 	virtual bool          isPassableForceChunkCreation(const Vector& position) const;
 

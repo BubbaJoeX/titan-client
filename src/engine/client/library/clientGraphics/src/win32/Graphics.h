@@ -293,8 +293,13 @@ public:
 
 	static bool DLLEXPORT                writeImage(char const * file, int const width, int const height, int const pitch, int const * pixelsARGB, bool const alphaExtend, Gl_imageFormat const imageFormat, Rectangle2d const * subRect);
 
+	static bool                          getDevicePresentationCaps(Gl_devicePresentationCaps & outCaps);
+
 	static bool                          supportsAntialias();
 	static void                          setAntialiasEnabled(bool antialiasEnable);
+
+	/// Notifies the renderer that bloom post-processing is active (driver hints / state).
+	static void                          setBloomEnabled(bool enabled);
 
 	// video capture routines
 
@@ -304,10 +309,6 @@ public:
 	static bool                          getVideoBufferData(void *buffer, size_t bufferSize);
 	static void                          releaseVideoBuffers();
 #endif // PRODUCTION
-
-private:
-
-	static void                          setBloomEnabled(bool enabled);
 
 private:
 

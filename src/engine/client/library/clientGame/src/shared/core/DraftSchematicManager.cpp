@@ -271,6 +271,7 @@ const DraftSchematicInfo * DraftSchematicManager::findDraftSchematicForObject (c
 
 	NetworkId const oid = obj.getNetworkId ();
 
+	// Fast path: try pointer/NetworkId matching first
 	for (InfoVector::iterator it = s_slots.begin (); it != s_slots.end (); ++it)
 	{
 		const DraftSchematicInfo * const info = NON_NULL (*it);
@@ -280,6 +281,21 @@ const DraftSchematicInfo * DraftSchematicManager::findDraftSchematicForObject (c
 		if (infoObj && oid != NetworkId::cms_invalid && oid == infoObj->getNetworkId ())
 			return info;
 	}
+
+	// Stable fallback: match by draft schematic CRC stored when the ClientObject was created
+	// This handles cases where the DraftSchematicInfo was recreated (e.g., after refresh)
+	// and the ClientObject's pointer/NetworkId no longer match
+	std::pair<uint32, uint32> schematicCrc;
+	if (DraftSchematicInfo::getSchematicCrcForClientObject (&obj, schematicCrc))
+	{
+		for (InfoVector::iterator it = s_slots.begin (); it != s_slots.end (); ++it)
+		{
+			const DraftSchematicInfo * const info = NON_NULL (*it);
+			if (info->getDraftSchematicTemplate () == schematicCrc)
+				return info;
+		}
+	}
+
 	return 0;
 }
 

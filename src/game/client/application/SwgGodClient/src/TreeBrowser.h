@@ -48,6 +48,8 @@ private slots:
 	void onObjectDoubleClicked(QListViewItem * item);
 	void onServerTemplateListSelectionChanged();
 	void onClientTemplateListSelectionChanged();
+	void onObjectSearchTextChanged(const QString& text);
+	void onObjectSearchClear();
 
 private:
 	//disabled
@@ -56,10 +58,13 @@ private:
 
 private:
 	void updateSelectionFromWorld();
+	void filterObjectList(const QString& filterText);
+	void showAllObjectItems();
 
 private:
 	QTimer*          m_refreshTimer;
 	bool             m_updatingSelectionFromWorld;
+	QString          m_objectSearchText;
 };
 
 // ======================================================================

@@ -92,7 +92,8 @@ namespace
 }
 
 ScriptListView::ScriptListView(QWidget* theParent, const char* theName)
-: QListView(theParent, theName)
+: QListView(theParent, theName),
+  m_currentSearchText()
 {
 	IGNORE_RETURN(QListView::addColumn("Name"));
 	QListView::setResizeMode(QListView::NoColumn);
@@ -187,5 +188,96 @@ void ScriptListView::onContextMenuRequested(QListViewItem* item, const QPoint& p
 
 	m_pop->popup(p);
 } //lint !e818 item "could" be const, but Qt allows us to change it
+
+//-----------------------------------------------------------------
+
+/**
+ * Handle live search text changes - filter the tree while preserving hierarchy.
+ * When a child matches, its parent folders remain visible to maintain context.
+ */
+void ScriptListView::onSearchTextChanged(const QString& text)
+{
+	m_currentSearchText = text.lower();
+	
+	if(m_currentSearchText.isEmpty())
+	{
+		showAllItems(firstChild());
+	}
+	else
+	{
+		QListViewItem* item = firstChild();
+		while(item)
+		{
+			filterTreeItem(item, m_currentSearchText);
+			item = item->nextSibling();
+		}
+	}
+	
+	triggerUpdate();
+}
+
+//-----------------------------------------------------------------
+
+/**
+ * Clear the search filter and show all items.
+ */
+void ScriptListView::onClearSearch()
+{
+	m_currentSearchText = "";
+	showAllItems(firstChild());
+	triggerUpdate();
+}
+
+//-----------------------------------------------------------------
+
+/**
+ * Recursively filter a tree item and its children based on the filter text.
+ * Returns true if this item or any of its descendants match the filter.
+ * Preserves tree hierarchy - parent folders remain visible when children match.
+ */
+bool ScriptListView::filterTreeItem(QListViewItem* item, const QString& filterText) const
+{
+	if(item == 0)
+		return false;
+	
+	bool hasMatchingDescendant = false;
+	
+	QListViewItem* child = item->firstChild();
+	while(child)
+	{
+		if(filterTreeItem(child, filterText))
+			hasMatchingDescendant = true;
+		child = child->nextSibling();
+	}
+	
+	const QString itemText = item->text(0).lower();
+	const bool thisMatches = itemText.contains(filterText);
+	
+	const bool shouldShow = thisMatches || hasMatchingDescendant;
+	item->setVisible(shouldShow);
+	
+	if(hasMatchingDescendant)
+		item->setOpen(true);
+	
+	return shouldShow;
+}
+
+//-----------------------------------------------------------------
+
+/**
+ * Recursively show all items in the tree - used when clearing the filter.
+ */
+void ScriptListView::showAllItems(QListViewItem* item) const
+{
+	while(item)
+	{
+		item->setVisible(true);
+		
+		if(item->firstChild())
+			showAllItems(item->firstChild());
+		
+		item = item->nextSibling();
+	}
+}
 
 // ======================================================================

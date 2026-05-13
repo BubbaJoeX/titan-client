@@ -48,6 +48,7 @@ public:
 	ActionHack*             m_regionsView;
 	ActionHack*             m_stackTool;
 	ActionHack*             m_fileServerTree;
+	ActionHack*             m_terrainDock;
 	//lint -restore
 
 public:
@@ -67,6 +68,7 @@ private slots:
 	void onRegionsView      (bool b) const;
 	void onStackTool        (bool b) const;
 	void onFileServerTree   (bool b) const;
+	void onTerrainDock      (bool b) const;
 
 private:
 	//disabled

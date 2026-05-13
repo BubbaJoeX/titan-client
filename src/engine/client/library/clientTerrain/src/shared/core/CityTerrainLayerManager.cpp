@@ -165,6 +165,9 @@ CityTerrainLayerManager::CityTerrainUiRefreshFn CityTerrainLayerManager::ms_city
 CityTerrainLayerManager::CityTerrainUiRefreshFn CityTerrainLayerManager::ms_cityTerrainUiRefreshSecondaryFn = 0;
 CityTerrainLayerManager::OpenCityTerrainPainterAlreadyActiveFn CityTerrainLayerManager::ms_openCityTerrainPainterAlreadyActiveFn = 0;
 CityTerrainLayerManager::OpenTerraformingAlreadyActiveFn CityTerrainLayerManager::ms_openTerraformingAlreadyActiveFn = 0;
+CityTerrainLayerManager::ExternalHeightModifierCallback CityTerrainLayerManager::ms_externalHeightModifierCallback = 0;
+CityTerrainLayerManager::ExternalShaderModifierCallback CityTerrainLayerManager::ms_externalShaderModifierCallback = 0;
+CityTerrainLayerManager::ExternalFloraModifierCallback CityTerrainLayerManager::ms_externalFloraModifierCallback = 0;
 bool CityTerrainLayerManager::ms_paintTileGridVisible = false;
 int32 CityTerrainLayerManager::ms_paintTileGridCityId = 0;
 
@@ -194,6 +197,9 @@ void CityTerrainLayerManager::remove()
 	ms_cityTerrainUiRefreshSecondaryFn = 0;
 	ms_openCityTerrainPainterAlreadyActiveFn = 0;
 	ms_openTerraformingAlreadyActiveFn = 0;
+	ms_externalHeightModifierCallback = 0;
+	ms_externalShaderModifierCallback = 0;
+	ms_externalFloraModifierCallback = 0;
 	ms_paintTileGridVisible = false;
 	ms_paintTileGridCityId = 0;
 	delete ms_instance;
@@ -334,6 +340,94 @@ void CityTerrainLayerManager::dispatchPaintResponse(bool success, std::string co
 
 // ----------------------------------------------------------------------
 
+void CityTerrainLayerManager::setExternalHeightModifierCallback(ExternalHeightModifierCallback callback)
+{
+	ms_externalHeightModifierCallback = callback;
+}
+
+// ----------------------------------------------------------------------
+
+void CityTerrainLayerManager::clearExternalHeightModifierCallback()
+{
+	ms_externalHeightModifierCallback = 0;
+}
+
+// ----------------------------------------------------------------------
+
+void CityTerrainLayerManager::setExternalShaderModifierCallback(ExternalShaderModifierCallback callback)
+{
+	ms_externalShaderModifierCallback = callback;
+}
+
+// ----------------------------------------------------------------------
+
+void CityTerrainLayerManager::clearExternalShaderModifierCallback()
+{
+	ms_externalShaderModifierCallback = 0;
+}
+
+// ----------------------------------------------------------------------
+
+bool CityTerrainLayerManager::getModifiedShader(float x, float z, int originalFamilyId, int & outFamilyId, float & outFeather)
+{
+	outFamilyId = originalFamilyId;
+	outFeather = 0.0f;
+
+	// Check external shader modifier (e.g., God Client terrain editing)
+	if (ms_externalShaderModifierCallback)
+	{
+		int modifiedFamilyId = originalFamilyId;
+		float modifiedFeather = 0.0f;
+		if (ms_externalShaderModifierCallback(x, z, originalFamilyId, modifiedFamilyId, modifiedFeather))
+		{
+			outFamilyId = modifiedFamilyId;
+			outFeather = modifiedFeather;
+			return true;
+		}
+	}
+
+	return false;
+}
+
+// ----------------------------------------------------------------------
+
+void CityTerrainLayerManager::setExternalFloraModifierCallback(ExternalFloraModifierCallback callback)
+{
+	ms_externalFloraModifierCallback = callback;
+}
+
+// ----------------------------------------------------------------------
+
+void CityTerrainLayerManager::clearExternalFloraModifierCallback()
+{
+	ms_externalFloraModifierCallback = 0;
+}
+
+// ----------------------------------------------------------------------
+
+bool CityTerrainLayerManager::getModifiedFlora(float x, float z, int originalFamilyId, int & outFamilyId, float & outDensity)
+{
+	outFamilyId = originalFamilyId;
+	outDensity = 0.0f;
+
+	// Check external flora modifier (e.g., God Client terrain editing)
+	if (ms_externalFloraModifierCallback)
+	{
+		int modifiedFamilyId = originalFamilyId;
+		float modifiedDensity = 0.0f;
+		if (ms_externalFloraModifierCallback(x, z, originalFamilyId, modifiedFamilyId, modifiedDensity))
+		{
+			outFamilyId = modifiedFamilyId;
+			outDensity = modifiedDensity;
+			return true;
+		}
+	}
+
+	return false;
+}
+
+// ----------------------------------------------------------------------
+
 void CityTerrainLayerManager::setCityTerrainUiRefreshFn(CityTerrainUiRefreshFn fn)
 {
 	ms_cityTerrainUiRefreshFn = fn;
@@ -374,12 +468,31 @@ void CityTerrainLayerManager::notifyCityTerrainUiRefresh(int32 cityId)
 
 bool CityTerrainLayerManager::getModifiedHeight(float x, float z, float originalHeight, float & outHeight)
 {
-	if (!ms_instance)
+	float currentHeight = originalHeight;
+	bool modified = false;
+
+	// First check city terrain modifications
+	if (ms_instance)
 	{
-		outHeight = originalHeight;
-		return false;
+		if (ms_instance->getModifiedHeightInternal(x, z, originalHeight, currentHeight))
+		{
+			modified = true;
+		}
 	}
-	return ms_instance->getModifiedHeightInternal(x, z, originalHeight, outHeight);
+
+	// Then check external height modifier (e.g., God Client terrain editing)
+	if (ms_externalHeightModifierCallback)
+	{
+		float externalHeight = currentHeight;
+		if (ms_externalHeightModifierCallback(x, z, currentHeight, externalHeight))
+		{
+			currentHeight = externalHeight;
+			modified = true;
+		}
+	}
+
+	outHeight = currentHeight;
+	return modified;
 }
 
 // ----------------------------------------------------------------------

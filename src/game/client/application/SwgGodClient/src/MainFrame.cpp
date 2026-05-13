@@ -41,6 +41,7 @@
 #include "ModificationHistory.h"
 #include "ObjectEditor.h"
 #include "StackerTool.h"
+#include "TerrainDock.h"
 #include "ObjectTemplateData.h"
 #include "RegionBrowser.h"
 #include "ServerCommander.h"
@@ -92,6 +93,7 @@ MainFrame::MainFrame(QWidget *theParent, const char *theName)
   m_bookmarkBrowser(0),
 	m_favoritesWindow(0),
 	m_stackTool(0),
+	m_terrainDockWidget(0),
   m_consoleDock(0),
   m_treeBrowserDock(0),
   m_objectEditorDock(0),
@@ -103,6 +105,7 @@ MainFrame::MainFrame(QWidget *theParent, const char *theName)
 	m_favoritesWindowDock(0),
 	m_stackToolDock(0),
 	m_fileServerTreeDock(0),
+	m_terrainDock(0),
 	m_fileServerTree(0),
 	m_templateEditor(0),
 	m_datatableEditor(0),
@@ -242,6 +245,14 @@ MainFrame::MainFrame(QWidget *theParent, const char *theName)
 		m_fileServerTreeDock->setCloseMode(QDockWindow::Always);
 		m_fileServerTreeDock->hide();
 		m_fileServerTree = 0;
+
+		m_terrainDock = new QDockWindow(QDockWindow::InDock, this, "Terrain Editor");
+		m_terrainDockWidget = new TerrainDock(m_terrainDock, "TerrainDock Widget");
+		m_terrainDock->setWidget(m_terrainDockWidget);
+		m_terrainDock->setResizeEnabled(true);
+		QMainWindow::addDockWindow(m_terrainDock, Qt::Right);
+		m_terrainDock->setCloseMode(QDockWindow::Always);
+		m_terrainDock->hide();
 
 		m_templateEditor  = 0;
 		m_datatableEditor = new DatatableEditorWindow(0, "DatatableEditor");
@@ -517,6 +528,7 @@ MainFrame::MainFrame(QWidget *theParent, const char *theName)
 			IGNORE_RETURN(m_actionsWindow->m_gameWindow->addTo       (&m_menus.window.menu));
 			IGNORE_RETURN(m_actionsWindow->m_regionsView->addTo      (&m_menus.window.menu));
 			IGNORE_RETURN(m_actionsWindow->m_stackTool->addTo        (&m_menus.window.menu));
+			IGNORE_RETURN(m_actionsWindow->m_terrainDock->addTo      (&m_menus.window.menu));
 
 			IGNORE_RETURN(m_menus.window.menu.insertSeparator());
 
@@ -627,7 +639,9 @@ MainFrame::~MainFrame()
 	m_favoritesWindowDock   = 0;
 	m_regionsViewDock       = 0;
 	m_fileServerTreeDock    = 0;
-	m_fileServerTree       = 0;
+	m_fileServerTree        = 0;
+	m_terrainDock           = 0;
+	m_terrainDockWidget     = 0;
 	m_actionsGame           = 0;
 	m_actionsEdit           = 0;
 	m_actionsView           = 0;
@@ -1024,6 +1038,7 @@ void MainFrame::showEvent(QShowEvent * event)
 	m_actionsWindow->m_advancedCopyPaste->setOn(m_advancedCopyPasteDock->isVisible());
 	m_actionsWindow->m_console->setOn(m_consoleDock->isVisible());
 		m_actionsWindow->m_gameWindow->setOn(m_gameWindow->isVisible());
+		m_actionsWindow->m_terrainDock->setOn(m_terrainDock->isVisible());
 	}
 
 	QMainWindow::showEvent(event);
