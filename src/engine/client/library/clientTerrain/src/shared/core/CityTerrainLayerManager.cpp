@@ -145,10 +145,8 @@ namespace
 			Vector cur(x0 + dx * t, 0.f, z0 + dz * t);
 			if (!terrain.getHeight(cur, cur.y))
 				continue;
-#ifdef _DEBUG
 			camera.addDebugPrimitive(
 				new Line3dDebugPrimitive(Line3dDebugPrimitive::S_none, Transform::identity, prev, cur, color));
-#endif
 			prev = cur;
 		}
 	}
@@ -1156,11 +1154,6 @@ void CityTerrainLayerManager::addPaintTileGridDebugPrimitives(Camera const & cam
 	if (!ms_paintTileGridVisible)
 		return;
 
-#ifndef _DEBUG
-	(void)camera;
-	return;
-#else
-
 	TerrainObject const * const terrainObject = TerrainObject::getConstInstance();
 	if (!terrainObject)
 		return;
@@ -1171,10 +1164,15 @@ void CityTerrainLayerManager::addPaintTileGridDebugPrimitives(Camera const & cam
 
 	ProceduralTerrainAppearance const * const proceduralAppearance =
 		dynamic_cast<ProceduralTerrainAppearance const *>(appearance);
-	if (!proceduralAppearance || !proceduralAppearance->getAppearanceTemplate())
+	if (!proceduralAppearance)
 		return;
 
-	float const tileW = proceduralAppearance->getAppearanceTemplate()->getTileWidthInMeters();
+	ProceduralTerrainAppearanceTemplate const * const terrainTemplate =
+		dynamic_cast<ProceduralTerrainAppearanceTemplate const *>(proceduralAppearance->getAppearanceTemplate());
+	if (!terrainTemplate)
+		return;
+
+	float const tileW = terrainTemplate->getTileWidthInMeters();
 	if (tileW < 0.01f)
 		return;
 
@@ -1232,7 +1230,6 @@ void CityTerrainLayerManager::addPaintTileGridDebugPrimitives(Camera const & cam
 		float const z = static_cast<float>(k) * tileW;
 		addTerrainHeightLineStrip(*terrainObject, camera, x0, z, x1, z, color);
 	}
-#endif // _DEBUG
 }
 
 // ----------------------------------------------------------------------

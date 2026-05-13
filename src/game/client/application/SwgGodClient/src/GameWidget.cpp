@@ -966,7 +966,7 @@ void GameWidget::mouseMoveEvent(QMouseEvent*mouseEvent)
 		TerrainDock* terrainDock = MainFrame::getInstance().getTerrainDock();
 		if (terrainDock && terrainDock->isTerrainEditingActive())
 		{
-			if (terrainDock->handleMouseMove(pt.x(), pt.y()))
+			if (terrainDock->handleMouseMove(pt.x(), pt.y(), static_cast<int>(mouseEvent->state())))
 			{
 				// Terrain editing handled the mouse move
 				m_lastMousePoint = mouseEvent->pos();
@@ -1302,25 +1302,27 @@ void GameWidget::mousePressEvent(QMouseEvent*mouseEvent)
 
 	if(!m_gameHasFocus)
 	{
-		if(CuiManager::getPointerInputActive())
-		{
-			ActionsGame::getInstance().gameFocusAllowed->doToggle(true);
-			CuiManager::getIoWin().warpCursor(mouseEvent->x(), mouseEvent->y());
-			return;
-		}
-
-		// Check for terrain editing - forward to TerrainDock if active
+		// Terrain left-click must run before pointer-input handling — otherwise
+		// pointer-warp swallows paint events even when the terrain dock is active.
 		if (mouseEvent->button() == Qt::LeftButton)
 		{
 			TerrainDock* terrainDock = MainFrame::getInstance().getTerrainDock();
 			if (terrainDock && terrainDock->isTerrainEditingActive())
 			{
-				if (terrainDock->handleMousePress(mouseEvent->x(), mouseEvent->y(), 1, static_cast<int>(mouseEvent->state())))
+				const int st = static_cast<int>(mouseEvent->state());
+				if (terrainDock->handleMousePress(mouseEvent->x(), mouseEvent->y(), 1, st))
 				{
 					m_discardNextMouseRelease = true;
 					return;
 				}
 			}
+		}
+
+		if(CuiManager::getPointerInputActive())
+		{
+			ActionsGame::getInstance().gameFocusAllowed->doToggle(true);
+			CuiManager::getIoWin().warpCursor(mouseEvent->x(), mouseEvent->y());
+			return;
 		}
 
 		m_mouseDownPoint = m_lastMousePoint = mouseEvent->pos();
@@ -1379,13 +1381,21 @@ void GameWidget::mouseReleaseEvent(QMouseEvent*mouseEvent)
 	{
 		m_autoDraggingObjects = false;
 		
-		// Forward terrain editing release event
+		// Forward terrain editing release (including orphaned strokes after tool switched to TM_None).
 		if (!m_gameHasFocus)
 		{
 			TerrainDock* terrainDock = MainFrame::getInstance().getTerrainDock();
-			if (terrainDock && terrainDock->isTerrainEditingActive())
+			if (terrainDock)
 			{
-				terrainDock->handleMouseRelease(mouseEvent->x(), mouseEvent->y(), 1);
+				bool const dockEditing = terrainDock->isTerrainEditingActive();
+				bool const orphanStroke =
+					GodClientTerrainEditor::isInstalled() &&
+					GodClientTerrainEditor::getInstance().isBrushStrokeActive();
+
+				if (dockEditing || orphanStroke)
+				{
+					terrainDock->handleMouseRelease(mouseEvent->x(), mouseEvent->y(), 1);
+				}
 			}
 		}
 	}

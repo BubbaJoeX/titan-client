@@ -113,8 +113,10 @@ bool SetupClientGraphics::install(const Data &data)
 
 		Texture::install();
 
-#ifdef _DEBUG
+		// God Client terrain / city overlays use Line3dDebugPrimitive in Release; pool must exist or operator new/delete fault.
 		Line3dDebugPrimitive::install ();
+
+#ifdef _DEBUG
 		Line2dDebugPrimitive::install ();
 		FrameDebugPrimitive::install ();
 		FrustumDebugPrimitive::install ();

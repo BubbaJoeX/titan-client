@@ -702,8 +702,9 @@ void Camera::addDebugPrimitive(DebugPrimitive *debugPrimitive) const
 
 void Camera::endScene(void) const
 {
-	ShaderPrimitiveSorter::clearCurrentCamera();
-
+	// Debug primitives often use Graphics helpers that assume a current camera is set via
+	// beginScene() / setCurrentCamera(). clearCurrentCamera() must run only after they render;
+	// otherwise release builds can null-deref inside getCurrentCamera() ([NOT_NULL] is elided when !_DEBUG).
 	if (debugPrimitives)
 	{
 		DebugPrimitives::iterator end = debugPrimitives->end();
@@ -714,6 +715,8 @@ void Camera::endScene(void) const
 		}
 		debugPrimitives->clear();
 	}
+
+	ShaderPrimitiveSorter::clearCurrentCamera();
 
 #ifdef _DEBUG
 	DEBUG_REPORT_PRINT(reportCamera, ("cam: %d=tested %d=added\n", numberOfSphereTests, numberOfObjectsAdded));

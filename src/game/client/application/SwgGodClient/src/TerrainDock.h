@@ -16,6 +16,9 @@
 #include "BaseTerrainDock.h"
 #include "sharedMessageDispatch/Receiver.h"
 
+#include <qstring.h>
+#include <qstringlist.h>
+
 // ======================================================================
 
 class ClientProceduralTerrainAppearance;
@@ -118,6 +121,14 @@ public:
 	bool        hasActiveTerrain() const;
 	const char* getTerrainFilePath() const;
 
+	/// True while a rectangular world region is selected (Select Region / drag tool).
+	bool        hasTerrainWorldRegionSelection() const;
+
+	/// When a world region is selected, Edit menu copy/paste/cut can target terrain instead of objects.
+	bool        tryConsumeTerrainRegionCopyShortcut();
+	bool        tryConsumeTerrainRegionPasteShortcut();
+	bool        tryConsumeTerrainRegionCutShortcut();
+
 	// MessageDispatch::Receiver interface
 	virtual void receiveMessage(const MessageDispatch::Emitter& source, const MessageDispatch::MessageBase& message);
 
@@ -181,6 +192,12 @@ public slots:
 	// Refresh from scene
 	void onRefreshFromScene();
 
+	// Shader catalog (cross-planet .trn sources)
+	void onGlobalShaderSelectionChanged(QListViewItem* item);
+	void onRescanGlobalShadersClicked();
+	void onAddTerrainScanFolderClicked();
+	void onMergeGlobalShaderIntoSceneClicked();
+
 	// Region operations
 	void onSelectRegion();
 	void onCopyRegion();
@@ -229,6 +246,15 @@ private:
 	void initializeUI();
 	void populateLayerList();
 	void populateShaderList();
+	void syncGlobalShaderCatalog();
+	void rebuildGlobalShaderCatalogBody(QString const& sceneTerrainTrnCanon);
+	void updateSceneShaderListSelectionAfterPopulate(TerrainGenerator const* generator);
+	void loadTerrainShaderScanRootsFromSettings();
+	void saveTerrainShaderScanRootsToSettings() const;
+
+	bool terrainCopyWorldRegionIntoClipboard(bool postConsoleMessageOnSuccess);
+	bool terrainPasteClipboardIntoWorldRegion(bool postConsoleMessageOnSuccess);
+
 	void populateFloraList();
 	void populateRadialList();
 	void populateWaterShaderList();
@@ -236,13 +262,16 @@ private:
 	void updateToolButtonStates();
 	void updateUndoRedoState();
 
+	/// Push current dock tool + brush parameters into GodClientTerrainEditor (on tool change and before painting).
+	void syncGodClientEditorBrushSettings();
+
 	// Terrain modification helpers
 	void applyBrushToTerrain(float worldX, float worldZ);
 	void modifyHeightAtPoint(float worldX, float worldZ, float amount);
 	void smoothHeightAtPoint(float worldX, float worldZ);
 	void flattenHeightAtPoint(float worldX, float worldZ, float targetHeight);
 	void addNoiseAtPoint(float worldX, float worldZ);
-	void paintShaderAtPoint(float worldX, float worldZ, int shaderIndex);
+	void paintShaderAtPoint(float worldX, float worldZ, int shaderFamilyId);
 	void placeFloraAtPoint(float worldX, float worldZ, int floraFamily);
 
 	// Brush calculation helpers
@@ -266,11 +295,14 @@ private:
 	ProceduralTerrainAppearanceTemplate* getTerrainTemplate() const;
 	TerrainGenerator* getTerrainGenerator() const;
 
+	/// Alt+Maya camera should win over brush tools unless the tool binds Alt (road/ribbon).
+	bool cameraModifierOverridesTerrainInput(int qtButtonState) const;
+
 public:
 	// Mouse event handlers for terrain editing (called from GameWidget)
 	bool handleMousePress(int screenX, int screenY, int button, int qtButtonState = 0);
 	bool handleMouseRelease(int screenX, int screenY, int button);
-	bool handleMouseMove(int screenX, int screenY);
+	bool handleMouseMove(int screenX, int screenY, int qtButtonState = 0);
 	
 	// Frame update for brush preview rendering
 	void updateFrame(float elapsedTime);
@@ -301,7 +333,7 @@ private:
 	int                       m_radialGroupIndex;
 
 	// Selected shader for painting
-	int                       m_selectedShaderIndex;
+	int                       m_selectedShaderFamilyId;
 
 	// Flora settings
 	bool                      m_floraCollidable;
@@ -373,6 +405,22 @@ private:
 		                    widthSamples(0), heightSamples(0), hasData(false) {}
 	};
 	RegionClipboard           m_regionClipboard;
+
+	/// Prevents reciprocal QListView handlers when clearing the other shader list selection.
+	bool                       m_shaderUiSyncGuard;
+
+	/// When true, paint Shader uses \ref m_selectedShaderFamilyId from the global shader catalog list.
+	bool                       m_globalShaderPaintingSelection;
+
+	/// Extra folders recursively scanned for .trn files (persisted via QSettings /SOE/SwgGodClient TerrainDock group).
+	QStringList                m_globalShaderScanExtraRoots;
+
+	QString                    m_cachedSceneTerrainTrnCanonForGlobalExclude;
+	int                        m_globalShaderCatalogStamp;
+	int                        m_globalShaderCatalogBuiltStamp;
+
+	int                        m_savedGlobalPickFamilyId;
+	QString                    m_savedGlobalPickTrnCanon;
 
 	// Message callback
 	MessageDispatch::Callback* m_callback;

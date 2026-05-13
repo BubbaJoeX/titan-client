@@ -271,6 +271,9 @@ public:
 	// Apply sampled heights over a rectangle (row-major nx*nz), with editor undo support
 	bool applyRectangularHeightSamples(float minX, float minZ, float maxX, float maxZ, int nx, int nz, const float* heightsRowMajor);
 
+	/// Apply exclude + non-passable affectors inside a world rectangle (TerrainGenerator layers).
+	bool applyRectangleExcludeAndNonPassable(float minX, float minZ, float maxX, float maxZ);
+
 	static void nudgeGodClientCameraToRefreshDpvs();
 
 	// Region selection

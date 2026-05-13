@@ -20,6 +20,7 @@
 #include "MainFrame.h"
 #include "ModificationHistory.h"
 #include "ServerCommander.h"
+#include "TerrainDock.h"
 #include "TriggerWindow.h"
 #include "clientGame/ClientObject.h"
 #include "clientGame/FormManagerClient.h"
@@ -358,6 +359,10 @@ void ActionsEdit::onRedo() const
  */
 void ActionsEdit::onCopy() const
 {
+	TerrainDock* const terrainDock(MainFrame::getInstance().getTerrainDock());
+	if (terrainDock && terrainDock->tryConsumeTerrainRegionCopyShortcut())
+		return;
+
 	GodClientData::getInstance().copySelection();
 }
 
@@ -368,6 +373,10 @@ void ActionsEdit::onCopy() const
  */
 void ActionsEdit::onPaste() const
 {
+	TerrainDock* const terrainDock(MainFrame::getInstance().getTerrainDock());
+	if (terrainDock && terrainDock->tryConsumeTerrainRegionPasteShortcut())
+		return;
+
 	GodClientData * const gcd = &GodClientData::getInstance();
 
 	GodClientData::ClipboardList_t clip;
@@ -506,6 +515,10 @@ void ActionsEdit::internalPaste(GodClientData::ClipboardList_t& clip, bool paste
  */
 void ActionsEdit::onCut() const
 {
+	TerrainDock* const terrainDock(MainFrame::getInstance().getTerrainDock());
+	if (terrainDock && terrainDock->tryConsumeTerrainRegionCutShortcut())
+		return;
+
 	GodClientData::getInstance().copySelection();
 	internalDeleteSelection(false);
 }

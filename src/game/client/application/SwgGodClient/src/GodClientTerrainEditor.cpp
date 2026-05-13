@@ -33,6 +33,7 @@
 #include "sharedTerrain/AffectorRibbon.h"
 #include "sharedTerrain/AffectorRoad.h"
 #include "sharedTerrain/AffectorShader.h"
+#include "sharedTerrain/AffectorPassable.h"
 #include "sharedTerrain/AffectorFloraStatic.h"
 #include "sharedTerrain/AffectorEnvironment.h"
 #include "sharedTerrain/Boundary.h"
@@ -102,8 +103,8 @@ using namespace GodClientTerrainEditorNamespace;
 // ======================================================================
 
 GodClientTerrainEditor* GodClientTerrainEditor::ms_instance = 0;
-const float GodClientTerrainEditor::MIN_MODIFICATION_INTERVAL = 0.016f; // ~60fps
-const float GodClientTerrainEditor::REALTIME_INVALIDATION_INTERVAL = 0.15f; // 150ms for smooth visual updates
+const float GodClientTerrainEditor::MIN_MODIFICATION_INTERVAL = 0.012f; // slight headroom above 60Hz
+const float GodClientTerrainEditor::REALTIME_INVALIDATION_INTERVAL = 0.045f; // ~22Hz live mesh refresh while stroking
 
 // ======================================================================
 
@@ -186,7 +187,7 @@ GodClientTerrainEditor::GodClientTerrainEditor() :
 	m_regionMinZ(0.0f),
 	m_regionMaxX(0.0f),
 	m_regionMaxZ(0.0f),
-	m_lastModificationTime(0.0f),
+	m_lastModificationTime(-1.0e9f),
 	m_lastInvalidationTime(0.0f),
 	m_dirtyRegionMinX(0.0f),
 	m_dirtyRegionMinZ(0.0f),
@@ -352,17 +353,20 @@ bool GodClientTerrainEditor::beginBrushStroke(float worldX, float worldZ)
 	if (m_toolMode == TM_None)
 		return false;
 
+	// Commit any in-progress stroke (e.g. missed mouse-release) before starting anew.
+	if (m_brushStrokeActive)
+		endBrushStroke();
+
 	m_brushStrokeActive = true;
 	m_lastStrokeX = worldX;
 	m_lastStrokeZ = worldZ;
 
 	// Reset dirty region tracking for new stroke
 	m_hasDirtyRegion = false;
-	m_dirtyRegionMinX = 0.0f;
-	m_dirtyRegionMinZ = 0.0f;
-	m_dirtyRegionMaxX = 0.0f;
-	m_dirtyRegionMaxZ = 0.0f;
-	m_lastInvalidationTime = Clock::frameTime();
+	const float ft = Clock::frameTime();
+	// Allow immediate realtime invalidation on the first sample of each stroke (otherwise
+	// lastInvalidationTime == frameTime from below suppresses invalidate until REALTIME_* elapses).
+	m_lastInvalidationTime = ft - REALTIME_INVALIDATION_INTERVAL - 1.0e-3f;
 
 	// Initialize current stroke
 	m_currentStroke.centerX = worldX;
@@ -407,8 +411,13 @@ void GodClientTerrainEditor::continueBrushStroke(float worldX, float worldZ)
 	const float dz = worldZ - m_lastStrokeZ;
 	const float distSq = dx * dx + dz * dz;
 	
-	// Minimum distance is a fraction of brush size
-	const float minDistSq = (m_brushSize * 0.1f) * (m_brushSize * 0.1f);
+	// Minimum travel before re-sampling (smaller = smoother live feedback while dragging).
+	// Height tools use a coarser step to limit CPU; shader/flora/water repaint much cheaper per cell.
+	float minFrac = 0.1f;
+	if (m_toolMode == TM_PaintShader || m_toolMode == TM_PaintFlora || m_toolMode == TM_PlaceWater)
+		minFrac = 0.004f;
+	const float minDist = std::max(0.05f, m_brushSize * minFrac);
+	const float minDistSq = minDist * minDist;
 	
 	if (distSq >= minDistSq)
 	{
@@ -477,10 +486,14 @@ void GodClientTerrainEditor::applyBrushAtPoint(float worldX, float worldZ)
 	if (m_toolMode == TM_None)
 		return;
 
-	// Rate limiting for modification calculations
 	const float currentTime = Clock::frameTime();
-	if (currentTime - m_lastModificationTime < MIN_MODIFICATION_INTERVAL)
-		return;
+
+	// While dragging a stroke, apply on every sample (no time throttle) so the mesh can track the brush.
+	if (!m_brushStrokeActive)
+	{
+		if (currentTime - m_lastModificationTime < MIN_MODIFICATION_INTERVAL)
+			return;
+	}
 	m_lastModificationTime = currentTime;
 
 	// Apply based on tool mode
@@ -555,23 +568,8 @@ void GodClientTerrainEditor::applyBrushAtPoint(float worldX, float worldZ)
 			m_dirtyRegionMaxZ = worldZ + regionRadius;
 	}
 
-	// Rate-limited terrain invalidation for smooth real-time updates
-	// Only invalidate at intervals during brush stroke, not every frame
-	if (m_brushStrokeActive)
-	{
-		if (currentTime - m_lastInvalidationTime >= REALTIME_INVALIDATION_INTERVAL)
-		{
-			// Invalidate only the current brush area for smooth feedback
-			invalidateTerrainRegion(worldX, worldZ, regionRadius);
-			m_lastInvalidationTime = currentTime;
-		}
-	}
-	else
-	{
-		// Not in active stroke, invalidate immediately
-		invalidateTerrainRegion(worldX, worldZ, regionRadius);
-		m_lastInvalidationTime = currentTime;
-	}
+	invalidateTerrainRegion(worldX, worldZ, regionRadius);
+	m_lastInvalidationTime = currentTime;
 }
 
 // ----------------------------------------------------------------------
@@ -1295,26 +1293,46 @@ void GodClientTerrainEditor::clearHistory()
 
 void GodClientTerrainEditor::flushTerrainChanges()
 {
-	// Force terrain regeneration for all modified areas
 	TerrainObject* const terrainObject = TerrainObject::getInstance();
 	if (!terrainObject)
 		return;
 
-	// Find bounds of all modifications
-	if (m_heightModifications.empty())
-		return;
-
 	float minX = 1e9f, maxX = -1e9f;
 	float minZ = 1e9f, maxZ = -1e9f;
+	bool hasBounds = false;
 
 	for (HeightModificationMap::const_iterator it = m_heightModifications.begin(); it != m_heightModifications.end(); ++it)
 	{
-		const HeightModification& mod = it->second;
+		HeightModification const& mod = it->second;
+		hasBounds = true;
 		if (mod.worldX < minX) minX = mod.worldX;
 		if (mod.worldX > maxX) maxX = mod.worldX;
 		if (mod.worldZ < minZ) minZ = mod.worldZ;
 		if (mod.worldZ > maxZ) maxZ = mod.worldZ;
 	}
+
+	for (ShaderModificationMap::const_iterator it = m_shaderModifications.begin(); it != m_shaderModifications.end(); ++it)
+	{
+		ShaderModification const& mod = it->second;
+		hasBounds = true;
+		if (mod.worldX < minX) minX = mod.worldX;
+		if (mod.worldX > maxX) maxX = mod.worldX;
+		if (mod.worldZ < minZ) minZ = mod.worldZ;
+		if (mod.worldZ > maxZ) maxZ = mod.worldZ;
+	}
+
+	for (FloraModificationMap::const_iterator it = m_floraModifications.begin(); it != m_floraModifications.end(); ++it)
+	{
+		FloraModification const& mod = it->second;
+		hasBounds = true;
+		if (mod.worldX < minX) minX = mod.worldX;
+		if (mod.worldX > maxX) maxX = mod.worldX;
+		if (mod.worldZ < minZ) minZ = mod.worldZ;
+		if (mod.worldZ > maxZ) maxZ = mod.worldZ;
+	}
+
+	if (!hasBounds)
+		return;
 
 	const float margin = 32.0f;
 	Rectangle2d extent2d(minX - margin, minZ - margin, maxX + margin, maxZ + margin);
@@ -1333,12 +1351,19 @@ void GodClientTerrainEditor::nudgeGodClientCameraToRefreshDpvs()
 	if (!cam)
 		return;
 
-	static float const nudge = 0.002f;
+	const bool wasInterpolating = cam->getInterpolating();
+	cam->setInterpolating(false);
+
+	// Small translate nudge so streaming / visibility uses a fresh camera pose; 0.002f was
+	// too subtle for some DPVS paths after procedural chunk rebuilds.
+	static float const nudge = 0.05f;
 	FreeCamera::Info info(cam->getInfo());
 	info.translate.x += nudge;
 	cam->setInfo(info);
 	info.translate.x -= nudge;
 	cam->setInfo(info);
+
+	cam->setInterpolating(wasInterpolating);
 }
 
 // ----------------------------------------------------------------------
@@ -1578,6 +1603,67 @@ bool GodClientTerrainEditor::applyRectangularHeightSamples(
 
 // ----------------------------------------------------------------------
 
+bool GodClientTerrainEditor::applyRectangleExcludeAndNonPassable(float minX, float minZ, float maxX, float maxZ)
+{
+	float const ax0 = std::min(minX, maxX);
+	float const az0 = std::min(minZ, maxZ);
+	float const ax1 = std::max(minX, maxX);
+	float const az1 = std::max(minZ, maxZ);
+
+	static const float kMinExtent = 0.5f;
+	if ((ax1 - ax0) < kMinExtent || (az1 - az0) < kMinExtent)
+		return false;
+
+	TerrainGenerator* const generator = getTerrainGenerator();
+	if (!generator)
+		return false;
+
+	Rectangle2d const rect(ax0, az0, ax1, az1);
+
+	TerrainGenerator::Layer* const layer = new TerrainGenerator::Layer();
+
+	char layerName[128];
+	static int s_godClientCutLayerSerial = 0;
+	snprintf(layerName, sizeof(layerName), "GodClientTerrainCut_%d", s_godClientCutLayerSerial++);
+
+	layer->setName(layerName);
+	layer->setActive(true);
+
+	BoundaryRectangle* const boundary = new BoundaryRectangle();
+	boundary->setName("Terrain cut (exclude/non-passable)");
+	boundary->setRectangle(rect);
+	boundary->setFeatherDistance(0.0f);
+	layer->addBoundary(boundary);
+
+	AffectorExclude* const ex = new AffectorExclude();
+	ex->setName("Exclude Flora");
+	layer->addAffector(ex);
+
+	AffectorPassable* const pass = new AffectorPassable();
+	pass->setName("Non-passable");
+	pass->setPassable(false);
+	pass->setFeatherThreshold(0.0f);
+	layer->addAffector(pass);
+
+	generator->addLayer(layer);
+	m_createdLayers.push_back(layerName);
+
+	TerrainObject* const terrainObject = TerrainObject::getInstance();
+	if (terrainObject)
+	{
+		float const margin = 32.0f;
+		Rectangle2d extent2d(ax0 - margin, az0 - margin, ax1 + margin, az1 + margin);
+		terrainObject->invalidateRegion(extent2d);
+	}
+
+	flushTerrainChanges();
+	nudgeGodClientCameraToRefreshDpvs();
+
+	return true;
+}
+
+// ----------------------------------------------------------------------
+
 void GodClientTerrainEditor::renderTerrainDebugOverlays(
 	Camera const & camera,
 	bool const wireframeGrid,
@@ -1761,26 +1847,29 @@ void GodClientTerrainEditor::modifyShaderPaint(float worldX, float worldZ, int s
 				const uint64 key = (static_cast<uint64>(ix + 32768) << 32) |
 				                   static_cast<uint64>(iz + 32768);
 
+				float const feather01 = std::max(0.0f, std::min(1.0f, effect * strength));
+
 				ShaderModification mod;
 				mod.worldX = x;
 				mod.worldZ = z;
 				mod.modifiedFamilyId = shaderFamilyId;
-				mod.featherAmount = effect * strength * m_brushFeather;
 
 				ShaderModificationMap::iterator it = m_shaderModifications.find(key);
 				if (it != m_shaderModifications.end())
 				{
 					mod.originalFamilyId = it->second.originalFamilyId;
-					if (mod.featherAmount > it->second.featherAmount)
-					{
-						m_shaderModifications[key] = mod;
-					}
+					if (shaderFamilyId == it->second.modifiedFamilyId)
+						mod.featherAmount = std::max(feather01, it->second.featherAmount);
+					else
+						mod.featherAmount = feather01;
 				}
 				else
 				{
 					mod.originalFamilyId = -1;
-					m_shaderModifications[key] = mod;
+					mod.featherAmount = feather01;
 				}
+
+				m_shaderModifications[key] = mod;
 			}
 		}
 	}
@@ -2273,7 +2362,6 @@ void GodClientTerrainEditor::renderPolylinePreview(const Camera& camera) const
 		VectorArgb(1.0f, 0.0f, 0.5f, 1.0f) : 
 		VectorArgb(1.0f, 0.8f, 0.4f, 0.0f);
 
-#ifdef _DEBUG
 	for (size_t i = 0; i < m_activePolyline.controlPoints.size(); ++i)
 	{
 		const ControlPoint& point = m_activePolyline.controlPoints[i];
@@ -2311,9 +2399,6 @@ void GodClientTerrainEditor::renderPolylinePreview(const Camera& camera) const
 		camera.addDebugPrimitive(new Line3dDebugPrimitive(
 			Line3dDebugPrimitive::S_none, Transform::identity, start, end, lineColor));
 	}
-#else
-	UNREF(camera);
-#endif
 }
 
 // ======================================================================
