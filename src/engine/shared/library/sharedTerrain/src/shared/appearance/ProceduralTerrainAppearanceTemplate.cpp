@@ -489,10 +489,9 @@ void ProceduralTerrainAppearanceTemplate::createWaterTableAndRibbonQuadLists (co
 		int i;
 		for (i = 0; i < layer->getNumberOfLayers (); i++)
 		{
-			if (layer->getLayer (i)->isActive ())
-			{
-				createWaterTableAndRibbonQuadLists (layer->getLayer (i));
-			}
+			const TerrainGenerator::Layer* const subLayer = layer->getLayer (i);
+			if (subLayer && subLayer->isActive ())
+				createWaterTableAndRibbonQuadLists (subLayer);
 		}
 	}
 }
@@ -513,10 +512,9 @@ void ProceduralTerrainAppearanceTemplate::createWaterTableAndRibbonQuadLists ()
 	int i;
 	for (i = 0; i < m_terrainGenerator->getNumberOfLayers (); i++)
 	{
-		if (m_terrainGenerator->getLayer (i)->isActive ())
-		{
-			createWaterTableAndRibbonQuadLists (m_terrainGenerator->getLayer (i));
-		}
+		const TerrainGenerator::Layer* const lyr = m_terrainGenerator->getLayer (i);
+		if (lyr && lyr->isActive ())
+			createWaterTableAndRibbonQuadLists (lyr);
 	}
 }
 

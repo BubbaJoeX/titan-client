@@ -51,6 +51,7 @@
 
 #include <qfiledialog.h>
 #include <qinputdialog.h>
+#include <qlineedit.h>
 #include <qlistview.h>
 #include <qmessagebox.h>
 #include <qpushbutton.h>
@@ -76,6 +77,8 @@
 #endif
 #include <algorithm>
 #include <map>
+#include <set>
+#include <string>
 #include <vector>
 
 // ======================================================================
@@ -174,6 +177,115 @@ namespace
 			terrainDockGatherTrnsUnderDirectory(subCanon, outFilePathsCanonOrdered, seenCanon, scanBudgetRemaining, depthBudget - 1);
 			if (scanBudgetRemaining <= 0)
 				return;
+		}
+	}
+
+	// God Client SKU client compiled shaders: scan only sys.client/.../shader for .sht whose basename starts with "wter_".
+	void terrainDockGatherWaterShaderTemplatesFromDisk(std::vector<std::pair<QString, std::string> >& out, std::set<std::string>& seen, int& budget)
+	{
+		if (budget <= 0)
+			return;
+
+		QStringList roots;
+		{
+			// Primary data root for SwgGodClient water shader templates (matches local compiled client pack).
+			QFileInfo const fi(QString::fromLatin1("D:/titan/data/sku.0/sys.client/compiled/game/shader"));
+			if (fi.exists() && fi.isDir())
+				roots.append(fi.absFilePath());
+		}
+
+		if (roots.isEmpty())
+			return;
+
+		for (QStringList::Iterator r = roots.begin(); r != roots.end(); ++r)
+		{
+			QDir rootDir(*r);
+			if (!rootDir.exists() || !rootDir.isReadable())
+				continue;
+
+			QString const rootCanon(rootDir.absPath());
+
+			// QStringList entryList avoids QPtrList<QFileInfo> / entryInfoList pointer quirks on some Qt3 builds.
+			QStringList topNames(rootDir.entryList(QString::fromLatin1("*.sht"), QDir::Files, QDir::Name));
+			for (QStringList::Iterator tn = topNames.begin(); tn != topNames.end(); ++tn)
+			{
+				if (budget <= 0)
+					return;
+
+				QString const nameOnly(*tn);
+				if (nameOnly.isEmpty())
+					continue;
+
+				QString const fullPath(rootDir.absFilePath(nameOnly));
+				QFileInfo const fi(fullPath);
+				if (!fi.exists() || !fi.isFile())
+					continue;
+
+				QString const base(fi.baseName());
+#ifdef _WIN32
+				QString const b(base.lower());
+#else
+				QString const b(base);
+#endif
+				if (b.find(QString::fromLatin1("wter_")) != 0)
+					continue;
+
+				char const* const lat = base.latin1();
+				std::string const tpl(lat ? lat : "");
+				if (tpl.empty())
+					continue;
+				if (!seen.insert(tpl).second)
+					continue;
+
+				out.push_back(std::make_pair(QString::fromLatin1("%1 (%2)").arg(base).arg(fullPath), tpl));
+				--budget;
+			}
+
+			QStringList subNames(rootDir.entryList(QDir::Dirs));
+			for (QStringList::Iterator sd = subNames.begin(); sd != subNames.end(); ++sd)
+			{
+				if ((*sd) == "." || (*sd) == "..")
+					continue;
+				QDir subDir(rootCanon + "/" + (*sd));
+				if (!subDir.exists() || !subDir.isReadable())
+					continue;
+
+				QStringList subShts(subDir.entryList(QString::fromLatin1("*.sht"), QDir::Files, QDir::Name));
+				for (QStringList::Iterator sn = subShts.begin(); sn != subShts.end(); ++sn)
+				{
+					if (budget <= 0)
+						return;
+
+					QString const nameOnly(*sn);
+					if (nameOnly.isEmpty())
+						continue;
+
+					QString const fullPath(subDir.absFilePath(nameOnly));
+					QFileInfo const fi(fullPath);
+					if (!fi.exists() || !fi.isFile())
+						continue;
+
+					QString const base(fi.baseName());
+#ifdef _WIN32
+					QString const b(base.lower());
+#else
+					QString const b(base);
+#endif
+					if (b.find(QString::fromLatin1("wter_")) != 0)
+						continue;
+
+					QString const rel((*sd) + "/" + base);
+					char const* const latRel = rel.latin1();
+					std::string const tpl(latRel ? latRel : "");
+					if (tpl.empty())
+						continue;
+					if (!seen.insert(tpl).second)
+						continue;
+
+					out.push_back(std::make_pair(QString::fromLatin1("%1 (%2)").arg(rel).arg(fullPath), tpl));
+					--budget;
+				}
+			}
 		}
 	}
 
@@ -422,6 +534,10 @@ TerrainDock::TerrainDock(QWidget* parent, const char* name)
   m_regionMinZ(0.0f),
   m_regionMaxX(0.0f),
   m_regionMaxZ(0.0f),
+  m_regionSelectionShape(RSS_Rectangle),
+  m_regionCircleCenterX(0.0f),
+  m_regionCircleCenterZ(0.0f),
+  m_regionCircleRadius(0.0f),
   m_terrainFilePath(),
   m_terrainModified(false),
   m_undoStack(),
@@ -433,7 +549,9 @@ TerrainDock::TerrainDock(QWidget* parent, const char* name)
   m_globalShaderCatalogStamp(0),
   m_globalShaderCatalogBuiltStamp(-1),
   m_savedGlobalPickFamilyId(0),
-  m_callback(0)
+  m_callback(0),
+  m_liveEditGroundPickFallbackValid(false),
+  m_liveEditGroundPickFallbackY(0.0f)
 {
 	initializeUI();
 	loadTerrainShaderScanRootsFromSettings();
@@ -575,6 +693,22 @@ void TerrainDock::initializeUI()
 		IGNORE_RETURN(connect(m_pasteRegionButton, SIGNAL(clicked()), this, SLOT(onPasteRegion())));
 	if (m_fillRegionButton)
 		IGNORE_RETURN(connect(m_fillRegionButton, SIGNAL(clicked()), this, SLOT(onFillRegion())));
+	if (m_regionShapeCombo)
+	{
+		m_regionShapeCombo->clear();
+		m_regionShapeCombo->insertItem("Rectangle");
+		m_regionShapeCombo->insertItem("Circle");
+		m_regionShapeCombo->setCurrentItem(static_cast<int>(m_regionSelectionShape));
+		IGNORE_RETURN(connect(m_regionShapeCombo, SIGNAL(activated(int)), this, SLOT(onRegionShapeChanged(int))));
+	}
+	if (m_layerToggleActiveButton)
+		IGNORE_RETURN(connect(m_layerToggleActiveButton, SIGNAL(clicked()), this, SLOT(onLayerToggleActive())));
+	if (m_layerPromoteButton)
+		IGNORE_RETURN(connect(m_layerPromoteButton, SIGNAL(clicked()), this, SLOT(onLayerPromote())));
+	if (m_layerDemoteButton)
+		IGNORE_RETURN(connect(m_layerDemoteButton, SIGNAL(clicked()), this, SLOT(onLayerDemote())));
+	if (m_layerRenameButton)
+		IGNORE_RETURN(connect(m_layerRenameButton, SIGNAL(clicked()), this, SLOT(onLayerRename())));
 	
 	// Connect advanced tool buttons (roads/ribbons)
 	if (m_toolPlaceRibbon)
@@ -715,11 +849,25 @@ void TerrainDock::syncGodClientEditorBrushSettings()
 	editor.setNoiseAmplitude(m_noiseAmplitude);
 	editor.setNoiseFrequency(m_noiseFrequency);
 	editor.setSelectedShaderFamily(m_selectedShaderFamilyId);
-	editor.setSelectedFloraFamily(m_floraFamilyIndex);
+	{
+		int floraFamilyId = 0;
+		if (m_floraFamilyIndex >= 0 && m_floraFamilyIndex < static_cast<int>(m_floraFamilyIds.size()))
+			floraFamilyId = m_floraFamilyIds[static_cast<size_t>(m_floraFamilyIndex)];
+		editor.setSelectedFloraFamily(floraFamilyId);
+		int radialFamilyId = 0;
+		if (m_radialGroupIndex >= 0 && m_radialGroupIndex < static_cast<int>(m_radialFamilyIds.size()))
+			radialFamilyId = m_radialFamilyIds[static_cast<size_t>(m_radialGroupIndex)];
+		editor.setSelectedRadialFamily(radialFamilyId);
+	}
 	editor.setFloraCollidable(m_floraCollidable);
 	editor.setFloraDensity(static_cast<float>(m_floraDensity) / 100.0f);
 	editor.setBrushPreviewEnabled(m_showBrushPreview);
 	editor.setBitmapShaderFamily(m_selectedShaderFamilyId);
+	editor.setWaterPlacementHeight(m_waterHeight);
+	std::string waterTpl("ocean_new");
+	if (m_waterShaderIndex >= 0 && m_waterShaderIndex < static_cast<int>(m_waterShaderTemplateNames.size()))
+		waterTpl = m_waterShaderTemplateNames[static_cast<size_t>(m_waterShaderIndex)];
+	editor.setWaterPlacementShaderTemplate(waterTpl.c_str());
 }
 
 // ----------------------------------------------------------------------
@@ -912,6 +1060,8 @@ void TerrainDock::onBrushSizeChanged(int value)
 		sizeText.sprintf("%dm", value);
 		m_brushSizeValue->setText(sizeText);
 	}
+	if (GodClientTerrainEditor::isInstalled())
+		GodClientTerrainEditor::getInstance().setBrushSize(m_brushSize);
 }
 
 void TerrainDock::onBrushStrengthChanged(int value)
@@ -923,16 +1073,22 @@ void TerrainDock::onBrushStrengthChanged(int value)
 		strengthText.sprintf("%d%%", value);
 		m_brushStrengthValue->setText(strengthText);
 	}
+	if (GodClientTerrainEditor::isInstalled())
+		GodClientTerrainEditor::getInstance().setBrushStrength(m_brushStrength);
 }
 
 void TerrainDock::onBrushShapeChanged(int index)
 {
 	m_brushShape = static_cast<BrushShape>(index);
+	if (GodClientTerrainEditor::isInstalled())
+		GodClientTerrainEditor::getInstance().setBrushShape(static_cast<GodClientTerrainEditor::BrushShape>(m_brushShape));
 }
 
 void TerrainDock::onFalloffTypeChanged(int index)
 {
 	m_falloffType = static_cast<FalloffType>(index);
+	if (GodClientTerrainEditor::isInstalled())
+		GodClientTerrainEditor::getInstance().setFalloffType(static_cast<GodClientTerrainEditor::FalloffType>(m_falloffType));
 }
 
 // ----------------------------------------------------------------------
@@ -963,6 +1119,7 @@ void TerrainDock::onLayerDoubleClicked(QListViewItem* item)
 {
 	if (!item)
 		return;
+	onLayerRename();
 }
 
 void TerrainDock::onShaderSelectionChanged(QListViewItem* item)
@@ -1245,12 +1402,15 @@ void TerrainDock::onWaterHeightChanged(const QString& text)
 	if (ok)
 	{
 		m_waterHeight = height;
+		if (GodClientTerrainEditor::isInstalled())
+			syncGodClientEditorBrushSettings();
 	}
 }
 
 void TerrainDock::onWaterShaderChanged(int index)
 {
 	m_waterShaderIndex = index;
+	syncGodClientEditorBrushSettings();
 }
 
 void TerrainDock::onApplyWaterChanges()
@@ -1290,6 +1450,7 @@ void TerrainDock::onApplyWaterChanges()
 void TerrainDock::onFloraFamilyChanged(int index)
 {
 	m_floraFamilyIndex = index;
+	syncGodClientEditorBrushSettings();
 }
 
 void TerrainDock::onFloraPlacementModeChanged(int index)
@@ -1300,6 +1461,7 @@ void TerrainDock::onFloraPlacementModeChanged(int index)
 void TerrainDock::onRadialGroupChanged(int index)
 {
 	m_radialGroupIndex = index;
+	syncGodClientEditorBrushSettings();
 }
 
 // ======================================================================
@@ -1359,6 +1521,8 @@ void TerrainDock::refreshFromScene(bool const skipGlobalShaderCatalogScan)
 	populateEnvironmentFamilyCombo();
 	populateBitmapStampCombo();
 
+	syncGodClientEditorBrushSettings();
+
 	resizeQt3ScrollViewToContents(m_scrollAreaContents, m_contentScrollView);
 }
 
@@ -1392,6 +1556,204 @@ void TerrainDock::populateLayerList()
 		}
 	}
 }
+
+// ----------------------------------------------------------------------
+
+int TerrainDock::selectedLayerListIndex() const
+{
+	if (!m_layerList)
+		return -1;
+
+	QListViewItem* const sel = m_layerList->selectedItem();
+	if (!sel)
+		return -1;
+
+	int idx = 0;
+	for (QListViewItem* it = m_layerList->firstChild(); it; it = it->nextSibling(), ++idx)
+	{
+		if (it == sel)
+			return idx;
+	}
+
+	return -1;
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::syncRegionSelectionToEditor()
+{
+	if (!GodClientTerrainEditor::isInstalled() || !m_hasRegionSelection)
+		return;
+
+	bool const circ = (m_regionSelectionShape == RSS_Circle);
+	GodClientTerrainEditor::getInstance().setRegionSelection(
+		m_regionMinX,
+		m_regionMinZ,
+		m_regionMaxX,
+		m_regionMaxZ,
+		circ,
+		m_regionCircleCenterX,
+		m_regionCircleCenterZ,
+		m_regionCircleRadius);
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::terrainGeneratorLiveCommit()
+{
+	TerrainGenerator* const gen = getTerrainGenerator();
+	if (!gen)
+		return;
+
+	gen->prepare();
+
+	if (ClientProceduralTerrainAppearance* const app = getClientTerrain())
+		app->rebuildLocalWaterTablesFromTerrainGenerator();
+
+	if (TerrainObject* const to = TerrainObject::getInstance())
+	{
+		static float const kHuge = 25000.f;
+		Rectangle2d const huge(-kHuge, -kHuge, kHuge, kHuge);
+		to->invalidateRegion(huge);
+	}
+
+	populateLayerList();
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::onRegionShapeChanged(int index)
+{
+	RegionSelectionShape const newShape = (index == 1) ? RSS_Circle : RSS_Rectangle;
+	if (newShape == m_regionSelectionShape)
+		return;
+
+	m_regionSelectionShape = newShape;
+
+	if (m_hasRegionSelection)
+	{
+		if (m_regionSelectionShape == RSS_Circle)
+		{
+			float const w = m_regionMaxX - m_regionMinX;
+			float const h = m_regionMaxZ - m_regionMinZ;
+			m_regionCircleCenterX = 0.5f * (m_regionMinX + m_regionMaxX);
+			m_regionCircleCenterZ = 0.5f * (m_regionMinZ + m_regionMaxZ);
+			m_regionCircleRadius = 0.5f * std::min(w, h);
+			if (m_regionCircleRadius < 0.5f)
+				m_regionCircleRadius = 0.5f;
+			m_regionMinX = m_regionCircleCenterX - m_regionCircleRadius;
+			m_regionMaxX = m_regionCircleCenterX + m_regionCircleRadius;
+			m_regionMinZ = m_regionCircleCenterZ - m_regionCircleRadius;
+			m_regionMaxZ = m_regionCircleCenterZ + m_regionCircleRadius;
+		}
+
+		syncRegionSelectionToEditor();
+	}
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::onLayerToggleActive()
+{
+	TerrainGenerator* const gen = getTerrainGenerator();
+	if (!gen)
+		return;
+
+	int const li = selectedLayerListIndex();
+	if (li < 0)
+		return;
+
+	TerrainGenerator::Layer* const layer = gen->getLayer(li);
+	if (!layer)
+		return;
+
+	layer->setActive(!layer->isActive());
+	terrainGeneratorLiveCommit();
+	m_terrainModified = true;
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::onLayerPromote()
+{
+	TerrainGenerator* const gen = getTerrainGenerator();
+	if (!gen)
+		return;
+
+	int const li = selectedLayerListIndex();
+	if (li < 0)
+		return;
+
+	TerrainGenerator::Layer* const layer = gen->getLayer(li);
+	if (!layer)
+		return;
+
+	gen->promoteLayer(layer);
+	terrainGeneratorLiveCommit();
+	m_terrainModified = true;
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::onLayerDemote()
+{
+	TerrainGenerator* const gen = getTerrainGenerator();
+	if (!gen)
+		return;
+
+	int const li = selectedLayerListIndex();
+	if (li < 0)
+		return;
+
+	TerrainGenerator::Layer* const layer = gen->getLayer(li);
+	if (!layer)
+		return;
+
+	gen->demoteLayer(layer);
+	terrainGeneratorLiveCommit();
+	m_terrainModified = true;
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::onLayerRename()
+{
+	TerrainGenerator* const gen = getTerrainGenerator();
+	if (!gen)
+		return;
+
+	int const li = selectedLayerListIndex();
+	if (li < 0)
+		return;
+
+	TerrainGenerator::Layer* const layer = gen->getLayer(li);
+	if (!layer)
+		return;
+
+	char const* cur = layer->getName();
+	QString const qcur = cur ? QString::fromLatin1(cur) : QString("Layer");
+
+	bool ok = false;
+	QString const qnew = QInputDialog::getText(
+		"Rename terrain layer",
+		"Layer name:",
+		QLineEdit::Normal,
+		qcur,
+		&ok,
+		this);
+
+	if (!ok)
+		return;
+
+	if (qnew.isEmpty())
+		return;
+
+	layer->setName(qnew.latin1());
+	terrainGeneratorLiveCommit();
+	m_terrainModified = true;
+}
+
+// ----------------------------------------------------------------------
 
 void TerrainDock::populateShaderList(bool const skipGlobalShaderCatalogScan)
 {
@@ -1870,6 +2232,7 @@ void TerrainDock::populateFloraList()
 		return;
 	
 	m_floraFamilyCombo->clear();
+	m_floraFamilyIds.clear();
 	
 	TerrainGenerator* generator = getTerrainGenerator();
 	if (!generator)
@@ -1885,7 +2248,15 @@ void TerrainDock::populateFloraList()
 		
 		QString name = familyName ? familyName : QString("Flora Family %1").arg(i);
 		m_floraFamilyCombo->insertItem(name);
+		m_floraFamilyIds.push_back(familyId);
 	}
+	if (!m_floraFamilyIds.empty())
+	{
+		if (m_floraFamilyIndex >= static_cast<int>(m_floraFamilyIds.size()))
+			m_floraFamilyIndex = 0;
+	}
+	else
+		m_floraFamilyIndex = 0;
 }
 
 void TerrainDock::populateRadialList()
@@ -1894,6 +2265,7 @@ void TerrainDock::populateRadialList()
 		return;
 	
 	m_radialGroupCombo->clear();
+	m_radialFamilyIds.clear();
 	
 	TerrainGenerator* generator = getTerrainGenerator();
 	if (!generator)
@@ -1909,7 +2281,15 @@ void TerrainDock::populateRadialList()
 		
 		QString name = familyName ? familyName : QString("Radial Group %1").arg(i);
 		m_radialGroupCombo->insertItem(name);
+		m_radialFamilyIds.push_back(familyId);
 	}
+	if (!m_radialFamilyIds.empty())
+	{
+		if (m_radialGroupIndex >= static_cast<int>(m_radialFamilyIds.size()))
+			m_radialGroupIndex = 0;
+	}
+	else
+		m_radialGroupIndex = 0;
 }
 
 void TerrainDock::populateWaterShaderList()
@@ -1918,12 +2298,48 @@ void TerrainDock::populateWaterShaderList()
 		return;
 	
 	m_waterShaderCombo->clear();
-	
-	m_waterShaderCombo->insertItem("default_water");
-	m_waterShaderCombo->insertItem("ocean_water");
-	m_waterShaderCombo->insertItem("swamp_water");
-	m_waterShaderCombo->insertItem("river_water");
-	m_waterShaderCombo->insertItem("lake_water");
+	m_waterShaderTemplateNames.clear();
+
+	std::set<std::string> seen;
+	std::vector<std::pair<QString, std::string> > rows;
+	rows.reserve(256);
+
+	static struct WaterPresetSpec
+	{
+		char const* label;
+		char const* shaderTemplate;
+	}
+	const presets[] =
+	{
+		{ "ocean_new (default)", "ocean_new" },
+		{ "default_water", "default_water"},
+		{ "ocean_water", "ocean_water"},
+		{ "swamp_water", "swamp_water"},
+		{ "river_water", "river_water"},
+		{ "lake_water", "lake_water"}
+	};
+
+	for (size_t i = 0; i < sizeof(presets) / sizeof(presets[0]); ++i)
+	{
+		std::string const t(presets[i].shaderTemplate);
+		if (!seen.insert(t).second)
+			continue;
+		rows.push_back(std::make_pair(QString::fromLatin1(presets[i].label), t));
+	}
+
+	int scanBudget = 384;
+	terrainDockGatherWaterShaderTemplatesFromDisk(rows, seen, scanBudget);
+
+	for (size_t i = 0; i < rows.size(); ++i)
+	{
+		m_waterShaderCombo->insertItem(rows[i].first);
+		m_waterShaderTemplateNames.push_back(rows[i].second);
+	}
+
+	if (m_waterShaderIndex >= static_cast<int>(m_waterShaderTemplateNames.size()))
+		m_waterShaderIndex = 0;
+	if (m_waterShaderCombo->count() > 0)
+		m_waterShaderCombo->setCurrentItem(m_waterShaderIndex);
 }
 
 // ----------------------------------------------------------------------
@@ -2064,6 +2480,8 @@ bool TerrainDock::terrainCopyWorldRegionIntoClipboard(bool postConsoleMessageOnS
 	m_regionClipboard.heightSamples = heightSamples;
 	m_regionClipboard.heightData.clear();
 	m_regionClipboard.shaderData.clear();
+	m_regionClipboard.cellMask.clear();
+	m_regionClipboard.hasCellMask = false;
 	m_regionClipboard.heightData.reserve(static_cast<size_t>(widthSamples * heightSamples));
 	m_regionClipboard.shaderData.reserve(static_cast<size_t>(widthSamples * heightSamples));
 
@@ -2082,6 +2500,25 @@ bool TerrainDock::terrainCopyWorldRegionIntoClipboard(bool postConsoleMessageOnS
 				m_regionClipboard.heightData.push_back(0.0f);
 
 			m_regionClipboard.shaderData.push_back(0);
+		}
+	}
+
+	if (m_regionSelectionShape == RSS_Circle && m_regionCircleRadius > 0.01f)
+	{
+		m_regionClipboard.hasCellMask = true;
+		m_regionClipboard.cellMask.resize(static_cast<size_t>(widthSamples * heightSamples));
+		float const r2 = m_regionCircleRadius * m_regionCircleRadius + 1e-2f;
+		for (int iz = 0; iz < heightSamples; ++iz)
+		{
+			for (int ix = 0; ix < widthSamples; ++ix)
+			{
+				float const sampleX = m_regionMinX + (static_cast<float>(ix) / static_cast<float>(widthSamples - 1)) * regionWidth;
+				float const sampleZ = m_regionMinZ + (static_cast<float>(iz) / static_cast<float>(heightSamples - 1)) * regionHeight;
+				float const dx = sampleX - m_regionCircleCenterX;
+				float const dz = sampleZ - m_regionCircleCenterZ;
+				m_regionClipboard.cellMask[static_cast<size_t>(iz * widthSamples + ix)] =
+					(dx * dx + dz * dz <= r2) ? static_cast<unsigned char>(1) : static_cast<unsigned char>(0);
+			}
 		}
 	}
 
@@ -2111,6 +2548,11 @@ bool TerrainDock::terrainPasteClipboardIntoWorldRegion(bool postConsoleMessageOn
 	if (nx < 2 || nz < 2 || static_cast<int>(m_regionClipboard.heightData.size()) < nx * nz)
 		return false;
 
+	unsigned char const* maskPtr = 0;
+	if (m_regionClipboard.hasCellMask &&
+	    static_cast<int>(m_regionClipboard.cellMask.size()) >= nx * nz)
+		maskPtr = &m_regionClipboard.cellMask[0];
+
 	bool const painted = GodClientTerrainEditor::getInstance().applyRectangularHeightSamples(
 		m_regionMinX,
 		m_regionMinZ,
@@ -2118,7 +2560,8 @@ bool TerrainDock::terrainPasteClipboardIntoWorldRegion(bool postConsoleMessageOn
 		m_regionMaxZ,
 		nx,
 		nz,
-		&m_regionClipboard.heightData[0]);
+		&m_regionClipboard.heightData[0],
+		maskPtr);
 
 	if (painted)
 	{
@@ -2305,6 +2748,41 @@ void TerrainDock::onFillRegion()
 		IGNORE_RETURN(QMessageBox::warning(this, "Fill Region", "Terrain editor not ready."));
 		return;
 	}
+
+	if (m_toolMode == TM_PaintShader)
+	{
+		syncGodClientEditorBrushSettings();
+		bool const circ = (m_regionSelectionShape == RSS_Circle && m_regionCircleRadius > 0.01f);
+		if (GodClientTerrainEditor::getInstance().applyRectangularShaderPaint(
+				m_regionMinX,
+				m_regionMinZ,
+				m_regionMaxX,
+				m_regionMaxZ,
+				m_selectedShaderFamilyId,
+				m_brushStrength,
+				circ,
+				m_regionCircleCenterX,
+				m_regionCircleCenterZ,
+				m_regionCircleRadius))
+		{
+			m_terrainModified = true;
+			updateUndoRedoState();
+			QString msg;
+			msg.sprintf(
+				"Region filled with shader family %d: (%.1f, %.1f) - (%.1f, %.1f)",
+				m_selectedShaderFamilyId,
+				m_regionMinX,
+				m_regionMinZ,
+				m_regionMaxX,
+				m_regionMaxZ);
+			MainFrame::getInstance().textToConsole(msg.latin1());
+		}
+		else
+		{
+			IGNORE_RETURN(QMessageBox::warning(this, "Fill Region", "Could not apply shader fill (no terrain or invalid region)."));
+		}
+		return;
+	}
 	
 	const float regionWidth = m_regionMaxX - m_regionMinX;
 	const float regionHeight = m_regionMaxZ - m_regionMinZ;
@@ -2312,7 +2790,28 @@ void TerrainDock::onFillRegion()
 	const int widthSamples = static_cast<int>(regionWidth / sampleStep) + 1;
 	const int heightSamples = static_cast<int>(regionHeight / sampleStep) + 1;
 	
-	std::vector<float> heights(static_cast<size_t>(widthSamples * heightSamples), m_setHeightTarget);
+	const int nCells = widthSamples * heightSamples;
+	std::vector<float> heights(static_cast<size_t>(nCells), m_setHeightTarget);
+	std::vector<unsigned char> mask;
+	unsigned char const* maskPtr = 0;
+	if (m_regionSelectionShape == RSS_Circle && m_regionCircleRadius > 0.01f)
+	{
+		mask.resize(static_cast<size_t>(nCells));
+		float const r2 = m_regionCircleRadius * m_regionCircleRadius + 1e-2f;
+		for (int iz = 0; iz < heightSamples; ++iz)
+		{
+			for (int ix = 0; ix < widthSamples; ++ix)
+			{
+				float const sx = m_regionMinX + (static_cast<float>(ix) / static_cast<float>(widthSamples - 1)) * regionWidth;
+				float const sz = m_regionMinZ + (static_cast<float>(iz) / static_cast<float>(heightSamples - 1)) * regionHeight;
+				float const dx = sx - m_regionCircleCenterX;
+				float const dz = sz - m_regionCircleCenterZ;
+				mask[static_cast<size_t>(iz * widthSamples + ix)] =
+					(dx * dx + dz * dz <= r2) ? static_cast<unsigned char>(1) : static_cast<unsigned char>(0);
+			}
+		}
+		maskPtr = &mask[0];
+	}
 	
 	if (GodClientTerrainEditor::getInstance().applyRectangularHeightSamples(
 			m_regionMinX,
@@ -2321,7 +2820,8 @@ void TerrainDock::onFillRegion()
 			m_regionMaxZ,
 			widthSamples,
 			heightSamples,
-			heights.empty() ? 0 : &heights[0]))
+			heights.empty() ? 0 : &heights[0],
+			maskPtr))
 	{
 		m_terrainModified = true;
 		updateUndoRedoState();
@@ -3083,6 +3583,15 @@ void TerrainDock::paintShaderAtPoint(float worldX, float worldZ, int shaderFamil
 		MainFrame::getInstance().textToConsole(msg.latin1());
 		return;
 	}
+
+	if (!GodClientTerrainEditor::isInstalled())
+	{
+		MainFrame::getInstance().textToConsole("paintShaderAtPoint: Terrain editor not ready");
+		return;
+	}
+
+	syncGodClientEditorBrushSettings();
+	GodClientTerrainEditor::getInstance().applyShaderPaintDab(worldX, worldZ, shaderFamilyId, m_brushStrength);
 	
 	const float halfBrush = m_brushSize * 0.5f;
 	
@@ -3097,7 +3606,7 @@ void TerrainDock::paintShaderAtPoint(float worldX, float worldZ, int shaderFamil
 	
 	pushUndoEntry(entry);
 	
-	// Invalidate the terrain region to trigger regeneration with new shader
+	// Invalidate the terrain region so chunks rebuild with live shader overlay
 	TerrainObject* const terrainObject = TerrainObject::getInstance();
 	if (terrainObject)
 	{
@@ -3110,6 +3619,8 @@ void TerrainDock::paintShaderAtPoint(float worldX, float worldZ, int shaderFamil
 		);
 		
 		terrainObject->invalidateRegion(extent2d);
+		GodClientTerrainEditor::getInstance().flushTerrainChanges();
+		GodClientTerrainEditor::nudgeGodClientCameraToRefreshDpvs();
 	}
 	
 	const char* familyName = shaderGroup.getFamilyName(shaderFamilyId);
@@ -3335,6 +3846,96 @@ bool TerrainDock::getTerrainPositionFromScreen(int screenX, int screenY, float& 
 	return false;
 }
 
+// ----------------------------------------------------------------------
+
+bool TerrainDock::pickTerrainGroundForLiveEdit(int screenX, int screenY, float& outWorldX, float& outWorldZ, float& outGroundY) const
+{
+	const GroundScene* const scene = dynamic_cast<const GroundScene*>(Game::getScene());
+	if (!scene || !scene->getPlayer())
+		return false;
+
+	const Camera* const camera = scene->getCurrentCamera();
+	if (!camera)
+		return false;
+
+	TerrainObject* const terrainObject = TerrainObject::getInstance();
+	if (!terrainObject)
+		return false;
+
+	Vector const start_p(camera->getPosition_p());
+	Vector const delta(8192.0f * camera->rotate_o2p(camera->reverseProjectInScreenSpace(screenX, screenY)));
+
+	CollisionInfo info;
+	Vector const end_p(start_p + delta);
+	if (terrainObject->collide(start_p, end_p, info))
+	{
+		Vector const& hitPoint = info.getPoint();
+		outWorldX = hitPoint.x;
+		outWorldZ = hitPoint.z;
+		outGroundY = hitPoint.y;
+		m_liveEditGroundPickFallbackValid = true;
+		m_liveEditGroundPickFallbackY = hitPoint.y;
+		return true;
+	}
+
+	Vector dir(delta);
+	float const dirLen = dir.magnitude();
+	if (dirLen < 1.e-5f)
+		return false;
+	dir /= dirLen;
+
+	if (std::fabs(static_cast<double>(dir.y)) < static_cast<double>(1.e-8))
+		return false;
+
+	float const baselineY =
+		m_liveEditGroundPickFallbackValid
+			? m_liveEditGroundPickFallbackY
+			: scene->getPlayer()->getPosition_w().y - 2.f;
+
+	float const dy = baselineY - start_p.y;
+	float const t = dy / dir.y;
+	static float const tMaxFallback = 3.25e6f;
+	if (!(t > 1.e-5f && t <= tMaxFallback))
+		return false;
+
+	Vector const planeHit(start_p + dir * t);
+
+	float probeX = planeHit.x;
+	float probeZ = planeHit.z;
+
+	Vector top(probeX, 8000.f, probeZ);
+	Vector bot(probeX, -8000.f, probeZ);
+	if (terrainObject->collide(top, bot, info))
+	{
+		Vector const& hitPoint = info.getPoint();
+		outWorldX = hitPoint.x;
+		outWorldZ = hitPoint.z;
+		outGroundY = hitPoint.y;
+		m_liveEditGroundPickFallbackValid = true;
+		m_liveEditGroundPickFallbackY = hitPoint.y;
+		return true;
+	}
+
+	Vector xz(probeX, 0.f, probeZ);
+	float h = baselineY;
+	if (terrainObject->getHeight(xz, h))
+	{
+		outWorldX = probeX;
+		outWorldZ = probeZ;
+		outGroundY = h;
+		m_liveEditGroundPickFallbackValid = true;
+		m_liveEditGroundPickFallbackY = h;
+		return true;
+	}
+
+	outWorldX = probeX;
+	outWorldZ = probeZ;
+	outGroundY = baselineY;
+	m_liveEditGroundPickFallbackY = baselineY;
+	m_liveEditGroundPickFallbackValid = true;
+	return true;
+}
+
 // ======================================================================
 // Water Boundary Creation
 // ======================================================================
@@ -3348,6 +3949,12 @@ void TerrainDock::createWaterBoundary(float centerX, float centerZ, float radius
 		return;
 	}
 	
+	if (!GodClientTerrainEditor::isInstalled())
+	{
+		MainFrame::getInstance().textToConsole("createWaterBoundary: Terrain editor not installed");
+		return;
+	}
+	
 	// Create undo entry
 	UndoEntry entry;
 	entry.type = UO_Water;
@@ -3358,27 +3965,18 @@ void TerrainDock::createWaterBoundary(float centerX, float centerZ, float radius
 	entry.description = "Create water boundary";
 	
 	pushUndoEntry(entry);
-	
-	// Invalidate the terrain region to apply the water boundary
-	TerrainObject* const terrainObject = TerrainObject::getInstance();
-	if (terrainObject)
-	{
-		const float invalidateMargin = 16.0f;
-		Rectangle2d extent2d(
-			centerX - radius - invalidateMargin,
-			centerZ - radius - invalidateMargin,
-			centerX + radius + invalidateMargin,
-			centerZ + radius + invalidateMargin
-		);
-		
-		terrainObject->invalidateRegion(extent2d);
-	}
-	
+
+	syncGodClientEditorBrushSettings();
+
+	float const radialHalf = std::max(4.0f, radius);
+
+	GodClientTerrainEditor::getInstance().installLocalWaterTableAxisAligned(centerX, centerZ, radialHalf, height);
+
 	m_terrainModified = true;
 	
 	QString msg;
-	msg.sprintf("Water boundary created at (%.1f, %.1f), radius: %.1f, height: %.2f",
-		centerX, centerZ, radius, height);
+	msg.sprintf("Water table inserted at (%.1f, %.1f): halfExtent %.1f world, height %.2f.",
+		centerX, centerZ, radialHalf, height);
 	MainFrame::getInstance().textToConsole(msg.latin1());
 }
 
@@ -3433,6 +4031,17 @@ bool TerrainDock::handleMousePress(int screenX, int screenY, int button, int qtB
 	float worldZ = 0.0f;
 	if (!getTerrainPositionFromScreen(screenX, screenY, worldX, worldZ))
 		return false;
+
+	{
+		TerrainObject* const terrainObject = TerrainObject::getInstance();
+		Vector xz(worldX, 0.0f, worldZ);
+		float sampledY = m_liveEditGroundPickFallbackValid ? m_liveEditGroundPickFallbackY : 0.0f;
+		if (terrainObject && terrainObject->getHeight(xz, sampledY))
+		{
+			m_liveEditGroundPickFallbackValid = true;
+			m_liveEditGroundPickFallbackY = sampledY;
+		}
+	}
 
 	if (m_toolMode == TM_Select)
 	{
@@ -3587,21 +4196,37 @@ bool TerrainDock::handleMouseRelease(int screenX, int screenY, int button)
 			m_regionDragCurZ = worldZ;
 		}
 		m_regionDragActive = false;
-		float minX = std::min(m_regionAnchorX, m_regionDragCurX);
-		float maxX = std::max(m_regionAnchorX, m_regionDragCurX);
-		float minZ = std::min(m_regionAnchorZ, m_regionDragCurZ);
-		float maxZ = std::max(m_regionAnchorZ, m_regionDragCurZ);
-		if (maxX - minX < 0.5f)
-			maxX = minX + 0.5f;
-		if (maxZ - minZ < 0.5f)
-			maxZ = minZ + 0.5f;
-		m_regionMinX = minX;
-		m_regionMaxX = maxX;
-		m_regionMinZ = minZ;
-		m_regionMaxZ = maxZ;
+		if (m_regionSelectionShape == RSS_Circle)
+		{
+			m_regionCircleCenterX = m_regionAnchorX;
+			m_regionCircleCenterZ = m_regionAnchorZ;
+			float const dx = m_regionDragCurX - m_regionAnchorX;
+			float const dz = m_regionDragCurZ - m_regionAnchorZ;
+			m_regionCircleRadius = std::sqrt(dx * dx + dz * dz);
+			if (m_regionCircleRadius < 0.5f)
+				m_regionCircleRadius = 0.5f;
+			m_regionMinX = m_regionCircleCenterX - m_regionCircleRadius;
+			m_regionMaxX = m_regionCircleCenterX + m_regionCircleRadius;
+			m_regionMinZ = m_regionCircleCenterZ - m_regionCircleRadius;
+			m_regionMaxZ = m_regionCircleCenterZ + m_regionCircleRadius;
+		}
+		else
+		{
+			float minX = std::min(m_regionAnchorX, m_regionDragCurX);
+			float maxX = std::max(m_regionAnchorX, m_regionDragCurX);
+			float minZ = std::min(m_regionAnchorZ, m_regionDragCurZ);
+			float maxZ = std::max(m_regionAnchorZ, m_regionDragCurZ);
+			if (maxX - minX < 0.5f)
+				maxX = minX + 0.5f;
+			if (maxZ - minZ < 0.5f)
+				maxZ = minZ + 0.5f;
+			m_regionMinX = minX;
+			m_regionMaxX = maxX;
+			m_regionMinZ = minZ;
+			m_regionMaxZ = maxZ;
+		}
 		m_hasRegionSelection = true;
-		if (GodClientTerrainEditor::isInstalled())
-			GodClientTerrainEditor::getInstance().setRegionSelection(minX, minZ, maxX, maxZ);
+		syncRegionSelectionToEditor();
 		MainFrame::getInstance().textToConsole("Terrain region selection updated.");
 		return true;
 	}
@@ -3630,70 +4255,57 @@ bool TerrainDock::handleMouseMove(int screenX, int screenY, int qtButtonState)
 	if (cameraModifierOverridesTerrainInput(qtButtonState))
 		return false;
 
-	// Update cursor world position for brush preview
 	float worldX = 0.0f;
 	float worldZ = 0.0f;
-	
-	if (getTerrainPositionFromScreen(screenX, screenY, worldX, worldZ))
+	float groundY = 0.0f;
+
+	if (!pickTerrainGroundForLiveEdit(screenX, screenY, worldX, worldZ, groundY))
+		return false;
+
+	if (m_toolMode == TM_Select && m_regionDragActive)
 	{
-		if (m_toolMode == TM_Select && m_regionDragActive)
+		m_regionDragCurX = worldX;
+		m_regionDragCurZ = worldZ;
+		return true;
+	}
+
+	if (m_polylineDragPointIndex >= 0 && (m_toolMode == TM_PlaceRoad || m_toolMode == TM_PlaceRibbon) && GodClientTerrainEditor::isInstalled())
+	{
+		GodClientTerrainEditor& editor = GodClientTerrainEditor::getInstance();
+		if (editor.isPolylineActive() && m_polylineDragPointIndex < editor.getPolylinePointCount())
 		{
-			m_regionDragCurX = worldX;
-			m_regionDragCurZ = worldZ;
+			float dragHeight = 0.f;
+			if (editor.getPolylineUseFixedHeights())
+			{
+				const GodClientTerrainEditor::ControlPoint* pt = editor.getPolylinePoint(m_polylineDragPointIndex);
+				if (pt)
+					dragHeight = pt->height;
+			}
+			else
+			{
+				TerrainObject* const terrainObject = TerrainObject::getInstance();
+				Vector pos(worldX, 0.f, worldZ);
+				if (!(terrainObject && terrainObject->getHeight(pos, dragHeight)))
+					dragHeight = groundY;
+			}
+			editor.movePolylinePoint(m_polylineDragPointIndex, worldX, worldZ, dragHeight);
 			return true;
 		}
+	}
 
-		if (m_polylineDragPointIndex >= 0 && (m_toolMode == TM_PlaceRoad || m_toolMode == TM_PlaceRibbon) && GodClientTerrainEditor::isInstalled())
-		{
-			GodClientTerrainEditor& editor = GodClientTerrainEditor::getInstance();
-			if (editor.isPolylineActive() && m_polylineDragPointIndex < editor.getPolylinePointCount())
-			{
-				float dragHeight = 0.f;
-				if (editor.getPolylineUseFixedHeights())
-				{
-					const GodClientTerrainEditor::ControlPoint* pt = editor.getPolylinePoint(m_polylineDragPointIndex);
-					if (pt)
-						dragHeight = pt->height;
-				}
-				else
-				{
-					TerrainObject* const terrainObject = TerrainObject::getInstance();
-					Vector pos(worldX, 0.f, worldZ);
-					if (terrainObject && terrainObject->getHeight(pos, dragHeight))
-					{ /* use dragHeight */ }
-					else
-						dragHeight = 0.f;
-				}
-				editor.movePolylinePoint(m_polylineDragPointIndex, worldX, worldZ, dragHeight);
-				return true;
-			}
-		}
+	if (GodClientTerrainEditor::isInstalled())
+	{
+		GodClientTerrainEditor& editor = GodClientTerrainEditor::getInstance();
 
-		if (GodClientTerrainEditor::isInstalled())
+		editor.setCursorWorldPosition(Vector(worldX, groundY, worldZ));
+
+		if (editor.isBrushStrokeActive())
 		{
-			GodClientTerrainEditor& editor = GodClientTerrainEditor::getInstance();
-			
-			// Update cursor position for brush preview
-			TerrainObject* const terrainObject = TerrainObject::getInstance();
-			if (terrainObject)
-			{
-				float height = 0.0f;
-				Vector pos(worldX, 0.0f, worldZ);
-				if (terrainObject->getHeight(pos, height))
-				{
-					editor.setCursorWorldPosition(Vector(worldX, height, worldZ));
-				}
-			}
-			
-			// Continue brush stroke if active
-			if (editor.isBrushStrokeActive())
-			{
-				editor.continueBrushStroke(worldX, worldZ);
-				return true;
-			}
+			editor.continueBrushStroke(worldX, worldZ);
+			return true;
 		}
 	}
-	
+
 	return false;
 }
 
@@ -3720,8 +4332,78 @@ void TerrainDock::updateFrame(float elapsedTime)
 	GodClientTerrainEditor& editor = GodClientTerrainEditor::getInstance();
 	
 	editor.renderTerrainDebugOverlays(*camera, m_showWireframe, m_showHeightColors, m_showChunkGrid);
-	if (m_hasRegionSelection)
-		editor.renderRegionSelectionOverlay(*camera, m_regionMinX, m_regionMinZ, m_regionMaxX, m_regionMaxZ);
+
+	float regionOverlayMinX = 0.f;
+	float regionOverlayMinZ = 0.f;
+	float regionOverlayMaxX = 0.f;
+	float regionOverlayMaxZ = 0.f;
+	bool showRegionOverlay = false;
+	bool overlayCircular = false;
+	float overlayCircleCx = 0.f;
+	float overlayCircleCz = 0.f;
+	float overlayCircleR = 0.f;
+
+	if (m_toolMode == TM_Select && m_regionDragActive)
+	{
+		if (m_regionSelectionShape == RSS_Circle)
+		{
+			float const dx = m_regionDragCurX - m_regionAnchorX;
+			float const dz = m_regionDragCurZ - m_regionAnchorZ;
+			overlayCircleR = std::sqrt(dx * dx + dz * dz);
+			if (overlayCircleR < 0.5f)
+				overlayCircleR = 0.5f;
+			overlayCircleCx = m_regionAnchorX;
+			overlayCircleCz = m_regionAnchorZ;
+			regionOverlayMinX = overlayCircleCx - overlayCircleR;
+			regionOverlayMaxX = overlayCircleCx + overlayCircleR;
+			regionOverlayMinZ = overlayCircleCz - overlayCircleR;
+			regionOverlayMaxZ = overlayCircleCz + overlayCircleR;
+			overlayCircular = true;
+		}
+		else
+		{
+			float minX = std::min(m_regionAnchorX, m_regionDragCurX);
+			float maxX = std::max(m_regionAnchorX, m_regionDragCurX);
+			float minZ = std::min(m_regionAnchorZ, m_regionDragCurZ);
+			float maxZ = std::max(m_regionAnchorZ, m_regionDragCurZ);
+			if (maxX - minX < 0.5f)
+				maxX = minX + 0.5f;
+			if (maxZ - minZ < 0.5f)
+				maxZ = minZ + 0.5f;
+			regionOverlayMinX = minX;
+			regionOverlayMaxX = maxX;
+			regionOverlayMinZ = minZ;
+			regionOverlayMaxZ = maxZ;
+		}
+		showRegionOverlay = true;
+	}
+	else if (m_hasRegionSelection)
+	{
+		regionOverlayMinX = m_regionMinX;
+		regionOverlayMaxX = m_regionMaxX;
+		regionOverlayMinZ = m_regionMinZ;
+		regionOverlayMaxZ = m_regionMaxZ;
+		if (m_regionSelectionShape == RSS_Circle)
+		{
+			overlayCircular = true;
+			overlayCircleCx = m_regionCircleCenterX;
+			overlayCircleCz = m_regionCircleCenterZ;
+			overlayCircleR = m_regionCircleRadius;
+		}
+		showRegionOverlay = true;
+	}
+
+	if (showRegionOverlay)
+		editor.renderRegionSelectionOverlay(
+			*camera,
+			regionOverlayMinX,
+			regionOverlayMinZ,
+			regionOverlayMaxX,
+			regionOverlayMaxZ,
+			overlayCircular,
+			overlayCircleCx,
+			overlayCircleCz,
+			overlayCircleR);
 	
 	// Render brush preview for brush-based tools
 	if (m_showBrushPreview && m_toolMode != TM_None && m_toolMode != TM_Select)

@@ -121,6 +121,16 @@ public:
 		bool collidable;
 	};
 
+	// Dynamic radial flora (RadialGroup paint) overlay
+	struct RadialModification
+	{
+		float worldX;
+		float worldZ;
+		int originalFamilyId;
+		int modifiedFamilyId;
+		float childChoice;
+	};
+
 	// Brush stroke data
 	struct BrushStroke
 	{
@@ -211,11 +221,14 @@ public:
 	void setNoiseFrequency(float frequency);
 	float getNoiseFrequency() const;
 
-	void setSelectedShaderFamily(int familyIndex);
+	void setSelectedShaderFamily(int familyId);
 	int getSelectedShaderFamily() const;
 
-	void setSelectedFloraFamily(int familyIndex);
+	void setSelectedFloraFamily(int familyId);
 	int getSelectedFloraFamily() const;
+
+	void setSelectedRadialFamily(int familyId);
+	int getSelectedRadialFamily() const;
 
 	void setFloraCollidable(bool collidable);
 	bool getFloraCollidable() const;
@@ -239,6 +252,9 @@ public:
 	// Apply brush at a single point
 	void applyBrushAtPoint(float worldX, float worldZ);
 
+	/// Single shader paint application (e.g. TerrainDock); does not manage stroke dirty rects.
+	void applyShaderPaintDab(float worldX, float worldZ, int shaderFamilyId, float strength);
+
 	// Height modification queries (called by terrain system)
 	static bool getModifiedHeight(float x, float z, float originalHeight, float& outHeight);
 	bool getModifiedHeightInternal(float x, float z, float originalHeight, float& outHeight) const;
@@ -251,6 +267,9 @@ public:
 	static bool getModifiedFlora(float x, float z, int originalFamilyId, int& outFamilyId, float& outDensity);
 	bool getModifiedFloraInternal(float x, float z, int originalFamilyId, int& outFamilyId, float& outDensity) const;
 
+	static bool getModifiedRadial(float x, float z, int originalFamilyId, int& outFamilyId, float& outChildChoice);
+	bool getModifiedRadialInternal(float x, float z, int originalFamilyId, int& outFamilyId, float& outChildChoice) const;
+
 	// Undo/redo
 	bool canUndo() const;
 	bool canRedo() const;
@@ -261,23 +280,70 @@ public:
 	// Flush changes to terrain (trigger regeneration)
 	void flushTerrainChanges();
 
+	void setWaterPlacementHeight(float height);
+	float getWaterPlacementHeight() const;
+	void setWaterPlacementShaderTemplate(char const* shaderTemplateName);
+
+	/// Uses an axis-aligned square [center±halfExtent] clipped as a BoundaryRectangle water table (+ generator + rebuild client meshes).
+	void installLocalWaterTableAxisAligned(float centerWorldX, float centerWorldZ, float halfExtentSquare, float tableHeight);
+
 	// Render brush preview
 	void renderBrushPreview(const Camera& camera) const;
 
 	// God Client visualization overlays (debug primitives; wireframe is a coarse terrain grid)
 	void renderTerrainDebugOverlays(const Camera& camera, bool wireframeGrid, bool heightColorGrid, bool chunkBoundsGrid) const;
-	void renderRegionSelectionOverlay(const Camera& camera, float minX, float minZ, float maxX, float maxZ) const;
+	void renderRegionSelectionOverlay(
+		const Camera& camera,
+		float minX,
+		float minZ,
+		float maxX,
+		float maxZ,
+		bool circularSelection,
+		float circleCenterX,
+		float circleCenterZ,
+		float circleRadius) const;
 
-	// Apply sampled heights over a rectangle (row-major nx*nz), with editor undo support
-	bool applyRectangularHeightSamples(float minX, float minZ, float maxX, float maxZ, int nx, int nz, const float* heightsRowMajor);
+	// Apply sampled heights over a rectangle (row-major nx*nz), with editor undo support.
+	// When cellMaskRowMajor is non-null, only entries with a non-zero mask byte receive new heights.
+	bool applyRectangularHeightSamples(
+		float minX,
+		float minZ,
+		float maxX,
+		float maxZ,
+		int nx,
+		int nz,
+		const float* heightsRowMajor,
+		const unsigned char* cellMaskRowMajor = 0);
+
+	/// Fill the axis-aligned rectangle (world XZ) with live shader paint (same overlay as brush).
+	/// When circularClip is true, only cells inside the world XZ circle are painted (axis-aligned bounds still min/max).
+	bool applyRectangularShaderPaint(
+		float minX,
+		float minZ,
+		float maxX,
+		float maxZ,
+		int shaderFamilyId,
+		float strength,
+		bool circularClip = false,
+		float circleCenterX = 0.f,
+		float circleCenterZ = 0.f,
+		float circleRadius = 0.f);
 
 	/// Apply exclude + non-passable affectors inside a world rectangle (TerrainGenerator layers).
 	bool applyRectangleExcludeAndNonPassable(float minX, float minZ, float maxX, float maxZ);
 
 	static void nudgeGodClientCameraToRefreshDpvs();
 
-	// Region selection
-	void setRegionSelection(float minX, float minZ, float maxX, float maxZ);
+	// Region selection (bounds are always axis-aligned; circular mode uses center + radius for overlay and masks).
+	void setRegionSelection(
+		float minX,
+		float minZ,
+		float maxX,
+		float maxZ,
+		bool circularSelection = false,
+		float circleCenterX = 0.f,
+		float circleCenterZ = 0.f,
+		float circleRadius = 0.f);
 	void clearRegionSelection();
 	bool hasRegionSelection() const;
 
@@ -405,12 +471,18 @@ private:
 	void modifyFloraPaint(float worldX, float worldZ, int floraFamilyId, float density, bool collidable);
 	void modifyFloraRemove(float worldX, float worldZ, float strength);
 
+	void modifyRadialPaint(float worldX, float worldZ, int radialFamilyId, float childChoiceStrength);
+
 	// Brush calculation helpers
 	float calculateFalloff(float distance, float radius) const;
 	float calculateBrushEffect(float localX, float localZ) const;
 
-	// Invalidate terrain in a region
+	// Invalidate terrain in a region (full extent; prefer live-stroke helpers while dragging).
 	void invalidateTerrainRegion(float centerX, float centerZ, float radius);
+
+	// Stroke session: accumulate full stroke AABB for end-of-stroke finalize; roll throttled mesh invalidates.
+	void accumulateStrokeFinalizeDirtyRect(float worldX, float worldZ, float regionRadius);
+	void invalidateTerrainMeshesForLiveBrushSample(float worldX, float worldZ, float regionRadius, float currentTime);
 
 	// Sample terrain heights in brush area
 	void sampleBrushArea(float centerX, float centerZ, float radius, std::vector<HeightModification>& outSamples) const;
@@ -435,7 +507,7 @@ private:
 	// Track modified region bounds
 	void expandModifiedBounds(float worldX, float worldZ, float radius);
 
-private:
+	void placeWaterBrushDab(float worldX, float worldZ, float currentFrameTime);
 
 	static GodClientTerrainEditor* ms_instance;
 
@@ -451,6 +523,7 @@ private:
 	float m_noiseFrequency;
 	int m_selectedShaderFamily;
 	int m_selectedFloraFamily;
+	int m_selectedRadialFamily;
 	bool m_floraCollidable;
 	float m_floraDensity;
 
@@ -477,6 +550,10 @@ private:
 	typedef std::map<uint64, FloraModification> FloraModificationMap;
 	FloraModificationMap m_floraModifications;
 
+	// Radial (dynamic flora) overlay map
+	typedef std::map<uint64, RadialModification> RadialModificationMap;
+	RadialModificationMap m_radialModifications;
+
 	// Undo/redo stacks
 	static const int MAX_UNDO_STROKES = 50;
 	std::vector<BrushStroke> m_undoStack;
@@ -488,6 +565,10 @@ private:
 	float m_regionMinZ;
 	float m_regionMaxX;
 	float m_regionMaxZ;
+	bool m_regionSelectionCircular;
+	float m_regionCircleCenterX;
+	float m_regionCircleCenterZ;
+	float m_regionCircleRadius;
 
 	// Modification rate limiting
 	float m_lastModificationTime;
@@ -501,6 +582,11 @@ private:
 	float m_dirtyRegionMaxZ;
 	bool m_hasDirtyRegion;
 	static const float REALTIME_INVALIDATION_INTERVAL;
+
+	// While dragging: mesh invalidates use a rolling segment union + throttle; accumulated stroke bounds still finalize on release.
+	bool m_liveStrokeInvalidateHasPrior;
+	float m_liveStrokeInvalidatePriorX;
+	float m_liveStrokeInvalidatePriorZ;
 
 	// Polyline editing state
 	PolylineEditMode m_polylineEditMode;
@@ -519,6 +605,10 @@ private:
 	std::vector<int> m_bitmapShaderData;
 	int m_bitmapWidth;
 	int m_bitmapHeight;
+
+	float m_waterPlacementHeight;
+	std::string m_waterPlacementShaderTemplate;
+	float m_lastWaterDabTime;
 
 	// Track overall modified region for export
 	Rectangle2d m_modifiedBounds;
@@ -583,6 +673,11 @@ inline int GodClientTerrainEditor::getSelectedShaderFamily() const
 inline int GodClientTerrainEditor::getSelectedFloraFamily() const
 {
 	return m_selectedFloraFamily;
+}
+
+inline int GodClientTerrainEditor::getSelectedRadialFamily() const
+{
+	return m_selectedRadialFamily;
 }
 
 inline bool GodClientTerrainEditor::getFloraCollidable() const

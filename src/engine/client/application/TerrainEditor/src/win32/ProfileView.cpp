@@ -239,8 +239,11 @@ void ProfileView::update (const TerrainGenerator::Layer* layer, HTREEITEM root)
 
 	int i;
 	for (i = 0; i < layer->getNumberOfLayers (); ++i)
-		if (layer->getLayer (i)->isActive ())
-			update (layer->getLayer (i), root /*item*/);
+	{
+		const TerrainGenerator::Layer* const sub = layer->getLayer (i);
+		if (sub && sub->isActive ())
+			update (sub, root /*item*/);
+	}
 
 	IGNORE_RETURN (m_wndTreeList.m_tree.Expand (item, TVE_EXPAND));
 }
@@ -275,8 +278,11 @@ void ProfileView::update (const TerrainGenerator* generator)
 
 	int i;
 	for (i = 0; i < generator->getNumberOfLayers (); ++i)
-		if (generator->getLayer (i)->isActive ())
-			update (generator->getLayer (i), TVI_ROOT);
+	{
+		const TerrainGenerator::Layer* const lyr = generator->getLayer (i);
+		if (lyr && lyr->isActive ())
+			update (lyr, TVI_ROOT);
+	}
 
 	const DWORD color = RGB (255, 0, 0);
 

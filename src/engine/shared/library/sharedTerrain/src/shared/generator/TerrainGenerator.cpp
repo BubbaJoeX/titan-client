@@ -1436,8 +1436,11 @@ void TerrainGenerator::Layer::calculateExtent ()
 
 		//-- run through all layers
 		for (i = 0; i < getNumberOfLayers (); i++)
-			if (getLayer (i)->isActive ())
-				getLayer (i)->calculateExtent ();
+		{
+			Layer* const lyr = getLayer (i);
+			if (lyr && lyr->isActive ())
+				lyr->calculateExtent ();
+		}
 	}
 }
 

@@ -1621,6 +1621,9 @@ bool ClientProceduralTerrainAppearance::findEnvironment (const Vector& position,
 
 void ClientProceduralTerrainAppearance::buildLocalWaterTable (const TerrainGenerator::Layer* layer)
 {
+	if (!layer)
+		return;
+
 	if (!m_waterManagerList)
 		return;
 
@@ -1829,8 +1832,11 @@ void ClientProceduralTerrainAppearance::buildLocalWaterTable (const TerrainGener
 	{
 		int i;
 		for (i = 0; i < layer->getNumberOfLayers (); i++)
-			if (layer->getLayer (i)->isActive ())
-				buildLocalWaterTable (layer->getLayer (i));
+		{
+			const TerrainGenerator::Layer* const subLayer = layer->getLayer (i);
+			if (subLayer && subLayer->isActive ())
+				buildLocalWaterTable (subLayer);
+		}
 	}
 }
 
@@ -1838,12 +1844,31 @@ void ClientProceduralTerrainAppearance::buildLocalWaterTable (const TerrainGener
 
 void ClientProceduralTerrainAppearance::buildLocalWaterTables ()
 {
-	const TerrainGenerator* generator = proceduralTerrainAppearanceTemplate->getTerrainGenerator ();
+	if (!proceduralTerrainAppearanceTemplate)
+		return;
+
+	const TerrainGenerator* const generator = proceduralTerrainAppearanceTemplate->getTerrainGenerator ();
+	if (!generator)
+		return;
 
 	int i;
 	for (i = 0; i < generator->getNumberOfLayers (); i++)
-		if (generator->getLayer (i)->isActive ())
-			buildLocalWaterTable (generator->getLayer (i));
+	{
+		const TerrainGenerator::Layer* const lyr = generator->getLayer (i);
+		if (lyr && lyr->isActive ())
+			buildLocalWaterTable (lyr);
+	}
+}
+
+//-------------------------------------------------------------------
+
+void ClientProceduralTerrainAppearance::rebuildLocalWaterTablesFromTerrainGenerator ()
+{
+	if (!m_localWaterManager)
+		return;
+
+	m_localWaterManager->clearRebuildableWaterPrimitives ();
+	buildLocalWaterTables ();
 }
 
 //-------------------------------------------------------------------

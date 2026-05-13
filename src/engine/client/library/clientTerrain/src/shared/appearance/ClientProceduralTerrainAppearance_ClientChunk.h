@@ -75,7 +75,7 @@ private:
 
 private:
 	
-	void createTileShader (ShaderData& shaderData, int x, int z, bool useFirstChild) const;
+	void createTileShader (ShaderData& shaderData, int x, int z, bool useFirstChild, Array2d<Vector> const * vertexXZForModifiers) const;
 
 	bool findDynamicFlora(const Array2d<RadialGroup::Info>& radialMap, float positionX, float positionZ, DynamicFloraData& data, bool& floraAllowed, bool constrainToHighDetail) const;
 

@@ -28,8 +28,11 @@ void TerrainModificationHelper::setHeight (TerrainGenerator::Layer* layer, float
 	{
 		int i;
 		for (i = 0; i < layer->getNumberOfLayers (); ++i)
-			if (layer->getLayer (i)->isActive ())
-				setHeight (layer->getLayer (i), height);
+		{
+			TerrainGenerator::Layer* const sub = layer->getLayer (i);
+			if (sub && sub->isActive ())
+				setHeight (sub, height);
+		}
 	}
 }
 
@@ -47,8 +50,11 @@ void TerrainModificationHelper::setPosition (TerrainGenerator::Layer* layer, con
 	{
 		int i;
 		for (i = 0; i < layer->getNumberOfLayers (); i++)
-			if (layer->getLayer (i)->isActive ())
-				setPosition (layer->getLayer (i), position);
+		{
+			TerrainGenerator::Layer* const sub = layer->getLayer (i);
+			if (sub && sub->isActive ())
+				setPosition (sub, position);
+		}
 	}
 }
 
@@ -66,8 +72,11 @@ void TerrainModificationHelper::setRotation (TerrainGenerator::Layer* layer, flo
 	{
 		int i;
 		for (i = 0; i < layer->getNumberOfLayers (); i++)
-			if (layer->getLayer (i)->isActive ())
-				setRotation (layer->getLayer (i), angle);
+		{
+			TerrainGenerator::Layer* const sub = layer->getLayer (i);
+			if (sub && sub->isActive ())
+				setRotation (sub, angle);
+		}
 	}
 }
 

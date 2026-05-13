@@ -40,6 +40,39 @@
 #include "sharedTerrain/AffectorFloraStatic.h"
 #include "sharedTerrain/AffectorEnvironment.h"
 #include "sharedTerrain/Boundary.h"
+
+#include <cmath>
+#include <cfloat>
+
+namespace
+{
+	// Terrain chunk shader poles / flora samples can sit on a coarse meter grid; overlay queries need a
+	// generous link radius so world-position samples tie to nearby paint keys reliably.
+	float const GODCLIENT_PAINT_MODIFIER_MAX_LINK_METERS = 448.f;
+
+	static float godClientSquared(float const v)
+	{
+		return v * v;
+	}
+
+	Vector godClientTerrainObjectXZHorizontal(TerrainObject* const terrainObject, float const worldX, float const worldZ)
+	{
+		if (!terrainObject)
+			return Vector(worldX, 0.f, worldZ);
+		return terrainObject->rotateTranslate_w2o(Vector(worldX, 0.f, worldZ));
+	}
+
+	uint64 godClientTerrainPaintCellKey(float const objectSpaceX, float const objectSpaceZ)
+	{
+		int const kx = static_cast<int>(std::floor(objectSpaceX));
+		int const kz = static_cast<int>(std::floor(objectSpaceZ));
+		return (static_cast<uint64>(kx + 32768) << 32) |
+			static_cast<uint64>(kz + 32768);
+	}
+
+	int s_godWaterLayerSerial = 0;
+}
+
 #include "sharedTerrain/ShaderGroup.h"
 #include "sharedTerrain/FloraGroup.h"
 #include "sharedTerrain/RadialGroup.h"
@@ -48,7 +81,6 @@
 
 #include "MainFrame.h"
 
-#include <cmath>
 #include <algorithm>
 #include <fstream>
 
@@ -84,6 +116,33 @@ namespace GodClientTerrainEditorNamespace
 			camera.addDebugPrimitive(
 				new Line3dDebugPrimitive(Line3dDebugPrimitive::S_none, Transform::identity, prev, cur, color));
 			prev = cur;
+		}
+	}
+
+	void addTerrainHeightDebugCircle(
+		TerrainObject const& terrain,
+		Camera const& camera,
+		float const cx,
+		float const cz,
+		float const r,
+		VectorArgb const& color,
+		int const segments)
+	{
+		if (r < 0.01f)
+			return;
+
+		int const seg = std::max(12, std::min(128, segments));
+		static float const kTwoPi = 6.28318530717958647692f;
+
+		for (int i = 0; i < seg; ++i)
+		{
+			float const a0 = (static_cast<float>(i) / static_cast<float>(seg)) * kTwoPi;
+			float const a1 = (static_cast<float>(i + 1) / static_cast<float>(seg)) * kTwoPi;
+			float const x0 = cx + std::cos(a0) * r;
+			float const z0 = cz + std::sin(a0) * r;
+			float const x1 = cx + std::cos(a1) * r;
+			float const z1 = cz + std::sin(a1) * r;
+			addTerrainHeightDebugLineStrip(terrain, camera, x0, z0, x1, z1, color);
 		}
 	}
 
@@ -123,6 +182,7 @@ void GodClientTerrainEditor::install()
 	// Register shader and flora modifier callbacks
 	CityTerrainLayerManager::setExternalShaderModifierCallback(&GodClientTerrainEditor::getModifiedShader);
 	CityTerrainLayerManager::setExternalFloraModifierCallback(&GodClientTerrainEditor::getModifiedFlora);
+	CityTerrainLayerManager::setExternalRadialModifierCallback(&GodClientTerrainEditor::getModifiedRadial);
 }
 
 // ----------------------------------------------------------------------
@@ -137,6 +197,7 @@ void GodClientTerrainEditor::remove()
 	// Unregister shader and flora modifier callbacks
 	CityTerrainLayerManager::clearExternalShaderModifierCallback();
 	CityTerrainLayerManager::clearExternalFloraModifierCallback();
+	CityTerrainLayerManager::clearExternalRadialModifierCallback();
 
 	delete ms_instance;
 	ms_instance = 0;
@@ -171,6 +232,7 @@ GodClientTerrainEditor::GodClientTerrainEditor() :
 	m_noiseFrequency(0.1f),
 	m_selectedShaderFamily(0),
 	m_selectedFloraFamily(0),
+	m_selectedRadialFamily(0),
 	m_floraCollidable(false),
 	m_floraDensity(1.0f),
 	m_brushPreviewEnabled(true),
@@ -183,6 +245,7 @@ GodClientTerrainEditor::GodClientTerrainEditor() :
 	m_heightModifications(),
 	m_shaderModifications(),
 	m_floraModifications(),
+	m_radialModifications(),
 	m_undoStack(),
 	m_redoStack(),
 	m_hasRegionSelection(false),
@@ -190,6 +253,10 @@ GodClientTerrainEditor::GodClientTerrainEditor() :
 	m_regionMinZ(0.0f),
 	m_regionMaxX(0.0f),
 	m_regionMaxZ(0.0f),
+	m_regionSelectionCircular(false),
+	m_regionCircleCenterX(0.0f),
+	m_regionCircleCenterZ(0.0f),
+	m_regionCircleRadius(0.0f),
 	m_lastModificationTime(-1.0e9f),
 	m_lastInvalidationTime(0.0f),
 	m_dirtyRegionMinX(0.0f),
@@ -197,6 +264,9 @@ GodClientTerrainEditor::GodClientTerrainEditor() :
 	m_dirtyRegionMaxX(0.0f),
 	m_dirtyRegionMaxZ(0.0f),
 	m_hasDirtyRegion(false),
+	m_liveStrokeInvalidateHasPrior(false),
+	m_liveStrokeInvalidatePriorX(0.0f),
+	m_liveStrokeInvalidatePriorZ(0.0f),
 	m_polylineEditMode(PEM_None),
 	m_activePolyline(),
 	m_selectedPolylinePoint(-1),
@@ -211,7 +281,10 @@ GodClientTerrainEditor::GodClientTerrainEditor() :
 	m_bitmapHeight(0),
 	m_modifiedBounds(),
 	m_hasModifiedBounds(false),
-	m_createdLayers()
+	m_createdLayers(),
+	m_waterPlacementHeight(0.0f),
+	m_waterPlacementShaderTemplate(),
+	m_lastWaterDabTime(-1.0e9f)
 {
 	m_activePolyline.width = 8.0f;
 	m_activePolyline.shaderFamilyId = 0;
@@ -236,6 +309,7 @@ GodClientTerrainEditor::~GodClientTerrainEditor()
 	m_heightModifications.clear();
 	m_shaderModifications.clear();
 	m_floraModifications.clear();
+	m_radialModifications.clear();
 	m_activePolyline.controlPoints.clear();
 	m_activeEnvironmentZone.boundaryPoints.clear();
 	m_bitmapHeightData.clear();
@@ -308,16 +382,23 @@ void GodClientTerrainEditor::setNoiseFrequency(float frequency)
 
 // ----------------------------------------------------------------------
 
-void GodClientTerrainEditor::setSelectedShaderFamily(int familyIndex)
+void GodClientTerrainEditor::setSelectedShaderFamily(int familyId)
 {
-	m_selectedShaderFamily = familyIndex;
+	m_selectedShaderFamily = familyId;
 }
 
 // ----------------------------------------------------------------------
 
-void GodClientTerrainEditor::setSelectedFloraFamily(int familyIndex)
+void GodClientTerrainEditor::setSelectedFloraFamily(int familyId)
 {
-	m_selectedFloraFamily = familyIndex;
+	m_selectedFloraFamily = familyId;
+}
+
+// ----------------------------------------------------------------------
+
+void GodClientTerrainEditor::setSelectedRadialFamily(int familyId)
+{
+	m_selectedRadialFamily = familyId;
 }
 
 // ----------------------------------------------------------------------
@@ -366,6 +447,8 @@ bool GodClientTerrainEditor::beginBrushStroke(float worldX, float worldZ)
 
 	// Reset dirty region tracking for new stroke
 	m_hasDirtyRegion = false;
+	m_liveStrokeInvalidateHasPrior = false;
+
 	const float ft = Clock::frameTime();
 	// Allow immediate realtime invalidation on the first sample of each stroke (otherwise
 	// lastInvalidationTime == frameTime from below suppresses invalidate until REALTIME_* elapses).
@@ -417,7 +500,7 @@ void GodClientTerrainEditor::continueBrushStroke(float worldX, float worldZ)
 	// Minimum travel before re-sampling (smaller = smoother live feedback while dragging).
 	// Height tools use a coarser step to limit CPU; shader/flora/water repaint much cheaper per cell.
 	float minFrac = 0.1f;
-	if (m_toolMode == TM_PaintShader || m_toolMode == TM_PaintFlora || m_toolMode == TM_PlaceWater)
+	if (m_toolMode == TM_PaintShader || m_toolMode == TM_PaintFlora || m_toolMode == TM_PlaceWater || m_toolMode == TM_PlaceRadial)
 		minFrac = 0.004f;
 	else if (m_toolMode == TM_Raise || m_toolMode == TM_Lower || m_toolMode == TM_Flatten ||
 	         m_toolMode == TM_Smooth || m_toolMode == TM_Noise || m_toolMode == TM_SetHeight)
@@ -480,9 +563,18 @@ void GodClientTerrainEditor::endBrushStroke()
 		m_dirtyRegionMaxZ = 0.0f;
 	}
 
+	m_liveStrokeInvalidateHasPrior = false;
+
 	// Flush any remaining terrain changes
 	flushTerrainChanges();
 	nudgeGodClientCameraToRefreshDpvs();
+}
+
+// ----------------------------------------------------------------------
+
+void GodClientTerrainEditor::applyShaderPaintDab(float worldX, float worldZ, int shaderFamilyId, float strength)
+{
+	modifyShaderPaint(worldX, worldZ, shaderFamilyId, strength);
 }
 
 // ----------------------------------------------------------------------
@@ -533,8 +625,16 @@ void GodClientTerrainEditor::applyBrushAtPoint(float worldX, float worldZ)
 			modifyShaderPaint(worldX, worldZ, m_selectedShaderFamily, m_brushStrength);
 			break;
 
+		case TM_PlaceWater:
+			placeWaterBrushDab(worldX, worldZ, currentTime);
+			break;
+
 		case TM_PaintFlora:
 			modifyFloraPaint(worldX, worldZ, m_selectedFloraFamily, m_floraDensity, m_floraCollidable);
+			break;
+
+		case TM_PlaceRadial:
+			modifyRadialPaint(worldX, worldZ, m_selectedRadialFamily, m_floraDensity);
 			break;
 
 		case TM_StampBitmap:
@@ -545,64 +645,17 @@ void GodClientTerrainEditor::applyBrushAtPoint(float worldX, float worldZ)
 			break;
 	}
 
-	// Track modified region
+	// Track modified region (export bounds)
 	expandModifiedBounds(worldX, worldZ, m_brushSize * 0.5f);
 
-	// Accumulate dirty region for deferred invalidation
 	const float halfBrush = m_brushSize * 0.5f;
 	const float margin = 16.0f;
 	const float regionRadius = halfBrush + margin;
 
-	if (!m_hasDirtyRegion)
-	{
-		m_dirtyRegionMinX = worldX - regionRadius;
-		m_dirtyRegionMinZ = worldZ - regionRadius;
-		m_dirtyRegionMaxX = worldX + regionRadius;
-		m_dirtyRegionMaxZ = worldZ + regionRadius;
-		m_hasDirtyRegion = true;
-	}
-	else
-	{
-		// Expand dirty region to include new brush area
-		if (worldX - regionRadius < m_dirtyRegionMinX)
-			m_dirtyRegionMinX = worldX - regionRadius;
-		if (worldZ - regionRadius < m_dirtyRegionMinZ)
-			m_dirtyRegionMinZ = worldZ - regionRadius;
-		if (worldX + regionRadius > m_dirtyRegionMaxX)
-			m_dirtyRegionMaxX = worldX + regionRadius;
-		if (worldZ + regionRadius > m_dirtyRegionMaxZ)
-			m_dirtyRegionMaxZ = worldZ + regionRadius;
-	}
+	accumulateStrokeFinalizeDirtyRect(worldX, worldZ, regionRadius);
 
-	// Height brushing: coalesce chunk invalidations. The procedural generator clears pending requests per
-	// invalidate — flooding invalidateRegion() makes distant geometry/streaming drop until rebuild.
-	const bool heightStrokeTool =
-		m_brushStrokeActive &&
-		(m_toolMode == TM_Raise || m_toolMode == TM_Lower || m_toolMode == TM_Flatten ||
-		 m_toolMode == TM_Smooth || m_toolMode == TM_Noise || m_toolMode == TM_SetHeight);
-
-	if (heightStrokeTool)
-	{
-		if (currentTime - m_lastInvalidationTime >= REALTIME_INVALIDATION_INTERVAL && m_hasDirtyRegion)
-		{
-			TerrainObject* const terrainObject = TerrainObject::getInstance();
-			if (terrainObject)
-			{
-				Rectangle2d const extent2d(
-					m_dirtyRegionMinX,
-					m_dirtyRegionMinZ,
-					m_dirtyRegionMaxX,
-					m_dirtyRegionMaxZ);
-				terrainObject->invalidateRegion(extent2d);
-			}
-			m_lastInvalidationTime = currentTime;
-		}
-	}
-	else
-	{
-		invalidateTerrainRegion(worldX, worldZ, regionRadius);
-		m_lastInvalidationTime = currentTime;
-	}
+	// Live stroke: roll throttled localized invalidates; endBrushStroke() invalidates the full accumulated stroke AABB.
+	invalidateTerrainMeshesForLiveBrushSample(worldX, worldZ, regionRadius, currentTime);
 }
 
 // ----------------------------------------------------------------------
@@ -1052,6 +1105,171 @@ void GodClientTerrainEditor::invalidateTerrainRegion(float centerX, float center
 
 // ----------------------------------------------------------------------
 
+void GodClientTerrainEditor::accumulateStrokeFinalizeDirtyRect(float worldX, float worldZ, float regionRadius)
+{
+	if (!m_hasDirtyRegion)
+	{
+		m_dirtyRegionMinX = worldX - regionRadius;
+		m_dirtyRegionMinZ = worldZ - regionRadius;
+		m_dirtyRegionMaxX = worldX + regionRadius;
+		m_dirtyRegionMaxZ = worldZ + regionRadius;
+		m_hasDirtyRegion = true;
+	}
+	else
+	{
+		if (worldX - regionRadius < m_dirtyRegionMinX)
+			m_dirtyRegionMinX = worldX - regionRadius;
+		if (worldZ - regionRadius < m_dirtyRegionMinZ)
+			m_dirtyRegionMinZ = worldZ - regionRadius;
+		if (worldX + regionRadius > m_dirtyRegionMaxX)
+			m_dirtyRegionMaxX = worldX + regionRadius;
+		if (worldZ + regionRadius > m_dirtyRegionMaxZ)
+			m_dirtyRegionMaxZ = worldZ + regionRadius;
+	}
+}
+
+// ----------------------------------------------------------------------
+
+void GodClientTerrainEditor::invalidateTerrainMeshesForLiveBrushSample(float worldX, float worldZ, float regionRadius, float currentTime)
+{
+	TerrainObject* const terrainObject = TerrainObject::getInstance();
+	if (!terrainObject)
+		return;
+
+	const bool heightStrokeTool =
+		m_brushStrokeActive &&
+		(m_toolMode == TM_Raise || m_toolMode == TM_Lower || m_toolMode == TM_Flatten ||
+		 m_toolMode == TM_Smooth || m_toolMode == TM_Noise || m_toolMode == TM_SetHeight);
+
+	const bool overlayPaintStroke =
+		m_brushStrokeActive &&
+		(m_toolMode == TM_PaintShader || m_toolMode == TM_PaintFlora || m_toolMode == TM_PlaceWater ||
+		 m_toolMode == TM_PlaceRadial || m_toolMode == TM_StampBitmap);
+
+	const bool useRollingLivePolicy = m_brushStrokeActive && (heightStrokeTool || overlayPaintStroke);
+
+	if (useRollingLivePolicy)
+	{
+		if (currentTime - m_lastInvalidationTime < REALTIME_INVALIDATION_INTERVAL)
+			return;
+
+		if (m_liveStrokeInvalidateHasPrior)
+		{
+			float const ax = m_liveStrokeInvalidatePriorX;
+			float const az = m_liveStrokeInvalidatePriorZ;
+			float const bx = worldX;
+			float const bz = worldZ;
+			float const xmin = std::min(ax, bx) - regionRadius;
+			float const xmax = std::max(ax, bx) + regionRadius;
+			float const zmin = std::min(az, bz) - regionRadius;
+			float const zmax = std::max(az, bz) + regionRadius;
+			terrainObject->invalidateRegion(Rectangle2d(xmin, zmin, xmax, zmax));
+		}
+		else
+		{
+			invalidateTerrainRegion(worldX, worldZ, regionRadius);
+		}
+
+		m_liveStrokeInvalidatePriorX = worldX;
+		m_liveStrokeInvalidatePriorZ = worldZ;
+		m_liveStrokeInvalidateHasPrior = true;
+		m_lastInvalidationTime = currentTime;
+		return;
+	}
+
+	invalidateTerrainRegion(worldX, worldZ, regionRadius);
+	m_lastInvalidationTime = currentTime;
+	nudgeGodClientCameraToRefreshDpvs();
+}
+
+// ----------------------------------------------------------------------
+
+void GodClientTerrainEditor::setWaterPlacementHeight(float height)
+{
+	m_waterPlacementHeight = height;
+}
+
+// ----------------------------------------------------------------------
+
+void GodClientTerrainEditor::setWaterPlacementShaderTemplate(char const* shaderTemplateName)
+{
+	if (shaderTemplateName && *shaderTemplateName)
+		m_waterPlacementShaderTemplate = shaderTemplateName;
+	else
+		m_waterPlacementShaderTemplate.clear();
+}
+
+// ----------------------------------------------------------------------
+
+void GodClientTerrainEditor::installLocalWaterTableAxisAligned(float centerWorldX, float centerWorldZ, float halfExtentSquare, float tableHeight)
+{
+	TerrainGenerator* const generator = getTerrainGenerator();
+	if (!generator)
+	{
+		MainFrame::getInstance().textToConsole("installLocalWaterTableAxisAligned: No terrain generator available.");
+		return;
+	}
+
+	float const hs = std::max(1.0f, halfExtentSquare);
+	char layerBuf[128];
+	snprintf(layerBuf, sizeof(layerBuf), "GodWater_%06d", s_godWaterLayerSerial++);
+	TerrainGenerator::Layer* const layer = new TerrainGenerator::Layer();
+	layer->setName(layerBuf);
+	layer->setActive(true);
+
+	char boundaryBuf[128];
+	snprintf(boundaryBuf, sizeof(boundaryBuf), "%s_bc", layerBuf);
+
+	BoundaryRectangle* const boundary = new BoundaryRectangle();
+	boundary->setName(boundaryBuf);
+	boundary->setActive(true);
+	boundary->setRectangle(Rectangle2d(centerWorldX - hs, centerWorldZ - hs, centerWorldX + hs, centerWorldZ + hs));
+	boundary->setLocalWaterTable(true);
+	boundary->setLocalGlobalWaterTable(false);
+	boundary->setLocalWaterTableHeight(tableHeight);
+	boundary->setLocalWaterTableShaderSize(8.f);
+
+	std::string const shaderName = (!m_waterPlacementShaderTemplate.empty() ? m_waterPlacementShaderTemplate : std::string("ocean_new"));
+	boundary->setLocalWaterTableShaderTemplateName(shaderName.c_str());
+
+	layer->addBoundary(boundary);
+	generator->addLayer(layer);
+	generator->prepare();
+
+	TerrainObject* const terrainObject = TerrainObject::getInstance();
+	Appearance* const appearance = (terrainObject ? terrainObject->getAppearance() : 0);
+	ClientProceduralTerrainAppearance* const proceduralAppearance = dynamic_cast<ClientProceduralTerrainAppearance*>(appearance);
+	if (proceduralAppearance)
+		proceduralAppearance->rebuildLocalWaterTablesFromTerrainGenerator();
+
+	if (terrainObject)
+	{
+		float const invalidatePad = hs + 128.f;
+		terrainObject->invalidateRegion(
+			Rectangle2d(centerWorldX - invalidatePad,
+			             centerWorldZ - invalidatePad,
+			             centerWorldX + invalidatePad,
+			             centerWorldZ + invalidatePad));
+	}
+
+	nudgeGodClientCameraToRefreshDpvs();
+}
+
+// ----------------------------------------------------------------------
+
+void GodClientTerrainEditor::placeWaterBrushDab(float worldX, float worldZ, float currentFrameTime)
+{
+	static float const minIntervalSeconds = 0.11f;
+	if ((currentFrameTime - m_lastWaterDabTime < minIntervalSeconds) && m_brushStrokeActive)
+		return;
+
+	m_lastWaterDabTime = currentFrameTime;
+	float const halfBrush = std::max(1.5f, m_brushSize * 0.5f);
+	installLocalWaterTableAxisAligned(worldX, worldZ, halfBrush, m_waterPlacementHeight);
+}
+
+// ----------------------------------------------------------------------
+
 void GodClientTerrainEditor::sampleBrushArea(float centerX, float centerZ, float radius, std::vector<HeightModification>& outSamples) const
 {
 	TerrainObject* const terrainObject = TerrainObject::getInstance();
@@ -1344,24 +1562,38 @@ void GodClientTerrainEditor::flushTerrainChanges()
 		if (mod.worldZ > maxZ) maxZ = mod.worldZ;
 	}
 
+	// Shader / flora / radial keys use terrain object-space XZ (see modify*Paint). Invalidate in world space.
 	for (ShaderModificationMap::const_iterator it = m_shaderModifications.begin(); it != m_shaderModifications.end(); ++it)
 	{
 		ShaderModification const& mod = it->second;
+		Vector const w = terrainObject->rotateTranslate_o2w(Vector(mod.worldX, 0.f, mod.worldZ));
 		hasBounds = true;
-		if (mod.worldX < minX) minX = mod.worldX;
-		if (mod.worldX > maxX) maxX = mod.worldX;
-		if (mod.worldZ < minZ) minZ = mod.worldZ;
-		if (mod.worldZ > maxZ) maxZ = mod.worldZ;
+		if (w.x < minX) minX = w.x;
+		if (w.x > maxX) maxX = w.x;
+		if (w.z < minZ) minZ = w.z;
+		if (w.z > maxZ) maxZ = w.z;
 	}
 
 	for (FloraModificationMap::const_iterator it = m_floraModifications.begin(); it != m_floraModifications.end(); ++it)
 	{
 		FloraModification const& mod = it->second;
+		Vector const w = terrainObject->rotateTranslate_o2w(Vector(mod.worldX, 0.f, mod.worldZ));
 		hasBounds = true;
-		if (mod.worldX < minX) minX = mod.worldX;
-		if (mod.worldX > maxX) maxX = mod.worldX;
-		if (mod.worldZ < minZ) minZ = mod.worldZ;
-		if (mod.worldZ > maxZ) maxZ = mod.worldZ;
+		if (w.x < minX) minX = w.x;
+		if (w.x > maxX) maxX = w.x;
+		if (w.z < minZ) minZ = w.z;
+		if (w.z > maxZ) maxZ = w.z;
+	}
+
+	for (RadialModificationMap::const_iterator it = m_radialModifications.begin(); it != m_radialModifications.end(); ++it)
+	{
+		RadialModification const& mod = it->second;
+		Vector const w = terrainObject->rotateTranslate_o2w(Vector(mod.worldX, 0.f, mod.worldZ));
+		hasBounds = true;
+		if (w.x < minX) minX = w.x;
+		if (w.x > maxX) maxX = w.x;
+		if (w.z < minZ) minZ = w.z;
+		if (w.z > maxZ) maxZ = w.z;
 	}
 
 	if (!hasBounds)
@@ -1387,13 +1619,20 @@ void GodClientTerrainEditor::nudgeGodClientCameraToRefreshDpvs()
 	const bool wasInterpolating = cam->getInterpolating();
 	cam->setInterpolating(false);
 
-	// Small translate nudge so streaming / visibility uses a fresh camera pose; 0.002f was
-	// too subtle for some DPVS paths after procedural chunk rebuilds.
-	static float const nudge = 0.05f;
+	// Larger nudge keeps DPVS / streaming coherent after procedural invalidate storms.
+	static float const nudgeXYZ = 0.12f;
+	static float const nudgeYaw = 0.006f;
+
 	FreeCamera::Info info(cam->getInfo());
-	info.translate.x += nudge;
+
+	info.translate.x += nudgeXYZ;
+	info.translate.y += nudgeXYZ * 0.25f;
+	info.yaw += nudgeYaw;
 	cam->setInfo(info);
-	info.translate.x -= nudge;
+
+	info.translate.x -= nudgeXYZ;
+	info.translate.y -= nudgeXYZ * 0.25f;
+	info.yaw -= nudgeYaw;
 	cam->setInfo(info);
 
 	cam->setInterpolating(wasInterpolating);
@@ -1531,13 +1770,25 @@ void GodClientTerrainEditor::renderBrushPreview(const Camera& camera) const
 
 // ----------------------------------------------------------------------
 
-void GodClientTerrainEditor::setRegionSelection(float minX, float minZ, float maxX, float maxZ)
+void GodClientTerrainEditor::setRegionSelection(
+	float const minX,
+	float const minZ,
+	float const maxX,
+	float const maxZ,
+	bool const circularSelection,
+	float const circleCenterX,
+	float const circleCenterZ,
+	float const circleRadius)
 {
 	m_hasRegionSelection = true;
 	m_regionMinX = minX;
 	m_regionMinZ = minZ;
 	m_regionMaxX = maxX;
 	m_regionMaxZ = maxZ;
+	m_regionSelectionCircular = circularSelection;
+	m_regionCircleCenterX = circleCenterX;
+	m_regionCircleCenterZ = circleCenterZ;
+	m_regionCircleRadius = circleRadius;
 }
 
 // ----------------------------------------------------------------------
@@ -1545,6 +1796,8 @@ void GodClientTerrainEditor::setRegionSelection(float minX, float minZ, float ma
 void GodClientTerrainEditor::clearRegionSelection()
 {
 	m_hasRegionSelection = false;
+	m_regionSelectionCircular = false;
+	m_regionCircleRadius = 0.0f;
 }
 
 // ----------------------------------------------------------------------
@@ -1556,7 +1809,8 @@ bool GodClientTerrainEditor::applyRectangularHeightSamples(
 	float const maxZ,
 	int const nx,
 	int const nz,
-	float const* heightsRowMajor)
+	float const* heightsRowMajor,
+	unsigned char const* cellMaskRowMajor)
 {
 	if (!heightsRowMajor || nx < 2 || nz < 2)
 		return false;
@@ -1580,6 +1834,13 @@ bool GodClientTerrainEditor::applyRectangularHeightSamples(
 	{
 		for (int ix = 0; ix < nx; ++ix)
 		{
+			if (cellMaskRowMajor)
+			{
+				unsigned char const m = cellMaskRowMajor[iz * nx + ix];
+				if (m == 0)
+					continue;
+			}
+
 			float const wx = minX + dx * static_cast<float>(ix);
 			float const wz = minZ + dz * static_cast<float>(iz);
 			int const gix = static_cast<int>(std::floor(wx));
@@ -1628,6 +1889,105 @@ bool GodClientTerrainEditor::applyRectangularHeightSamples(
 
 	float const margin = 32.0f;
 	Rectangle2d const extent2d(minX - margin, minZ - margin, maxX + margin, maxZ + margin);
+	terrainObject->invalidateRegion(extent2d);
+	flushTerrainChanges();
+	nudgeGodClientCameraToRefreshDpvs();
+	return true;
+}
+
+// ----------------------------------------------------------------------
+
+bool GodClientTerrainEditor::applyRectangularShaderPaint(
+	float const minX,
+	float const minZ,
+	float const maxX,
+	float const maxZ,
+	int const shaderFamilyId,
+	float const strength,
+	bool const circularClip,
+	float const circleCenterX,
+	float const circleCenterZ,
+	float const circleRadius)
+{
+	TerrainObject* const terrainObject = TerrainObject::getInstance();
+	if (!terrainObject)
+		return false;
+
+	float const ax0 = std::min(minX, maxX);
+	float const az0 = std::min(minZ, maxZ);
+	float const ax1 = std::max(minX, maxX);
+	float const az1 = std::max(minZ, maxZ);
+
+	static float const kMinExtent = 0.5f;
+	if ((ax1 - ax0) < kMinExtent || (az1 - az0) < kMinExtent)
+		return false;
+
+	int const familyIdClamped = std::max(0, std::min(255, shaderFamilyId));
+	float const feather01 = std::max(0.0f, std::min(1.0f, strength));
+
+	const int minIx = static_cast<int>(std::floor(ax0));
+	const int maxIx = static_cast<int>(std::ceil(ax1));
+	const int minIz = static_cast<int>(std::floor(az0));
+	const int maxIz = static_cast<int>(std::ceil(az1));
+
+	int cellsWritten = 0;
+
+	float const rSq = circleRadius * circleRadius;
+	bool const useCircle = circularClip && circleRadius > 0.25f;
+
+	for (int iz = minIz; iz <= maxIz; ++iz)
+	{
+		for (int ix = minIx; ix <= maxIx; ++ix)
+		{
+			float const xw = static_cast<float>(ix);
+			float const zw = static_cast<float>(iz);
+			if (xw < ax0 || xw > ax1 || zw < az0 || zw > az1)
+				continue;
+
+			if (useCircle)
+			{
+				float const dx = xw - circleCenterX;
+				float const dz = zw - circleCenterZ;
+				if (dx * dx + dz * dz > rSq + 1e-3f)
+					continue;
+			}
+
+			Vector const objectPos = godClientTerrainObjectXZHorizontal(terrainObject, xw, zw);
+			float const lx = objectPos.x;
+			float const lz = objectPos.z;
+
+			const uint64 key = godClientTerrainPaintCellKey(lx, lz);
+
+			ShaderModification mod;
+			mod.worldX = lx;
+			mod.worldZ = lz;
+			mod.modifiedFamilyId = familyIdClamped;
+			mod.featherAmount = feather01;
+
+			ShaderModificationMap::iterator it = m_shaderModifications.find(key);
+			if (it != m_shaderModifications.end())
+			{
+				mod.originalFamilyId = it->second.originalFamilyId;
+				if (familyIdClamped == it->second.modifiedFamilyId)
+					mod.featherAmount = std::max(feather01, it->second.featherAmount);
+			}
+			else
+			{
+				mod.originalFamilyId = -1;
+			}
+
+			m_shaderModifications[key] = mod;
+			++cellsWritten;
+		}
+	}
+
+	if (cellsWritten <= 0)
+		return false;
+
+	expandModifiedBounds((ax0 + ax1) * 0.5f, (az0 + az1) * 0.5f, std::max(ax1 - ax0, az1 - az0) * 0.5f + 32.0f);
+
+	float const margin = 32.0f;
+	Rectangle2d const extent2d(ax0 - margin, az0 - margin, ax1 + margin, az1 + margin);
 	terrainObject->invalidateRegion(extent2d);
 	flushTerrainChanges();
 	nudgeGodClientCameraToRefreshDpvs();
@@ -1835,17 +2195,26 @@ void GodClientTerrainEditor::renderRegionSelectionOverlay(
 	float const minX,
 	float const minZ,
 	float const maxX,
-	float const maxZ) const
+	float const maxZ,
+	bool const circularSelection,
+	float const circleCenterX,
+	float const circleCenterZ,
+	float const circleRadius) const
 {
 	TerrainObject const* const terrainObject = TerrainObject::getConstInstance();
 	if (!terrainObject)
 		return;
 
 	VectorArgb const color(1.0f, 1.0f, 0.85f, 0.1f);
-	addTerrainHeightDebugLineStrip(*terrainObject, camera, minX, minZ, maxX, minZ, color);
-	addTerrainHeightDebugLineStrip(*terrainObject, camera, maxX, minZ, maxX, maxZ, color);
-	addTerrainHeightDebugLineStrip(*terrainObject, camera, maxX, maxZ, minX, maxZ, color);
-	addTerrainHeightDebugLineStrip(*terrainObject, camera, minX, maxZ, minX, minZ, color);
+	if (circularSelection && circleRadius > 0.01f)
+		addTerrainHeightDebugCircle(*terrainObject, camera, circleCenterX, circleCenterZ, circleRadius, color, 72);
+	else
+	{
+		addTerrainHeightDebugLineStrip(*terrainObject, camera, minX, minZ, maxX, minZ, color);
+		addTerrainHeightDebugLineStrip(*terrainObject, camera, maxX, minZ, maxX, maxZ, color);
+		addTerrainHeightDebugLineStrip(*terrainObject, camera, maxX, maxZ, minX, maxZ, color);
+		addTerrainHeightDebugLineStrip(*terrainObject, camera, minX, maxZ, minX, minZ, color);
+	}
 }
 
 // ======================================================================
@@ -1858,6 +2227,8 @@ void GodClientTerrainEditor::modifyShaderPaint(float worldX, float worldZ, int s
 	if (!terrainObject)
 		return;
 
+	int const familyIdClamped = std::max(0, std::min(255, shaderFamilyId));
+
 	const float halfBrush = m_brushSize * 0.5f;
 
 	const int minX = static_cast<int>(std::floor(worldX - halfBrush));
@@ -1869,29 +2240,32 @@ void GodClientTerrainEditor::modifyShaderPaint(float worldX, float worldZ, int s
 	{
 		for (int ix = minX; ix <= maxX; ++ix)
 		{
-			const float x = static_cast<float>(ix);
-			const float z = static_cast<float>(iz);
-			const float localX = x - worldX;
-			const float localZ = z - worldZ;
-			const float effect = calculateBrushEffect(localX, localZ);
+			const float xw = static_cast<float>(ix);
+			const float zw = static_cast<float>(iz);
+			const float brushLocalX = xw - worldX;
+			const float brushLocalZ = zw - worldZ;
+			const float effect = calculateBrushEffect(brushLocalX, brushLocalZ);
 
 			if (effect > 0.0f)
 			{
-				const uint64 key = (static_cast<uint64>(ix + 32768) << 32) |
-				                   static_cast<uint64>(iz + 32768);
+				Vector const objectPos = godClientTerrainObjectXZHorizontal(terrainObject, xw, zw);
+				float const lx = objectPos.x;
+				float const lz = objectPos.z;
+
+				const uint64 key = godClientTerrainPaintCellKey(lx, lz);
 
 				float const feather01 = std::max(0.0f, std::min(1.0f, effect * strength));
 
 				ShaderModification mod;
-				mod.worldX = x;
-				mod.worldZ = z;
-				mod.modifiedFamilyId = shaderFamilyId;
+				mod.worldX = lx;
+				mod.worldZ = lz;
+				mod.modifiedFamilyId = familyIdClamped;
 
 				ShaderModificationMap::iterator it = m_shaderModifications.find(key);
 				if (it != m_shaderModifications.end())
 				{
 					mod.originalFamilyId = it->second.originalFamilyId;
-					if (shaderFamilyId == it->second.modifiedFamilyId)
+					if (familyIdClamped == it->second.modifiedFamilyId)
 						mod.featherAmount = std::max(feather01, it->second.featherAmount);
 					else
 						mod.featherAmount = feather01;
@@ -1932,36 +2306,37 @@ bool GodClientTerrainEditor::getModifiedShaderInternal(float x, float z, int ori
 		return false;
 	}
 
-	// Sample positions from procedural chunk shading do not land on exact 1m integer grid points
-	// used when painting; search a small neighborhood so painted edits actually show up.
-	const int cx = static_cast<int>(floorf(x));
-	const int cz = static_cast<int>(floorf(z));
-
+	float const maxDistSq = godClientSquared(GODCLIENT_PAINT_MODIFIER_MAX_LINK_METERS);
+	float bestSq = FLT_MAX;
 	int bestFamily = originalFamilyId;
-	float bestFeather = -1.0f;
+	float bestFeatherPick = -1.0f;
 	bool found = false;
 
-	for (int dz = -2; dz <= 2; ++dz)
+	for (ShaderModificationMap::const_iterator it = m_shaderModifications.begin(); it != m_shaderModifications.end(); ++it)
 	{
-		for (int dx = -2; dx <= 2; ++dx)
+		ShaderModification const& mod = it->second;
+		if (mod.featherAmount <= 0.f)
+			continue;
+
+		float const dx = x - mod.worldX;
+		float const dz = z - mod.worldZ;
+		float const d2 = dx * dx + dz * dz;
+
+		if (d2 > maxDistSq)
+			continue;
+
+		if (!found ||
+			d2 < bestSq - 1.e-5f ||
+			(std::fabs(static_cast<double>(d2 - bestSq)) <= static_cast<double>(1.e-5f) && mod.featherAmount > bestFeatherPick))
 		{
-			const int ix = cx + dx;
-			const int iz = cz + dz;
-			const uint64 key = (static_cast<uint64>(ix + 32768) << 32) | static_cast<uint64>(iz + 32768);
-			ShaderModificationMap::const_iterator const it = m_shaderModifications.find(key);
-			if (it == m_shaderModifications.end())
-				continue;
-			const float f = it->second.featherAmount;
-			if (f > bestFeather)
-			{
-				bestFeather = f;
-				bestFamily = it->second.modifiedFamilyId;
-				found = true;
-			}
+			bestSq = d2;
+			bestFamily = mod.modifiedFamilyId;
+			bestFeatherPick = mod.featherAmount;
+			found = true;
 		}
 	}
 
-	if (!found || bestFeather <= 0.0f)
+	if (!found)
 	{
 		outFamilyId = originalFamilyId;
 		outFeather = 0.0f;
@@ -1969,7 +2344,7 @@ bool GodClientTerrainEditor::getModifiedShaderInternal(float x, float z, int ori
 	}
 
 	outFamilyId = bestFamily;
-	outFeather = bestFeather;
+	outFeather = bestFeatherPick;
 	return true;
 }
 
@@ -1994,20 +2369,22 @@ void GodClientTerrainEditor::modifyFloraPaint(float worldX, float worldZ, int fl
 	{
 		for (int ix = minX; ix <= maxX; ++ix)
 		{
-			const float x = static_cast<float>(ix);
-			const float z = static_cast<float>(iz);
-			const float localX = x - worldX;
-			const float localZ = z - worldZ;
+			const float xw = static_cast<float>(ix);
+			const float zw = static_cast<float>(iz);
+			const float localX = xw - worldX;
+			const float localZ = zw - worldZ;
 			const float effect = calculateBrushEffect(localX, localZ);
 
 			if (effect > 0.0f)
 			{
-				const uint64 key = (static_cast<uint64>(ix + 32768) << 32) |
-				                   static_cast<uint64>(iz + 32768);
+				Vector const objectPos = godClientTerrainObjectXZHorizontal(terrainObject, xw, zw);
+				float const lx = objectPos.x;
+				float const lz = objectPos.z;
+				const uint64 key = godClientTerrainPaintCellKey(lx, lz);
 
 				FloraModification mod;
-				mod.worldX = x;
-				mod.worldZ = z;
+				mod.worldX = lx;
+				mod.worldZ = lz;
 				mod.modifiedFamilyId = floraFamilyId;
 				mod.density = density * effect * m_brushStrength;
 				mod.collidable = collidable;
@@ -2035,6 +2412,10 @@ void GodClientTerrainEditor::modifyFloraPaint(float worldX, float worldZ, int fl
 
 void GodClientTerrainEditor::modifyFloraRemove(float worldX, float worldZ, float strength)
 {
+	TerrainObject* const terrainObject = TerrainObject::getInstance();
+	if (!terrainObject)
+		return;
+
 	const float halfBrush = m_brushSize * 0.5f;
 
 	const int minX = static_cast<int>(std::floor(worldX - halfBrush));
@@ -2046,16 +2427,16 @@ void GodClientTerrainEditor::modifyFloraRemove(float worldX, float worldZ, float
 	{
 		for (int ix = minX; ix <= maxX; ++ix)
 		{
-			const float x = static_cast<float>(ix);
-			const float z = static_cast<float>(iz);
-			const float localX = x - worldX;
-			const float localZ = z - worldZ;
+			const float xw = static_cast<float>(ix);
+			const float zw = static_cast<float>(iz);
+			const float localX = xw - worldX;
+			const float localZ = zw - worldZ;
 			const float effect = calculateBrushEffect(localX, localZ);
 
 			if (effect > 0.0f && effect * strength > 0.5f)
 			{
-				const uint64 key = (static_cast<uint64>(ix + 32768) << 32) |
-				                   static_cast<uint64>(iz + 32768);
+				Vector const objectPos = godClientTerrainObjectXZHorizontal(terrainObject, xw, zw);
+				const uint64 key = godClientTerrainPaintCellKey(objectPos.x, objectPos.z);
 
 				m_floraModifications.erase(key);
 			}
@@ -2087,33 +2468,37 @@ bool GodClientTerrainEditor::getModifiedFloraInternal(float x, float z, int orig
 		return false;
 	}
 
-	const int cx = static_cast<int>(floorf(x));
-	const int cz = static_cast<int>(floorf(z));
+	float const maxDistSq = godClientSquared(GODCLIENT_PAINT_MODIFIER_MAX_LINK_METERS);
+	float bestSq = FLT_MAX;
 	int bestFamily = originalFamilyId;
-	float bestDensity = -1.0f;
+	float bestDensityPick = -1.0f;
 	bool found = false;
 
-	for (int dz = -2; dz <= 2; ++dz)
+	for (FloraModificationMap::const_iterator it = m_floraModifications.begin(); it != m_floraModifications.end(); ++it)
 	{
-		for (int dx = -2; dx <= 2; ++dx)
+		FloraModification const& mod = it->second;
+		if (mod.density <= 0.f)
+			continue;
+
+		float const dx = x - mod.worldX;
+		float const dz = z - mod.worldZ;
+		float const d2 = dx * dx + dz * dz;
+
+		if (d2 > maxDistSq)
+			continue;
+
+		if (!found ||
+			d2 < bestSq - 1.e-5f ||
+			(std::fabs(static_cast<double>(d2 - bestSq)) <= static_cast<double>(1.e-5f) && mod.density > bestDensityPick))
 		{
-			const int ix = cx + dx;
-			const int iz = cz + dz;
-			const uint64 key = (static_cast<uint64>(ix + 32768) << 32) | static_cast<uint64>(iz + 32768);
-			FloraModificationMap::const_iterator const it = m_floraModifications.find(key);
-			if (it == m_floraModifications.end())
-				continue;
-			const float d = it->second.density;
-			if (d > bestDensity)
-			{
-				bestDensity = d;
-				bestFamily = it->second.modifiedFamilyId;
-				found = true;
-			}
+			bestSq = d2;
+			bestFamily = mod.modifiedFamilyId;
+			bestDensityPick = mod.density;
+			found = true;
 		}
 	}
 
-	if (!found || bestDensity < 0.0f)
+	if (!found)
 	{
 		outFamilyId = originalFamilyId;
 		outDensity = 0.0f;
@@ -2121,7 +2506,135 @@ bool GodClientTerrainEditor::getModifiedFloraInternal(float x, float z, int orig
 	}
 
 	outFamilyId = bestFamily;
-	outDensity = bestDensity;
+	outDensity = bestDensityPick;
+	return true;
+}
+
+// ======================================================================
+// Dynamic radial flora (RadialGroup) paint
+// ======================================================================
+
+void GodClientTerrainEditor::modifyRadialPaint(float worldX, float worldZ, int radialFamilyId, float childChoiceStrength)
+{
+	TerrainObject* const terrainObject = TerrainObject::getInstance();
+	if (!terrainObject)
+		return;
+
+	if (!radialFamilyId)
+		return;
+
+	const float halfBrush = m_brushSize * 0.5f;
+
+	const int minX = static_cast<int>(std::floor(worldX - halfBrush));
+	const int maxX = static_cast<int>(std::ceil(worldX + halfBrush));
+	const int minZ = static_cast<int>(std::floor(worldZ - halfBrush));
+	const int maxZ = static_cast<int>(std::ceil(worldZ + halfBrush));
+
+	for (int iz = minZ; iz <= maxZ; ++iz)
+	{
+		for (int ix = minX; ix <= maxX; ++ix)
+		{
+			const float xw = static_cast<float>(ix);
+			const float zw = static_cast<float>(iz);
+			const float localX = xw - worldX;
+			const float localZ = zw - worldZ;
+			const float effect = calculateBrushEffect(localX, localZ);
+
+			if (effect > 0.0f)
+			{
+				Vector const objectPos = godClientTerrainObjectXZHorizontal(terrainObject, xw, zw);
+				float const lx = objectPos.x;
+				float const lz = objectPos.z;
+				const uint64 key = godClientTerrainPaintCellKey(lx, lz);
+
+				RadialModification mod;
+				mod.worldX = lx;
+				mod.worldZ = lz;
+				mod.modifiedFamilyId = radialFamilyId;
+				mod.childChoice = childChoiceStrength * effect * m_brushStrength;
+
+				RadialModificationMap::iterator it = m_radialModifications.find(key);
+				if (it != m_radialModifications.end())
+				{
+					mod.originalFamilyId = it->second.originalFamilyId;
+					if (mod.childChoice > it->second.childChoice)
+					{
+						m_radialModifications[key] = mod;
+					}
+				}
+				else
+				{
+					mod.originalFamilyId = -1;
+					m_radialModifications[key] = mod;
+				}
+			}
+		}
+	}
+}
+
+// ----------------------------------------------------------------------
+
+bool GodClientTerrainEditor::getModifiedRadial(float x, float z, int originalFamilyId, int& outFamilyId, float& outChildChoice)
+{
+	if (!ms_instance)
+	{
+		outFamilyId = originalFamilyId;
+		outChildChoice = 0.0f;
+		return false;
+	}
+	return ms_instance->getModifiedRadialInternal(x, z, originalFamilyId, outFamilyId, outChildChoice);
+}
+
+// ----------------------------------------------------------------------
+
+bool GodClientTerrainEditor::getModifiedRadialInternal(float x, float z, int originalFamilyId, int& outFamilyId, float& outChildChoice) const
+{
+	if (m_radialModifications.empty())
+	{
+		outFamilyId = originalFamilyId;
+		outChildChoice = 0.0f;
+		return false;
+	}
+
+	float const maxDistSq = godClientSquared(GODCLIENT_PAINT_MODIFIER_MAX_LINK_METERS);
+	float bestSq = FLT_MAX;
+	int bestFamily = originalFamilyId;
+	float bestChoicePick = -1.0f;
+	bool found = false;
+
+	for (RadialModificationMap::const_iterator it = m_radialModifications.begin(); it != m_radialModifications.end(); ++it)
+	{
+		RadialModification const& mod = it->second;
+		if (mod.childChoice <= 0.f)
+			continue;
+
+		float const dx = x - mod.worldX;
+		float const dz = z - mod.worldZ;
+		float const d2 = dx * dx + dz * dz;
+
+		if (d2 > maxDistSq)
+			continue;
+
+		if (!found ||
+			d2 < bestSq - 1.e-5f ||
+			(std::fabs(static_cast<double>(d2 - bestSq)) <= static_cast<double>(1.e-5f) && mod.childChoice > bestChoicePick))
+		{
+			bestSq = d2;
+			bestFamily = mod.modifiedFamilyId;
+			bestChoicePick = mod.childChoice;
+			found = true;
+		}
+	}
+
+	if (!found)
+	{
+		outFamilyId = originalFamilyId;
+		outChildChoice = 0.0f;
+		return false;
+	}
+
+	outFamilyId = bestFamily;
+	outChildChoice = bestChoicePick;
 	return true;
 }
 
@@ -2998,8 +3511,10 @@ bool GodClientTerrainEditor::createRoadFromPolyline(const char* name)
 	road->setName(name);
 	road->setWidth(m_activePolyline.width);
 	road->setFamilyId(m_activePolyline.shaderFamilyId);
-	road->setFeatherDistance(m_activePolyline.featherDistance);
-	road->setFeatherDistanceShader(m_activePolyline.featherDistance);
+	// Feather at 1.0 makes inner shader width (1 - feather) * width/2 == 0, so no shader is ever written.
+	float const featherClamped = std::max(0.f, std::min(0.98f, m_activePolyline.featherDistance));
+	road->setFeatherDistance(featherClamped);
+	road->setFeatherDistanceShader(featherClamped);
 	road->setHasFixedHeights(m_activePolyline.hasFixedHeights);
 
 	road->clearPointList();
@@ -3021,16 +3536,28 @@ bool GodClientTerrainEditor::createRoadFromPolyline(const char* name)
 	}
 
 	road->createHeightData();
+
+	// Clip the layer to a padded axis box so generator/layer extent matches the feature (matches authored .trn layers).
+	Rectangle2d const e = road->getExtent();
+	float const pad = std::max(256.f, m_activePolyline.width * 4.f + 128.f);
+	BoundaryRectangle* const roadClip = new BoundaryRectangle();
+	roadClip->setName("Road layer bounds");
+	roadClip->setRectangle(Rectangle2d(e.x0 - pad, e.y0 - pad, e.x1 + pad, e.y1 + pad));
+	roadClip->setFeatherDistance(0.f);
+	layer->addBoundary(roadClip);
 	layer->addAffector(road);
 
 	generator->addLayer(layer);
 	m_createdLayers.push_back(name);
+	generator->prepare();
 
 	TerrainObject* const terrainObject = TerrainObject::getInstance();
 	if (terrainObject)
 	{
 		terrainObject->invalidateRegion(m_polylineExtent);
 	}
+
+	nudgeGodClientCameraToRefreshDpvs();
 
 	return true;
 }
@@ -3054,8 +3581,9 @@ bool GodClientTerrainEditor::createRibbonFromPolyline(const char* name)
 	ribbon->setName(name);
 	ribbon->setWidth(m_activePolyline.width);
 	ribbon->setTerrainShaderFamilyId(m_activePolyline.shaderFamilyId);
-	ribbon->setFeatherDistance(m_activePolyline.featherDistance);
-	ribbon->setFeatherDistanceTerrainShader(m_activePolyline.featherDistance);
+	float const featherClamped = std::max(0.f, std::min(0.98f, m_activePolyline.featherDistance));
+	ribbon->setFeatherDistance(featherClamped);
+	ribbon->setFeatherDistanceTerrainShader(featherClamped);
 
 	ribbon->clearPointList();
 	for (size_t i = 0; i < m_activePolyline.controlPoints.size(); ++i)
@@ -3072,16 +3600,29 @@ bool GodClientTerrainEditor::createRibbonFromPolyline(const char* name)
 	}
 	ribbon->copyHeightList(heightList);
 
+	ribbon->generateEndCapPointList();
+	ribbon->updateExtentAfterEndCaps();
+
+	Rectangle2d const re = ribbon->getExtent();
+	float const rpad = std::max(256.f, m_activePolyline.width * 4.f + 128.f);
+	BoundaryRectangle* const ribbonClip = new BoundaryRectangle();
+	ribbonClip->setName("Ribbon layer bounds");
+	ribbonClip->setRectangle(Rectangle2d(re.x0 - rpad, re.y0 - rpad, re.x1 + rpad, re.y1 + rpad));
+	ribbonClip->setFeatherDistance(0.f);
+	layer->addBoundary(ribbonClip);
 	layer->addAffector(ribbon);
 
 	generator->addLayer(layer);
 	m_createdLayers.push_back(name);
+	generator->prepare();
 
 	TerrainObject* const terrainObject = TerrainObject::getInstance();
 	if (terrainObject)
 	{
 		terrainObject->invalidateRegion(m_polylineExtent);
 	}
+
+	nudgeGodClientCameraToRefreshDpvs();
 
 	return true;
 }

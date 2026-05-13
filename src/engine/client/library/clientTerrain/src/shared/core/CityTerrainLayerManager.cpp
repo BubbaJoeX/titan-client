@@ -166,6 +166,7 @@ CityTerrainLayerManager::OpenTerraformingAlreadyActiveFn CityTerrainLayerManager
 CityTerrainLayerManager::ExternalHeightModifierCallback CityTerrainLayerManager::ms_externalHeightModifierCallback = 0;
 CityTerrainLayerManager::ExternalShaderModifierCallback CityTerrainLayerManager::ms_externalShaderModifierCallback = 0;
 CityTerrainLayerManager::ExternalFloraModifierCallback CityTerrainLayerManager::ms_externalFloraModifierCallback = 0;
+CityTerrainLayerManager::ExternalRadialModifierCallback CityTerrainLayerManager::ms_externalRadialModifierCallback = 0;
 bool CityTerrainLayerManager::ms_paintTileGridVisible = false;
 int32 CityTerrainLayerManager::ms_paintTileGridCityId = 0;
 
@@ -198,6 +199,7 @@ void CityTerrainLayerManager::remove()
 	ms_externalHeightModifierCallback = 0;
 	ms_externalShaderModifierCallback = 0;
 	ms_externalFloraModifierCallback = 0;
+	ms_externalRadialModifierCallback = 0;
 	ms_paintTileGridVisible = false;
 	ms_paintTileGridCityId = 0;
 	delete ms_instance;
@@ -417,6 +419,42 @@ bool CityTerrainLayerManager::getModifiedFlora(float x, float z, int originalFam
 		{
 			outFamilyId = modifiedFamilyId;
 			outDensity = modifiedDensity;
+			return true;
+		}
+	}
+
+	return false;
+}
+
+// ----------------------------------------------------------------------
+
+void CityTerrainLayerManager::setExternalRadialModifierCallback(ExternalRadialModifierCallback callback)
+{
+	ms_externalRadialModifierCallback = callback;
+}
+
+// ----------------------------------------------------------------------
+
+void CityTerrainLayerManager::clearExternalRadialModifierCallback()
+{
+	ms_externalRadialModifierCallback = 0;
+}
+
+// ----------------------------------------------------------------------
+
+bool CityTerrainLayerManager::getModifiedRadial(float x, float z, int originalFamilyId, int & outFamilyId, float & outChildChoice)
+{
+	outFamilyId = originalFamilyId;
+	outChildChoice = 0.0f;
+
+	if (ms_externalRadialModifierCallback)
+	{
+		int modifiedFamilyId = originalFamilyId;
+		float modifiedChildChoice = 0.0f;
+		if (ms_externalRadialModifierCallback(x, z, originalFamilyId, modifiedFamilyId, modifiedChildChoice))
+		{
+			outFamilyId = modifiedFamilyId;
+			outChildChoice = modifiedChildChoice;
 			return true;
 		}
 	}

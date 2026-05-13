@@ -188,6 +188,13 @@ void AffectorRibbon::generateEndCapPointList ()
 
 //-------------------------------------------------------------------
 
+void AffectorRibbon::updateExtentAfterEndCaps ()
+{
+	recalculate ();
+}
+
+//-------------------------------------------------------------------
+
 unsigned AffectorRibbon::getAffectedMaps() const
 {
 	return unsigned(TGM_ALL);
@@ -201,10 +208,9 @@ void AffectorRibbon::affect (const float worldX, const float worldZ, const int x
 	if (!isEnabled ())
 		return;
 
-	if (m_terrainShaderFamilyId == 0)
+	if (!generatorChunkData.shaderGroup->hasFamily (m_terrainShaderFamilyId))
 		return;
 
-	
 	if (amount > 0.f)
 	{
 		if (m_extent.isWithin (worldX, worldZ))

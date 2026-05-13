@@ -1153,6 +1153,43 @@
                                         <enum>Single</enum>
                                     </property>
                                 </widget>
+                                <hbox>
+                                    <property name="spacing">
+                                        <number>4</number>
+                                    </property>
+                                    <widget class="QPushButton">
+                                        <property name="name">
+                                            <cstring>m_layerToggleActiveButton</cstring>
+                                        </property>
+                                        <property name="text">
+                                            <string>Toggle active</string>
+                                        </property>
+                                    </widget>
+                                    <widget class="QPushButton">
+                                        <property name="name">
+                                            <cstring>m_layerPromoteButton</cstring>
+                                        </property>
+                                        <property name="text">
+                                            <string>Priority up</string>
+                                        </property>
+                                    </widget>
+                                    <widget class="QPushButton">
+                                        <property name="name">
+                                            <cstring>m_layerDemoteButton</cstring>
+                                        </property>
+                                        <property name="text">
+                                            <string>Priority down</string>
+                                        </property>
+                                    </widget>
+                                    <widget class="QPushButton">
+                                        <property name="name">
+                                            <cstring>m_layerRenameButton</cstring>
+                                        </property>
+                                        <property name="text">
+                                            <string>Rename</string>
+                                        </property>
+                                    </widget>
+                                </hbox>
                             </vbox>
                         </widget>
                     </widget>
@@ -1214,49 +1251,72 @@
                         <property name="title">
                             <string>Region Operations</string>
                         </property>
-                        <hbox>
+                        <vbox>
                             <property name="margin">
                                 <number>6</number>
                             </property>
                             <property name="spacing">
                                 <number>4</number>
                             </property>
-                            <widget class="QPushButton">
-                                <property name="name">
-                                    <cstring>m_selectRegionButton</cstring>
+                            <hbox>
+                                <property name="spacing">
+                                    <number>4</number>
                                 </property>
-                                <property name="text">
-                                    <string>Select</string>
+                                <widget class="QPushButton">
+                                    <property name="name">
+                                        <cstring>m_selectRegionButton</cstring>
+                                    </property>
+                                    <property name="text">
+                                        <string>Select</string>
+                                    </property>
+                                    <property name="toggleButton">
+                                        <bool>true</bool>
+                                    </property>
+                                </widget>
+                                <widget class="QPushButton">
+                                    <property name="name">
+                                        <cstring>m_copyRegionButton</cstring>
+                                    </property>
+                                    <property name="text">
+                                        <string>Copy</string>
+                                    </property>
+                                </widget>
+                                <widget class="QPushButton">
+                                    <property name="name">
+                                        <cstring>m_pasteRegionButton</cstring>
+                                    </property>
+                                    <property name="text">
+                                        <string>Paste</string>
+                                    </property>
+                                </widget>
+                                <widget class="QPushButton">
+                                    <property name="name">
+                                        <cstring>m_fillRegionButton</cstring>
+                                    </property>
+                                    <property name="text">
+                                        <string>Fill</string>
+                                    </property>
+                                </widget>
+                            </hbox>
+                            <hbox>
+                                <property name="spacing">
+                                    <number>6</number>
                                 </property>
-                                <property name="toggleButton">
-                                    <bool>true</bool>
-                                </property>
-                            </widget>
-                            <widget class="QPushButton">
-                                <property name="name">
-                                    <cstring>m_copyRegionButton</cstring>
-                                </property>
-                                <property name="text">
-                                    <string>Copy</string>
-                                </property>
-                            </widget>
-                            <widget class="QPushButton">
-                                <property name="name">
-                                    <cstring>m_pasteRegionButton</cstring>
-                                </property>
-                                <property name="text">
-                                    <string>Paste</string>
-                                </property>
-                            </widget>
-                            <widget class="QPushButton">
-                                <property name="name">
-                                    <cstring>m_fillRegionButton</cstring>
-                                </property>
-                                <property name="text">
-                                    <string>Fill</string>
-                                </property>
-                            </widget>
-                        </hbox>
+                                <widget class="QLabel">
+                                    <property name="name">
+                                        <cstring>m_regionShapeLabel</cstring>
+                                    </property>
+                                    <property name="text">
+                                        <string>Selection shape:</string>
+                                    </property>
+                                </widget>
+                                <widget class="QComboBox">
+                                    <property name="name">
+                                        <cstring>m_regionShapeCombo</cstring>
+                                    </property>
+                                </widget>
+                            </hbox>
+                        </vbox>
                     </widget>
                     <widget class="QGroupBox">
                         <property name="name">

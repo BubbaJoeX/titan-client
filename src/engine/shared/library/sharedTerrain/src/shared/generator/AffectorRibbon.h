@@ -55,6 +55,8 @@ public:
 	void copyHeightList (const ArrayList<float>& newHeightList);
 	void createInitialHeightList ();
 	void generateEndCapPointList ();
+	/// Rebuild ribbon polyline extent including end-cap bounds (invokes private recalculate; call after editing points/end caps).
+	void updateExtentAfterEndCaps ();
 	const ArrayList<Vector2d>& getEndCapPointList () const;
 
 	int               getTerrainShaderFamilyId () const;

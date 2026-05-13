@@ -153,6 +153,12 @@ public:
 	static void clearExternalFloraModifierCallback();
 	static bool getModifiedFlora(float x, float z, int originalFamilyId, int & outFamilyId, float & outDensity);
 
+	// External radial (dynamic flora) modifier callback (God Client terrain editing)
+	typedef bool (*ExternalRadialModifierCallback)(float x, float z, int originalFamilyId, int & outFamilyId, float & outChildChoice);
+	static void setExternalRadialModifierCallback(ExternalRadialModifierCallback callback);
+	static void clearExternalRadialModifierCallback();
+	static bool getModifiedRadial(float x, float z, int originalFamilyId, int & outFamilyId, float & outChildChoice);
+
 	// Optional UI refresh (registered by game UI; clientGame must not include SWG headers).
 	// cityId 0 means "refresh if the active UI matches" (e.g. paint response has no city id).
 	typedef void (*CityTerrainUiRefreshFn)(int32 cityId);
@@ -190,6 +196,7 @@ private:
 	static ExternalHeightModifierCallback ms_externalHeightModifierCallback;
 	static ExternalShaderModifierCallback ms_externalShaderModifierCallback;
 	static ExternalFloraModifierCallback ms_externalFloraModifierCallback;
+	static ExternalRadialModifierCallback ms_externalRadialModifierCallback;
 	static bool ms_paintTileGridVisible;
 	static int32 ms_paintTileGridCityId;
 

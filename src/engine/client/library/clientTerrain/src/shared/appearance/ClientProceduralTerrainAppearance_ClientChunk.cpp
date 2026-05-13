@@ -355,6 +355,18 @@ namespace
 			groupInfo.setChildChoice(c);
 		}
 	}
+
+	void applyGodClientRadialModifier(float positionX, float positionZ, RadialGroup::Info& radialInfo)
+	{
+		int fid = radialInfo.getFamilyId();
+		float childChoice = 0.f;
+		if (CityTerrainLayerManager::getModifiedRadial(positionX, positionZ, fid, fid, childChoice))
+		{
+			radialInfo.setFamilyId(fid);
+			const float c = std::max(0.f, std::min(1.f, childChoice));
+			radialInfo.setChildChoice(c);
+		}
+	}
 }
 
 //-------------------------------------------------------------------
@@ -367,7 +379,7 @@ struct PrioritizedFamily
 
 //-------------------------------------------------------------------
 
-void ClientProceduralTerrainAppearance::ClientChunk::createTileShader (ShaderData& shaderData, int x, int z, bool useFirstChild) const
+void ClientProceduralTerrainAppearance::ClientChunk::createTileShader (ShaderData& shaderData, int x, int z, bool useFirstChild, Array2d<Vector> const * const vertexXZForModifiers) const
 {
 	NOT_NULL (shaderCache);
 	NOT_NULL (shaderMap);
@@ -389,7 +401,8 @@ void ClientProceduralTerrainAppearance::ClientChunk::createTileShader (ShaderDat
 		sgi [2][2] = shaderMap->getData (x + 2, z - 2);
 	}
 
-	// God Client: apply live shader paint at each blended sample pole (world XZ matches modifier grid).
+	// God Client: apply live shader paint at each blended sample pole. Use actual pole XZ from the
+	// vertex buffer when available so queries match TerrainObject/procedural space (avoids chunk/LOD math drift).
 	{
 		const float chunk2Meters = m_proceduralTerrainAppearance.getChunkWidthInMeters();
 		const float minXw = static_cast<float>(chunkX) * chunk2Meters;
@@ -409,19 +422,27 @@ void ClientProceduralTerrainAppearance::ClientChunk::createTileShader (ShaderDat
 					ShaderGroup::Info& cell = sgi[i][j];
 					const float ratioX = static_cast<float>(mapX - originOffset) / nTiles2f;
 					const float ratioZ = static_cast<float>(mapZ - originOffset) / nTiles2f;
-					const float wx = minXw + ratioX * chunkWidthInMeters;
-					const float wz = minZw + ratioZ * chunkWidthInMeters;
+					float wx = minXw + ratioX * chunkWidthInMeters;
+					float wz = minZw + ratioZ * chunkWidthInMeters;
+					if (vertexXZForModifiers &&
+						mapX >= 0 && mapZ >= 0 &&
+						mapX < vertexXZForModifiers->getWidth () &&
+						mapZ < vertexXZForModifiers->getHeight ())
+					{
+						Vector const pole = vertexXZForModifiers->getData (mapX, mapZ);
+						wx = pole.x;
+						wz = pole.z;
+					}
 					int fid = cell.getFamilyId();
 					float feather = 0.f;
 					if (CityTerrainLayerManager::getModifiedShader(wx, wz, fid, fid, feather))
 					{
 						cell.setFamilyId(fid);
+						// God Client live paint: feather is brush strength metadata, NOT ShaderGroup::Info
+						// childChoice (pick/blend shader variants within the family). Reusing feather as
+						// childChoice produced invalid/random variant indices (black/intermittent tiles).
 						if (!useFirstChild)
-						{
-							const float f = std::max(0.f, std::min(1.f, feather));
-							if (f > 0.f)
-								cell.setChildChoice(f);
-						}
+							cell.setChildChoice(0.f);
 					}
 				}
 			}
@@ -766,7 +787,7 @@ void ClientProceduralTerrainAppearance::ClientChunk::create (const ClientCreateC
 
 				//-- create the shader
 				ShaderData shaderData;
-				createTileShader (shaderData, indexX, indexZ, ConfigClientTerrain::getShaderGroupUseFirstChildOnly() ? true : createChunkData.chunkWidthInMeters >= 64);
+				createTileShader (shaderData, indexX, indexZ, ConfigClientTerrain::getShaderGroupUseFirstChildOnly() ? true : createChunkData.chunkWidthInMeters >= 64, vertexPositionMap);
 
 				//-- fetch the shader set
 				ShaderSet* shaderSet = 0;
@@ -1061,7 +1082,8 @@ bool ClientProceduralTerrainAppearance::ClientChunk::findDynamicFlora (const Arr
 		int z;
 		_findMapXz(pos3, x, z);
 
-		const RadialGroup::Info rgi = radialMap.getData (x, z);
+		RadialGroup::Info rgi = radialMap.getData(x, z);
+		applyGodClientRadialModifier(positionX, positionZ, rgi);
 
 		if (rgi.getFamilyId())
 		{

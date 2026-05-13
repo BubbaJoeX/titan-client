@@ -200,7 +200,11 @@ void TerrainGeneratorHelper::fixup (TerrainEditorDoc* document, ShaderGroup& des
 		//-- check sublayers
 		int i;
 		for (i = 0; i < layer->getNumberOfLayers (); i++)
-			fixup (document, destinationShaderGroup, destinationFloraGroup, destinationRadialGroup, destinationEnvironmentGroup, destinationFractalGroup, sourceShaderGroup, sourceFloraGroup, sourceRadialGroup, sourceEnvironmentGroup, sourceFractalGroup, layer->getLayer (i));
+		{
+			TerrainGenerator::Layer* const sub = layer->getLayer (i);
+			if (sub)
+				fixup (document, destinationShaderGroup, destinationFloraGroup, destinationRadialGroup, destinationEnvironmentGroup, destinationFractalGroup, sourceShaderGroup, sourceFloraGroup, sourceRadialGroup, sourceEnvironmentGroup, sourceFractalGroup, sub);
+		}
 	}
 }
 
@@ -594,8 +598,11 @@ static bool verifyLayerAffectsHeight (const TerrainGenerator::Layer* layer)
 		//-- check sublayers
 		int i;
 		for (i = 0; i < layer->getNumberOfLayers (); i++)
-			if (layer->getLayer (i)->isActive () && verifyLayerAffectsHeight (layer->getLayer (i)))
+		{
+			const TerrainGenerator::Layer* const sub = layer->getLayer (i);
+			if (sub && sub->isActive () && verifyLayerAffectsHeight (sub))
 				return true;
+		}
 	}
 
 	return false;
@@ -905,8 +912,11 @@ static void verifyLayer (const TerrainGenerator::Layer* layer, const ShaderGroup
 		//-- check sublayers
 		int i;
 		for (i = 0; i < layer->getNumberOfLayers (); i++)
-			if (layer->getLayer (i)->isActive ())
-				verifyLayer (layer->getLayer (i), shaderGroup, floraGroup, radialGroup, scanData, output);
+		{
+			const TerrainGenerator::Layer* const sub = layer->getLayer (i);
+			if (sub && sub->isActive ())
+				verifyLayer (sub, shaderGroup, floraGroup, radialGroup, scanData, output);
+		}
 	}
 }
 
@@ -920,8 +930,11 @@ void TerrainGeneratorHelper::verify (const TerrainGenerator* generator, ArrayLis
 		//-- check sublayers
 		int i;
 		for (i = 0; i < generator->getNumberOfLayers (); i++)
-			if (generator->getLayer (i)->isActive ())
-				verifyLayer (generator->getLayer (i), generator->getShaderGroup (), generator->getFloraGroup (), generator->getRadialGroup (), scanData, output);
+		{
+			const TerrainGenerator::Layer* const lyr = generator->getLayer (i);
+			if (lyr && lyr->isActive ())
+				verifyLayer (lyr, generator->getShaderGroup (), generator->getFloraGroup (), generator->getRadialGroup (), scanData, output);
+		}
 	}
 }
 
@@ -956,8 +969,11 @@ static void buildLocalWaterTableList_s (const TerrainGenerator::Layer* layer, Ar
 		//-- check sublayers
 		int i;
 		for (i = 0; i < layer->getNumberOfLayers (); i++)
-			if (layer->getLayer (i)->isActive ())
-				buildLocalWaterTableList_s (layer->getLayer (i), localWaterTableList);
+		{
+			const TerrainGenerator::Layer* const sub = layer->getLayer (i);
+			if (sub && sub->isActive ())
+				buildLocalWaterTableList_s (sub, localWaterTableList);
+		}
 	}
 }
 
@@ -971,8 +987,11 @@ void TerrainGeneratorHelper::buildLocalWaterTableList (const TerrainGenerator* g
 		//-- check sublayers
 		int i;
 		for (i = 0; i < generator->getNumberOfLayers (); i++)
-			if (generator->getLayer (i)->isActive ())
-				buildLocalWaterTableList_s (generator->getLayer (i), localWaterTableList);
+		{
+			const TerrainGenerator::Layer* const lyr = generator->getLayer (i);
+			if (lyr && lyr->isActive ())
+				buildLocalWaterTableList_s (lyr, localWaterTableList);
+		}
 	}
 }
 
@@ -997,8 +1016,11 @@ static void buildAffectorRibbonList_s (const TerrainGenerator::Layer* layer, Arr
 		//-- check sublayers
 		int i;
 		for (i = 0; i < layer->getNumberOfLayers (); i++)
-			if (layer->getLayer (i)->isActive ())
-				buildAffectorRibbonList_s (layer->getLayer (i), affectorRibbonList);
+		{
+			const TerrainGenerator::Layer* const sub = layer->getLayer (i);
+			if (sub && sub->isActive ())
+				buildAffectorRibbonList_s (sub, affectorRibbonList);
+		}
 	}
 }
 
@@ -1012,8 +1034,11 @@ void TerrainGeneratorHelper::buildAffectorRibbonList (const TerrainGenerator* ge
 		//-- check sublayers
 		int i;
 		for (i = 0; i < generator->getNumberOfLayers (); i++)
-			if (generator->getLayer (i)->isActive ())
-				buildAffectorRibbonList_s (generator->getLayer (i), affectorRibbonList);
+		{
+			const TerrainGenerator::Layer* const lyr = generator->getLayer (i);
+			if (lyr && lyr->isActive ())
+				buildAffectorRibbonList_s (lyr, affectorRibbonList);
+		}
 	}
 }
 
@@ -1387,12 +1412,15 @@ static void scanLayer (const TerrainGenerator::Layer* layer, const ShaderGroup& 
 		//-- check sublayers
 		int i;
 		for (i = 0; i < layer->getNumberOfLayers (); i++)
-			if (layer->getLayer (i)->isActive ())
+		{
+			const TerrainGenerator::Layer* const sub = layer->getLayer (i);
+			if (sub && sub->isActive ())
 			{
 				++activeLayers;
 
-				scanLayer (layer->getLayer (i), shaderGroup, floraGroup, radialGroup, scanData, output, false);
+				scanLayer (sub, shaderGroup, floraGroup, radialGroup, scanData, output, false);
 			}
+		}
 	}
 
 	{
@@ -1440,8 +1468,11 @@ void TerrainGeneratorHelper::scanLayer (const TerrainGenerator* generator, const
 		//-- check sublayers
 		int i;
 		for (i = 0; i < layer->getNumberOfLayers (); i++)
-			if (layer->getLayer (i)->isActive ())
-				::scanLayer (layer->getLayer (i), generator->getShaderGroup (), generator->getFloraGroup (), generator->getRadialGroup (), scanData, output, true);
+		{
+			const TerrainGenerator::Layer* const sub = layer->getLayer (i);
+			if (sub && sub->isActive ())
+				::scanLayer (sub, generator->getShaderGroup (), generator->getFloraGroup (), generator->getRadialGroup (), scanData, output, true);
+		}
 	}
 
 	//-- print family data
@@ -1690,8 +1721,11 @@ void TerrainGeneratorHelper::scan (const TerrainGenerator* generator, ArrayList<
 		//-- check sublayers
 		int i;
 		for (i = 0; i < generator->getNumberOfLayers (); i++)
-			if (generator->getLayer (i)->isActive ())
-				::scanLayer (generator->getLayer (i), generator->getShaderGroup (), generator->getFloraGroup (), generator->getRadialGroup (), scanData, output, true);
+		{
+			const TerrainGenerator::Layer* const lyr = generator->getLayer (i);
+			if (lyr && lyr->isActive ())
+				::scanLayer (lyr, generator->getShaderGroup (), generator->getFloraGroup (), generator->getRadialGroup (), scanData, output, true);
+		}
 	}
 
 	//-- print family data
@@ -2264,6 +2298,9 @@ static void queryAffector (const TerrainGenerator::Affector* affector, const Arr
 
 static void queryLayer (const TerrainGenerator::Layer* layer, const ArrayList<TerrainGeneratorHelper::LayerItemQueryType>& query, ArrayList<TerrainGeneratorHelper::OutputData>& output)
 {
+	if (!layer)
+		return;
+
 	//-- check me!
 	{
 		bool add = false;
@@ -2322,7 +2359,11 @@ static void queryLayer (const TerrainGenerator::Layer* layer, const ArrayList<Te
 		//-- check sublayers
 		int i;
 		for (i = 0; i < layer->getNumberOfLayers (); i++)
-			::queryLayer (layer->getLayer (i), query, output);
+		{
+			const TerrainGenerator::Layer* const sub = layer->getLayer (i);
+			if (sub)
+				::queryLayer (sub, query, output);
+		}
 	}
 }
 
@@ -2334,7 +2375,11 @@ void TerrainGeneratorHelper::query (const TerrainGenerator* generator, const Arr
 		//-- query sublayers
 		int i;
 		for (i = 0; i < generator->getNumberOfLayers (); i++)
-			::queryLayer (generator->getLayer (i), queryList, output);
+		{
+			const TerrainGenerator::Layer* const lyr = generator->getLayer (i);
+			if (lyr)
+				::queryLayer (lyr, queryList, output);
+		}
 	}
 }
 
@@ -2355,6 +2400,9 @@ static void queryLayerItem (const TerrainGenerator::LayerItem* layerItem, const 
 
 static void queryLayer (const TerrainGenerator::Layer* layer, const CString& substring, ArrayList<TerrainGeneratorHelper::OutputData>& output)
 {
+	if (!layer)
+		return;
+
 	//-- check me!
 	{
 		queryLayerItem (layer, substring, output);
@@ -2385,7 +2433,11 @@ static void queryLayer (const TerrainGenerator::Layer* layer, const CString& sub
 		//-- check sublayers
 		int i;
 		for (i = 0; i < layer->getNumberOfLayers (); i++)
-			::queryLayer (layer->getLayer (i), substring, output);
+		{
+			const TerrainGenerator::Layer* const sub = layer->getLayer (i);
+			if (sub)
+				::queryLayer (sub, substring, output);
+		}
 	}
 }
 
@@ -2397,7 +2449,11 @@ void TerrainGeneratorHelper::query (const TerrainGenerator* generator, const CSt
 		//-- query sublayers
 		int i;
 		for (i = 0; i < generator->getNumberOfLayers (); i++)
-			::queryLayer (generator->getLayer (i), substring, output);
+		{
+			const TerrainGenerator::Layer* const lyr = generator->getLayer (i);
+			if (lyr)
+				::queryLayer (lyr, substring, output);
+		}
 	}
 }
 
@@ -2405,6 +2461,9 @@ void TerrainGeneratorHelper::query (const TerrainGenerator* generator, const CSt
 
 static const TerrainGenerator::Boundary* findBoundary (const TerrainGenerator::Layer* layer, const Vector2d& position_w)
 {
+	if (!layer)
+		return 0;
+
 	{
 		//-- check boundaries
 		int i;
@@ -2420,9 +2479,10 @@ static const TerrainGenerator::Boundary* findBoundary (const TerrainGenerator::L
 		int i;
 		for (i = 0; i < layer->getNumberOfLayers (); i++)
 		{
-			if (layer->getLayer (i)->isActive ())
+			const TerrainGenerator::Layer* const sub = layer->getLayer (i);
+			if (sub && sub->isActive ())
 			{
-				const TerrainGenerator::Boundary* boundary = ::findBoundary (layer->getLayer (i), position_w);
+				const TerrainGenerator::Boundary* boundary = ::findBoundary (sub, position_w);
 
 				if (boundary)
 					return boundary;
@@ -2442,9 +2502,10 @@ const TerrainGenerator::Boundary* TerrainGeneratorHelper::findBoundary (const Te
 		int i;
 		for (i = 0; i < generator->getNumberOfLayers (); i++)
 		{
-			if (generator->getLayer (i)->isActive ())
+			const TerrainGenerator::Layer* const lyr = generator->getLayer (i);
+			if (lyr && lyr->isActive ())
 			{
-				const TerrainGenerator::Boundary* boundary = ::findBoundary (generator->getLayer (i), position_w);
+				const TerrainGenerator::Boundary* boundary = ::findBoundary (lyr, position_w);
 
 				if (boundary)
 					return boundary;
@@ -2458,6 +2519,9 @@ const TerrainGenerator::Boundary* TerrainGeneratorHelper::findBoundary (const Te
 // ---------------------------------------------------------------------
 static void findBoundary (const TerrainGenerator::Layer* layer, ArrayList<TerrainGenerator::Boundary*>& boundaryList, const Vector2d& position_w, bool bIncludeInactive)
 {
+	if (!layer)
+		return;
+
 	{
 		//-- check boundaries
 		int i;
@@ -2477,9 +2541,12 @@ static void findBoundary (const TerrainGenerator::Layer* layer, ArrayList<Terrai
 		int i;
 		for(i = 0; i < layer->getNumberOfLayers(); ++i)
 		{
+			const TerrainGenerator::Layer* const sub = layer->getLayer(i);
+			if (!sub)
+				continue;
 			if(bIncludeInactive || layer->isActive())
 			{
-				::findBoundary(layer->getLayer(i), boundaryList,position_w, bIncludeInactive);
+				::findBoundary(sub, boundaryList,position_w, bIncludeInactive);
 			}
 		}
 	}
@@ -2492,9 +2559,12 @@ void TerrainGeneratorHelper::findBoundary (const TerrainGenerator* generator, Ar
 		int i;
 		for(i = 0; i < generator->getNumberOfLayers(); ++i)
 		{
-			if(bIncludeInactive || generator->getLayer(i)->isActive())
+			const TerrainGenerator::Layer* const sub = generator->getLayer(i);
+			if (!sub)
+				continue;
+			if(bIncludeInactive || sub->isActive())
 			{
-				::findBoundary(generator->getLayer(i),boundaryList,position_w,bIncludeInactive);
+				::findBoundary(sub,boundaryList,position_w,bIncludeInactive);
 			}
 		}
 	}
@@ -2505,6 +2575,9 @@ void TerrainGeneratorHelper::findBoundary (const TerrainGenerator* generator, Ar
 
 static void findAffectorBoundaryPoly (const TerrainGenerator::Layer* layer, ArrayList<AffectorBoundaryPoly*>& affectorList)
 {
+	if (!layer)
+		return;
+
 	{
 		//-- check affectors
 		int i;
@@ -2524,9 +2597,12 @@ static void findAffectorBoundaryPoly (const TerrainGenerator::Layer* layer, Arra
 		int i;
 		for (i = 0; i < layer->getNumberOfLayers (); i++)
 		{
+			const TerrainGenerator::Layer* const sub = layer->getLayer (i);
+			if (!sub)
+				continue;
 			if (layer->isActive ())
 			{
-				::findAffectorBoundaryPoly (layer->getLayer (i), affectorList);
+				::findAffectorBoundaryPoly (sub, affectorList);
 			}
 		}
 	}
@@ -2540,8 +2616,11 @@ void TerrainGeneratorHelper::findAffectorBoundaryPoly (const TerrainGenerator* g
 		//-- query sublayers
 		int i;
 		for (i = 0; i < generator->getNumberOfLayers (); i++)
-			if (generator->getLayer (i)->isActive ())
-				::findAffectorBoundaryPoly (generator->getLayer (i), affectorList);
+		{
+			const TerrainGenerator::Layer* const lyr = generator->getLayer (i);
+			if (lyr && lyr->isActive ())
+				::findAffectorBoundaryPoly (lyr, affectorList);
+		}
 	}
 }
 
@@ -2573,6 +2652,9 @@ void TerrainGeneratorHelper::findBoundaryAndAffectorBoundaryPoly (const TerrainG
 
 static void expandExtents (const TerrainGenerator::Layer* layer, Rectangle2d& extent)
 {
+	if (!layer)
+		return;
+
 	{
 		//-- check boundaries
 		int i;
@@ -2604,9 +2686,10 @@ static void expandExtents (const TerrainGenerator::Layer* layer, Rectangle2d& ex
 		int i;
 		for (i = 0; i < layer->getNumberOfLayers (); i++)
 		{
-			if (layer->getLayer (i)->isActive ())
+			const TerrainGenerator::Layer* const sub = layer->getLayer (i);
+			if (sub && sub->isActive ())
 			{
-				::expandExtents (layer->getLayer (i), extent);
+				::expandExtents (sub, extent);
 			}
 		}
 	}

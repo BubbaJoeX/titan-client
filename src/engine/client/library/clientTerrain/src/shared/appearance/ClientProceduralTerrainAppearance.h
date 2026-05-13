@@ -453,6 +453,8 @@ public:
 
 	virtual void         purgeChunks();
 
+	void                  rebuildLocalWaterTablesFromTerrainGenerator ();
+
 	struct RadarShaderInfo
 	{
 		Shader * m_shader;

@@ -18,6 +18,7 @@
 
 #include <qstring.h>
 #include <qstringlist.h>
+#include <string>
 #include <vector>
 
 // ======================================================================
@@ -205,6 +206,13 @@ public slots:
 	void onCopyRegion();
 	void onPasteRegion();
 	void onFillRegion();
+	void onRegionShapeChanged(int index);
+
+	// TerrainGenerator layer list (live)
+	void onLayerToggleActive();
+	void onLayerPromote();
+	void onLayerDemote();
+	void onLayerRename();
 
 	// Polyline/Road/Ribbon operations
 	void onBeginRoad();
@@ -259,6 +267,12 @@ private:
 	bool terrainCopyWorldRegionIntoClipboard(bool postConsoleMessageOnSuccess);
 	bool terrainPasteClipboardIntoWorldRegion(bool postConsoleMessageOnSuccess);
 
+	/// Rebuild procedural terrain after generator layer order/active/name edits.
+	void terrainGeneratorLiveCommit();
+
+	void syncRegionSelectionToEditor();
+	int  selectedLayerListIndex() const;
+
 	void populateFloraList();
 	void populateRadialList();
 	void populateWaterShaderList();
@@ -288,6 +302,8 @@ private:
 	// Brush preview rendering
 	void renderBrushPreview(float worldX, float worldZ) const;
 	bool getTerrainPositionFromScreen(int screenX, int screenY, float& outWorldX, float& outWorldZ) const;
+	/// Fallback ground pick when meshes are rebuilding — keeps brush ring and drag stroke alive during live LOD work.
+	bool pickTerrainGroundForLiveEdit(int screenX, int screenY, float& outWorldX, float& outWorldZ, float& outGroundY) const;
 
 	// Water boundary creation
 	void createWaterBoundary(float centerX, float centerZ, float radius, float height);
@@ -304,6 +320,12 @@ private:
 
 	/// Alt+Maya camera should win over brush tools unless the tool binds Alt (road/ribbon).
 	bool cameraModifierOverridesTerrainInput(int qtButtonState) const;
+
+	enum RegionSelectionShape
+	{
+		RSS_Rectangle = 0,
+		RSS_Circle
+	};
 
 public:
 	// Mouse event handlers for terrain editing (called from GameWidget)
@@ -333,6 +355,7 @@ private:
 	// Water settings
 	float                     m_waterHeight;
 	int                       m_waterShaderIndex;
+	std::vector<std::string> m_waterShaderTemplateNames;
 
 	// Flora/radial settings
 	int                       m_floraFamilyIndex;
@@ -380,6 +403,10 @@ private:
 	float                     m_regionMinZ;
 	float                     m_regionMaxX;
 	float                     m_regionMaxZ;
+	RegionSelectionShape      m_regionSelectionShape;
+	float                     m_regionCircleCenterX;
+	float                     m_regionCircleCenterZ;
+	float                     m_regionCircleRadius;
 
 	int                       m_polylineDragPointIndex;
 
@@ -406,10 +433,12 @@ private:
 		int                   heightSamples;
 		std::vector<float>    heightData;
 		std::vector<int>      shaderData;
+		std::vector<unsigned char> cellMask;
 		bool                  hasData;
+		bool                  hasCellMask;
 		
 		RegionClipboard() : sourceMinX(0), sourceMinZ(0), sourceMaxX(0), sourceMaxZ(0),
-		                    widthSamples(0), heightSamples(0), hasData(false) {}
+		                    widthSamples(0), heightSamples(0), hasData(false), hasCellMask(false) {}
 	};
 	RegionClipboard           m_regionClipboard;
 
@@ -421,6 +450,10 @@ private:
 
 	/// Combo index -> shader family id (Scene shaders list); polyline road/ribbon used wrong row index as id before.
 	std::vector<int>           m_polylineShaderFamilyIds;
+	/// Combo index -> flora family id (FloraGroup row order).
+	std::vector<int>           m_floraFamilyIds;
+	/// Combo index -> radial flora family id (RadialGroup row order).
+	std::vector<int>           m_radialFamilyIds;
 	/// Combo index -> environment family id.
 	std::vector<int>           m_environmentFamilyIds;
 	/// Combo index -> bitmap stamp family id (BitmapGroup).
@@ -435,6 +468,9 @@ private:
 
 	int                        m_savedGlobalPickFamilyId;
 	QString                    m_savedGlobalPickTrnCanon;
+
+	mutable bool               m_liveEditGroundPickFallbackValid;
+	mutable float              m_liveEditGroundPickFallbackY;
 
 	// Message callback
 	MessageDispatch::Callback* m_callback;
