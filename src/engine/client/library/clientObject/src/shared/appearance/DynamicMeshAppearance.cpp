@@ -336,7 +336,7 @@ m_sphere(),
 m_boxExtent(),
 m_dpvsObject(NULL),
 m_localShaderPrimitiveVector(),
-m_splitEdgeVector(new EdgeVector),
+m_splitEdgeVector(),
 m_alphaFade(1.0f),
 m_hardpointList(new HardpointList),
 m_splitEdgeCenter()
@@ -366,14 +366,14 @@ DynamicMeshAppearance::~DynamicMeshAppearance()
 	std::for_each(m_localShaderPrimitiveVector.begin(), m_localShaderPrimitiveVector.end(), PointerDeleter());
 	m_localShaderPrimitiveVector.clear();
 
-	delete m_splitEdgeVector;
-	m_splitEdgeVector = NULL;
-
 	delete m_hardpointList;
 	m_hardpointList = NULL;
 
-	m_dpvsObject->release();
-	m_dpvsObject = NULL;
+	if (m_dpvsObject)
+	{
+		m_dpvsObject->release();
+		m_dpvsObject = NULL;
+	}
 }
 
 //----------------------------------------------------------------------
@@ -416,7 +416,7 @@ void DynamicMeshAppearance::render() const
 #ifdef _DEBUG
 	if (s_showSplitEdge)
 	{
-		for (EdgeVector::const_iterator it = m_splitEdgeVector->begin(); it != m_splitEdgeVector->end(); ++it)
+		for (EdgeVector::const_iterator it = m_splitEdgeVector.begin(); it != m_splitEdgeVector.end(); ++it)
 		{
 			Edge const & edge = *it;
 			ShaderPrimitiveSorter::getCurrentCamera().addDebugPrimitive (new Line3dDebugPrimitive(UtilityDebugPrimitive::S_z, getOwner()->getTransform_o2w(), edge.v[0], edge.v[1], VectorArgb::solidMagenta));
@@ -630,7 +630,7 @@ bool DynamicMeshAppearance::splitDynamicMeshAppearance(DynamicMeshAppearance con
 	{
 		outputAppearanceFront = new DynamicMeshAppearance(shaderSetVectorFront);
 		if (s_showSplitEdge)
-			*(outputAppearanceFront->m_splitEdgeVector) = edgeVector;
+			outputAppearanceFront->m_splitEdgeVector = edgeVector;
 
 		outputAppearanceFront->m_splitEdgeCenter = splitEdgeCenter;
 	}
@@ -639,7 +639,7 @@ bool DynamicMeshAppearance::splitDynamicMeshAppearance(DynamicMeshAppearance con
 	{
 		outputAppearanceBack = new DynamicMeshAppearance(shaderSetVectorBack);
 		if (s_showSplitEdge)
-			*(outputAppearanceBack->m_splitEdgeVector) = edgeVector;
+			outputAppearanceBack->m_splitEdgeVector = edgeVector;
 
 		outputAppearanceBack->m_splitEdgeCenter = splitEdgeCenter;
 	}
@@ -728,7 +728,7 @@ bool DynamicMeshAppearance::splitShaderPrimitiveSet(ShaderPrimitiveSet const & s
 	{
 		outputAppearanceFront = new DynamicMeshAppearance(shaderSetVectorFront);
 		if (s_showSplitEdge)
-			*(outputAppearanceFront->m_splitEdgeVector) = edgeVector;
+			outputAppearanceFront->m_splitEdgeVector = edgeVector;
 		outputAppearanceFront->m_splitEdgeCenter = splitEdgeCenter;
 	}
 
@@ -736,7 +736,7 @@ bool DynamicMeshAppearance::splitShaderPrimitiveSet(ShaderPrimitiveSet const & s
 	{
 		outputAppearanceBack = new DynamicMeshAppearance(shaderSetVectorBack);
 		if (s_showSplitEdge)
-			*(outputAppearanceBack->m_splitEdgeVector) = edgeVector;
+			outputAppearanceBack->m_splitEdgeVector = edgeVector;
 		outputAppearanceBack->m_splitEdgeCenter = splitEdgeCenter;
 	}
 
@@ -747,7 +747,7 @@ bool DynamicMeshAppearance::splitShaderPrimitiveSet(ShaderPrimitiveSet const & s
 
 EdgeVector const * DynamicMeshAppearance::getSplitEdgeVector() const
 {
-	return m_splitEdgeVector;
+	return &m_splitEdgeVector;
 }
 
 //----------------------------------------------------------------------

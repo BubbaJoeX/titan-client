@@ -398,14 +398,21 @@ const BakedTerrain* ProceduralTerrainAppearanceTemplate::getBakedTerrain () cons
 
 void ProceduralTerrainAppearanceTemplate::createWaterTableAndRibbonQuadLists (const TerrainGenerator::Layer* const layer)
 {
+	if (!layer)
+		return;
+
 	{
 		//-- check boundaries
 		int i;
 		for (i = 0; i < layer->getNumberOfBoundaries (); i++)
 		{
-			if (layer->getBoundary (i)->isActive () && layer->getBoundary (i)->getType () == TGBT_polygon)
+			const TerrainGenerator::Boundary* const boundaryItem = layer->getBoundary (i);
+			if (!boundaryItem)
+				continue;
+
+			if (boundaryItem->isActive () && boundaryItem->getType () == TGBT_polygon)
 			{
-				const BoundaryPolygon* const boundaryPolygon = safe_cast<const BoundaryPolygon*> (layer->getBoundary (i));
+				const BoundaryPolygon* const boundaryPolygon = safe_cast<const BoundaryPolygon*> (boundaryItem);
 
 				if (boundaryPolygon->isLocalWaterTable ())
 				{
@@ -417,9 +424,9 @@ void ProceduralTerrainAppearanceTemplate::createWaterTableAndRibbonQuadLists (co
 				}
 			}
 
-			if (layer->getBoundary (i)->isActive () && layer->getBoundary (i)->getType () == TGBT_rectangle)
+			if (boundaryItem->isActive () && boundaryItem->getType () == TGBT_rectangle)
 			{
-				const BoundaryRectangle* const boundaryRectangle = safe_cast<const BoundaryRectangle*> (layer->getBoundary (i));
+				const BoundaryRectangle* const boundaryRectangle = safe_cast<const BoundaryRectangle*> (boundaryItem);
 
 				if (boundaryRectangle->isLocalWaterTable ())
 				{
@@ -435,9 +442,13 @@ void ProceduralTerrainAppearanceTemplate::createWaterTableAndRibbonQuadLists (co
 		//-- check for ribbon affectors
 		for (i = 0; i < layer->getNumberOfAffectors (); i++)
 		{
-			if (layer->getAffector (i)->isActive () && layer->getAffector (i)->getType () == TGAT_ribbon)
+			const TerrainGenerator::Affector* const aff = layer->getAffector (i);
+			if (!aff)
+				continue;
+
+			if (aff->isActive () && aff->getType () == TGAT_ribbon)
 			{
-				const AffectorRibbon* const affectorRibbon = safe_cast<const AffectorRibbon*> (layer->getAffector (i));
+				const AffectorRibbon* const affectorRibbon = safe_cast<const AffectorRibbon*> (aff);
 				// build the individual quads for the ribbon
 				
 				ArrayList<AffectorRibbon::Quad> ribbonQuadList;

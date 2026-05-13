@@ -272,6 +272,8 @@ private:
 
 	void syncRegionSelectionToEditor();
 	int  selectedLayerListIndex() const;
+	/// Row in \ref m_layerList -> actual `TerrainGenerator::getLayer` index (rows omit null slots).
+	int  selectedTerrainGeneratorLayerIndex() const;
 
 	void populateFloraList();
 	void populateRadialList();
@@ -458,6 +460,8 @@ private:
 	std::vector<int>           m_environmentFamilyIds;
 	/// Combo index -> bitmap stamp family id (BitmapGroup).
 	std::vector<int>           m_bitmapStampFamilyIds;
+	/// Parallel to each row in \ref m_layerList: generator slot index (skips null layers).
+	std::vector<int>           m_layerListGeneratorIndices;
 
 	/// Extra folders recursively scanned for .trn files (persisted via QSettings /SOE/SwgGodClient TerrainDock group).
 	QStringList                m_globalShaderScanExtraRoots;

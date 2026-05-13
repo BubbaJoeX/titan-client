@@ -1635,9 +1635,13 @@ void ClientProceduralTerrainAppearance::buildLocalWaterTable (const TerrainGener
 		int i;
 		for (i = 0; i < layer->getNumberOfBoundaries (); i++)
 		{
-			if (layer->getBoundary (i)->isActive () && layer->getBoundary (i)->getType () == TGBT_polygon)
+			const TerrainGenerator::Boundary* const boundaryItem = layer->getBoundary (i);
+			if (!boundaryItem)
+				continue;
+
+			if (boundaryItem->isActive () && boundaryItem->getType () == TGBT_polygon)
 			{
-				const BoundaryPolygon* boundary = safe_cast<const BoundaryPolygon*> (layer->getBoundary (i));
+				const BoundaryPolygon* boundary = safe_cast<const BoundaryPolygon*> (boundaryItem);
 				NOT_NULL (boundary);
 
 				if (boundary->isLocalWaterTable ())
@@ -1655,9 +1659,9 @@ void ClientProceduralTerrainAppearance::buildLocalWaterTable (const TerrainGener
 				}
 			}
 
-			if (layer->getBoundary (i)->isActive () && layer->getBoundary (i)->getType () == TGBT_rectangle)
+			if (boundaryItem->isActive () && boundaryItem->getType () == TGBT_rectangle)
 			{
-				const BoundaryRectangle* boundary = safe_cast<const BoundaryRectangle*> (layer->getBoundary (i));
+				const BoundaryRectangle* boundary = safe_cast<const BoundaryRectangle*> (boundaryItem);
 				NOT_NULL (boundary);
 
 				if (boundary->isLocalWaterTable ())
@@ -1697,9 +1701,13 @@ void ClientProceduralTerrainAppearance::buildLocalWaterTable (const TerrainGener
 		int i;
 		for (i = 0; i < layer->getNumberOfAffectors (); i++)
 		{
-			if (layer->getAffector (i)->isActive () && layer->getAffector (i)->getType () == TGAT_river)
+			const TerrainGenerator::Affector* const aff = layer->getAffector (i);
+			if (!aff)
+				continue;
+
+			if (aff->isActive () && aff->getType () == TGAT_river)
 			{
-				const AffectorRiver* affector = safe_cast<const AffectorRiver*> (layer->getAffector (i));
+				const AffectorRiver* affector = safe_cast<const AffectorRiver*> (aff);
 				NOT_NULL (affector);
 
 				if (affector->getHasLocalWaterTable ())
@@ -1733,9 +1741,9 @@ void ClientProceduralTerrainAppearance::buildLocalWaterTable (const TerrainGener
 			}
 
 			// Start Ribbon
-			else if (layer->getAffector (i)->isActive () && layer->getAffector (i)->getType () == TGAT_ribbon)
+			else if (aff->isActive () && aff->getType () == TGAT_ribbon)
 			{
-				const AffectorRibbon* affector = safe_cast<const AffectorRibbon*> (layer->getAffector (i));
+				const AffectorRibbon* affector = safe_cast<const AffectorRibbon*> (aff);
 				NOT_NULL (affector);
 
 				ArrayList<AffectorRibbon::Quad> ribbonQuadList;

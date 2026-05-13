@@ -21,8 +21,11 @@ void TerrainModificationHelper::setHeight (TerrainGenerator::Layer* layer, float
 	{
 		int i;
 		for (i = 0; i < layer->getNumberOfAffectors (); ++i)
-			if (layer->getAffector (i)->isActive () && layer->getAffector (i)->getType () == TGAT_heightConstant)
-				safe_cast<AffectorHeightConstant*> (layer->getAffector (i))->setHeight (height);
+		{
+			TerrainGenerator::Affector* const aff = layer->getAffector (i);
+			if (aff && aff->isActive () && aff->getType () == TGAT_heightConstant)
+				safe_cast<AffectorHeightConstant*> (aff)->setHeight (height);
+		}
 	}
 
 	{
@@ -43,8 +46,11 @@ void TerrainModificationHelper::setPosition (TerrainGenerator::Layer* layer, con
 	{
 		int i;
 		for (i = 0; i < layer->getNumberOfBoundaries (); ++i)
-			if (layer->getBoundary (i)->isActive ())
-				layer->getBoundary (i)->setCenter (position);
+		{
+			TerrainGenerator::Boundary* const b = layer->getBoundary (i);
+			if (b && b->isActive ())
+				b->setCenter (position);
+		}
 	}
 
 	{
@@ -65,8 +71,11 @@ void TerrainModificationHelper::setRotation (TerrainGenerator::Layer* layer, flo
 	{
 		int i;
 		for (i = 0; i < layer->getNumberOfBoundaries (); ++i)
-			if (layer->getBoundary (i)->isActive ())
-				layer->getBoundary (i)->setRotation (angle);
+		{
+			TerrainGenerator::Boundary* const b = layer->getBoundary (i);
+			if (b && b->isActive ())
+				b->setRotation (angle);
+		}
 	}
 
 	{

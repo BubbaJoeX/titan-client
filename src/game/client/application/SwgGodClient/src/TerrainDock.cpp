@@ -1488,6 +1488,7 @@ void TerrainDock::refreshFromScene(bool const skipGlobalShaderCatalogScan)
 			m_terrainFileLabel->setText("No terrain in scene");
 		if (m_layerList)
 			m_layerList->clear();
+		m_layerListGeneratorIndices.clear();
 		if (m_shaderList)
 			m_shaderList->clear();
 
@@ -1536,6 +1537,7 @@ void TerrainDock::populateLayerList()
 		return;
 	
 	m_layerList->clear();
+	m_layerListGeneratorIndices.clear();
 	
 	TerrainGenerator* generator = getTerrainGenerator();
 	if (!generator)
@@ -1547,6 +1549,7 @@ void TerrainDock::populateLayerList()
 		const TerrainGenerator::Layer* layer = generator->getLayer(i);
 		if (layer)
 		{
+			m_layerListGeneratorIndices.push_back(i);
 			const char* layerName = layer->getName();
 			QString name = layerName ? layerName : QString("Layer %1").arg(i);
 			QString type = "Layer";
@@ -1576,6 +1579,18 @@ int TerrainDock::selectedLayerListIndex() const
 	}
 
 	return -1;
+}
+
+// ----------------------------------------------------------------------
+
+int TerrainDock::selectedTerrainGeneratorLayerIndex() const
+{
+	const int row = selectedLayerListIndex();
+	if (row < 0)
+		return -1;
+	if (row >= static_cast<int>(m_layerListGeneratorIndices.size()))
+		return -1;
+	return m_layerListGeneratorIndices[static_cast<size_t>(row)];
 }
 
 // ----------------------------------------------------------------------
@@ -1659,7 +1674,7 @@ void TerrainDock::onLayerToggleActive()
 	if (!gen)
 		return;
 
-	int const li = selectedLayerListIndex();
+	int const li = selectedTerrainGeneratorLayerIndex();
 	if (li < 0)
 		return;
 
@@ -1680,7 +1695,7 @@ void TerrainDock::onLayerPromote()
 	if (!gen)
 		return;
 
-	int const li = selectedLayerListIndex();
+	int const li = selectedTerrainGeneratorLayerIndex();
 	if (li < 0)
 		return;
 
@@ -1701,7 +1716,7 @@ void TerrainDock::onLayerDemote()
 	if (!gen)
 		return;
 
-	int const li = selectedLayerListIndex();
+	int const li = selectedTerrainGeneratorLayerIndex();
 	if (li < 0)
 		return;
 
@@ -1722,7 +1737,7 @@ void TerrainDock::onLayerRename()
 	if (!gen)
 		return;
 
-	int const li = selectedLayerListIndex();
+	int const li = selectedTerrainGeneratorLayerIndex();
 	if (li < 0)
 		return;
 

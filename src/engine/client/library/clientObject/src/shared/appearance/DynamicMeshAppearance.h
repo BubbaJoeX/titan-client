@@ -98,7 +98,8 @@ private:
 	DPVS::Object * m_dpvsObject;
 	LocalShaderPrimitiveVector m_localShaderPrimitiveVector;
 
-	EdgeVector * m_splitEdgeVector;
+	/// Split-plane debug edges; held by value so teardown cannot double-free a heap vector shell.
+	EdgeVector m_splitEdgeVector;
 
 	float m_alphaFade;
 

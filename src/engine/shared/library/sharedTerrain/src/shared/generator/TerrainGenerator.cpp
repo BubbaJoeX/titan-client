@@ -671,7 +671,7 @@ bool TerrainGenerator::Layer::computeHasPassableAffectors() const
 		{
 			Affector const * const affector = m_affectorList [i];
 
-			if (affector->getType() == TGAT_passable)
+			if (affector && affector->getType() == TGAT_passable)
 			{
 				return true;
 			}
@@ -681,7 +681,8 @@ bool TerrainGenerator::Layer::computeHasPassableAffectors() const
 	{
 		for (int i = 0; i < m_subLayerList.getNumberOfElements (); i++)
 		{
-			if (m_subLayerList[i]->computeHasPassableAffectors())
+			Layer const * const sub = m_subLayerList[i];
+			if (sub && sub->computeHasPassableAffectors())
 				return true;
 		}
 	}
@@ -809,11 +810,12 @@ void TerrainGenerator::Layer::prepare ()
 		int i;
 		for (i = 0; i < m_boundaryList.getNumberOfElements (); ++i)
 		{
-			if (m_boundaryList[i]->isActive ())
+			Boundary* const b = m_boundaryList[i];
+			if (b && b->isActive ())
 			{
 				m_hasActiveBoundaries=true;
 
-				m_boundaryList [i]->prepare ();
+				b->prepare ();
 			}
 		}
 	}
@@ -823,11 +825,12 @@ void TerrainGenerator::Layer::prepare ()
 		int i;
 		for (i = 0; i < m_filterList.getNumberOfElements (); ++i)
 		{
-			if (m_filterList [i]->isActive ())
+			Filter* const f = m_filterList[i];
+			if (f && f->isActive ())
 			{
 				m_hasActiveFilters=true;
 
-				m_filterList [i]->prepare ();
+				f->prepare ();
 			}
 		}
 	}
@@ -837,11 +840,12 @@ void TerrainGenerator::Layer::prepare ()
 		int i;
 		for (i = 0; i < m_affectorList.getNumberOfElements (); ++i)
 		{
-			if (m_affectorList [i]->isActive ())
+			Affector* const a = m_affectorList[i];
+			if (a && a->isActive ())
 			{
 				m_hasActiveAffectors=true;
 
-				m_affectorList [i]->prepare ();
+				a->prepare ();
 			}
 		}
 	}
@@ -851,11 +855,12 @@ void TerrainGenerator::Layer::prepare ()
 		int i;
 		for (i = 0; i < m_subLayerList.getNumberOfElements (); ++i)
 		{
-			if (m_subLayerList[i]->isActive())
+			Layer* const sub = m_subLayerList[i];
+			if (sub && sub->isActive())
 			{
 				m_hasActiveLayers=true;
 
-				m_subLayerList[i]->prepare ();
+				sub->prepare ();
 			}
 		}
 	}
@@ -874,13 +879,14 @@ void TerrainGenerator::Layer::_oldBoundaryTest(float &fuzzyTest, float worldX, f
 		int i;
 		for (i = 0; i < m_boundaryList.getNumberOfElements (); i++)
 		{
-			if (m_boundaryList [i]->isActive ())
+			Boundary* const b = m_boundaryList [i];
+			if (b && b->isActive ())
 			{
 				hasActiveBoundaries = true;
 
-				const Feather feather (m_boundaryList [i]->getFeatherFunction ());
+				const Feather feather (b->getFeatherFunction ());
 
-				const float amount = m_boundaryList [i]->isWithin (worldX, worldZ);
+				const float amount = b->isWithin (worldX, worldZ);
 				DEBUG_FATAL (amount < 0.f || amount > 1.f, ("amount out of range [0-1] %1.2f", amount));
 
 				fuzzyTest = FuzzyOr (fuzzyTest, feather.feather (0.f, 1.f, amount));
@@ -928,6 +934,8 @@ bool TerrainGenerator::Layer::prune(unsigned &mapMask, const Rectangle2d &chunkE
 		for (int i = m_subLayerList.getNumberOfElements()-1; i >=0 ; i--)
 		{
 			Layer * layer = m_subLayerList[i];
+			if (!layer)
+				continue;
 			if (!layer->prune(mapMask, chunkExtentIUO))
 			{
 				m_hasUnprunedLayers=true;
@@ -942,6 +950,8 @@ bool TerrainGenerator::Layer::prune(unsigned &mapMask, const Rectangle2d &chunkE
 		for (int i = m_affectorList.getNumberOfElements()-1; i>=0 ; i--)
 		{
 			Affector *a = m_affectorList[i];
+			if (!a)
+				continue;
 
 			bool isPruned = !a->isActive();
 			if (!isPruned)
@@ -973,7 +983,7 @@ bool TerrainGenerator::Layer::prune(unsigned &mapMask, const Rectangle2d &chunkE
 		for (int i = 0; i < m_filterList.getNumberOfElements(); i++)
 		{
 			Filter *f = m_filterList[i];
-			if (!f->isActive())
+			if (!f || !f->isActive())
 			{
 				continue;
 			}
@@ -988,7 +998,7 @@ bool TerrainGenerator::Layer::prune(unsigned &mapMask, const Rectangle2d &chunkE
 			for (int i = 0; i < m_filterList.getNumberOfElements(); i++)
 			{
 				Filter *f = m_filterList[i];
-				if (!f->isActive())
+				if (!f || !f->isActive())
 				{
 					continue;
 				}
@@ -1017,7 +1027,8 @@ void TerrainGenerator::Layer::affect (const float * previousAmountMap, const Gen
 	{
 		for (int i = 0; i < m_filterList.getNumberOfElements (); i++)
 		{
-			if (m_filterList [i]->isActive () && m_filterList [i]->needsNormals ())
+			Filter* const f = m_filterList [i];
+			if (f && f->isActive () && f->needsNormals ())
 			{
 				if (generatorChunkData.normalsDirtyIUO)
 				{
@@ -1037,7 +1048,8 @@ void TerrainGenerator::Layer::affect (const float * previousAmountMap, const Gen
 			//-- synchronize shader children
 			for (int i = 0; i < m_filterList.getNumberOfElements (); i++)
 			{
-				if (m_filterList [i]->isActive () && m_filterList [i]->needsShaders ())
+				Filter* const f = m_filterList [i];
+				if (f && f->isActive () && f->needsShaders ())
 				{
 					if (generatorChunkData.shadersDirtyIUO)
 					{
@@ -1081,7 +1093,7 @@ void TerrainGenerator::Layer::affect (const float * previousAmountMap, const Gen
 			for (int i = 0; i < m_boundaryList.getNumberOfElements(); i++)
 			{
 				Boundary *b = m_boundaryList[i];
-				if (!b->isActive())
+				if (!b || !b->isActive())
 				{
 					continue;
 				}
@@ -1144,27 +1156,26 @@ void TerrainGenerator::Layer::affect (const float * previousAmountMap, const Gen
 						int i;
 						for (i = 0; i < m_filterList.getNumberOfElements (); i++)
 						{
-							if (m_filterList [i]->isActive ())
+							Filter* const filt = m_filterList [i];
+							if (!filt || !filt->isActive ())
+								continue;
+
+							if(filt->getType() == TGFT_bitmap) // special case the bitmap filter because of boundaries
 							{
-
-								if(m_filterList[i]->getType() == TGFT_bitmap) // special case the bitmap filter because of boundaries
-								{
-									FilterBitmap *filterBitmap = safe_cast<FilterBitmap *>(m_filterList[i]);
-									filterBitmap->setExtent(m_extent);
-								}
-								
-								const Feather feather (m_filterList [i]->getFeatherFunction ());
-
-								const float amount = m_filterList [i]->isWithin (worldX, worldZ, x, z, generatorChunkData);
-								
-								DEBUG_FATAL (amount < 0.f || amount > 1.f, ("amount out of range [0-1] %1.2f", amount));
-
-								fuzzyTest = FuzzyAnd (fuzzyTest, feather.feather (0.f, 1.f, amount));
-
-								if (fuzzyTest == 0.f) 
-									break;
-								
+								FilterBitmap *filterBitmap = safe_cast<FilterBitmap *>(filt);
+								filterBitmap->setExtent(m_extent);
 							}
+							
+							const Feather feather (filt->getFeatherFunction ());
+
+							const float amount = filt->isWithin (worldX, worldZ, x, z, generatorChunkData);
+								
+							DEBUG_FATAL (amount < 0.f || amount > 1.f, ("amount out of range [0-1] %1.2f", amount));
+
+							fuzzyTest = FuzzyAnd (fuzzyTest, feather.feather (0.f, 1.f, amount));
+
+							if (fuzzyTest == 0.f) 
+								break;
 						}
 
 					}
@@ -1187,6 +1198,8 @@ void TerrainGenerator::Layer::affect (const float * previousAmountMap, const Gen
 							for (int i = 0; i < m_affectorList.getNumberOfElements (); i++)
 							{
 								Affector *a = m_affectorList[i];
+								if (!a)
+									continue;
 								if (!a->isPruned())
 								{
 									a->affect (worldX, worldZ, x, z, fuzzyTest * previousAmount, generatorChunkData);
@@ -1220,6 +1233,8 @@ void TerrainGenerator::Layer::affect (const float * previousAmountMap, const Gen
 		for (int i = 0; i < m_subLayerList.getNumberOfElements (); i++)
 		{
 			const Layer *l = m_subLayerList[i];
+			if (!l)
+				continue;
 			if (!l->isPruned())
 			{
 				l->affect(onlyHasSubLayers ? previousAmountMap : amountMap, generatorChunkData);
@@ -1426,7 +1441,7 @@ void TerrainGenerator::Layer::calculateExtent ()
 		{
 			Boundary* boundary = getBoundary (i);
 
-			if (boundary->isActive ())
+			if (boundary && boundary->isActive ())
 			{
 				m_useExtent = true;
 
@@ -1680,37 +1695,48 @@ void TerrainGenerator::Layer::save (Iff& iff) const
 			int i;
 			for (i = 0; i < n; i++)
 			{
-				iff.insertForm (m_boundaryList [i]->getTag ());
+				Boundary* const b = m_boundaryList [i];
+				if (!b)
+					continue;
+				iff.insertForm (b->getTag ());
 
-					m_boundaryList [i]->save (iff);
+					b->save (iff);
 
-				iff.exitForm (m_boundaryList [i]->getTag ());
+				iff.exitForm (b->getTag ());
 			}
 
 			n = m_filterList.getNumberOfElements ();
 			for (i = 0; i < n; i++)
 			{
-				iff.insertForm (m_filterList [i]->getTag ());
+				Filter* const f = m_filterList [i];
+				if (!f)
+					continue;
+				iff.insertForm (f->getTag ());
 
-					m_filterList [i]->save (iff);
+					f->save (iff);
 
-				iff.exitForm (m_filterList [i]->getTag ());
+				iff.exitForm (f->getTag ());
 			}
 
 			n = m_affectorList.getNumberOfElements ();
 			for (i = 0; i < n; i++)
 			{
-				iff.insertForm (m_affectorList [i]->getTag ());
+				Affector* const a = m_affectorList [i];
+				if (!a)
+					continue;
+				iff.insertForm (a->getTag ());
 
-					m_affectorList [i]->save (iff);
+					a->save (iff);
 
-				iff.exitForm (m_affectorList [i]->getTag ());
+				iff.exitForm (a->getTag ());
 			}
 
 			n = m_subLayerList.getNumberOfElements ();
 			for (i = 0; i < n; i++)
 			{
-				m_subLayerList[i]->save (iff);
+				Layer* const sub = m_subLayerList[i];
+				if (sub)
+					sub->save (iff);
 			}
 
 		iff.exitForm (TAG_0003);
@@ -1863,6 +1889,8 @@ void TerrainGenerator::affect (const GeneratorChunkData& generatorChunkData) con
 	for (i = m_layerList.getNumberOfElements()-1; i>=0 ; i--)
 	{
 		Layer *l = m_layerList[i];
+		if (!l)
+			continue;
 		l->prune(sampleMaps, generatorChunkData.chunkExtentIUO);
 	}
 
@@ -1871,6 +1899,8 @@ void TerrainGenerator::affect (const GeneratorChunkData& generatorChunkData) con
 	for (i = 0; i < m_layerList.getNumberOfElements (); i++)
 	{
 		Layer *l = m_layerList[i];
+		if (!l)
+			continue;
 		if (!l->isPruned())
 		{
 			l->affect(amountMap, generatorChunkData);
@@ -1915,8 +1945,11 @@ void TerrainGenerator::prepare ()
 
 	int i;
 	for (i = 0; i < m_layerList.getNumberOfElements (); ++i)
-		if (m_layerList [i]->isActive ())
-			m_layerList [i]->prepare ();
+	{
+		Layer* const lyr = m_layerList[i];
+		if (lyr && lyr->isActive ())
+			lyr->prepare ();
+	}
 }
 
 //-------------------------------------------------------------------
@@ -2168,7 +2201,9 @@ void TerrainGenerator::load (Iff& iff)
 		int n = m_layerList.getNumberOfElements ();
 		for (int i = 0; i < n && !m_hasPassableAffectors; i++)
 		{
-			m_hasPassableAffectors = m_layerList [i]->computeHasPassableAffectors();
+			Layer* const lyr = m_layerList[i];
+			if (lyr)
+				m_hasPassableAffectors = lyr->computeHasPassableAffectors();
 		}
 	}
 }
@@ -2224,7 +2259,11 @@ void TerrainGenerator::saveLayers (Iff& iff) const
 		int n = m_layerList.getNumberOfElements ();
 		int i;
 		for (i = 0; i < n; i++)
-			m_layerList [i]->save (iff);
+		{
+			Layer* const lyr = m_layerList[i];
+			if (lyr)
+				lyr->save (iff);
+		}
 
 	iff.exitForm (TAG (L,Y,R,S));
 }
@@ -2301,8 +2340,11 @@ void TerrainGenerator::calculateExtent ()
 {
 	int i;
 	for (i = 0; i < m_layerList.getNumberOfElements (); i++)
-		if (m_layerList [i]->isActive ())
-			m_layerList [i]->calculateExtent ();
+	{
+		Layer* const lyr = m_layerList[i];
+		if (lyr && lyr->isActive ())
+			lyr->calculateExtent ();
+	}
 }
 
 //-------------------------------------------------------------------
@@ -2313,7 +2355,11 @@ void TerrainGenerator::Layer::resetProfileData ()
 
 	int i;
 	for (i = 0; i < m_subLayerList.getNumberOfElements(); i++)
-		m_subLayerList[i]->resetProfileData ();
+	{
+		Layer* const sub = m_subLayerList[i];
+		if (sub)
+			sub->resetProfileData ();
+	}
 }
 
 //-------------------------------------------------------------------
@@ -2322,7 +2368,11 @@ void TerrainGenerator::resetProfileData ()
 {
 	int i;
 	for (i = 0; i < m_layerList.getNumberOfElements (); i++)
-		m_layerList [i]->resetProfileData ();
+	{
+		Layer* const lyr = m_layerList[i];
+		if (lyr)
+			lyr->resetProfileData ();
+	}
 }
 
 //-------------------------------------------------------------------
