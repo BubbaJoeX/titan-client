@@ -3954,6 +3954,9 @@ void SwgCuiQuestBuilder::refreshCollectionData()
 {
 	createSlotMap();
 
+	if (!m_taskComposite || !m_taskCategory || !m_taskFilter)
+		return;
+
 	UIBaseObject::UIObjectList taskList;
 	m_taskComposite->GetChildren(taskList);
 
@@ -3994,7 +3997,11 @@ void SwgCuiQuestBuilder::refreshCollectionData()
 
 	std::string narrowFilter = Unicode::wideToNarrow(filterText);
 
-	const UIData* const data = m_taskCategory->GetDataAtIndex (m_taskCategory->GetSelectedIndex());
+	long const selectedIndex = m_taskCategory->GetSelectedIndex();
+	if (selectedIndex < 0 || selectedIndex >= static_cast<long>(m_taskCategory->GetItemCount()))
+		return;
+
+	const UIData * const data = m_taskCategory->GetDataAtIndex(selectedIndex);
 	if (!data)
 		return;
 

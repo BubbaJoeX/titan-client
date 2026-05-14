@@ -499,12 +499,10 @@ bool SwgCuiInventory::OnMessage (UIWidget *context, const UIMessage & msg)
 				
 				if (newExamWidth >= ms_splitterMinExamWidth && newExamWidth <= maxExamWidth)
 				{
-					// Update exam pane width - composite will handle positioning
+					// Only change width; pinning min=max width confused UITable/composite layout (text columns
+					// collapsed to 0) and could leave bad constraints on reused page instances.
 					m_examPane->SetWidth (newExamWidth);
-					m_examPane->SetMinimumSize (UISize (newExamWidth, 0));
-					m_examPane->SetMaximumSize (UISize (newExamWidth, 16384));
-					
-					// Tell composite to re-layout
+
 					m_paneComposite->Pack ();
 				}
 			}

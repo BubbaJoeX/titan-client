@@ -871,6 +871,12 @@ void Direct3d9_StaticShaderData::Pass::copyMaterialApplyingInteriorTint(PaddedMa
 	if (!Direct3d9_LightManager::getMaterialInteriorTintMultiply(tint))
 		return;
 
+	// A (0,0,0) tint multiplies every albedo channel to zero after the *= below; the floor uses tint*0.11 so it
+	// cannot recover. That yields black silhouettes on terrain/splat shaders while many character passes stay lit.
+	// Override ambient already expresses a dark room; skip degenerate material multiply.
+	if (tint.r <= 0.f && tint.g <= 0.f && tint.b <= 0.f)
+		return;
+
 	// Part of interior volume pipeline: same RGB as CellProperty / setOverrideFullAmbient, matching pob lights rebuilt in CellObject::setCellLightColor.
 
 	// Albedo (ambient + diffuse material channels modulate lit textured surfaces in VS/FFP).

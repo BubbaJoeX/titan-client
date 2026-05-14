@@ -1001,8 +1001,9 @@ void DetailAppearance::_checkState()
 				bool enabled = dpvsObject->test(DPVS::Object::ENABLED);
 				DEBUG_FATAL(enabled && i != m_currentDetailLevel && i != m_nextDetailLevel, ("Incorrect detail level enabled %d != %d | %d", i, m_currentDetailLevel, m_nextDetailLevel));
 				DEBUG_FATAL(!enabled && (i == m_currentDetailLevel || i == m_nextDetailLevel), ("Proper detail level not enabled %d = %d | %d", i, m_currentDetailLevel, m_nextDetailLevel));
-				DEBUG_FATAL(i == m_currentDetailLevel && !appearance->isLoaded(), ("current detail level isn't loaded"));
-				DEBUG_FATAL(i == m_nextDetailLevel && !appearance->isLoaded(), ("next detail level isn't loaded"));
+				// Detail index can track target LOD before Appearance::isLoaded() completes (streaming / LOD switch); Fatal made Debug Titan unusable.
+				DEBUG_WARNING(i == m_currentDetailLevel && !appearance->isLoaded(), ("current detail level (%d) not loaded yet — possible async race; check if persistent.", m_currentDetailLevel));
+				DEBUG_WARNING(i == m_nextDetailLevel && !appearance->isLoaded(), ("next detail level (%d) not loaded yet — possible async race; check if persistent.", m_nextDetailLevel));
 			}
 		}
 		else

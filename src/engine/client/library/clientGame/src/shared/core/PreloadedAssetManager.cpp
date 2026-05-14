@@ -642,7 +642,9 @@ void PreloadedAssetManager::remove ()
 void PreloadedAssetManager::addSoundTemplate(char const * const fileName)
 {
 	//DEBUG_REPORT_LOG(true,("Preloading asset %s\n", fileName));
-	DEBUG_FATAL (!s_installed, ("PreloadedAssetManager::addSoundTemplate - not installed"));
+	// ClientGame/disablePreloadedAssetManager skips install(); GameMusicManager::install still registers names here.
+	if (!s_installed || !s_soundTemplateList)
+		return;
 
 	SoundTemplate const * const soundTemplate = SoundTemplateList::fetch(fileName);
 	if (soundTemplate)

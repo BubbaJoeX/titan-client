@@ -13,6 +13,7 @@
 #include "sharedFoundation/ConfigFile.h"
 #include "sharedDebug/DebugFlags.h"
 
+#include <windows.h>
 #include <wininet.h>
 #pragma comment(lib, "wininet.lib")
 
@@ -34,7 +35,9 @@ namespace SwgCuiMotdFetcherNamespace
 	std::string s_motdImage;
 	std::string s_motdUrl;
 
-	HANDLE      s_fetchThread = NULL;
+	HANDLE           s_fetchThread = NULL;
+	CRITICAL_SECTION s_motdLock;
+	bool             s_motdLockInitialized = false;
 
 	// Simple JSON value extraction (finds "key": "value" patterns)
 	std::string extractJsonString(std::string const & json, std::string const & key)
@@ -117,11 +120,18 @@ namespace SwgCuiMotdFetcherNamespace
 
 	DWORD WINAPI fetchThreadProc(LPVOID)
 	{
+		EnterCriticalSection(&s_motdLock);
 		s_fetching = true;
 		s_fetchFailed = false;
 		s_hasMotd = false;
+		LeaveCriticalSection(&s_motdLock);
 
-		HINTERNET hInternet = InternetOpenA(
+		std::string urlCopy;
+		EnterCriticalSection(&s_motdLock);
+		urlCopy = s_motdUrl;
+		LeaveCriticalSection(&s_motdLock);
+
+		HINTERNET const hInternet = InternetOpenA(
 			"SWGTitan/1.0",
 			INTERNET_OPEN_TYPE_PRECONFIG,
 			NULL,
@@ -131,14 +141,16 @@ namespace SwgCuiMotdFetcherNamespace
 
 		if (!hInternet)
 		{
+			EnterCriticalSection(&s_motdLock);
 			s_fetchFailed = true;
 			s_fetching = false;
+			LeaveCriticalSection(&s_motdLock);
 			return 1;
 		}
 
-		HINTERNET hUrl = InternetOpenUrlA(
+		HINTERNET const hUrl = InternetOpenUrlA(
 			hInternet,
-			s_motdUrl.c_str(),
+			urlCopy.c_str(),
 			NULL,
 			0,
 			INTERNET_FLAG_RELOAD | INTERNET_FLAG_NO_CACHE_WRITE,
@@ -148,12 +160,13 @@ namespace SwgCuiMotdFetcherNamespace
 		if (!hUrl)
 		{
 			InternetCloseHandle(hInternet);
+			EnterCriticalSection(&s_motdLock);
 			s_fetchFailed = true;
 			s_fetching = false;
+			LeaveCriticalSection(&s_motdLock);
 			return 1;
 		}
 
-		// Read the response
 		std::vector<char> buffer;
 		char readBuffer[4096];
 		DWORD bytesRead = 0;
@@ -168,41 +181,39 @@ namespace SwgCuiMotdFetcherNamespace
 
 		if (buffer.empty())
 		{
+			EnterCriticalSection(&s_motdLock);
 			s_fetchFailed = true;
 			s_fetching = false;
+			LeaveCriticalSection(&s_motdLock);
 			return 1;
 		}
 
-		// Null-terminate the buffer
 		buffer.push_back('\0');
-		std::string jsonResponse(buffer.empty() ? "" : &buffer[0]);
+		std::string const jsonResponse(&buffer[0]);
 
-		// Parse JSON response
-		// Expected format: {"title": "...", "text": "...", "image": "..."}
-		s_motdTitle = extractJsonString(jsonResponse, "title");
-		s_motdText = extractJsonString(jsonResponse, "text");
-		s_motdImage = extractJsonString(jsonResponse, "image");
+		std::string parsedTitle = extractJsonString(jsonResponse, "title");
+		std::string parsedText = extractJsonString(jsonResponse, "text");
+		std::string parsedImage = extractJsonString(jsonResponse, "image");
 
-		//remove .dds extension from image if present since the loading code expects it without extension
-		if (!s_motdImage.empty())
+		if (!parsedImage.empty())
 		{
-			size_t ddsPos = s_motdImage.rfind(".dds");
-			if (ddsPos != std::string::npos && ddsPos == s_motdImage.length() - 4)
-			{
-				s_motdImage = s_motdImage.substr(0, ddsPos);
-			}
+			size_t const ddsPos = parsedImage.rfind(".dds");
+			if (ddsPos != std::string::npos && ddsPos == parsedImage.length() - 4)
+				parsedImage = parsedImage.substr(0, ddsPos);
 		}
+
+		EnterCriticalSection(&s_motdLock);
+		s_motdTitle.swap(parsedTitle);
+		s_motdText.swap(parsedText);
+		s_motdImage.swap(parsedImage);
 
 		if (!s_motdTitle.empty() || !s_motdText.empty())
-		{
 			s_hasMotd = true;
-		}
 		else
-		{
 			s_fetchFailed = true;
-		}
 
 		s_fetching = false;
+		LeaveCriticalSection(&s_motdLock);
 		return 0;
 	}
 }
@@ -214,6 +225,9 @@ using namespace SwgCuiMotdFetcherNamespace;
 void SwgCuiMotdFetcher::install()
 {
 	DEBUG_FATAL(s_installed, ("SwgCuiMotdFetcher already installed.\n"));
+
+	InitializeCriticalSection(&s_motdLock);
+	s_motdLockInitialized = true;
 
 	s_installed = true;
 	s_fetching = false;
@@ -238,7 +252,6 @@ void SwgCuiMotdFetcher::remove()
 {
 	DEBUG_FATAL(!s_installed, ("SwgCuiMotdFetcher not installed.\n"));
 
-	// Wait for fetch thread to complete if still running
 	if (s_fetchThread != NULL)
 	{
 		WaitForSingleObject(s_fetchThread, 5000);
@@ -246,81 +259,145 @@ void SwgCuiMotdFetcher::remove()
 		s_fetchThread = NULL;
 	}
 
+	EnterCriticalSection(&s_motdLock);
 	s_installed = false;
 	s_motdTitle.clear();
 	s_motdText.clear();
 	s_motdImage.clear();
+	s_motdUrl.clear();
+	s_fetchRequested = false;
+	s_fetching = false;
+	s_hasMotd = false;
+	s_fetchFailed = false;
+	LeaveCriticalSection(&s_motdLock);
+
+	if (s_motdLockInitialized)
+	{
+		DeleteCriticalSection(&s_motdLock);
+		s_motdLockInitialized = false;
+	}
 }
 
 // ----------------------------------------------------------------------
 
 void SwgCuiMotdFetcher::update(float)
 {
-	// Clean up completed fetch thread
+	if (!s_motdLockInitialized)
+		return;
+
+	EnterCriticalSection(&s_motdLock);
+
 	if (s_fetchThread != NULL && !s_fetching)
 	{
-		CloseHandle(s_fetchThread);
+		HANDLE const finished = s_fetchThread;
 		s_fetchThread = NULL;
+		LeaveCriticalSection(&s_motdLock);
+		CloseHandle(finished);
+		EnterCriticalSection(&s_motdLock);
 	}
 
-	// Start fetch if requested and not already fetching
 	if (s_fetchRequested && !s_fetching && s_fetchThread == NULL)
 	{
 		s_fetchRequested = false;
-		s_fetchThread = CreateThread(NULL, 0, fetchThreadProc, NULL, 0, NULL);
+		HANDLE const th = CreateThread(NULL, 0, fetchThreadProc, NULL, 0, NULL);
+		if (th)
+			s_fetchThread = th;
+		else
+			s_fetchFailed = true;
 	}
+
+	LeaveCriticalSection(&s_motdLock);
 }
 
 // ----------------------------------------------------------------------
 
 void SwgCuiMotdFetcher::fetchMotd()
 {
-	if (s_fetching || s_motdUrl.empty())
+	if (!s_motdLockInitialized)
 		return;
 
-	s_fetchRequested = true;
+	EnterCriticalSection(&s_motdLock);
+	if (!s_fetching && !s_motdUrl.empty())
+		s_fetchRequested = true;
+	LeaveCriticalSection(&s_motdLock);
 }
 
 // ----------------------------------------------------------------------
 
 bool SwgCuiMotdFetcher::hasMotd()
 {
-	return s_hasMotd;
+	if (!s_motdLockInitialized)
+		return false;
+
+	EnterCriticalSection(&s_motdLock);
+	bool const r = s_hasMotd;
+	LeaveCriticalSection(&s_motdLock);
+	return r;
 }
 
 // ----------------------------------------------------------------------
 
-std::string const & SwgCuiMotdFetcher::getMotdTitle()
+std::string SwgCuiMotdFetcher::getMotdTitle()
 {
-	return s_motdTitle;
+	if (!s_motdLockInitialized)
+		return std::string();
+
+	EnterCriticalSection(&s_motdLock);
+	std::string const copy = s_motdTitle;
+	LeaveCriticalSection(&s_motdLock);
+	return copy;
 }
 
 // ----------------------------------------------------------------------
 
-std::string const & SwgCuiMotdFetcher::getMotdText()
+std::string SwgCuiMotdFetcher::getMotdText()
 {
-	return s_motdText;
+	if (!s_motdLockInitialized)
+		return std::string();
+
+	EnterCriticalSection(&s_motdLock);
+	std::string const copy = s_motdText;
+	LeaveCriticalSection(&s_motdLock);
+	return copy;
 }
 
 // ----------------------------------------------------------------------
 
-std::string const & SwgCuiMotdFetcher::getMotdImage()
+std::string SwgCuiMotdFetcher::getMotdImage()
 {
-	return s_motdImage;
+	if (!s_motdLockInitialized)
+		return std::string();
+
+	EnterCriticalSection(&s_motdLock);
+	std::string const copy = s_motdImage;
+	LeaveCriticalSection(&s_motdLock);
+	return copy;
 }
 
 // ----------------------------------------------------------------------
 
 bool SwgCuiMotdFetcher::isFetching()
 {
-	return s_fetching;
+	if (!s_motdLockInitialized)
+		return false;
+
+	EnterCriticalSection(&s_motdLock);
+	bool const r = s_fetching;
+	LeaveCriticalSection(&s_motdLock);
+	return r;
 }
 
 // ----------------------------------------------------------------------
 
 bool SwgCuiMotdFetcher::hasFetchFailed()
 {
-	return s_fetchFailed;
+	if (!s_motdLockInitialized)
+		return false;
+
+	EnterCriticalSection(&s_motdLock);
+	bool const r = s_fetchFailed;
+	LeaveCriticalSection(&s_motdLock);
+	return r;
 }
 
 // ======================================================================

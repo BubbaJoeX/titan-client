@@ -81,11 +81,11 @@ namespace LODManagerNamespace
 	typedef std::map<Object const *, LODManager::ObjectLODState> ObjectStateMap;
 	ObjectStateMap ms_objectStates;
 
-	// Statistics
 	LODManager::Statistics ms_stats;
 
-	// Timer
-	PerformanceTimer ms_timer;
+	// Per-frame timing (must not be a file-scope PerformanceTimer: its ctor DEBUG_FATALs before
+	// PerformanceTimer::install(), and InternalFatal then locks a Mutex still in SIOF).
+	PerformanceTimer * ms_frameTimer = nullptr;
 
 	// Helper function to get LOD level count from an appearance
 	int getAppearanceLODCount(Appearance const * appearance)
@@ -167,6 +167,9 @@ void LODManager::remove()
 {
 	DEBUG_FATAL(!ms_installed, ("LODManager not installed"));
 
+	delete ms_frameTimer;
+	ms_frameTimer = nullptr;
+
 	ms_objectStates.clear();
 	ms_lodDistances.clear();
 	ms_lodCoverages.clear();
@@ -196,7 +199,9 @@ void LODManager::beginFrame(Camera const * camera)
 		ms_tanHalfFOV = tan(fov * 0.5f);
 	}
 
-	ms_timer.start();
+	if (!ms_frameTimer)
+		ms_frameTimer = new PerformanceTimer;
+	ms_frameTimer->start();
 	ms_stats.reset();
 	ms_inFrame = true;
 }
@@ -207,8 +212,8 @@ void LODManager::endFrame()
 {
 	DEBUG_FATAL(!ms_inFrame, ("LODManager::endFrame called without beginFrame"));
 
-	ms_timer.stop();
-	ms_stats.totalProcessingTime = ms_timer.getElapsedTime() * 1000.0f;
+	ms_frameTimer->stop();
+	ms_stats.totalProcessingTime = ms_frameTimer->getElapsedTime() * 1000.0f;
 	ms_inFrame = false;
 	ms_camera = nullptr;
 }

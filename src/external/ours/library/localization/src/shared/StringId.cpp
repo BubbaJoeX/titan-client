@@ -28,6 +28,15 @@ m_textIndex (0)
 
 //----------------------------------------------------------------------
 
+StringId::StringId (char const * const table, char const * const text) :
+m_table     (table ? table : ""),
+m_text      (text ? text : ""),
+m_textIndex (0)
+{
+}
+
+//----------------------------------------------------------------------
+
 StringId::StringId (const std::string & table, const std::string & text) :
 m_table     (table),
 m_text      (text),

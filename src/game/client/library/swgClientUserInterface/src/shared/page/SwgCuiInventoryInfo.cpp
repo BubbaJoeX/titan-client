@@ -1046,12 +1046,7 @@ bool SwgCuiInventoryInfo::OnMessage       (UIWidget *context, const UIMessage & 
 				
 				if (newLeftWidth >= ms_splitterMinLeftWidth && newLeftWidth <= maxLeftWidth)
 				{
-					// Update left pane width - composite will handle positioning
 					m_leftPane->SetWidth (newLeftWidth);
-					m_leftPane->SetMinimumSize (UISize (newLeftWidth, 0));
-					m_leftPane->SetMaximumSize (UISize (newLeftWidth, 16384));
-					
-					// Tell composite to re-layout
 					m_paneComposite->Pack ();
 				}
 			}

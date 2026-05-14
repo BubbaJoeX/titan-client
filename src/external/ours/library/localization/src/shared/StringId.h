@@ -38,6 +38,8 @@ public:
 	typedef std::basic_string<unsigned short> LocUnicodeString;
 
 	                        StringId       ();
+	                        /** From string literals or static globals; null pointers become "" (also avoids U.B. when StringId("",0) binds this overload because 0 -> null). */
+	                        StringId       (char const * table, char const * text);
 	                        StringId       (const std::string & table, const std::string & text);
 	                        StringId       (const std::string & table, unsigned long textIndex);
 	explicit                StringId       (const std::string & canonicalRepresentation);

@@ -57,6 +57,9 @@
     <OutDir>..\..\..\..\..\..\compile\win32\$(ProjectName)\$(Configuration)\</OutDir>
     <IntDir>..\..\..\..\..\..\compile\win32\$(ProjectName)\$(Configuration)\</IntDir>
     <LinkIncremental>true</LinkIncremental>
+    <!-- F5 working dir: align with deployed game root (cfg, tre, data). Use swg.sln so SolutionDir resolves. -->
+    <LocalDebuggerWorkingDirectory Condition="'$(SolutionDir)' != ''">$(SolutionDir)..\..\..\..\exe\win32_rel</LocalDebuggerWorkingDirectory>
+    <LocalDebuggerWorkingDirectory Condition="'$(SolutionDir)' == ''">$(ProjectDir)..\..\..\..\..\..\..\exe\win32_rel</LocalDebuggerWorkingDirectory>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">
     <OutDir>..\..\..\..\..\..\compile\win32\$(ProjectName)\$(Configuration)\</OutDir>
@@ -112,8 +115,9 @@
     <PostBuildEvent>
       <Command>if not exist "D:\titan\exe\win32_rel" mkdir "D:\titan\exe\win32_rel"
 copy /Y "$(OutDir)$(ProjectName)_d.exe" "D:\titan\exe\win32_rel\" || exit 0
+copy /Y "$(OutDir)$(ProjectName)_d.pdb" "D:\titan\exe\win32_rel\" || exit 0
 for /r "D:\titan\client\src\compile\win32" %%f in (*.dll) do copy /Y "%%f" "D:\titan\exe\win32_rel\" || exit 0</Command>
-      <Message>Copy SwgGodClient_d.exe and all *.dll to D:\titan\exe\win32_rel</Message>
+      <Message>Copy SwgGodClient_d.exe, SwgGodClient_d.pdb, and win32 DLLs to D:\titan\exe\win32_rel (symbols beside exe for the debugger).</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">

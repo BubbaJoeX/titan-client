@@ -1318,7 +1318,10 @@ void ClientProceduralTerrainAppearance::render () const
 {
 	NP_PROFILER_AUTO_BLOCK_DEFINE ("ClientProceduralTerrainAppearance::render");
 
-	// DPVS sometimes reports exterior terrain visible without a portal-enter; interior tint would then multiply open-world splats toward black.
+	// DPVS sometimes reports exterior terrain visible without a portal-enter; the cell/fog stack can still
+	// reflect an interior (or transitional) cell. Drawing terrain under that state applies interior fog, env,
+	// and (via Direct3d9) interior material tint toward black splats. Always re-parent terrain+sky to the world
+	// cell whenever the active render cell is not already the world cell -- not only when custom pob lighting is flagged.
 	struct TerrainWorldLightingScope
 	{
 		bool const m_active;
@@ -1333,8 +1336,8 @@ void ClientProceduralTerrainAppearance::render () const
 				ShaderPrimitiveSorter::popCell();
 		}
 	private:
-		TerrainWorldLightingScope(TerrainWorldLightingScope const &);
-		TerrainWorldLightingScope &operator=(TerrainWorldLightingScope const &);
+		TerrainWorldLightingScope(TerrainWorldLightingScope const &) = delete;
+		TerrainWorldLightingScope &operator=(TerrainWorldLightingScope const &) = delete;
 	};
 
 	CellProperty const * const worldCell = CellProperty::getWorldCellProperty();
@@ -1342,8 +1345,7 @@ void ClientProceduralTerrainAppearance::render () const
 	bool const needWorldCell =
 		worldCell &&
 		activeCell &&
-		activeCell != worldCell &&
-		activeCell->hasCustomLightingOverride();
+		activeCell != worldCell;
 
 	TerrainWorldLightingScope const terrainWorldLightingScope(needWorldCell);
 

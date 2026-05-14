@@ -27,14 +27,14 @@ public:
 	// Returns true if MOTD has been fetched successfully
 	static bool hasMotd();
 
-	// Returns the fetched MOTD title
-	static std::string const & getMotdTitle();
+	// Returns the fetched MOTD title (copy; thread-safe vs. background fetch thread)
+	static std::string getMotdTitle();
 
-	// Returns the fetched MOTD text/body
-	static std::string const & getMotdText();
+	// Returns the fetched MOTD text/body (copy; thread-safe)
+	static std::string getMotdText();
 
-	// Returns the fetched MOTD image path (optional)
-	static std::string const & getMotdImage();
+	// Returns the fetched MOTD image path (optional) (copy; thread-safe)
+	static std::string getMotdImage();
 
 	// Returns true if fetch is currently in progress
 	static bool isFetching();

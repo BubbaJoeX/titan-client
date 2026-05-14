@@ -56,11 +56,14 @@
     <OutDir>.\..\..\..\..\..\..\compile\win32\dpvs\Debug\</OutDir>
     <IntDir>.\..\..\..\..\..\..\compile\win32\dpvs\Debug\</IntDir>
     <LinkIncremental>false</LinkIncremental>
+    <!-- Prefer 32-bit host cl.exe/link so Win32 .obj placement cannot be polluted by accidental x64 tool runs. -->
+    <PreferredToolArchitecture>x86</PreferredToolArchitecture>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>.\..\..\..\..\..\..\compile\win32\dpvs\Release\</OutDir>
     <IntDir>.\..\..\..\..\..\..\compile\win32\dpvs\Release\</IntDir>
     <LinkIncremental>false</LinkIncremental>
+    <PreferredToolArchitecture>x86</PreferredToolArchitecture>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='IntelCPP|Win32'">
     <OutDir>.\dpvs___Win32_IntelCPP\</OutDir>
@@ -82,10 +85,11 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;DPVS_DLL;DPVS_BUILD_LIBRARY;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <PrecompiledHeaderOutputFile>.\debug/dpvs.pch</PrecompiledHeaderOutputFile>
-      <AssemblerListingLocation>.\debug/</AssemblerListingLocation>
-      <ObjectFileName>.\debug/</ObjectFileName>
-      <ProgramDataBaseFileName>.\debug/</ProgramDataBaseFileName>
+      <!-- Keep all intermediates under IntDir — legacy .\debug shared the tree with ad-hoc x64 builds and caused LNK1112. -->
+      <PrecompiledHeaderOutputFile>$(IntDir)dpvs.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <ProgramDataBaseFileName>$(IntDir)</ProgramDataBaseFileName>
       <WarningLevel>Level4</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -103,7 +107,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>.\..\..\lib\win32-x86/dpvsd.pdb</ProgramDatabaseFile>
       <GenerateMapFile>true</GenerateMapFile>
-      <MapFileName>.\debug/dpvsd.map</MapFileName>
+      <MapFileName>$(IntDir)dpvsd.map</MapFileName>
       <SubSystem>Windows</SubSystem>
       <ImportLibrary>.\..\..\..\..\..\..\compile\win32\dpvs\Debug\dpvs.lib</ImportLibrary>
       <TargetMachine>MachineX86</TargetMachine>
@@ -131,11 +135,11 @@
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
-      <PrecompiledHeaderOutputFile>.\release/dpvs.pch</PrecompiledHeaderOutputFile>
+      <PrecompiledHeaderOutputFile>$(IntDir)dpvs.pch</PrecompiledHeaderOutputFile>
       <AssemblerOutput>AssemblyAndSourceCode</AssemblerOutput>
-      <AssemblerListingLocation>.\release/</AssemblerListingLocation>
-      <ObjectFileName>.\release/</ObjectFileName>
-      <ProgramDataBaseFileName>.\release/</ProgramDataBaseFileName>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <ProgramDataBaseFileName>$(IntDir)</ProgramDataBaseFileName>
       <WarningLevel>Level4</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>

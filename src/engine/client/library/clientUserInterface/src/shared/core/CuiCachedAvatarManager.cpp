@@ -25,8 +25,6 @@
 #include "sharedFoundation/Os.h"
 #include "sharedFoundation/Tag.h"
 #include "sharedMessageDispatch/Transceiver.h"
-#include "sharedSynchronization/Guard.h"
-#include "sharedSynchronization/RecursiveMutex.h"
 #include "sharedObject/CustomizationData.h"
 #include "sharedObject/ObjectTemplate.h"
 #include "sharedObject/SlottedContainer.h"
@@ -85,8 +83,6 @@ namespace
 
 	typedef stdmap<CharacterClusterId, CharacterListInfo>::fwd CharacterListMap;
 
-	// Serialized: touched from UI/login, scene save/update, and message callbacks that queue writes.
-	RecursiveMutex       s_characterListMapMutex;
 	CharacterListMap     s_characterListMap;
 
 	bool s_saveScenePlayerNextUpdate = false;
@@ -775,7 +771,6 @@ bool CuiCachedAvatarManager::save_0001 (Iff & iff, const CreatureObject & creatu
 void CuiCachedAvatarManager::removeAvatar                (const NetworkId & id, uint32 clusterId)
 {
 	const CharacterClusterId cci (clusterId, id);
-	Guard const guard (s_characterListMapMutex);
 	s_characterListMap.erase (cci);
 }
 
@@ -793,7 +788,6 @@ void CuiCachedAvatarManager::addToCharacterList (const uint32 clusterId, const N
 		cli.clusterName = clusterInfo->name;
 
 	const CharacterClusterId cci (clusterId, id);
-	Guard const guard (s_characterListMapMutex);
 	s_characterListMap [cci] = cli;
 }
 
@@ -805,7 +799,6 @@ void CuiCachedAvatarManager::setCharacterListPlanet (const uint32 clusterId, con
 		return;
 
 	const CharacterClusterId cci (clusterId, id);
-	Guard const guard (s_characterListMapMutex);
 	const CharacterListMap::iterator it = s_characterListMap.find (cci);
 
 	if (it == s_characterListMap.end ())
@@ -820,8 +813,6 @@ void CuiCachedAvatarManager::setCharacterListLastPlayed  (const uint32 clusterId
 {
 	if (Game::getSinglePlayer ())
 		return;
-
-	Guard const guard (s_characterListMapMutex);
 
 	bool found = false;
 
@@ -859,22 +850,18 @@ void CuiCachedAvatarManager::saveCharacterList  ()
 
 	const std::string & launcherAvatarName = ConfigClientGame::getLauncherAvatarName ();
 
+	for (CharacterListMap::iterator it = s_characterListMap.begin (); it != s_characterListMap.end (); ++it)
 	{
-		Guard const guard (s_characterListMapMutex);
+		const CharacterClusterId & cci = (*it).first;
+		CharacterListInfo & cli        = (*it).second;
 
-		for (CharacterListMap::iterator it = s_characterListMap.begin (); it != s_characterListMap.end (); ++it)
-		{
-			const CharacterClusterId & cci = (*it).first;
-			CharacterListInfo & cli        = (*it).second;
+		const std::string & avatarName = Unicode::wideToNarrow (cli.name);
 
-			const std::string & avatarName = Unicode::wideToNarrow (cli.name);
+		const bool wasSelectedFromLauncher = !launcherAvatarName.empty () && !_strnicmp (launcherAvatarName.c_str (), avatarName.c_str (), avatarName.size ());
+		
+		snprintf (buf, buf_size, "%s,%s (%s),%d,%d\n", cli.clusterName.c_str (), avatarName.c_str (), cli.clusterName.c_str (), wasSelectedFromLauncher ? 1 : 0, cci.first);
 
-			const bool wasSelectedFromLauncher = !launcherAvatarName.empty () && !_strnicmp (launcherAvatarName.c_str (), avatarName.c_str (), avatarName.size ());
-			
-			snprintf (buf, buf_size, "%s,%s (%s),%d,%d\n", cli.clusterName.c_str (), avatarName.c_str (), cli.clusterName.c_str (), wasSelectedFromLauncher ? 1 : 0, cci.first);
-
-			str += buf;
-		}
+		str += buf;
 	}
 
 	AbstractFile * const af = StdioFileFactory ().createFile (filename.c_str (), "wb");

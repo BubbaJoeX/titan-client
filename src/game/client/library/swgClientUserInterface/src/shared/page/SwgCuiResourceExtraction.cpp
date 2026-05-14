@@ -655,7 +655,7 @@ void SwgCuiResourceExtraction::toggleShowData (bool showData)
 
 //----------------------------------------------------------------------
 
-void SwgCuiResourceExtraction::onDataReady (const ClientInstallationSynchronizedUi & sync)
+void SwgCuiResourceExtraction::onDataReady(const ClientInstallationSynchronizedUi & sync)
 {
 	toggleShowData(true);
 }
