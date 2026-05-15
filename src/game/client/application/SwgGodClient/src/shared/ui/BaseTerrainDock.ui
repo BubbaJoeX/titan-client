@@ -352,7 +352,7 @@
                                     <cstring>m_brushFeatherSlider</cstring>
                                 </property>
                                 <property name="minValue">
-                                    <number>5</number>
+                                    <number>0</number>
                                 </property>
                                 <property name="maxValue">
                                     <number>100</number>
@@ -373,6 +373,80 @@
                                 </property>
                             </widget>
                         </grid>
+                    </widget>
+                    <widget class="QGroupBox">
+                        <property name="name">
+                            <cstring>m_regionGroup</cstring>
+                        </property>
+                        <property name="title">
+                            <string>Region Operations</string>
+                        </property>
+                        <vbox>
+                            <property name="margin">
+                                <number>6</number>
+                            </property>
+                            <property name="spacing">
+                                <number>4</number>
+                            </property>
+                            <hbox>
+                                <property name="spacing">
+                                    <number>4</number>
+                                </property>
+                                <widget class="QPushButton">
+                                    <property name="name">
+                                        <cstring>m_selectRegionButton</cstring>
+                                    </property>
+                                    <property name="text">
+                                        <string>Select</string>
+                                    </property>
+                                    <property name="toggleButton">
+                                        <bool>true</bool>
+                                    </property>
+                                </widget>
+                                <widget class="QPushButton">
+                                    <property name="name">
+                                        <cstring>m_copyRegionButton</cstring>
+                                    </property>
+                                    <property name="text">
+                                        <string>Copy</string>
+                                    </property>
+                                </widget>
+                                <widget class="QPushButton">
+                                    <property name="name">
+                                        <cstring>m_pasteRegionButton</cstring>
+                                    </property>
+                                    <property name="text">
+                                        <string>Paste</string>
+                                    </property>
+                                </widget>
+                                <widget class="QPushButton">
+                                    <property name="name">
+                                        <cstring>m_fillRegionButton</cstring>
+                                    </property>
+                                    <property name="text">
+                                        <string>Fill</string>
+                                    </property>
+                                </widget>
+                            </hbox>
+                            <hbox>
+                                <property name="spacing">
+                                    <number>6</number>
+                                </property>
+                                <widget class="QLabel">
+                                    <property name="name">
+                                        <cstring>m_regionShapeLabel</cstring>
+                                    </property>
+                                    <property name="text">
+                                        <string>Selection shape:</string>
+                                    </property>
+                                </widget>
+                                <widget class="QComboBox">
+                                    <property name="name">
+                                        <cstring>m_regionShapeCombo</cstring>
+                                    </property>
+                                </widget>
+                            </hbox>
+                        </vbox>
                     </widget>
                     <widget class="QTabWidget">
                         <property name="name">
@@ -1243,80 +1317,6 @@
                                 </property>
                             </widget>
                         </grid>
-                    </widget>
-                    <widget class="QGroupBox">
-                        <property name="name">
-                            <cstring>m_regionGroup</cstring>
-                        </property>
-                        <property name="title">
-                            <string>Region Operations</string>
-                        </property>
-                        <vbox>
-                            <property name="margin">
-                                <number>6</number>
-                            </property>
-                            <property name="spacing">
-                                <number>4</number>
-                            </property>
-                            <hbox>
-                                <property name="spacing">
-                                    <number>4</number>
-                                </property>
-                                <widget class="QPushButton">
-                                    <property name="name">
-                                        <cstring>m_selectRegionButton</cstring>
-                                    </property>
-                                    <property name="text">
-                                        <string>Select</string>
-                                    </property>
-                                    <property name="toggleButton">
-                                        <bool>true</bool>
-                                    </property>
-                                </widget>
-                                <widget class="QPushButton">
-                                    <property name="name">
-                                        <cstring>m_copyRegionButton</cstring>
-                                    </property>
-                                    <property name="text">
-                                        <string>Copy</string>
-                                    </property>
-                                </widget>
-                                <widget class="QPushButton">
-                                    <property name="name">
-                                        <cstring>m_pasteRegionButton</cstring>
-                                    </property>
-                                    <property name="text">
-                                        <string>Paste</string>
-                                    </property>
-                                </widget>
-                                <widget class="QPushButton">
-                                    <property name="name">
-                                        <cstring>m_fillRegionButton</cstring>
-                                    </property>
-                                    <property name="text">
-                                        <string>Fill</string>
-                                    </property>
-                                </widget>
-                            </hbox>
-                            <hbox>
-                                <property name="spacing">
-                                    <number>6</number>
-                                </property>
-                                <widget class="QLabel">
-                                    <property name="name">
-                                        <cstring>m_regionShapeLabel</cstring>
-                                    </property>
-                                    <property name="text">
-                                        <string>Selection shape:</string>
-                                    </property>
-                                </widget>
-                                <widget class="QComboBox">
-                                    <property name="name">
-                                        <cstring>m_regionShapeCombo</cstring>
-                                    </property>
-                                </widget>
-                            </hbox>
-                        </vbox>
                     </widget>
                     <widget class="QGroupBox">
                         <property name="name">

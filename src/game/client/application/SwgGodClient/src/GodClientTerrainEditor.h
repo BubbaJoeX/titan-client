@@ -17,9 +17,11 @@
 #include "sharedMath/Vector.h"
 #include "sharedMath/Vector2d.h"
 #include "sharedMath/Rectangle2d.h"
+#include "sharedSynchronization/Mutex.h"
 #include <vector>
 #include <map>
 #include <string>
+#include <set>
 
 class Camera;
 class TerrainObject;
@@ -131,6 +133,15 @@ public:
 		float childChoice;
 	};
 
+	/// Snapshot of shader overlay map edits for undo/redo (exact cell keys).
+	struct ShaderStrokeRecord
+	{
+		uint64 key;
+		bool hadPrior;
+		ShaderModification prior;
+		ShaderModification after;
+	};
+
 	// Brush stroke data
 	struct BrushStroke
 	{
@@ -143,6 +154,7 @@ public:
 		std::vector<HeightModification> modifications;
 		std::vector<ShaderModification> shaderModifications;
 		std::vector<FloraModification> floraModifications;
+		std::vector<ShaderStrokeRecord> shaderStrokeRecords;
 	};
 
 	// Polyline control point with height
@@ -315,6 +327,14 @@ public:
 		const float* heightsRowMajor,
 		const unsigned char* cellMaskRowMajor = 0);
 
+	/// Repeat the active height brush (raise/lower/flatten/smooth/noise/set height) across the region using brush size/shape/falloff.
+	/// Respects circular vs rectangular region selection. One undo stroke for the whole fill when possible.
+	bool applyRegionBrushFillHeightTools();
+
+	/// Begin/end batching shader-overlay undo records for operations that are not a tracked brush drag (dab / rect fill).
+	void beginShaderUndoBatch();
+	void endShaderUndoBatch();
+
 	/// Fill the axis-aligned rectangle (world XZ) with live shader paint (same overlay as brush).
 	/// When circularClip is true, only cells inside the world XZ circle are painted (axis-aligned bounds still min/max).
 	bool applyRectangularShaderPaint(
@@ -477,10 +497,21 @@ private:
 	float calculateFalloff(float distance, float radius) const;
 	float calculateBrushEffect(float localX, float localZ) const;
 
+	bool isWorldPositionInActiveRegion(float worldX, float worldZ) const;
+	Rectangle2d clipBoundaryRectangleToActiveRegion(Rectangle2d const & worldRect) const;
+
+	void recordShaderStrokePending(uint64 key);
+	void sealShaderStrokeRecords(BrushStroke & stroke);
+	bool shouldRecordShaderUndo() const;
+	void restoreShaderModificationsFromStrokeRecords(std::vector<ShaderStrokeRecord> const & recs, bool usePriorState);
+
+	/// Extends (or creates) a top-most generator layer that marks the live-edit footprint for .trn authoring.
+	void godClientSyncLiveStagingAoiLayer(Rectangle2d const & worldExtentFootprintXZ);
+
 	// Invalidate terrain in a region (full extent; prefer live-stroke helpers while dragging).
 	void invalidateTerrainRegion(float centerX, float centerZ, float radius);
 
-	// Stroke session: accumulate full stroke AABB for end-of-stroke finalize; roll throttled mesh invalidates.
+	// Stroke session: accumulate full stroke AABB for end-of-stroke finalize; throttled rolling invalidates + AOI sync while dragging; full AABB again on release.
 	void accumulateStrokeFinalizeDirtyRect(float worldX, float worldZ, float regionRadius);
 	void invalidateTerrainMeshesForLiveBrushSample(float worldX, float worldZ, float regionRadius, float currentTime);
 
@@ -544,7 +575,19 @@ private:
 
 	// Shader modification map
 	typedef std::map<uint64, ShaderModification> ShaderModificationMap;
+	mutable Mutex m_shaderModificationMutex;
 	ShaderModificationMap m_shaderModifications;
+
+	// RAII guard for concurrent access from procedural chunk worker threads vs main/UI thread.
+	struct ShaderMapLock
+	{
+		explicit ShaderMapLock(GodClientTerrainEditor& editor);
+		~ShaderMapLock();
+	private:
+		Mutex& m_mutex;
+		ShaderMapLock(ShaderMapLock const&);
+		ShaderMapLock& operator=(ShaderMapLock const&);
+	};
 
 	// Flora modification map
 	typedef std::map<uint64, FloraModification> FloraModificationMap;
@@ -558,6 +601,11 @@ private:
 	static const int MAX_UNDO_STROKES = 50;
 	std::vector<BrushStroke> m_undoStack;
 	std::vector<BrushStroke> m_redoStack;
+
+	int m_shaderUndoBatch;
+	typedef std::vector<std::pair<uint64, std::pair<bool, ShaderModification> > > ShaderStrokePendingVector;
+	ShaderStrokePendingVector m_shaderStrokePending;
+	std::set<uint64> m_shaderStrokePendingKeys;
 
 	// Region selection
 	bool m_hasRegionSelection;

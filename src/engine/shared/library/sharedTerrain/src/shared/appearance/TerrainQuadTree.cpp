@@ -475,6 +475,22 @@ int TerrainQuadTree::Node::removeSubNodeChunks (const bool deleteChunks, const b
 }
 
 //-----------------------------------------------------------------
+
+void TerrainQuadTree::Node::replaceLeafChunkInPlace (ProceduralTerrainAppearance::Chunk * const newChunk)
+{
+	NOT_NULL (newChunk);
+
+	ProceduralTerrainAppearance::Chunk * const oldChunk = m_chunk;
+	NOT_NULL (oldChunk);
+
+	if (m_worldExtentInitialized)
+		m_worldExtent.grow (newChunk->getBoxExtent ());
+
+	m_chunk = newChunk;
+	delete oldChunk;
+}
+
+//-----------------------------------------------------------------
 /**
 * remove a chunk from the tree.  It's former node is not deleted.  uses findChunkNode.
 * @param aChunk which chunk to remove

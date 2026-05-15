@@ -297,6 +297,10 @@ private:
 	void paintShaderAtPoint(float worldX, float worldZ, int shaderFamilyId);
 	void placeFloraAtPoint(float worldX, float worldZ, int floraFamily);
 
+	/// Copies catalog family + children (.sht template list) onto the scene generator when painting from Global shaders,
+	/// and rebuilds ShaderCache sizing. Optionally remaps to a fresh family id if the catalog conflicts with scene contents.
+	bool ensureLiveTerrainShaderFamilyForPaint(int catalogFamilyId, QString const& catalogSourceTrnPath);
+
 	// Brush calculation helpers
 	float calculateFalloff(float distance, float radius) const;
 	float calculateBrushEffect(float localX, float localZ) const;
@@ -340,6 +344,12 @@ public:
 	
 	// Check if terrain editing is active
 	bool isTerrainEditingActive() const;
+
+	/// Rebuild layer QListView after generator edits (safe to call from GodClientTerrainEditor).
+	void refreshTerrainLayerListFromGenerator();
+
+	/// True for brush-like tools and Select Region — suppresses orbit camera double-click.
+	bool suppressCameraDoubleClickForTerrainTool() const;
 
 private:
 

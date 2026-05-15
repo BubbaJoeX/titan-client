@@ -56,6 +56,10 @@
 #include "swgClientUserInterface/SwgCuiAvatarCreationHelper.h"
 #include "swgClientUserInterface/SwgCuiInventoryContainer.h"
 
+#if defined(_WIN32)
+#include <windows.h>
+#endif
+
 // ======================================================================
 
 namespace SwgCuiInventoryInfoNamespace
@@ -72,6 +76,12 @@ namespace SwgCuiInventoryInfoNamespace
 	bool ms_showBadgeText;
 
 	CreatureObject * ms_dupedCreatureNoAppearance = NULL;
+
+	inline void packExamineScrollContent(UIComposite * const content)
+	{
+		if (content)
+			content->Pack();
+	}
 
 	void CleanupDupedCreature()
 	{
@@ -441,7 +451,7 @@ void SwgCuiInventoryInfo::setInfoObject (Object * object, bool requestAttributeU
 		updateGodObjScriptTable (nid);
 	}
 
-	m_content->Pack ();
+	packExamineScrollContent(m_content);
 
 	if (m_autoEnableContent)
 		m_content->SetEnabled (object != 0);
@@ -553,7 +563,7 @@ void SwgCuiInventoryInfo::setPlayerInfo(CreatureObject * creatureObj)
 
 	updatePlayerData();
 
-	m_content->Pack ();
+	packExamineScrollContent(m_content);
 
 	if (m_autoEnableContent)
 		m_content->SetEnabled (true);
@@ -665,7 +675,7 @@ void SwgCuiInventoryInfo::updatePlayerData()
 	if(creatureObj)
 		m_label->SetLocalText(creatureObj->getLocalizedName());
 
-	m_content->Pack ();
+	packExamineScrollContent(m_content);
 }
 
 //-----------------------------------------------------------------------
@@ -708,7 +718,7 @@ void SwgCuiInventoryInfo::onBiographyRetrieved  (PlayerCreatureController::Messa
 			{
 				m_currentBio = Game::isProfanityFiltered() ? TextManager::filterText(playerObject->getBiography()) : playerObject->getBiography();
 				m_textDesc->SetLocalText (m_currentBio);
-				m_content->Pack ();
+				packExamineScrollContent(m_content);
 			}
 		}
 	}
@@ -1035,6 +1045,11 @@ bool SwgCuiInventoryInfo::OnMessage       (UIWidget *context, const UIMessage & 
 		}
 		else if (msg.Type == UIMessage::MouseMove && m_splitterDragging)
 		{
+			if (!msg.Modifiers.LeftMouseDown)
+			{
+				m_splitterDragging = false;
+				return false;
+			}
 			if (m_leftPane && m_rightPane && m_paneComposite)
 			{
 				long const delta = msg.MouseCoords.x - m_splitterDragStartX;

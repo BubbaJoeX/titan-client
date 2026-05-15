@@ -55,6 +55,10 @@
 
 #include <list>
 
+#if defined(_WIN32)
+#include <windows.h>
+#endif
+
 //-----------------------------------------------------------------
 
 namespace SwgCuiInventoryNamespace
@@ -488,6 +492,11 @@ bool SwgCuiInventory::OnMessage (UIWidget *context, const UIMessage & msg)
 		}
 		else if (msg.Type == UIMessage::MouseMove && m_splitterDragging)
 		{
+			if (!msg.Modifiers.LeftMouseDown)
+			{
+				m_splitterDragging = false;
+				return false;
+			}
 			if (m_examPane && m_containerPane && m_paneComposite)
 			{
 				long const delta = msg.MouseCoords.x - m_splitterDragStartX;
@@ -788,6 +797,11 @@ SwgCuiInventory * SwgCuiInventory::createInto (UIPage & parent, ClientObject * c
 
 void SwgCuiInventory::update (float deltaTimeSecs)
 {
+#if defined(_WIN32)
+	if (m_splitterDragging && (GetAsyncKeyState(VK_LBUTTON) & 0x8000) == 0)
+		m_splitterDragging = false;
+#endif
+
 	CuiMediator::update (deltaTimeSecs);
 
 	if (!m_containerMediator)

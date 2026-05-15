@@ -13,6 +13,7 @@
 #include "clientTerrain/ClientRadialFloraManager.h"
 #include "sharedMath/Transform.h"
 #include "sharedMath/Volume.h"
+#include "sharedFoundation/ArrayList.h"
 #include "sharedSynchronization/Gate.h"
 #include "sharedSynchronization/Mutex.h"
 #include "sharedTerrain/ProceduralTerrainAppearance.h"
@@ -256,6 +257,7 @@ private:
 	WaterManagerList*                m_waterManagerList;
 	ClientLocalWaterManager*         m_localWaterManager;
 	ShaderCache*                     m_shaderCache;
+	ArrayList<ShaderCache*>          m_deferredShaderCacheDeletes;
 
 	//-- level of detail
 	LevelOfDetail*                   m_levelOfDetail;
@@ -314,6 +316,13 @@ private:
 	void                  insertChunkCreationRequests (const ChunkRequestInfoList& requestInfoList);
 	void                  insertChunkRebuildRequests (const ChunkRequestInfoList& requestInfoList);
 	void                  clearInvalidRegionList ();
+
+	bool                  anyClientChunkReferencesShaderCache (ShaderCache const* cache) const;
+	void                  serviceDeferredShaderCacheDeletes ();
+
+	// ClientChunk::applyInPlaceRegenerationFromBuiltChunk (cannot call protected base destroyFlora/createFlora from nested class).
+	void                  destroyFloraForChunkInPlaceRegen (Chunk const * chunk);
+	void                  createFloraForChunkInPlaceRegen (Chunk const * chunk);
 
 	void                  initializeLevelOfDetail (int levels);
 	bool                  selectActualLevelOfDetail (const Camera* camera, const Object* referenceObject, const Volume* frustum);
@@ -452,6 +461,8 @@ public:
 	void                 _onChunkRendered() const { m_numberOfChunksRendered++; }
 
 	virtual void         purgeChunks();
+
+	void                  rebuildShaderCacheFromGenerator ();
 
 	void                  rebuildLocalWaterTablesFromTerrainGenerator ();
 

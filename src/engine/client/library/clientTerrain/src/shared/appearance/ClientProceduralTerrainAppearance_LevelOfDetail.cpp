@@ -12,6 +12,7 @@
 #include "clientGraphics/Camera.h"
 #include "clientTerrain/ClientProceduralTerrainAppearance_ClientChunk.h"
 #include "clientTerrain/ConfigClientTerrain.h"
+#include "clientGame/Game.h"
 #include "sharedFoundation/VoidBindSecond.h"
 #include "sharedFoundation/VoidMemberFunction.h"
 #include "sharedObject/Object.h"
@@ -36,12 +37,17 @@ namespace ClientProceduralTerrainAppearanceNamespace
 
 	void selectChunkForRender(TerrainQuadTree::Node* node)
 	{
-		if (node->getChunk ())
+		// Selection must imply a drawable chunk — otherwise collide/render skips the node ("hole").
+		if (!node || node->getChunk () == 0)
 		{
-			ClientChunk *chunk = safe_cast<ClientChunk*>(node->getChunk());
-			chunk->addObjectToWorld();
+			if (node)
+				node->setSelectedForRender (false);
+			return;
 		}
-		node->setSelectedForRender(true);
+
+		ClientChunk *chunk = safe_cast<ClientChunk*>(node->getChunk ());
+		chunk->addObjectToWorld ();
+		node->setSelectedForRender (true);
 	}
 
 	//-------------------------------------------------------------------
@@ -67,6 +73,53 @@ namespace ClientProceduralTerrainAppearanceNamespace
 			{
 				deselectChunkForRender(child);
 				deselectChildChunksForRender(child);
+			}
+		}
+	}
+
+	//-------------------------------------------------------------------
+
+	bool subtreeHasSelectedRenderableChunk(TerrainQuadTree::Node const * const n)
+	{
+		if (!n)
+			return false;
+		if (n->isSelectedForRender () && n->getChunk ())
+			return true;
+		for (int i = 0; i < 4; ++i)
+		{
+			if (subtreeHasSelectedRenderableChunk (n->getSubNode (i)))
+				return true;
+		}
+		return false;
+	}
+
+	// If a detail leaf is still waiting on procedural generation, draw the nearest parent that
+	// still carries a mesh so invalidation / async builds never leave a sky hole. Skips when a
+	// sibling subtree already covers the area with a finer selected chunk (avoids double draws).
+	void selectCoarseAncestorChunkForFallbackRender(TerrainQuadTree::Node* const leaf)
+	{
+		if (!leaf || leaf->getChunk ())
+			return;
+
+		TerrainQuadTree::Node* parent = leaf->getParent ();
+		if (parent)
+		{
+			for (int i = 0; i < 4; ++i)
+			{
+				TerrainQuadTree::Node const * const sib = parent->getSubNode (i);
+				if (!sib || sib == leaf)
+					continue;
+				if (subtreeHasSelectedRenderableChunk (sib))
+					return;
+			}
+		}
+
+		for (TerrainQuadTree::Node* a = parent; a != 0; a = a->getParent ())
+		{
+			if (a->getChunk ())
+			{
+				selectChunkForRender (a);
+				break;
 			}
 		}
 	}
@@ -350,8 +403,11 @@ bool ClientProceduralTerrainAppearance::LevelOfDetail::attemptSplit (TerrainQuad
 	//-- hit the bottom of the tree, only one thing to do!
 	if (node->getSize () == 1)
 	{
-		selectChunkForRender(node);
-		// No children to worry about.
+		if (node->getChunk ())
+			selectChunkForRender (node);
+		else
+			selectCoarseAncestorChunkForFallbackRender (node);
+
 		return true;
 	}
 
@@ -977,11 +1033,19 @@ void ClientProceduralTerrainAppearance::retrieveCompletedChunkCreationRequests (
 						//-- Find the node in the tree
 						TerrainQuadTree::Node* const node = getChunkTree ()->findChunkNode (requestInfo.m_x, requestInfo.m_z, requestInfo.m_size);
 
-						//-- Remove the existing chunk
-						node->removeChunk (node->getChunk (), true);
+						DEBUG_FATAL (
+							!node ||
+								!node->getChunk () ||
+								node->getX () != requestInfo.m_x ||
+								node->getZ () != requestInfo.m_z ||
+								node->getSize () != requestInfo.m_size,
+							("invalidate rebuild target mismatch"));
 
-						//-- Add the new chunk
-						node->addChunk (requestInfo.m_chunk, requestInfo.m_size);
+						// Keep the same ClientChunk / DPVS object: swap generator output onto the live chunk so
+						// edits do not remove-then-re-add the leaf (no phasing / holes around the brush).
+						ClientChunk *const liveChunk = safe_cast<ClientChunk *>(node->getChunk ());
+						ClientChunk *const builtChunk = safe_cast<ClientChunk *>(requestInfo.m_chunk);
+						liveChunk->applyInPlaceRegenerationFromBuiltChunk (builtChunk);
 					}
 
 					//-- Clear lists
@@ -1115,6 +1179,10 @@ void ClientProceduralTerrainAppearance::insertChunkRebuildRequests (const ChunkR
 void ClientProceduralTerrainAppearance::invalidateRegion (const Rectangle2d& extent2d)
 {
 	m_invalidateRegionList->push_back (extent2d);
+
+	// SwgGodClient: keep LOD scheduling primed so the quad-tree refills promptly after invalidate/rebuild bursts.
+	if (Game::isGodClient () && m_levelOfDetail)
+		m_levelOfDetail->setDirty (true);
 }
 
 //-----------------------------------------------------------------
@@ -1129,8 +1197,12 @@ void ClientProceduralTerrainAppearance::clearInvalidRegionList ()
 	if (m_lockTerrainLevelOfDetail)
 		return;
 
-	const Rectangle2d extent2d = m_invalidateRegionList->back ();
-	m_invalidateRegionList->pop_back ();
+	// Merge all queued invalidates into one bbox; draining one rectangle per alter() frame made
+	// procedural rebuild lag behind dense God Client brush traffic (holes / missing LOD fill).
+	Rectangle2d extent2d = (*m_invalidateRegionList)[0];
+	for (size_t i = 1, n = m_invalidateRegionList->size (); i < n; ++i)
+		extent2d.expand ((*m_invalidateRegionList)[i]);
+	m_invalidateRegionList->clear ();
 
 	//-- 
 	m_requestCriticalSection.enter ();

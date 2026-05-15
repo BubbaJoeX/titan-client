@@ -14,6 +14,7 @@
 
 #include "sharedMessageDispatch/Transceiver.h"
 #include "sharedFile/Iff.h"
+#include "sharedFile/TreeFile.h"
 #include "sharedMath/Vector.h"
 #include "sharedTerrain/TerrainGenerator.h"
 #include "sharedTerrain/ProceduralTerrainAppearanceTemplate.h"
@@ -180,112 +181,45 @@ namespace
 		}
 	}
 
-	// God Client SKU client compiled shaders: scan only sys.client/.../shader for .sht whose basename starts with "wter_".
+	// Resolve water shader templates through TreeFile virtual paths (archives + search roots): shader/wter_*.sht
 	void terrainDockGatherWaterShaderTemplatesFromDisk(std::vector<std::pair<QString, std::string> >& out, std::set<std::string>& seen, int& budget)
 	{
 		if (budget <= 0)
 			return;
 
-		QStringList roots;
-		{
-			// Primary data root for SwgGodClient water shader templates (matches local compiled client pack).
-			QFileInfo const fi(QString::fromLatin1("D:/titan/data/sku.0/sys.client/compiled/game/shader"));
-			if (fi.exists() && fi.isDir())
-				roots.append(fi.absFilePath());
-		}
+		std::vector<std::string> paths;
+		TreeFile::collectVirtualPathNamesWithPrefixAndSuffix("shader/wter_", ".sht", paths);
+		std::sort(paths.begin(), paths.end());
 
-		if (roots.isEmpty())
-			return;
-
-		for (QStringList::Iterator r = roots.begin(); r != roots.end(); ++r)
+		for (size_t i = 0; i < paths.size() && budget > 0; ++i)
 		{
-			QDir rootDir(*r);
-			if (!rootDir.exists() || !rootDir.isReadable())
+			std::string const& vp = paths[i];
+			if (vp.find("shader/wter_") != 0)
 				continue;
 
-			QString const rootCanon(rootDir.absPath());
+			size_t const slashPos = vp.find_last_of('/');
+			std::string baseFile = (slashPos != std::string::npos) ? vp.substr(slashPos + 1) : vp;
+			size_t const dotPos = baseFile.rfind('.');
+			if (dotPos != std::string::npos)
+				baseFile = baseFile.substr(0, dotPos);
 
-			// QStringList entryList avoids QPtrList<QFileInfo> / entryInfoList pointer quirks on some Qt3 builds.
-			QStringList topNames(rootDir.entryList(QString::fromLatin1("*.sht"), QDir::Files, QDir::Name));
-			for (QStringList::Iterator tn = topNames.begin(); tn != topNames.end(); ++tn)
-			{
-				if (budget <= 0)
-					return;
+			if (baseFile.size() < 5 || baseFile.compare(0, 5, "wter_") != 0)
+				continue;
 
-				QString const nameOnly(*tn);
-				if (nameOnly.isEmpty())
-					continue;
+			std::string const tpl = baseFile;
+			if (!seen.insert(tpl).second)
+				continue;
 
-				QString const fullPath(rootDir.absFilePath(nameOnly));
-				QFileInfo const fi(fullPath);
-				if (!fi.exists() || !fi.isFile())
-					continue;
+			char const* const resolved = TreeFile::getShortestExistingPath(vp.c_str());
+			QString const resolvedQs =
+				QString::fromLatin1(resolved ? resolved : vp.c_str());
+			QString const label =
+				QString::fromLatin1("%1 (%2)")
+					.arg(QString::fromLatin1(tpl.c_str()))
+					.arg(resolvedQs);
 
-				QString const base(fi.baseName());
-#ifdef _WIN32
-				QString const b(base.lower());
-#else
-				QString const b(base);
-#endif
-				if (b.find(QString::fromLatin1("wter_")) != 0)
-					continue;
-
-				char const* const lat = base.latin1();
-				std::string const tpl(lat ? lat : "");
-				if (tpl.empty())
-					continue;
-				if (!seen.insert(tpl).second)
-					continue;
-
-				out.push_back(std::make_pair(QString::fromLatin1("%1 (%2)").arg(base).arg(fullPath), tpl));
-				--budget;
-			}
-
-			QStringList subNames(rootDir.entryList(QDir::Dirs));
-			for (QStringList::Iterator sd = subNames.begin(); sd != subNames.end(); ++sd)
-			{
-				if ((*sd) == "." || (*sd) == "..")
-					continue;
-				QDir subDir(rootCanon + "/" + (*sd));
-				if (!subDir.exists() || !subDir.isReadable())
-					continue;
-
-				QStringList subShts(subDir.entryList(QString::fromLatin1("*.sht"), QDir::Files, QDir::Name));
-				for (QStringList::Iterator sn = subShts.begin(); sn != subShts.end(); ++sn)
-				{
-					if (budget <= 0)
-						return;
-
-					QString const nameOnly(*sn);
-					if (nameOnly.isEmpty())
-						continue;
-
-					QString const fullPath(subDir.absFilePath(nameOnly));
-					QFileInfo const fi(fullPath);
-					if (!fi.exists() || !fi.isFile())
-						continue;
-
-					QString const base(fi.baseName());
-#ifdef _WIN32
-					QString const b(base.lower());
-#else
-					QString const b(base);
-#endif
-					if (b.find(QString::fromLatin1("wter_")) != 0)
-						continue;
-
-					QString const rel((*sd) + "/" + base);
-					char const* const latRel = rel.latin1();
-					std::string const tpl(latRel ? latRel : "");
-					if (tpl.empty())
-						continue;
-					if (!seen.insert(tpl).second)
-						continue;
-
-					out.push_back(std::make_pair(QString::fromLatin1("%1 (%2)").arg(rel).arg(fullPath), tpl));
-					--budget;
-				}
-			}
+			out.push_back(std::make_pair(label, tpl));
+			--budget;
 		}
 	}
 
@@ -380,6 +314,79 @@ namespace
 		for (int ci = 0; ci < nChildren; ++ci)
 		{
 			ShaderGroup::FamilyChildData const fcd(src.getFamilyChild(familyId, ci));
+			dst.addChild(fcd);
+		}
+		return true;
+	}
+
+	bool terrainDockShaderFamilyChildrenMatch(ShaderGroup const& a, ShaderGroup const& b, int familyIdA, int familyIdB)
+	{
+		if (!a.hasFamily(familyIdA) || !b.hasFamily(familyIdB))
+			return false;
+		int const na = a.getFamilyNumberOfChildren(familyIdA);
+		int const nb = b.getFamilyNumberOfChildren(familyIdB);
+		if (na != nb)
+			return false;
+		for (int i = 0; i < na; ++i)
+		{
+			ShaderGroup::FamilyChildData const ca(a.getFamilyChild(familyIdA, i));
+			ShaderGroup::FamilyChildData const cb(b.getFamilyChild(familyIdB, i));
+			char const* namA = ca.shaderTemplateName ? ca.shaderTemplateName : "";
+			char const* namB = cb.shaderTemplateName ? cb.shaderTemplateName : "";
+			if (_stricmp(namA, namB) != 0)
+				return false;
+		}
+		return true;
+	}
+
+	int terrainDockFindUnusedTerrainShaderFamilyId(ShaderGroup const& sg)
+	{
+		bool used[256];
+		for (int u = 0; u < 256; ++u)
+			used[u] = false;
+		const int nf = sg.getNumberOfFamilies();
+		for (int fi = 0; fi < nf; ++fi)
+		{
+			int const fid = sg.getFamilyId(fi);
+			if (fid >= 0 && fid < 256)
+				used[fid] = true;
+		}
+		for (int trial = 1; trial < 256; ++trial)
+		{
+			if (!used[trial])
+				return trial;
+		}
+		return -1;
+	}
+
+	bool terrainDockCopyTerrainShaderFamilyRemapIds(ShaderGroup const& src, ShaderGroup& dst, int srcFamilyId, int dstFamilyId, bool overwriteExisting)
+	{
+		if (!src.hasFamily(srcFamilyId))
+			return false;
+		if (dst.hasFamily(dstFamilyId))
+		{
+			if (!overwriteExisting)
+				return false;
+			dst.removeFamily(dstFamilyId);
+		}
+
+		PackedRgb const color(src.getFamilyColor(srcFamilyId));
+		char const* fname = src.getFamilyName(srcFamilyId);
+		if (!fname)
+			fname = "";
+		dst.addFamily(dstFamilyId, fname, color);
+		dst.setFamilyShaderSize(dstFamilyId, src.getFamilyShaderSize(srcFamilyId));
+		dst.setFamilyFeatherClamp(dstFamilyId, src.getFamilyFeatherClamp(srcFamilyId));
+
+		char const* const sp(src.getFamilySurfacePropertiesName(srcFamilyId));
+		if (sp && *sp)
+			dst.setFamilySurfacePropertiesName(dstFamilyId, sp);
+
+		const int nChildren(src.getFamilyNumberOfChildren(srcFamilyId));
+		for (int ci = 0; ci < nChildren; ++ci)
+		{
+			ShaderGroup::FamilyChildData fcd(src.getFamilyChild(srcFamilyId, ci));
+			fcd.familyId = dstFamilyId;
 			dst.addChild(fcd);
 		}
 		return true;
@@ -848,6 +855,14 @@ void TerrainDock::syncGodClientEditorBrushSettings()
 	editor.setTargetHeight(m_setHeightTarget);
 	editor.setNoiseAmplitude(m_noiseAmplitude);
 	editor.setNoiseFrequency(m_noiseFrequency);
+
+	if (hasActiveTerrain() && m_globalShaderPaintingSelection &&
+		(editorMode == GodClientTerrainEditor::TM_PaintShader ||
+		 editorMode == GodClientTerrainEditor::TM_StampBitmap))
+	{
+		IGNORE_RETURN(ensureLiveTerrainShaderFamilyForPaint(m_selectedShaderFamilyId, m_savedGlobalPickTrnCanon));
+	}
+
 	editor.setSelectedShaderFamily(m_selectedShaderFamilyId);
 	{
 		int floraFamilyId = 0;
@@ -868,6 +883,8 @@ void TerrainDock::syncGodClientEditorBrushSettings()
 	if (m_waterShaderIndex >= 0 && m_waterShaderIndex < static_cast<int>(m_waterShaderTemplateNames.size()))
 		waterTpl = m_waterShaderTemplateNames[static_cast<size_t>(m_waterShaderIndex)];
 	editor.setWaterPlacementShaderTemplate(waterTpl.c_str());
+
+	syncRegionSelectionToEditor();
 }
 
 // ----------------------------------------------------------------------
@@ -1095,11 +1112,10 @@ void TerrainDock::onFalloffTypeChanged(int index)
 
 void TerrainDock::onBrushFeatherChanged(int value)
 {
-	m_brushFeather = 0.05f + 0.95f * (static_cast<float>(value) / 100.0f);
+	m_brushFeather = std::max(0.0f, std::min(1.0f, static_cast<float>(value) / 100.0f));
 	if (m_brushFeatherValue)
 	{
-		QString t;
-		t.sprintf("%d%%", value);
+		QString t = (value <= 0) ? QString("None") : QString::number(value) + '%';
 		m_brushFeatherValue->setText(t);
 	}
 	if (GodClientTerrainEditor::isInstalled())
@@ -1535,7 +1551,11 @@ void TerrainDock::populateLayerList()
 {
 	if (!m_layerList)
 		return;
-	
+
+	QString preservedLayerName;
+	if (m_layerList->selectedItem())
+		preservedLayerName = m_layerList->selectedItem()->text(0);
+
 	m_layerList->clear();
 	m_layerListGeneratorIndices.clear();
 	
@@ -1544,6 +1564,8 @@ void TerrainDock::populateLayerList()
 		return;
 	
 	const int numLayers = generator->getNumberOfLayers();
+	QListViewItem* restoredSelection = 0;
+
 	for (int i = 0; i < numLayers; ++i)
 	{
 		const TerrainGenerator::Layer* layer = generator->getLayer(i);
@@ -1555,8 +1577,16 @@ void TerrainDock::populateLayerList()
 			QString type = "Layer";
 			QString active = layer->isActive() ? "Yes" : "No";
 			
-			new QListViewItem(m_layerList, name, type, active);
+			QListViewItem* const rowItem = new QListViewItem(m_layerList, name, type, active);
+
+			if (!preservedLayerName.isEmpty() && preservedLayerName == name)
+				restoredSelection = rowItem;
 		}
+	}
+
+	if (restoredSelection)
+	{
+		m_layerList->setSelected(restoredSelection, true);
 	}
 }
 
@@ -1597,8 +1627,14 @@ int TerrainDock::selectedTerrainGeneratorLayerIndex() const
 
 void TerrainDock::syncRegionSelectionToEditor()
 {
-	if (!GodClientTerrainEditor::isInstalled() || !m_hasRegionSelection)
+	if (!GodClientTerrainEditor::isInstalled())
 		return;
+
+	if (!m_hasRegionSelection)
+	{
+		GodClientTerrainEditor::getInstance().clearRegionSelection();
+		return;
+	}
 
 	bool const circ = (m_regionSelectionShape == RSS_Circle);
 	GodClientTerrainEditor::getInstance().setRegionSelection(
@@ -2049,6 +2085,9 @@ void TerrainDock::onGlobalShaderSelectionChanged(QListViewItem* item)
 	m_selectedShaderFamilyId = familyId;
 	m_savedGlobalPickFamilyId = familyId;
 	m_savedGlobalPickTrnCanon = terrainDockCanonFromPathQString(item->text(3));
+
+	if (hasActiveTerrain())
+		IGNORE_RETURN(ensureLiveTerrainShaderFamilyForPaint(m_selectedShaderFamilyId, m_savedGlobalPickTrnCanon));
 
 	syncGodClientEditorBrushSettings();
 }
@@ -2764,9 +2803,10 @@ void TerrainDock::onFillRegion()
 		return;
 	}
 
+	syncGodClientEditorBrushSettings();
+
 	if (m_toolMode == TM_PaintShader)
 	{
-		syncGodClientEditorBrushSettings();
 		bool const circ = (m_regionSelectionShape == RSS_Circle && m_regionCircleRadius > 0.01f);
 		if (GodClientTerrainEditor::getInstance().applyRectangularShaderPaint(
 				m_regionMinX,
@@ -2798,54 +2838,43 @@ void TerrainDock::onFillRegion()
 		}
 		return;
 	}
-	
-	const float regionWidth = m_regionMaxX - m_regionMinX;
-	const float regionHeight = m_regionMaxZ - m_regionMinZ;
-	const float sampleStep = std::max(1.0f, std::min(regionWidth, regionHeight) / 32.0f);
-	const int widthSamples = static_cast<int>(regionWidth / sampleStep) + 1;
-	const int heightSamples = static_cast<int>(regionHeight / sampleStep) + 1;
-	
-	const int nCells = widthSamples * heightSamples;
-	std::vector<float> heights(static_cast<size_t>(nCells), m_setHeightTarget);
-	std::vector<unsigned char> mask;
-	unsigned char const* maskPtr = 0;
-	if (m_regionSelectionShape == RSS_Circle && m_regionCircleRadius > 0.01f)
+
+	switch (m_toolMode)
 	{
-		mask.resize(static_cast<size_t>(nCells));
-		float const r2 = m_regionCircleRadius * m_regionCircleRadius + 1e-2f;
-		for (int iz = 0; iz < heightSamples; ++iz)
+	case TM_Raise:
+	case TM_Lower:
+	case TM_Flatten:
+	case TM_Smooth:
+	case TM_Noise:
+	case TM_SetHeight:
+		if (GodClientTerrainEditor::getInstance().applyRegionBrushFillHeightTools())
 		{
-			for (int ix = 0; ix < widthSamples; ++ix)
-			{
-				float const sx = m_regionMinX + (static_cast<float>(ix) / static_cast<float>(widthSamples - 1)) * regionWidth;
-				float const sz = m_regionMinZ + (static_cast<float>(iz) / static_cast<float>(heightSamples - 1)) * regionHeight;
-				float const dx = sx - m_regionCircleCenterX;
-				float const dz = sz - m_regionCircleCenterZ;
-				mask[static_cast<size_t>(iz * widthSamples + ix)] =
-					(dx * dx + dz * dz <= r2) ? static_cast<unsigned char>(1) : static_cast<unsigned char>(0);
-			}
+			m_terrainModified = true;
+			updateUndoRedoState();
+
+			QString msg;
+			msg.sprintf(
+				"Region brush-fill applied: (%.1f, %.1f) - (%.1f, %.1f)",
+				m_regionMinX,
+				m_regionMinZ,
+				m_regionMaxX,
+				m_regionMaxZ);
+			MainFrame::getInstance().textToConsole(msg.latin1());
 		}
-		maskPtr = &mask[0];
+		else
+		{
+			IGNORE_RETURN(QMessageBox::warning(this, "Fill Region", "Brush fill failed (no terrain or no samples inside the region)."));
+		}
+		return;
+
+	default:
+		break;
 	}
-	
-	if (GodClientTerrainEditor::getInstance().applyRectangularHeightSamples(
-			m_regionMinX,
-			m_regionMinZ,
-			m_regionMaxX,
-			m_regionMaxZ,
-			widthSamples,
-			heightSamples,
-			heights.empty() ? 0 : &heights[0],
-			maskPtr))
-	{
-		m_terrainModified = true;
-		updateUndoRedoState();
-		
-		QString msg;
-		msg.sprintf("Region filled to height %.2f: (%.1f, %.1f) - (%.1f, %.1f)",
-			m_setHeightTarget, m_regionMinX, m_regionMinZ, m_regionMaxX, m_regionMaxZ);
-		MainFrame::getInstance().textToConsole(msg.latin1());
-	}
+
+	IGNORE_RETURN(QMessageBox::warning(
+		this,
+		"Fill Region",
+		"Choose a height tool (Raise, Lower, Flatten, Smooth, Noise, Set Height) or Paint Shader before using Fill."));
 }
 
 // ======================================================================
@@ -3229,6 +3258,72 @@ TerrainGenerator* TerrainDock::getTerrainGenerator() const
 }
 
 // ======================================================================
+
+bool TerrainDock::ensureLiveTerrainShaderFamilyForPaint(int catalogFamilyId, QString const& catalogSourceTrnPath)
+{
+	TerrainGenerator* const dstGenerator = getTerrainGenerator();
+	if (!dstGenerator)
+		return false;
+
+	ShaderGroup& dstSg(dstGenerator->getShaderGroup());
+
+	if (catalogSourceTrnPath.isEmpty())
+		return dstSg.hasFamily(catalogFamilyId);
+
+	QCString const pathBytes(QFile::encodeName(catalogSourceTrnPath));
+	Iff iff(1024 * 1024);
+	if (!iff.open(pathBytes.data(), true))
+		return false;
+
+	SamplerProceduralTerrainAppearanceTemplate sampler(pathBytes.data(), &iff);
+	TerrainGenerator const* const srcGen(sampler.getTerrainGenerator());
+	if (!srcGen || !srcGen->getShaderGroup().hasFamily(catalogFamilyId))
+		return false;
+
+	ShaderGroup const& srcSg = srcGen->getShaderGroup();
+
+	bool mutated(false);
+	bool collisionRemapped(false);
+
+	if (!dstSg.hasFamily(catalogFamilyId))
+	{
+		if (!terrainDockCopyFamilyIntoShaderGroup(srcSg, dstSg, catalogFamilyId, false))
+			return false;
+		mutated = true;
+	}
+	else if (!terrainDockShaderFamilyChildrenMatch(srcSg, dstSg, catalogFamilyId, catalogFamilyId))
+	{
+		int const newId = terrainDockFindUnusedTerrainShaderFamilyId(dstSg);
+		if (newId < 0)
+			return false;
+		if (!terrainDockCopyTerrainShaderFamilyRemapIds(srcSg, dstSg, catalogFamilyId, newId, false))
+			return false;
+		m_selectedShaderFamilyId = newId;
+		mutated = true;
+		collisionRemapped = true;
+	}
+
+	if (mutated)
+	{
+		dstSg.loadSurfaceProperties();
+		ClientProceduralTerrainAppearance* const cterrain = getClientTerrain();
+		if (cterrain)
+			cterrain->rebuildShaderCacheFromGenerator();
+	}
+
+	if (collisionRemapped)
+	{
+		QString msg;
+		msg.sprintf(
+			"Global catalog family %d differed from the scene; cloned template list to unused family id %d so existing terrain families are untouched.",
+			catalogFamilyId, m_selectedShaderFamilyId);
+		MainFrame::getInstance().textToConsole(msg.latin1());
+	}
+
+	return dstSg.hasFamily(m_selectedShaderFamilyId);
+}
+
+// ======================================================================
 // Brush Calculation Helpers
 // ======================================================================
 
@@ -3588,13 +3683,13 @@ void TerrainDock::paintShaderAtPoint(float worldX, float worldZ, int shaderFamil
 		MainFrame::getInstance().textToConsole("paintShaderAtPoint: No terrain generator available");
 		return;
 	}
-	
-	const ShaderGroup& shaderGroup = generator->getShaderGroup();
-	
-	if (!shaderGroup.hasFamily(shaderFamilyId))
+
+	QString const catalogPath = m_globalShaderPaintingSelection ? m_savedGlobalPickTrnCanon : QString();
+	if (!ensureLiveTerrainShaderFamilyForPaint(shaderFamilyId, catalogPath))
 	{
 		QString msg;
-		msg.sprintf("Invalid shader family id %d (not in current terrain .trn)", shaderFamilyId);
+		msg.sprintf("paintShaderAtPoint: Unable to activate shader family %d (merge global catalog families or refresh scene shaders).",
+			shaderFamilyId);
 		MainFrame::getInstance().textToConsole(msg.latin1());
 		return;
 	}
@@ -3605,44 +3700,26 @@ void TerrainDock::paintShaderAtPoint(float worldX, float worldZ, int shaderFamil
 		return;
 	}
 
-	syncGodClientEditorBrushSettings();
-	GodClientTerrainEditor::getInstance().applyShaderPaintDab(worldX, worldZ, shaderFamilyId, m_brushStrength);
-	
-	const float halfBrush = m_brushSize * 0.5f;
-	
-	// Create undo entry
-	UndoEntry entry;
-	entry.type = UO_Shader;
-	entry.worldX = worldX;
-	entry.worldZ = worldZ;
-	entry.radius = m_brushSize;
-	entry.description = "Paint shader";
-	entry.shaderData.push_back(shaderFamilyId);
-	
-	pushUndoEntry(entry);
-	
-	// Invalidate the terrain region so chunks rebuild with live shader overlay
-	TerrainObject* const terrainObject = TerrainObject::getInstance();
-	if (terrainObject)
-	{
-		const float invalidateRadius = halfBrush + 16.0f;
-		Rectangle2d extent2d(
-			worldX - invalidateRadius,
-			worldZ - invalidateRadius,
-			worldX + invalidateRadius,
-			worldZ + invalidateRadius
-		);
-		
-		terrainObject->invalidateRegion(extent2d);
-		GodClientTerrainEditor::getInstance().flushTerrainChanges();
-		GodClientTerrainEditor::nudgeGodClientCameraToRefreshDpvs();
-	}
-	
-	const char* familyName = shaderGroup.getFamilyName(shaderFamilyId);
-	
+	ShaderGroup const& shaderGroup = generator->getShaderGroup();
+
+	int const paintFamilyId = m_selectedShaderFamilyId;
+
+	GodClientTerrainEditor& terrainEditor = GodClientTerrainEditor::getInstance();
+	terrainEditor.beginShaderUndoBatch();
+	terrainEditor.applyShaderPaintDab(worldX, worldZ, paintFamilyId, m_brushStrength);
+	terrainEditor.endShaderUndoBatch();
+	updateUndoRedoState();
+	m_terrainModified = true;
+
+	const char* familyName = shaderGroup.getFamilyName(paintFamilyId);
+
 	QString msg;
-	msg.sprintf("Shader '%s' (id %d) painted at (%.1f, %.1f)", 
-		familyName ? familyName : "Unknown", shaderFamilyId, worldX, worldZ);
+	msg.sprintf(
+		"Shader '%s' (id %d) painted at (%.1f, %.1f)",
+		familyName ? familyName : "Unknown",
+		paintFamilyId,
+		worldX,
+		worldZ);
 	MainFrame::getInstance().textToConsole(msg.latin1());
 }
 
@@ -4041,16 +4118,16 @@ bool TerrainDock::handleMousePress(int screenX, int screenY, int button, int qtB
 	if (button != 1)
 		return false;
 	
-	// Get world position from screen coordinates
 	float worldX = 0.0f;
 	float worldZ = 0.0f;
-	if (!getTerrainPositionFromScreen(screenX, screenY, worldX, worldZ))
+	float groundY = 0.0f;
+	if (!pickTerrainGroundForLiveEdit(screenX, screenY, worldX, worldZ, groundY))
 		return false;
 
 	{
 		TerrainObject* const terrainObject = TerrainObject::getInstance();
 		Vector xz(worldX, 0.0f, worldZ);
-		float sampledY = m_liveEditGroundPickFallbackValid ? m_liveEditGroundPickFallbackY : 0.0f;
+		float sampledY = m_liveEditGroundPickFallbackValid ? m_liveEditGroundPickFallbackY : groundY;
 		if (terrainObject && terrainObject->getHeight(xz, sampledY))
 		{
 			m_liveEditGroundPickFallbackValid = true;
@@ -4169,7 +4246,10 @@ bool TerrainDock::handleMousePress(int screenX, int screenY, int button, int qtB
 		}
 		
 		syncGodClientEditorBrushSettings();
-		
+
+		// Region-wide shader fills use Fill Region — LMB always runs the brush stroke so paint
+		// matches the yellow preview ring (Painting with an active selection still clips to region).
+
 		// Begin brush stroke
 		if (editor.beginBrushStroke(worldX, worldZ))
 		{
@@ -4205,7 +4285,8 @@ bool TerrainDock::handleMouseRelease(int screenX, int screenY, int button)
 	{
 		float worldX = 0.0f;
 		float worldZ = 0.0f;
-		if (getTerrainPositionFromScreen(screenX, screenY, worldX, worldZ))
+		float unusedY = 0.0f;
+		if (pickTerrainGroundForLiveEdit(screenX, screenY, worldX, worldZ, unusedY))
 		{
 			m_regionDragCurX = worldX;
 			m_regionDragCurZ = worldZ;
@@ -4435,6 +4516,37 @@ void TerrainDock::updateFrame(float elapsedTime)
 	if (m_showPolylinePreview && (m_toolMode == TM_PlaceRoad || m_toolMode == TM_PlaceRibbon))
 	{
 		editor.renderPolylinePreview(*camera);
+	}
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::refreshTerrainLayerListFromGenerator()
+{
+	populateLayerList();
+}
+
+// ----------------------------------------------------------------------
+
+bool TerrainDock::suppressCameraDoubleClickForTerrainTool() const
+{
+	if (!isTerrainEditingActive())
+		return false;
+	switch (m_toolMode)
+	{
+	case TM_Select:
+	case TM_Raise:
+	case TM_Lower:
+	case TM_Flatten:
+	case TM_Smooth:
+	case TM_Noise:
+	case TM_SetHeight:
+	case TM_PaintShader:
+	case TM_PaintFlora:
+	case TM_StampBitmap:
+		return true;
+	default:
+		return false;
 	}
 }
 

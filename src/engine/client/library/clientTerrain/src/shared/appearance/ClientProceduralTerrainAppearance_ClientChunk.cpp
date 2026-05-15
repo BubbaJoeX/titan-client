@@ -36,6 +36,7 @@
 
 #include <algorithm>
 #include <map>
+#include <utility>
 
 //===================================================================
 
@@ -437,12 +438,19 @@ void ClientProceduralTerrainAppearance::ClientChunk::createTileShader (ShaderDat
 					float feather = 0.f;
 					if (CityTerrainLayerManager::getModifiedShader(wx, wz, fid, fid, feather))
 					{
-						cell.setFamilyId(fid);
-						// God Client live paint: feather is brush strength metadata, NOT ShaderGroup::Info
-						// childChoice (pick/blend shader variants within the family). Reusing feather as
-						// childChoice produced invalid/random variant indices (black/intermittent tiles).
-						if (!useFirstChild)
-							cell.setChildChoice(0.f);
+						// Shader cache rows are keyed by family *index* (Info::priority), not just family id.
+						// Updating only familyId leaves stale priority pointing at wrong .sht / textures.
+						ShaderGroup::Info const canonical = shaderCache->getShaderGroup().chooseShader(fid);
+						if (canonical.getFamilyId() == fid)
+						{
+							cell.setPriority(canonical.getPriority());
+							cell.setFamilyId(fid);
+							// God Client live paint: feather is brush strength metadata, NOT ShaderGroup::Info
+							// childChoice (pick/blend shader variants within the family). Reusing feather as
+							// childChoice produced invalid/random variant indices (black/intermittent tiles).
+							if (!useFirstChild)
+								cell.setChildChoice(0.f);
+						}
 					}
 				}
 			}
@@ -692,6 +700,13 @@ void ClientProceduralTerrainAppearance::ClientChunk::resetIndices(unsigned newHa
 	uint i;
 	for (i = 0; i < n; ++i)
 		m_shaderSetList[i]->chooseIndexBuffer(newHasLargerNeighborFlags, numberOfTilesPerChunk);
+}
+
+//-------------------------------------------------------------------
+
+bool ClientProceduralTerrainAppearance::ClientChunk::referencesShaderCache (ShaderCache const* const cache) const
+{
+	return shaderCache == cache;
 }
 
 //-------------------------------------------------------------------
@@ -987,6 +1002,65 @@ void ClientProceduralTerrainAppearance::ClientChunk::create (const ClientCreateC
 			m_writeIndexedTriangleList->addIndexedTriangleList (vertices, 8, indices, 36);
 		}
 	}
+}
+
+//-------------------------------------------------------------------
+
+void ClientProceduralTerrainAppearance::ClientChunk::applyInPlaceRegenerationFromBuiltChunk (ClientChunk *const disposableBuiltChunk)
+{
+	NOT_NULL (disposableBuiltChunk);
+	DEBUG_FATAL (this == disposableBuiltChunk, ("terrain in-place regen: disposable chunk is the live chunk"));
+
+	DEBUG_FATAL (
+		chunkX != disposableBuiltChunk->chunkX ||
+		chunkZ != disposableBuiltChunk->chunkZ ||
+		chunkWidthInMeters != disposableBuiltChunk->chunkWidthInMeters,
+		("terrain in-place regen chunk identity mismatch"));
+
+	// Remove flora tied to this leaf's prior footprint before we swap map pointers away.
+	ClientProceduralTerrainAppearance &appearance = static_cast<ClientProceduralTerrainAppearance &>(m_proceduralTerrainAppearance);
+	appearance.destroyFloraForChunkInPlaceRegen (this);
+
+	m_shaderSetList.swap (disposableBuiltChunk->m_shaderSetList);
+
+	std::swap (shaderCache, disposableBuiltChunk->shaderCache);
+	std::swap (colorMap, disposableBuiltChunk->colorMap);
+	std::swap (floraStaticNonCollidableMap, disposableBuiltChunk->floraStaticNonCollidableMap);
+	std::swap (floraDynamicNearMap, disposableBuiltChunk->floraDynamicNearMap);
+	std::swap (floraDynamicFarMap, disposableBuiltChunk->floraDynamicFarMap);
+	std::swap (environmentMap, disposableBuiltChunk->environmentMap);
+	std::swap (vertexNormalMap, disposableBuiltChunk->vertexNormalMap);
+	std::swap (m_writeIndexedTriangleList, disposableBuiltChunk->m_writeIndexedTriangleList);
+
+	std::swap (shaderMap, disposableBuiltChunk->shaderMap);
+	std::swap (m_floraStaticCollidableMap, disposableBuiltChunk->m_floraStaticCollidableMap);
+
+	std::swap (m_boxExtent, disposableBuiltChunk->m_boxExtent);
+	std::swap (hasLargerNeighborFlags, disposableBuiltChunk->hasLargerNeighborFlags);
+	std::swap (originOffset, disposableBuiltChunk->originOffset);
+	std::swap (numberOfPoles, disposableBuiltChunk->numberOfPoles);
+	std::swap (m_excluded, disposableBuiltChunk->m_excluded);
+	std::swap (m_passable, disposableBuiltChunk->m_passable);
+
+	std::swap (m_spatialSubdivisionHandle, disposableBuiltChunk->m_spatialSubdivisionHandle);
+
+	if (m_dpvsObject)
+	{
+		DPVS::OBBModel *const testModel = RenderWorld::fetchBoxModel (m_boxExtent.getBox ());
+		m_dpvsObject->setTestModel (testModel);
+		testModel->release ();
+
+		if (m_writeIndexedTriangleList)
+		{
+			DPVS::MeshModel *const writeModel = RenderWorld::fetchMeshModel (*m_writeIndexedTriangleList);
+			m_dpvsObject->setWriteModel (writeModel);
+			writeModel->release ();
+		}
+	}
+
+	delete disposableBuiltChunk;
+
+	appearance.createFloraForChunkInPlaceRegen (this);
 }
 
 //-------------------------------------------------------------------

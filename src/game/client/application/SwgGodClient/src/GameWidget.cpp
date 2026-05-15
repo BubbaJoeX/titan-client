@@ -939,6 +939,16 @@ void GameWidget::mouseMoveEvent(QMouseEvent*mouseEvent)
 	mouseEvent->accept();
 	if(m_gameHasFocus)
 	{
+		TerrainDock* terrainDock = MainFrame::getInstance().getTerrainDock();
+		if (terrainDock && terrainDock->isTerrainEditingActive())
+		{
+			const QPoint pt(mouseEvent->pos());
+			if (terrainDock->handleMouseMove(pt.x(), pt.y(), static_cast<int>(mouseEvent->state())))
+			{
+				m_lastMousePoint = mouseEvent->pos();
+				return;
+			}
+		}
 		const int x = mouseEvent->x();
 		const int y = mouseEvent->y();
 		IoWinManager::queueSetSystemMouseCursorPosition(x, y);
@@ -1300,24 +1310,23 @@ void GameWidget::mousePressEvent(QMouseEvent*mouseEvent)
 		(mouseEvent->state() &(Qt::AltButton | Qt::ControlButton)) ==(Qt::AltButton | Qt::ControlButton))
 		m_flyButtonDown = true;
 
-	if(!m_gameHasFocus)
+	// Terrain left-click must win over pointer-input/exclusive viewport focus when the dock is armed.
+	if (mouseEvent->button() == Qt::LeftButton)
 	{
-		// Terrain left-click must run before pointer-input handling — otherwise
-		// pointer-warp swallows paint events even when the terrain dock is active.
-		if (mouseEvent->button() == Qt::LeftButton)
+		TerrainDock* terrainDock = MainFrame::getInstance().getTerrainDock();
+		if (terrainDock && terrainDock->isTerrainEditingActive())
 		{
-			TerrainDock* terrainDock = MainFrame::getInstance().getTerrainDock();
-			if (terrainDock && terrainDock->isTerrainEditingActive())
+			const int st = static_cast<int>(mouseEvent->state());
+			if (terrainDock->handleMousePress(mouseEvent->x(), mouseEvent->y(), 1, st))
 			{
-				const int st = static_cast<int>(mouseEvent->state());
-				if (terrainDock->handleMousePress(mouseEvent->x(), mouseEvent->y(), 1, st))
-				{
-					m_discardNextMouseRelease = true;
-					return;
-				}
+				m_discardNextMouseRelease = true;
+				return;
 			}
 		}
+	}
 
+	if(!m_gameHasFocus)
+	{
 		if(CuiManager::getPointerInputActive())
 		{
 			ActionsGame::getInstance().gameFocusAllowed->doToggle(true);
@@ -1524,6 +1533,10 @@ void GameWidget::mouseDoubleClickEvent(QMouseEvent* mouseEvent)
 	{
 		return;
 	}
+
+	TerrainDock* const terrainDock = MainFrame::getInstance().getTerrainDock();
+	if (terrainDock && terrainDock->suppressCameraDoubleClickForTerrainTool())
+		return;
 
 	if(!m_gameHasFocus)
 	{

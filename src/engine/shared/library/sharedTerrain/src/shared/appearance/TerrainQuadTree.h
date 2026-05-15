@@ -131,6 +131,7 @@ public:
 
 		void         pruneTree ();
 		void         removeChunk (ProceduralTerrainAppearance::Chunk * aChunk, bool deleteChunk);
+		void         replaceLeafChunkInPlace (ProceduralTerrainAppearance::Chunk * newChunk);
 
 		const ProceduralTerrainAppearance::Chunk * getChunk () const;
 		ProceduralTerrainAppearance::Chunk * getChunk ();

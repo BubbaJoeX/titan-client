@@ -54,7 +54,9 @@
 #include "sharedTerrain/Boundary.h"
 #include "sharedTerrain/ConfigSharedTerrain.h"
 #include "sharedTerrain/ProceduralTerrainAppearanceTemplate.h"
+#include "sharedTerrain/ShaderGroup.h"
 #include "sharedTerrain/TerrainObject.h"
+#include "sharedMath/Rectangle2d.h"
 #include "sharedThread/RunThread.h"
 #include "sharedUtility/FileName.h"
 #include "sharedUtility/LocalMachineOptionManager.h"
@@ -600,6 +602,11 @@ ClientProceduralTerrainAppearance::~ClientProceduralTerrainAppearance ()
 	}
 
 	//-- delete shader cache
+	{
+		for (int i = 0; i < m_deferredShaderCacheDeletes.getNumberOfElements(); ++i)
+			delete m_deferredShaderCacheDeletes[i];
+		m_deferredShaderCacheDeletes.clear();
+	}
 	delete m_shaderCache;
 	m_shaderCache = 0;
 
@@ -1018,6 +1025,8 @@ float ClientProceduralTerrainAppearance::alter (const float elapsedTime)
 	//-- Service the terrain generation thread
 	retrieveCompletedChunkCreationRequests ();
 
+	serviceDeferredShaderCacheDeletes ();
+
 	//-- Alter the shaders (probably not needed because no terrain shaders should animate)
 	NOT_NULL (m_shaderCache);
 	m_shaderCache->alter (elapsedTime);
@@ -1086,6 +1095,8 @@ void ClientProceduralTerrainAppearance::calculateLod () const
 	//-- frustum volume in world space
 	m_worldFrustum.transform (ms_referenceCamera->getFrustumVolume (), ms_referenceCamera->getTransform_o2w ());
 
+	// While locked, procedural rebuild is replacing dirty leaves; skipping LOD selection avoids fighting the worker.
+	// SwgGodClient defers mesh invalidates during brush strokes; invalidateRegion() still marks m_levelOfDetail dirty for post-rebuild catch-up.
 	if (!m_lockTerrainLevelOfDetail)
 	{
 		//-- fill out the terrain in the frustum
@@ -1314,6 +1325,22 @@ DPVS::Object* ClientProceduralTerrainAppearance::getDpvsObject() const
 
 //-------------------------------------------------------------------
 
+void ClientProceduralTerrainAppearance::destroyFloraForChunkInPlaceRegen (Chunk const * const chunk)
+{
+	NOT_NULL (chunk);
+	destroyFlora (chunk);
+}
+
+//-------------------------------------------------------------------
+
+void ClientProceduralTerrainAppearance::createFloraForChunkInPlaceRegen (Chunk const * const chunk)
+{
+	NOT_NULL (chunk);
+	createFlora (chunk);
+}
+
+//-------------------------------------------------------------------
+
 void ClientProceduralTerrainAppearance::render () const
 {
 	NP_PROFILER_AUTO_BLOCK_DEFINE ("ClientProceduralTerrainAppearance::render");
@@ -1336,8 +1363,8 @@ void ClientProceduralTerrainAppearance::render () const
 				ShaderPrimitiveSorter::popCell();
 		}
 	private:
-		TerrainWorldLightingScope(TerrainWorldLightingScope const &) = delete;
-		TerrainWorldLightingScope &operator=(TerrainWorldLightingScope const &) = delete;
+		TerrainWorldLightingScope(TerrainWorldLightingScope const &);
+		TerrainWorldLightingScope &operator=(TerrainWorldLightingScope const &);
 	};
 
 	CellProperty const * const worldCell = CellProperty::getWorldCellProperty();
@@ -1910,6 +1937,83 @@ void ClientProceduralTerrainAppearance::purgeChunks ()
 	m_levelOfDetail->setDirty (true);
 
 	m_requestCriticalSection.leave();
+}
+
+//-------------------------------------------------------------------
+
+bool ClientProceduralTerrainAppearance::anyClientChunkReferencesShaderCache (ShaderCache const* const cache) const
+{
+	if (!cache)
+		return false;
+
+	TerrainQuadTree::Iterator iter = getChunkTree ()->getIterator ();
+	TerrainQuadTree::Node* node = 0;
+
+	while ((node = iter.getCurNode ()) != 0)
+	{
+		Chunk const * const chunk = node->getChunk ();
+		if (chunk)
+		{
+			ClientChunk const * const clientChunk = dynamic_cast<ClientChunk const *> (chunk);
+			if (clientChunk && clientChunk->referencesShaderCache (cache))
+				return true;
+		}
+
+		IGNORE_RETURN (iter.descend ());
+	}
+
+	return false;
+}
+
+//-------------------------------------------------------------------
+
+void ClientProceduralTerrainAppearance::serviceDeferredShaderCacheDeletes ()
+{
+	while (m_deferredShaderCacheDeletes.getNumberOfElements () > 0)
+	{
+		if (!terrainGenerationStabilized ())
+			return;
+
+		if (m_lockTerrainLevelOfDetail)
+			return;
+
+		if (m_requestThreadMode != RTM0_normal)
+			return;
+
+		ShaderCache * const victim = m_deferredShaderCacheDeletes[0];
+		if (anyClientChunkReferencesShaderCache (victim))
+			return;
+
+		m_deferredShaderCacheDeletes.removeIndexAndCompactList (0);
+		delete victim;
+	}
+}
+
+//-------------------------------------------------------------------
+
+void ClientProceduralTerrainAppearance::rebuildShaderCacheFromGenerator ()
+{
+	NOT_NULL (proceduralTerrainAppearanceTemplate);
+
+	TerrainGenerator const * const terrainGenerator = proceduralTerrainAppearanceTemplate->getTerrainGenerator ();
+	NOT_NULL (terrainGenerator);
+	ShaderGroup const& shaderGroup = terrainGenerator->getShaderGroup ();
+
+	const_cast< ShaderGroup &> (shaderGroup).loadSurfaceProperties ();
+
+	ShaderCache * const oldCache = m_shaderCache;
+	m_requestCriticalSection.enter ();
+		m_shaderCache = new ShaderCache (shaderGroup);
+	m_requestCriticalSection.leave ();
+
+	if (oldCache)
+		m_deferredShaderCacheDeletes.add (oldCache);
+
+	const float extent = proceduralTerrainAppearanceTemplate->getMapWidthInMeters () * 0.5f + 2048.f;
+	invalidateRegion (Rectangle2d (-extent, -extent, extent, extent));
+
+	NOT_NULL (m_levelOfDetail);
+	m_levelOfDetail->setDirty (true);
 }
 
 //-------------------------------------------------------------------
