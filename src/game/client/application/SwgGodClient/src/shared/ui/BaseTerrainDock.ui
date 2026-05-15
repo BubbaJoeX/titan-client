@@ -882,7 +882,7 @@
                                             <cstring>m_mapTemplateHintLabel</cstring>
                                         </property>
                                         <property name="text">
-                                            <string>Procedural Shortcuts</string>
+                                            <string>Map size, global water, and environment cycle are edited in a dialog. OK saves the .trn and reloads terrain. Procedural layer shortcuts stay below.</string>
                                         </property>
                                         <property name="alignment">
                                             <set>AlignTop|AlignLeft</set>
