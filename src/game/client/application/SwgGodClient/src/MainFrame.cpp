@@ -254,6 +254,13 @@ MainFrame::MainFrame(QWidget *theParent, const char *theName)
 		m_terrainDock->setCloseMode(QDockWindow::Always);
 		m_terrainDock->hide();
 
+		if (m_gameWindow && m_terrainDockWidget)
+		{
+			IGNORE_RETURN(connect(m_terrainDockWidget, SIGNAL(terrainGameWindowStatusChanged()),
+				m_gameWindow, SLOT(onTerrainGameWindowStatusChanged())));
+			m_gameWindow->onTerrainGameWindowStatusChanged();
+		}
+
 		m_templateEditor  = 0;
 		m_datatableEditor = new DatatableEditorWindow(0, "DatatableEditor");
 		m_buildoutEditor  = new BuildoutEditorWindow(0, "BuildoutManager");

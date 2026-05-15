@@ -33,6 +33,9 @@ public slots:
 	void onCursorWorldPositionChanged(float positionX, float positionY, float positionZ);
 	void onBuildoutRegionChanged     (const char *, const char *);
 
+	void onTerrainGameWindowStatusChanged();
+	void onClearRegionTerrainToolsClicked();
+
 private:
 	bool m_interiorCameraOn;
 };

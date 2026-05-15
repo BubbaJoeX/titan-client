@@ -47,7 +47,6 @@
 #include "GodClientTerrainEditor.h"
 #include "MainFrame.h"
 #include "GameWidget.h"
-#include "GameWindow.h"
 #include "ConsoleWindow.h"
 
 #include <qfiledialog.h>
@@ -56,6 +55,7 @@
 #include <qlistview.h>
 #include <qmessagebox.h>
 #include <qpushbutton.h>
+#include <qtooltip.h>
 #include <qslider.h>
 #include <qspinbox.h>
 #include <qcombobox.h>
@@ -77,10 +77,44 @@
 #include <windows.h>
 #endif
 #include <algorithm>
+#include <cstdio>
+#include <cstring>
 #include <map>
 #include <set>
 #include <string>
 #include <vector>
+
+// ======================================================================
+
+namespace
+{
+	void installTerrainRegionTooltips(
+		QPushButton* exclude,
+		QPushButton* mask,
+		QPushButton* path,
+		QPushButton* corridor,
+		QWidget* loopGroup,
+		QPushButton* discard)
+	{
+		if (exclude)
+			QToolTip::add(exclude, QString::fromLatin1(
+				"Closed loop: click corners in the 3D view. Need 3+, then Create. Interior skips procedural mesh."));
+		if (mask)
+			QToolTip::add(mask, QString::fromLatin1(
+				"Same as Exclude, but adds a BoundaryPolygon mask for child affectors."));
+		if (path)
+			QToolTip::add(path, QString::fromLatin1(
+				"Open polyline: ordered clicks. Finish on Advanced, Roads / Ribbons."));
+		if (corridor)
+			QToolTip::add(corridor, QString::fromLatin1(
+				"Wide corridor; finish on Advanced, Roads / Ribbons."));
+		if (loopGroup)
+			QToolTip::add(loopGroup, QString::fromLatin1(
+				"Exclude / mask: Create commits the loop; Discard cancels."));
+		if (discard)
+			QToolTip::add(discard, QString::fromLatin1("Discard the in-progress loop."));
+	}
+}
 
 // ======================================================================
 
@@ -109,6 +143,14 @@ namespace
 {
 	enum { TDOCK_GLOBAL_SHADER_SCAN_TRN_LIMIT = 512 };
 	char const k_settingsTerrainDockGroup[] = "TerrainDock";
+
+	inline bool terrainDockIsPolylineStrokeTool(TerrainDock::ToolMode const m)
+	{
+		return m == TerrainDock::TM_PlaceRoad
+			|| m == TerrainDock::TM_PlaceRibbon
+			|| m == TerrainDock::TM_PlaceBoundaryPolyline
+			|| m == TerrainDock::TM_PlaceBoundaryPolyRoad;
+	}
 
 	QString terrainDockCanonFromPathQString(QString const& rawPath)
 	{
@@ -700,6 +742,12 @@ void TerrainDock::initializeUI()
 		IGNORE_RETURN(connect(m_pasteRegionButton, SIGNAL(clicked()), this, SLOT(onPasteRegion())));
 	if (m_fillRegionButton)
 		IGNORE_RETURN(connect(m_fillRegionButton, SIGNAL(clicked()), this, SLOT(onFillRegion())));
+	if (m_saveRegionLayButton)
+		IGNORE_RETURN(connect(m_saveRegionLayButton, SIGNAL(clicked()), this, SLOT(onSaveRegionLay())));
+	if (m_loadRegionLayButton)
+		IGNORE_RETURN(connect(m_loadRegionLayButton, SIGNAL(clicked()), this, SLOT(onLoadRegionLay())));
+	if (m_importRegionLayAtCursorButton)
+		IGNORE_RETURN(connect(m_importRegionLayAtCursorButton, SIGNAL(clicked()), this, SLOT(onImportRegionLayAtCursor())));
 	if (m_regionShapeCombo)
 	{
 		m_regionShapeCombo->clear();
@@ -743,9 +791,29 @@ void TerrainDock::initializeUI()
 	if (m_environmentFamilyCombo)
 		IGNORE_RETURN(connect(m_environmentFamilyCombo, SIGNAL(activated(int)), this, SLOT(onEnvironmentFamilyChanged(int))));
 	if (m_envZoneFinishButton)
-		IGNORE_RETURN(connect(m_envZoneFinishButton, SIGNAL(clicked()), this, SLOT(onFinalizeEnvironmentZone())));
+		IGNORE_RETURN(connect(m_envZoneFinishButton, SIGNAL(clicked()), this, SLOT(onFinalizePolygonDraw())));
 	if (m_envZoneCancelButton)
-		IGNORE_RETURN(connect(m_envZoneCancelButton, SIGNAL(clicked()), this, SLOT(onCancelEnvironmentZone())));
+		IGNORE_RETURN(connect(m_envZoneCancelButton, SIGNAL(clicked()), this, SLOT(onCancelPolygonDraw())));
+	if (m_regionPolyFinishButton)
+		IGNORE_RETURN(connect(m_regionPolyFinishButton, SIGNAL(clicked()), this, SLOT(onFinalizePolygonDraw())));
+	if (m_regionPolyCancelButton)
+		IGNORE_RETURN(connect(m_regionPolyCancelButton, SIGNAL(clicked()), this, SLOT(onCancelPolygonDraw())));
+	if (m_toolExcludeTerrain)
+		IGNORE_RETURN(connect(m_toolExcludeTerrain, SIGNAL(clicked()), this, SLOT(onToolExcludeTerrain())));
+	if (m_toolBoundaryPolygon)
+		IGNORE_RETURN(connect(m_toolBoundaryPolygon, SIGNAL(clicked()), this, SLOT(onToolBoundaryPolygon())));
+	if (m_toolBoundaryPolyline)
+		IGNORE_RETURN(connect(m_toolBoundaryPolyline, SIGNAL(clicked()), this, SLOT(onToolBoundaryPolyline())));
+	if (m_toolBoundaryPolyRoad)
+		IGNORE_RETURN(connect(m_toolBoundaryPolyRoad, SIGNAL(clicked()), this, SLOT(onToolBoundaryPolyRoad())));
+
+	installTerrainRegionTooltips(
+		m_toolExcludeTerrain,
+		m_toolBoundaryPolygon,
+		m_toolBoundaryPolyline,
+		m_toolBoundaryPolyRoad,
+		m_regionPolygonCommitGroup,
+		m_regionPolyCancelButton);
 	
 	// Connect bitmap stamp controls
 	if (m_toolStampBitmap)
@@ -765,6 +833,7 @@ void TerrainDock::initializeUI()
 	updateUndoRedoState();
 	if (m_brushFeatherSlider)
 		onBrushFeatherChanged(m_brushFeatherSlider->value());
+	updateRegionGeometryUi();
 }
 
 // ----------------------------------------------------------------------
@@ -812,12 +881,34 @@ void TerrainDock::setToolMode(ToolMode mode)
 		GodClientTerrainEditor& editor = GodClientTerrainEditor::getInstance();
 		if (editor.isBrushStrokeActive())
 			editor.endBrushStroke();
+
+		if (editor.isPolygonDrawActive())
+		{
+			bool const polygonTool =
+				mode == TM_PlaceEnvironment ||
+				mode == TM_PlaceExcludeTerrain ||
+				mode == TM_PlaceBoundaryPolygon;
+			if (!polygonTool)
+				editor.cancelPolygonDraw();
+		}
+
+		if (editor.isPolylineActive())
+		{
+			bool const polylineTool =
+				mode == TM_PlaceRoad ||
+				mode == TM_PlaceRibbon ||
+				mode == TM_PlaceBoundaryPolyline ||
+				mode == TM_PlaceBoundaryPolyRoad;
+			if (!polylineTool)
+				editor.cancelPolyline();
+		}
 	}
 
 	m_toolMode = mode;
 	updateToolButtonStates();
 
 	syncGodClientEditorBrushSettings();
+	updateRegionGeometryUi();
 }
 
 // ----------------------------------------------------------------------
@@ -842,6 +933,13 @@ void TerrainDock::syncGodClientEditorBrushSettings()
 		case TM_PaintFlora:  editorMode = GodClientTerrainEditor::TM_PaintFlora; break;
 		case TM_PlaceWater:  editorMode = GodClientTerrainEditor::TM_PlaceWater; break;
 		case TM_PlaceRadial: editorMode = GodClientTerrainEditor::TM_PlaceRadial; break;
+		case TM_PlaceRibbon: editorMode = GodClientTerrainEditor::TM_PlaceRibbon; break;
+		case TM_PlaceRoad:   editorMode = GodClientTerrainEditor::TM_PlaceRoad; break;
+		case TM_PlaceEnvironment: editorMode = GodClientTerrainEditor::TM_PlaceEnvironment; break;
+		case TM_PlaceExcludeTerrain: editorMode = GodClientTerrainEditor::TM_PlaceExcludeTerrain; break;
+		case TM_PlaceBoundaryPolygon: editorMode = GodClientTerrainEditor::TM_PlaceBoundaryPolygon; break;
+		case TM_PlaceBoundaryPolyline: editorMode = GodClientTerrainEditor::TM_PlaceBoundaryPolyline; break;
+		case TM_PlaceBoundaryPolyRoad: editorMode = GodClientTerrainEditor::TM_PlaceBoundaryPolyRoad; break;
 		case TM_StampBitmap: editorMode = GodClientTerrainEditor::TM_StampBitmap; break;
 		default:             editorMode = GodClientTerrainEditor::TM_None; break;
 	}
@@ -879,10 +977,11 @@ void TerrainDock::syncGodClientEditorBrushSettings()
 	editor.setBrushPreviewEnabled(m_showBrushPreview);
 	editor.setBitmapShaderFamily(m_selectedShaderFamilyId);
 	editor.setWaterPlacementHeight(m_waterHeight);
-	std::string waterTpl("ocean_new");
+	std::string waterTpl("wter_ocean_water");
 	if (m_waterShaderIndex >= 0 && m_waterShaderIndex < static_cast<int>(m_waterShaderTemplateNames.size()))
 		waterTpl = m_waterShaderTemplateNames[static_cast<size_t>(m_waterShaderIndex)];
 	editor.setWaterPlacementShaderTemplate(waterTpl.c_str());
+	editor.setRibbonWaterShaderTemplate(waterTpl.c_str());
 
 	syncRegionSelectionToEditor();
 }
@@ -921,6 +1020,14 @@ void TerrainDock::updateToolButtonStates()
 		m_toolPlaceRoad->setOn(m_toolMode == TM_PlaceRoad);
 	if (m_toolPlaceEnvironment)
 		m_toolPlaceEnvironment->setOn(m_toolMode == TM_PlaceEnvironment);
+	if (m_toolExcludeTerrain)
+		m_toolExcludeTerrain->setOn(m_toolMode == TM_PlaceExcludeTerrain);
+	if (m_toolBoundaryPolygon)
+		m_toolBoundaryPolygon->setOn(m_toolMode == TM_PlaceBoundaryPolygon);
+	if (m_toolBoundaryPolyline)
+		m_toolBoundaryPolyline->setOn(m_toolMode == TM_PlaceBoundaryPolyline);
+	if (m_toolBoundaryPolyRoad)
+		m_toolBoundaryPolyRoad->setOn(m_toolMode == TM_PlaceBoundaryPolyRoad);
 	if (m_toolStampBitmap)
 		m_toolStampBitmap->setOn(m_toolMode == TM_StampBitmap);
 }
@@ -1042,6 +1149,54 @@ void TerrainDock::onToolPlaceEnvironment()
 	if (m_toolMode == TM_PlaceEnvironment && GodClientTerrainEditor::isInstalled())
 	{
 		GodClientTerrainEditor::getInstance().beginEnvironmentZone();
+	}
+}
+
+void TerrainDock::onToolExcludeTerrain()
+{
+	if (m_toolMode == TM_PlaceExcludeTerrain)
+	{
+		setToolMode(TM_None);
+		return;
+	}
+	if (GodClientTerrainEditor::isInstalled())
+		GodClientTerrainEditor::getInstance().beginPolygonDraw(GodClientTerrainEditor::PDP_ExcludeTerrain);
+	setToolMode(TM_PlaceExcludeTerrain);
+}
+
+void TerrainDock::onToolBoundaryPolygon()
+{
+	if (m_toolMode == TM_PlaceBoundaryPolygon)
+	{
+		setToolMode(TM_None);
+		return;
+	}
+	if (GodClientTerrainEditor::isInstalled())
+		GodClientTerrainEditor::getInstance().beginPolygonDraw(GodClientTerrainEditor::PDP_BoundaryPolygon);
+	setToolMode(TM_PlaceBoundaryPolygon);
+}
+
+void TerrainDock::onToolBoundaryPolyline()
+{
+	setToolMode(m_toolMode == TM_PlaceBoundaryPolyline ? TM_None : TM_PlaceBoundaryPolyline);
+	if (m_toolMode == TM_PlaceBoundaryPolyline && GodClientTerrainEditor::isInstalled())
+	{
+		GodClientTerrainEditor& ed = GodClientTerrainEditor::getInstance();
+		ed.beginPolyline(false, GodClientTerrainEditor::PCK_BoundaryPolyline);
+		ed.setPolylineWidth(std::max(2.f, static_cast<float>(m_polylineWidth)));
+		ed.setPolylineFeatherDistance(m_polylineFeather);
+	}
+}
+
+void TerrainDock::onToolBoundaryPolyRoad()
+{
+	setToolMode(m_toolMode == TM_PlaceBoundaryPolyRoad ? TM_None : TM_PlaceBoundaryPolyRoad);
+	if (m_toolMode == TM_PlaceBoundaryPolyRoad && GodClientTerrainEditor::isInstalled())
+	{
+		GodClientTerrainEditor& ed = GodClientTerrainEditor::getInstance();
+		ed.beginPolyline(false, GodClientTerrainEditor::PCK_BoundaryPolyRoad);
+		ed.setPolylineWidth(std::max(8.f, static_cast<float>(m_polylineWidth)));
+		ed.setPolylineFeatherDistance(m_polylineFeather);
 	}
 }
 
@@ -1511,6 +1666,8 @@ void TerrainDock::refreshFromScene(bool const skipGlobalShaderCatalogScan)
 		if (!skipGlobalShaderCatalogScan)
 			syncGlobalShaderCatalog();
 		syncGodClientEditorBrushSettings();
+		updateMapParametersPanel();
+		updateRegionGeometryUi();
 
 		resizeQt3ScrollViewToContents(m_scrollAreaContents, m_contentScrollView);
 		return;
@@ -1539,8 +1696,257 @@ void TerrainDock::refreshFromScene(bool const skipGlobalShaderCatalogScan)
 	populateBitmapStampCombo();
 
 	syncGodClientEditorBrushSettings();
+	updateMapParametersPanel();
+	updateRegionGeometryUi();
 
 	resizeQt3ScrollViewToContents(m_scrollAreaContents, m_contentScrollView);
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::updateMapParametersPanel()
+{
+	if (!m_mapParametersLabel)
+		return;
+
+	if (!hasActiveTerrain())
+	{
+		m_mapParametersLabel->setText(QString::fromLatin1("Map: (no procedural terrain)"));
+		return;
+	}
+
+	TerrainObject* const terrainObject = TerrainObject::getInstance();
+	if (!terrainObject)
+	{
+		m_mapParametersLabel->setText(QString::fromLatin1("Map: (no terrain object)"));
+		return;
+	}
+
+	Appearance* const appearance = terrainObject->getAppearance();
+	ClientProceduralTerrainAppearance* const cpta = dynamic_cast<ClientProceduralTerrainAppearance*>(appearance);
+	if (!cpta)
+	{
+		m_mapParametersLabel->setText(QString::fromLatin1("Map: (non-procedural appearance)"));
+		return;
+	}
+
+	float const mapW = cpta->getMapWidthInMeters();
+	float const chunkW = cpta->getChunkWidthInMeters();
+	int const tilesPerChunk = std::max(1, cpta->getNumberOfTilesPerChunk());
+	float const tileW = chunkW / static_cast<float>(tilesPerChunk);
+	int const chunks = cpta->getNumberOfChunks();
+
+	QString msg;
+	msg.sprintf(
+		"%.0fm map | %.0fm chunk | %d tiles (%.1fm) | %d chks",
+		mapW, chunkW, tilesPerChunk, tileW, chunks);
+	m_mapParametersLabel->setText(msg);
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::updateRegionGeometryUi()
+{
+	if (!m_mapParametersLabel)
+	{
+		emit terrainGameWindowStatusChanged();
+		return;
+	}
+
+	bool const showClosedCommit =
+		(m_toolMode == TM_PlaceExcludeTerrain || m_toolMode == TM_PlaceBoundaryPolygon);
+
+	if (m_regionPolygonCommitGroup)
+	{
+		if (showClosedCommit)
+			m_regionPolygonCommitGroup->show();
+		else
+			m_regionPolygonCommitGroup->hide();
+	}
+
+	int n = 0;
+	if (GodClientTerrainEditor::isInstalled() && showClosedCommit)
+		n = GodClientTerrainEditor::getInstance().getPolygonBoundaryPointCount();
+
+	if (m_regionPolyFinishButton)
+	{
+		m_regionPolyFinishButton->setEnabled(showClosedCommit && n >= 3);
+		if (showClosedCommit)
+		{
+			char tip[192];
+			snprintf(tip, sizeof(tip),
+				"%d corner(s). Create needs 3+ corners; interior tiles skip mesh (exclude) or use mask layering.",
+				n);
+			QToolTip::add(m_regionPolyFinishButton, QString::fromLatin1(tip));
+		}
+	}
+	if (m_regionPolyCancelButton)
+		m_regionPolyCancelButton->setEnabled(showClosedCommit);
+
+	emit terrainGameWindowStatusChanged();
+}
+
+// ----------------------------------------------------------------------
+
+bool TerrainDock::shouldShowTerrainGameWindowStatus() const
+{
+	return hasActiveTerrain() && (m_toolMode != TM_None || m_hasRegionSelection);
+}
+
+// ----------------------------------------------------------------------
+
+bool TerrainDock::hasRegionToolOrSelectionActive() const
+{
+	if (m_hasRegionSelection)
+		return true;
+	switch (m_toolMode)
+	{
+	case TM_PlaceExcludeTerrain:
+	case TM_PlaceBoundaryPolygon:
+	case TM_PlaceBoundaryPolyline:
+	case TM_PlaceBoundaryPolyRoad:
+	case TM_Select:
+		return true;
+	default:
+		return false;
+	}
+}
+
+// ----------------------------------------------------------------------
+
+QString TerrainDock::terrainGameWindowStatusText() const
+{
+	if (!hasActiveTerrain())
+		return QString::fromLatin1("(no terrain)");
+
+	QString toolLine;
+
+	switch (m_toolMode)
+	{
+	case TM_None:
+		toolLine = QString::fromLatin1("Idle");
+		break;
+	case TM_Raise:
+		toolLine = QString::fromLatin1("Raise");
+		break;
+	case TM_Lower:
+		toolLine = QString::fromLatin1("Lower");
+		break;
+	case TM_Flatten:
+		toolLine = QString::fromLatin1("Flatten");
+		break;
+	case TM_Smooth:
+		toolLine = QString::fromLatin1("Smooth");
+		break;
+	case TM_Noise:
+		toolLine = QString::fromLatin1("Noise");
+		break;
+	case TM_SetHeight:
+		toolLine = QString::fromLatin1("Set H");
+		break;
+	case TM_PaintShader:
+		toolLine = QString::fromLatin1("Shader");
+		break;
+	case TM_PaintFlora:
+		toolLine = QString::fromLatin1("Flora");
+		break;
+	case TM_PlaceWater:
+		toolLine = QString::fromLatin1("Water");
+		break;
+	case TM_PlaceRadial:
+		toolLine = QString::fromLatin1("Radial");
+		break;
+	case TM_PlaceRibbon:
+		toolLine = QString::fromLatin1("Ribbon");
+		break;
+	case TM_PlaceRoad:
+		toolLine = QString::fromLatin1("Road");
+		break;
+	case TM_PlaceEnvironment:
+		toolLine = QString::fromLatin1("Env zone");
+		break;
+	case TM_PlaceExcludeTerrain:
+		toolLine = QString::fromLatin1("Exclude");
+		break;
+	case TM_PlaceBoundaryPolygon:
+		toolLine = QString::fromLatin1("Mask");
+		break;
+	case TM_PlaceBoundaryPolyline:
+		toolLine = QString::fromLatin1("Path");
+		break;
+	case TM_PlaceBoundaryPolyRoad:
+		toolLine = QString::fromLatin1("Corridor");
+		break;
+	case TM_StampBitmap:
+		toolLine = QString::fromLatin1("Stamp");
+		break;
+	case TM_Select:
+		toolLine = QString::fromLatin1("Select");
+		break;
+	default:
+		toolLine = QString::fromLatin1("?");
+		break;
+	}
+
+	QString extra;
+	if (GodClientTerrainEditor::isInstalled())
+	{
+		GodClientTerrainEditor& ed = GodClientTerrainEditor::getInstance();
+		if (m_toolMode == TM_PlaceExcludeTerrain || m_toolMode == TM_PlaceBoundaryPolygon)
+		{
+			int const c = ed.getPolygonBoundaryPointCount();
+			QString cornerNote;
+			cornerNote.sprintf(" %dc", c);
+			extra += cornerNote;
+		}
+		else if (
+			m_toolMode == TM_PlaceRibbon ||
+			m_toolMode == TM_PlaceRoad ||
+			m_toolMode == TM_PlaceBoundaryPolyline ||
+			m_toolMode == TM_PlaceBoundaryPolyRoad)
+		{
+			int const c = ed.getPolylinePointCount();
+			QString polyNote;
+			polyNote.sprintf(" %dp", c);
+			extra += polyNote;
+		}
+	}
+
+	QString regionNote;
+	if (m_hasRegionSelection)
+		regionNote = QString::fromLatin1(" Sel");
+
+	return toolLine + extra + regionNote;
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::clearRegionGeometryAndSelection()
+{
+	m_regionDragActive = false;
+
+	bool const hadRegionTool =
+		m_toolMode == TM_PlaceExcludeTerrain ||
+		m_toolMode == TM_PlaceBoundaryPolygon ||
+		m_toolMode == TM_PlaceBoundaryPolyline ||
+		m_toolMode == TM_PlaceBoundaryPolyRoad ||
+		m_toolMode == TM_Select;
+
+	if (m_hasRegionSelection)
+	{
+		m_hasRegionSelection = false;
+		syncRegionSelectionToEditor();
+	}
+
+	if (hadRegionTool)
+		setToolMode(TM_None);
+	else
+	{
+		updateToolButtonStates();
+		updateRegionGeometryUi();
+	}
+
+	MainFrame::getInstance().textToConsole("Region tools / world region selection cleared.");
 }
 
 // ======================================================================
@@ -2358,6 +2764,9 @@ void TerrainDock::populateWaterShaderList()
 	std::vector<std::pair<QString, std::string> > rows;
 	rows.reserve(256);
 
+	int scanBudget = 384;
+	terrainDockGatherWaterShaderTemplatesFromDisk(rows, seen, scanBudget);
+
 	static struct WaterPresetSpec
 	{
 		char const* label;
@@ -2365,7 +2774,7 @@ void TerrainDock::populateWaterShaderList()
 	}
 	const presets[] =
 	{
-		{ "ocean_new (default)", "ocean_new" },
+		{ "ocean_new (legacy)", "ocean_new" },
 		{ "default_water", "default_water"},
 		{ "ocean_water", "ocean_water"},
 		{ "swamp_water", "swamp_water"},
@@ -2380,9 +2789,6 @@ void TerrainDock::populateWaterShaderList()
 			continue;
 		rows.push_back(std::make_pair(QString::fromLatin1(presets[i].label), t));
 	}
-
-	int scanBudget = 384;
-	terrainDockGatherWaterShaderTemplatesFromDisk(rows, seen, scanBudget);
 
 	for (size_t i = 0; i < rows.size(); ++i)
 	{
@@ -2508,6 +2914,62 @@ void TerrainDock::populateBitmapStampCombo()
 // Region Operation Slots
 // ======================================================================
 
+namespace
+{
+	char const g_layMagic[8] = { 'S', 'W', 'G', 'O', 'D', 'L', 'A', 'Y' };
+	unsigned int const g_layVersion = 1;
+	long long const g_layMaxCells = 8LL * 1024 * 1024;
+
+	bool writeU32le(QFile& f, unsigned int v)
+	{
+		unsigned char b[4];
+		b[0] = static_cast<unsigned char>(v & 255u);
+		b[1] = static_cast<unsigned char>((v >> 8) & 255u);
+		b[2] = static_cast<unsigned char>((v >> 16) & 255u);
+		b[3] = static_cast<unsigned char>((v >> 24) & 255u);
+		return f.writeBlock(reinterpret_cast<char*>(b), 4) == 4;
+	}
+
+	bool readU32le(QFile& f, unsigned int& v)
+	{
+		unsigned char b[4];
+		if (f.readBlock(reinterpret_cast<char*>(b), 4) != 4)
+			return false;
+		v = b[0] | (b[1] << 8u) | (b[2] << 16u) | (b[3] << 24u);
+		return true;
+	}
+
+	bool writeS32le(QFile& f, int v)
+	{
+		return writeU32le(f, static_cast<unsigned int>(v));
+	}
+
+	bool readS32le(QFile& f, int& v)
+	{
+		unsigned int u = 0;
+		if (!readU32le(f, u))
+			return false;
+		v = static_cast<int>(u);
+		return true;
+	}
+
+	bool writeF32le(QFile& f, float value)
+	{
+		unsigned int u = 0;
+		memcpy(&u, &value, sizeof(float));
+		return writeU32le(f, u);
+	}
+
+	bool readF32le(QFile& f, float& out)
+	{
+		unsigned int u = 0;
+		if (!readU32le(f, u))
+			return false;
+		memcpy(&out, &u, sizeof(float));
+		return true;
+	}
+}
+
 bool TerrainDock::hasTerrainWorldRegionSelection() const
 {
 	return m_hasRegionSelection;
@@ -2519,17 +2981,28 @@ bool TerrainDock::terrainCopyWorldRegionIntoClipboard(bool postConsoleMessageOnS
 	if (!terrainObject || !m_hasRegionSelection)
 		return false;
 
-	const float regionWidth = m_regionMaxX - m_regionMinX;
-	const float regionHeight = m_regionMaxZ - m_regionMinZ;
+	float const rMinX = std::min(m_regionMinX, m_regionMaxX);
+	float const rMaxX = std::max(m_regionMinX, m_regionMaxX);
+	float const rMinZ = std::min(m_regionMinZ, m_regionMaxZ);
+	float const rMaxZ = std::max(m_regionMinZ, m_regionMaxZ);
 
-	const float sampleStep = std::max(1.0f, std::min(regionWidth, regionHeight) / 64.0f);
-	const int widthSamples = static_cast<int>(regionWidth / sampleStep) + 1;
-	const int heightSamples = static_cast<int>(regionHeight / sampleStep) + 1;
+	float const eps = 1e-4f;
+	int const gridX0 = static_cast<int>(std::floor(rMinX + eps));
+	int const gridZ0 = static_cast<int>(std::floor(rMinZ + eps));
+	int const gridX1 = static_cast<int>(std::floor(rMaxX + eps));
+	int const gridZ1 = static_cast<int>(std::floor(rMaxZ + eps));
 
-	m_regionClipboard.sourceMinX = m_regionMinX;
-	m_regionClipboard.sourceMinZ = m_regionMinZ;
-	m_regionClipboard.sourceMaxX = m_regionMaxX;
-	m_regionClipboard.sourceMaxZ = m_regionMaxZ;
+	int const widthSamples = gridX1 - gridX0 + 1;
+	int const heightSamples = gridZ1 - gridZ0 + 1;
+	if (widthSamples < 1 || heightSamples < 1)
+		return false;
+
+	m_regionClipboard.gridX0 = gridX0;
+	m_regionClipboard.gridZ0 = gridZ0;
+	m_regionClipboard.sourceMinX = static_cast<float>(gridX0);
+	m_regionClipboard.sourceMinZ = static_cast<float>(gridZ0);
+	m_regionClipboard.sourceMaxX = static_cast<float>(gridX0 + widthSamples - 1);
+	m_regionClipboard.sourceMaxZ = static_cast<float>(gridZ0 + heightSamples - 1);
 	m_regionClipboard.widthSamples = widthSamples;
 	m_regionClipboard.heightSamples = heightSamples;
 	m_regionClipboard.heightData.clear();
@@ -2539,37 +3012,34 @@ bool TerrainDock::terrainCopyWorldRegionIntoClipboard(bool postConsoleMessageOnS
 	m_regionClipboard.heightData.reserve(static_cast<size_t>(widthSamples * heightSamples));
 	m_regionClipboard.shaderData.reserve(static_cast<size_t>(widthSamples * heightSamples));
 
+	bool const useCircleMask = (m_regionSelectionShape == RSS_Circle && m_regionCircleRadius > 0.01f);
+	float const r2 = m_regionCircleRadius * m_regionCircleRadius + 1e-2f;
+
+	if (useCircleMask)
+	{
+		m_regionClipboard.hasCellMask = true;
+		m_regionClipboard.cellMask.resize(static_cast<size_t>(widthSamples * heightSamples));
+	}
+
 	for (int iz = 0; iz < heightSamples; ++iz)
 	{
+		int const giz = gridZ0 + iz;
 		for (int ix = 0; ix < widthSamples; ++ix)
 		{
-			float const sampleX = m_regionMinX + (static_cast<float>(ix) / static_cast<float>(widthSamples - 1)) * regionWidth;
-			float const sampleZ = m_regionMinZ + (static_cast<float>(iz) / static_cast<float>(heightSamples - 1)) * regionHeight;
-
+			int const gix = gridX0 + ix;
 			float height = 0.0f;
-			Vector pos(sampleX, 0.0f, sampleZ);
+			Vector pos(static_cast<float>(gix), 0.0f, static_cast<float>(giz));
 			if (terrainObject->getHeight(pos, height))
 				m_regionClipboard.heightData.push_back(height);
 			else
 				m_regionClipboard.heightData.push_back(0.0f);
 
 			m_regionClipboard.shaderData.push_back(0);
-		}
-	}
 
-	if (m_regionSelectionShape == RSS_Circle && m_regionCircleRadius > 0.01f)
-	{
-		m_regionClipboard.hasCellMask = true;
-		m_regionClipboard.cellMask.resize(static_cast<size_t>(widthSamples * heightSamples));
-		float const r2 = m_regionCircleRadius * m_regionCircleRadius + 1e-2f;
-		for (int iz = 0; iz < heightSamples; ++iz)
-		{
-			for (int ix = 0; ix < widthSamples; ++ix)
+			if (useCircleMask)
 			{
-				float const sampleX = m_regionMinX + (static_cast<float>(ix) / static_cast<float>(widthSamples - 1)) * regionWidth;
-				float const sampleZ = m_regionMinZ + (static_cast<float>(iz) / static_cast<float>(heightSamples - 1)) * regionHeight;
-				float const dx = sampleX - m_regionCircleCenterX;
-				float const dz = sampleZ - m_regionCircleCenterZ;
+				float const dx = static_cast<float>(gix) - m_regionCircleCenterX;
+				float const dz = static_cast<float>(giz) - m_regionCircleCenterZ;
 				m_regionClipboard.cellMask[static_cast<size_t>(iz * widthSamples + ix)] =
 					(dx * dx + dz * dz <= r2) ? static_cast<unsigned char>(1) : static_cast<unsigned char>(0);
 			}
@@ -2581,8 +3051,8 @@ bool TerrainDock::terrainCopyWorldRegionIntoClipboard(bool postConsoleMessageOnS
 	if (postConsoleMessageOnSuccess)
 	{
 		QString msg;
-		msg.sprintf("Region copied: (%.1f, %.1f) to (%.1f, %.1f), %d x %d samples",
-			m_regionMinX, m_regionMinZ, m_regionMaxX, m_regionMaxZ, widthSamples, heightSamples);
+		msg.sprintf("Region copied (1m grid): cells (%d,%d)-(%d,%d), %d x %d samples",
+			gridX0, gridZ0, gridX0 + widthSamples - 1, gridZ0 + heightSamples - 1, widthSamples, heightSamples);
 		MainFrame::getInstance().textToConsole(msg.latin1());
 	}
 
@@ -2594,28 +3064,11 @@ bool TerrainDock::terrainPasteClipboardIntoWorldRegion(bool postConsoleMessageOn
 	if (!m_regionClipboard.hasData || !m_hasRegionSelection)
 		return false;
 
-	if (!GodClientTerrainEditor::isInstalled())
-		return false;
+	float const eps = 1e-4f;
+	int const destX0 = static_cast<int>(std::floor(std::min(m_regionMinX, m_regionMaxX) + eps));
+	int const destZ0 = static_cast<int>(std::floor(std::min(m_regionMinZ, m_regionMaxZ) + eps));
 
-	const int nx = m_regionClipboard.widthSamples;
-	const int nz = m_regionClipboard.heightSamples;
-	if (nx < 2 || nz < 2 || static_cast<int>(m_regionClipboard.heightData.size()) < nx * nz)
-		return false;
-
-	unsigned char const* maskPtr = 0;
-	if (m_regionClipboard.hasCellMask &&
-	    static_cast<int>(m_regionClipboard.cellMask.size()) >= nx * nz)
-		maskPtr = &m_regionClipboard.cellMask[0];
-
-	bool const painted = GodClientTerrainEditor::getInstance().applyRectangularHeightSamples(
-		m_regionMinX,
-		m_regionMinZ,
-		m_regionMaxX,
-		m_regionMaxZ,
-		nx,
-		nz,
-		&m_regionClipboard.heightData[0],
-		maskPtr);
+	bool const painted = terrainApplyRegionClipboardAtOrigin(m_regionClipboard, destX0, destZ0, false);
 
 	if (painted)
 	{
@@ -2625,13 +3078,164 @@ bool TerrainDock::terrainPasteClipboardIntoWorldRegion(bool postConsoleMessageOn
 		if (postConsoleMessageOnSuccess)
 		{
 			QString msg;
-			msg.sprintf("Region pasted to (%.1f, %.1f) - (%.1f, %.1f)",
-				m_regionMinX, m_regionMinZ, m_regionMaxX, m_regionMaxZ);
+			msg.sprintf("Region pasted at cell origin (%d, %d)", destX0, destZ0);
 			MainFrame::getInstance().textToConsole(msg.latin1());
 		}
 	}
 
 	return painted;
+}
+
+bool TerrainDock::terrainApplyRegionClipboardAtOrigin(RegionClipboard const& clip, int gridX0, int gridZ0, bool postConsoleMessageOnSuccess)
+{
+	if (!clip.hasData || !GodClientTerrainEditor::isInstalled())
+		return false;
+
+	int const nx = clip.widthSamples;
+	int const nz = clip.heightSamples;
+	if (nx < 1 || nz < 1 || static_cast<int>(clip.heightData.size()) < nx * nz)
+		return false;
+
+	unsigned char const* maskPtr = 0;
+	if (clip.hasCellMask && static_cast<int>(clip.cellMask.size()) >= nx * nz)
+		maskPtr = &clip.cellMask[0];
+
+	bool const painted = GodClientTerrainEditor::getInstance().applyRectangularHeightSamples(
+		static_cast<float>(gridX0),
+		static_cast<float>(gridZ0),
+		static_cast<float>(gridX0 + nx - 1),
+		static_cast<float>(gridZ0 + nz - 1),
+		nx,
+		nz,
+		&clip.heightData[0],
+		maskPtr);
+
+	if (painted && postConsoleMessageOnSuccess)
+	{
+		QString msg;
+		msg.sprintf("Applied height region at cell origin (%d, %d)", gridX0, gridZ0);
+		MainFrame::getInstance().textToConsole(msg.latin1());
+	}
+
+	return painted;
+}
+
+bool TerrainDock::terrainWriteRegionClipboardToLayFile(QString const& path) const
+{
+	if (!m_regionClipboard.hasData)
+		return false;
+
+	int const nx = m_regionClipboard.widthSamples;
+	int const nz = m_regionClipboard.heightSamples;
+	if (nx < 1 || nz < 1 || static_cast<int>(m_regionClipboard.heightData.size()) < nx * nz)
+		return false;
+
+	QFile f(path);
+	if (!f.open(IO_WriteOnly))
+		return false;
+
+	if (f.writeBlock(g_layMagic, 8) != 8)
+		return false;
+	if (!writeU32le(f, g_layVersion))
+		return false;
+	if (!writeS32le(f, m_regionClipboard.gridX0))
+		return false;
+	if (!writeS32le(f, m_regionClipboard.gridZ0))
+		return false;
+	if (!writeS32le(f, nx))
+		return false;
+	if (!writeS32le(f, nz))
+		return false;
+	unsigned int const flags = (m_regionClipboard.hasCellMask && static_cast<int>(m_regionClipboard.cellMask.size()) >= nx * nz) ? 1u : 0u;
+	if (!writeU32le(f, flags))
+		return false;
+
+	for (int i = 0; i < nx * nz; ++i)
+	{
+		if (!writeF32le(f, m_regionClipboard.heightData[static_cast<size_t>(i)]))
+			return false;
+	}
+
+	if (flags != 0u)
+	{
+		if (f.writeBlock(reinterpret_cast<char const*>(&m_regionClipboard.cellMask[0]), nx * nz) != nx * nz)
+			return false;
+	}
+
+	return true;
+}
+
+bool TerrainDock::terrainDecodeLayFromFile(QString const& path, RegionClipboard& dest)
+{
+	QFile f(path);
+	if (!f.open(IO_ReadOnly))
+		return false;
+
+	char magic[8];
+	if (f.readBlock(magic, 8) != 8 || memcmp(magic, g_layMagic, 8) != 0)
+		return false;
+
+	unsigned int version = 0;
+	if (!readU32le(f, version) || version != g_layVersion)
+		return false;
+
+	int fileGridX0 = 0;
+	int fileGridZ0 = 0;
+	int nx = 0;
+	int nz = 0;
+	if (!readS32le(f, fileGridX0) || !readS32le(f, fileGridZ0) || !readS32le(f, nx) || !readS32le(f, nz))
+		return false;
+
+	if (nx < 1 || nz < 1)
+		return false;
+
+	long long const totalCells = static_cast<long long>(nx) * static_cast<long long>(nz);
+	if (totalCells > g_layMaxCells)
+		return false;
+
+	unsigned int flags = 0;
+	if (!readU32le(f, flags))
+		return false;
+
+	dest.heightData.resize(static_cast<size_t>(nx * nz));
+	for (long long i = 0; i < totalCells; ++i)
+	{
+		float h = 0.0f;
+		if (!readF32le(f, h))
+			return false;
+		dest.heightData[static_cast<size_t>(i)] = h;
+	}
+
+	dest.shaderData.clear();
+	dest.cellMask.clear();
+	dest.hasCellMask = false;
+	if ((flags & 1u) != 0u)
+	{
+		dest.cellMask.resize(static_cast<size_t>(nx * nz));
+		if (f.readBlock(reinterpret_cast<char*>(&dest.cellMask[0]), nx * nz) != nx * nz)
+			return false;
+		dest.hasCellMask = true;
+	}
+
+	dest.gridX0 = fileGridX0;
+	dest.gridZ0 = fileGridZ0;
+	dest.sourceMinX = static_cast<float>(fileGridX0);
+	dest.sourceMinZ = static_cast<float>(fileGridZ0);
+	dest.sourceMaxX = static_cast<float>(fileGridX0 + nx - 1);
+	dest.sourceMaxZ = static_cast<float>(fileGridZ0 + nz - 1);
+	dest.widthSamples = nx;
+	dest.heightSamples = nz;
+	dest.hasData = true;
+	return true;
+}
+
+bool TerrainDock::terrainReadRegionLayFileIntoClipboard(QString const& path)
+{
+	RegionClipboard loaded;
+	if (!terrainDecodeLayFromFile(path, loaded))
+		return false;
+	m_regionClipboard = loaded;
+	return true;
 }
 
 bool TerrainDock::tryConsumeTerrainRegionCopyShortcut()
@@ -2676,7 +3280,7 @@ bool TerrainDock::tryConsumeTerrainRegionPasteShortcut()
 
 	const int nx = m_regionClipboard.widthSamples;
 	const int nz = m_regionClipboard.heightSamples;
-	if (nx < 2 || nz < 2 || static_cast<int>(m_regionClipboard.heightData.size()) < nx * nz)
+	if (nx < 1 || nz < 1 || static_cast<int>(m_regionClipboard.heightData.size()) < nx * nz)
 	{
 		IGNORE_RETURN(QMessageBox::warning(&MainFrame::getInstance(), "Paste Region", "Invalid terrain region clipboard."));
 		return true;
@@ -2779,7 +3383,7 @@ void TerrainDock::onPasteRegion()
 
 	const int nx = m_regionClipboard.widthSamples;
 	const int nz = m_regionClipboard.heightSamples;
-	if (nx < 2 || nz < 2 || static_cast<int>(m_regionClipboard.heightData.size()) < nx * nz)
+	if (nx < 1 || nz < 1 || static_cast<int>(m_regionClipboard.heightData.size()) < nx * nz)
 	{
 		IGNORE_RETURN(QMessageBox::warning(this, "Paste Region", "Invalid clipboard data."));
 		return;
@@ -2787,6 +3391,107 @@ void TerrainDock::onPasteRegion()
 
 	if (!terrainPasteClipboardIntoWorldRegion(true))
 		IGNORE_RETURN(QMessageBox::warning(this, "Paste Region", "Paste failed."));
+}
+
+void TerrainDock::onSaveRegionLay()
+{
+	if (!m_regionClipboard.hasData)
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Save Region .lay", "Nothing to save — copy a region first."));
+		return;
+	}
+
+	QString filename = QFileDialog::getSaveFileName(
+		QString::null,
+		"God Client region height (*.lay);;All Files (*.*)",
+		this,
+		"save region lay",
+		"Save Region as .lay"
+	);
+
+	if (filename.isEmpty())
+		return;
+
+	if (!filename.endsWith(".lay", false))
+		filename.append(".lay");
+
+	if (!terrainWriteRegionClipboardToLayFile(filename))
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Save Region .lay", "Could not write the .lay file."));
+		return;
+	}
+
+	MainFrame::getInstance().textToConsole(QString("Saved region .lay to %1").arg(filename).latin1());
+}
+
+void TerrainDock::onLoadRegionLay()
+{
+	QString filename = QFileDialog::getOpenFileName(
+		QString::null,
+		"God Client region height (*.lay);;All Files (*.*)",
+		this,
+		"load region lay",
+		"Load Region .lay"
+	);
+
+	if (filename.isEmpty())
+		return;
+
+	if (!terrainReadRegionLayFileIntoClipboard(filename))
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Load Region .lay", "Could not read the .lay file (wrong format or version)."));
+		return;
+	}
+
+	MainFrame::getInstance().textToConsole(QString("Loaded region .lay (%1 x %2 cells) into clipboard — use Paste or Import @ cursor.")
+			.arg(m_regionClipboard.widthSamples)
+			.arg(m_regionClipboard.heightSamples)
+			.latin1());
+}
+
+void TerrainDock::onImportRegionLayAtCursor()
+{
+	if (!GodClientTerrainEditor::isInstalled())
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Import .lay @ Cursor", "Terrain editor not ready."));
+		return;
+	}
+
+	QString filename = QFileDialog::getOpenFileName(
+		QString::null,
+		"God Client region height (*.lay);;All Files (*.*)",
+		this,
+		"import region lay cursor",
+		"Import .lay at Cursor"
+	);
+
+	if (filename.isEmpty())
+		return;
+
+	RegionClipboard loaded;
+	if (!terrainDecodeLayFromFile(filename, loaded))
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Import .lay @ Cursor", "Could not read the .lay file."));
+		return;
+	}
+
+	Vector const& cursor = GodClientTerrainEditor::getInstance().getCursorWorldPosition();
+	float const eps = 1e-4f;
+	int const anchorX = static_cast<int>(std::floor(cursor.x + eps));
+	int const anchorZ = static_cast<int>(std::floor(cursor.z + eps));
+
+	if (!terrainApplyRegionClipboardAtOrigin(loaded, anchorX, anchorZ, false))
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Import .lay @ Cursor", "Import failed (no samples applied)."));
+		return;
+	}
+
+	m_terrainModified = true;
+	updateUndoRedoState();
+
+	QString msg;
+	msg.sprintf("Imported .lay at cell origin (%d, %d)", anchorX, anchorZ);
+	MainFrame::getInstance().textToConsole(msg.latin1());
 }
 
 void TerrainDock::onFillRegion()
@@ -3001,23 +3706,31 @@ void TerrainDock::onBeginEnvironmentZone()
 	}
 }
 
-void TerrainDock::onFinalizeEnvironmentZone()
+void TerrainDock::onFinalizePolygonDraw()
 {
 	if (GodClientTerrainEditor::isInstalled())
 	{
-		GodClientTerrainEditor::getInstance().finalizeEnvironmentZone();
-		setToolMode(TM_None);
+		GodClientTerrainEditor::getInstance().finalizePolygonDraw();
+		if (m_toolMode == TM_PlaceEnvironment ||
+			m_toolMode == TM_PlaceExcludeTerrain ||
+			m_toolMode == TM_PlaceBoundaryPolygon)
+			setToolMode(TM_None);
 		m_terrainModified = true;
 	}
+	updateRegionGeometryUi();
 }
 
-void TerrainDock::onCancelEnvironmentZone()
+void TerrainDock::onCancelPolygonDraw()
 {
 	if (GodClientTerrainEditor::isInstalled())
 	{
-		GodClientTerrainEditor::getInstance().cancelEnvironmentZone();
-		setToolMode(TM_None);
+		GodClientTerrainEditor::getInstance().cancelPolygonDraw();
+		if (m_toolMode == TM_PlaceEnvironment ||
+			m_toolMode == TM_PlaceExcludeTerrain ||
+			m_toolMode == TM_PlaceBoundaryPolygon)
+			setToolMode(TM_None);
 	}
+	updateRegionGeometryUi();
 }
 
 void TerrainDock::onEnvironmentFamilyChanged(int index)
@@ -4028,6 +4741,84 @@ bool TerrainDock::pickTerrainGroundForLiveEdit(int screenX, int screenY, float& 
 	return true;
 }
 
+// ----------------------------------------------------------------------
+
+bool TerrainDock::pickTerrainGroundPlanarForLiveDrag(int screenX, int screenY, float& outWorldX, float& outWorldZ, float& outGroundY) const
+{
+	const GroundScene* const scene = dynamic_cast<const GroundScene*>(Game::getScene());
+	if (!scene || !scene->getPlayer())
+		return false;
+
+	const Camera* const camera = scene->getCurrentCamera();
+	if (!camera)
+		return false;
+
+	TerrainObject* const terrainObject = TerrainObject::getInstance();
+	if (!terrainObject)
+		return false;
+
+	Vector const start_p(camera->getPosition_p());
+	Vector const delta(8192.0f * camera->rotate_o2p(camera->reverseProjectInScreenSpace(screenX, screenY)));
+
+	Vector dir(delta);
+	float const dirLen = dir.magnitude();
+	if (dirLen < 1.e-5f)
+		return false;
+	dir /= dirLen;
+
+	if (std::fabs(static_cast<double>(dir.y)) < static_cast<double>(1.e-8))
+		return false;
+
+	float const baselineY =
+		m_liveEditGroundPickFallbackValid
+			? m_liveEditGroundPickFallbackY
+			: scene->getPlayer()->getPosition_w().y - 2.f;
+
+	float const dy = baselineY - start_p.y;
+	float const t = dy / dir.y;
+	static float const tMaxFallback = 3.25e6f;
+	if (!(t > 1.e-5f && t <= tMaxFallback))
+		return false;
+
+	Vector const planeHit(start_p + dir * t);
+
+	float probeX = planeHit.x;
+	float probeZ = planeHit.z;
+
+	CollisionInfo info;
+	Vector top(probeX, 8000.f, probeZ);
+	Vector bot(probeX, -8000.f, probeZ);
+	if (terrainObject->collide(top, bot, info))
+	{
+		Vector const& hitPoint = info.getPoint();
+		outWorldX = hitPoint.x;
+		outWorldZ = hitPoint.z;
+		outGroundY = hitPoint.y;
+		m_liveEditGroundPickFallbackValid = true;
+		m_liveEditGroundPickFallbackY = hitPoint.y;
+		return true;
+	}
+
+	Vector xz(probeX, 0.f, probeZ);
+	float h = baselineY;
+	if (terrainObject->getHeight(xz, h))
+	{
+		outWorldX = probeX;
+		outWorldZ = probeZ;
+		outGroundY = h;
+		m_liveEditGroundPickFallbackValid = true;
+		m_liveEditGroundPickFallbackY = h;
+		return true;
+	}
+
+	outWorldX = probeX;
+	outWorldZ = probeZ;
+	outGroundY = baselineY;
+	m_liveEditGroundPickFallbackY = baselineY;
+	m_liveEditGroundPickFallbackValid = true;
+	return true;
+}
+
 // ======================================================================
 // Water Boundary Creation
 // ======================================================================
@@ -4099,7 +4890,7 @@ bool TerrainDock::cameraModifierOverridesTerrainInput(int qtButtonState) const
 	if ((qtButtonState & static_cast<int>(Qt::AltButton)) == 0)
 		return false;
 	// Alt+LMB is bound for road/ribbon editing (insert point on segment).
-	if (m_toolMode == TM_PlaceRoad || m_toolMode == TM_PlaceRibbon)
+	if (terrainDockIsPolylineStrokeTool(m_toolMode))
 		return false;
 	return true;
 }
@@ -4153,8 +4944,8 @@ bool TerrainDock::handleMousePress(int screenX, int screenY, int button, int qtB
 	{
 		GodClientTerrainEditor& editor = GodClientTerrainEditor::getInstance();
 		
-		// Handle polyline editing modes (road/ribbon placement)
-		if (m_toolMode == TM_PlaceRoad || m_toolMode == TM_PlaceRibbon)
+		// Handle polyline editing modes (road/ribbon/boundary corridor)
+		if (terrainDockIsPolylineStrokeTool(m_toolMode))
 		{
 			const bool shiftMod = (qtButtonState & static_cast<int>(Qt::ShiftButton)) != 0;
 			const bool ctrlMod = (qtButtonState & static_cast<int>(Qt::ControlButton)) != 0;
@@ -4170,6 +4961,7 @@ bool TerrainDock::handleMousePress(int screenX, int screenY, int button, int qtB
 					{
 						editor.deletePolylinePoint(idx);
 						MainFrame::getInstance().textToConsole("Polyline point deleted (Shift+click).");
+						emit terrainGameWindowStatusChanged();
 					}
 					return true;
 				}
@@ -4183,6 +4975,7 @@ bool TerrainDock::handleMousePress(int screenX, int screenY, int button, int qtB
 					{
 						editor.insertPolylinePoint(afterIdx, insX, insZ, 0.0f);
 						MainFrame::getInstance().textToConsole("Polyline point inserted on segment (Alt+click).");
+						emit terrainGameWindowStatusChanged();
 					}
 					return true;
 				}
@@ -4200,6 +4993,7 @@ bool TerrainDock::handleMousePress(int screenX, int screenY, int button, int qtB
 				}
 
 				editor.addPolylinePoint(worldX, worldZ);
+				emit terrainGameWindowStatusChanged();
 				return true;
 			}
 
@@ -4207,24 +5001,34 @@ bool TerrainDock::handleMousePress(int screenX, int screenY, int button, int qtB
 			int const pci = m_polylineShaderCombo ? m_polylineShaderCombo->currentItem() : 0;
 			if (pci >= 0 && pci < static_cast<int>(m_polylineShaderFamilyIds.size()))
 				polyFid = m_polylineShaderFamilyIds[static_cast<size_t>(pci)];
-			editor.beginPolyline(m_toolMode == TM_PlaceRibbon);
+			GodClientTerrainEditor::PolylineCommitKind pck = GodClientTerrainEditor::PCK_RoadRibbon;
+			if (m_toolMode == TM_PlaceBoundaryPolyline)
+				pck = GodClientTerrainEditor::PCK_BoundaryPolyline;
+			else if (m_toolMode == TM_PlaceBoundaryPolyRoad)
+				pck = GodClientTerrainEditor::PCK_BoundaryPolyRoad;
+			editor.beginPolyline(m_toolMode == TM_PlaceRibbon, pck);
 			editor.setPolylineWidth(m_polylineWidth);
 			editor.setPolylineShaderFamily(polyFid);
 			editor.setPolylineFeatherDistance(m_polylineFeather);
 			editor.setPolylineUseFixedHeights(m_polylineFixedHeights);
 			editor.addPolylinePoint(worldX, worldZ);
+			emit terrainGameWindowStatusChanged();
 			return true;
 		}
 		
-		// Handle environment zone placement
-		if (m_toolMode == TM_PlaceEnvironment)
+		// Handle environment / exclude / boundary polygon placement (shared point list)
+		if (m_toolMode == TM_PlaceEnvironment ||
+			m_toolMode == TM_PlaceExcludeTerrain ||
+			m_toolMode == TM_PlaceBoundaryPolygon)
 		{
-			if (editor.isEnvironmentZoneActive())
+			if (editor.isPolygonDrawActive())
 			{
 				editor.addEnvironmentZonePoint(worldX, worldZ);
+				updateRegionGeometryUi();
 				return true;
 			}
-			else
+
+			if (m_toolMode == TM_PlaceEnvironment)
 			{
 				int envFid = 0;
 				int const eci = m_environmentFamilyCombo ? m_environmentFamilyCombo->currentItem() : 0;
@@ -4233,8 +5037,18 @@ bool TerrainDock::handleMousePress(int screenX, int screenY, int button, int qtB
 				editor.beginEnvironmentZone();
 				editor.setEnvironmentFamily(envFid);
 				editor.addEnvironmentZonePoint(worldX, worldZ);
+				updateRegionGeometryUi();
 				return true;
 			}
+
+			if (m_toolMode == TM_PlaceExcludeTerrain)
+				editor.beginPolygonDraw(GodClientTerrainEditor::PDP_ExcludeTerrain);
+			else
+				editor.beginPolygonDraw(GodClientTerrainEditor::PDP_BoundaryPolygon);
+
+			editor.addEnvironmentZonePoint(worldX, worldZ);
+			updateRegionGeometryUi();
+			return true;
 		}
 		
 		// Handle bitmap stamp
@@ -4324,6 +5138,7 @@ bool TerrainDock::handleMouseRelease(int screenX, int screenY, int button)
 		m_hasRegionSelection = true;
 		syncRegionSelectionToEditor();
 		MainFrame::getInstance().textToConsole("Terrain region selection updated.");
+		emit terrainGameWindowStatusChanged();
 		return true;
 	}
 	
@@ -4355,7 +5170,19 @@ bool TerrainDock::handleMouseMove(int screenX, int screenY, int qtButtonState)
 	float worldZ = 0.0f;
 	float groundY = 0.0f;
 
-	if (!pickTerrainGroundForLiveEdit(screenX, screenY, worldX, worldZ, groundY))
+	bool pickedOk = pickTerrainGroundForLiveEdit(screenX, screenY, worldX, worldZ, groundY);
+	if (!pickedOk && GodClientTerrainEditor::isInstalled())
+	{
+		GodClientTerrainEditor& editor = GodClientTerrainEditor::getInstance();
+		bool const needPlanarDrag =
+			editor.isBrushStrokeActive()
+			|| (m_polylineDragPointIndex >= 0 && terrainDockIsPolylineStrokeTool(m_toolMode))
+			|| (m_toolMode == TM_Select && m_regionDragActive);
+		if (needPlanarDrag)
+			pickedOk = pickTerrainGroundPlanarForLiveDrag(screenX, screenY, worldX, worldZ, groundY);
+	}
+
+	if (!pickedOk)
 		return false;
 
 	if (m_toolMode == TM_Select && m_regionDragActive)
@@ -4365,7 +5192,7 @@ bool TerrainDock::handleMouseMove(int screenX, int screenY, int qtButtonState)
 		return true;
 	}
 
-	if (m_polylineDragPointIndex >= 0 && (m_toolMode == TM_PlaceRoad || m_toolMode == TM_PlaceRibbon) && GodClientTerrainEditor::isInstalled())
+	if (m_polylineDragPointIndex >= 0 && terrainDockIsPolylineStrokeTool(m_toolMode) && GodClientTerrainEditor::isInstalled())
 	{
 		GodClientTerrainEditor& editor = GodClientTerrainEditor::getInstance();
 		if (editor.isPolylineActive() && m_polylineDragPointIndex < editor.getPolylinePointCount())
@@ -4505,15 +5332,16 @@ void TerrainDock::updateFrame(float elapsedTime)
 	if (m_showBrushPreview && m_toolMode != TM_None && m_toolMode != TM_Select)
 	{
 		const bool skipBrushRing =
-			m_toolMode == TM_PlaceRoad ||
-			m_toolMode == TM_PlaceRibbon ||
-			m_toolMode == TM_PlaceEnvironment;
+			terrainDockIsPolylineStrokeTool(m_toolMode) ||
+			m_toolMode == TM_PlaceEnvironment ||
+			m_toolMode == TM_PlaceExcludeTerrain ||
+			m_toolMode == TM_PlaceBoundaryPolygon;
 		if (!skipBrushRing)
 			editor.renderBrushPreview(*camera);
 	}
 	
 	// Render polyline preview for road/ribbon tools
-	if (m_showPolylinePreview && (m_toolMode == TM_PlaceRoad || m_toolMode == TM_PlaceRibbon))
+	if (m_showPolylinePreview && terrainDockIsPolylineStrokeTool(m_toolMode))
 	{
 		editor.renderPolylinePreview(*camera);
 	}
@@ -4543,6 +5371,15 @@ bool TerrainDock::suppressCameraDoubleClickForTerrainTool() const
 	case TM_SetHeight:
 	case TM_PaintShader:
 	case TM_PaintFlora:
+	case TM_PlaceWater:
+	case TM_PlaceRadial:
+	case TM_PlaceRibbon:
+	case TM_PlaceRoad:
+	case TM_PlaceEnvironment:
+	case TM_PlaceExcludeTerrain:
+	case TM_PlaceBoundaryPolygon:
+	case TM_PlaceBoundaryPolyline:
+	case TM_PlaceBoundaryPolyRoad:
 	case TM_StampBitmap:
 		return true;
 	default:

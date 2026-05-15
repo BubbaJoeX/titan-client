@@ -72,6 +72,30 @@
 #include <cstdio>
 #include <limits>
 
+namespace
+{
+	// File scope (not function-local): MSVC C4822 rejects `= delete` on copy/assign inside local classes.
+	class TerrainWorldLightingScope
+	{
+	public:
+		bool const m_active;
+		explicit TerrainWorldLightingScope (bool active) :
+			m_active (active)
+		{
+			if (m_active)
+				ShaderPrimitiveSorter::pushCell (*CellProperty::getWorldCellProperty ());
+		}
+		~TerrainWorldLightingScope ()
+		{
+			if (m_active)
+				ShaderPrimitiveSorter::popCell ();
+		}
+	private:
+		TerrainWorldLightingScope (TerrainWorldLightingScope const &) = delete;
+		TerrainWorldLightingScope &operator= (TerrainWorldLightingScope const &) = delete;
+	};
+}
+
 //===================================================================
 
 bool        ClientProceduralTerrainAppearance::ms_multiThreadedTerrainGeneration;
@@ -1096,7 +1120,6 @@ void ClientProceduralTerrainAppearance::calculateLod () const
 	m_worldFrustum.transform (ms_referenceCamera->getFrustumVolume (), ms_referenceCamera->getTransform_o2w ());
 
 	// While locked, procedural rebuild is replacing dirty leaves; skipping LOD selection avoids fighting the worker.
-	// SwgGodClient defers mesh invalidates during brush strokes; invalidateRegion() still marks m_levelOfDetail dirty for post-rebuild catch-up.
 	if (!m_lockTerrainLevelOfDetail)
 	{
 		//-- fill out the terrain in the frustum
@@ -1349,24 +1372,6 @@ void ClientProceduralTerrainAppearance::render () const
 	// reflect an interior (or transitional) cell. Drawing terrain under that state applies interior fog, env,
 	// and (via Direct3d9) interior material tint toward black splats. Always re-parent terrain+sky to the world
 	// cell whenever the active render cell is not already the world cell -- not only when custom pob lighting is flagged.
-	struct TerrainWorldLightingScope
-	{
-		bool const m_active;
-		explicit TerrainWorldLightingScope(bool active) : m_active(active)
-		{
-			if (m_active)
-				ShaderPrimitiveSorter::pushCell(*CellProperty::getWorldCellProperty());
-		}
-		~TerrainWorldLightingScope()
-		{
-			if (m_active)
-				ShaderPrimitiveSorter::popCell();
-		}
-	private:
-		TerrainWorldLightingScope(TerrainWorldLightingScope const &);
-		TerrainWorldLightingScope &operator=(TerrainWorldLightingScope const &);
-	};
-
 	CellProperty const * const worldCell = CellProperty::getWorldCellProperty();
 	CellProperty const * const activeCell = ShaderPrimitiveSorter::getCurrentCellProperty();
 	bool const needWorldCell =

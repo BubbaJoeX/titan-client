@@ -197,8 +197,8 @@ void AffectorRibbon::updateExtentAfterEndCaps ()
 
 unsigned AffectorRibbon::getAffectedMaps() const
 {
-	return unsigned(TGM_ALL);
-	// TODO - make this correctly report the maps set by 'affect'
+	// affect() only writes the terrain shader map; incorrect TGM_ALL caused chunk prune/skip issues for God-authored ribbons.
+	return TGM_shader;
 }
 
 //-------------------------------------------------------------------

@@ -1178,7 +1178,24 @@ void ClientProceduralTerrainAppearance::insertChunkRebuildRequests (const ChunkR
 
 void ClientProceduralTerrainAppearance::invalidateRegion (const Rectangle2d& extent2d)
 {
-	m_invalidateRegionList->push_back (extent2d);
+	// While a procedural rebuild is in flight, God Client brush drags can call invalidateRegion many times per
+	// frame; coalesce into one growing bbox so clearInvalidRegionList does not walk an enormous list on unlock.
+	if (Game::isGodClient () && m_lockTerrainLevelOfDetail)
+	{
+		if (m_invalidateRegionList->empty ())
+			m_invalidateRegionList->push_back (extent2d);
+		else
+		{
+			Rectangle2d merged = (*m_invalidateRegionList)[0];
+			for (size_t i = 1, n = m_invalidateRegionList->size (); i < n; ++i)
+				merged.expand ((*m_invalidateRegionList)[i]);
+			merged.expand (extent2d);
+			m_invalidateRegionList->clear ();
+			m_invalidateRegionList->push_back (merged);
+		}
+	}
+	else
+		m_invalidateRegionList->push_back (extent2d);
 
 	// SwgGodClient: keep LOD scheduling primed so the quad-tree refills promptly after invalidate/rebuild bursts.
 	if (Game::isGodClient () && m_levelOfDetail)

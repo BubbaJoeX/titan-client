@@ -724,7 +724,7 @@ void GameWidget::keyPressEvent(QKeyEvent*keyEvent)
 			return;
 		}
 
-		const float PI = 3.14159265359;
+		const float PI = 3.14159265359f;
 		if (keyEvent->key() == s_avatarKey)// && Game::getSinglePlayer())
 		{
 			Vector position;
@@ -1391,7 +1391,7 @@ void GameWidget::mouseReleaseEvent(QMouseEvent*mouseEvent)
 		m_autoDraggingObjects = false;
 		
 		// Forward terrain editing release (including orphaned strokes after tool switched to TM_None).
-		if (!m_gameHasFocus)
+		// Must run whether the game viewport has focus or not so brush strokes end after LMB-up.
 		{
 			TerrainDock* terrainDock = MainFrame::getInstance().getTerrainDock();
 			if (terrainDock)

@@ -1035,7 +1035,12 @@ void ClientProceduralTerrainAppearance::ClientChunk::applyInPlaceRegenerationFro
 	std::swap (shaderMap, disposableBuiltChunk->shaderMap);
 	std::swap (m_floraStaticCollidableMap, disposableBuiltChunk->m_floraStaticCollidableMap);
 
-	std::swap (m_boxExtent, disposableBuiltChunk->m_boxExtent);
+	{
+		AxialBox const tmpBox = m_boxExtent.getBox ();
+		m_boxExtent.setBox (disposableBuiltChunk->m_boxExtent.getBox ());
+		disposableBuiltChunk->m_boxExtent.setBox (tmpBox);
+	}
+
 	std::swap (hasLargerNeighborFlags, disposableBuiltChunk->hasLargerNeighborFlags);
 	std::swap (originOffset, disposableBuiltChunk->originOffset);
 	std::swap (numberOfPoles, disposableBuiltChunk->numberOfPoles);

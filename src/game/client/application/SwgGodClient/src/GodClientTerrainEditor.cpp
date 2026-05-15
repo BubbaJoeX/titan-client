@@ -106,6 +106,27 @@ namespace
 	}
 
 	int s_godWaterLayerSerial = 0;
+	int s_godPolygonLayerSerial = 0;
+
+	Rectangle2d godClientBoundsFromPoints(std::vector<Vector2d> const& pts, float pad)
+	{
+		if (pts.empty())
+			return Rectangle2d();
+		float minX = static_cast<float>(pts[0].x);
+		float minZ = static_cast<float>(pts[0].y);
+		float maxX = minX;
+		float maxZ = minZ;
+		for (size_t i = 1; i < pts.size(); ++i)
+		{
+			float const x = static_cast<float>(pts[i].x);
+			float const z = static_cast<float>(pts[i].y);
+			if (x < minX) minX = x;
+			if (x > maxX) maxX = x;
+			if (z < minZ) minZ = z;
+			if (z > maxZ) maxZ = z;
+		}
+		return Rectangle2d(minX - pad, minZ - pad, maxX + pad, maxZ + pad);
+	}
 }
 
 #include "sharedTerrain/ShaderGroup.h"
@@ -311,7 +332,7 @@ GodClientTerrainEditor::GodClientTerrainEditor() :
 	m_selectedPolylinePoint(-1),
 	m_polylineExtent(),
 	m_activeEnvironmentZone(),
-	m_environmentZoneActive(false),
+	m_polygonDrawPurpose(PDP_None),
 	m_environmentFamilyId(0),
 	m_bitmapStamp(),
 	m_bitmapHeightData(),
@@ -323,6 +344,7 @@ GodClientTerrainEditor::GodClientTerrainEditor() :
 	m_createdLayers(),
 	m_waterPlacementHeight(0.0f),
 	m_waterPlacementShaderTemplate(),
+	m_ribbonWaterShaderTemplate(),
 	m_lastWaterDabTime(-1.0e9f)
 {
 	m_activePolyline.width = 8.0f;
@@ -330,6 +352,7 @@ GodClientTerrainEditor::GodClientTerrainEditor() :
 	m_activePolyline.featherDistance = 4.0f;
 	m_activePolyline.hasFixedHeights = false;
 	m_activePolyline.isRibbon = false;
+	m_activePolyline.commitKind = PCK_RoadRibbon;
 	m_activePolyline.name = "New Road";
 
 	m_bitmapStamp.rotation = 0.0f;
@@ -544,28 +567,11 @@ void GodClientTerrainEditor::continueBrushStroke(float worldX, float worldZ)
 	if (!m_brushStrokeActive)
 		return;
 
-	// Check if we've moved enough to warrant a new application
-	const float dx = worldX - m_lastStrokeX;
-	const float dz = worldZ - m_lastStrokeZ;
-	const float distSq = dx * dx + dz * dz;
-	
-	// Minimum travel before re-sampling (smaller = smoother live feedback while dragging).
-	// Height tools use a coarser step to limit CPU; shader/flora/water repaint much cheaper per cell.
-	float minFrac = 0.1f;
-	if (m_toolMode == TM_PaintShader || m_toolMode == TM_PaintFlora || m_toolMode == TM_PlaceWater || m_toolMode == TM_PlaceRadial)
-		minFrac = 0.004f;
-	else if (m_toolMode == TM_Raise || m_toolMode == TM_Lower || m_toolMode == TM_Flatten ||
-	         m_toolMode == TM_Smooth || m_toolMode == TM_Noise || m_toolMode == TM_SetHeight)
-		minFrac = 0.03f;
-	const float minDist = std::max(0.05f, m_brushSize * minFrac);
-	const float minDistSq = minDist * minDist;
-	
-	if (distSq >= minDistSq)
-	{
-		applyBrushAtPoint(worldX, worldZ);
-		m_lastStrokeX = worldX;
-		m_lastStrokeZ = worldZ;
-	}
+	// Apply on every drag sample so behavior matches repeated clicks along the path. Mesh invalidation
+	// is still coalesced in invalidateTerrainMeshesForLiveBrushSample (REALTIME interval + rolling union).
+	applyBrushAtPoint(worldX, worldZ);
+	m_lastStrokeX = worldX;
+	m_lastStrokeZ = worldZ;
 }
 
 // ----------------------------------------------------------------------
@@ -1231,9 +1237,8 @@ void GodClientTerrainEditor::invalidateTerrainMeshesForLiveBrushSample(float wor
 
 	if (useRollingLivePolicy)
 	{
-		if (currentTime - m_lastInvalidationTime < REALTIME_INVALIDATION_INTERVAL)
-			return;
-
+		// No time throttle here: coalescing was starving live God edits (most drag frames skipped invalidate;
+		// mesh only caught up on mouse-up). Rolling union below still bounds each invalidate to the stroke segment.
 		Rectangle2d invalidateRect;
 		if (m_liveStrokeInvalidateHasPrior)
 		{
@@ -1263,6 +1268,7 @@ void GodClientTerrainEditor::invalidateTerrainMeshesForLiveBrushSample(float wor
 		m_liveStrokeInvalidatePriorZ = worldZ;
 		m_liveStrokeInvalidateHasPrior = true;
 		m_lastInvalidationTime = currentTime;
+		GodClientTerrainEditor::nudgeGodClientCameraToRefreshDpvs ();
 		return;
 	}
 
@@ -1286,6 +1292,16 @@ void GodClientTerrainEditor::setWaterPlacementShaderTemplate(char const* shaderT
 		m_waterPlacementShaderTemplate = shaderTemplateName;
 	else
 		m_waterPlacementShaderTemplate.clear();
+}
+
+// ----------------------------------------------------------------------
+
+void GodClientTerrainEditor::setRibbonWaterShaderTemplate(char const* shaderTemplateName)
+{
+	if (shaderTemplateName && *shaderTemplateName)
+		m_ribbonWaterShaderTemplate = shaderTemplateName;
+	else
+		m_ribbonWaterShaderTemplate.clear();
 }
 
 // ----------------------------------------------------------------------
@@ -1318,7 +1334,7 @@ void GodClientTerrainEditor::installLocalWaterTableAxisAligned(float centerWorld
 	boundary->setLocalWaterTableHeight(tableHeight);
 	boundary->setLocalWaterTableShaderSize(8.f);
 
-	std::string const shaderName = (!m_waterPlacementShaderTemplate.empty() ? m_waterPlacementShaderTemplate : std::string("ocean_new"));
+	std::string const shaderName = (!m_waterPlacementShaderTemplate.empty() ? m_waterPlacementShaderTemplate : std::string("wter_ocean_water"));
 	boundary->setLocalWaterTableShaderTemplateName(shaderName.c_str());
 
 	layer->addBoundary(boundary);
@@ -1804,6 +1820,9 @@ void GodClientTerrainEditor::renderBrushPreview(const Camera& camera) const
 	if (m_toolMode == TM_None || m_toolMode == TM_Select)
 		return;
 
+	if (isPolygonDrawActive())
+		return;
+
 	if (!m_cursorPositionValid)
 		return;
 
@@ -1857,7 +1876,13 @@ void GodClientTerrainEditor::renderBrushPreview(const Camera& camera) const
 			brushColor = VectorArgb(1.0f, 0.4f, 0.9f, 1.0f);
 			break;
 		case TM_PlaceEnvironment:
+		case TM_PlaceExcludeTerrain:
+		case TM_PlaceBoundaryPolygon:
 			brushColor = VectorArgb(1.0f, 0.2f, 1.0f, 0.6f);
+			break;
+		case TM_PlaceBoundaryPolyline:
+		case TM_PlaceBoundaryPolyRoad:
+			brushColor = VectorArgb(1.0f, 0.5f, 0.95f, 0.35f);
 			break;
 		default:
 			break;
@@ -1968,7 +1993,7 @@ bool GodClientTerrainEditor::applyRectangularHeightSamples(
 	float const* heightsRowMajor,
 	unsigned char const* cellMaskRowMajor)
 {
-	if (!heightsRowMajor || nx < 2 || nz < 2)
+	if (!heightsRowMajor || nx < 1 || nz < 1)
 		return false;
 
 	TerrainObject* const terrainObject = TerrainObject::getInstance();
@@ -1978,13 +2003,13 @@ bool GodClientTerrainEditor::applyRectangularHeightSamples(
 	BrushStroke stroke;
 	stroke.centerX = (minX + maxX) * 0.5f;
 	stroke.centerZ = (minZ + maxZ) * 0.5f;
-	stroke.radius = std::max(maxX - minX, maxZ - minZ) * 0.5f;
+	stroke.radius = std::max(std::fabs(maxX - minX), std::fabs(maxZ - minZ)) * 0.5f + 1.0f;
 	stroke.strength = 1.0f;
 	stroke.tool = TM_SetHeight;
 	stroke.targetHeight = 0.0f;
 
-	float const dx = (nx > 1) ? ((maxX - minX) / static_cast<float>(nx - 1)) : 0.0f;
-	float const dz = (nz > 1) ? ((maxZ - minZ) / static_cast<float>(nz - 1)) : 0.0f;
+	int const baseX = static_cast<int>(std::floor(std::min(minX, maxX) + 1e-4f));
+	int const baseZ = static_cast<int>(std::floor(std::min(minZ, maxZ) + 1e-4f));
 
 	for (int iz = 0; iz < nz; ++iz)
 	{
@@ -1997,10 +2022,8 @@ bool GodClientTerrainEditor::applyRectangularHeightSamples(
 					continue;
 			}
 
-			float const wx = minX + dx * static_cast<float>(ix);
-			float const wz = minZ + dz * static_cast<float>(iz);
-			int const gix = static_cast<int>(std::floor(wx));
-			int const giz = static_cast<int>(std::floor(wz));
+			int const gix = baseX + ix;
+			int const giz = baseZ + iz;
 			float const newH = heightsRowMajor[iz * nx + ix];
 
 			float baseH = 0.0f;
@@ -2044,7 +2067,11 @@ bool GodClientTerrainEditor::applyRectangularHeightSamples(
 	}
 
 	float const margin = 32.0f;
-	Rectangle2d const extent2d(minX - margin, minZ - margin, maxX + margin, maxZ + margin);
+	float const minPaintX = static_cast<float>(baseX);
+	float const minPaintZ = static_cast<float>(baseZ);
+	float const maxPaintX = static_cast<float>(baseX + nx - 1);
+	float const maxPaintZ = static_cast<float>(baseZ + nz - 1);
+	Rectangle2d const extent2d(minPaintX - margin, minPaintZ - margin, maxPaintX + margin, maxPaintZ + margin);
 	terrainObject->invalidateRegion(extent2d);
 	flushTerrainChanges();
 	nudgeGodClientCameraToRefreshDpvs();
@@ -3050,17 +3077,36 @@ void GodClientTerrainEditor::setPolylineEditMode(PolylineEditMode mode)
 
 // ----------------------------------------------------------------------
 
-void GodClientTerrainEditor::beginPolyline(bool isRibbon)
+void GodClientTerrainEditor::beginPolyline(bool isRibbon, PolylineCommitKind commitKind)
 {
 	m_activePolyline.controlPoints.clear();
 	m_activePolyline.isRibbon = isRibbon;
-	m_activePolyline.name = isRibbon ? "New Ribbon" : "New Road";
+	m_activePolyline.commitKind = commitKind;
+	if (commitKind == PCK_BoundaryPolyline)
+	{
+		m_activePolyline.name = "Boundary Polyline";
+		m_activePolyline.width = std::max(2.f, m_activePolyline.width);
+	}
+	else if (commitKind == PCK_BoundaryPolyRoad)
+	{
+		m_activePolyline.name = "Boundary Poly Road";
+		m_activePolyline.width = std::max(8.f, m_activePolyline.width);
+	}
+	else
+		m_activePolyline.name = isRibbon ? "New Ribbon" : "New Road";
 	m_polylineEditMode = PEM_AddPoints;
 	m_selectedPolylinePoint = -1;
 
-	MainFrame::getInstance().textToConsole(isRibbon ? 
-		"Started new ribbon - click to add control points" :
-		"Started new road - click to add control points");
+	if (commitKind == PCK_BoundaryPolyline || commitKind == PCK_BoundaryPolyRoad)
+	{
+		MainFrame::getInstance().textToConsole("Started boundary polyline — click to add vertices (min width enforced on commit).");
+	}
+	else
+	{
+		MainFrame::getInstance().textToConsole(isRibbon ?
+			"Started new ribbon - click to add control points" :
+			"Started new road - click to add control points");
+	}
 }
 
 // ----------------------------------------------------------------------
@@ -3149,27 +3195,53 @@ void GodClientTerrainEditor::finalizePolyline()
 {
 	if (m_activePolyline.controlPoints.size() < 2)
 	{
-		MainFrame::getInstance().textToConsole("Need at least 2 control points to create road/ribbon");
+		MainFrame::getInstance().textToConsole("Need at least 2 control points for this polyline tool.");
 		return;
 	}
 
 	bool success = false;
-	if (m_activePolyline.isRibbon)
+	switch (m_activePolyline.commitKind)
 	{
-		success = createRibbonFromPolyline(m_activePolyline.name.c_str());
-	}
-	else
-	{
-		success = createRoadFromPolyline(m_activePolyline.name.c_str());
+	case PCK_BoundaryPolyline:
+		{
+			char layerBuf[128];
+			snprintf(layerBuf, sizeof(layerBuf), "GodBdryLn_%06d", s_godPolygonLayerSerial++);
+			success = createBoundaryPolylineLayer(layerBuf, std::max(2.f, m_activePolyline.width));
+		}
+		break;
+	case PCK_BoundaryPolyRoad:
+		{
+			char layerBuf[128];
+			snprintf(layerBuf, sizeof(layerBuf), "GodBdryRd_%06d", s_godPolygonLayerSerial++);
+			success = createBoundaryPolylineLayer(layerBuf, std::max(2.f, m_activePolyline.width));
+		}
+		break;
+	case PCK_RoadRibbon:
+	default:
+		if (m_activePolyline.isRibbon)
+			success = createRibbonFromPolyline(m_activePolyline.name.c_str());
+		else
+			success = createRoadFromPolyline(m_activePolyline.name.c_str());
+		break;
 	}
 
 	if (success)
 	{
 		char buffer[256];
-		snprintf(buffer, sizeof(buffer), "%s '%s' created with %d control points",
-			m_activePolyline.isRibbon ? "Ribbon" : "Road",
-			m_activePolyline.name.c_str(),
-			static_cast<int>(m_activePolyline.controlPoints.size()));
+		switch (m_activePolyline.commitKind)
+		{
+		case PCK_BoundaryPolyline:
+		case PCK_BoundaryPolyRoad:
+			snprintf(buffer, sizeof(buffer), "Boundary polyline layer created (%d vertices, corridor %.1f).",
+				static_cast<int>(m_activePolyline.controlPoints.size()), m_activePolyline.width);
+			break;
+		default:
+			snprintf(buffer, sizeof(buffer), "%s '%s' created with %d control points",
+				m_activePolyline.isRibbon ? "Ribbon" : "Road",
+				m_activePolyline.name.c_str(),
+				static_cast<int>(m_activePolyline.controlPoints.size()));
+			break;
+		}
 		MainFrame::getInstance().textToConsole(buffer);
 
 		m_activePolyline.controlPoints.clear();
@@ -3178,7 +3250,7 @@ void GodClientTerrainEditor::finalizePolyline()
 	}
 	else
 	{
-		MainFrame::getInstance().textToConsole("Failed to create road/ribbon - check terrain generator access");
+		MainFrame::getInstance().textToConsole("Failed to commit polyline (no terrain generator, clipped empty, or invalid data).");
 	}
 }
 
@@ -3316,7 +3388,10 @@ void GodClientTerrainEditor::recalculatePolylineExtent()
 	}
 
 	const float margin = m_activePolyline.width + m_activePolyline.featherDistance;
-	m_polylineExtent = Rectangle2d(minX - margin, minZ - margin, maxX + margin, maxZ + margin);
+	float capPad = 0.f;
+	if (m_activePolyline.isRibbon)
+		capPad = std::max(64.f, m_activePolyline.width * 4.f);
+	m_polylineExtent = Rectangle2d(minX - margin - capPad, minZ - margin - capPad, maxX + margin + capPad, maxZ + margin + capPad);
 }
 
 // ----------------------------------------------------------------------
@@ -3394,15 +3469,91 @@ void GodClientTerrainEditor::renderPolylinePreview(const Camera& camera) const
 }
 
 // ======================================================================
-// Environment Zones
+// Environment / exclude / boundary polygon placement (shared point list)
 // ======================================================================
+
+void GodClientTerrainEditor::beginPolygonDraw(PolygonDrawPurpose const purpose)
+{
+	m_polygonDrawPurpose = purpose;
+	m_activeEnvironmentZone.boundaryPoints.clear();
+
+	switch (purpose)
+	{
+	case PDP_EnvironmentZone:
+		MainFrame::getInstance().textToConsole("Started new environment zone — click to add boundary points (Finish in dock).");
+		break;
+	case PDP_ExcludeTerrain:
+		MainFrame::getInstance().textToConsole("Exclude terrain — click vertices of a closed polygon (min 3). Interior tiles will not generate procedural mesh.");
+		break;
+	case PDP_BoundaryPolygon:
+		MainFrame::getInstance().textToConsole("Boundary polygon — click vertices (min 3). Creates a BoundaryPolygon layer for masking child affectors.");
+		break;
+	default:
+		break;
+	}
+}
+
+// ----------------------------------------------------------------------
+
+void GodClientTerrainEditor::finalizePolygonDraw()
+{
+	if (m_polygonDrawPurpose == PDP_None)
+		return;
+
+	if (m_activeEnvironmentZone.boundaryPoints.size() < 3)
+	{
+		MainFrame::getInstance().textToConsole("Need at least 3 points for this polygon tool.");
+		return;
+	}
+
+	char layerBuf[128];
+	snprintf(layerBuf, sizeof(layerBuf), "GodPoly_%06d", s_godPolygonLayerSerial++);
+	std::string const baseName = m_activeEnvironmentZone.name.empty() ? std::string(layerBuf) : m_activeEnvironmentZone.name;
+
+	bool success = false;
+	switch (m_polygonDrawPurpose)
+	{
+	case PDP_EnvironmentZone:
+		success = createEnvironmentZoneAffector(baseName.c_str());
+		break;
+	case PDP_ExcludeTerrain:
+		success = createTerrainExcludeFromPolygon(baseName.c_str());
+		break;
+	case PDP_BoundaryPolygon:
+		success = createBoundaryPolygonLayer(baseName.c_str());
+		break;
+	default:
+		break;
+	}
+
+	if (success)
+	{
+		char buffer[256];
+		snprintf(buffer, sizeof(buffer), "Polygon tool committed (%d points).", static_cast<int>(m_activeEnvironmentZone.boundaryPoints.size()));
+		MainFrame::getInstance().textToConsole(buffer);
+		m_activeEnvironmentZone.boundaryPoints.clear();
+		m_polygonDrawPurpose = PDP_None;
+	}
+	else
+	{
+		MainFrame::getInstance().textToConsole("Polygon commit failed (no terrain generator or invalid layer).");
+	}
+}
+
+// ----------------------------------------------------------------------
+
+void GodClientTerrainEditor::cancelPolygonDraw()
+{
+	m_activeEnvironmentZone.boundaryPoints.clear();
+	m_polygonDrawPurpose = PDP_None;
+	MainFrame::getInstance().textToConsole("Polygon drawing cancelled.");
+}
+
+// ----------------------------------------------------------------------
 
 void GodClientTerrainEditor::beginEnvironmentZone()
 {
-	m_activeEnvironmentZone.boundaryPoints.clear();
-	m_environmentZoneActive = true;
-
-	MainFrame::getInstance().textToConsole("Started new environment zone - click to add boundary points");
+	beginPolygonDraw(PDP_EnvironmentZone);
 }
 
 // ----------------------------------------------------------------------
@@ -3412,7 +3563,7 @@ void GodClientTerrainEditor::addEnvironmentZonePoint(float worldX, float worldZ)
 	m_activeEnvironmentZone.boundaryPoints.push_back(Vector2d(worldX, worldZ));
 
 	char buffer[128];
-	snprintf(buffer, sizeof(buffer), "Added environment zone point at (%.1f, %.1f)", worldX, worldZ);
+	snprintf(buffer, sizeof(buffer), "Added polygon point at (%.1f, %.1f)", worldX, worldZ);
 	MainFrame::getInstance().textToConsole(buffer);
 }
 
@@ -3420,39 +3571,14 @@ void GodClientTerrainEditor::addEnvironmentZonePoint(float worldX, float worldZ)
 
 void GodClientTerrainEditor::finalizeEnvironmentZone()
 {
-	if (m_activeEnvironmentZone.boundaryPoints.size() < 3)
-	{
-		MainFrame::getInstance().textToConsole("Need at least 3 points to create environment zone");
-		return;
-	}
-
-	bool success = createEnvironmentZoneAffector(m_activeEnvironmentZone.name.c_str());
-
-	if (success)
-	{
-		char buffer[256];
-		snprintf(buffer, sizeof(buffer), "Environment zone '%s' created with %d boundary points",
-			m_activeEnvironmentZone.name.c_str(),
-			static_cast<int>(m_activeEnvironmentZone.boundaryPoints.size()));
-		MainFrame::getInstance().textToConsole(buffer);
-
-		m_activeEnvironmentZone.boundaryPoints.clear();
-		m_environmentZoneActive = false;
-	}
-	else
-	{
-		MainFrame::getInstance().textToConsole("Failed to create environment zone");
-	}
+	finalizePolygonDraw();
 }
 
 // ----------------------------------------------------------------------
 
 void GodClientTerrainEditor::cancelEnvironmentZone()
 {
-	m_activeEnvironmentZone.boundaryPoints.clear();
-	m_environmentZoneActive = false;
-
-	MainFrame::getInstance().textToConsole("Environment zone editing cancelled");
+	cancelPolygonDraw();
 }
 
 // ----------------------------------------------------------------------
@@ -3952,6 +4078,17 @@ bool GodClientTerrainEditor::createRoadFromPolyline(const char* name)
 		road->copyHeightList(heightList);
 	}
 
+	// HeightData segments are required for AffectorBoundaryPoly::find(); God-authored roads skipped this and roads/ribbons failed to affect.
+	road->clearHeightData();
+	for (size_t i = 0; i + 1 < m_activePolyline.controlPoints.size(); ++i)
+	{
+		road->addSegmentHeightData();
+		ControlPoint const& a = m_activePolyline.controlPoints[i];
+		ControlPoint const& b = m_activePolyline.controlPoints[i + 1];
+		road->addPointHeightData(Vector(static_cast<float>(a.position.x), a.height, static_cast<float>(a.position.y)));
+		road->addPointHeightData(Vector(static_cast<float>(b.position.x), b.height, static_cast<float>(b.position.y)));
+	}
+
 	road->createHeightData();
 
 	// Clip the layer to a padded axis box so generator/layer extent matches the feature (matches authored .trn layers).
@@ -4004,10 +4141,24 @@ bool GodClientTerrainEditor::createRibbonFromPolyline(const char* name)
 	AffectorRibbon* const ribbon = new AffectorRibbon();
 	ribbon->setName(name);
 	ribbon->setWidth(m_activePolyline.width);
-	ribbon->setTerrainShaderFamilyId(m_activePolyline.shaderFamilyId);
+	ShaderGroup const& shaderGroup = generator->getShaderGroup();
+	int familyId = m_activePolyline.shaderFamilyId;
+	if (!shaderGroup.hasFamily(familyId) && shaderGroup.getNumberOfFamilies() > 0)
+	{
+		familyId = shaderGroup.getFamilyId(0);
+		MainFrame::getInstance().textToConsole("Ribbon: shader family not in scene; using first terrain shader family.");
+	}
+	ribbon->setTerrainShaderFamilyId(familyId);
 	float const featherClamped = std::max(0.f, std::min(0.98f, m_activePolyline.featherDistance));
 	ribbon->setFeatherDistance(featherClamped);
 	ribbon->setFeatherDistanceTerrainShader(featherClamped);
+
+	std::string waterTpl = m_ribbonWaterShaderTemplate;
+	if (waterTpl.empty())
+		waterTpl = m_waterPlacementShaderTemplate;
+	if (waterTpl.empty())
+		waterTpl = "wter_ocean_water";
+	ribbon->setRibbonWaterShaderTemplateName(waterTpl.c_str());
 
 	ribbon->clearPointList();
 	for (size_t i = 0; i < m_activePolyline.controlPoints.size(); ++i)
@@ -4060,6 +4211,123 @@ bool GodClientTerrainEditor::createRibbonFromPolyline(const char* name)
 
 // ----------------------------------------------------------------------
 
+bool GodClientTerrainEditor::createTerrainExcludeFromPolygon(const char* name)
+{
+	if (m_activeEnvironmentZone.boundaryPoints.size() < 3)
+		return false;
+
+	TerrainGenerator* const generator = getTerrainGenerator();
+	if (!generator)
+		return false;
+
+	TerrainGenerator::Layer* const layer = new TerrainGenerator::Layer();
+	layer->setName(name);
+	layer->setActive(true);
+
+	BoundaryPolygon* const boundary = new BoundaryPolygon();
+	boundary->setName("Terrain exclude boundary");
+	boundary->clearPointList();
+	for (size_t i = 0; i < m_activeEnvironmentZone.boundaryPoints.size(); ++i)
+		boundary->addPoint(m_activeEnvironmentZone.boundaryPoints[i]);
+	boundary->setFeatherDistance(0.f);
+	layer->addBoundary(boundary);
+
+	AffectorExclude* const exclude = new AffectorExclude();
+	exclude->setName("Terrain exclude");
+	layer->addAffector(exclude);
+
+	generator->addLayer(layer);
+	m_createdLayers.push_back(name);
+	generator->prepare();
+
+	Rectangle2d const inv = godClientBoundsFromPoints(m_activeEnvironmentZone.boundaryPoints, 384.f);
+	TerrainObject* const terrainObject = TerrainObject::getInstance();
+	if (terrainObject)
+		terrainObject->invalidateRegion(inv);
+	nudgeGodClientCameraToRefreshDpvs();
+	return true;
+}
+
+// ----------------------------------------------------------------------
+
+bool GodClientTerrainEditor::createBoundaryPolygonLayer(const char* name)
+{
+	if (m_activeEnvironmentZone.boundaryPoints.size() < 3)
+		return false;
+
+	TerrainGenerator* const generator = getTerrainGenerator();
+	if (!generator)
+		return false;
+
+	TerrainGenerator::Layer* const layer = new TerrainGenerator::Layer();
+	layer->setName(name);
+	layer->setActive(true);
+
+	BoundaryPolygon* const boundary = new BoundaryPolygon();
+	boundary->setName("Boundary polygon");
+	boundary->clearPointList();
+	for (size_t i = 0; i < m_activeEnvironmentZone.boundaryPoints.size(); ++i)
+		boundary->addPoint(m_activeEnvironmentZone.boundaryPoints[i]);
+	boundary->setFeatherDistance(m_activeEnvironmentZone.featherDistance);
+	layer->addBoundary(boundary);
+
+	generator->addLayer(layer);
+	m_createdLayers.push_back(name);
+	generator->prepare();
+
+	Rectangle2d const inv = godClientBoundsFromPoints(m_activeEnvironmentZone.boundaryPoints, 384.f);
+	TerrainObject* const terrainObject = TerrainObject::getInstance();
+	if (terrainObject)
+		terrainObject->invalidateRegion(inv);
+	nudgeGodClientCameraToRefreshDpvs();
+	return true;
+}
+
+// ----------------------------------------------------------------------
+
+bool GodClientTerrainEditor::createBoundaryPolylineLayer(const char* name, float const corridorWidth)
+{
+	if (m_activePolyline.controlPoints.size() < 2)
+		return false;
+
+	TerrainGenerator* const generator = getTerrainGenerator();
+	if (!generator)
+		return false;
+
+	std::vector<Vector2d> pts;
+	pts.reserve(m_activePolyline.controlPoints.size());
+	for (size_t i = 0; i < m_activePolyline.controlPoints.size(); ++i)
+		pts.push_back(m_activePolyline.controlPoints[i].position);
+
+	float const w = std::max(2.f, corridorWidth);
+
+	TerrainGenerator::Layer* const layer = new TerrainGenerator::Layer();
+	layer->setName(name);
+	layer->setActive(true);
+
+	BoundaryPolyline* const boundary = new BoundaryPolyline();
+	boundary->setName("Boundary polyline");
+	boundary->clearPointList();
+	for (size_t i = 0; i < pts.size(); ++i)
+		boundary->addPoint(pts[i]);
+	boundary->setWidth(w);
+	boundary->setFeatherDistance(0.05f);
+	layer->addBoundary(boundary);
+
+	generator->addLayer(layer);
+	m_createdLayers.push_back(name);
+	generator->prepare();
+
+	Rectangle2d const inv = godClientBoundsFromPoints(pts, w + 256.f);
+	TerrainObject* const terrainObject = TerrainObject::getInstance();
+	if (terrainObject)
+		terrainObject->invalidateRegion(godClientUnionRects(inv, m_polylineExtent));
+	nudgeGodClientCameraToRefreshDpvs();
+	return true;
+}
+
+// ----------------------------------------------------------------------
+
 bool GodClientTerrainEditor::createEnvironmentZoneAffector(const char* name)
 {
 	if (m_activeEnvironmentZone.boundaryPoints.size() < 3)
@@ -4085,6 +4353,13 @@ bool GodClientTerrainEditor::createEnvironmentZoneAffector(const char* name)
 
 	generator->addLayer(layer);
 	m_createdLayers.push_back(name);
+	generator->prepare();
+
+	Rectangle2d const inv = godClientBoundsFromPoints(m_activeEnvironmentZone.boundaryPoints, 384.f);
+	TerrainObject* const terrainObject = TerrainObject::getInstance();
+	if (terrainObject)
+		terrainObject->invalidateRegion(inv);
+	nudgeGodClientCameraToRefreshDpvs();
 
 	return true;
 }

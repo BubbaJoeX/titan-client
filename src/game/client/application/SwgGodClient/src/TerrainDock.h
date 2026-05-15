@@ -58,6 +58,10 @@ public:
 		TM_PlaceRibbon,
 		TM_PlaceRoad,
 		TM_PlaceEnvironment,
+		TM_PlaceExcludeTerrain,
+		TM_PlaceBoundaryPolygon,
+		TM_PlaceBoundaryPolyline,
+		TM_PlaceBoundaryPolyRoad,
 		TM_StampBitmap,
 		TM_Select,
 		TM_Count
@@ -134,6 +138,12 @@ public:
 	// MessageDispatch::Receiver interface
 	virtual void receiveMessage(const MessageDispatch::Emitter& source, const MessageDispatch::MessageBase& message);
 
+	/// Game window status strip: show while procedural terrain is loaded and a tool or region selection is active.
+	bool        shouldShowTerrainGameWindowStatus() const;
+	QString     terrainGameWindowStatusText() const;
+	/// Region Operations geometry tools (exclude/mask/path/corridor), Select-region mode, or an active world region marquee.
+	bool        hasRegionToolOrSelectionActive() const;
+
 public slots:
 	// Tool selection slots
 	void onToolRaise();
@@ -149,6 +159,10 @@ public slots:
 	void onToolPlaceRibbon();
 	void onToolPlaceRoad();
 	void onToolPlaceEnvironment();
+	void onToolExcludeTerrain();
+	void onToolBoundaryPolygon();
+	void onToolBoundaryPolyline();
+	void onToolBoundaryPolyRoad();
 	void onToolStampBitmap();
 	void onToolSelect();
 
@@ -206,6 +220,9 @@ public slots:
 	void onCopyRegion();
 	void onPasteRegion();
 	void onFillRegion();
+	void onSaveRegionLay();
+	void onLoadRegionLay();
+	void onImportRegionLayAtCursor();
 	void onRegionShapeChanged(int index);
 
 	// TerrainGenerator layer list (live)
@@ -224,10 +241,10 @@ public slots:
 	void onPolylineShaderChanged(int index);
 	void onPolylineFixedHeightsToggled(bool enabled);
 
-	// Environment zone operations
+	// Environment / polygon region operations
 	void onBeginEnvironmentZone();
-	void onFinalizeEnvironmentZone();
-	void onCancelEnvironmentZone();
+	void onFinalizePolygonDraw();
+	void onCancelPolygonDraw();
 	void onEnvironmentFamilyChanged(int index);
 
 	// Bitmap stamp operations
@@ -242,12 +259,21 @@ public slots:
 	void onExportPolyline();
 	void onImportPolyline();
 
+	/// Clears exclude/mask/path/corridor tools and Select mode, cancels in-progress draws, clears world region selection.
+	void clearRegionGeometryAndSelection();
+
+signals:
+	void terrainGameWindowStatusChanged();
+
 protected:
 
 	void showEvent(QShowEvent* event);
 	void hideEvent(QHideEvent* event);
 
 private:
+	// Nested type used by region / .lay helpers below; full definition is with member data.
+	struct RegionClipboard;
+
 	// Disabled
 	TerrainDock(const TerrainDock& rhs);
 	TerrainDock& operator=(const TerrainDock& rhs);
@@ -256,6 +282,9 @@ private:
 	void initializeUI();
 	/// @param skipGlobalShaderCatalogScan if true, skips rebuildGlobalShaderCatalog (no recursive .trn load). Used when showing the dock to avoid AV from bad .trn on disk.
 	void refreshFromScene(bool skipGlobalShaderCatalogScan);
+	void updateMapParametersPanel();
+	/// Region Operations: contextual copy for geometry tools; show/hide closed-polygon commit UI.
+	void updateRegionGeometryUi();
 	void populateLayerList();
 	void populateShaderList(bool skipGlobalShaderCatalogScan);
 	void syncGlobalShaderCatalog();
@@ -266,6 +295,11 @@ private:
 
 	bool terrainCopyWorldRegionIntoClipboard(bool postConsoleMessageOnSuccess);
 	bool terrainPasteClipboardIntoWorldRegion(bool postConsoleMessageOnSuccess);
+	bool terrainWriteRegionClipboardToLayFile(QString const& path) const;
+	bool terrainReadRegionLayFileIntoClipboard(QString const& path);
+
+	bool terrainDecodeLayFromFile(QString const& path, RegionClipboard& dest);
+	bool terrainApplyRegionClipboardAtOrigin(RegionClipboard const& clip, int gridX0, int gridZ0, bool postConsoleMessageOnSuccess);
 
 	/// Rebuild procedural terrain after generator layer order/active/name edits.
 	void terrainGeneratorLiveCommit();
@@ -310,6 +344,8 @@ private:
 	bool getTerrainPositionFromScreen(int screenX, int screenY, float& outWorldX, float& outWorldZ) const;
 	/// Fallback ground pick when meshes are rebuilding — keeps brush ring and drag stroke alive during live LOD work.
 	bool pickTerrainGroundForLiveEdit(int screenX, int screenY, float& outWorldX, float& outWorldZ, float& outGroundY) const;
+	/// When an LMB brush stroke is active but collide misses (holes / rebuild), intersect the view ray with the edit plane and sample height.
+	bool pickTerrainGroundPlanarForLiveDrag(int screenX, int screenY, float& outWorldX, float& outWorldZ, float& outGroundY) const;
 
 	// Water boundary creation
 	void createWaterBoundary(float centerX, float centerZ, float radius, float height);
@@ -441,6 +477,8 @@ private:
 		float                 sourceMinZ;
 		float                 sourceMaxX;
 		float                 sourceMaxZ;
+		int                   gridX0;
+		int                   gridZ0;
 		int                   widthSamples;
 		int                   heightSamples;
 		std::vector<float>    heightData;
@@ -450,6 +488,7 @@ private:
 		bool                  hasCellMask;
 		
 		RegionClipboard() : sourceMinX(0), sourceMinZ(0), sourceMaxX(0), sourceMaxZ(0),
+		                    gridX0(0), gridZ0(0),
 		                    widthSamples(0), heightSamples(0), hasData(false), hasCellMask(false) {}
 	};
 	RegionClipboard           m_regionClipboard;

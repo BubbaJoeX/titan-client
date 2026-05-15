@@ -59,6 +59,14 @@ public:
 		TM_PlaceRibbon,
 		TM_PlaceRoad,
 		TM_PlaceEnvironment,
+		/// Closed polygon: marks tiles excluded (underground / no procedural mesh in volume).
+		TM_PlaceExcludeTerrain,
+		/// Closed polygon boundary layer (feather from environment zone feather if UI adds it later; default 0).
+		TM_PlaceBoundaryPolygon,
+		/// Open polyline boundary corridor (width from polyline width; min enforced in commit).
+		TM_PlaceBoundaryPolyline,
+		/// Same as boundary polyline but intended for wide road masks (defaults wider in TerrainDock).
+		TM_PlaceBoundaryPolyRoad,
 		TM_StampBitmap,
 		TM_Select,
 		TM_Count
@@ -90,6 +98,23 @@ public:
 		PEM_MovePoint,
 		PEM_DeletePoint,
 		PEM_InsertPoint
+	};
+
+	/// What finalizePolyline() should build (roads/ribbons vs boundary polylines).
+	enum PolylineCommitKind
+	{
+		PCK_RoadRibbon = 0,
+		PCK_BoundaryPolyline,
+		PCK_BoundaryPolyRoad
+	};
+
+	/// LMB polygon drawing for environment / exclude / boundary polygon tools.
+	enum PolygonDrawPurpose
+	{
+		PDP_None = 0,
+		PDP_EnvironmentZone,
+		PDP_ExcludeTerrain,
+		PDP_BoundaryPolygon
 	};
 
 	// Height modification entry (for undo and real-time modification)
@@ -174,6 +199,7 @@ public:
 		float featherDistance;
 		bool hasFixedHeights;
 		bool isRibbon;
+		PolylineCommitKind commitKind;
 		std::string name;
 	};
 
@@ -295,6 +321,8 @@ public:
 	void setWaterPlacementHeight(float height);
 	float getWaterPlacementHeight() const;
 	void setWaterPlacementShaderTemplate(char const* shaderTemplateName);
+	/// Ribbon water surface template basename (e.g. wter_river_water); used when committing ribbons.
+	void setRibbonWaterShaderTemplate(char const* shaderTemplateName);
 
 	/// Uses an axis-aligned square [center±halfExtent] clipped as a BoundaryRectangle water table (+ generator + rebuild client meshes).
 	void installLocalWaterTableAxisAligned(float centerWorldX, float centerWorldZ, float halfExtentSquare, float tableHeight);
@@ -315,8 +343,8 @@ public:
 		float circleCenterZ,
 		float circleRadius) const;
 
-	// Apply sampled heights over a rectangle (row-major nx*nz), with editor undo support.
-	// When cellMaskRowMajor is non-null, only entries with a non-zero mask byte receive new heights.
+	// Apply sampled heights (row-major nx*nz) with editor undo support. World cell (base+ix, base+iz) where
+	// baseX = floor(min(minX,maxX)), baseZ = floor(min(minZ,maxZ)). When cellMaskRowMajor is non-null, only non-zero mask cells are written.
 	bool applyRectangularHeightSamples(
 		float minX,
 		float minZ,
@@ -375,8 +403,8 @@ public:
 	void setPolylineEditMode(PolylineEditMode mode);
 	PolylineEditMode getPolylineEditMode() const;
 
-	// Start a new polyline for road or ribbon
-	void beginPolyline(bool isRibbon);
+	// Start a new polyline for road, ribbon, or boundary polyline tools
+	void beginPolyline(bool isRibbon, PolylineCommitKind commitKind = PCK_RoadRibbon);
 	void addPolylinePoint(float worldX, float worldZ, float height = 0.0f);
 	void movePolylinePoint(int pointIndex, float worldX, float worldZ, float height);
 	void deletePolylinePoint(int pointIndex);
@@ -416,6 +444,14 @@ public:
 	void finalizeEnvironmentZone();
 	void cancelEnvironmentZone();
 	bool isEnvironmentZoneActive() const;
+	/// True while placing points for environment zone, exclude terrain, or boundary polygon.
+	bool isPolygonDrawActive() const;
+
+	void beginPolygonDraw(PolygonDrawPurpose purpose);
+	void finalizePolygonDraw();
+	void cancelPolygonDraw();
+	/// Vertices collected for the active environment / exclude / boundary-polygon draw.
+	int getPolygonBoundaryPointCount() const;
 	void setEnvironmentFamily(int familyId);
 	int getEnvironmentFamily() const;
 
@@ -455,6 +491,9 @@ public:
 	bool createRoadFromPolyline(const char* name);
 	bool createRibbonFromPolyline(const char* name);
 	bool createEnvironmentZoneAffector(const char* name);
+	bool createTerrainExcludeFromPolygon(const char* name);
+	bool createBoundaryPolygonLayer(const char* name);
+	bool createBoundaryPolylineLayer(const char* name, float corridorWidth);
 
 	// Export all modifications to a new terrain layer
 	bool exportModificationsToLayer(const char* layerName);
@@ -642,9 +681,9 @@ private:
 	int m_selectedPolylinePoint;
 	Rectangle2d m_polylineExtent;
 
-	// Environment zone editing
+	// Environment zone editing (also stores points for exclude / boundary polygon draws)
 	EnvironmentZone m_activeEnvironmentZone;
-	bool m_environmentZoneActive;
+	PolygonDrawPurpose m_polygonDrawPurpose;
 	int m_environmentFamilyId;
 
 	// Bitmap stamp
@@ -656,6 +695,7 @@ private:
 
 	float m_waterPlacementHeight;
 	std::string m_waterPlacementShaderTemplate;
+	std::string m_ribbonWaterShaderTemplate;
 	float m_lastWaterDabTime;
 
 	// Track overall modified region for export
@@ -800,7 +840,17 @@ inline int GodClientTerrainEditor::getSelectedPolylinePoint() const
 
 inline bool GodClientTerrainEditor::isEnvironmentZoneActive() const
 {
-	return m_environmentZoneActive;
+	return m_polygonDrawPurpose == PDP_EnvironmentZone;
+}
+
+inline bool GodClientTerrainEditor::isPolygonDrawActive() const
+{
+	return m_polygonDrawPurpose != PDP_None;
+}
+
+inline int GodClientTerrainEditor::getPolygonBoundaryPointCount() const
+{
+	return static_cast<int>(m_activeEnvironmentZone.boundaryPoints.size());
 }
 
 inline int GodClientTerrainEditor::getEnvironmentFamily() const

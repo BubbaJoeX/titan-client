@@ -12,11 +12,14 @@
 #include "ActionHack.h"
 #include "ActionsGame.h"
 #include "GameWidget.h"
+#include "MainFrame.h"
+#include "TerrainDock.h"
 #include "clientGraphics/Graphics.h"
 #include "QLayout.h"
 
 #include <qlabel.h>
 #include <qpushbutton.h>
+#include <qtooltip.h>
 #include <qlcdnumber.h>
 
 // ======================================================================
@@ -45,8 +48,18 @@ GameWindow::GameWindow(QWidget *theParent, const char *theName)
 	IGNORE_RETURN(connect(m_gameButton, SIGNAL(toggled                     (bool)),  ga.gameFocusAllowed,  SLOT(doToggle (bool))));
 	IGNORE_RETURN(connect(m_gameWidget, SIGNAL(framesPerSecond             (int)),   m_fpsLCD,             SLOT(display                    (int))));
 	IGNORE_RETURN(connect(ga.gameFocusAllowed, SIGNAL(toggled              (bool)),  this,                 SLOT(onGameFocusAllowedChanged(bool))));
-	IGNORE_RETURN(connect(m_gameWidget, SIGNAL(cursorWorldPositionChanged  (float, float, float)),         SLOT(onCursorWorldPositionChanged(float, float, float))));
-	IGNORE_RETURN(connect(m_gameWidget, SIGNAL(buildoutRegionChanged       (const char *, const char *)),  SLOT(onBuildoutRegionChanged(const char *, const char *))));
+	IGNORE_RETURN(connect(m_gameWidget, SIGNAL(cursorWorldPositionChanged  (float, float, float)), this, SLOT(onCursorWorldPositionChanged(float, float, float))));
+	IGNORE_RETURN(connect(m_gameWidget, SIGNAL(buildoutRegionChanged       (const char *, const char *)), this, SLOT(onBuildoutRegionChanged(const char *, const char *))));
+
+	if (m_clearRegionTerrainToolsButton)
+	{
+		IGNORE_RETURN(connect(m_clearRegionTerrainToolsButton, SIGNAL(clicked()), this, SLOT(onClearRegionTerrainToolsClicked())));
+		QToolTip::add(m_clearRegionTerrainToolsButton, QString::fromLatin1(
+			"Clears region geometry tools and the world region marquee."));
+	}
+
+	if (m_terrainGameStatusPanel)
+		m_terrainGameStatusPanel->hide();
 }
 
 //-----------------------------------------------------------------
@@ -128,6 +141,41 @@ void GameWindow::onBuildoutRegionChanged(const char * planet, const char * build
 	char buf [128];
 	sprintf(buf, "Buildout Area: %s", buildout);
 	m_buildoutRegionLabel->setText(buf);
+}
+
+//-----------------------------------------------------------------
+
+void GameWindow::onTerrainGameWindowStatusChanged()
+{
+	TerrainDock* const td = MainFrame::getInstance().getTerrainDock();
+	if (!m_terrainGameStatusPanel)
+		return;
+
+	if (!td || !td->shouldShowTerrainGameWindowStatus())
+	{
+		m_terrainGameStatusPanel->hide();
+		return;
+	}
+
+	m_terrainGameStatusPanel->show();
+	if (m_terrainGameStatusLabel)
+		m_terrainGameStatusLabel->setText(td->terrainGameWindowStatusText());
+
+	if (m_clearRegionTerrainToolsButton)
+	{
+		bool const rr = td->hasRegionToolOrSelectionActive();
+		m_clearRegionTerrainToolsButton->setShown(rr);
+		m_clearRegionTerrainToolsButton->setEnabled(rr);
+	}
+}
+
+//-----------------------------------------------------------------
+
+void GameWindow::onClearRegionTerrainToolsClicked()
+{
+	TerrainDock* const td = MainFrame::getInstance().getTerrainDock();
+	if (td)
+		td->clearRegionGeometryAndSelection();
 }
 
 // ======================================================================
