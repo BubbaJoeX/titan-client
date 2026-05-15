@@ -61,7 +61,7 @@
             </rect>
         </property>
         <property name="text">
-            <string>Loading Titan Developer Client...</string>
+            <string>Starting SWG Editor</string>
         </property>
     </widget>
 </widget>

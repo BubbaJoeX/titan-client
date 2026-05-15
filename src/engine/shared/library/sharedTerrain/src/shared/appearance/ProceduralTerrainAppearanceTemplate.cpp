@@ -25,6 +25,7 @@
 
 #include <string>
 #include <vector>
+#include <cstring>
 
 //===================================================================
 
@@ -1202,7 +1203,7 @@ void ProceduralTerrainAppearanceTemplate::prepareWriterData(ProceduralTerrainApp
 	data.globalWaterTableShaderTemplateName   = m_globalWaterTableShaderTemplateName;
 	data.environmentCycleTime                 = m_environmentCycleTime;
 	data.collidableMinimumDistance            = m_collidableMinimumDistance;
-	data.collidableMaximumDistance            = m_nonCollidableMaximumDistance;
+	data.collidableMaximumDistance            = m_collidableMaximumDistance;
 	data.collidableTileSize                   = m_collidableTileSize;
 	data.collidableTileBorder                 = m_collidableTileBorder;
 	data.collidableSeed                       = m_collidableSeed;
@@ -1308,6 +1309,109 @@ void ProceduralTerrainAppearanceTemplate::write(Iff& iff, const ProceduralTerrai
 		iff.exitForm(TAG_0015);
 
 	iff.exitForm(TAG(P,T,A,T), false);
+}
+
+//===================================================================
+
+namespace
+{
+	void assignTemplateString(char*& dest, char const* src)
+	{
+		delete [] dest;
+		dest = 0;
+		if (src && src[0])
+		{
+			size_t const n = strlen(src) + 1;
+			dest = new char[n];
+			memcpy(dest, src, n);
+		}
+	}
+}
+
+void ProceduralTerrainAppearanceTemplate::setUseGlobalWaterTable(bool const enabled)
+{
+	m_useGlobalWaterTable = enabled;
+}
+
+void ProceduralTerrainAppearanceTemplate::setGlobalWaterTableHeight(float const height)
+{
+	m_globalWaterTableHeight = height;
+}
+
+void ProceduralTerrainAppearanceTemplate::setGlobalWaterTableShaderSize(float const shaderSize)
+{
+	m_globalWaterTableShaderSize = shaderSize;
+}
+
+void ProceduralTerrainAppearanceTemplate::setGlobalWaterTableShaderTemplateName(char const* shaderTemplateName)
+{
+	assignTemplateString(m_globalWaterTableShaderTemplateName, shaderTemplateName);
+}
+
+void ProceduralTerrainAppearanceTemplate::setEnvironmentCycleTime(float const seconds)
+{
+	m_environmentCycleTime = seconds;
+}
+
+void ProceduralTerrainAppearanceTemplate::setMapLayoutParameters(float const mapWidthInMeters, float const chunkWidthInMeters, int const numberOfTilesPerChunk)
+{
+	DEBUG_FATAL(mapWidthInMeters <= 0.f, ("mapWidthInMeters must be positive"));
+	DEBUG_FATAL(chunkWidthInMeters <= 0.f, ("chunkWidthInMeters must be positive"));
+	DEBUG_FATAL(numberOfTilesPerChunk < 1, ("numberOfTilesPerChunk must be >= 1"));
+
+	m_mapWidthInMeters = mapWidthInMeters;
+	m_chunkWidthInMeters = chunkWidthInMeters;
+	m_numberOfTilesPerChunk = numberOfTilesPerChunk;
+	m_tileWidthInMeters = m_chunkWidthInMeters / static_cast<float>(m_numberOfTilesPerChunk);
+
+	m_mapWidthInFlora = (m_floraTileWidthInMeters > 0.f)
+		? int(m_mapWidthInMeters / m_floraTileWidthInMeters)
+		: 0;
+
+	if (m_mapWidthInFlora <= 0)
+	{
+		_destroyStaticCollidableFloraMaps();
+	}
+	else if (!m_staticCollidableFloraMap || m_staticCollidableFloraMap->getWidth() != m_mapWidthInFlora)
+	{
+		_createDefaultStaticCollidableFloraMaps();
+	}
+}
+
+void ProceduralTerrainAppearanceTemplate::setCollidableFloraScatter(float minimumDistance, float maximumDistance, float tileSize, float tileBorder, uint32 seed)
+{
+	m_collidableMinimumDistance = minimumDistance;
+	m_collidableMaximumDistance = maximumDistance;
+	m_collidableTileSize = tileSize;
+	m_collidableTileBorder = tileBorder;
+	m_collidableSeed = seed;
+}
+
+void ProceduralTerrainAppearanceTemplate::setNonCollidableFloraScatter(float minimumDistance, float maximumDistance, float tileSize, float tileBorder, uint32 seed)
+{
+	m_nonCollidableMinimumDistance = minimumDistance;
+	m_nonCollidableMaximumDistance = maximumDistance;
+	m_nonCollidableTileSize = tileSize;
+	m_nonCollidableTileBorder = tileBorder;
+	m_nonCollidableSeed = seed;
+}
+
+void ProceduralTerrainAppearanceTemplate::setRadialFloraScatter(float minimumDistance, float maximumDistance, float tileSize, float tileBorder, uint32 seed)
+{
+	m_radialMinimumDistance = minimumDistance;
+	m_radialMaximumDistance = maximumDistance;
+	m_radialTileSize = tileSize;
+	m_radialTileBorder = tileBorder;
+	m_radialSeed = seed;
+}
+
+void ProceduralTerrainAppearanceTemplate::setFarRadialFloraScatter(float minimumDistance, float maximumDistance, float tileSize, float tileBorder, uint32 seed)
+{
+	m_farRadialMinimumDistance = minimumDistance;
+	m_farRadialMaximumDistance = maximumDistance;
+	m_farRadialTileSize = tileSize;
+	m_farRadialTileBorder = tileBorder;
+	m_farRadialSeed = seed;
 }
 
 //===================================================================

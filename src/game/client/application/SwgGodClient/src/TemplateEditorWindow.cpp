@@ -619,7 +619,8 @@ void TemplateEditorWindow::showAppearanceViewer(const std::string & appearancePa
 	const long rootH = root->GetHeight();
 	const long viewerW = 300;
 	const long viewerH = 300;
-	m_appearanceViewer->SetLocation(UIPoint(rootW - viewerW - 10, 10));
+	const long posY = (rootH > viewerH) ? (rootH - viewerH) / 2 : 10;
+	m_appearanceViewer->SetLocation(UIPoint(rootW - viewerW - 10, posY));
 	m_appearanceViewer->SetSize(UISize(viewerW, viewerH));
 
 	m_appearanceViewer->SetBackgroundColor(UIColor(0, 0, 0));

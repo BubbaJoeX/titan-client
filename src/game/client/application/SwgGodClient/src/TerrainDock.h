@@ -27,6 +27,7 @@ class ClientProceduralTerrainAppearance;
 class ProceduralTerrainAppearanceTemplate;
 class TerrainGenerator;
 class QListViewItem;
+class QResizeEvent;
 
 namespace MessageDispatch
 {
@@ -63,6 +64,7 @@ public:
 		TM_PlaceBoundaryPolyline,
 		TM_PlaceBoundaryPolyRoad,
 		TM_StampBitmap,
+		TM_ApplyEnvironmentRegion,
 		TM_Select,
 		TM_Count
 	};
@@ -130,6 +132,30 @@ public:
 	/// True while a rectangular world region is selected (Select Region / drag tool).
 	bool        hasTerrainWorldRegionSelection() const;
 
+	/// After editing `TerrainGenerator::EnvironmentGroup`, refresh the dock family combo (public for editor dialogs).
+	void        refreshEnvironmentFamilyComboFromGenerator();
+
+	/// After editing shader group fields, refresh scene shader list (public for editor dialogs).
+	void        refreshShaderGroupUiFromGenerator();
+
+	/// After editing flora group fields, refresh flora combo + editor brush (public for editor dialogs).
+	void        refreshFloraFamilyComboFromGenerator();
+
+	/// After editing radial group fields, refresh radial combo + editor brush (public for editor dialogs).
+	void        refreshRadialFamilyComboFromGenerator();
+
+	/// After editing bitmap stamp families, refresh bitmap combo (public for editor dialogs).
+	void        refreshBitmapStampComboFromGenerator();
+
+	/// If the bitmap stamp tool is using \a familyId, reload its cached height/shader samples from the generator.
+	void        reloadBitmapStampPreviewIfCurrentFamily(int familyId);
+
+	/// Mark the loaded .trn dirty after live `TerrainGenerator` edits from pop-out family dialogs.
+	void        markLiveTerrainModified();
+
+	/// Apply generator edits to the live procedural terrain (invalidate, water tables, layer list). Public for editor dialogs.
+	void        terrainGeneratorLiveCommit();
+
 	/// When a world region is selected, Edit menu copy/paste/cut can target terrain instead of objects.
 	bool        tryConsumeTerrainRegionCopyShortcut();
 	bool        tryConsumeTerrainRegionPasteShortcut();
@@ -164,11 +190,22 @@ public slots:
 	void onToolBoundaryPolyline();
 	void onToolBoundaryPolyRoad();
 	void onToolStampBitmap();
+	void onToolApplyEnvironmentRegion();
+	void onOpenEnvironmentEditor();
+	void onOpenShaderFamilyEditor();
+	void onOpenFloraFamilyEditor();
+	void onOpenRadialFamilyEditor();
+	void onOpenBitmapFamilyEditor();
+	void onApplyEnvironmentToRegion();
 	void onToolSelect();
 
 	// Brush parameter slots
 	void onBrushSizeChanged(int value);
 	void onBrushStrengthChanged(int value);
+	void onRaiseLowerSpeedChanged(int value);
+	void onRaiseLowerBiasChanged(int value);
+	void onRaiseLowerClickRateChanged(int value);
+	void onRaiseLowerJitterChanged(int value);
 	void onBrushShapeChanged(int index);
 	void onFalloffTypeChanged(int index);
 	void onBrushFeatherChanged(int value);
@@ -215,6 +252,10 @@ public slots:
 	void onClearTerrainScanFoldersClicked();
 	void onMergeGlobalShaderIntoSceneClicked();
 
+	/// When enabled, shader paint uses \ref m_shaderColorConstant* matched to the nearest scene family preview color.
+	void onShaderColorConstantToggled(bool enabled);
+	void onShaderColorConstantPickClicked();
+
 	// Region operations
 	void onSelectRegion();
 	void onCopyRegion();
@@ -224,6 +265,10 @@ public slots:
 	void onLoadRegionLay();
 	void onImportRegionLayAtCursor();
 	void onRegionShapeChanged(int index);
+	void onMapTemplateSettingsClicked();
+	void onAddProceduralHeightConstantLayer();
+	void onAddProceduralShaderConstantLayer();
+	void onAddProceduralExcludeFromRegion();
 
 	// TerrainGenerator layer list (live)
 	void onLayerToggleActive();
@@ -269,6 +314,12 @@ protected:
 
 	void showEvent(QShowEvent* event);
 	void hideEvent(QHideEvent* event);
+	void resizeEvent(QResizeEvent* event);
+
+private slots:
+
+	/// Runs after \ref Game::Messages::SCENE_CHANGED so terrain / scene pointers are stable.
+	void onDeferredRefreshAfterSceneChange();
 
 private:
 	// Nested type used by region / .lay helpers below; full definition is with member data.
@@ -282,7 +333,13 @@ private:
 	void initializeUI();
 	/// @param skipGlobalShaderCatalogScan if true, skips rebuildGlobalShaderCatalog (no recursive .trn load). Used when showing the dock to avoid AV from bad .trn on disk.
 	void refreshFromScene(bool skipGlobalShaderCatalogScan);
+	/// Before the old scene tears down procedural terrain: flush edits, prepare generator layers, and write the .trn if \ref m_terrainModified.
+	void tryAutoSaveTerrainBeforeSceneChange();
+	/// Flush live edits, run \ref TerrainGenerator::prepare, and write PTAT + generator + baked data to \a path.
+	bool writeCurrentTerrainTemplateToFile(std::string const& path, bool clearModifiedOnSuccess);
 	void updateMapParametersPanel();
+	void syncMapTemplateEditorWidgetsFromScene();
+
 	/// Region Operations: contextual copy for geometry tools; show/hide closed-polygon commit UI.
 	void updateRegionGeometryUi();
 	void populateLayerList();
@@ -301,9 +358,6 @@ private:
 	bool terrainDecodeLayFromFile(QString const& path, RegionClipboard& dest);
 	bool terrainApplyRegionClipboardAtOrigin(RegionClipboard const& clip, int gridX0, int gridZ0, bool postConsoleMessageOnSuccess);
 
-	/// Rebuild procedural terrain after generator layer order/active/name edits.
-	void terrainGeneratorLiveCommit();
-
 	void syncRegionSelectionToEditor();
 	int  selectedLayerListIndex() const;
 	/// Row in \ref m_layerList -> actual `TerrainGenerator::getLayer` index (rows omit null slots).
@@ -316,11 +370,20 @@ private:
 	void populateEnvironmentFamilyCombo();
 	void populateBitmapStampCombo();
 
+	bool tryApplyEnvironmentAffectorToCurrentRegion(bool promptFeather);
+	void updateEnvironmentAuthoringControls();
+
+	/// If the selected shader family id is missing from the live terrain ShaderGroup, reset to the first family (or 0).
+	void clampSelectedShaderFamilyToLiveTerrain();
+
 	void updateToolButtonStates();
 	void updateUndoRedoState();
 
 	/// Push current dock tool + brush parameters into GodClientTerrainEditor (on tool change and before painting).
 	void syncGodClientEditorBrushSettings();
+
+	/// Enable Raise/Lower-only tuning widgets; full width layout polish lives in \ref initializeUI.
+	void updateRaiseLowerTuneUi();
 
 	// Terrain modification helpers
 	void applyBrushToTerrain(float worldX, float worldZ);
@@ -329,6 +392,9 @@ private:
 	void flattenHeightAtPoint(float worldX, float worldZ, float targetHeight);
 	void addNoiseAtPoint(float worldX, float worldZ);
 	void paintShaderAtPoint(float worldX, float worldZ, int shaderFamilyId);
+	int resolveShaderFamilyIdForColorPaint(uint8 r, uint8 g, uint8 b) const;
+	int currentShaderPaintFamilyId() const;
+	void updateShaderColorConstantControls();
 	void placeFloraAtPoint(float worldX, float worldZ, int floraFamily);
 
 	/// Copies catalog family + children (.sht template list) onto the scene generator when painting from Global shaders,
@@ -395,6 +461,10 @@ private:
 	FalloffType               m_falloffType;
 	float                     m_brushSize;
 	float                     m_brushStrength;
+	float                     m_raiseLowerSpeed;
+	float                     m_raiseLowerBias;
+	float                     m_raiseLowerClickRate;
+	float                     m_raiseLowerJitter;
 	float                     m_brushFeather;
 	float                     m_setHeightTarget;
 	float                     m_noiseAmplitude;
@@ -412,6 +482,13 @@ private:
 
 	// Selected shader for painting
 	int                       m_selectedShaderFamilyId;
+
+	// Shader paint: match picked RGB to nearest scene family preview color (TerrainEditor-style color axis).
+	bool                      m_shaderColorConstantPaintEnabled;
+	bool                      m_shaderColorConstantPickValid;
+	uint8                     m_shaderColorConstantR;
+	uint8                     m_shaderColorConstantG;
+	uint8                     m_shaderColorConstantB;
 
 	// Flora settings
 	bool                      m_floraCollidable;

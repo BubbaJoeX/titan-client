@@ -1058,6 +1058,12 @@ for /r "D:\titan\client\src\compile\win32" %%f in (*_r.dll) do copy /Y "%%f" "D:
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
     </ClCompile>
+    <ClCompile Include="..\..\src\GodClientTheme.cpp">
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+    </ClCompile>
     <ClCompile Include="..\..\src\GodClientIoWin.cpp">
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
@@ -1186,6 +1192,36 @@ for /r "D:\titan\client\src\compile\win32" %%f in (*_r.dll) do copy /Y "%%f" "D:
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
     </ClCompile>
     <ClCompile Include="..\..\src\TerrainDock.cpp">
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="..\..\src\EnvironmentEditorWindow.cpp">
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="..\..\src\ShaderFamilyEditorWindow.cpp">
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="..\..\src\FloraFamilyEditorWindow.cpp">
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="..\..\src\RadialFamilyEditorWindow.cpp">
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="..\..\src\BitmapFamilyEditorWindow.cpp">
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
@@ -1632,6 +1668,7 @@ for /r "D:\titan\client\src\compile\win32" %%f in (*_r.dll) do copy /Y "%%f" "D:
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
     </CustomBuild>
     <ClInclude Include="..\..\src\GodClientData.h" />
+    <ClInclude Include="..\..\src\GodClientTheme.h" />
     <ClInclude Include="..\..\src\GodClientIoWin.h" />
     <ClInclude Include="..\..\src\GodClientPerforce.h" />
     <ClInclude Include="..\..\src\GodClientPerforceUser.h" />
@@ -1776,6 +1813,61 @@ for /r "D:\titan\client\src\compile\win32" %%f in (*_r.dll) do copy /Y "%%f" "D:
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
     </CustomBuild>
     <CustomBuild Include="..\..\src\TerrainDock.h">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="..\..\src\EnvironmentEditorWindow.h">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="..\..\src\ShaderFamilyEditorWindow.h">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="..\..\src\FloraFamilyEditorWindow.h">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="..\..\src\RadialFamilyEditorWindow.h">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="..\..\src\BitmapFamilyEditorWindow.h">
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">moc %(Filename)</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>

@@ -70,6 +70,19 @@ public:
 	uint32                  getFarRadialSeed () const;
 	float                   getTileWidthInMeters () const;
 
+	/// Live-edit (God Client): mutates in-memory template; use Save .trn to persist. Some fields (global water rendering) may require reloading the terrain appearance to see immediately.
+	void                    setUseGlobalWaterTable(bool enabled);
+	void                    setGlobalWaterTableHeight(float height);
+	void                    setGlobalWaterTableShaderSize(float shaderSize);
+	void                    setGlobalWaterTableShaderTemplateName(char const* shaderTemplateName);
+	void                    setEnvironmentCycleTime(float seconds);
+	/// God Client: changes world extent / chunking; may reset static collidable flora maps to match new \ref getMapWidthInFlora. Requires full terrain reload to refresh client meshes.
+	void                    setMapLayoutParameters(float mapWidthInMeters, float chunkWidthInMeters, int numberOfTilesPerChunk);
+	void                    setCollidableFloraScatter(float minimumDistance, float maximumDistance, float tileSize, float tileBorder, uint32 seed);
+	void                    setNonCollidableFloraScatter(float minimumDistance, float maximumDistance, float tileSize, float tileBorder, uint32 seed);
+	void                    setRadialFloraScatter(float minimumDistance, float maximumDistance, float tileSize, float tileBorder, uint32 seed);
+	void                    setFarRadialFloraScatter(float minimumDistance, float maximumDistance, float tileSize, float tileBorder, uint32 seed);
+
 	bool                    getLegacyMap() const { return m_legacyMap; }
 	bool                    getLegacyMode() const { return m_legacyMode; }
 

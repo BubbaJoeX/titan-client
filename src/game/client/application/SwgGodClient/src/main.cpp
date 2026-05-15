@@ -25,7 +25,7 @@ int main(int argc, char ** argv)
 	// SubSystem is Windows + qtmain: no console is attached, so printf / stdout are invisible.
 	if (AllocConsole())
 	{
-		(void)SetConsoleTitleA("SwgGodClient (Debug console)");
+		(void)SetConsoleTitleA("SWG Editor (Debug console)");
 		FILE * out = nullptr;
 		FILE * err = nullptr;
 		(void)freopen_s(&out, "CONOUT$", "w", stdout);
@@ -46,9 +46,9 @@ int main(int argc, char ** argv)
 	QApplication::flush();
  
 	//get the main window ready
-	MainFrame mainFrame (0, "SWG GOD CLIENT");
+	MainFrame mainFrame (0, "SWG Editor");
 	application.setMainWidget(&mainFrame);
-	mainFrame.setCaption ("SWG God Client");
+	mainFrame.setCaption ("SWG Editor");
 	mainFrame.resize (screen.width () - 64, screen.height () - 64);
 	mainFrame.move (0,0);
 	mainFrame.showMaximized();

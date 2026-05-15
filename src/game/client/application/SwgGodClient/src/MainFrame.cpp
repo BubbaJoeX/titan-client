@@ -36,6 +36,7 @@
 #include "GameWidget.h"
 #include "GameWindow.h"
 #include "GodClientData.h"
+#include "GodClientTheme.h"
 #include "GodClientPerforce.h"
 #include "GroupObjectWindow.h"
 #include "ModificationHistory.h"
@@ -986,6 +987,12 @@ QWorkspace* MainFrame::getWorkspace() const
 // ======================================================================
 
 HWND GodClientApplication::m_gameHWND = 0;
+
+GodClientApplication::GodClientApplication(int& argc, char** argv)
+: QApplication(argc, argv)
+{
+	GodClientTheme::applyOledToApplication(this);
+}
 
 bool GodClientApplication::winEventFilter(MSG* msg)
 {

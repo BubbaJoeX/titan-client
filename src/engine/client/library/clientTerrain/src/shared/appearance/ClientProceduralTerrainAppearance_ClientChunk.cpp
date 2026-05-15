@@ -25,6 +25,7 @@
 #include "sharedCollision/CollisionInfo.h"
 #include "sharedFoundation/PointerDeleter.h"
 #include "sharedMath/IndexedTriangleList.h"
+#include "sharedMath/Vector.h"
 #include "sharedFoundation/MemoryBlockManager.h"
 #include "sharedObject/Object.h"
 #include "sharedObject/ObjectTemplate.h"
@@ -1128,10 +1129,31 @@ void ClientProceduralTerrainAppearance::ClientChunk::render () const
 bool ClientProceduralTerrainAppearance::ClientChunk::findStaticNonCollidableFlora (float positionX, float positionZ, StaticFloraData& data, bool& floraAllowed) const
 {
 	NOT_NULL (floraStaticNonCollidableMap);
-	FloraGroup::Info groupInfo;
-	if (!_findStaticFlora (*floraStaticNonCollidableMap, positionX, positionZ, groupInfo, floraAllowed))
+	Vector const pos3(positionX, 0.f, positionZ);
+	if (isExcluded(pos3))
 		return false;
-	applyGodClientFloraModifier(positionX, positionZ, groupInfo);
+
+	FloraGroup::Info groupInfo;
+	bool const baseHadFlora = _findStaticFlora (*floraStaticNonCollidableMap, positionX, positionZ, groupInfo, floraAllowed);
+
+	int fid = baseHadFlora ? groupInfo.getFamilyId() : 0;
+	float density = 0.f;
+	bool const overlayPaint = CityTerrainLayerManager::getModifiedFlora(positionX, positionZ, fid, fid, density);
+	if (overlayPaint)
+	{
+		groupInfo.setFamilyId(fid);
+		const float c = std::max(0.f, std::min(1.f, density));
+		groupInfo.setChildChoice(c);
+		floraAllowed = true;
+	}
+	else if (baseHadFlora)
+	{
+		applyGodClientFloraModifier(positionX, positionZ, groupInfo);
+	}
+
+	if (!baseHadFlora && !overlayPaint)
+		return false;
+
 	_makeStaticFloraData(data, groupInfo);
 	return true;
 }

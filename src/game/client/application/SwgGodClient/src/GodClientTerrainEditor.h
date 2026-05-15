@@ -241,6 +241,20 @@ public:
 	void setBrushStrength(float strength);
 	float getBrushStrength() const;
 
+	float getRaiseLowerSpeed() const;
+	float getRaiseLowerBias() const;
+	float getRaiseLowerClickRate() const;
+	float getRaiseLowerJitter() const;
+
+	/// Raise/Lower: meters applied at brush center per dab (before falloff / bias / jitter).
+	void setRaiseLowerSpeed(float metersPerDab);
+	/// -1 favors valleys, +1 favors peaks (relative to brush-area average height).
+	void setRaiseLowerBias(float bias);
+	/// Multiplier on click throttle when not stroke-painting (1 = default ~80Hz cap).
+	void setRaiseLowerClickRate(float multiplier);
+	/// 0..1 random scale variation per dab (requires Random::install).
+	void setRaiseLowerJitter(float jitter);
+
 	void setBrushShape(BrushShape shape);
 	BrushShape getBrushShape() const;
 
@@ -498,6 +512,14 @@ public:
 	// Export all modifications to a new terrain layer
 	bool exportModificationsToLayer(const char* layerName);
 
+	/// TerrainEditor-style procedural layers (full-map boundary uses planet map width).
+	bool addFullMapHeightConstantLayer(float height, float featherDistance, char const* optionalLayerNameBase = 0);
+	bool addFullMapShaderConstantLayer(int shaderFamilyId, float featherDistance, char const* optionalLayerNameBase = 0);
+	bool addExcludeLayerForRectangle(Rectangle2d const& rectXZ, float featherDistance, char const* optionalLayerNameBase = 0);
+
+	/// Append a procedural layer that paints environment inside the current region selection (rectangle or circle).
+	bool addEnvironmentAffectorForCurrentRegionSelection(int familyId, float featherDistance);
+
 	// Import/export polyline data
 	bool exportPolylineToFile(const char* filename) const;
 	bool importPolylineFromFile(const char* filename);
@@ -516,8 +538,8 @@ private:
 	GodClientTerrainEditor& operator=(const GodClientTerrainEditor&);
 
 	// Internal modification functions
-	void modifyHeightRaise(float worldX, float worldZ, float strength);
-	void modifyHeightLower(float worldX, float worldZ, float strength);
+	void modifyHeightRaise(float worldX, float worldZ);
+	void modifyHeightLower(float worldX, float worldZ);
 	void modifyHeightFlatten(float worldX, float worldZ, float targetHeight, float strength);
 	void modifyHeightSmooth(float worldX, float worldZ, float strength);
 	void modifyHeightNoise(float worldX, float worldZ, float amplitude, float frequency);
@@ -588,6 +610,10 @@ private:
 	float m_brushFeather;
 	float m_brushSize;
 	float m_brushStrength;
+	float m_raiseLowerSpeed;
+	float m_raiseLowerBias;
+	float m_raiseLowerClickRate;
+	float m_raiseLowerJitter;
 	float m_targetHeight;
 	float m_noiseAmplitude;
 	float m_noiseFrequency;
@@ -721,6 +747,26 @@ inline float GodClientTerrainEditor::getBrushSize() const
 inline float GodClientTerrainEditor::getBrushStrength() const
 {
 	return m_brushStrength;
+}
+
+inline float GodClientTerrainEditor::getRaiseLowerSpeed() const
+{
+	return m_raiseLowerSpeed;
+}
+
+inline float GodClientTerrainEditor::getRaiseLowerBias() const
+{
+	return m_raiseLowerBias;
+}
+
+inline float GodClientTerrainEditor::getRaiseLowerClickRate() const
+{
+	return m_raiseLowerClickRate;
+}
+
+inline float GodClientTerrainEditor::getRaiseLowerJitter() const
+{
+	return m_raiseLowerJitter;
 }
 
 inline GodClientTerrainEditor::BrushShape GodClientTerrainEditor::getBrushShape() const

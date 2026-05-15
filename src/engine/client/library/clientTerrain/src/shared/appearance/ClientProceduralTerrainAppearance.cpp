@@ -1592,18 +1592,25 @@ bool ClientProceduralTerrainAppearance::findStaticCollidableFlora (const Vector&
 	if (!chunk)
 		return false;
 
-	FloraGroup::Info groupInfo;
-	if (!chunk->findStaticCollidableFlora (position, groupInfo, floraAllowed))
+	if (chunk->isExcluded(position))
 		return false;
 
-	int fid = groupInfo.getFamilyId();
+	FloraGroup::Info groupInfo;
+	bool const baseHadFlora = chunk->findStaticCollidableFlora (position, groupInfo, floraAllowed);
+
+	int fid = baseHadFlora ? groupInfo.getFamilyId() : 0;
 	float density = 0.f;
-	if (CityTerrainLayerManager::getModifiedFlora(position.x, position.z, fid, fid, density))
+	bool const overlayPaint = CityTerrainLayerManager::getModifiedFlora(position.x, position.z, fid, fid, density);
+	if (overlayPaint)
 	{
 		groupInfo.setFamilyId(fid);
 		const float c = std::max(0.f, std::min(1.f, density));
 		groupInfo.setChildChoice(c);
+		floraAllowed = true;
 	}
+
+	if (!baseHadFlora && !overlayPaint)
+		return false;
 
 	FloraGroup const & floraGroup = getFloraGroup();
 	if (!floraGroup.hasFamily(groupInfo.getFamilyId()))

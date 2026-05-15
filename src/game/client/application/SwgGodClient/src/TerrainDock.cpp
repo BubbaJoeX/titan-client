@@ -36,6 +36,7 @@
 #include "clientGraphics/Graphics.h"
 
 #include "sharedMath/Rectangle2d.h"
+#include "sharedMath/PackedRgb.h"
 #include "sharedMath/VectorArgb.h"
 #include "sharedMath/Transform.h"
 #include "sharedCollision/CollisionInfo.h"
@@ -45,6 +46,11 @@
 
 #include "GodClientData.h"
 #include "GodClientTerrainEditor.h"
+#include "EnvironmentEditorWindow.h"
+#include "ShaderFamilyEditorWindow.h"
+#include "FloraFamilyEditorWindow.h"
+#include "RadialFamilyEditorWindow.h"
+#include "BitmapFamilyEditorWindow.h"
 #include "MainFrame.h"
 #include "GameWidget.h"
 #include "ConsoleWindow.h"
@@ -60,6 +66,8 @@
 #include <qspinbox.h>
 #include <qcombobox.h>
 #include <qcheckbox.h>
+#include <qcolor.h>
+#include <qcolordialog.h>
 #include <qlabel.h>
 #include <qlineedit.h>
 #include <qtabwidget.h>
@@ -71,8 +79,7 @@
 #include <qfile.h>
 #include <qfileinfo.h>
 #include <qsettings.h>
-
-#include <cmath>
+#include <qtimer.h>
 #if defined(_MSC_VER)
 #include <windows.h>
 #endif
@@ -84,10 +91,150 @@
 #include <string>
 #include <vector>
 
+#include <qdialog.h>
+#include <qlayout.h>
+#include <qobject.h>
+#include <qobjectlist.h>
+#include <qsizepolicy.h>
+#include <qevent.h>
+
 // ======================================================================
 
 namespace
 {
+	class MapTemplateSettingsDialog : public QDialog
+	{
+	public:
+		MapTemplateSettingsDialog(QWidget* parent, ProceduralTerrainAppearanceTemplate const* tpl)
+		: QDialog(parent, "MapTemplateSettingsDialog", true)
+		{
+			setCaption("Map size & template");
+
+			QVBoxLayout* const outer = new QVBoxLayout(this, 8, 6);
+			NOT_NULL(outer);
+
+			QLabel* const warn = new QLabel(
+				"Changing map width, chunk width, or tiles per chunk can reset static collidable flora maps to empty grids.\n"
+				"OK writes the current .trn to disk and reloads the terrain appearance.",
+				this);
+			warn->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+			outer->addWidget(warn);
+
+			QGridLayout* const grid = new QGridLayout(9, 2, 6);
+			NOT_NULL(grid);
+
+			int row = 0;
+			grid->addWidget(new QLabel("Map width (meters)", this), row, 0);
+			m_mapWidthEdit = new QLineEdit(this);
+			grid->addWidget(m_mapWidthEdit, row++, 1);
+
+			grid->addWidget(new QLabel("Chunk width (meters)", this), row, 0);
+			m_chunkWidthEdit = new QLineEdit(this);
+			grid->addWidget(m_chunkWidthEdit, row++, 1);
+
+			grid->addWidget(new QLabel("Tiles per chunk", this), row, 0);
+			m_tilesPerChunkSpin = new QSpinBox(this);
+			m_tilesPerChunkSpin->setMinValue(1);
+			m_tilesPerChunkSpin->setMaxValue(256);
+			grid->addWidget(m_tilesPerChunkSpin, row++, 1);
+
+			m_globalWaterCheck = new QCheckBox("Use global water table", this);
+			grid->addMultiCellWidget(m_globalWaterCheck, row, row, 0, 1);
+			++row;
+
+			grid->addWidget(new QLabel("Global water height (m)", this), row, 0);
+			m_waterHeightEdit = new QLineEdit(this);
+			grid->addWidget(m_waterHeightEdit, row++, 1);
+
+			grid->addWidget(new QLabel("Global water shader size", this), row, 0);
+			m_waterShaderSizeEdit = new QLineEdit(this);
+			grid->addWidget(m_waterShaderSizeEdit, row++, 1);
+
+			grid->addWidget(new QLabel("Environment cycle (seconds)", this), row, 0);
+			m_envCycleEdit = new QLineEdit(this);
+			grid->addWidget(m_envCycleEdit, row++, 1);
+
+			outer->addLayout(grid);
+
+			QHBoxLayout* const buttons = new QHBoxLayout(6);
+			NOT_NULL(buttons);
+			QPushButton* const okButton = new QPushButton("OK", this);
+			QPushButton* const cancelButton = new QPushButton("Cancel", this);
+			buttons->addStretch(1);
+			buttons->addWidget(okButton);
+			buttons->addWidget(cancelButton);
+			outer->addLayout(buttons);
+
+			IGNORE_RETURN(connect(okButton, SIGNAL(clicked()), this, SLOT(accept())));
+			IGNORE_RETURN(connect(cancelButton, SIGNAL(clicked()), this, SLOT(reject())));
+
+			if (tpl)
+			{
+				char buf[128];
+				snprintf(buf, sizeof(buf), "%.2f", tpl->getMapWidthInMeters());
+				m_mapWidthEdit->setText(QString::fromLatin1(buf));
+				snprintf(buf, sizeof(buf), "%.2f", tpl->getChunkWidthInMeters());
+				m_chunkWidthEdit->setText(QString::fromLatin1(buf));
+				m_tilesPerChunkSpin->setValue(tpl->getNumberOfTilesPerChunk());
+				m_globalWaterCheck->setChecked(tpl->getUseGlobalWaterTable());
+				snprintf(buf, sizeof(buf), "%.2f", tpl->getGlobalWaterTableHeight());
+				m_waterHeightEdit->setText(QString::fromLatin1(buf));
+				snprintf(buf, sizeof(buf), "%.2f", tpl->getGlobalWaterTableShaderSize());
+				m_waterShaderSizeEdit->setText(QString::fromLatin1(buf));
+				snprintf(buf, sizeof(buf), "%.2f", tpl->getEnvironmentCycleTime());
+				m_envCycleEdit->setText(QString::fromLatin1(buf));
+			}
+		}
+
+		bool readValues(
+			float& mapW,
+			float& chunkW,
+			int& tiles,
+			bool& useGlobalWater,
+			float& waterH,
+			float& waterShaderSize,
+			float& envCycle) const
+		{
+			mapW = 0.f;
+			chunkW = 0.f;
+			tiles = 1;
+			useGlobalWater = false;
+			waterH = 0.f;
+			waterShaderSize = 0.f;
+			envCycle = 0.f;
+
+			if (!m_mapWidthEdit || sscanf(m_mapWidthEdit->text().latin1(), "%f", &mapW) != 1 || mapW <= 0.f)
+				return false;
+			if (!m_chunkWidthEdit || sscanf(m_chunkWidthEdit->text().latin1(), "%f", &chunkW) != 1 || chunkW <= 0.f)
+				return false;
+			if (!m_tilesPerChunkSpin)
+				return false;
+			tiles = m_tilesPerChunkSpin->value();
+			if (tiles < 1)
+				return false;
+
+			useGlobalWater = m_globalWaterCheck && m_globalWaterCheck->isChecked();
+
+			if (!m_waterHeightEdit || sscanf(m_waterHeightEdit->text().latin1(), "%f", &waterH) != 1)
+				return false;
+			if (!m_waterShaderSizeEdit || sscanf(m_waterShaderSizeEdit->text().latin1(), "%f", &waterShaderSize) != 1)
+				return false;
+			if (!m_envCycleEdit || sscanf(m_envCycleEdit->text().latin1(), "%f", &envCycle) != 1 || envCycle <= 0.f)
+				return false;
+
+			return true;
+		}
+
+	private:
+		QLineEdit*  m_mapWidthEdit;
+		QLineEdit*  m_chunkWidthEdit;
+		QSpinBox*   m_tilesPerChunkSpin;
+		QCheckBox*  m_globalWaterCheck;
+		QLineEdit*  m_waterHeightEdit;
+		QLineEdit*  m_waterShaderSizeEdit;
+		QLineEdit*  m_envCycleEdit;
+	};
+
 	void installTerrainRegionTooltips(
 		QPushButton* exclude,
 		QPushButton* mask,
@@ -98,21 +245,90 @@ namespace
 	{
 		if (exclude)
 			QToolTip::add(exclude, QString::fromLatin1(
-				"Closed loop: click corners in the 3D view. Need 3+, then Create. Interior skips procedural mesh."));
+				"Exclude terrain: closed loop, click corners in the 3D view. Need 3+ corners, then Create. Interior skips procedural mesh."));
 		if (mask)
 			QToolTip::add(mask, QString::fromLatin1(
-				"Same as Exclude, but adds a BoundaryPolygon mask for child affectors."));
+				"Boundary mask: same loop workflow as exclude, but adds a BoundaryPolygon mask for child affectors."));
 		if (path)
 			QToolTip::add(path, QString::fromLatin1(
-				"Open polyline: ordered clicks. Finish on Advanced, Roads / Ribbons."));
+				"Boundary path: open polyline with ordered clicks. Finish on Advanced, Roads / Ribbons."));
 		if (corridor)
 			QToolTip::add(corridor, QString::fromLatin1(
-				"Wide corridor; finish on Advanced, Roads / Ribbons."));
+				"Boundary corridor: wide polyline corridor; finish on Advanced, Roads / Ribbons."));
 		if (loopGroup)
 			QToolTip::add(loopGroup, QString::fromLatin1(
 				"Exclude / mask: Create commits the loop; Discard cancels."));
 		if (discard)
 			QToolTip::add(discard, QString::fromLatin1("Discard the in-progress loop."));
+	}
+
+	void installRegionOperationsTooltips(
+		QPushButton* selectRegion,
+		QPushButton* copyRegion,
+		QPushButton* pasteRegion,
+		QPushButton* fillRegion,
+		QPushButton* saveLay,
+		QPushButton* loadLay,
+		QPushButton* importLay,
+		QLabel* regionShapeLabel,
+		QComboBox* regionShapeCombo,
+		QLabel* mapSummaryLabel)
+	{
+		if (selectRegion)
+			QToolTip::add(selectRegion, QString::fromLatin1(
+				"Toggle region selection: drag in the 3D view to set rectangle or circle bounds."));
+		if (copyRegion)
+			QToolTip::add(copyRegion, QString::fromLatin1(
+				"Copy region heights to the clipboard (one meter height cells; circle selection uses a mask)."));
+		if (pasteRegion)
+			QToolTip::add(pasteRegion, QString::fromLatin1(
+				"Paste clipboard heights anchored to the floor of the current region minimum corner."));
+		if (fillRegion)
+			QToolTip::add(fillRegion, QString::fromLatin1(
+				"Fill the selected region using the active height tool or shader paint mode."));
+		if (saveLay)
+			QToolTip::add(saveLay, QString::fromLatin1(
+				"Save the clipboard region heights (and mask) to a .lay file on disk."));
+		if (loadLay)
+			QToolTip::add(loadLay, QString::fromLatin1(
+				"Load a .lay file into the region clipboard for Paste or inspection."));
+		if (importLay)
+			QToolTip::add(importLay, QString::fromLatin1(
+				"Import a .lay file and apply heights at the terrain editor cursor (floor of cursor X/Z)."));
+		if (regionShapeLabel)
+			QToolTip::add(regionShapeLabel, QString::fromLatin1(
+				"Region selection shape: rectangle uses opposite corners; circle uses center and radius."));
+		if (regionShapeCombo)
+			QToolTip::add(regionShapeCombo, QString::fromLatin1(
+				"Rectangle: axis-aligned min/max. Circle: distance from center with feather at the edge."));
+		if (mapSummaryLabel)
+			QToolTip::add(mapSummaryLabel, QString::fromLatin1(
+				"Map width, chunk width, tiles per chunk, derived tile width, and number of loaded chunks."));
+	}
+
+	void installMapTemplateEditorTooltips(
+		QLabel* hint,
+		QPushButton* mapSettings,
+		QPushButton* addHeightConst,
+		QPushButton* addShaderConst,
+		QPushButton* addExcludeRegion)
+	{
+		if (hint)
+			QToolTip::add(hint, QString::fromLatin1(
+				"Map size, global water, and environment cycle: open Map Parameters (dialog). OK saves the .trn and reloads terrain.\n"
+				"Buttons below: Height Constant and Shader Constant add full-map procedural layers; exclude uses the current region."));
+		if (mapSettings)
+			QToolTip::add(mapSettings, QString::fromLatin1(
+				"Map Parameters: edit map width, chunk width, tiles per chunk, global water height/shader size, and environment cycle. OK saves the .trn and reloads the terrain."));
+		if (addHeightConst)
+			QToolTip::add(addHeightConst, QString::fromLatin1(
+				"Height Constant: append a full-map generator layer using AffectorHeightConstant (prompts for height in meters)."));
+		if (addShaderConst)
+			QToolTip::add(addShaderConst, QString::fromLatin1(
+				"Shader Constant: append a full-map layer with AffectorShaderConstant using the shader family currently selected on the Shaders tab."));
+		if (addExcludeRegion)
+			QToolTip::add(addExcludeRegion, QString::fromLatin1(
+				"Append an AffectorExclude layer for the current region rectangle (prompts for boundary feather in meters)."));
 	}
 }
 
@@ -286,9 +502,6 @@ namespace
 		if (!famCount)
 			return;
 
-		QFileInfo const fiPath(fileCanon);
-		QString const terrainLabel(fiPath.baseName());
-
 		for (int fi = 0; fi < famCount; ++fi)
 		{
 			int const familyId(sg.getFamilyId(fi));
@@ -308,7 +521,7 @@ namespace
 			QString idTxt;
 			idTxt.sprintf("%d", familyId);
 
-			new QListViewItem(globalShaderList, idTxt, primaryShaderName, terrainLabel, fileCanon);
+			new QListViewItem(globalShaderList, idTxt, primaryShaderName, fileCanon);
 		}
 	}
 
@@ -381,6 +594,20 @@ namespace
 		return true;
 	}
 
+	int terrainDockFindDstShaderFamilyMatchingChildren(ShaderGroup const& src, int const srcFamilyId, ShaderGroup const& dst)
+	{
+		if (!src.hasFamily(srcFamilyId))
+			return -1;
+		int const n = dst.getNumberOfFamilies();
+		for (int i = 0; i < n; ++i)
+		{
+			int const dstFid = dst.getFamilyId(i);
+			if (terrainDockShaderFamilyChildrenMatch(src, dst, srcFamilyId, dstFid))
+				return dstFid;
+		}
+		return -1;
+	}
+
 	int terrainDockFindUnusedTerrainShaderFamilyId(ShaderGroup const& sg)
 	{
 		bool used[256];
@@ -393,7 +620,7 @@ namespace
 			if (fid >= 0 && fid < 256)
 				used[fid] = true;
 		}
-		for (int trial = 1; trial < 256; ++trial)
+		for (int trial = 0; trial < 256; ++trial)
 		{
 			if (!used[trial])
 				return trial;
@@ -492,6 +719,41 @@ namespace
 		return true;
 	}
 
+	float raiseLowerSpeedFromSlider(int const sliderValue)
+	{
+		int const v = std::max(1, std::min(200, sliderValue));
+		return 0.01f + (static_cast<float>(v - 1) / 199.f) * (4.0f - 0.01f);
+	}
+
+	void polishTerrainDockWideControls(QWidget* w)
+	{
+		if (!w)
+			return;
+		if (w->inherits("QPushButton"))
+			w->setSizePolicy(QSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Minimum));
+		else if (w->inherits("QComboBox") || w->inherits("QLineEdit"))
+			w->setSizePolicy(QSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed));
+		else if (w->inherits("QCheckBox"))
+			w->setSizePolicy(QSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed));
+		else if (w->inherits("QListView"))
+			w->setSizePolicy(QSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Expanding));
+		else if (w->inherits("QTabWidget"))
+			w->setSizePolicy(QSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Expanding));
+
+		QObjectList const* const kids = w->children();
+		if (kids)
+		{
+			QObjectListIt it(*kids);
+			QObject* o = 0;
+			while ((o = it.current()) != 0)
+			{
+				++it;
+				if (o->isWidgetType())
+					polishTerrainDockWideControls(static_cast<QWidget*>(o));
+			}
+		}
+	}
+
 	// Qt 3 uic wires the scrolled document as a direct child of QScrollView.
 	// QScrollView requires the widget to live under viewport() and be registered
 	// with addChild(); otherwise children paint but the scrolled area stays empty.
@@ -528,11 +790,16 @@ namespace
 		if (h <= 0)
 			h = 1;
 
-		const int vw = scrollView->visibleWidth();
-		if (vw > 0 && w < vw)
-			w = vw;
+		int const kMaxTerrainDockContentWidth = 525;
+		int const vw = scrollView->visibleWidth();
+		// Match document width to the viewport so controls do not sit under the vertical scrollbar.
+		if (vw > 0)
+			w = std::min(kMaxTerrainDockContentWidth, vw);
+		else
+			w = std::min(kMaxTerrainDockContentWidth, w);
 
 		scrollView->resizeContents(w, h);
+		documentWidget->resize(w, h);
 		scrollView->updateScrollBars();
 	}
 }
@@ -547,6 +814,10 @@ TerrainDock::TerrainDock(QWidget* parent, const char* name)
   m_falloffType(FT_Smooth),
   m_brushSize(DEFAULT_BRUSH_SIZE),
   m_brushStrength(DEFAULT_BRUSH_STRENGTH),
+  m_raiseLowerSpeed(0.25f),
+  m_raiseLowerBias(0.f),
+  m_raiseLowerClickRate(1.f),
+  m_raiseLowerJitter(0.f),
   m_brushFeather(1.0f),
   m_setHeightTarget(0.0f),
   m_noiseAmplitude(DEFAULT_NOISE_AMPLITUDE),
@@ -557,6 +828,11 @@ TerrainDock::TerrainDock(QWidget* parent, const char* name)
   m_floraDensity(50),
   m_radialGroupIndex(0),
   m_selectedShaderFamilyId(0),
+  m_shaderColorConstantPaintEnabled(false),
+  m_shaderColorConstantPickValid(false),
+  m_shaderColorConstantR(128),
+  m_shaderColorConstantG(128),
+  m_shaderColorConstantB(128),
   m_floraCollidable(false),
   m_polylineWidth(8.0f),
   m_polylineFeather(4.0f),
@@ -605,6 +881,8 @@ TerrainDock::TerrainDock(QWidget* parent, const char* name)
 	initializeUI();
 	loadTerrainShaderScanRootsFromSettings();
 
+	setMaximumWidth(525);
+
 	wireQt3ScrollViewDocument(m_scrollAreaContents, m_contentScrollView);
 	resizeQt3ScrollViewToContents(m_scrollAreaContents, m_contentScrollView);
 	
@@ -646,6 +924,22 @@ void TerrainDock::initializeUI()
 	// Connect paint/place tool buttons
 	if (m_toolPaintShader)
 		IGNORE_RETURN(connect(m_toolPaintShader, SIGNAL(clicked()), this, SLOT(onToolPaintShader())));
+	if (m_shaderColorConstantCheck)
+	{
+		IGNORE_RETURN(connect(m_shaderColorConstantCheck, SIGNAL(toggled(bool)), this, SLOT(onShaderColorConstantToggled(bool))));
+		QToolTip::add(
+			m_shaderColorConstantCheck,
+			QString::fromLatin1(
+				"When on, shader paint uses the picked RGB matched to the nearest scene shader family preview color.\n"
+				"Disabled while painting from the global catalog (use scene shader list)."));
+	}
+	if (m_shaderColorPickButton)
+	{
+		IGNORE_RETURN(connect(m_shaderColorPickButton, SIGNAL(clicked()), this, SLOT(onShaderColorConstantPickClicked())));
+		QToolTip::add(
+			m_shaderColorPickButton,
+			QString::fromLatin1("Choose a color; painting applies the closest shader family by preview RGB."));
+	}
 	if (m_toolPaintFlora)
 		IGNORE_RETURN(connect(m_toolPaintFlora, SIGNAL(clicked()), this, SLOT(onToolPaintFlora())));
 	if (m_toolPlaceWater)
@@ -664,6 +958,19 @@ void TerrainDock::initializeUI()
 		IGNORE_RETURN(connect(m_falloffCombo, SIGNAL(activated(int)), this, SLOT(onFalloffTypeChanged(int))));
 	if (m_brushFeatherSlider)
 		IGNORE_RETURN(connect(m_brushFeatherSlider, SIGNAL(valueChanged(int)), this, SLOT(onBrushFeatherChanged(int))));
+
+	if (m_raiseLowerSpeedSlider)
+		IGNORE_RETURN(connect(m_raiseLowerSpeedSlider, SIGNAL(valueChanged(int)), this, SLOT(onRaiseLowerSpeedChanged(int))));
+	if (m_raiseLowerBiasSlider)
+		IGNORE_RETURN(connect(m_raiseLowerBiasSlider, SIGNAL(valueChanged(int)), this, SLOT(onRaiseLowerBiasChanged(int))));
+	if (m_raiseLowerClickSlider)
+		IGNORE_RETURN(connect(m_raiseLowerClickSlider, SIGNAL(valueChanged(int)), this, SLOT(onRaiseLowerClickRateChanged(int))));
+	if (m_raiseLowerJitterSlider)
+		IGNORE_RETURN(connect(m_raiseLowerJitterSlider, SIGNAL(valueChanged(int)), this, SLOT(onRaiseLowerJitterChanged(int))));
+
+	if (m_strengthLabel)
+		QToolTip::add(m_strengthLabel, QString::fromLatin1(
+			"Blend strength for Flatten, Smooth, Noise, and shader/flora paint. Raise and Lower use Speed in the Raise/Lower tuning group instead."));
 	
 	// Connect file operation buttons
 	if (m_loadButton)
@@ -705,6 +1012,13 @@ void TerrainDock::initializeUI()
 		IGNORE_RETURN(connect(m_shaderList, SIGNAL(selectionChanged(QListViewItem*)), this, SLOT(onShaderSelectionChanged(QListViewItem*))));
 		m_shaderList->setSorting(-1);
 	}
+	if (m_openShaderFamilyEditorButton)
+	{
+		IGNORE_RETURN(connect(m_openShaderFamilyEditorButton, SIGNAL(clicked()), this, SLOT(onOpenShaderFamilyEditor())));
+		QToolTip::add(
+			m_openShaderFamilyEditorButton,
+			QString::fromLatin1("Inspect shader children and edit surface properties, feather clamp, and preview color."));
+	}
 	if (m_globalShaderList)
 	{
 		IGNORE_RETURN(connect(m_globalShaderList, SIGNAL(selectionChanged(QListViewItem*)), this, SLOT(onGlobalShaderSelectionChanged(QListViewItem*))));
@@ -730,8 +1044,22 @@ void TerrainDock::initializeUI()
 	// Connect flora/radial controls
 	if (m_floraFamilyCombo)
 		IGNORE_RETURN(connect(m_floraFamilyCombo, SIGNAL(activated(int)), this, SLOT(onFloraFamilyChanged(int))));
+	if (m_openFloraFamilyEditorButton)
+	{
+		IGNORE_RETURN(connect(m_openFloraFamilyEditorButton, SIGNAL(clicked()), this, SLOT(onOpenFloraFamilyEditor())));
+		QToolTip::add(
+			m_openFloraFamilyEditorButton,
+			QString::fromLatin1("Inspect flora children and edit density, floating placement, and preview color."));
+	}
 	if (m_radialGroupCombo)
 		IGNORE_RETURN(connect(m_radialGroupCombo, SIGNAL(activated(int)), this, SLOT(onRadialGroupChanged(int))));
+	if (m_openRadialFamilyEditorButton)
+	{
+		IGNORE_RETURN(connect(m_openRadialFamilyEditorButton, SIGNAL(clicked()), this, SLOT(onOpenRadialFamilyEditor())));
+		QToolTip::add(
+			m_openRadialFamilyEditorButton,
+			QString::fromLatin1("Inspect radial children and edit density and preview color."));
+	}
 	
 	// Connect region operation buttons
 	if (m_selectRegionButton)
@@ -742,6 +1070,14 @@ void TerrainDock::initializeUI()
 		IGNORE_RETURN(connect(m_pasteRegionButton, SIGNAL(clicked()), this, SLOT(onPasteRegion())));
 	if (m_fillRegionButton)
 		IGNORE_RETURN(connect(m_fillRegionButton, SIGNAL(clicked()), this, SLOT(onFillRegion())));
+	if (m_mapTemplateSettingsButton)
+		IGNORE_RETURN(connect(m_mapTemplateSettingsButton, SIGNAL(clicked()), this, SLOT(onMapTemplateSettingsClicked())));
+	if (m_addProcHeightConstButton)
+		IGNORE_RETURN(connect(m_addProcHeightConstButton, SIGNAL(clicked()), this, SLOT(onAddProceduralHeightConstantLayer())));
+	if (m_addProcShaderConstButton)
+		IGNORE_RETURN(connect(m_addProcShaderConstButton, SIGNAL(clicked()), this, SLOT(onAddProceduralShaderConstantLayer())));
+	if (m_addProcExcludeRegionButton)
+		IGNORE_RETURN(connect(m_addProcExcludeRegionButton, SIGNAL(clicked()), this, SLOT(onAddProceduralExcludeFromRegion())));
 	if (m_saveRegionLayButton)
 		IGNORE_RETURN(connect(m_saveRegionLayButton, SIGNAL(clicked()), this, SLOT(onSaveRegionLay())));
 	if (m_loadRegionLayButton)
@@ -790,6 +1126,30 @@ void TerrainDock::initializeUI()
 		IGNORE_RETURN(connect(m_toolPlaceEnvironment, SIGNAL(clicked()), this, SLOT(onToolPlaceEnvironment())));
 	if (m_environmentFamilyCombo)
 		IGNORE_RETURN(connect(m_environmentFamilyCombo, SIGNAL(activated(int)), this, SLOT(onEnvironmentFamilyChanged(int))));
+	if (m_toolApplyEnvironmentRegion)
+	{
+		IGNORE_RETURN(connect(m_toolApplyEnvironmentRegion, SIGNAL(clicked()), this, SLOT(onToolApplyEnvironmentRegion())));
+		QToolTip::add(
+			m_toolApplyEnvironmentRegion,
+			QString::fromLatin1(
+				"When on: left-click in the terrain view applies the selected environment family to the current region (8m feather).\n"
+				"Use Fill Region for a feather prompt, or the Apply environment to region button."));
+	}
+	if (m_openEnvironmentEditorButton)
+	{
+		IGNORE_RETURN(connect(m_openEnvironmentEditorButton, SIGNAL(clicked()), this, SLOT(onOpenEnvironmentEditor())));
+		QToolTip::add(
+			m_openEnvironmentEditorButton,
+			QString::fromLatin1("Edit environment family names, colors, and feather clamps for the live terrain generator."));
+	}
+	if (m_applyEnvironmentToRegionButton)
+	{
+		IGNORE_RETURN(connect(m_applyEnvironmentToRegionButton, SIGNAL(clicked()), this, SLOT(onApplyEnvironmentToRegion())));
+		QToolTip::add(
+			m_applyEnvironmentToRegionButton,
+			QString::fromLatin1(
+				"Adds a procedural layer (rectangle or circle boundary + environment affector) for the current region and selected family. Prompts for boundary feather."));
+	}
 	if (m_envZoneFinishButton)
 		IGNORE_RETURN(connect(m_envZoneFinishButton, SIGNAL(clicked()), this, SLOT(onFinalizePolygonDraw())));
 	if (m_envZoneCancelButton)
@@ -814,12 +1174,38 @@ void TerrainDock::initializeUI()
 		m_toolBoundaryPolyRoad,
 		m_regionPolygonCommitGroup,
 		m_regionPolyCancelButton);
+
+	installRegionOperationsTooltips(
+		m_selectRegionButton,
+		m_copyRegionButton,
+		m_pasteRegionButton,
+		m_fillRegionButton,
+		m_saveRegionLayButton,
+		m_loadRegionLayButton,
+		m_importRegionLayAtCursorButton,
+		m_regionShapeLabel,
+		m_regionShapeCombo,
+		m_mapParametersLabel);
+
+	installMapTemplateEditorTooltips(
+		m_mapTemplateHintLabel,
+		m_mapTemplateSettingsButton,
+		m_addProcHeightConstButton,
+		m_addProcShaderConstButton,
+		m_addProcExcludeRegionButton);
 	
 	// Connect bitmap stamp controls
 	if (m_toolStampBitmap)
 		IGNORE_RETURN(connect(m_toolStampBitmap, SIGNAL(clicked()), this, SLOT(onToolStampBitmap())));
 	if (m_bitmapStampCombo)
 		IGNORE_RETURN(connect(m_bitmapStampCombo, SIGNAL(activated(int)), this, SLOT(onBitmapStampSelected(int))));
+	if (m_openBitmapFamilyEditorButton)
+	{
+		IGNORE_RETURN(connect(m_openBitmapFamilyEditorButton, SIGNAL(clicked()), this, SLOT(onOpenBitmapFamilyEditor())));
+		QToolTip::add(
+			m_openBitmapFamilyEditorButton,
+			QString::fromLatin1("Rename bitmap stamp families and reload terrain/<basename>.tga height maps."));
+	}
 	if (m_bitmapRotationSlider)
 		IGNORE_RETURN(connect(m_bitmapRotationSlider, SIGNAL(valueChanged(int)), this, SLOT(onBitmapRotationChanged(int))));
 	if (m_bitmapScaleSlider)
@@ -828,12 +1214,24 @@ void TerrainDock::initializeUI()
 		IGNORE_RETURN(connect(m_bitmapAffectsHeightCheck, SIGNAL(toggled(bool)), this, SLOT(onBitmapAffectsHeightToggled(bool))));
 	if (m_bitmapAffectsShaderCheck)
 		IGNORE_RETURN(connect(m_bitmapAffectsShaderCheck, SIGNAL(toggled(bool)), this, SLOT(onBitmapAffectsShaderToggled(bool))));
+
+	if (m_scrollAreaContents)
+		polishTerrainDockWideControls(m_scrollAreaContents);
 	
 	updateToolButtonStates();
 	updateUndoRedoState();
 	if (m_brushFeatherSlider)
 		onBrushFeatherChanged(m_brushFeatherSlider->value());
+	if (m_raiseLowerSpeedSlider)
+		onRaiseLowerSpeedChanged(m_raiseLowerSpeedSlider->value());
+	if (m_raiseLowerBiasSlider)
+		onRaiseLowerBiasChanged(m_raiseLowerBiasSlider->value());
+	if (m_raiseLowerClickSlider)
+		onRaiseLowerClickRateChanged(m_raiseLowerClickSlider->value());
+	if (m_raiseLowerJitterSlider)
+		onRaiseLowerJitterChanged(m_raiseLowerJitterSlider->value());
 	updateRegionGeometryUi();
+	resizeQt3ScrollViewToContents(m_scrollAreaContents, m_contentScrollView);
 }
 
 // ----------------------------------------------------------------------
@@ -843,9 +1241,10 @@ void TerrainDock::receiveMessage(const MessageDispatch::Emitter&, const MessageD
 	if (message.isType(Game::Messages::SCENE_CHANGED))
 	{
 		m_terrainCacheValid = false;
-		// Never scan/load arbitrary .trn files on scene change; that can AV on bad assets.
-		// User refreshes the dock (Refresh) or uses "Rescan..." for the global shader catalog.
-		refreshFromScene(true);
+		tryAutoSaveTerrainBeforeSceneChange();
+		clearRegionGeometryAndSelection();
+		IGNORE_RETURN(QTimer::singleShot(0, this, SLOT(onDeferredRefreshAfterSceneChange())));
+		return;
 	}
 	else if (message.isType(GodClientData::Messages::SELECTION_CHANGED))
 	{
@@ -870,6 +1269,14 @@ void TerrainDock::showEvent(QShowEvent* event)
 void TerrainDock::hideEvent(QHideEvent* event)
 {
 	BaseTerrainDock::hideEvent(event);
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::resizeEvent(QResizeEvent* event)
+{
+	BaseTerrainDock::resizeEvent(event);
+	resizeQt3ScrollViewToContents(m_scrollAreaContents, m_contentScrollView);
 }
 
 // ----------------------------------------------------------------------
@@ -941,12 +1348,17 @@ void TerrainDock::syncGodClientEditorBrushSettings()
 		case TM_PlaceBoundaryPolyline: editorMode = GodClientTerrainEditor::TM_PlaceBoundaryPolyline; break;
 		case TM_PlaceBoundaryPolyRoad: editorMode = GodClientTerrainEditor::TM_PlaceBoundaryPolyRoad; break;
 		case TM_StampBitmap: editorMode = GodClientTerrainEditor::TM_StampBitmap; break;
+		case TM_ApplyEnvironmentRegion: editorMode = GodClientTerrainEditor::TM_None; break;
 		default:             editorMode = GodClientTerrainEditor::TM_None; break;
 	}
 
 	editor.setToolMode(editorMode);
 	editor.setBrushSize(m_brushSize);
 	editor.setBrushStrength(m_brushStrength);
+	editor.setRaiseLowerSpeed(m_raiseLowerSpeed);
+	editor.setRaiseLowerBias(m_raiseLowerBias);
+	editor.setRaiseLowerClickRate(m_raiseLowerClickRate);
+	editor.setRaiseLowerJitter(m_raiseLowerJitter);
 	editor.setBrushShape(static_cast<GodClientTerrainEditor::BrushShape>(m_brushShape));
 	editor.setFalloffType(static_cast<GodClientTerrainEditor::FalloffType>(m_falloffType));
 	editor.setBrushFeather(m_brushFeather);
@@ -954,11 +1366,13 @@ void TerrainDock::syncGodClientEditorBrushSettings()
 	editor.setNoiseAmplitude(m_noiseAmplitude);
 	editor.setNoiseFrequency(m_noiseFrequency);
 
-	if (hasActiveTerrain() && m_globalShaderPaintingSelection &&
+	if (hasActiveTerrain() &&
 		(editorMode == GodClientTerrainEditor::TM_PaintShader ||
 		 editorMode == GodClientTerrainEditor::TM_StampBitmap))
 	{
-		IGNORE_RETURN(ensureLiveTerrainShaderFamilyForPaint(m_selectedShaderFamilyId, m_savedGlobalPickTrnCanon));
+		QString const catalogPath = m_globalShaderPaintingSelection ? m_savedGlobalPickTrnCanon : QString();
+		if (!ensureLiveTerrainShaderFamilyForPaint(m_selectedShaderFamilyId, catalogPath))
+			clampSelectedShaderFamilyToLiveTerrain();
 	}
 
 	editor.setSelectedShaderFamily(m_selectedShaderFamilyId);
@@ -1020,6 +1434,8 @@ void TerrainDock::updateToolButtonStates()
 		m_toolPlaceRoad->setOn(m_toolMode == TM_PlaceRoad);
 	if (m_toolPlaceEnvironment)
 		m_toolPlaceEnvironment->setOn(m_toolMode == TM_PlaceEnvironment);
+	if (m_toolApplyEnvironmentRegion)
+		m_toolApplyEnvironmentRegion->setOn(m_toolMode == TM_ApplyEnvironmentRegion);
 	if (m_toolExcludeTerrain)
 		m_toolExcludeTerrain->setOn(m_toolMode == TM_PlaceExcludeTerrain);
 	if (m_toolBoundaryPolygon)
@@ -1030,6 +1446,17 @@ void TerrainDock::updateToolButtonStates()
 		m_toolBoundaryPolyRoad->setOn(m_toolMode == TM_PlaceBoundaryPolyRoad);
 	if (m_toolStampBitmap)
 		m_toolStampBitmap->setOn(m_toolMode == TM_StampBitmap);
+
+	updateRaiseLowerTuneUi();
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::updateRaiseLowerTuneUi()
+{
+	bool const enableRaiseLower = (m_toolMode == TM_Raise || m_toolMode == TM_Lower);
+	if (m_raiseLowerTuneGroup)
+		m_raiseLowerTuneGroup->setEnabled(enableRaiseLower);
 }
 
 // ----------------------------------------------------------------------
@@ -1219,6 +1646,166 @@ void TerrainDock::onToolSelect()
 	setToolMode(m_toolMode == TM_Select ? TM_None : TM_Select);
 }
 
+// ----------------------------------------------------------------------
+
+void TerrainDock::onToolApplyEnvironmentRegion()
+{
+	setToolMode(m_toolMode == TM_ApplyEnvironmentRegion ? TM_None : TM_ApplyEnvironmentRegion);
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::onOpenEnvironmentEditor()
+{
+	if (!hasActiveTerrain())
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Environment", "Load procedural terrain first."));
+		return;
+	}
+	EnvironmentEditorWindow::showSingleton(this);
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::onOpenShaderFamilyEditor()
+{
+	if (!hasActiveTerrain())
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Shader families", "Load procedural terrain first."));
+		return;
+	}
+	ShaderFamilyEditorWindow::showSingleton(this);
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::onOpenFloraFamilyEditor()
+{
+	if (!hasActiveTerrain())
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Flora families", "Load procedural terrain first."));
+		return;
+	}
+	FloraFamilyEditorWindow::showSingleton(this);
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::onOpenRadialFamilyEditor()
+{
+	if (!hasActiveTerrain())
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Radial families", "Load procedural terrain first."));
+		return;
+	}
+	RadialFamilyEditorWindow::showSingleton(this);
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::onOpenBitmapFamilyEditor()
+{
+	if (!hasActiveTerrain())
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Bitmap families", "Load procedural terrain first."));
+		return;
+	}
+	BitmapFamilyEditorWindow::showSingleton(this);
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::onApplyEnvironmentToRegion()
+{
+	(void)tryApplyEnvironmentAffectorToCurrentRegion(true);
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::updateEnvironmentAuthoringControls()
+{
+	bool const terrainOk = GodClientTerrainEditor::isInstalled() && hasActiveTerrain();
+	if (m_openEnvironmentEditorButton)
+		m_openEnvironmentEditorButton->setEnabled(terrainOk);
+	if (m_openShaderFamilyEditorButton)
+		m_openShaderFamilyEditorButton->setEnabled(terrainOk);
+	if (m_openFloraFamilyEditorButton)
+		m_openFloraFamilyEditorButton->setEnabled(terrainOk);
+	if (m_openRadialFamilyEditorButton)
+		m_openRadialFamilyEditorButton->setEnabled(terrainOk);
+	if (m_openBitmapFamilyEditorButton)
+		m_openBitmapFamilyEditorButton->setEnabled(terrainOk);
+
+	bool const canApply = terrainOk && m_hasRegionSelection && !m_environmentFamilyIds.empty();
+	if (m_applyEnvironmentToRegionButton)
+		m_applyEnvironmentToRegionButton->setEnabled(canApply);
+}
+
+// ----------------------------------------------------------------------
+
+bool TerrainDock::tryApplyEnvironmentAffectorToCurrentRegion(bool promptFeather)
+{
+	if (!GodClientTerrainEditor::isInstalled())
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Environment", "Terrain editor is not ready."));
+		return false;
+	}
+
+	if (!m_hasRegionSelection)
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Environment", "Select a region first."));
+		return false;
+	}
+
+	TerrainGenerator* const gen = GodClientTerrainEditor::getInstance().getTerrainGenerator();
+	if (!gen)
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Environment", "No terrain generator."));
+		return false;
+	}
+
+	int envFid = 0;
+	int const eci = m_environmentFamilyCombo ? m_environmentFamilyCombo->currentItem() : 0;
+	if (eci >= 0 && eci < static_cast<int>(m_environmentFamilyIds.size()))
+		envFid = m_environmentFamilyIds[static_cast<size_t>(eci)];
+
+	if (!gen->getEnvironmentGroup().hasFamily(envFid))
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Environment", "Choose a valid environment family."));
+		return false;
+	}
+
+	float feather = 8.f;
+	if (promptFeather)
+	{
+		bool ok = false;
+		feather = static_cast<float>(QInputDialog::getDouble(
+			tr("Environment"),
+			tr("Boundary feather (meters):"),
+			8.0,
+			0.0,
+			4096.0,
+			2,
+			&ok,
+			this));
+		if (!ok)
+			return false;
+	}
+
+	syncGodClientEditorBrushSettings();
+	if (!GodClientTerrainEditor::getInstance().addEnvironmentAffectorForCurrentRegionSelection(envFid, feather))
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Environment", "Could not add environment layer (region too small?)."));
+		return false;
+	}
+
+	m_terrainModified = true;
+	updateUndoRedoState();
+	populateLayerList();
+	MainFrame::getInstance().textToConsole("Added environment affector for current region.");
+	return true;
+}
+
 // ======================================================================
 // Brush Parameter Slots
 // ======================================================================
@@ -1275,6 +1862,69 @@ void TerrainDock::onBrushFeatherChanged(int value)
 	}
 	if (GodClientTerrainEditor::isInstalled())
 		GodClientTerrainEditor::getInstance().setBrushFeather(m_brushFeather);
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::onRaiseLowerSpeedChanged(int value)
+{
+	m_raiseLowerSpeed = raiseLowerSpeedFromSlider(value);
+	if (m_raiseLowerSpeedValue)
+	{
+		QString t;
+		t.sprintf("%.2fm", static_cast<double>(m_raiseLowerSpeed));
+		m_raiseLowerSpeedValue->setText(t);
+	}
+	if (GodClientTerrainEditor::isInstalled())
+		GodClientTerrainEditor::getInstance().setRaiseLowerSpeed(m_raiseLowerSpeed);
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::onRaiseLowerBiasChanged(int value)
+{
+	m_raiseLowerBias = static_cast<float>(value) / 100.f;
+	if (m_raiseLowerBiasValue)
+	{
+		if (value <= -15)
+			m_raiseLowerBiasValue->setText(QString::fromLatin1("Valleys"));
+		else if (value >= 15)
+			m_raiseLowerBiasValue->setText(QString::fromLatin1("Peaks"));
+		else
+			m_raiseLowerBiasValue->setText(QString::fromLatin1("Center"));
+	}
+	if (GodClientTerrainEditor::isInstalled())
+		GodClientTerrainEditor::getInstance().setRaiseLowerBias(m_raiseLowerBias);
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::onRaiseLowerClickRateChanged(int value)
+{
+	m_raiseLowerClickRate = static_cast<float>(value) / 100.f;
+	if (m_raiseLowerClickValue)
+	{
+		QString t;
+		t.sprintf("%d%%", value);
+		m_raiseLowerClickValue->setText(t);
+	}
+	if (GodClientTerrainEditor::isInstalled())
+		GodClientTerrainEditor::getInstance().setRaiseLowerClickRate(m_raiseLowerClickRate);
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::onRaiseLowerJitterChanged(int value)
+{
+	m_raiseLowerJitter = static_cast<float>(value) / 100.f;
+	if (m_raiseLowerJitterValue)
+	{
+		QString t;
+		t.sprintf("%d%%", value);
+		m_raiseLowerJitterValue->setText(t);
+	}
+	if (GodClientTerrainEditor::isInstalled())
+		GodClientTerrainEditor::getInstance().setRaiseLowerJitter(m_raiseLowerJitter);
 }
 
 // ======================================================================
@@ -1355,28 +2005,16 @@ void TerrainDock::onSaveTerrain()
 		return;
 	}
 	
-	ProceduralTerrainAppearanceTemplate* terrainTemplate = getTerrainTemplate();
-	if (!terrainTemplate)
+	if (!getTerrainTemplate())
 	{
 		IGNORE_RETURN(QMessageBox::warning(this, "Save Error", "No terrain loaded to save."));
 		return;
 	}
 	
-	Iff iff(1024 * 1024);
-	
-	ProceduralTerrainAppearanceTemplate::WriterData writerData;
-	terrainTemplate->prepareWriterData(writerData);
-	ProceduralTerrainAppearanceTemplate::write(iff, writerData);
-	
-	if (iff.write(m_terrainFilePath.c_str(), true))
-	{
-		m_terrainModified = false;
+	if (writeCurrentTerrainTemplateToFile(m_terrainFilePath, true))
 		MainFrame::getInstance().textToConsole("Terrain saved successfully.");
-	}
 	else
-	{
 		IGNORE_RETURN(QMessageBox::critical(this, "Save Error", "Failed to write terrain file."));
-	}
 }
 
 void TerrainDock::onSaveTerrainAs()
@@ -1397,6 +2035,77 @@ void TerrainDock::onSaveTerrainAs()
 		m_terrainFileLabel->setText(filename);
 	
 	onSaveTerrain();
+}
+
+bool TerrainDock::writeCurrentTerrainTemplateToFile(std::string const& path, bool const clearModifiedOnSuccess)
+{
+	if (path.empty())
+		return false;
+
+	ProceduralTerrainAppearanceTemplate* const terrainTemplate = getTerrainTemplate();
+	if (!terrainTemplate)
+		return false;
+
+	if (GodClientTerrainEditor::isInstalled())
+		GodClientTerrainEditor::getInstance().flushTerrainChanges();
+
+	if (TerrainGenerator* const gen = getTerrainGenerator())
+		gen->prepare();
+
+	Iff iff(1024 * 1024);
+	ProceduralTerrainAppearanceTemplate::WriterData writerData;
+	terrainTemplate->prepareWriterData(writerData);
+	ProceduralTerrainAppearanceTemplate::write(iff, writerData);
+
+	if (!iff.write(path.c_str(), true))
+		return false;
+
+	if (clearModifiedOnSuccess)
+		m_terrainModified = false;
+
+	return true;
+}
+
+void TerrainDock::tryAutoSaveTerrainBeforeSceneChange()
+{
+	if (!m_terrainModified)
+		return;
+
+	if (Game::getScene() != 0)
+		return;
+
+	if (!getTerrainTemplate())
+		return;
+
+	std::string path = m_terrainFilePath;
+	if (path.empty())
+	{
+		char const* const templateName = getTerrainTemplate()->getName();
+		if (templateName && templateName[0])
+			path = templateName;
+	}
+
+	if (path.empty())
+	{
+		MainFrame::getInstance().textToConsole("Terrain: unsaved edits were not auto-saved (no .trn path). Use Save As.");
+		return;
+	}
+
+	if (writeCurrentTerrainTemplateToFile(path, true))
+	{
+		m_terrainFilePath = path;
+		if (m_terrainFileLabel)
+			m_terrainFileLabel->setText(QString::fromLatin1(path.c_str()));
+		MainFrame::getInstance().textToConsole("Terrain auto-saved before scene change.");
+		updateUndoRedoState();
+	}
+	else
+		MainFrame::getInstance().textToConsole("Terrain auto-save failed before scene change (disk write error).");
+}
+
+void TerrainDock::onDeferredRefreshAfterSceneChange()
+{
+	refreshFromScene(true);
 }
 
 void TerrainDock::onReloadTerrain()
@@ -1667,6 +2376,7 @@ void TerrainDock::refreshFromScene(bool const skipGlobalShaderCatalogScan)
 			syncGlobalShaderCatalog();
 		syncGodClientEditorBrushSettings();
 		updateMapParametersPanel();
+		syncMapTemplateEditorWidgetsFromScene();
 		updateRegionGeometryUi();
 
 		resizeQt3ScrollViewToContents(m_scrollAreaContents, m_contentScrollView);
@@ -1676,6 +2386,14 @@ void TerrainDock::refreshFromScene(bool const skipGlobalShaderCatalogScan)
 	const char* name = terrainTemplate->getName();
 	if (name)
 	{
+		if (!m_terrainFilePath.empty())
+		{
+			QString const oldCanon(terrainDockCanonFromStdTerrainPath(m_terrainFilePath));
+			QString const incomingCanon(terrainDockCanonFromPathQString(QString::fromLatin1(name)));
+			if (!oldCanon.isEmpty() && !incomingCanon.isEmpty() && oldCanon != incomingCanon)
+				m_terrainModified = false;
+		}
+
 		m_terrainFilePath = name;
 		if (m_terrainFileLabel)
 			m_terrainFileLabel->setText(name);
@@ -1697,9 +2415,33 @@ void TerrainDock::refreshFromScene(bool const skipGlobalShaderCatalogScan)
 
 	syncGodClientEditorBrushSettings();
 	updateMapParametersPanel();
+	syncMapTemplateEditorWidgetsFromScene();
 	updateRegionGeometryUi();
 
 	resizeQt3ScrollViewToContents(m_scrollAreaContents, m_contentScrollView);
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::syncMapTemplateEditorWidgetsFromScene()
+{
+	if (!m_mapTemplateSettingsButton)
+		return;
+
+	ProceduralTerrainAppearanceTemplate* const tpl = getTerrainTemplate();
+	if (!tpl)
+	{
+		if (m_mapTemplateEditorGroup)
+			m_mapTemplateEditorGroup->setEnabled(false);
+		if (m_mapTemplateSettingsButton)
+			m_mapTemplateSettingsButton->setEnabled(false);
+		return;
+	}
+
+	if (m_mapTemplateEditorGroup)
+		m_mapTemplateEditorGroup->setEnabled(true);
+	if (m_mapTemplateSettingsButton)
+		m_mapTemplateSettingsButton->setEnabled(true);
 }
 
 // ----------------------------------------------------------------------
@@ -1783,6 +2525,8 @@ void TerrainDock::updateRegionGeometryUi()
 	if (m_regionPolyCancelButton)
 		m_regionPolyCancelButton->setEnabled(showClosedCommit);
 
+	updateEnvironmentAuthoringControls();
+
 	emit terrainGameWindowStatusChanged();
 }
 
@@ -1805,6 +2549,7 @@ bool TerrainDock::hasRegionToolOrSelectionActive() const
 	case TM_PlaceBoundaryPolygon:
 	case TM_PlaceBoundaryPolyline:
 	case TM_PlaceBoundaryPolyRoad:
+	case TM_ApplyEnvironmentRegion:
 	case TM_Select:
 		return true;
 	default:
@@ -1879,6 +2624,9 @@ QString TerrainDock::terrainGameWindowStatusText() const
 		break;
 	case TM_StampBitmap:
 		toolLine = QString::fromLatin1("Stamp");
+		break;
+	case TM_ApplyEnvironmentRegion:
+		toolLine = QString::fromLatin1("Env+region");
 		break;
 	case TM_Select:
 		toolLine = QString::fromLatin1("Select");
@@ -2075,6 +2823,13 @@ void TerrainDock::terrainGeneratorLiveCommit()
 	}
 
 	populateLayerList();
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::markLiveTerrainModified()
+{
+	m_terrainModified = true;
 }
 
 // ----------------------------------------------------------------------
@@ -2328,7 +3083,7 @@ void TerrainDock::syncGlobalShaderCatalog()
 			if (!rowOk || fid != m_savedGlobalPickFamilyId)
 				continue;
 
-			QString const canonPath(terrainDockCanonFromPathQString(it->text(3)));
+			QString const canonPath(terrainDockCanonFromPathQString(it->text(2)));
 			if (canonPath != m_savedGlobalPickTrnCanon)
 				continue;
 
@@ -2490,10 +3245,20 @@ void TerrainDock::onGlobalShaderSelectionChanged(QListViewItem* item)
 
 	m_selectedShaderFamilyId = familyId;
 	m_savedGlobalPickFamilyId = familyId;
-	m_savedGlobalPickTrnCanon = terrainDockCanonFromPathQString(item->text(3));
+	m_savedGlobalPickTrnCanon = terrainDockCanonFromPathQString(item->text(2));
 
 	if (hasActiveTerrain())
-		IGNORE_RETURN(ensureLiveTerrainShaderFamilyForPaint(m_selectedShaderFamilyId, m_savedGlobalPickTrnCanon));
+	{
+		if (!ensureLiveTerrainShaderFamilyForPaint(m_selectedShaderFamilyId, m_savedGlobalPickTrnCanon))
+		{
+			MainFrame::getInstance().textToConsole(
+				"Global shader pick could not be merged into the live terrain (missing .trn, unreadable IFF, or invalid family).");
+			m_globalShaderPaintingSelection = false;
+			m_savedGlobalPickFamilyId = 0;
+			m_savedGlobalPickTrnCanon = QString();
+			clampSelectedShaderFamilyToLiveTerrain();
+		}
+	}
 
 	syncGodClientEditorBrushSettings();
 }
@@ -2627,7 +3392,7 @@ void TerrainDock::onMergeGlobalShaderIntoSceneClicked()
 	if (!fidOk)
 		return;
 
-	QString const srcPath(sel->text(3));
+	QString const srcPath(sel->text(2));
 	if (srcPath.isEmpty())
 		return;
 
@@ -2844,13 +3609,19 @@ void TerrainDock::populateEnvironmentFamilyCombo()
 {
 	m_environmentFamilyIds.clear();
 	if (!m_environmentFamilyCombo)
+	{
+		updateEnvironmentAuthoringControls();
 		return;
+	}
 
 	m_environmentFamilyCombo->clear();
 
 	TerrainGenerator* const generator = getTerrainGenerator();
 	if (!generator)
+	{
+		updateEnvironmentAuthoringControls();
 		return;
+	}
 
 	EnvironmentGroup const& eg(generator->getEnvironmentGroup());
 	int const nFamilies = eg.getNumberOfFamilies();
@@ -2872,12 +3643,126 @@ void TerrainDock::populateEnvironmentFamilyCombo()
 		if (GodClientTerrainEditor::isInstalled())
 			GodClientTerrainEditor::getInstance().setEnvironmentFamily(m_environmentFamilyIds[0]);
 	}
+
+	updateEnvironmentAuthoringControls();
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::refreshEnvironmentFamilyComboFromGenerator()
+{
+	populateEnvironmentFamilyCombo();
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::refreshShaderGroupUiFromGenerator()
+{
+	populateShaderList(false);
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::refreshFloraFamilyComboFromGenerator()
+{
+	int prevFamilyId = -1;
+	if (!m_floraFamilyIds.empty() &&
+		m_floraFamilyIndex >= 0 &&
+		m_floraFamilyIndex < static_cast<int>(m_floraFamilyIds.size()))
+	{
+		prevFamilyId = m_floraFamilyIds[static_cast<size_t>(m_floraFamilyIndex)];
+	}
+
+	populateFloraList();
+
+	if (m_floraFamilyCombo && !m_floraFamilyIds.empty())
+	{
+		int newIndex = 0;
+		if (prevFamilyId >= 0)
+		{
+			for (size_t i = 0; i < m_floraFamilyIds.size(); ++i)
+			{
+				if (m_floraFamilyIds[i] == prevFamilyId)
+				{
+					newIndex = static_cast<int>(i);
+					break;
+				}
+			}
+		}
+		m_floraFamilyCombo->setCurrentItem(newIndex);
+		onFloraFamilyChanged(newIndex);
+	}
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::refreshRadialFamilyComboFromGenerator()
+{
+	int prevFamilyId = -1;
+	if (!m_radialFamilyIds.empty() &&
+		m_radialGroupIndex >= 0 &&
+		m_radialGroupIndex < static_cast<int>(m_radialFamilyIds.size()))
+	{
+		prevFamilyId = m_radialFamilyIds[static_cast<size_t>(m_radialGroupIndex)];
+	}
+
+	populateRadialList();
+
+	if (m_radialGroupCombo && !m_radialFamilyIds.empty())
+	{
+		int newIndex = 0;
+		if (prevFamilyId >= 0)
+		{
+			for (size_t i = 0; i < m_radialFamilyIds.size(); ++i)
+			{
+				if (m_radialFamilyIds[i] == prevFamilyId)
+				{
+					newIndex = static_cast<int>(i);
+					break;
+				}
+			}
+		}
+		m_radialGroupCombo->setCurrentItem(newIndex);
+		onRadialGroupChanged(newIndex);
+	}
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::refreshBitmapStampComboFromGenerator()
+{
+	populateBitmapStampCombo();
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::reloadBitmapStampPreviewIfCurrentFamily(int familyId)
+{
+	if (!GodClientTerrainEditor::isInstalled())
+		return;
+	if (m_bitmapStampFamilyIds.empty())
+		return;
+	if (m_bitmapStampIndex < 0 || m_bitmapStampIndex >= static_cast<int>(m_bitmapStampFamilyIds.size()))
+		return;
+	if (m_bitmapStampFamilyIds[static_cast<size_t>(m_bitmapStampIndex)] != familyId)
+		return;
+
+	GodClientTerrainEditor::getInstance().reloadBitmapStampFromTerrainFamily(familyId);
+	GodClientTerrainEditor::getInstance().setBitmapShaderFamily(m_selectedShaderFamilyId);
 }
 
 // ----------------------------------------------------------------------
 
 void TerrainDock::populateBitmapStampCombo()
 {
+	int prevFamilyId = -1;
+	if (!m_bitmapStampFamilyIds.empty() &&
+		m_bitmapStampIndex >= 0 &&
+		m_bitmapStampIndex < static_cast<int>(m_bitmapStampFamilyIds.size()))
+	{
+		prevFamilyId = m_bitmapStampFamilyIds[static_cast<size_t>(m_bitmapStampIndex)];
+	}
+
 	m_bitmapStampFamilyIds.clear();
 	if (!m_bitmapStampCombo)
 		return;
@@ -2903,9 +3788,22 @@ void TerrainDock::populateBitmapStampCombo()
 
 	if (nFamilies > 0 && GodClientTerrainEditor::isInstalled())
 	{
-		m_bitmapStampCombo->setCurrentItem(0);
-		m_bitmapStampIndex = 0;
-		GodClientTerrainEditor::getInstance().reloadBitmapStampFromTerrainFamily(m_bitmapStampFamilyIds[0]);
+		int newIndex = 0;
+		if (prevFamilyId >= 0)
+		{
+			for (size_t i = 0; i < m_bitmapStampFamilyIds.size(); ++i)
+			{
+				if (m_bitmapStampFamilyIds[i] == prevFamilyId)
+				{
+					newIndex = static_cast<int>(i);
+					break;
+				}
+			}
+		}
+
+		m_bitmapStampCombo->setCurrentItem(newIndex);
+		m_bitmapStampIndex = newIndex;
+		GodClientTerrainEditor::getInstance().reloadBitmapStampFromTerrainFamily(m_bitmapStampFamilyIds[static_cast<size_t>(newIndex)]);
 		GodClientTerrainEditor::getInstance().setBitmapShaderFamily(m_selectedShaderFamilyId);
 	}
 }
@@ -3510,6 +4408,12 @@ void TerrainDock::onFillRegion()
 
 	syncGodClientEditorBrushSettings();
 
+	if (m_toolMode == TM_ApplyEnvironmentRegion)
+	{
+		(void)tryApplyEnvironmentAffectorToCurrentRegion(true);
+		return;
+	}
+
 	if (m_toolMode == TM_PaintShader)
 	{
 		bool const circ = (m_regionSelectionShape == RSS_Circle && m_regionCircleRadius > 0.01f);
@@ -3579,7 +4483,186 @@ void TerrainDock::onFillRegion()
 	IGNORE_RETURN(QMessageBox::warning(
 		this,
 		"Fill Region",
-		"Choose a height tool (Raise, Lower, Flatten, Smooth, Noise, Set Height) or Paint Shader before using Fill."));
+		"Choose a height tool, Paint Shader, Region environment (Fill), or use Apply environment to region."));
+}
+
+void TerrainDock::onMapTemplateSettingsClicked()
+{
+	ProceduralTerrainAppearanceTemplate* const tpl = getTerrainTemplate();
+	if (!tpl)
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Map template", "No procedural terrain template."));
+		return;
+	}
+
+	MapTemplateSettingsDialog dlg(this, tpl);
+	if (dlg.exec() != QDialog::Accepted)
+		return;
+
+	float mapW = 0.f;
+	float chunkW = 0.f;
+	int tiles = 1;
+	bool useGlobalWater = false;
+	float wh = 0.f;
+	float ws = 0.f;
+	float envc = 0.f;
+	if (!dlg.readValues(mapW, chunkW, tiles, useGlobalWater, wh, ws, envc))
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Map template", "Invalid values. Map and chunk width must be positive, tiles per chunk at least 1, environment cycle greater than zero."));
+		return;
+	}
+
+	tpl->setMapLayoutParameters(mapW, chunkW, tiles);
+	tpl->setUseGlobalWaterTable(useGlobalWater);
+	tpl->setGlobalWaterTableHeight(wh);
+	tpl->setGlobalWaterTableShaderSize(ws);
+	tpl->setEnvironmentCycleTime(envc);
+
+	TerrainGenerator* const gen = getTerrainGenerator();
+	if (gen)
+		gen->prepare();
+
+	if (m_terrainFilePath.empty())
+	{
+		IGNORE_RETURN(QMessageBox::information(this, "Map template",
+			"Choose a terrain file path (Save As) so the client can reload the .trn from disk."));
+		onSaveTerrainAs();
+	}
+
+	if (m_terrainFilePath.empty())
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Map template", "No file path: changes were not saved and terrain was not reloaded."));
+		m_terrainModified = true;
+		updateUndoRedoState();
+		refreshFromScene(true);
+		return;
+	}
+
+	if (GodClientTerrainEditor::isInstalled())
+		GodClientTerrainEditor::getInstance().flushTerrainChanges();
+
+	m_terrainModified = true;
+	onSaveTerrain();
+	if (m_terrainModified)
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Map template", "Save failed; terrain was not reloaded."));
+		refreshFromScene(true);
+		return;
+	}
+
+	GroundScene* const gs = dynamic_cast<GroundScene*>(Game::getScene());
+	if (gs)
+		gs->reloadTerrain();
+	else
+		IGNORE_RETURN(QMessageBox::warning(this, "Map template", "No ground scene; terrain could not be reloaded."));
+
+	refreshFromScene(true);
+	MainFrame::getInstance().textToConsole("Map template updated, terrain saved and reloaded.");
+}
+
+void TerrainDock::onAddProceduralHeightConstantLayer()
+{
+	if (!GodClientTerrainEditor::isInstalled())
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Procedural", "Terrain editor is not ready."));
+		return;
+	}
+
+	bool ok = false;
+	float const h = QInputDialog::getDouble(
+		tr("New height constant layer"),
+		tr("Height (meters) for full-map layer:"),
+		0.0,
+		-1.0e6,
+		1.0e6,
+		2,
+		&ok,
+		this);
+
+	if (!ok)
+		return;
+
+	if (!GodClientTerrainEditor::getInstance().addFullMapHeightConstantLayer(h, 32.f, 0))
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Procedural", "Could not add layer (no generator or invalid map size)."));
+		return;
+	}
+
+	m_terrainModified = true;
+	updateUndoRedoState();
+	populateLayerList();
+	MainFrame::getInstance().textToConsole("Added full-map AffectorHeightConstant layer.");
+}
+
+void TerrainDock::onAddProceduralShaderConstantLayer()
+{
+	if (!GodClientTerrainEditor::isInstalled())
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Procedural", "Terrain editor is not ready."));
+		return;
+	}
+
+	if (m_selectedShaderFamilyId == 0)
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Procedural", "Select a shader family in the Shaders list first."));
+		return;
+	}
+
+	if (!GodClientTerrainEditor::getInstance().addFullMapShaderConstantLayer(m_selectedShaderFamilyId, 48.f, 0))
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Procedural", "Could not add shader layer."));
+		return;
+	}
+
+	m_terrainModified = true;
+	updateUndoRedoState();
+	populateLayerList();
+	MainFrame::getInstance().textToConsole("Added full-map AffectorShaderConstant layer.");
+}
+
+void TerrainDock::onAddProceduralExcludeFromRegion()
+{
+	if (!GodClientTerrainEditor::isInstalled())
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Procedural", "Terrain editor is not ready."));
+		return;
+	}
+
+	if (!m_hasRegionSelection)
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Procedural", "Select a rectangular region first."));
+		return;
+	}
+
+	bool ok = false;
+	float feather = QInputDialog::getDouble(
+		tr("Exclude layer"),
+		tr("Boundary feather (meters):"),
+		8.0,
+		0.0,
+		4096.0,
+		2,
+		&ok,
+		this);
+	if (!ok)
+		return;
+
+	Rectangle2d const rect(
+		std::min(m_regionMinX, m_regionMaxX),
+		std::min(m_regionMinZ, m_regionMaxZ),
+		std::max(m_regionMinX, m_regionMaxX),
+		std::max(m_regionMinZ, m_regionMaxZ));
+
+	if (!GodClientTerrainEditor::getInstance().addExcludeLayerForRectangle(rect, feather, 0))
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Procedural", "Could not add exclude layer (region too small?)."));
+		return;
+	}
+
+	m_terrainModified = true;
+	updateUndoRedoState();
+	populateLayerList();
+	MainFrame::getInstance().textToConsole("Added AffectorExclude layer for current region.");
 }
 
 // ======================================================================
@@ -3970,6 +5053,34 @@ TerrainGenerator* TerrainDock::getTerrainGenerator() const
 	return const_cast<TerrainGenerator*>(terrainTemplate->getTerrainGenerator());
 }
 
+// ----------------------------------------------------------------------
+
+void TerrainDock::clampSelectedShaderFamilyToLiveTerrain()
+{
+	TerrainGenerator* const g = getTerrainGenerator();
+	if (!g)
+	{
+		m_selectedShaderFamilyId = 0;
+		return;
+	}
+
+	ShaderGroup const& sg = g->getShaderGroup();
+	if (sg.hasFamily(m_selectedShaderFamilyId))
+		return;
+
+	int const n = sg.getNumberOfFamilies();
+	if (n > 0)
+	{
+		m_selectedShaderFamilyId = sg.getFamilyId(0);
+		MainFrame::getInstance().textToConsole("Shader paint selection reset to first live terrain family (invalid or missing id).");
+	}
+	else
+	{
+		m_selectedShaderFamilyId = 0;
+		MainFrame::getInstance().textToConsole("Shader paint selection cleared (terrain has no shader families).");
+	}
+}
+
 // ======================================================================
 
 bool TerrainDock::ensureLiveTerrainShaderFamilyForPaint(int catalogFamilyId, QString const& catalogSourceTrnPath)
@@ -3997,15 +5108,35 @@ bool TerrainDock::ensureLiveTerrainShaderFamilyForPaint(int catalogFamilyId, QSt
 
 	bool mutated(false);
 	bool collisionRemapped(false);
+	bool globalAllocated(false);
 
-	if (!dstSg.hasFamily(catalogFamilyId))
+	int const matchedDst = terrainDockFindDstShaderFamilyMatchingChildren(srcSg, catalogFamilyId, dstSg);
+	if (matchedDst >= 0)
 	{
-		if (!terrainDockCopyFamilyIntoShaderGroup(srcSg, dstSg, catalogFamilyId, false))
-			return false;
-		mutated = true;
+		m_selectedShaderFamilyId = matchedDst;
 	}
-	else if (!terrainDockShaderFamilyChildrenMatch(srcSg, dstSg, catalogFamilyId, catalogFamilyId))
+	else if (dstSg.hasFamily(catalogFamilyId))
 	{
+		if (terrainDockShaderFamilyChildrenMatch(srcSg, dstSg, catalogFamilyId, catalogFamilyId))
+		{
+			m_selectedShaderFamilyId = catalogFamilyId;
+		}
+		else
+		{
+			int const newId = terrainDockFindUnusedTerrainShaderFamilyId(dstSg);
+			if (newId < 0)
+				return false;
+			if (!terrainDockCopyTerrainShaderFamilyRemapIds(srcSg, dstSg, catalogFamilyId, newId, false))
+				return false;
+			m_selectedShaderFamilyId = newId;
+			mutated = true;
+			collisionRemapped = true;
+		}
+	}
+	else
+	{
+		// Pulling from another .trn: allocate a fresh live family id (never bind at catalogFamilyId),
+		// so scene family 0 (or any reserved id) is never overwritten by catalog id collisions.
 		int const newId = terrainDockFindUnusedTerrainShaderFamilyId(dstSg);
 		if (newId < 0)
 			return false;
@@ -4013,7 +5144,7 @@ bool TerrainDock::ensureLiveTerrainShaderFamilyForPaint(int catalogFamilyId, QSt
 			return false;
 		m_selectedShaderFamilyId = newId;
 		mutated = true;
-		collisionRemapped = true;
+		globalAllocated = true;
 	}
 
 	if (mutated)
@@ -4029,6 +5160,14 @@ bool TerrainDock::ensureLiveTerrainShaderFamilyForPaint(int catalogFamilyId, QSt
 		QString msg;
 		msg.sprintf(
 			"Global catalog family %d differed from the scene; cloned template list to unused family id %d so existing terrain families are untouched.",
+			catalogFamilyId, m_selectedShaderFamilyId);
+		MainFrame::getInstance().textToConsole(msg.latin1());
+	}
+	else if (globalAllocated)
+	{
+		QString msg;
+		msg.sprintf(
+			"Global catalog family %d imported as new live shader family id %d (catalog ids are not copied onto the scene when absent).",
 			catalogFamilyId, m_selectedShaderFamilyId);
 		MainFrame::getInstance().textToConsole(msg.latin1());
 	}
@@ -4400,6 +5539,7 @@ void TerrainDock::paintShaderAtPoint(float worldX, float worldZ, int shaderFamil
 	QString const catalogPath = m_globalShaderPaintingSelection ? m_savedGlobalPickTrnCanon : QString();
 	if (!ensureLiveTerrainShaderFamilyForPaint(shaderFamilyId, catalogPath))
 	{
+		clampSelectedShaderFamilyToLiveTerrain();
 		QString msg;
 		msg.sprintf("paintShaderAtPoint: Unable to activate shader family %d (merge global catalog families or refresh scene shaders).",
 			shaderFamilyId);
@@ -4501,7 +5641,7 @@ void TerrainDock::renderBrushPreview(float worldX, float worldZ) const
 	if (!m_showBrushPreview)
 		return;
 	
-	if (m_toolMode == TM_None || m_toolMode == TM_Select)
+	if (m_toolMode == TM_None || m_toolMode == TM_Select || m_toolMode == TM_ApplyEnvironmentRegion)
 		return;
 	
 	TerrainObject* const terrainObject = TerrainObject::getInstance();
@@ -5050,6 +6190,13 @@ bool TerrainDock::handleMousePress(int screenX, int screenY, int button, int qtB
 			updateRegionGeometryUi();
 			return true;
 		}
+
+		if (m_toolMode == TM_ApplyEnvironmentRegion)
+		{
+			if (tryApplyEnvironmentAffectorToCurrentRegion(false))
+				emit terrainGameWindowStatusChanged();
+			return true;
+		}
 		
 		// Handle bitmap stamp
 		if (m_toolMode == TM_StampBitmap)
@@ -5335,7 +6482,8 @@ void TerrainDock::updateFrame(float elapsedTime)
 			terrainDockIsPolylineStrokeTool(m_toolMode) ||
 			m_toolMode == TM_PlaceEnvironment ||
 			m_toolMode == TM_PlaceExcludeTerrain ||
-			m_toolMode == TM_PlaceBoundaryPolygon;
+			m_toolMode == TM_PlaceBoundaryPolygon ||
+			m_toolMode == TM_ApplyEnvironmentRegion;
 		if (!skipBrushRing)
 			editor.renderBrushPreview(*camera);
 	}
@@ -5381,6 +6529,7 @@ bool TerrainDock::suppressCameraDoubleClickForTerrainTool() const
 	case TM_PlaceBoundaryPolyline:
 	case TM_PlaceBoundaryPolyRoad:
 	case TM_StampBitmap:
+	case TM_ApplyEnvironmentRegion:
 		return true;
 	default:
 		return false;

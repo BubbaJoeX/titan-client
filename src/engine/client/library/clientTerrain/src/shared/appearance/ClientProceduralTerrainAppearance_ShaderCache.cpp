@@ -305,8 +305,10 @@ void ClientProceduralTerrainAppearance::ShaderCache::getTextures (const ShaderGr
 	const ShaderCacheNode &c = cache[sgi.getPriority ()][childIndex];
 
 	shader = c.shader;
-	diffuseTexture = c.diffuseTexture;
+	diffuseTexture = c.diffuseTexture ? c.diffuseTexture : m_defaultTexture;
 	normalTexture = c.normalTexture;
+	if (ClientProceduralTerrainAppearance::getDot3Terrain () && !normalTexture)
+		normalTexture = m_defaultNormal;
 }
 
 //-------------------------------------------------------------------
@@ -328,16 +330,34 @@ void ClientProceduralTerrainAppearance::ShaderCache::preloadShaders () const
 				StaticShader const * staticShader = 
 					 safe_cast<const StaticShader*>(ShaderTemplateList::fetchShader (FileName (FileName::P_shader, fcd.shaderTemplateName)));
 
+				if (!staticShader)
+				{
+					DEBUG_WARNING (true, ("Terrain ShaderCache: could not load shader template '%s' (family %d child %d); using default textures.", fcd.shaderTemplateName, shaderGroup.getFamilyId(i), j));
+					c.shader = 0;
+					c.diffuseTexture = m_defaultTexture;
+					c.diffuseTexture->fetch ();
+					if (ClientProceduralTerrainAppearance::getDot3Terrain ())
+					{
+						c.normalTexture = m_defaultNormal;
+						c.normalTexture->fetch ();
+					}
+					continue;
+				}
+
 				c.shader = staticShader;
 
 				bool result = staticShader->getTexture(TAG(M,A,I,N), c.diffuseTexture);
-				DEBUG_FATAL(!result, ("Could not get texture from static shader"));
+				if (!result || !c.diffuseTexture)
+				{
+					DEBUG_WARNING (true, ("Terrain ShaderCache: missing MAIN texture for '%s' (family %d child %d); using default diffuse.", fcd.shaderTemplateName, shaderGroup.getFamilyId(i), j));
+					c.diffuseTexture = m_defaultTexture;
+				}
 				c.diffuseTexture->fetch();
 
 				if (ClientProceduralTerrainAppearance::getDot3Terrain ())
 				{
 					result = staticShader->getTexture(TAG(N,R,M,L), c.normalTexture);
-					if (!result)
+					if (!result || !c.normalTexture)
 						c.normalTexture = m_defaultNormal;
 					c.normalTexture->fetch();
 				}

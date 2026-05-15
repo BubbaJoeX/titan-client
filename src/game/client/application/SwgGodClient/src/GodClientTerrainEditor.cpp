@@ -39,6 +39,8 @@
 #include "sharedTerrain/AffectorPassable.h"
 #include "sharedTerrain/AffectorFloraStatic.h"
 #include "sharedTerrain/AffectorEnvironment.h"
+#include "sharedTerrain/Affector.h"
+#include "sharedTerrain/AffectorHeight.h"
 #include "sharedTerrain/Boundary.h"
 
 #include <cmath>
@@ -107,6 +109,7 @@ namespace
 
 	int s_godWaterLayerSerial = 0;
 	int s_godPolygonLayerSerial = 0;
+	int s_godProceduralAuthoringSerial = 0;
 
 	Rectangle2d godClientBoundsFromPoints(std::vector<Vector2d> const& pts, float pad)
 	{
@@ -283,6 +286,10 @@ GodClientTerrainEditor::GodClientTerrainEditor() :
 	m_brushFeather(1.0f),
 	m_brushSize(32.0f),
 	m_brushStrength(0.5f),
+	m_raiseLowerSpeed(0.25f),
+	m_raiseLowerBias(0.f),
+	m_raiseLowerClickRate(1.f),
+	m_raiseLowerJitter(0.f),
 	m_targetHeight(0.0f),
 	m_noiseAmplitude(1.0f),
 	m_noiseFrequency(0.1f),
@@ -407,6 +414,34 @@ void GodClientTerrainEditor::setBrushSize(float size)
 void GodClientTerrainEditor::setBrushStrength(float strength)
 {
 	m_brushStrength = std::max(0.01f, std::min(1.0f, strength));
+}
+
+// ----------------------------------------------------------------------
+
+void GodClientTerrainEditor::setRaiseLowerSpeed(float metersPerDab)
+{
+	m_raiseLowerSpeed = std::max(0.005f, std::min(5.0f, metersPerDab));
+}
+
+// ----------------------------------------------------------------------
+
+void GodClientTerrainEditor::setRaiseLowerBias(float bias)
+{
+	m_raiseLowerBias = std::max(-1.0f, std::min(1.0f, bias));
+}
+
+// ----------------------------------------------------------------------
+
+void GodClientTerrainEditor::setRaiseLowerClickRate(float multiplier)
+{
+	m_raiseLowerClickRate = std::max(0.25f, std::min(4.0f, multiplier));
+}
+
+// ----------------------------------------------------------------------
+
+void GodClientTerrainEditor::setRaiseLowerJitter(float jitter)
+{
+	m_raiseLowerJitter = std::max(0.f, std::min(1.0f, jitter));
 }
 
 // ----------------------------------------------------------------------
@@ -655,10 +690,15 @@ void GodClientTerrainEditor::applyBrushAtPoint(float worldX, float worldZ)
 		m_toolMode == TM_PlaceRadial ||
 		m_toolMode == TM_StampBitmap;
 
+	bool const raiseOrLower = (m_toolMode == TM_Raise || m_toolMode == TM_Lower);
+
 	// While dragging a stroke, apply on every sample (no time throttle) so the mesh can track the brush.
 	if (!m_brushStrokeActive && !overlayTool)
 	{
-		if (currentTime - m_lastModificationTime < MIN_MODIFICATION_INTERVAL)
+		float minInterval = MIN_MODIFICATION_INTERVAL;
+		if (raiseOrLower)
+			minInterval /= m_raiseLowerClickRate;
+		if (currentTime - m_lastModificationTime < minInterval)
 			return;
 	}
 	m_lastModificationTime = currentTime;
@@ -667,11 +707,11 @@ void GodClientTerrainEditor::applyBrushAtPoint(float worldX, float worldZ)
 	switch (m_toolMode)
 	{
 		case TM_Raise:
-			modifyHeightRaise(worldX, worldZ, m_brushStrength);
+			modifyHeightRaise(worldX, worldZ);
 			break;
 
 		case TM_Lower:
-			modifyHeightLower(worldX, worldZ, m_brushStrength);
+			modifyHeightLower(worldX, worldZ);
 			break;
 
 		case TM_Flatten:
@@ -729,16 +769,24 @@ void GodClientTerrainEditor::applyBrushAtPoint(float worldX, float worldZ)
 
 // ----------------------------------------------------------------------
 
-void GodClientTerrainEditor::modifyHeightRaise(float worldX, float worldZ, float strength)
+void GodClientTerrainEditor::modifyHeightRaise(float worldX, float worldZ)
 {
 	TerrainObject* const terrainObject = TerrainObject::getInstance();
 	if (!terrainObject)
 		return;
 
 	const float halfBrush = m_brushSize * 0.5f;
-	const float heightDelta = strength * 0.5f;
 
-	// Iterate at integer grid points for proper interpolation support
+	float jitterMul = 1.f;
+	if (m_raiseLowerJitter > 1e-5f)
+	{
+		float const jitter = (Random::randomReal() * 2.f - 1.f) * m_raiseLowerJitter;
+		jitterMul = std::max(0.1f, 1.f + jitter);
+	}
+
+	const float avgHeight = getAverageHeight(worldX, worldZ, halfBrush);
+	const float spread = std::max(0.5f, m_brushSize * 0.12f);
+
 	const int minX = static_cast<int>(std::floor(worldX - halfBrush));
 	const int maxX = static_cast<int>(std::ceil(worldX + halfBrush));
 	const int minZ = static_cast<int>(std::floor(worldZ - halfBrush));
@@ -760,9 +808,13 @@ void GodClientTerrainEditor::modifyHeightRaise(float worldX, float worldZ, float
 				Vector pos(x, 0.0f, z);
 				if (terrainObject->getHeight(pos, originalHeight))
 				{
-					const float delta = heightDelta * effect;
-					
-					// Create position key using integer grid coordinates
+					float t = (originalHeight - avgHeight) / spread;
+					t = std::max(-1.f, std::min(1.f, t));
+					float biasWeight = 1.f + m_raiseLowerBias * t * 0.9f;
+					biasWeight = std::max(0.05f, biasWeight);
+
+					const float delta = m_raiseLowerSpeed * effect * biasWeight * jitterMul;
+
 					const uint64 key = (static_cast<uint64>(ix + 32768) << 32) |
 					                   static_cast<uint64>(iz + 32768);
 
@@ -770,8 +822,7 @@ void GodClientTerrainEditor::modifyHeightRaise(float worldX, float worldZ, float
 					mod.worldX = x;
 					mod.worldZ = z;
 					mod.originalHeight = originalHeight;
-					
-					// Check if we already have a modification for this point
+
 					HeightModificationMap::iterator it = m_heightModifications.find(key);
 					if (it != m_heightModifications.end())
 					{
@@ -782,7 +833,7 @@ void GodClientTerrainEditor::modifyHeightRaise(float worldX, float worldZ, float
 					{
 						mod.modifiedHeight = originalHeight + delta;
 					}
-					
+
 					mod.timestamp = Clock::frameTime();
 					m_heightModifications[key] = mod;
 				}
@@ -793,14 +844,23 @@ void GodClientTerrainEditor::modifyHeightRaise(float worldX, float worldZ, float
 
 // ----------------------------------------------------------------------
 
-void GodClientTerrainEditor::modifyHeightLower(float worldX, float worldZ, float strength)
+void GodClientTerrainEditor::modifyHeightLower(float worldX, float worldZ)
 {
 	TerrainObject* const terrainObject = TerrainObject::getInstance();
 	if (!terrainObject)
 		return;
 
 	const float halfBrush = m_brushSize * 0.5f;
-	const float heightDelta = -strength * 0.5f;
+
+	float jitterMul = 1.f;
+	if (m_raiseLowerJitter > 1e-5f)
+	{
+		float const jitter = (Random::randomReal() * 2.f - 1.f) * m_raiseLowerJitter;
+		jitterMul = std::max(0.1f, 1.f + jitter);
+	}
+
+	const float avgHeight = getAverageHeight(worldX, worldZ, halfBrush);
+	const float spread = std::max(0.5f, m_brushSize * 0.12f);
 
 	const int minX = static_cast<int>(std::floor(worldX - halfBrush));
 	const int maxX = static_cast<int>(std::ceil(worldX + halfBrush));
@@ -823,8 +883,13 @@ void GodClientTerrainEditor::modifyHeightLower(float worldX, float worldZ, float
 				Vector pos(x, 0.0f, z);
 				if (terrainObject->getHeight(pos, originalHeight))
 				{
-					const float delta = heightDelta * effect;
-					
+					float t = (originalHeight - avgHeight) / spread;
+					t = std::max(-1.f, std::min(1.f, t));
+					float biasWeight = 1.f + m_raiseLowerBias * t * 0.9f;
+					biasWeight = std::max(0.05f, biasWeight);
+
+					const float delta = -m_raiseLowerSpeed * effect * biasWeight * jitterMul;
+
 					const uint64 key = (static_cast<uint64>(ix + 32768) << 32) |
 					                   static_cast<uint64>(iz + 32768);
 
@@ -832,7 +897,7 @@ void GodClientTerrainEditor::modifyHeightLower(float worldX, float worldZ, float
 					mod.worldX = x;
 					mod.worldZ = z;
 					mod.originalHeight = originalHeight;
-					
+
 					HeightModificationMap::iterator it = m_heightModifications.find(key);
 					if (it != m_heightModifications.end())
 					{
@@ -843,7 +908,7 @@ void GodClientTerrainEditor::modifyHeightLower(float worldX, float worldZ, float
 					{
 						mod.modifiedHeight = originalHeight + delta;
 					}
-					
+
 					mod.timestamp = Clock::frameTime();
 					m_heightModifications[key] = mod;
 				}
@@ -2687,9 +2752,13 @@ void GodClientTerrainEditor::modifyShaderPaint(float worldX, float worldZ, int s
 	if (!terrainObject)
 		return;
 
-	ShaderMapLock shaderLock(*this);
-
 	int const familyIdClamped = std::max(0, std::min(255, shaderFamilyId));
+
+	TerrainGenerator* const generator = getTerrainGenerator();
+	if (generator && !generator->getShaderGroup().hasFamily(familyIdClamped))
+		return;
+
+	ShaderMapLock shaderLock(*this);
 
 	const float halfBrush = m_brushSize * 0.5f;
 
@@ -2773,7 +2842,7 @@ bool GodClientTerrainEditor::getModifiedShaderInternal(float x, float z, int ori
 		return false;
 	}
 
-	static int const s_neighborCells = 5;
+	static int const s_neighborCells = 1;
 
 	ShaderMapLock shaderLock(const_cast<GodClientTerrainEditor&>(*this));
 
@@ -2790,8 +2859,11 @@ bool GodClientTerrainEditor::getModifiedShaderInternal(float x, float z, int ori
 	int bz = 0;
 	godClientTerrainPaintDecodeKey(baseKey, bx, bz);
 
+	Vector const oq = godClientTerrainObjectSampled_w2o(terrainObject, x, z);
+
 	ShaderModificationMap::const_iterator best = m_shaderModifications.end();
-	float bestStrength = 0.f;
+	float bestDist2 = 0.f;
+	float bestFeather = 0.f;
 
 	for (int dz = -s_neighborCells; dz <= s_neighborCells; ++dz)
 	{
@@ -2801,10 +2873,18 @@ bool GodClientTerrainEditor::getModifiedShaderInternal(float x, float z, int ori
 			ShaderModificationMap::const_iterator const it = m_shaderModifications.find(nk);
 			if (it == m_shaderModifications.end() || it->second.featherAmount <= 0.f)
 				continue;
-			if (best == m_shaderModifications.end() || it->second.featherAmount > bestStrength)
+
+			float const ddx = oq.x - it->second.worldX;
+			float const ddz = oq.z - it->second.worldZ;
+			float const dist2 = ddx * ddx + ddz * ddz;
+
+			if (best == m_shaderModifications.end()
+				|| dist2 < bestDist2 - 1e-6f
+				|| (std::fabs(dist2 - bestDist2) <= 1e-6f && it->second.featherAmount > bestFeather))
 			{
 				best = it;
-				bestStrength = it->second.featherAmount;
+				bestDist2 = dist2;
+				bestFeather = it->second.featherAmount;
 			}
 		}
 	}
@@ -2816,7 +2896,16 @@ bool GodClientTerrainEditor::getModifiedShaderInternal(float x, float z, int ori
 		return false;
 	}
 
-	outFamilyId = best->second.modifiedFamilyId;
+	int const modifiedId = best->second.modifiedFamilyId;
+	TerrainGenerator* const generator = getTerrainGenerator();
+	if (generator && !generator->getShaderGroup().hasFamily(modifiedId))
+	{
+		outFamilyId = originalFamilyId;
+		outFeather = 0.0f;
+		return false;
+	}
+
+	outFamilyId = modifiedId;
 	outFeather = best->second.featherAmount;
 	return true;
 }
@@ -3480,6 +3569,7 @@ void GodClientTerrainEditor::beginPolygonDraw(PolygonDrawPurpose const purpose)
 	switch (purpose)
 	{
 	case PDP_EnvironmentZone:
+		m_activeEnvironmentZone.featherDistance = 8.f;
 		MainFrame::getInstance().textToConsole("Started new environment zone — click to add boundary points (Finish in dock).");
 		break;
 	case PDP_ExcludeTerrain:
@@ -4351,6 +4441,22 @@ bool GodClientTerrainEditor::createEnvironmentZoneAffector(const char* name)
 	boundary->setFeatherDistance(m_activeEnvironmentZone.featherDistance);
 	layer->addBoundary(boundary);
 
+	int const envFamilyId = m_activeEnvironmentZone.environmentFamilyId;
+	if (!generator->getEnvironmentGroup().hasFamily(envFamilyId))
+	{
+		delete layer;
+		char buf[192];
+		snprintf(buf, sizeof(buf), "Environment zone commit failed: invalid environment family id %d.", envFamilyId);
+		MainFrame::getInstance().textToConsole(buf);
+		return false;
+	}
+
+	AffectorEnvironment* const aff = new AffectorEnvironment();
+	aff->setName("Environment");
+	aff->setFamilyId(envFamilyId);
+	aff->setUseFeatherClampOverride(false);
+	layer->addAffector(aff);
+
 	generator->addLayer(layer);
 	m_createdLayers.push_back(name);
 	generator->prepare();
@@ -4360,6 +4466,98 @@ bool GodClientTerrainEditor::createEnvironmentZoneAffector(const char* name)
 	if (terrainObject)
 		terrainObject->invalidateRegion(inv);
 	nudgeGodClientCameraToRefreshDpvs();
+
+	return true;
+}
+
+// ----------------------------------------------------------------------
+
+bool GodClientTerrainEditor::addEnvironmentAffectorForCurrentRegionSelection(int familyId, float featherDistance)
+{
+	if (!m_hasRegionSelection)
+		return false;
+
+	TerrainGenerator* const generator = getTerrainGenerator();
+	if (!generator)
+		return false;
+
+	if (!generator->getEnvironmentGroup().hasFamily(familyId))
+		return false;
+
+	featherDistance = std::max(0.f, featherDistance);
+
+	float const ax0 = std::min(m_regionMinX, m_regionMaxX);
+	float const az0 = std::min(m_regionMinZ, m_regionMaxZ);
+	float const ax1 = std::max(m_regionMinX, m_regionMaxX);
+	float const az1 = std::max(m_regionMinZ, m_regionMaxZ);
+
+	static float const kMinExtent = 0.5f;
+
+	char layerName[128];
+	snprintf(layerName, sizeof(layerName), "GodEnvRegion_%d", s_godProceduralAuthoringSerial++);
+
+	TerrainGenerator::Layer* const layer = new TerrainGenerator::Layer();
+	layer->setName(layerName);
+	layer->setActive(true);
+
+	if (m_regionSelectionCircular && m_regionCircleRadius > 0.01f)
+	{
+		if (m_regionCircleRadius * 2.f < kMinExtent)
+			return false;
+
+		BoundaryCircle* const boundary = new BoundaryCircle();
+		boundary->setName("Environment region (circle)");
+		boundary->setCircle(m_regionCircleCenterX, m_regionCircleCenterZ, m_regionCircleRadius);
+		boundary->setFeatherDistance(featherDistance);
+		layer->addBoundary(boundary);
+	}
+	else
+	{
+		if ((ax1 - ax0) < kMinExtent || (az1 - az0) < kMinExtent)
+			return false;
+
+		Rectangle2d const rect(ax0, az0, ax1, az1);
+		BoundaryRectangle* const boundary = new BoundaryRectangle();
+		boundary->setName("Environment region (rectangle)");
+		boundary->setRectangle(rect);
+		boundary->setFeatherDistance(featherDistance);
+		layer->addBoundary(boundary);
+	}
+
+	AffectorEnvironment* const aff = new AffectorEnvironment();
+	aff->setName("Environment");
+	aff->setFamilyId(familyId);
+	aff->setUseFeatherClampOverride(false);
+	layer->addAffector(aff);
+
+	generator->addLayer(layer);
+	m_createdLayers.push_back(layerName);
+	generator->prepare();
+
+	TerrainObject* const terrainObject = TerrainObject::getInstance();
+	if (terrainObject)
+	{
+		float const margin = std::max(64.f, featherDistance + 32.f);
+		if (m_regionSelectionCircular && m_regionCircleRadius > 0.01f)
+		{
+			float const cx0 = m_regionCircleCenterX - m_regionCircleRadius;
+			float const cz0 = m_regionCircleCenterZ - m_regionCircleRadius;
+			float const cx1 = m_regionCircleCenterX + m_regionCircleRadius;
+			float const cz1 = m_regionCircleCenterZ + m_regionCircleRadius;
+			terrainObject->invalidateRegion(Rectangle2d(cx0 - margin, cz0 - margin, cx1 + margin, cz1 + margin));
+		}
+		else
+		{
+			terrainObject->invalidateRegion(Rectangle2d(ax0 - margin, az0 - margin, ax1 + margin, az1 + margin));
+		}
+	}
+
+	flushTerrainChanges();
+	nudgeGodClientCameraToRefreshDpvs();
+
+	char buf[160];
+	snprintf(buf, sizeof(buf), "Added environment region layer '%s' (family %d).", layerName, familyId);
+	MainFrame::getInstance().textToConsole(buf);
 
 	return true;
 }
@@ -4406,6 +4604,190 @@ bool GodClientTerrainEditor::exportModificationsToLayer(const char* layerName)
 	}
 
 	return success;
+}
+
+// ----------------------------------------------------------------------
+
+bool GodClientTerrainEditor::addFullMapHeightConstantLayer(float height, float featherDistance, char const* optionalLayerNameBase)
+{
+	TerrainGenerator* const generator = getTerrainGenerator();
+	if (!generator)
+		return false;
+
+	TerrainObject const* const terrainObject = TerrainObject::getConstInstance();
+	if (!terrainObject)
+		return false;
+
+	ProceduralTerrainAppearanceTemplate const* const tpl = dynamic_cast<ProceduralTerrainAppearanceTemplate const*>(terrainObject->getAppearance()->getAppearanceTemplate());
+	if (!tpl)
+		return false;
+
+	float const half = tpl->getMapWidthInMeters() * 0.5f;
+	if (half < 1.f)
+		return false;
+
+	Rectangle2d const rect(-half, -half, half, half);
+
+	char layerName[128];
+	if (optionalLayerNameBase && optionalLayerNameBase[0])
+		snprintf(layerName, sizeof(layerName), "%s_%d", optionalLayerNameBase, s_godProceduralAuthoringSerial++);
+	else
+		snprintf(layerName, sizeof(layerName), "GodHeightConst_%d", s_godProceduralAuthoringSerial++);
+
+	TerrainGenerator::Layer* const layer = new TerrainGenerator::Layer();
+	layer->setName(layerName);
+	layer->setActive(true);
+
+	BoundaryRectangle* const boundary = new BoundaryRectangle();
+	boundary->setName("Full map (height constant)");
+	boundary->setRectangle(rect);
+	boundary->setFeatherDistance(featherDistance);
+	layer->addBoundary(boundary);
+
+	AffectorHeightConstant* const aff = new AffectorHeightConstant();
+	aff->setName("Height constant");
+	aff->setHeight(height);
+	aff->setOperation(TGO_replace);
+	layer->addAffector(aff);
+
+	generator->addLayer(layer);
+	m_createdLayers.push_back(layerName);
+	generator->prepare();
+
+	TerrainObject* const toMut = TerrainObject::getInstance();
+	if (toMut)
+	{
+		float const pad = std::max(64.f, featherDistance + 32.f);
+		float const rx0 = std::min(rect.x0, rect.x1);
+		float const ry0 = std::min(rect.y0, rect.y1);
+		float const rx1 = std::max(rect.x0, rect.x1);
+		float const ry1 = std::max(rect.y0, rect.y1);
+		toMut->invalidateRegion(Rectangle2d(rx0 - pad, ry0 - pad, rx1 + pad, ry1 + pad));
+	}
+
+	flushTerrainChanges();
+	nudgeGodClientCameraToRefreshDpvs();
+	return true;
+}
+
+// ----------------------------------------------------------------------
+
+bool GodClientTerrainEditor::addFullMapShaderConstantLayer(int shaderFamilyId, float featherDistance, char const* optionalLayerNameBase)
+{
+	if (!shaderFamilyId)
+		return false;
+
+	TerrainGenerator* const generator = getTerrainGenerator();
+	if (!generator)
+		return false;
+
+	TerrainObject const* const terrainObject = TerrainObject::getConstInstance();
+	if (!terrainObject)
+		return false;
+
+	ProceduralTerrainAppearanceTemplate const* const tpl = dynamic_cast<ProceduralTerrainAppearanceTemplate const*>(terrainObject->getAppearance()->getAppearanceTemplate());
+	if (!tpl)
+		return false;
+
+	float const half = tpl->getMapWidthInMeters() * 0.5f;
+	if (half < 1.f)
+		return false;
+
+	Rectangle2d const rect(-half, -half, half, half);
+
+	char layerName[128];
+	if (optionalLayerNameBase && optionalLayerNameBase[0])
+		snprintf(layerName, sizeof(layerName), "%s_%d", optionalLayerNameBase, s_godProceduralAuthoringSerial++);
+	else
+		snprintf(layerName, sizeof(layerName), "GodShaderConst_%d", s_godProceduralAuthoringSerial++);
+
+	TerrainGenerator::Layer* const layer = new TerrainGenerator::Layer();
+	layer->setName(layerName);
+	layer->setActive(true);
+
+	BoundaryRectangle* const boundary = new BoundaryRectangle();
+	boundary->setName("Full map (shader constant)");
+	boundary->setRectangle(rect);
+	boundary->setFeatherDistance(featherDistance);
+	layer->addBoundary(boundary);
+
+	AffectorShaderConstant* const aff = new AffectorShaderConstant();
+	aff->setName("Shader constant");
+	aff->setFamilyId(shaderFamilyId);
+	layer->addAffector(aff);
+
+	generator->addLayer(layer);
+	m_createdLayers.push_back(layerName);
+	generator->prepare();
+
+	TerrainObject* const toMut = TerrainObject::getInstance();
+	if (toMut)
+	{
+		float const pad = std::max(256.f, featherDistance + 64.f);
+		float const rx0 = std::min(rect.x0, rect.x1);
+		float const ry0 = std::min(rect.y0, rect.y1);
+		float const rx1 = std::max(rect.x0, rect.x1);
+		float const ry1 = std::max(rect.y0, rect.y1);
+		toMut->invalidateRegion(Rectangle2d(rx0 - pad, ry0 - pad, rx1 + pad, ry1 + pad));
+	}
+
+	flushTerrainChanges();
+	nudgeGodClientCameraToRefreshDpvs();
+	return true;
+}
+
+// ----------------------------------------------------------------------
+
+bool GodClientTerrainEditor::addExcludeLayerForRectangle(Rectangle2d const& rectXZ, float featherDistance, char const* optionalLayerNameBase)
+{
+	TerrainGenerator* const generator = getTerrainGenerator();
+	if (!generator)
+		return false;
+
+	float const ax0 = std::min(rectXZ.x0, rectXZ.x1);
+	float const az0 = std::min(rectXZ.y0, rectXZ.y1);
+	float const ax1 = std::max(rectXZ.x0, rectXZ.x1);
+	float const az1 = std::max(rectXZ.y0, rectXZ.y1);
+	Rectangle2d const rect(ax0, az0, ax1, az1);
+
+	static float const kMinExtent = 0.5f;
+	if ((ax1 - ax0) < kMinExtent || (az1 - az0) < kMinExtent)
+		return false;
+
+	char layerName[128];
+	if (optionalLayerNameBase && optionalLayerNameBase[0])
+		snprintf(layerName, sizeof(layerName), "%s_%d", optionalLayerNameBase, s_godProceduralAuthoringSerial++);
+	else
+		snprintf(layerName, sizeof(layerName), "GodExclude_%d", s_godProceduralAuthoringSerial++);
+
+	TerrainGenerator::Layer* const layer = new TerrainGenerator::Layer();
+	layer->setName(layerName);
+	layer->setActive(true);
+
+	BoundaryRectangle* const boundary = new BoundaryRectangle();
+	boundary->setName("Exclude boundary");
+	boundary->setRectangle(rect);
+	boundary->setFeatherDistance(featherDistance);
+	layer->addBoundary(boundary);
+
+	AffectorExclude* const ex = new AffectorExclude();
+	ex->setName("Exclude");
+	layer->addAffector(ex);
+
+	generator->addLayer(layer);
+	m_createdLayers.push_back(layerName);
+	generator->prepare();
+
+	TerrainObject* const terrainObject = TerrainObject::getInstance();
+	if (terrainObject)
+	{
+		float const margin = std::max(64.f, featherDistance + 32.f);
+		terrainObject->invalidateRegion(Rectangle2d(ax0 - margin, az0 - margin, ax1 + margin, az1 + margin));
+	}
+
+	flushTerrainChanges();
+	nudgeGodClientCameraToRefreshDpvs();
+	return true;
 }
 
 // ----------------------------------------------------------------------

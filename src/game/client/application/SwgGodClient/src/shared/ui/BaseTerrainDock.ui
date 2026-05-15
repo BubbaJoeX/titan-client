@@ -8,9 +8,15 @@
         <rect>
             <x>0</x>
             <y>0</y>
-            <width>300</width>
+            <width>500</width>
             <height>720</height>
         </rect>
+    </property>
+    <property name="maximumSize">
+        <size>
+            <width>525</width>
+            <height>16777215</height>
+        </size>
     </property>
     <property name="caption">
         <string>Terrain Editor</string>
@@ -75,7 +81,7 @@
                                 <property name="name">
                                     <cstring>m_fileButtonLayout</cstring>
                                 </property>
-                                <hbox>
+                                <vbox>
                                     <property name="spacing">
                                         <number>3</number>
                                     </property>
@@ -111,7 +117,7 @@
                                             <string>Refresh</string>
                                         </property>
                                     </widget>
-                                </hbox>
+                                </vbox>
                             </widget>
                         </vbox>
                     </widget>
@@ -122,14 +128,14 @@
                         <property name="title">
                             <string>Height Tools</string>
                         </property>
-                        <grid>
+                        <vbox>
                             <property name="margin">
                                 <number>3</number>
                             </property>
                             <property name="spacing">
                                 <number>2</number>
                             </property>
-                            <widget class="QPushButton" row="0" column="0">
+                            <widget class="QPushButton">
                                 <property name="name">
                                     <cstring>m_toolRaise</cstring>
                                 </property>
@@ -140,7 +146,7 @@
                                     <bool>true</bool>
                                 </property>
                             </widget>
-                            <widget class="QPushButton" row="0" column="1">
+                            <widget class="QPushButton">
                                 <property name="name">
                                     <cstring>m_toolLower</cstring>
                                 </property>
@@ -151,7 +157,7 @@
                                     <bool>true</bool>
                                 </property>
                             </widget>
-                            <widget class="QPushButton" row="0" column="2">
+                            <widget class="QPushButton">
                                 <property name="name">
                                     <cstring>m_toolFlatten</cstring>
                                 </property>
@@ -162,7 +168,7 @@
                                     <bool>true</bool>
                                 </property>
                             </widget>
-                            <widget class="QPushButton" row="1" column="0">
+                            <widget class="QPushButton">
                                 <property name="name">
                                     <cstring>m_toolSmooth</cstring>
                                 </property>
@@ -173,7 +179,7 @@
                                     <bool>true</bool>
                                 </property>
                             </widget>
-                            <widget class="QPushButton" row="1" column="1">
+                            <widget class="QPushButton">
                                 <property name="name">
                                     <cstring>m_toolNoise</cstring>
                                 </property>
@@ -184,7 +190,7 @@
                                     <bool>true</bool>
                                 </property>
                             </widget>
-                            <widget class="QPushButton" row="1" column="2">
+                            <widget class="QPushButton">
                                 <property name="name">
                                     <cstring>m_toolSetHeight</cstring>
                                 </property>
@@ -195,7 +201,279 @@
                                     <bool>true</bool>
                                 </property>
                             </widget>
-                        </grid>
+                        </vbox>
+                    </widget>
+                    <widget class="QGroupBox">
+                        <property name="name">
+                            <cstring>m_raiseLowerTuneGroup</cstring>
+                        </property>
+                        <property name="title">
+                            <string>Raise / Lower tuning</string>
+                        </property>
+                        <vbox>
+                            <property name="margin">
+                                <number>3</number>
+                            </property>
+                            <property name="spacing">
+                                <number>4</number>
+                            </property>
+                            <widget class="QLayoutWidget">
+                                <property name="name">
+                                    <cstring>m_raiseLowerSpeedRow</cstring>
+                                </property>
+                                <vbox>
+                                    <property name="spacing">
+                                        <number>2</number>
+                                    </property>
+                                    <widget class="QLayoutWidget">
+                                        <property name="name">
+                                            <cstring>m_raiseLowerSpeedHeaderRow</cstring>
+                                        </property>
+                                        <hbox>
+                                            <property name="spacing">
+                                                <number>4</number>
+                                            </property>
+                                            <widget class="QLabel">
+                                                <property name="name">
+                                                    <cstring>m_raiseLowerSpeedLabel</cstring>
+                                                </property>
+                                                <property name="text">
+                                                    <string>Speed (m/dab):</string>
+                                                </property>
+                                            </widget>
+                                            <spacer>
+                                                <property name="name">
+                                                    <cstring>m_raiseLowerSpeedHeaderSpacer</cstring>
+                                                </property>
+                                                <property name="orientation">
+                                                    <enum>Horizontal</enum>
+                                                </property>
+                                                <property name="sizeType">
+                                                    <enum>Expanding</enum>
+                                                </property>
+                                            </spacer>
+                                            <widget class="QLabel">
+                                                <property name="name">
+                                                    <cstring>m_raiseLowerSpeedValue</cstring>
+                                                </property>
+                                                <property name="text">
+                                                    <string>0.25m</string>
+                                                </property>
+                                            </widget>
+                                        </hbox>
+                                    </widget>
+                                    <widget class="QSlider">
+                                        <property name="name">
+                                            <cstring>m_raiseLowerSpeedSlider</cstring>
+                                        </property>
+                                        <property name="minValue">
+                                            <number>1</number>
+                                        </property>
+                                        <property name="maxValue">
+                                            <number>200</number>
+                                        </property>
+                                        <property name="value">
+                                            <number>13</number>
+                                        </property>
+                                        <property name="orientation">
+                                            <enum>Horizontal</enum>
+                                        </property>
+                                    </widget>
+                                </vbox>
+                            </widget>
+                            <widget class="QLayoutWidget">
+                                <property name="name">
+                                    <cstring>m_raiseLowerBiasRow</cstring>
+                                </property>
+                                <vbox>
+                                    <property name="spacing">
+                                        <number>2</number>
+                                    </property>
+                                    <widget class="QLayoutWidget">
+                                        <property name="name">
+                                            <cstring>m_raiseLowerBiasHeaderRow</cstring>
+                                        </property>
+                                        <hbox>
+                                            <property name="spacing">
+                                                <number>4</number>
+                                            </property>
+                                            <widget class="QLabel">
+                                                <property name="name">
+                                                    <cstring>m_raiseLowerBiasLabel</cstring>
+                                                </property>
+                                                <property name="text">
+                                                    <string>Bias (rel. avg):</string>
+                                                </property>
+                                            </widget>
+                                            <spacer>
+                                                <property name="name">
+                                                    <cstring>m_raiseLowerBiasHeaderSpacer</cstring>
+                                                </property>
+                                                <property name="orientation">
+                                                    <enum>Horizontal</enum>
+                                                </property>
+                                                <property name="sizeType">
+                                                    <enum>Expanding</enum>
+                                                </property>
+                                            </spacer>
+                                            <widget class="QLabel">
+                                                <property name="name">
+                                                    <cstring>m_raiseLowerBiasValue</cstring>
+                                                </property>
+                                                <property name="text">
+                                                    <string>Center</string>
+                                                </property>
+                                            </widget>
+                                        </hbox>
+                                    </widget>
+                                    <widget class="QSlider">
+                                        <property name="name">
+                                            <cstring>m_raiseLowerBiasSlider</cstring>
+                                        </property>
+                                        <property name="minValue">
+                                            <number>-100</number>
+                                        </property>
+                                        <property name="maxValue">
+                                            <number>100</number>
+                                        </property>
+                                        <property name="value">
+                                            <number>0</number>
+                                        </property>
+                                        <property name="orientation">
+                                            <enum>Horizontal</enum>
+                                        </property>
+                                    </widget>
+                                </vbox>
+                            </widget>
+                            <widget class="QLayoutWidget">
+                                <property name="name">
+                                    <cstring>m_raiseLowerClickRow</cstring>
+                                </property>
+                                <vbox>
+                                    <property name="spacing">
+                                        <number>2</number>
+                                    </property>
+                                    <widget class="QLayoutWidget">
+                                        <property name="name">
+                                            <cstring>m_raiseLowerClickHeaderRow</cstring>
+                                        </property>
+                                        <hbox>
+                                            <property name="spacing">
+                                                <number>4</number>
+                                            </property>
+                                            <widget class="QLabel">
+                                                <property name="name">
+                                                    <cstring>m_raiseLowerClickLabel</cstring>
+                                                </property>
+                                                <property name="text">
+                                                    <string>Click rate:</string>
+                                                </property>
+                                            </widget>
+                                            <spacer>
+                                                <property name="name">
+                                                    <cstring>m_raiseLowerClickHeaderSpacer</cstring>
+                                                </property>
+                                                <property name="orientation">
+                                                    <enum>Horizontal</enum>
+                                                </property>
+                                                <property name="sizeType">
+                                                    <enum>Expanding</enum>
+                                                </property>
+                                            </spacer>
+                                            <widget class="QLabel">
+                                                <property name="name">
+                                                    <cstring>m_raiseLowerClickValue</cstring>
+                                                </property>
+                                                <property name="text">
+                                                    <string>100%</string>
+                                                </property>
+                                            </widget>
+                                        </hbox>
+                                    </widget>
+                                    <widget class="QSlider">
+                                        <property name="name">
+                                            <cstring>m_raiseLowerClickSlider</cstring>
+                                        </property>
+                                        <property name="minValue">
+                                            <number>25</number>
+                                        </property>
+                                        <property name="maxValue">
+                                            <number>400</number>
+                                        </property>
+                                        <property name="value">
+                                            <number>100</number>
+                                        </property>
+                                        <property name="orientation">
+                                            <enum>Horizontal</enum>
+                                        </property>
+                                    </widget>
+                                </vbox>
+                            </widget>
+                            <widget class="QLayoutWidget">
+                                <property name="name">
+                                    <cstring>m_raiseLowerJitterRow</cstring>
+                                </property>
+                                <vbox>
+                                    <property name="spacing">
+                                        <number>2</number>
+                                    </property>
+                                    <widget class="QLayoutWidget">
+                                        <property name="name">
+                                            <cstring>m_raiseLowerJitterHeaderRow</cstring>
+                                        </property>
+                                        <hbox>
+                                            <property name="spacing">
+                                                <number>4</number>
+                                            </property>
+                                            <widget class="QLabel">
+                                                <property name="name">
+                                                    <cstring>m_raiseLowerJitterLabel</cstring>
+                                                </property>
+                                                <property name="text">
+                                                    <string>Jitter:</string>
+                                                </property>
+                                            </widget>
+                                            <spacer>
+                                                <property name="name">
+                                                    <cstring>m_raiseLowerJitterHeaderSpacer</cstring>
+                                                </property>
+                                                <property name="orientation">
+                                                    <enum>Horizontal</enum>
+                                                </property>
+                                                <property name="sizeType">
+                                                    <enum>Expanding</enum>
+                                                </property>
+                                            </spacer>
+                                            <widget class="QLabel">
+                                                <property name="name">
+                                                    <cstring>m_raiseLowerJitterValue</cstring>
+                                                </property>
+                                                <property name="text">
+                                                    <string>0%</string>
+                                                </property>
+                                            </widget>
+                                        </hbox>
+                                    </widget>
+                                    <widget class="QSlider">
+                                        <property name="name">
+                                            <cstring>m_raiseLowerJitterSlider</cstring>
+                                        </property>
+                                        <property name="minValue">
+                                            <number>0</number>
+                                        </property>
+                                        <property name="maxValue">
+                                            <number>100</number>
+                                        </property>
+                                        <property name="value">
+                                            <number>0</number>
+                                        </property>
+                                        <property name="orientation">
+                                            <enum>Horizontal</enum>
+                                        </property>
+                                    </widget>
+                                </vbox>
+                            </widget>
+                        </vbox>
                     </widget>
                     <widget class="QGroupBox">
                         <property name="name">
@@ -204,175 +482,282 @@
                         <property name="title">
                             <string>Brush Settings</string>
                         </property>
-                        <grid>
+                        <vbox>
                             <property name="margin">
                                 <number>3</number>
                             </property>
                             <property name="spacing">
-                                <number>2</number>
+                                <number>4</number>
                             </property>
-                            <widget class="QLabel" row="0" column="0">
+                            <widget class="QLayoutWidget">
                                 <property name="name">
-                                    <cstring>m_sizeLabel</cstring>
+                                    <cstring>m_brushSizeRow</cstring>
                                 </property>
-                                <property name="text">
-                                    <string>Size:</string>
-                                </property>
-                            </widget>
-                            <widget class="QSlider" row="0" column="1">
-                                <property name="name">
-                                    <cstring>m_brushSizeSlider</cstring>
-                                </property>
-                                <property name="minValue">
-                                    <number>1</number>
-                                </property>
-                                <property name="maxValue">
-                                    <number>256</number>
-                                </property>
-                                <property name="value">
-                                    <number>32</number>
-                                </property>
-                                <property name="orientation">
-                                    <enum>Horizontal</enum>
-                                </property>
-                            </widget>
-                            <widget class="QLabel" row="0" column="2">
-                                <property name="name">
-                                    <cstring>m_brushSizeValue</cstring>
-                                </property>
-                                <property name="text">
-                                    <string>32m</string>
-                                </property>
-                                <property name="minimumSize">
-                                    <size>
-                                        <width>40</width>
-                                        <height>0</height>
-                                    </size>
-                                </property>
-                            </widget>
-                            <widget class="QLabel" row="1" column="0">
-                                <property name="name">
-                                    <cstring>m_strengthLabel</cstring>
-                                </property>
-                                <property name="text">
-                                    <string>Strength:</string>
-                                </property>
-                            </widget>
-                            <widget class="QSlider" row="1" column="1">
-                                <property name="name">
-                                    <cstring>m_brushStrengthSlider</cstring>
-                                </property>
-                                <property name="minValue">
-                                    <number>1</number>
-                                </property>
-                                <property name="maxValue">
-                                    <number>100</number>
-                                </property>
-                                <property name="value">
-                                    <number>50</number>
-                                </property>
-                                <property name="orientation">
-                                    <enum>Horizontal</enum>
-                                </property>
-                            </widget>
-                            <widget class="QLabel" row="1" column="2">
-                                <property name="name">
-                                    <cstring>m_brushStrengthValue</cstring>
-                                </property>
-                                <property name="text">
-                                    <string>50%</string>
-                                </property>
-                            </widget>
-                            <widget class="QLabel" row="2" column="0">
-                                <property name="name">
-                                    <cstring>m_shapeLabel</cstring>
-                                </property>
-                                <property name="text">
-                                    <string>Shape:</string>
-                                </property>
-                            </widget>
-                            <widget class="QComboBox" row="2" column="1" rowspan="1" colspan="2">
-                                <property name="name">
-                                    <cstring>m_brushShapeCombo</cstring>
-                                </property>
-                                <item>
-                                    <property name="text">
-                                        <string>Circle</string>
+                                <vbox>
+                                    <property name="spacing">
+                                        <number>2</number>
                                     </property>
-                                </item>
-                                <item>
-                                    <property name="text">
-                                        <string>Square</string>
-                                    </property>
-                                </item>
+                                    <widget class="QLayoutWidget">
+                                        <property name="name">
+                                            <cstring>m_brushSizeHeaderRow</cstring>
+                                        </property>
+                                        <hbox>
+                                            <property name="spacing">
+                                                <number>4</number>
+                                            </property>
+                                            <widget class="QLabel">
+                                                <property name="name">
+                                                    <cstring>m_sizeLabel</cstring>
+                                                </property>
+                                                <property name="text">
+                                                    <string>Size:</string>
+                                                </property>
+                                            </widget>
+                                            <spacer>
+                                                <property name="name">
+                                                    <cstring>m_brushSizeHeaderSpacer</cstring>
+                                                </property>
+                                                <property name="orientation">
+                                                    <enum>Horizontal</enum>
+                                                </property>
+                                                <property name="sizeType">
+                                                    <enum>Expanding</enum>
+                                                </property>
+                                            </spacer>
+                                            <widget class="QLabel">
+                                                <property name="name">
+                                                    <cstring>m_brushSizeValue</cstring>
+                                                </property>
+                                                <property name="text">
+                                                    <string>32m</string>
+                                                </property>
+                                            </widget>
+                                        </hbox>
+                                    </widget>
+                                    <widget class="QSlider">
+                                        <property name="name">
+                                            <cstring>m_brushSizeSlider</cstring>
+                                        </property>
+                                        <property name="minValue">
+                                            <number>1</number>
+                                        </property>
+                                        <property name="maxValue">
+                                            <number>256</number>
+                                        </property>
+                                        <property name="value">
+                                            <number>32</number>
+                                        </property>
+                                        <property name="orientation">
+                                            <enum>Horizontal</enum>
+                                        </property>
+                                    </widget>
+                                </vbox>
                             </widget>
-                            <widget class="QLabel" row="3" column="0">
+                            <widget class="QLayoutWidget">
                                 <property name="name">
-                                    <cstring>m_falloffLabel</cstring>
+                                    <cstring>m_brushStrengthRow</cstring>
                                 </property>
-                                <property name="text">
-                                    <string>Falloff:</string>
-                                </property>
-                            </widget>
-                            <widget class="QComboBox" row="3" column="1" rowspan="1" colspan="2">
-                                <property name="name">
-                                    <cstring>m_falloffCombo</cstring>
-                                </property>
-                                <item>
-                                    <property name="text">
-                                        <string>Linear</string>
+                                <vbox>
+                                    <property name="spacing">
+                                        <number>2</number>
                                     </property>
-                                </item>
-                                <item>
-                                    <property name="text">
-                                        <string>Smooth</string>
-                                    </property>
-                                </item>
-                                <item>
-                                    <property name="text">
-                                        <string>Sharp</string>
-                                    </property>
-                                </item>
-                                <item>
-                                    <property name="text">
-                                        <string>Flat</string>
-                                    </property>
-                                </item>
+                                    <widget class="QLayoutWidget">
+                                        <property name="name">
+                                            <cstring>m_brushStrengthHeaderRow</cstring>
+                                        </property>
+                                        <hbox>
+                                            <property name="spacing">
+                                                <number>4</number>
+                                            </property>
+                                            <widget class="QLabel">
+                                                <property name="name">
+                                                    <cstring>m_strengthLabel</cstring>
+                                                </property>
+                                                <property name="text">
+                                                    <string>Strength:</string>
+                                                </property>
+                                            </widget>
+                                            <spacer>
+                                                <property name="name">
+                                                    <cstring>m_brushStrengthHeaderSpacer</cstring>
+                                                </property>
+                                                <property name="orientation">
+                                                    <enum>Horizontal</enum>
+                                                </property>
+                                                <property name="sizeType">
+                                                    <enum>Expanding</enum>
+                                                </property>
+                                            </spacer>
+                                            <widget class="QLabel">
+                                                <property name="name">
+                                                    <cstring>m_brushStrengthValue</cstring>
+                                                </property>
+                                                <property name="text">
+                                                    <string>50%</string>
+                                                </property>
+                                            </widget>
+                                        </hbox>
+                                    </widget>
+                                    <widget class="QSlider">
+                                        <property name="name">
+                                            <cstring>m_brushStrengthSlider</cstring>
+                                        </property>
+                                        <property name="minValue">
+                                            <number>1</number>
+                                        </property>
+                                        <property name="maxValue">
+                                            <number>100</number>
+                                        </property>
+                                        <property name="value">
+                                            <number>50</number>
+                                        </property>
+                                        <property name="orientation">
+                                            <enum>Horizontal</enum>
+                                        </property>
+                                    </widget>
+                                </vbox>
                             </widget>
-                            <widget class="QLabel" row="4" column="0">
+                            <widget class="QLayoutWidget">
                                 <property name="name">
-                                    <cstring>m_featherLabel</cstring>
+                                    <cstring>m_brushShapeRow</cstring>
                                 </property>
-                                <property name="text">
-                                    <string>Feather:</string>
-                                </property>
+                                <vbox>
+                                    <property name="spacing">
+                                        <number>2</number>
+                                    </property>
+                                    <widget class="QLabel">
+                                        <property name="name">
+                                            <cstring>m_shapeLabel</cstring>
+                                        </property>
+                                        <property name="text">
+                                            <string>Shape:</string>
+                                        </property>
+                                    </widget>
+                                    <widget class="QComboBox">
+                                        <property name="name">
+                                            <cstring>m_brushShapeCombo</cstring>
+                                        </property>
+                                        <item>
+                                            <property name="text">
+                                                <string>Circle</string>
+                                            </property>
+                                        </item>
+                                        <item>
+                                            <property name="text">
+                                                <string>Square</string>
+                                            </property>
+                                        </item>
+                                    </widget>
+                                </vbox>
                             </widget>
-                            <widget class="QSlider" row="4" column="1">
+                            <widget class="QLayoutWidget">
                                 <property name="name">
-                                    <cstring>m_brushFeatherSlider</cstring>
+                                    <cstring>m_brushFalloffRow</cstring>
                                 </property>
-                                <property name="minValue">
-                                    <number>0</number>
-                                </property>
-                                <property name="maxValue">
-                                    <number>100</number>
-                                </property>
-                                <property name="value">
-                                    <number>100</number>
-                                </property>
-                                <property name="orientation">
-                                    <enum>Horizontal</enum>
-                                </property>
+                                <vbox>
+                                    <property name="spacing">
+                                        <number>2</number>
+                                    </property>
+                                    <widget class="QLabel">
+                                        <property name="name">
+                                            <cstring>m_falloffLabel</cstring>
+                                        </property>
+                                        <property name="text">
+                                            <string>Falloff:</string>
+                                        </property>
+                                    </widget>
+                                    <widget class="QComboBox">
+                                        <property name="name">
+                                            <cstring>m_falloffCombo</cstring>
+                                        </property>
+                                        <item>
+                                            <property name="text">
+                                                <string>Linear</string>
+                                            </property>
+                                        </item>
+                                        <item>
+                                            <property name="text">
+                                                <string>Smooth</string>
+                                            </property>
+                                        </item>
+                                        <item>
+                                            <property name="text">
+                                                <string>Sharp</string>
+                                            </property>
+                                        </item>
+                                        <item>
+                                            <property name="text">
+                                                <string>Flat</string>
+                                            </property>
+                                        </item>
+                                    </widget>
+                                </vbox>
                             </widget>
-                            <widget class="QLabel" row="4" column="2">
+                            <widget class="QLayoutWidget">
                                 <property name="name">
-                                    <cstring>m_brushFeatherValue</cstring>
+                                    <cstring>m_brushFeatherRow</cstring>
                                 </property>
-                                <property name="text">
-                                    <string>100%</string>
-                                </property>
+                                <vbox>
+                                    <property name="spacing">
+                                        <number>2</number>
+                                    </property>
+                                    <widget class="QLayoutWidget">
+                                        <property name="name">
+                                            <cstring>m_brushFeatherHeaderRow</cstring>
+                                        </property>
+                                        <hbox>
+                                            <property name="spacing">
+                                                <number>4</number>
+                                            </property>
+                                            <widget class="QLabel">
+                                                <property name="name">
+                                                    <cstring>m_featherLabel</cstring>
+                                                </property>
+                                                <property name="text">
+                                                    <string>Feather:</string>
+                                                </property>
+                                            </widget>
+                                            <spacer>
+                                                <property name="name">
+                                                    <cstring>m_brushFeatherHeaderSpacer</cstring>
+                                                </property>
+                                                <property name="orientation">
+                                                    <enum>Horizontal</enum>
+                                                </property>
+                                                <property name="sizeType">
+                                                    <enum>Expanding</enum>
+                                                </property>
+                                            </spacer>
+                                            <widget class="QLabel">
+                                                <property name="name">
+                                                    <cstring>m_brushFeatherValue</cstring>
+                                                </property>
+                                                <property name="text">
+                                                    <string>100%</string>
+                                                </property>
+                                            </widget>
+                                        </hbox>
+                                    </widget>
+                                    <widget class="QSlider">
+                                        <property name="name">
+                                            <cstring>m_brushFeatherSlider</cstring>
+                                        </property>
+                                        <property name="minValue">
+                                            <number>0</number>
+                                        </property>
+                                        <property name="maxValue">
+                                            <number>100</number>
+                                        </property>
+                                        <property name="value">
+                                            <number>100</number>
+                                        </property>
+                                        <property name="orientation">
+                                            <enum>Horizontal</enum>
+                                        </property>
+                                    </widget>
+                                </vbox>
                             </widget>
-                        </grid>
+                        </vbox>
                     </widget>
                     <widget class="QGroupBox">
                         <property name="name">
@@ -388,93 +773,88 @@
                             <property name="spacing">
                                 <number>2</number>
                             </property>
-                            <hbox>
-                                <property name="spacing">
-                                    <number>3</number>
+                            <widget class="QPushButton">
+                                <property name="name">
+                                    <cstring>m_selectRegionButton</cstring>
                                 </property>
-                                <widget class="QPushButton">
-                                    <property name="name">
-                                        <cstring>m_selectRegionButton</cstring>
-                                    </property>
-                                    <property name="text">
-                                        <string>Select</string>
-                                    </property>
-                                    <property name="toggleButton">
-                                        <bool>true</bool>
-                                    </property>
-                                </widget>
-                                <widget class="QPushButton">
-                                    <property name="name">
-                                        <cstring>m_copyRegionButton</cstring>
-                                    </property>
-                                    <property name="text">
-                                        <string>Copy</string>
-                                    </property>
-                                </widget>
-                                <widget class="QPushButton">
-                                    <property name="name">
-                                        <cstring>m_pasteRegionButton</cstring>
-                                    </property>
-                                    <property name="text">
-                                        <string>Paste</string>
-                                    </property>
-                                </widget>
-                                <widget class="QPushButton">
-                                    <property name="name">
-                                        <cstring>m_fillRegionButton</cstring>
-                                    </property>
-                                    <property name="text">
-                                        <string>Fill</string>
-                                    </property>
-                                </widget>
-                            </hbox>
-                            <hbox>
-                                <property name="spacing">
-                                    <number>3</number>
+                                <property name="text">
+                                    <string>Select</string>
                                 </property>
-                                <widget class="QPushButton">
-                                    <property name="name">
-                                        <cstring>m_saveRegionLayButton</cstring>
-                                    </property>
-                                    <property name="text">
-                                        <string>Save .lay</string>
-                                    </property>
-                                </widget>
-                                <widget class="QPushButton">
-                                    <property name="name">
-                                        <cstring>m_loadRegionLayButton</cstring>
-                                    </property>
-                                    <property name="text">
-                                        <string>Load .lay</string>
-                                    </property>
-                                </widget>
-                                <widget class="QPushButton">
-                                    <property name="name">
-                                        <cstring>m_importRegionLayAtCursorButton</cstring>
-                                    </property>
-                                    <property name="text">
-                                        <string>Import .lay @ cursor</string>
-                                    </property>
-                                </widget>
-                            </hbox>
-                            <hbox>
-                                <property name="spacing">
-                                    <number>3</number>
+                                <property name="toggleButton">
+                                    <bool>true</bool>
                                 </property>
-                                <widget class="QLabel">
-                                    <property name="name">
-                                        <cstring>m_regionShapeLabel</cstring>
+                            </widget>
+                            <widget class="QPushButton">
+                                <property name="name">
+                                    <cstring>m_copyRegionButton</cstring>
+                                </property>
+                                <property name="text">
+                                    <string>Copy</string>
+                                </property>
+                            </widget>
+                            <widget class="QPushButton">
+                                <property name="name">
+                                    <cstring>m_pasteRegionButton</cstring>
+                                </property>
+                                <property name="text">
+                                    <string>Paste</string>
+                                </property>
+                            </widget>
+                            <widget class="QPushButton">
+                                <property name="name">
+                                    <cstring>m_fillRegionButton</cstring>
+                                </property>
+                                <property name="text">
+                                    <string>Fill</string>
+                                </property>
+                            </widget>
+                            <widget class="QPushButton">
+                                <property name="name">
+                                    <cstring>m_saveRegionLayButton</cstring>
+                                </property>
+                                <property name="text">
+                                    <string>Save .lay</string>
+                                </property>
+                            </widget>
+                            <widget class="QPushButton">
+                                <property name="name">
+                                    <cstring>m_loadRegionLayButton</cstring>
+                                </property>
+                                <property name="text">
+                                    <string>Load .lay</string>
+                                </property>
+                            </widget>
+                            <widget class="QPushButton">
+                                <property name="name">
+                                    <cstring>m_importRegionLayAtCursorButton</cstring>
+                                </property>
+                                <property name="text">
+                                    <string>Import .lay @ cursor</string>
+                                </property>
+                            </widget>
+                            <widget class="QLayoutWidget">
+                                <property name="name">
+                                    <cstring>m_regionShapeLayout</cstring>
+                                </property>
+                                <vbox>
+                                    <property name="spacing">
+                                        <number>2</number>
                                     </property>
-                                    <property name="text">
-                                        <string>Shape:</string>
-                                    </property>
-                                </widget>
-                                <widget class="QComboBox">
-                                    <property name="name">
-                                        <cstring>m_regionShapeCombo</cstring>
-                                    </property>
-                                </widget>
-                            </hbox>
+                                    <widget class="QLabel">
+                                        <property name="name">
+                                            <cstring>m_regionShapeLabel</cstring>
+                                        </property>
+                                        <property name="text">
+                                            <string>Region selection shape</string>
+                                        </property>
+                                    </widget>
+                                    <widget class="QComboBox">
+                                        <property name="name">
+                                            <cstring>m_regionShapeCombo</cstring>
+                                        </property>
+                                    </widget>
+                                </vbox>
+                            </widget>
                             <widget class="QLabel">
                                 <property name="name">
                                     <cstring>m_mapParametersLabel</cstring>
@@ -483,55 +863,109 @@
                                     <string>Map: —</string>
                                 </property>
                             </widget>
-                            <hbox>
-                                <property name="spacing">
-                                    <number>3</number>
+                            <widget class="QGroupBox">
+                                <property name="name">
+                                    <cstring>m_mapTemplateEditorGroup</cstring>
                                 </property>
-                                <widget class="QPushButton">
-                                    <property name="name">
-                                        <cstring>m_toolExcludeTerrain</cstring>
+                                <property name="title">
+                                    <string>Map template &amp; procedural layers</string>
+                                </property>
+                                <vbox>
+                                    <property name="margin">
+                                        <number>2</number>
                                     </property>
-                                    <property name="text">
-                                        <string>Exclude</string>
+                                    <property name="spacing">
+                                        <number>2</number>
                                     </property>
-                                    <property name="toggleButton">
-                                        <bool>true</bool>
-                                    </property>
-                                </widget>
-                                <widget class="QPushButton">
-                                    <property name="name">
-                                        <cstring>m_toolBoundaryPolygon</cstring>
-                                    </property>
-                                    <property name="text">
-                                        <string>Mask</string>
-                                    </property>
-                                    <property name="toggleButton">
-                                        <bool>true</bool>
-                                    </property>
-                                </widget>
-                                <widget class="QPushButton">
-                                    <property name="name">
-                                        <cstring>m_toolBoundaryPolyline</cstring>
-                                    </property>
-                                    <property name="text">
-                                        <string>Path</string>
-                                    </property>
-                                    <property name="toggleButton">
-                                        <bool>true</bool>
-                                    </property>
-                                </widget>
-                                <widget class="QPushButton">
-                                    <property name="name">
-                                        <cstring>m_toolBoundaryPolyRoad</cstring>
-                                    </property>
-                                    <property name="text">
-                                        <string>Corridor</string>
-                                    </property>
-                                    <property name="toggleButton">
-                                        <bool>true</bool>
-                                    </property>
-                                </widget>
-                            </hbox>
+                                    <widget class="QLabel">
+                                        <property name="name">
+                                            <cstring>m_mapTemplateHintLabel</cstring>
+                                        </property>
+                                        <property name="text">
+                                            <string>Procedural Shortcuts</string>
+                                        </property>
+                                        <property name="alignment">
+                                            <set>AlignTop|AlignLeft</set>
+                                        </property>
+                                    </widget>
+                                    <widget class="QPushButton">
+                                        <property name="name">
+                                            <cstring>m_mapTemplateSettingsButton</cstring>
+                                        </property>
+                                        <property name="text">
+                                            <string>Map Parameters</string>
+                                        </property>
+                                    </widget>
+                                    <widget class="QPushButton">
+                                        <property name="name">
+                                            <cstring>m_addProcHeightConstButton</cstring>
+                                        </property>
+                                        <property name="text">
+                                            <string>Height Constant</string>
+                                        </property>
+                                    </widget>
+                                    <widget class="QPushButton">
+                                        <property name="name">
+                                            <cstring>m_addProcShaderConstButton</cstring>
+                                        </property>
+                                        <property name="text">
+                                            <string>Shader Constant</string>
+                                        </property>
+                                    </widget>
+                                    <widget class="QPushButton">
+                                        <property name="name">
+                                            <cstring>m_addProcExcludeRegionButton</cstring>
+                                        </property>
+                                        <property name="text">
+                                            <string>Add exclude layer from current region</string>
+                                        </property>
+                                    </widget>
+                                </vbox>
+                            </widget>
+                            <widget class="QPushButton">
+                                <property name="name">
+                                    <cstring>m_toolExcludeTerrain</cstring>
+                                </property>
+                                <property name="text">
+                                    <string>Exclude terrain</string>
+                                </property>
+                                <property name="toggleButton">
+                                    <bool>true</bool>
+                                </property>
+                            </widget>
+                            <widget class="QPushButton">
+                                <property name="name">
+                                    <cstring>m_toolBoundaryPolygon</cstring>
+                                </property>
+                                <property name="text">
+                                    <string>Boundary mask</string>
+                                </property>
+                                <property name="toggleButton">
+                                    <bool>true</bool>
+                                </property>
+                            </widget>
+                            <widget class="QPushButton">
+                                <property name="name">
+                                    <cstring>m_toolBoundaryPolyline</cstring>
+                                </property>
+                                <property name="text">
+                                    <string>Boundary path</string>
+                                </property>
+                                <property name="toggleButton">
+                                    <bool>true</bool>
+                                </property>
+                            </widget>
+                            <widget class="QPushButton">
+                                <property name="name">
+                                    <cstring>m_toolBoundaryPolyRoad</cstring>
+                                </property>
+                                <property name="text">
+                                    <string>Boundary corridor</string>
+                                </property>
+                                <property name="toggleButton">
+                                    <bool>true</bool>
+                                </property>
+                            </widget>
                             <widget class="QGroupBox">
                                 <property name="name">
                                     <cstring>m_regionPolygonCommitGroup</cstring>
@@ -546,27 +980,22 @@
                                     <property name="spacing">
                                         <number>2</number>
                                     </property>
-                                    <hbox>
-                                        <property name="spacing">
-                                            <number>3</number>
+                                    <widget class="QPushButton">
+                                        <property name="name">
+                                            <cstring>m_regionPolyFinishButton</cstring>
                                         </property>
-                                        <widget class="QPushButton">
-                                            <property name="name">
-                                                <cstring>m_regionPolyFinishButton</cstring>
-                                            </property>
-                                            <property name="text">
-                                                <string>Create</string>
-                                            </property>
-                                        </widget>
-                                        <widget class="QPushButton">
-                                            <property name="name">
-                                                <cstring>m_regionPolyCancelButton</cstring>
-                                            </property>
-                                            <property name="text">
-                                                <string>Discard</string>
-                                            </property>
-                                        </widget>
-                                    </hbox>
+                                        <property name="text">
+                                            <string>Create</string>
+                                        </property>
+                                    </widget>
+                                    <widget class="QPushButton">
+                                        <property name="name">
+                                            <cstring>m_regionPolyCancelButton</cstring>
+                                        </property>
+                                        <property name="text">
+                                            <string>Discard</string>
+                                        </property>
+                                    </widget>
                                 </vbox>
                             </widget>
                         </vbox>
@@ -599,6 +1028,43 @@
                                     <property name="toggleButton">
                                         <bool>true</bool>
                                     </property>
+                                </widget>
+                                <widget class="QCheckBox">
+                                    <property name="name">
+                                        <cstring>m_shaderColorConstantCheck</cstring>
+                                    </property>
+                                    <property name="text">
+                                        <string>Color constant paint (nearest family preview color)</string>
+                                    </property>
+                                </widget>
+                                <widget class="QLayoutWidget">
+                                    <property name="name">
+                                        <cstring>m_shaderColorPickRow</cstring>
+                                    </property>
+                                    <hbox>
+                                        <property name="margin">
+                                            <number>0</number>
+                                        </property>
+                                        <property name="spacing">
+                                            <number>6</number>
+                                        </property>
+                                        <widget class="QPushButton">
+                                            <property name="name">
+                                                <cstring>m_shaderColorPickButton</cstring>
+                                            </property>
+                                            <property name="text">
+                                                <string>Pick paint color…</string>
+                                            </property>
+                                        </widget>
+                                        <widget class="QLabel">
+                                            <property name="name">
+                                                <cstring>m_shaderColorSummaryLabel</cstring>
+                                            </property>
+                                            <property name="text">
+                                                <string>No color picked.</string>
+                                            </property>
+                                        </widget>
+                                    </hbox>
                                 </widget>
                                 <widget class="QLabel">
                                     <property name="name">
@@ -638,6 +1104,14 @@
                                         <enum>Single</enum>
                                     </property>
                                 </widget>
+                                <widget class="QPushButton">
+                                    <property name="name">
+                                        <cstring>m_openShaderFamilyEditorButton</cstring>
+                                    </property>
+                                    <property name="text">
+                                        <string>Edit shader families…</string>
+                                    </property>
+                                </widget>
                                 <widget class="QLabel">
                                     <property name="name">
                                         <cstring>m_globalShaderHeaderLabel</cstring>
@@ -650,7 +1124,7 @@
                                     <property name="name">
                                         <cstring>m_globalShaderToolbar</cstring>
                                     </property>
-                                    <hbox>
+                                    <vbox>
                                         <property name="margin">
                                             <number>0</number>
                                         </property>
@@ -689,7 +1163,7 @@
                                                 <string>Merge into scene</string>
                                             </property>
                                         </widget>
-                                    </hbox>
+                                    </vbox>
                                 </widget>
                                 <widget class="QListView">
                                     <property name="name">
@@ -719,18 +1193,7 @@
                                     </column>
                                     <column>
                                         <property name="text">
-                                            <string>Source terrain</string>
-                                        </property>
-                                        <property name="clickable">
-                                            <bool>true</bool>
-                                        </property>
-                                        <property name="resizable">
-                                            <bool>true</bool>
-                                        </property>
-                                    </column>
-                                    <column>
-                                        <property name="text">
-                                            <string>File</string>
+                                            <string>Source .trn</string>
                                         </property>
                                         <property name="clickable">
                                             <bool>true</bool>
@@ -774,7 +1237,10 @@
                                     <property name="name">
                                         <cstring>m_waterHeightLayout</cstring>
                                     </property>
-                                    <hbox>
+                                    <vbox>
+                                        <property name="spacing">
+                                            <number>2</number>
+                                        </property>
                                         <widget class="QLabel">
                                             <property name="name">
                                                 <cstring>m_waterHeightLabel</cstring>
@@ -791,7 +1257,7 @@
                                                 <string>0.0</string>
                                             </property>
                                         </widget>
-                                    </hbox>
+                                    </vbox>
                                 </widget>
                                 <widget class="QLabel">
                                     <property name="name">
@@ -867,6 +1333,14 @@
                                 </widget>
                                 <widget class="QPushButton">
                                     <property name="name">
+                                        <cstring>m_openFloraFamilyEditorButton</cstring>
+                                    </property>
+                                    <property name="text">
+                                        <string>Edit flora families…</string>
+                                    </property>
+                                </widget>
+                                <widget class="QPushButton">
+                                    <property name="name">
                                         <cstring>m_toolPlaceRadial</cstring>
                                     </property>
                                     <property name="text">
@@ -887,6 +1361,14 @@
                                 <widget class="QComboBox">
                                     <property name="name">
                                         <cstring>m_radialGroupCombo</cstring>
+                                    </property>
+                                </widget>
+                                <widget class="QPushButton">
+                                    <property name="name">
+                                        <cstring>m_openRadialFamilyEditorButton</cstring>
+                                    </property>
+                                    <property name="text">
+                                        <string>Edit radial families…</string>
                                     </property>
                                 </widget>
                                 <spacer>
@@ -934,7 +1416,7 @@
                                             <property name="name">
                                                 <cstring>m_polylineToolButtonLayout</cstring>
                                             </property>
-                                            <hbox>
+                                            <vbox>
                                                 <property name="spacing">
                                                     <number>4</number>
                                                 </property>
@@ -960,13 +1442,16 @@
                                                         <bool>true</bool>
                                                     </property>
                                                 </widget>
-                                            </hbox>
+                                            </vbox>
                                         </widget>
                                         <widget class="QLayoutWidget">
                                             <property name="name">
                                                 <cstring>m_polylineWidthLayout</cstring>
                                             </property>
-                                            <hbox>
+                                            <vbox>
+                                                <property name="spacing">
+                                                    <number>2</number>
+                                                </property>
                                                 <widget class="QLabel">
                                                     <property name="name">
                                                         <cstring>m_polylineWidthLabel</cstring>
@@ -989,13 +1474,16 @@
                                                         <number>8</number>
                                                     </property>
                                                 </widget>
-                                            </hbox>
+                                            </vbox>
                                         </widget>
                                         <widget class="QLayoutWidget">
                                             <property name="name">
                                                 <cstring>m_polylineFeatherLayout</cstring>
                                             </property>
-                                            <hbox>
+                                            <vbox>
+                                                <property name="spacing">
+                                                    <number>2</number>
+                                                </property>
                                                 <widget class="QLabel">
                                                     <property name="name">
                                                         <cstring>m_polylineFeatherLabel</cstring>
@@ -1018,7 +1506,7 @@
                                                         <number>4</number>
                                                     </property>
                                                 </widget>
-                                            </hbox>
+                                            </vbox>
                                         </widget>
                                         <widget class="QCheckBox">
                                             <property name="name">
@@ -1045,7 +1533,7 @@
                                             <property name="name">
                                                 <cstring>m_polylineActionLayout</cstring>
                                             </property>
-                                            <hbox>
+                                            <vbox>
                                                 <property name="spacing">
                                                     <number>4</number>
                                                 </property>
@@ -1073,7 +1561,7 @@
                                                         <string>Cancel</string>
                                                     </property>
                                                 </widget>
-                                            </hbox>
+                                            </vbox>
                                         </widget>
                                     </vbox>
                                 </widget>
@@ -1115,11 +1603,38 @@
                                                 <cstring>m_environmentFamilyCombo</cstring>
                                             </property>
                                         </widget>
+                                        <widget class="QPushButton">
+                                            <property name="name">
+                                                <cstring>m_toolApplyEnvironmentRegion</cstring>
+                                            </property>
+                                            <property name="text">
+                                                <string>Region environment (LMB / Fill)</string>
+                                            </property>
+                                            <property name="toggleButton">
+                                                <bool>true</bool>
+                                            </property>
+                                        </widget>
+                                        <widget class="QPushButton">
+                                            <property name="name">
+                                                <cstring>m_openEnvironmentEditorButton</cstring>
+                                            </property>
+                                            <property name="text">
+                                                <string>Edit environment families…</string>
+                                            </property>
+                                        </widget>
+                                        <widget class="QPushButton">
+                                            <property name="name">
+                                                <cstring>m_applyEnvironmentToRegionButton</cstring>
+                                            </property>
+                                            <property name="text">
+                                                <string>Apply environment to region</string>
+                                            </property>
+                                        </widget>
                                         <widget class="QLayoutWidget">
                                             <property name="name">
                                                 <cstring>m_envZoneActionLayout</cstring>
                                             </property>
-                                            <hbox>
+                                            <vbox>
                                                 <property name="spacing">
                                                     <number>4</number>
                                                 </property>
@@ -1139,7 +1654,7 @@
                                                         <string>Cancel</string>
                                                     </property>
                                                 </widget>
-                                            </hbox>
+                                            </vbox>
                                         </widget>
                                     </vbox>
                                 </widget>
@@ -1176,23 +1691,63 @@
                                                 <string>Bitmap:</string>
                                             </property>
                                         </widget>
-                                        <widget class="QComboBox">
-                                            <property name="name">
-                                                <cstring>m_bitmapStampCombo</cstring>
-                                            </property>
-                                        </widget>
-                                        <widget class="QLayoutWidget">
-                                            <property name="name">
-                                                <cstring>m_bitmapRotationLayout</cstring>
-                                            </property>
-                                            <hbox>
-                                                <widget class="QLabel">
+                                <widget class="QComboBox">
+                                    <property name="name">
+                                        <cstring>m_bitmapStampCombo</cstring>
+                                    </property>
+                                </widget>
+                                <widget class="QPushButton">
+                                    <property name="name">
+                                        <cstring>m_openBitmapFamilyEditorButton</cstring>
+                                    </property>
+                                    <property name="text">
+                                        <string>Edit bitmap stamp families…</string>
+                                    </property>
+                                </widget>
+                                <widget class="QLayoutWidget">
+                                    <property name="name">
+                                        <cstring>m_bitmapRotationLayout</cstring>
+                                    </property>
+                                            <vbox>
+                                                <property name="spacing">
+                                                    <number>2</number>
+                                                </property>
+                                                <widget class="QLayoutWidget">
                                                     <property name="name">
-                                                        <cstring>m_bitmapRotationLabel</cstring>
+                                                        <cstring>m_bitmapRotationHeaderRow</cstring>
                                                     </property>
-                                                    <property name="text">
-                                                        <string>Rotation:</string>
-                                                    </property>
+                                                    <hbox>
+                                                        <property name="spacing">
+                                                            <number>4</number>
+                                                        </property>
+                                                        <widget class="QLabel">
+                                                            <property name="name">
+                                                                <cstring>m_bitmapRotationLabel</cstring>
+                                                            </property>
+                                                            <property name="text">
+                                                                <string>Rotation:</string>
+                                                            </property>
+                                                        </widget>
+                                                        <spacer>
+                                                            <property name="name">
+                                                                <cstring>m_bitmapRotationHeaderSpacer</cstring>
+                                                            </property>
+                                                            <property name="orientation">
+                                                                <enum>Horizontal</enum>
+                                                            </property>
+                                                            <property name="sizeType">
+                                                                <enum>Expanding</enum>
+                                                            </property>
+                                                        </spacer>
+                                                        <widget class="QLabel">
+                                                            <property name="name">
+                                                                <cstring>m_bitmapRotationValue</cstring>
+                                                            </property>
+                                                            <property name="text">
+                                                                <string>0°</string>
+                                                            </property>
+                                                        </widget>
+                                                    </hbox>
                                                 </widget>
                                                 <widget class="QSlider">
                                                     <property name="name">
@@ -1211,28 +1766,52 @@
                                                         <enum>Horizontal</enum>
                                                     </property>
                                                 </widget>
-                                                <widget class="QLabel">
-                                                    <property name="name">
-                                                        <cstring>m_bitmapRotationValue</cstring>
-                                                    </property>
-                                                    <property name="text">
-                                                        <string>0°</string>
-                                                    </property>
-                                                </widget>
-                                            </hbox>
+                                            </vbox>
                                         </widget>
                                         <widget class="QLayoutWidget">
                                             <property name="name">
                                                 <cstring>m_bitmapScaleLayout</cstring>
                                             </property>
-                                            <hbox>
-                                                <widget class="QLabel">
+                                            <vbox>
+                                                <property name="spacing">
+                                                    <number>2</number>
+                                                </property>
+                                                <widget class="QLayoutWidget">
                                                     <property name="name">
-                                                        <cstring>m_bitmapScaleLabel</cstring>
+                                                        <cstring>m_bitmapScaleHeaderRow</cstring>
                                                     </property>
-                                                    <property name="text">
-                                                        <string>Scale:</string>
-                                                    </property>
+                                                    <hbox>
+                                                        <property name="spacing">
+                                                            <number>4</number>
+                                                        </property>
+                                                        <widget class="QLabel">
+                                                            <property name="name">
+                                                                <cstring>m_bitmapScaleLabel</cstring>
+                                                            </property>
+                                                            <property name="text">
+                                                                <string>Scale:</string>
+                                                            </property>
+                                                        </widget>
+                                                        <spacer>
+                                                            <property name="name">
+                                                                <cstring>m_bitmapScaleHeaderSpacer</cstring>
+                                                            </property>
+                                                            <property name="orientation">
+                                                                <enum>Horizontal</enum>
+                                                            </property>
+                                                            <property name="sizeType">
+                                                                <enum>Expanding</enum>
+                                                            </property>
+                                                        </spacer>
+                                                        <widget class="QLabel">
+                                                            <property name="name">
+                                                                <cstring>m_bitmapScaleValue</cstring>
+                                                            </property>
+                                                            <property name="text">
+                                                                <string>100%</string>
+                                                            </property>
+                                                        </widget>
+                                                    </hbox>
                                                 </widget>
                                                 <widget class="QSlider">
                                                     <property name="name">
@@ -1251,15 +1830,7 @@
                                                         <enum>Horizontal</enum>
                                                     </property>
                                                 </widget>
-                                                <widget class="QLabel">
-                                                    <property name="name">
-                                                        <cstring>m_bitmapScaleValue</cstring>
-                                                    </property>
-                                                    <property name="text">
-                                                        <string>100%</string>
-                                                    </property>
-                                                </widget>
-                                            </hbox>
+                                            </vbox>
                                         </widget>
                                         <widget class="QCheckBox">
                                             <property name="name">
@@ -1350,7 +1921,7 @@
                                         <enum>Single</enum>
                                     </property>
                                 </widget>
-                                <hbox>
+                                <vbox>
                                     <property name="spacing">
                                         <number>4</number>
                                     </property>
@@ -1386,7 +1957,7 @@
                                             <string>Rename</string>
                                         </property>
                                     </widget>
-                                </hbox>
+                                </vbox>
                             </vbox>
                         </widget>
                     </widget>
@@ -1397,14 +1968,14 @@
                         <property name="title">
                             <string>Visualization</string>
                         </property>
-                        <grid>
+                        <vbox>
                             <property name="margin">
                                 <number>6</number>
                             </property>
                             <property name="spacing">
                                 <number>4</number>
                             </property>
-                            <widget class="QCheckBox" row="0" column="0">
+                            <widget class="QCheckBox">
                                 <property name="name">
                                     <cstring>m_wireframeCheck</cstring>
                                 </property>
@@ -1412,7 +1983,7 @@
                                     <string>Wireframe Overlay</string>
                                 </property>
                             </widget>
-                            <widget class="QCheckBox" row="0" column="1">
+                            <widget class="QCheckBox">
                                 <property name="name">
                                     <cstring>m_heightColorsCheck</cstring>
                                 </property>
@@ -1420,7 +1991,7 @@
                                     <string>Height Colors</string>
                                 </property>
                             </widget>
-                            <widget class="QCheckBox" row="1" column="0">
+                            <widget class="QCheckBox">
                                 <property name="name">
                                     <cstring>m_chunkGridCheck</cstring>
                                 </property>
@@ -1428,7 +1999,7 @@
                                     <string>Chunk Grid</string>
                                 </property>
                             </widget>
-                            <widget class="QCheckBox" row="1" column="1">
+                            <widget class="QCheckBox">
                                 <property name="name">
                                     <cstring>m_brushPreviewCheck</cstring>
                                 </property>
@@ -1439,7 +2010,7 @@
                                     <bool>true</bool>
                                 </property>
                             </widget>
-                        </grid>
+                        </vbox>
                     </widget>
                     <widget class="QGroupBox">
                         <property name="name">
@@ -1448,7 +2019,7 @@
                         <property name="title">
                             <string>History</string>
                         </property>
-                        <hbox>
+                        <vbox>
                             <property name="margin">
                                 <number>6</number>
                             </property>
@@ -1485,7 +2056,7 @@
                                     <string>Clear History</string>
                                 </property>
                             </widget>
-                        </hbox>
+                        </vbox>
                     </widget>
                 </vbox>
             </widget>
