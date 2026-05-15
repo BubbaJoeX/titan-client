@@ -224,6 +224,10 @@ public slots:
 	void onLoadRegionLay();
 	void onImportRegionLayAtCursor();
 	void onRegionShapeChanged(int index);
+	void onMapTemplateSettingsClicked();
+	void onAddProceduralHeightConstantLayer();
+	void onAddProceduralShaderConstantLayer();
+	void onAddProceduralExcludeFromRegion();
 
 	// TerrainGenerator layer list (live)
 	void onLayerToggleActive();
@@ -270,6 +274,11 @@ protected:
 	void showEvent(QShowEvent* event);
 	void hideEvent(QHideEvent* event);
 
+private slots:
+
+	/// Runs after \ref Game::Messages::SCENE_CHANGED so terrain / scene pointers are stable.
+	void onDeferredRefreshAfterSceneChange();
+
 private:
 	// Nested type used by region / .lay helpers below; full definition is with member data.
 	struct RegionClipboard;
@@ -282,7 +291,13 @@ private:
 	void initializeUI();
 	/// @param skipGlobalShaderCatalogScan if true, skips rebuildGlobalShaderCatalog (no recursive .trn load). Used when showing the dock to avoid AV from bad .trn on disk.
 	void refreshFromScene(bool skipGlobalShaderCatalogScan);
+	/// Before the old scene tears down procedural terrain: flush edits, prepare generator layers, and write the .trn if \ref m_terrainModified.
+	void tryAutoSaveTerrainBeforeSceneChange();
+	/// Flush live edits, run \ref TerrainGenerator::prepare, and write PTAT + generator + baked data to \a path.
+	bool writeCurrentTerrainTemplateToFile(std::string const& path, bool clearModifiedOnSuccess);
 	void updateMapParametersPanel();
+	void syncMapTemplateEditorWidgetsFromScene();
+
 	/// Region Operations: contextual copy for geometry tools; show/hide closed-polygon commit UI.
 	void updateRegionGeometryUi();
 	void populateLayerList();

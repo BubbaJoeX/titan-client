@@ -498,6 +498,11 @@ public:
 	// Export all modifications to a new terrain layer
 	bool exportModificationsToLayer(const char* layerName);
 
+	/// TerrainEditor-style procedural layers (full-map boundary uses planet map width).
+	bool addFullMapHeightConstantLayer(float height, float featherDistance, char const* optionalLayerNameBase = 0);
+	bool addFullMapShaderConstantLayer(int shaderFamilyId, float featherDistance, char const* optionalLayerNameBase = 0);
+	bool addExcludeLayerForRectangle(Rectangle2d const& rectXZ, float featherDistance, char const* optionalLayerNameBase = 0);
+
 	// Import/export polyline data
 	bool exportPolylineToFile(const char* filename) const;
 	bool importPolylineFromFile(const char* filename);

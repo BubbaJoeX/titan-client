@@ -254,7 +254,7 @@ class GodClientApplication : public QApplication
 	Q_OBJECT; //lint !e1516 !e19 !e1924 !e1762 various deficiencies in the Qt macro
 
 public:
-	GodClientApplication(int& argc, char** argv) : QApplication(argc, argv) {}
+	GodClientApplication(int& argc, char** argv);
 	
 	virtual bool winEventFilter(MSG*);
 	static void  setGameHWND(HWND);

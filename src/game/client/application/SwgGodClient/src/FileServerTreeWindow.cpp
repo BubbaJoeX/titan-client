@@ -743,7 +743,7 @@ void FileServerTreeWindow::customEvent(QCustomEvent * event)
 	if (!event)
 		return;
 
-	switch (event->type())
+	switch (static_cast<int>(event->type()))
 	{
 	case CE_SEND_DONE:
 		{

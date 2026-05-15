@@ -411,6 +411,11 @@
                                         <string>Copy</string>
                                     </property>
                                 </widget>
+                            </hbox>
+                            <hbox>
+                                <property name="spacing">
+                                    <number>3</number>
+                                </property>
                                 <widget class="QPushButton">
                                     <property name="name">
                                         <cstring>m_pasteRegionButton</cstring>
@@ -448,15 +453,15 @@
                                         <string>Load .lay</string>
                                     </property>
                                 </widget>
-                                <widget class="QPushButton">
-                                    <property name="name">
-                                        <cstring>m_importRegionLayAtCursorButton</cstring>
-                                    </property>
-                                    <property name="text">
-                                        <string>Import .lay @ cursor</string>
-                                    </property>
-                                </widget>
                             </hbox>
+                            <widget class="QPushButton">
+                                <property name="name">
+                                    <cstring>m_importRegionLayAtCursorButton</cstring>
+                                </property>
+                                <property name="text">
+                                    <string>Import .lay @ cursor</string>
+                                </property>
+                            </widget>
                             <hbox>
                                 <property name="spacing">
                                     <number>3</number>
@@ -466,7 +471,7 @@
                                         <cstring>m_regionShapeLabel</cstring>
                                     </property>
                                     <property name="text">
-                                        <string>Shape:</string>
+                                        <string>Region selection shape</string>
                                     </property>
                                 </widget>
                                 <widget class="QComboBox">
@@ -483,6 +488,62 @@
                                     <string>Map: —</string>
                                 </property>
                             </widget>
+                            <widget class="QGroupBox">
+                                <property name="name">
+                                    <cstring>m_mapTemplateEditorGroup</cstring>
+                                </property>
+                                <property name="title">
+                                    <string>Map template &amp; procedural layers</string>
+                                </property>
+                                <vbox>
+                                    <property name="margin">
+                                        <number>2</number>
+                                    </property>
+                                    <property name="spacing">
+                                        <number>2</number>
+                                    </property>
+                                    <widget class="QLabel">
+                                        <property name="name">
+                                            <cstring>m_mapTemplateHintLabel</cstring>
+                                        </property>
+                                        <property name="text">
+                                            <string>Map size, global water, and environment cycle are edited in a dialog. OK saves the .trn and reloads terrain. Procedural layer shortcuts stay below.</string>
+                                        </property>
+                                    </widget>
+                                    <widget class="QPushButton">
+                                        <property name="name">
+                                            <cstring>m_mapTemplateSettingsButton</cstring>
+                                        </property>
+                                        <property name="text">
+                                            <string>Map size &amp; template…</string>
+                                        </property>
+                                    </widget>
+                                    <widget class="QPushButton">
+                                        <property name="name">
+                                            <cstring>m_addProcHeightConstButton</cstring>
+                                        </property>
+                                        <property name="text">
+                                            <string>Add height constant layer (full map)</string>
+                                        </property>
+                                    </widget>
+                                    <widget class="QPushButton">
+                                        <property name="name">
+                                            <cstring>m_addProcShaderConstButton</cstring>
+                                        </property>
+                                        <property name="text">
+                                            <string>Add shader constant layer (full map)</string>
+                                        </property>
+                                    </widget>
+                                    <widget class="QPushButton">
+                                        <property name="name">
+                                            <cstring>m_addProcExcludeRegionButton</cstring>
+                                        </property>
+                                        <property name="text">
+                                            <string>Add exclude layer from current region</string>
+                                        </property>
+                                    </widget>
+                                </vbox>
+                            </widget>
                             <hbox>
                                 <property name="spacing">
                                     <number>3</number>
@@ -492,7 +553,7 @@
                                         <cstring>m_toolExcludeTerrain</cstring>
                                     </property>
                                     <property name="text">
-                                        <string>Exclude</string>
+                                        <string>Exclude terrain</string>
                                     </property>
                                     <property name="toggleButton">
                                         <bool>true</bool>
@@ -503,18 +564,23 @@
                                         <cstring>m_toolBoundaryPolygon</cstring>
                                     </property>
                                     <property name="text">
-                                        <string>Mask</string>
+                                        <string>Boundary mask</string>
                                     </property>
                                     <property name="toggleButton">
                                         <bool>true</bool>
                                     </property>
                                 </widget>
+                            </hbox>
+                            <hbox>
+                                <property name="spacing">
+                                    <number>3</number>
+                                </property>
                                 <widget class="QPushButton">
                                     <property name="name">
                                         <cstring>m_toolBoundaryPolyline</cstring>
                                     </property>
                                     <property name="text">
-                                        <string>Path</string>
+                                        <string>Boundary path</string>
                                     </property>
                                     <property name="toggleButton">
                                         <bool>true</bool>
@@ -525,7 +591,7 @@
                                         <cstring>m_toolBoundaryPolyRoad</cstring>
                                     </property>
                                     <property name="text">
-                                        <string>Corridor</string>
+                                        <string>Boundary corridor</string>
                                     </property>
                                     <property name="toggleButton">
                                         <bool>true</bool>

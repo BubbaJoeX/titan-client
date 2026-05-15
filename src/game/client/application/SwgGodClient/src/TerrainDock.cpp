@@ -71,8 +71,7 @@
 #include <qfile.h>
 #include <qfileinfo.h>
 #include <qsettings.h>
-
-#include <cmath>
+#include <qtimer.h>
 #if defined(_MSC_VER)
 #include <windows.h>
 #endif
@@ -84,10 +83,146 @@
 #include <string>
 #include <vector>
 
+#include <qdialog.h>
+#include <qlayout.h>
+
 // ======================================================================
 
 namespace
 {
+	class MapTemplateSettingsDialog : public QDialog
+	{
+	public:
+		MapTemplateSettingsDialog(QWidget* parent, ProceduralTerrainAppearanceTemplate const* tpl)
+		: QDialog(parent, "MapTemplateSettingsDialog", true)
+		{
+			setCaption("Map size & template");
+
+			QVBoxLayout* const outer = new QVBoxLayout(this, 8, 6);
+			NOT_NULL(outer);
+
+			QLabel* const warn = new QLabel(
+				"Changing map width, chunk width, or tiles per chunk can reset static collidable flora maps to empty grids.\n"
+				"OK writes the current .trn to disk and reloads the terrain appearance.",
+				this);
+			warn->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+			outer->addWidget(warn);
+
+			QGridLayout* const grid = new QGridLayout(9, 2, 6);
+			NOT_NULL(grid);
+
+			int row = 0;
+			grid->addWidget(new QLabel("Map width (meters)", this), row, 0);
+			m_mapWidthEdit = new QLineEdit(this);
+			grid->addWidget(m_mapWidthEdit, row++, 1);
+
+			grid->addWidget(new QLabel("Chunk width (meters)", this), row, 0);
+			m_chunkWidthEdit = new QLineEdit(this);
+			grid->addWidget(m_chunkWidthEdit, row++, 1);
+
+			grid->addWidget(new QLabel("Tiles per chunk", this), row, 0);
+			m_tilesPerChunkSpin = new QSpinBox(this);
+			m_tilesPerChunkSpin->setMinValue(1);
+			m_tilesPerChunkSpin->setMaxValue(256);
+			grid->addWidget(m_tilesPerChunkSpin, row++, 1);
+
+			m_globalWaterCheck = new QCheckBox("Use global water table", this);
+			grid->addMultiCellWidget(m_globalWaterCheck, row, row, 0, 1);
+			++row;
+
+			grid->addWidget(new QLabel("Global water height (m)", this), row, 0);
+			m_waterHeightEdit = new QLineEdit(this);
+			grid->addWidget(m_waterHeightEdit, row++, 1);
+
+			grid->addWidget(new QLabel("Global water shader size", this), row, 0);
+			m_waterShaderSizeEdit = new QLineEdit(this);
+			grid->addWidget(m_waterShaderSizeEdit, row++, 1);
+
+			grid->addWidget(new QLabel("Environment cycle (seconds)", this), row, 0);
+			m_envCycleEdit = new QLineEdit(this);
+			grid->addWidget(m_envCycleEdit, row++, 1);
+
+			outer->addLayout(grid);
+
+			QHBoxLayout* const buttons = new QHBoxLayout(6);
+			NOT_NULL(buttons);
+			QPushButton* const okButton = new QPushButton("OK", this);
+			QPushButton* const cancelButton = new QPushButton("Cancel", this);
+			buttons->addStretch(1);
+			buttons->addWidget(okButton);
+			buttons->addWidget(cancelButton);
+			outer->addLayout(buttons);
+
+			IGNORE_RETURN(connect(okButton, SIGNAL(clicked()), this, SLOT(accept())));
+			IGNORE_RETURN(connect(cancelButton, SIGNAL(clicked()), this, SLOT(reject())));
+
+			if (tpl)
+			{
+				char buf[128];
+				snprintf(buf, sizeof(buf), "%.2f", tpl->getMapWidthInMeters());
+				m_mapWidthEdit->setText(QString::fromLatin1(buf));
+				snprintf(buf, sizeof(buf), "%.2f", tpl->getChunkWidthInMeters());
+				m_chunkWidthEdit->setText(QString::fromLatin1(buf));
+				m_tilesPerChunkSpin->setValue(tpl->getNumberOfTilesPerChunk());
+				m_globalWaterCheck->setChecked(tpl->getUseGlobalWaterTable());
+				snprintf(buf, sizeof(buf), "%.2f", tpl->getGlobalWaterTableHeight());
+				m_waterHeightEdit->setText(QString::fromLatin1(buf));
+				snprintf(buf, sizeof(buf), "%.2f", tpl->getGlobalWaterTableShaderSize());
+				m_waterShaderSizeEdit->setText(QString::fromLatin1(buf));
+				snprintf(buf, sizeof(buf), "%.2f", tpl->getEnvironmentCycleTime());
+				m_envCycleEdit->setText(QString::fromLatin1(buf));
+			}
+		}
+
+		bool readValues(
+			float& mapW,
+			float& chunkW,
+			int& tiles,
+			bool& useGlobalWater,
+			float& waterH,
+			float& waterShaderSize,
+			float& envCycle) const
+		{
+			mapW = 0.f;
+			chunkW = 0.f;
+			tiles = 1;
+			useGlobalWater = false;
+			waterH = 0.f;
+			waterShaderSize = 0.f;
+			envCycle = 0.f;
+
+			if (!m_mapWidthEdit || sscanf(m_mapWidthEdit->text().latin1(), "%f", &mapW) != 1 || mapW <= 0.f)
+				return false;
+			if (!m_chunkWidthEdit || sscanf(m_chunkWidthEdit->text().latin1(), "%f", &chunkW) != 1 || chunkW <= 0.f)
+				return false;
+			if (!m_tilesPerChunkSpin)
+				return false;
+			tiles = m_tilesPerChunkSpin->value();
+			if (tiles < 1)
+				return false;
+
+			useGlobalWater = m_globalWaterCheck && m_globalWaterCheck->isChecked();
+
+			if (!m_waterHeightEdit || sscanf(m_waterHeightEdit->text().latin1(), "%f", &waterH) != 1)
+				return false;
+			if (!m_waterShaderSizeEdit || sscanf(m_waterShaderSizeEdit->text().latin1(), "%f", &waterShaderSize) != 1)
+				return false;
+			if (!m_envCycleEdit || sscanf(m_envCycleEdit->text().latin1(), "%f", &envCycle) != 1 || envCycle <= 0.f)
+				return false;
+
+			return true;
+		}
+
+	private:
+		QLineEdit*  m_mapWidthEdit;
+		QLineEdit*  m_chunkWidthEdit;
+		QSpinBox*   m_tilesPerChunkSpin;
+		QCheckBox*  m_globalWaterCheck;
+		QLineEdit*  m_waterHeightEdit;
+		QLineEdit*  m_waterShaderSizeEdit;
+		QLineEdit*  m_envCycleEdit;
+	};
+
 	void installTerrainRegionTooltips(
 		QPushButton* exclude,
 		QPushButton* mask,
@@ -98,21 +233,89 @@ namespace
 	{
 		if (exclude)
 			QToolTip::add(exclude, QString::fromLatin1(
-				"Closed loop: click corners in the 3D view. Need 3+, then Create. Interior skips procedural mesh."));
+				"Exclude terrain: closed loop, click corners in the 3D view. Need 3+ corners, then Create. Interior skips procedural mesh."));
 		if (mask)
 			QToolTip::add(mask, QString::fromLatin1(
-				"Same as Exclude, but adds a BoundaryPolygon mask for child affectors."));
+				"Boundary mask: same loop workflow as exclude, but adds a BoundaryPolygon mask for child affectors."));
 		if (path)
 			QToolTip::add(path, QString::fromLatin1(
-				"Open polyline: ordered clicks. Finish on Advanced, Roads / Ribbons."));
+				"Boundary path: open polyline with ordered clicks. Finish on Advanced, Roads / Ribbons."));
 		if (corridor)
 			QToolTip::add(corridor, QString::fromLatin1(
-				"Wide corridor; finish on Advanced, Roads / Ribbons."));
+				"Boundary corridor: wide polyline corridor; finish on Advanced, Roads / Ribbons."));
 		if (loopGroup)
 			QToolTip::add(loopGroup, QString::fromLatin1(
 				"Exclude / mask: Create commits the loop; Discard cancels."));
 		if (discard)
 			QToolTip::add(discard, QString::fromLatin1("Discard the in-progress loop."));
+	}
+
+	void installRegionOperationsTooltips(
+		QPushButton* selectRegion,
+		QPushButton* copyRegion,
+		QPushButton* pasteRegion,
+		QPushButton* fillRegion,
+		QPushButton* saveLay,
+		QPushButton* loadLay,
+		QPushButton* importLay,
+		QLabel* regionShapeLabel,
+		QComboBox* regionShapeCombo,
+		QLabel* mapSummaryLabel)
+	{
+		if (selectRegion)
+			QToolTip::add(selectRegion, QString::fromLatin1(
+				"Toggle region selection: drag in the 3D view to set rectangle or circle bounds."));
+		if (copyRegion)
+			QToolTip::add(copyRegion, QString::fromLatin1(
+				"Copy region heights to the clipboard (one meter height cells; circle selection uses a mask)."));
+		if (pasteRegion)
+			QToolTip::add(pasteRegion, QString::fromLatin1(
+				"Paste clipboard heights anchored to the floor of the current region minimum corner."));
+		if (fillRegion)
+			QToolTip::add(fillRegion, QString::fromLatin1(
+				"Fill the selected region using the active height tool or shader paint mode."));
+		if (saveLay)
+			QToolTip::add(saveLay, QString::fromLatin1(
+				"Save the clipboard region heights (and mask) to a .lay file on disk."));
+		if (loadLay)
+			QToolTip::add(loadLay, QString::fromLatin1(
+				"Load a .lay file into the region clipboard for Paste or inspection."));
+		if (importLay)
+			QToolTip::add(importLay, QString::fromLatin1(
+				"Import a .lay file and apply heights at the terrain editor cursor (floor of cursor X/Z)."));
+		if (regionShapeLabel)
+			QToolTip::add(regionShapeLabel, QString::fromLatin1(
+				"Region selection shape: rectangle uses opposite corners; circle uses center and radius."));
+		if (regionShapeCombo)
+			QToolTip::add(regionShapeCombo, QString::fromLatin1(
+				"Rectangle: axis-aligned min/max. Circle: distance from center with feather at the edge."));
+		if (mapSummaryLabel)
+			QToolTip::add(mapSummaryLabel, QString::fromLatin1(
+				"Map width, chunk width, tiles per chunk, derived tile width, and number of loaded chunks."));
+	}
+
+	void installMapTemplateEditorTooltips(
+		QLabel* hint,
+		QPushButton* mapSettings,
+		QPushButton* addHeightConst,
+		QPushButton* addShaderConst,
+		QPushButton* addExcludeRegion)
+	{
+		if (hint)
+			QToolTip::add(hint, QString::fromLatin1(
+				"Map dimensions, global water, and environment cycle open in a dialog; OK saves the .trn and reloads terrain."));
+		if (mapSettings)
+			QToolTip::add(mapSettings, QString::fromLatin1(
+				"Edit map width, chunk width, tiles per chunk, global water, and environment cycle. OK saves and reloads terrain."));
+		if (addHeightConst)
+			QToolTip::add(addHeightConst, QString::fromLatin1(
+				"Append a full-map TerrainGenerator layer with AffectorHeightConstant (you will be prompted for height)."));
+		if (addShaderConst)
+			QToolTip::add(addShaderConst, QString::fromLatin1(
+				"Append a full-map layer with AffectorShaderConstant using the shader family selected in the Shaders tab."));
+		if (addExcludeRegion)
+			QToolTip::add(addExcludeRegion, QString::fromLatin1(
+				"Append an AffectorExclude layer for the current region rectangle (prompts for boundary feather in meters)."));
 	}
 }
 
@@ -742,6 +945,14 @@ void TerrainDock::initializeUI()
 		IGNORE_RETURN(connect(m_pasteRegionButton, SIGNAL(clicked()), this, SLOT(onPasteRegion())));
 	if (m_fillRegionButton)
 		IGNORE_RETURN(connect(m_fillRegionButton, SIGNAL(clicked()), this, SLOT(onFillRegion())));
+	if (m_mapTemplateSettingsButton)
+		IGNORE_RETURN(connect(m_mapTemplateSettingsButton, SIGNAL(clicked()), this, SLOT(onMapTemplateSettingsClicked())));
+	if (m_addProcHeightConstButton)
+		IGNORE_RETURN(connect(m_addProcHeightConstButton, SIGNAL(clicked()), this, SLOT(onAddProceduralHeightConstantLayer())));
+	if (m_addProcShaderConstButton)
+		IGNORE_RETURN(connect(m_addProcShaderConstButton, SIGNAL(clicked()), this, SLOT(onAddProceduralShaderConstantLayer())));
+	if (m_addProcExcludeRegionButton)
+		IGNORE_RETURN(connect(m_addProcExcludeRegionButton, SIGNAL(clicked()), this, SLOT(onAddProceduralExcludeFromRegion())));
 	if (m_saveRegionLayButton)
 		IGNORE_RETURN(connect(m_saveRegionLayButton, SIGNAL(clicked()), this, SLOT(onSaveRegionLay())));
 	if (m_loadRegionLayButton)
@@ -814,6 +1025,25 @@ void TerrainDock::initializeUI()
 		m_toolBoundaryPolyRoad,
 		m_regionPolygonCommitGroup,
 		m_regionPolyCancelButton);
+
+	installRegionOperationsTooltips(
+		m_selectRegionButton,
+		m_copyRegionButton,
+		m_pasteRegionButton,
+		m_fillRegionButton,
+		m_saveRegionLayButton,
+		m_loadRegionLayButton,
+		m_importRegionLayAtCursorButton,
+		m_regionShapeLabel,
+		m_regionShapeCombo,
+		m_mapParametersLabel);
+
+	installMapTemplateEditorTooltips(
+		m_mapTemplateHintLabel,
+		m_mapTemplateSettingsButton,
+		m_addProcHeightConstButton,
+		m_addProcShaderConstButton,
+		m_addProcExcludeRegionButton);
 	
 	// Connect bitmap stamp controls
 	if (m_toolStampBitmap)
@@ -843,9 +1073,10 @@ void TerrainDock::receiveMessage(const MessageDispatch::Emitter&, const MessageD
 	if (message.isType(Game::Messages::SCENE_CHANGED))
 	{
 		m_terrainCacheValid = false;
-		// Never scan/load arbitrary .trn files on scene change; that can AV on bad assets.
-		// User refreshes the dock (Refresh) or uses "Rescan..." for the global shader catalog.
-		refreshFromScene(true);
+		tryAutoSaveTerrainBeforeSceneChange();
+		clearRegionGeometryAndSelection();
+		IGNORE_RETURN(QTimer::singleShot(0, this, SLOT(onDeferredRefreshAfterSceneChange())));
+		return;
 	}
 	else if (message.isType(GodClientData::Messages::SELECTION_CHANGED))
 	{
@@ -1355,28 +1586,16 @@ void TerrainDock::onSaveTerrain()
 		return;
 	}
 	
-	ProceduralTerrainAppearanceTemplate* terrainTemplate = getTerrainTemplate();
-	if (!terrainTemplate)
+	if (!getTerrainTemplate())
 	{
 		IGNORE_RETURN(QMessageBox::warning(this, "Save Error", "No terrain loaded to save."));
 		return;
 	}
 	
-	Iff iff(1024 * 1024);
-	
-	ProceduralTerrainAppearanceTemplate::WriterData writerData;
-	terrainTemplate->prepareWriterData(writerData);
-	ProceduralTerrainAppearanceTemplate::write(iff, writerData);
-	
-	if (iff.write(m_terrainFilePath.c_str(), true))
-	{
-		m_terrainModified = false;
+	if (writeCurrentTerrainTemplateToFile(m_terrainFilePath, true))
 		MainFrame::getInstance().textToConsole("Terrain saved successfully.");
-	}
 	else
-	{
 		IGNORE_RETURN(QMessageBox::critical(this, "Save Error", "Failed to write terrain file."));
-	}
 }
 
 void TerrainDock::onSaveTerrainAs()
@@ -1397,6 +1616,77 @@ void TerrainDock::onSaveTerrainAs()
 		m_terrainFileLabel->setText(filename);
 	
 	onSaveTerrain();
+}
+
+bool TerrainDock::writeCurrentTerrainTemplateToFile(std::string const& path, bool const clearModifiedOnSuccess)
+{
+	if (path.empty())
+		return false;
+
+	ProceduralTerrainAppearanceTemplate* const terrainTemplate = getTerrainTemplate();
+	if (!terrainTemplate)
+		return false;
+
+	if (GodClientTerrainEditor::isInstalled())
+		GodClientTerrainEditor::getInstance().flushTerrainChanges();
+
+	if (TerrainGenerator* const gen = getTerrainGenerator())
+		gen->prepare();
+
+	Iff iff(1024 * 1024);
+	ProceduralTerrainAppearanceTemplate::WriterData writerData;
+	terrainTemplate->prepareWriterData(writerData);
+	ProceduralTerrainAppearanceTemplate::write(iff, writerData);
+
+	if (!iff.write(path.c_str(), true))
+		return false;
+
+	if (clearModifiedOnSuccess)
+		m_terrainModified = false;
+
+	return true;
+}
+
+void TerrainDock::tryAutoSaveTerrainBeforeSceneChange()
+{
+	if (!m_terrainModified)
+		return;
+
+	if (Game::getScene() != 0)
+		return;
+
+	if (!getTerrainTemplate())
+		return;
+
+	std::string path = m_terrainFilePath;
+	if (path.empty())
+	{
+		char const* const templateName = getTerrainTemplate()->getName();
+		if (templateName && templateName[0])
+			path = templateName;
+	}
+
+	if (path.empty())
+	{
+		MainFrame::getInstance().textToConsole("Terrain: unsaved edits were not auto-saved (no .trn path). Use Save As.");
+		return;
+	}
+
+	if (writeCurrentTerrainTemplateToFile(path, true))
+	{
+		m_terrainFilePath = path;
+		if (m_terrainFileLabel)
+			m_terrainFileLabel->setText(QString::fromLatin1(path.c_str()));
+		MainFrame::getInstance().textToConsole("Terrain auto-saved before scene change.");
+		updateUndoRedoState();
+	}
+	else
+		MainFrame::getInstance().textToConsole("Terrain auto-save failed before scene change (disk write error).");
+}
+
+void TerrainDock::onDeferredRefreshAfterSceneChange()
+{
+	refreshFromScene(true);
 }
 
 void TerrainDock::onReloadTerrain()
@@ -1667,6 +1957,7 @@ void TerrainDock::refreshFromScene(bool const skipGlobalShaderCatalogScan)
 			syncGlobalShaderCatalog();
 		syncGodClientEditorBrushSettings();
 		updateMapParametersPanel();
+		syncMapTemplateEditorWidgetsFromScene();
 		updateRegionGeometryUi();
 
 		resizeQt3ScrollViewToContents(m_scrollAreaContents, m_contentScrollView);
@@ -1676,6 +1967,14 @@ void TerrainDock::refreshFromScene(bool const skipGlobalShaderCatalogScan)
 	const char* name = terrainTemplate->getName();
 	if (name)
 	{
+		if (!m_terrainFilePath.empty())
+		{
+			QString const oldCanon(terrainDockCanonFromStdTerrainPath(m_terrainFilePath));
+			QString const incomingCanon(terrainDockCanonFromPathQString(QString::fromLatin1(name)));
+			if (!oldCanon.isEmpty() && !incomingCanon.isEmpty() && oldCanon != incomingCanon)
+				m_terrainModified = false;
+		}
+
 		m_terrainFilePath = name;
 		if (m_terrainFileLabel)
 			m_terrainFileLabel->setText(name);
@@ -1697,9 +1996,33 @@ void TerrainDock::refreshFromScene(bool const skipGlobalShaderCatalogScan)
 
 	syncGodClientEditorBrushSettings();
 	updateMapParametersPanel();
+	syncMapTemplateEditorWidgetsFromScene();
 	updateRegionGeometryUi();
 
 	resizeQt3ScrollViewToContents(m_scrollAreaContents, m_contentScrollView);
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::syncMapTemplateEditorWidgetsFromScene()
+{
+	if (!m_mapTemplateSettingsButton)
+		return;
+
+	ProceduralTerrainAppearanceTemplate* const tpl = getTerrainTemplate();
+	if (!tpl)
+	{
+		if (m_mapTemplateEditorGroup)
+			m_mapTemplateEditorGroup->setEnabled(false);
+		if (m_mapTemplateSettingsButton)
+			m_mapTemplateSettingsButton->setEnabled(false);
+		return;
+	}
+
+	if (m_mapTemplateEditorGroup)
+		m_mapTemplateEditorGroup->setEnabled(true);
+	if (m_mapTemplateSettingsButton)
+		m_mapTemplateSettingsButton->setEnabled(true);
 }
 
 // ----------------------------------------------------------------------
@@ -3580,6 +3903,185 @@ void TerrainDock::onFillRegion()
 		this,
 		"Fill Region",
 		"Choose a height tool (Raise, Lower, Flatten, Smooth, Noise, Set Height) or Paint Shader before using Fill."));
+}
+
+void TerrainDock::onMapTemplateSettingsClicked()
+{
+	ProceduralTerrainAppearanceTemplate* const tpl = getTerrainTemplate();
+	if (!tpl)
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Map template", "No procedural terrain template."));
+		return;
+	}
+
+	MapTemplateSettingsDialog dlg(this, tpl);
+	if (dlg.exec() != QDialog::Accepted)
+		return;
+
+	float mapW = 0.f;
+	float chunkW = 0.f;
+	int tiles = 1;
+	bool useGlobalWater = false;
+	float wh = 0.f;
+	float ws = 0.f;
+	float envc = 0.f;
+	if (!dlg.readValues(mapW, chunkW, tiles, useGlobalWater, wh, ws, envc))
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Map template", "Invalid values. Map and chunk width must be positive, tiles per chunk at least 1, environment cycle greater than zero."));
+		return;
+	}
+
+	tpl->setMapLayoutParameters(mapW, chunkW, tiles);
+	tpl->setUseGlobalWaterTable(useGlobalWater);
+	tpl->setGlobalWaterTableHeight(wh);
+	tpl->setGlobalWaterTableShaderSize(ws);
+	tpl->setEnvironmentCycleTime(envc);
+
+	TerrainGenerator* const gen = getTerrainGenerator();
+	if (gen)
+		gen->prepare();
+
+	if (m_terrainFilePath.empty())
+	{
+		IGNORE_RETURN(QMessageBox::information(this, "Map template",
+			"Choose a terrain file path (Save As) so the client can reload the .trn from disk."));
+		onSaveTerrainAs();
+	}
+
+	if (m_terrainFilePath.empty())
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Map template", "No file path: changes were not saved and terrain was not reloaded."));
+		m_terrainModified = true;
+		updateUndoRedoState();
+		refreshFromScene(true);
+		return;
+	}
+
+	if (GodClientTerrainEditor::isInstalled())
+		GodClientTerrainEditor::getInstance().flushTerrainChanges();
+
+	m_terrainModified = true;
+	onSaveTerrain();
+	if (m_terrainModified)
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Map template", "Save failed; terrain was not reloaded."));
+		refreshFromScene(true);
+		return;
+	}
+
+	GroundScene* const gs = dynamic_cast<GroundScene*>(Game::getScene());
+	if (gs)
+		gs->reloadTerrain();
+	else
+		IGNORE_RETURN(QMessageBox::warning(this, "Map template", "No ground scene; terrain could not be reloaded."));
+
+	refreshFromScene(true);
+	MainFrame::getInstance().textToConsole("Map template updated, terrain saved and reloaded.");
+}
+
+void TerrainDock::onAddProceduralHeightConstantLayer()
+{
+	if (!GodClientTerrainEditor::isInstalled())
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Procedural", "Terrain editor is not ready."));
+		return;
+	}
+
+	bool ok = false;
+	float const h = QInputDialog::getDouble(
+		tr("New height constant layer"),
+		tr("Height (meters) for full-map layer:"),
+		0.0,
+		-1.0e6,
+		1.0e6,
+		2,
+		&ok,
+		this);
+
+	if (!ok)
+		return;
+
+	if (!GodClientTerrainEditor::getInstance().addFullMapHeightConstantLayer(h, 32.f, 0))
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Procedural", "Could not add layer (no generator or invalid map size)."));
+		return;
+	}
+
+	m_terrainModified = true;
+	updateUndoRedoState();
+	populateLayerList();
+	MainFrame::getInstance().textToConsole("Added full-map AffectorHeightConstant layer.");
+}
+
+void TerrainDock::onAddProceduralShaderConstantLayer()
+{
+	if (!GodClientTerrainEditor::isInstalled())
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Procedural", "Terrain editor is not ready."));
+		return;
+	}
+
+	if (m_selectedShaderFamilyId == 0)
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Procedural", "Select a shader family in the Shaders list first."));
+		return;
+	}
+
+	if (!GodClientTerrainEditor::getInstance().addFullMapShaderConstantLayer(m_selectedShaderFamilyId, 48.f, 0))
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Procedural", "Could not add shader layer."));
+		return;
+	}
+
+	m_terrainModified = true;
+	updateUndoRedoState();
+	populateLayerList();
+	MainFrame::getInstance().textToConsole("Added full-map AffectorShaderConstant layer.");
+}
+
+void TerrainDock::onAddProceduralExcludeFromRegion()
+{
+	if (!GodClientTerrainEditor::isInstalled())
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Procedural", "Terrain editor is not ready."));
+		return;
+	}
+
+	if (!m_hasRegionSelection)
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Procedural", "Select a rectangular region first."));
+		return;
+	}
+
+	bool ok = false;
+	float feather = QInputDialog::getDouble(
+		tr("Exclude layer"),
+		tr("Boundary feather (meters):"),
+		8.0,
+		0.0,
+		4096.0,
+		2,
+		&ok,
+		this);
+	if (!ok)
+		return;
+
+	Rectangle2d const rect(
+		std::min(m_regionMinX, m_regionMaxX),
+		std::min(m_regionMinZ, m_regionMaxZ),
+		std::max(m_regionMinX, m_regionMaxX),
+		std::max(m_regionMinZ, m_regionMaxZ));
+
+	if (!GodClientTerrainEditor::getInstance().addExcludeLayerForRectangle(rect, feather, 0))
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Procedural", "Could not add exclude layer (region too small?)."));
+		return;
+	}
+
+	m_terrainModified = true;
+	updateUndoRedoState();
+	populateLayerList();
+	MainFrame::getInstance().textToConsole("Added AffectorExclude layer for current region.");
 }
 
 // ======================================================================

@@ -1058,6 +1058,12 @@ for /r "D:\titan\client\src\compile\win32" %%f in (*_r.dll) do copy /Y "%%f" "D:
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
     </ClCompile>
+    <ClCompile Include="..\..\src\GodClientTheme.cpp">
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+    </ClCompile>
     <ClCompile Include="..\..\src\GodClientIoWin.cpp">
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
@@ -1632,6 +1638,7 @@ for /r "D:\titan\client\src\compile\win32" %%f in (*_r.dll) do copy /Y "%%f" "D:
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
     </CustomBuild>
     <ClInclude Include="..\..\src\GodClientData.h" />
+    <ClInclude Include="..\..\src\GodClientTheme.h" />
     <ClInclude Include="..\..\src\GodClientIoWin.h" />
     <ClInclude Include="..\..\src\GodClientPerforce.h" />
     <ClInclude Include="..\..\src\GodClientPerforceUser.h" />
