@@ -252,7 +252,7 @@ public slots:
 	void onClearTerrainScanFoldersClicked();
 	void onMergeGlobalShaderIntoSceneClicked();
 
-	/// When enabled, shader paint uses \ref m_shaderColorConstant* matched to the nearest scene family preview color.
+	/// When enabled, shader paint applies a vertex color tint overlay (\ref m_shaderColorConstant*) without changing shader family.
 	void onShaderColorConstantToggled(bool enabled);
 	void onShaderColorConstantPickClicked();
 
@@ -392,8 +392,6 @@ private:
 	void flattenHeightAtPoint(float worldX, float worldZ, float targetHeight);
 	void addNoiseAtPoint(float worldX, float worldZ);
 	void paintShaderAtPoint(float worldX, float worldZ, int shaderFamilyId);
-	int resolveShaderFamilyIdForColorPaint(uint8 r, uint8 g, uint8 b) const;
-	int currentShaderPaintFamilyId() const;
 	void updateShaderColorConstantControls();
 	void placeFloraAtPoint(float worldX, float worldZ, int floraFamily);
 

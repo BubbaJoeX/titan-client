@@ -25,6 +25,7 @@
 #include "sharedFoundation/ExitChain.h"
 #include "sharedImage/Image.h"
 #include "sharedMath/Rectangle2d.h"
+#include "sharedMath/PackedRgb.h"
 #include "sharedMath/Transform.h"
 #include "sharedMath/VectorArgb.h"
 #include "sharedObject/Appearance.h"
@@ -240,6 +241,7 @@ void GodClientTerrainEditor::install()
 
 	// Register shader and flora modifier callbacks
 	CityTerrainLayerManager::setExternalShaderModifierCallback(&GodClientTerrainEditor::getModifiedShader);
+	CityTerrainLayerManager::setExternalVertexColorModifierCallback(&GodClientTerrainEditor::getModifiedVertexColor);
 	CityTerrainLayerManager::setExternalFloraModifierCallback(&GodClientTerrainEditor::getModifiedFlora);
 	CityTerrainLayerManager::setExternalRadialModifierCallback(&GodClientTerrainEditor::getModifiedRadial);
 }
@@ -255,6 +257,7 @@ void GodClientTerrainEditor::remove()
 
 	// Unregister shader and flora modifier callbacks
 	CityTerrainLayerManager::clearExternalShaderModifierCallback();
+	CityTerrainLayerManager::clearExternalVertexColorModifierCallback();
 	CityTerrainLayerManager::clearExternalFloraModifierCallback();
 	CityTerrainLayerManager::clearExternalRadialModifierCallback();
 
@@ -298,6 +301,10 @@ GodClientTerrainEditor::GodClientTerrainEditor() :
 	m_selectedRadialFamily(0),
 	m_floraCollidable(false),
 	m_floraDensity(1.0f),
+	m_shaderPaintTintMode(false),
+	m_shaderPaintTintR(255),
+	m_shaderPaintTintG(255),
+	m_shaderPaintTintB(255),
 	m_brushPreviewEnabled(true),
 	m_cursorWorldPosition(Vector::zero),
 	m_cursorPositionValid(false),
@@ -308,6 +315,7 @@ GodClientTerrainEditor::GodClientTerrainEditor() :
 	m_heightModifications(),
 	m_shaderModificationMutex(),
 	m_shaderModifications(),
+	m_vertexColorModifications(),
 	m_floraModifications(),
 	m_radialModifications(),
 	m_undoStack(),
@@ -315,6 +323,8 @@ GodClientTerrainEditor::GodClientTerrainEditor() :
 	m_shaderUndoBatch(0),
 	m_shaderStrokePending(),
 	m_shaderStrokePendingKeys(),
+	m_vertexColorStrokePending(),
+	m_vertexColorStrokePendingKeys(),
 	m_hasRegionSelection(false),
 	m_regionMinX(0.0f),
 	m_regionMinZ(0.0f),
@@ -495,6 +505,29 @@ void GodClientTerrainEditor::setSelectedShaderFamily(int familyId)
 
 // ----------------------------------------------------------------------
 
+void GodClientTerrainEditor::setShaderPaintTintMode(bool const enabled)
+{
+	m_shaderPaintTintMode = enabled;
+}
+
+// ----------------------------------------------------------------------
+
+bool GodClientTerrainEditor::getShaderPaintTintMode() const
+{
+	return m_shaderPaintTintMode;
+}
+
+// ----------------------------------------------------------------------
+
+void GodClientTerrainEditor::setShaderPaintTintRgb(uint8 const r, uint8 const g, uint8 const b)
+{
+	m_shaderPaintTintR = r;
+	m_shaderPaintTintG = g;
+	m_shaderPaintTintB = b;
+}
+
+// ----------------------------------------------------------------------
+
 void GodClientTerrainEditor::setSelectedFloraFamily(int familyId)
 {
 	m_selectedFloraFamily = familyId;
@@ -553,6 +586,8 @@ bool GodClientTerrainEditor::beginBrushStroke(float worldX, float worldZ)
 
 	m_shaderStrokePending.clear();
 	m_shaderStrokePendingKeys.clear();
+	m_vertexColorStrokePending.clear();
+	m_vertexColorStrokePendingKeys.clear();
 
 	// Reset dirty region tracking for new stroke
 	m_hasDirtyRegion = false;
@@ -585,6 +620,7 @@ bool GodClientTerrainEditor::beginBrushStroke(float worldX, float worldZ)
 	m_currentStroke.targetHeight = m_targetHeight;
 	m_currentStroke.modifications.clear();
 	m_currentStroke.shaderStrokeRecords.clear();
+	m_currentStroke.vertexColorStrokeRecords.clear();
 
 	// Sample initial state for undo
 	sampleBrushArea(worldX, worldZ, m_brushSize * 0.5f, m_currentStroke.modifications);
@@ -619,9 +655,11 @@ void GodClientTerrainEditor::endBrushStroke()
 	m_brushStrokeActive = false;
 
 	sealShaderStrokeRecords(m_currentStroke);
+	sealVertexColorStrokeRecords(m_currentStroke);
 
 	// Push stroke to undo stack
-	if (!m_currentStroke.modifications.empty() || !m_currentStroke.shaderStrokeRecords.empty())
+	if (!m_currentStroke.modifications.empty() || !m_currentStroke.shaderStrokeRecords.empty() ||
+		!m_currentStroke.vertexColorStrokeRecords.empty())
 	{
 		m_undoStack.push_back(m_currentStroke);
 		
@@ -670,6 +708,13 @@ void GodClientTerrainEditor::endBrushStroke()
 void GodClientTerrainEditor::applyShaderPaintDab(float worldX, float worldZ, int shaderFamilyId, float strength)
 {
 	modifyShaderPaint(worldX, worldZ, shaderFamilyId, strength);
+}
+
+// ----------------------------------------------------------------------
+
+void GodClientTerrainEditor::applyVertexColorPaintDab(float worldX, float worldZ, PackedRgb const& rgb, float strength)
+{
+	modifyVertexColorPaint(worldX, worldZ, rgb, strength);
 }
 
 // ----------------------------------------------------------------------
@@ -731,7 +776,10 @@ void GodClientTerrainEditor::applyBrushAtPoint(float worldX, float worldZ)
 			break;
 
 		case TM_PaintShader:
-			modifyShaderPaint(worldX, worldZ, m_selectedShaderFamily, m_brushStrength);
+			if (m_shaderPaintTintMode)
+				modifyVertexColorPaint(worldX, worldZ, PackedRgb(m_shaderPaintTintR, m_shaderPaintTintG, m_shaderPaintTintB), m_brushStrength);
+			else
+				modifyShaderPaint(worldX, worldZ, m_selectedShaderFamily, m_brushStrength);
 			break;
 
 		case TM_PlaceWater:
@@ -1654,6 +1702,7 @@ void GodClientTerrainEditor::undo()
 	}
 
 	restoreShaderModificationsFromStrokeRecords(stroke.shaderStrokeRecords, true);
+	restoreVertexColorModificationsFromStrokeRecords(stroke.vertexColorStrokeRecords, true);
 
 	m_redoStack.push_back(stroke);
 
@@ -1694,6 +1743,7 @@ void GodClientTerrainEditor::redo()
 	}
 
 	restoreShaderModificationsFromStrokeRecords(stroke.shaderStrokeRecords, false);
+	restoreVertexColorModificationsFromStrokeRecords(stroke.vertexColorStrokeRecords, false);
 
 	m_undoStack.push_back(stroke);
 
@@ -1712,6 +1762,7 @@ void GodClientTerrainEditor::clearHistory()
 	m_redoStack.clear();
 	m_heightModifications.clear();
 	m_shaderModifications.clear();
+	m_vertexColorModifications.clear();
 	m_floraModifications.clear();
 	m_radialModifications.clear();
 }
@@ -2250,6 +2301,105 @@ bool GodClientTerrainEditor::applyRectangularShaderPaint(
 
 // ----------------------------------------------------------------------
 
+bool GodClientTerrainEditor::applyRectangularVertexColorPaint(
+	float const minX,
+	float const minZ,
+	float const maxX,
+	float const maxZ,
+	PackedRgb const& rgb,
+	float const strength,
+	bool const circularClip,
+	float const circleCenterX,
+	float const circleCenterZ,
+	float const circleRadius)
+{
+	TerrainObject* const terrainObject = TerrainObject::getInstance();
+	if (!terrainObject)
+		return false;
+
+	float const ax0 = std::min(minX, maxX);
+	float const az0 = std::min(minZ, maxZ);
+	float const ax1 = std::max(minX, maxX);
+	float const az1 = std::max(minZ, maxZ);
+
+	static float const kMinExtent = 0.5f;
+	if ((ax1 - ax0) < kMinExtent || (az1 - az0) < kMinExtent)
+		return false;
+
+	float const feather01 = std::max(0.0f, std::min(1.0f, strength));
+
+	int const minIx = static_cast<int>(std::floor(ax0));
+	int const maxIx = static_cast<int>(std::ceil(ax1));
+	int const minIz = static_cast<int>(std::floor(az0));
+	int const maxIz = static_cast<int>(std::ceil(az1));
+
+	int cellsWritten = 0;
+
+	float const rSq = circleRadius * circleRadius;
+	bool const useCircle = circularClip && circleRadius > 0.25f;
+
+	beginShaderUndoBatch();
+
+	{
+		ShaderMapLock shaderLock(*this);
+		for (int iz = minIz; iz <= maxIz; ++iz)
+		{
+			for (int ix = minIx; ix <= maxIx; ++ix)
+			{
+				float const xw = static_cast<float>(ix);
+				float const zw = static_cast<float>(iz);
+				if (xw < ax0 || xw > ax1 || zw < az0 || zw > az1)
+					continue;
+
+				if (!isWorldPositionInActiveRegion(xw, zw))
+					continue;
+
+				if (useCircle)
+				{
+					float const dx = xw - circleCenterX;
+					float const dz = zw - circleCenterZ;
+					if (dx * dx + dz * dz > rSq + 1e-3f)
+						continue;
+				}
+
+				Vector const objectPos = godClientTerrainObjectSampled_w2o(terrainObject, xw, zw);
+				float const lx = objectPos.x;
+				float const lz = objectPos.z;
+
+				uint64 const key = godClientTerrainPaintCellKey(lx, lz);
+
+				VertexColorModification mod;
+				mod.worldX = lx;
+				mod.worldZ = lz;
+				mod.color = rgb;
+				mod.blendAmount = feather01;
+
+				VertexColorModificationMap::iterator it = m_vertexColorModifications.find(key);
+				if (it != m_vertexColorModifications.end())
+				{
+					if (it->second.color == rgb)
+						mod.blendAmount = std::max(feather01, it->second.blendAmount);
+				}
+
+				recordVertexColorStrokePending(key);
+				m_vertexColorModifications[key] = mod;
+				++cellsWritten;
+			}
+		}
+	}
+
+	endShaderUndoBatch();
+
+	if (cellsWritten <= 0)
+		return false;
+
+	expandModifiedBounds((ax0 + ax1) * 0.5f, (az0 + az1) * 0.5f, std::max(ax1 - ax0, az1 - az0) * 0.5f + 32.0f);
+
+	return true;
+}
+
+// ----------------------------------------------------------------------
+
 bool GodClientTerrainEditor::applyRectangleExcludeAndNonPassable(float minX, float minZ, float maxX, float maxZ)
 {
 	float const ax0 = std::min(minX, maxX);
@@ -2552,6 +2702,79 @@ void GodClientTerrainEditor::restoreShaderModificationsFromStrokeRecords(std::ve
 	}
 }
 
+void GodClientTerrainEditor::recordVertexColorStrokePending(uint64 const key)
+{
+	if (!shouldRecordShaderUndo())
+		return;
+	if (!m_vertexColorStrokePendingKeys.insert(key).second)
+		return;
+	std::pair<bool, VertexColorModification> priorSlot(false, VertexColorModification());
+	VertexColorModificationMap::const_iterator const pit = m_vertexColorModifications.find(key);
+	if (pit != m_vertexColorModifications.end())
+	{
+		priorSlot.first = true;
+		priorSlot.second = pit->second;
+	}
+	m_vertexColorStrokePending.push_back(std::make_pair(key, priorSlot));
+}
+
+void GodClientTerrainEditor::sealVertexColorStrokeRecords(BrushStroke& stroke)
+{
+	ShaderMapLock shaderLock(*this);
+	stroke.vertexColorStrokeRecords.clear();
+	for (VertexColorStrokePendingVector::const_iterator pit = m_vertexColorStrokePending.begin(); pit != m_vertexColorStrokePending.end(); ++pit)
+	{
+		uint64 const key = pit->first;
+		bool const hadPrior = pit->second.first;
+		VertexColorModification const& prior = pit->second.second;
+
+		VertexColorStrokeRecord rec;
+		rec.key = key;
+		rec.hadPrior = hadPrior;
+		rec.prior = prior;
+
+		VertexColorModificationMap::const_iterator const it = m_vertexColorModifications.find(key);
+		if (it != m_vertexColorModifications.end())
+			rec.after = it->second;
+		else
+		{
+			int cellX = 0;
+			int cellZ = 0;
+			godClientTerrainPaintDecodeKey(key, cellX, cellZ);
+			rec.after.worldX = static_cast<float>(cellX);
+			rec.after.worldZ = static_cast<float>(cellZ);
+			rec.after.color = PackedRgb::solidBlack;
+			rec.after.blendAmount = 0.f;
+		}
+		stroke.vertexColorStrokeRecords.push_back(rec);
+	}
+	m_vertexColorStrokePending.clear();
+	m_vertexColorStrokePendingKeys.clear();
+}
+
+void GodClientTerrainEditor::restoreVertexColorModificationsFromStrokeRecords(std::vector<VertexColorStrokeRecord> const& recs, bool const usePriorState)
+{
+	ShaderMapLock shaderLock(*this);
+	for (size_t i = 0; i < recs.size(); ++i)
+	{
+		VertexColorStrokeRecord const& r = recs[i];
+		if (usePriorState)
+		{
+			if (r.hadPrior)
+				m_vertexColorModifications[r.key] = r.prior;
+			else
+				m_vertexColorModifications.erase(r.key);
+		}
+		else
+		{
+			if (r.after.blendAmount <= 0.f)
+				m_vertexColorModifications.erase(r.key);
+			else
+				m_vertexColorModifications[r.key] = r.after;
+		}
+	}
+}
+
 void GodClientTerrainEditor::beginShaderUndoBatch()
 {
 	++m_shaderUndoBatch;
@@ -2569,7 +2792,8 @@ void GodClientTerrainEditor::endShaderUndoBatch()
 	stroke.tool = TM_PaintShader;
 	stroke.targetHeight = 0.f;
 	sealShaderStrokeRecords(stroke);
-	if (!stroke.shaderStrokeRecords.empty())
+	sealVertexColorStrokeRecords(stroke);
+	if (!stroke.shaderStrokeRecords.empty() || !stroke.vertexColorStrokeRecords.empty())
 	{
 		m_undoStack.push_back(stroke);
 		while (static_cast<int>(m_undoStack.size()) > MAX_UNDO_STROKES)
@@ -2587,6 +2811,19 @@ void GodClientTerrainEditor::endShaderUndoBatch()
 			{
 				ShaderStrokeRecord const& sr = stroke.shaderStrokeRecords[i];
 				Vector const w = terrainObjectConst->rotateTranslate_o2w(Vector(sr.after.worldX, 0.f, sr.after.worldZ));
+				if (w.x < minWx)
+					minWx = w.x;
+				if (w.x > maxWx)
+					maxWx = w.x;
+				if (w.z < minWz)
+					minWz = w.z;
+				if (w.z > maxWz)
+					maxWz = w.z;
+			}
+			for (size_t i = 0; i < stroke.vertexColorStrokeRecords.size(); ++i)
+			{
+				VertexColorStrokeRecord const& vr = stroke.vertexColorStrokeRecords[i];
+				Vector const w = terrainObjectConst->rotateTranslate_o2w(Vector(vr.after.worldX, 0.f, vr.after.worldZ));
 				if (w.x < minWx)
 					minWx = w.x;
 				if (w.x > maxWx)
@@ -2819,6 +3056,66 @@ void GodClientTerrainEditor::modifyShaderPaint(float worldX, float worldZ, int s
 
 // ----------------------------------------------------------------------
 
+void GodClientTerrainEditor::modifyVertexColorPaint(float worldX, float worldZ, PackedRgb const& color, float strength)
+{
+	TerrainObject* const terrainObject = TerrainObject::getInstance();
+	if (!terrainObject)
+		return;
+
+	ShaderMapLock shaderLock(*this);
+
+	float const halfBrush = m_brushSize * 0.5f;
+
+	int const minX = static_cast<int>(std::floor(worldX - halfBrush));
+	int const maxX = static_cast<int>(std::ceil(worldX + halfBrush));
+	int const minZ = static_cast<int>(std::floor(worldZ - halfBrush));
+	int const maxZ = static_cast<int>(std::ceil(worldZ + halfBrush));
+
+	for (int iz = minZ; iz <= maxZ; ++iz)
+	{
+		for (int ix = minX; ix <= maxX; ++ix)
+		{
+			float const xw = static_cast<float>(ix);
+			float const zw = static_cast<float>(iz);
+			float const brushLocalX = xw - worldX;
+			float const brushLocalZ = zw - worldZ;
+			float const effect = calculateBrushEffect(brushLocalX, brushLocalZ);
+
+			if (effect > 0.0f)
+			{
+				if (!isWorldPositionInActiveRegion(xw, zw))
+					continue;
+
+				Vector const objectPos = godClientTerrainObjectSampled_w2o(terrainObject, xw, zw);
+				float const lx = objectPos.x;
+				float const lz = objectPos.z;
+
+				uint64 const key = godClientTerrainPaintCellKey(lx, lz);
+
+				float const feather01 = std::max(0.0f, std::min(1.0f, effect * strength));
+
+				VertexColorModification mod;
+				mod.worldX = lx;
+				mod.worldZ = lz;
+				mod.color = color;
+				mod.blendAmount = feather01;
+
+				VertexColorModificationMap::iterator it = m_vertexColorModifications.find(key);
+				if (it != m_vertexColorModifications.end())
+				{
+					if (it->second.color == color)
+						mod.blendAmount = std::max(feather01, it->second.blendAmount);
+				}
+
+				recordVertexColorStrokePending(key);
+				m_vertexColorModifications[key] = mod;
+			}
+		}
+	}
+}
+
+// ----------------------------------------------------------------------
+
 bool GodClientTerrainEditor::getModifiedShader(float x, float z, int originalFamilyId, int& outFamilyId, float& outFeather)
 {
 	if (!ms_instance)
@@ -2907,6 +3204,86 @@ bool GodClientTerrainEditor::getModifiedShaderInternal(float x, float z, int ori
 
 	outFamilyId = modifiedId;
 	outFeather = best->second.featherAmount;
+	return true;
+}
+
+// ----------------------------------------------------------------------
+
+bool GodClientTerrainEditor::getModifiedVertexColor(float x, float z, PackedRgb const& original, PackedRgb& out)
+{
+	if (!ms_instance)
+	{
+		out = original;
+		return false;
+	}
+	return ms_instance->getModifiedVertexColorInternal(x, z, original, out);
+}
+
+// ----------------------------------------------------------------------
+
+bool GodClientTerrainEditor::getModifiedVertexColorInternal(float x, float z, PackedRgb const& original, PackedRgb& out) const
+{
+	TerrainObject const* const terrainObject = TerrainObject::getConstInstance();
+	if (!terrainObject)
+	{
+		out = original;
+		return false;
+	}
+
+	static int const s_neighborCells = 1;
+
+	ShaderMapLock shaderLock(const_cast<GodClientTerrainEditor&>(*this));
+
+	if (m_vertexColorModifications.empty())
+	{
+		out = original;
+		return false;
+	}
+
+	uint64 const baseKey = godClientTerrainPaintKeyFromWorld(terrainObject, x, z);
+
+	int bx = 0;
+	int bz = 0;
+	godClientTerrainPaintDecodeKey(baseKey, bx, bz);
+
+	Vector const oq = godClientTerrainObjectSampled_w2o(terrainObject, x, z);
+
+	VertexColorModificationMap::const_iterator best = m_vertexColorModifications.end();
+	float bestDist2 = 0.f;
+	float bestBlend = 0.f;
+
+	for (int dz = -s_neighborCells; dz <= s_neighborCells; ++dz)
+	{
+		for (int dx = -s_neighborCells; dx <= s_neighborCells; ++dx)
+		{
+			uint64 const nk = godClientTerrainPaintCellKey(static_cast<float>(bx + dx), static_cast<float>(bz + dz));
+			VertexColorModificationMap::const_iterator const it = m_vertexColorModifications.find(nk);
+			if (it == m_vertexColorModifications.end() || it->second.blendAmount <= 0.f)
+				continue;
+
+			float const ddx = oq.x - it->second.worldX;
+			float const ddz = oq.z - it->second.worldZ;
+			float const dist2 = ddx * ddx + ddz * ddz;
+
+			if (best == m_vertexColorModifications.end()
+				|| dist2 < bestDist2 - 1e-6f
+				|| (std::fabs(dist2 - bestDist2) <= 1e-6f && it->second.blendAmount > bestBlend))
+			{
+				best = it;
+				bestDist2 = dist2;
+				bestBlend = it->second.blendAmount;
+			}
+		}
+	}
+
+	if (best == m_vertexColorModifications.end())
+	{
+		out = original;
+		return false;
+	}
+
+	float const t = std::max(0.f, std::min(1.f, best->second.blendAmount));
+	out = PackedRgb::linearInterpolate(original, best->second.color, t);
 	return true;
 }
 

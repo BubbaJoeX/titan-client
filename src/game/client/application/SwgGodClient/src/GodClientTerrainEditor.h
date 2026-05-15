@@ -17,6 +17,7 @@
 #include "sharedMath/Vector.h"
 #include "sharedMath/Vector2d.h"
 #include "sharedMath/Rectangle2d.h"
+#include "sharedMath/PackedRgb.h"
 #include "sharedSynchronization/Mutex.h"
 #include <vector>
 #include <map>
@@ -167,6 +168,22 @@ public:
 		ShaderModification after;
 	};
 
+	struct VertexColorModification
+	{
+		float worldX;
+		float worldZ;
+		PackedRgb color;
+		float blendAmount;
+	};
+
+	struct VertexColorStrokeRecord
+	{
+		uint64 key;
+		bool hadPrior;
+		VertexColorModification prior;
+		VertexColorModification after;
+	};
+
 	// Brush stroke data
 	struct BrushStroke
 	{
@@ -180,6 +197,7 @@ public:
 		std::vector<ShaderModification> shaderModifications;
 		std::vector<FloraModification> floraModifications;
 		std::vector<ShaderStrokeRecord> shaderStrokeRecords;
+		std::vector<VertexColorStrokeRecord> vertexColorStrokeRecords;
 	};
 
 	// Polyline control point with height
@@ -276,6 +294,11 @@ public:
 	void setSelectedShaderFamily(int familyId);
 	int getSelectedShaderFamily() const;
 
+	/// When true, TM_PaintShader brush applies a vertex color tint overlay instead of changing shader family.
+	void setShaderPaintTintMode(bool enabled);
+	bool getShaderPaintTintMode() const;
+	void setShaderPaintTintRgb(uint8 r, uint8 g, uint8 b);
+
 	void setSelectedFloraFamily(int familyId);
 	int getSelectedFloraFamily() const;
 
@@ -307,6 +330,9 @@ public:
 	/// Single shader paint application (e.g. TerrainDock); does not manage stroke dirty rects.
 	void applyShaderPaintDab(float worldX, float worldZ, int shaderFamilyId, float strength);
 
+	/// Vertex color tint dab (live overlay; does not select a shader family).
+	void applyVertexColorPaintDab(float worldX, float worldZ, PackedRgb const& rgb, float strength);
+
 	// Height modification queries (called by terrain system)
 	static bool getModifiedHeight(float x, float z, float originalHeight, float& outHeight);
 	bool getModifiedHeightInternal(float x, float z, float originalHeight, float& outHeight) const;
@@ -314,6 +340,9 @@ public:
 	// Shader modification queries
 	static bool getModifiedShader(float x, float z, int originalFamilyId, int& outFamilyId, float& outFeather);
 	bool getModifiedShaderInternal(float x, float z, int originalFamilyId, int& outFamilyId, float& outFeather) const;
+
+	static bool getModifiedVertexColor(float x, float z, PackedRgb const& original, PackedRgb& out);
+	bool getModifiedVertexColorInternal(float x, float z, PackedRgb const& original, PackedRgb& out) const;
 
 	// Flora modification queries  
 	static bool getModifiedFlora(float x, float z, int originalFamilyId, int& outFamilyId, float& outDensity);
@@ -385,6 +414,19 @@ public:
 		float maxX,
 		float maxZ,
 		int shaderFamilyId,
+		float strength,
+		bool circularClip = false,
+		float circleCenterX = 0.f,
+		float circleCenterZ = 0.f,
+		float circleRadius = 0.f);
+
+	/// Fill a world XZ rectangle (optionally circular) with the vertex color tint overlay.
+	bool applyRectangularVertexColorPaint(
+		float minX,
+		float minZ,
+		float maxX,
+		float maxZ,
+		PackedRgb const& rgb,
 		float strength,
 		bool circularClip = false,
 		float circleCenterX = 0.f,
@@ -527,6 +569,7 @@ public:
 	// Get modification statistics
 	int getHeightModificationCount() const;
 	int getShaderModificationCount() const;
+	int getVertexColorModificationCount() const;
 	int getFloraModificationCount() const;
 	const Rectangle2d& getModifiedRegionBounds() const;
 
@@ -547,6 +590,7 @@ private:
 
 	// Shader modification functions
 	void modifyShaderPaint(float worldX, float worldZ, int shaderFamilyId, float strength);
+	void modifyVertexColorPaint(float worldX, float worldZ, PackedRgb const& color, float strength);
 
 	// Flora modification functions
 	void modifyFloraPaint(float worldX, float worldZ, int floraFamilyId, float density, bool collidable);
@@ -565,6 +609,10 @@ private:
 	void sealShaderStrokeRecords(BrushStroke & stroke);
 	bool shouldRecordShaderUndo() const;
 	void restoreShaderModificationsFromStrokeRecords(std::vector<ShaderStrokeRecord> const & recs, bool usePriorState);
+
+	void recordVertexColorStrokePending(uint64 key);
+	void sealVertexColorStrokeRecords(BrushStroke & stroke);
+	void restoreVertexColorModificationsFromStrokeRecords(std::vector<VertexColorStrokeRecord> const & recs, bool usePriorState);
 
 	/// Extends (or creates) a top-most generator layer that marks the live-edit footprint for .trn authoring.
 	void godClientSyncLiveStagingAoiLayer(Rectangle2d const & worldExtentFootprintXZ);
@@ -622,6 +670,10 @@ private:
 	int m_selectedRadialFamily;
 	bool m_floraCollidable;
 	float m_floraDensity;
+	bool m_shaderPaintTintMode;
+	uint8 m_shaderPaintTintR;
+	uint8 m_shaderPaintTintG;
+	uint8 m_shaderPaintTintB;
 
 	// Brush preview
 	bool m_brushPreviewEnabled;
@@ -642,6 +694,9 @@ private:
 	typedef std::map<uint64, ShaderModification> ShaderModificationMap;
 	mutable Mutex m_shaderModificationMutex;
 	ShaderModificationMap m_shaderModifications;
+
+	typedef std::map<uint64, VertexColorModification> VertexColorModificationMap;
+	VertexColorModificationMap m_vertexColorModifications;
 
 	// RAII guard for concurrent access from procedural chunk worker threads vs main/UI thread.
 	struct ShaderMapLock
@@ -671,6 +726,10 @@ private:
 	typedef std::vector<std::pair<uint64, std::pair<bool, ShaderModification> > > ShaderStrokePendingVector;
 	ShaderStrokePendingVector m_shaderStrokePending;
 	std::set<uint64> m_shaderStrokePendingKeys;
+
+	typedef std::vector<std::pair<uint64, std::pair<bool, VertexColorModification> > > VertexColorStrokePendingVector;
+	VertexColorStrokePendingVector m_vertexColorStrokePending;
+	std::set<uint64> m_vertexColorStrokePendingKeys;
 
 	// Region selection
 	bool m_hasRegionSelection;
@@ -947,6 +1006,11 @@ inline int GodClientTerrainEditor::getHeightModificationCount() const
 inline int GodClientTerrainEditor::getShaderModificationCount() const
 {
 	return static_cast<int>(m_shaderModifications.size());
+}
+
+inline int GodClientTerrainEditor::getVertexColorModificationCount() const
+{
+	return static_cast<int>(m_vertexColorModifications.size());
 }
 
 inline int GodClientTerrainEditor::getFloraModificationCount() const

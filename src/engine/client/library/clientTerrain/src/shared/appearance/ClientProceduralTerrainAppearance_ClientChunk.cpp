@@ -25,6 +25,7 @@
 #include "sharedCollision/CollisionInfo.h"
 #include "sharedFoundation/PointerDeleter.h"
 #include "sharedMath/IndexedTriangleList.h"
+#include "sharedMath/PackedRgb.h"
 #include "sharedMath/Vector.h"
 #include "sharedFoundation/MemoryBlockManager.h"
 #include "sharedObject/Object.h"
@@ -853,11 +854,11 @@ void ClientProceduralTerrainAppearance::ClientChunk::create (const ClientCreateC
 
 						vertexList[i] = position;
 						normalList[i] = ccd_vertexNormalMap->getData(iX, iZ);
-						colorList[i] = ccd_colorMap->getData(iX, iZ).convert();
+						PackedRgb prgb = ccd_colorMap->getData(iX, iZ);
+						colorList[i] = prgb.convert();
 #if PRODUCTION == 0
 						if (ClientProceduralTerrainAppearance::isShowPassable())
 						{
-							PackedRgb prgb = ccd_colorMap->getData (iX, iZ);
 							//-- exaggerate passable areas with color
 							if (!ccd_passableMap->getData(iX, iZ))
 								prgb = PackedRgb::linearInterpolate(prgb, PackedRgb::solidBlack, 0.6f);
@@ -866,6 +867,11 @@ void ClientProceduralTerrainAppearance::ClientChunk::create (const ClientCreateC
 							colorList[i] = prgb.convert();
 						}
 #endif
+						{
+							PackedRgb prgbOut = prgb;
+							if (CityTerrainLayerManager::getModifiedVertexColor(position.x, position.z, prgb, prgbOut))
+								colorList[i] = prgbOut.convert();
+						}
 
 						//-- extents
 						m_boxExtent.updateMinAndMax (position);

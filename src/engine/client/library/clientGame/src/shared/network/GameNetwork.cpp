@@ -40,11 +40,13 @@
 #include "sharedFoundation/NetworkIdArchive.h"
 #include "sharedMathArchive/VectorArchive.h"
 #include "sharedMessageDispatch/Receiver.h"
-#include "sharedMessageDispatch/Transceiver.h"8                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
+#include "sharedMessageDispatch/Transceiver.h"
 #include "sharedNetwork/NetworkSetupData.h"
 #include "sharedNetworkMessages/ClientCentralMessages.h"
 #include "sharedNetworkMessages/ClientLoginMessages.h"
 #include "sharedNetworkMessages/CityTerrainMessages.h"
+#include "sharedNetworkMessages/ProceduralTerrainSyncMessages.h"
+#include "sharedFoundation/Crc.h"
 #include "sharedNetworkMessages/CommandChannelMessages.h"
 #include "sharedNetworkMessages/ConsoleChannelMessages.h"
 #include "sharedNetworkMessages/GenericValueTypeMessage.h"
@@ -57,6 +59,10 @@
 #include "sharedObject/Object.h"
 #include "sharedRemoteDebugServer/SharedRemoteDebugServer.h"
 #include "sharedUtility/FileName.h"
+
+#include <cstring>
+#include <fstream>
+#include <vector>
 
 //----------------------------------------------------------------------
 
@@ -85,6 +91,122 @@ namespace
 	// std::map<gcwScoreGroup, std::map<gcwScoreCategory, % contribution> >
 	// % contribution is expressed as a value out of 1,000,000,000
 	std::map<std::string, std::map<std::string, int> > s_gcwScoreCategoryGroups;
+}
+
+//----------------------------------------------------------------------
+
+namespace ProceduralTerrainSyncClientNamespace
+{
+	struct ClientProceduralTerrainSyncState
+	{
+		std::string fileName;
+		uint32 totalSize;
+		uint32 crc;
+		std::vector<unsigned char> buffer;
+		uint32 bytesReceived;
+	};
+
+	static ClientProceduralTerrainSyncState s_proceduralTerrainSync;
+
+	static void resetProceduralTerrainSync()
+	{
+		s_proceduralTerrainSync = ClientProceduralTerrainSyncState();
+	}
+
+	static void applyCompletedProceduralTerrainSync()
+	{
+		uint32 const verifyCrc = Crc::calculate(
+			&s_proceduralTerrainSync.buffer[0],
+			static_cast<int>(s_proceduralTerrainSync.buffer.size()),
+			Crc::crcInit);
+
+		if (verifyCrc != s_proceduralTerrainSync.crc)
+		{
+			WARNING(true, ("ProceduralTerrainSync: client CRC mismatch."));
+			resetProceduralTerrainSync();
+			return;
+		}
+
+		char pathBuffer[8192];
+		if (!TreeFile::getPathName(s_proceduralTerrainSync.fileName.c_str(), pathBuffer, sizeof(pathBuffer)))
+		{
+			WARNING(true, ("ProceduralTerrainSync: client getPathName failed for [%s].", s_proceduralTerrainSync.fileName.c_str()));
+			resetProceduralTerrainSync();
+			return;
+		}
+
+		{
+			std::ofstream out(pathBuffer, std::ios::binary | std::ios::trunc);
+			if (!out)
+			{
+				WARNING(true, ("ProceduralTerrainSync: client failed to write [%s].", pathBuffer));
+				resetProceduralTerrainSync();
+				return;
+			}
+			out.write(reinterpret_cast<char const *>(&s_proceduralTerrainSync.buffer[0]), static_cast<std::streamsize>(s_proceduralTerrainSync.buffer.size()));
+		}
+
+		TreeFile::clearCachedFiles();
+		AppearanceTemplateList::garbageCollect();
+		if (GroundScene * const gs = dynamic_cast<GroundScene *>(Game::getScene()))
+			gs->reloadTerrain();
+
+		resetProceduralTerrainSync();
+	}
+
+	void handleProceduralTerrainSyncChunk(ProceduralTerrainSyncChunkMessage const & msg)
+	{
+		uint32 const maxBytes = 32u * 1024u * 1024u;
+
+		if (msg.getTotalSize() == 0 || msg.getTotalSize() > maxBytes)
+		{
+			resetProceduralTerrainSync();
+			return;
+		}
+
+		std::vector<unsigned char> const & chunk = msg.getChunkBytes();
+		if (chunk.empty())
+		{
+			resetProceduralTerrainSync();
+			return;
+		}
+
+		if (msg.getByteOffset() == 0)
+			resetProceduralTerrainSync();
+
+		if (msg.getByteOffset() == 0)
+		{
+			s_proceduralTerrainSync.fileName = msg.getTerrainTreeFileName();
+			s_proceduralTerrainSync.totalSize = msg.getTotalSize();
+			s_proceduralTerrainSync.crc = msg.getCrc32();
+			s_proceduralTerrainSync.buffer.resize(msg.getTotalSize());
+			s_proceduralTerrainSync.bytesReceived = 0;
+		}
+
+		if (msg.getTerrainTreeFileName() != s_proceduralTerrainSync.fileName ||
+			msg.getTotalSize() != s_proceduralTerrainSync.totalSize ||
+			msg.getCrc32() != s_proceduralTerrainSync.crc)
+		{
+			resetProceduralTerrainSync();
+			return;
+		}
+
+		if (msg.getByteOffset() + chunk.size() > s_proceduralTerrainSync.totalSize ||
+			msg.getByteOffset() != s_proceduralTerrainSync.bytesReceived)
+		{
+			resetProceduralTerrainSync();
+			return;
+		}
+
+		std::memcpy(
+			&s_proceduralTerrainSync.buffer[msg.getByteOffset()],
+			&chunk[0],
+			chunk.size());
+		s_proceduralTerrainSync.bytesReceived = msg.getByteOffset() + static_cast<uint32>(chunk.size());
+
+		if (s_proceduralTerrainSync.bytesReceived >= s_proceduralTerrainSync.totalSize)
+			applyCompletedProceduralTerrainSync();
+	}
 }
 
 //----------------------------------------------------------------------
@@ -127,6 +249,7 @@ MessageDispatch::Receiver ()
 	connectToMessage("OpenTerraformingUIMessage");
 	connectToMessage("CityTerrainModifyMessage");
 	connectToMessage("CityTerrainPaintResponseMessage");
+	connectToMessage("ProceduralTerrainSyncChunkMessage");
 }
 
 //-----------------------------------------------------------------------
@@ -311,6 +434,12 @@ void GameNetwork::Listener::receiveMessage(const MessageDispatch::Emitter & , co
 		if (CityTerrainLayerManager::isInstalled())
 			CityTerrainLayerManager::dispatchPaintResponse(msg.getSuccess(), msg.getRegionId(), msg.getErrorMessage());
 		CityTerrainLayerManager::notifyCityTerrainUiRefresh(0);
+	}
+	else if(message.isType("ProceduralTerrainSyncChunkMessage"))
+	{
+		Archive::ReadIterator ri = NON_NULL (safe_cast<const GameNetworkMessage *>(&message))->getByteStream().begin();
+		ProceduralTerrainSyncChunkMessage const syncMsg(ri);
+		ProceduralTerrainSyncClientNamespace::handleProceduralTerrainSyncChunk(syncMsg);
 	}
 }
 

@@ -165,6 +165,7 @@ CityTerrainLayerManager::OpenCityTerrainPainterAlreadyActiveFn CityTerrainLayerM
 CityTerrainLayerManager::OpenTerraformingAlreadyActiveFn CityTerrainLayerManager::ms_openTerraformingAlreadyActiveFn = 0;
 CityTerrainLayerManager::ExternalHeightModifierCallback CityTerrainLayerManager::ms_externalHeightModifierCallback = 0;
 CityTerrainLayerManager::ExternalShaderModifierCallback CityTerrainLayerManager::ms_externalShaderModifierCallback = 0;
+CityTerrainLayerManager::ExternalVertexColorModifierCallback CityTerrainLayerManager::ms_externalVertexColorModifierCallback = 0;
 CityTerrainLayerManager::ExternalFloraModifierCallback CityTerrainLayerManager::ms_externalFloraModifierCallback = 0;
 CityTerrainLayerManager::ExternalRadialModifierCallback CityTerrainLayerManager::ms_externalRadialModifierCallback = 0;
 bool CityTerrainLayerManager::ms_paintTileGridVisible = false;
@@ -198,6 +199,7 @@ void CityTerrainLayerManager::remove()
 	ms_openTerraformingAlreadyActiveFn = 0;
 	ms_externalHeightModifierCallback = 0;
 	ms_externalShaderModifierCallback = 0;
+	ms_externalVertexColorModifierCallback = 0;
 	ms_externalFloraModifierCallback = 0;
 	ms_externalRadialModifierCallback = 0;
 	ms_paintTileGridVisible = false;
@@ -382,6 +384,39 @@ bool CityTerrainLayerManager::getModifiedShader(float x, float z, int originalFa
 		{
 			outFamilyId = modifiedFamilyId;
 			outFeather = modifiedFeather;
+			return true;
+		}
+	}
+
+	return false;
+}
+
+// ----------------------------------------------------------------------
+
+void CityTerrainLayerManager::setExternalVertexColorModifierCallback(ExternalVertexColorModifierCallback callback)
+{
+	ms_externalVertexColorModifierCallback = callback;
+}
+
+// ----------------------------------------------------------------------
+
+void CityTerrainLayerManager::clearExternalVertexColorModifierCallback()
+{
+	ms_externalVertexColorModifierCallback = 0;
+}
+
+// ----------------------------------------------------------------------
+
+bool CityTerrainLayerManager::getModifiedVertexColor(float x, float z, PackedRgb const& original, PackedRgb& out)
+{
+	out = original;
+
+	if (ms_externalVertexColorModifierCallback)
+	{
+		PackedRgb modified = original;
+		if (ms_externalVertexColorModifierCallback(x, z, original, modified))
+		{
+			out = modified;
 			return true;
 		}
 	}

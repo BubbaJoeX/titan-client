@@ -12,6 +12,7 @@
 #include "sharedFoundation/NetworkId.h"
 #include "sharedMath/Vector.h"
 #include "sharedMath/Vector2d.h"
+#include "sharedMath/PackedRgb.h"
 #include <map>
 #include <vector>
 #include <string>
@@ -146,6 +147,13 @@ public:
 	static void clearExternalShaderModifierCallback();
 	static bool getModifiedShader(float x, float z, int originalFamilyId, int & outFamilyId, float & outFeather);
 
+	// Optional vertex color tint overlay (God Client terrain editing). When the callback returns true,
+	// \a out replaces the procedural pole color for rendering (does not change shader family selection).
+	typedef bool (*ExternalVertexColorModifierCallback)(float x, float z, PackedRgb const & original, PackedRgb & out);
+	static void setExternalVertexColorModifierCallback(ExternalVertexColorModifierCallback callback);
+	static void clearExternalVertexColorModifierCallback();
+	static bool getModifiedVertexColor(float x, float z, PackedRgb const & original, PackedRgb & out);
+
 	// External flora modifier callback (for God Client terrain editing, etc.)
 	// Return true if flora was modified
 	typedef bool (*ExternalFloraModifierCallback)(float x, float z, int originalFamilyId, int & outFamilyId, float & outDensity);
@@ -195,6 +203,7 @@ private:
 	static OpenTerraformingAlreadyActiveFn ms_openTerraformingAlreadyActiveFn;
 	static ExternalHeightModifierCallback ms_externalHeightModifierCallback;
 	static ExternalShaderModifierCallback ms_externalShaderModifierCallback;
+	static ExternalVertexColorModifierCallback ms_externalVertexColorModifierCallback;
 	static ExternalFloraModifierCallback ms_externalFloraModifierCallback;
 	static ExternalRadialModifierCallback ms_externalRadialModifierCallback;
 	static bool ms_paintTileGridVisible;

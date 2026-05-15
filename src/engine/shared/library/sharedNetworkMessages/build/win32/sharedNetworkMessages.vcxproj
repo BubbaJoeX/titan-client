@@ -435,6 +435,9 @@
     <ClCompile Include="..\..\src\shared\clientGameServer\CityTerrainMessages.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
     </ClCompile>
+    <ClCompile Include="..\..\src\shared\clientGameServer\ProceduralTerrainSyncMessages.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+    </ClCompile>
     <ClCompile Include="..\..\src\shared\clientGameServer\CharacterSheetResponseMessage.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
     </ClCompile>
@@ -1290,6 +1293,7 @@
     <ClInclude Include="..\..\src\shared\clientGameServer\CancelLiveAuctionResponseMessage.h" />
     <ClInclude Include="..\..\src\shared\clientGameServer\CalendarMessages.h" />
     <ClInclude Include="..\..\src\shared\clientGameServer\CityTerrainMessages.h" />
+    <ClInclude Include="..\..\src\shared\clientGameServer\ProceduralTerrainSyncMessages.h" />
     <ClInclude Include="..\..\src\shared\clientGameServer\CharacterSheetResponseMessage.h" />
     <ClInclude Include="..\..\src\shared\clientGameServer\ClientCentralMessages.h" />
     <ClInclude Include="..\..\src\shared\clientGameServer\ClientEffectMessages.h" />

@@ -27,6 +27,7 @@
 #include "sharedTerrain/BitmapGroup.h"
 
 #include "clientGame/Game.h"
+#include "clientGame/GameNetwork.h"
 #include "clientGame/GroundScene.h"
 #include "clientGame/FreeCamera.h"
 #include "clientTerrain/ClientProceduralTerrainAppearance.h"
@@ -43,6 +44,8 @@
 #include "sharedRandom/Random.h"
 #include "sharedObject/Appearance.h"
 #include "sharedObject/AppearanceTemplate.h"
+#include "sharedNetworkMessages/ProceduralTerrainSyncMessages.h"
+#include "sharedFoundation/Crc.h"
 
 #include "GodClientData.h"
 #include "GodClientTerrainEditor.h"
@@ -86,6 +89,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
+#include <fstream>
 #include <map>
 #include <set>
 #include <string>
@@ -386,6 +390,55 @@ namespace
 		if (terrainPathAscii.empty())
 			return QString();
 		return terrainDockCanonFromPathQString(QString::fromLatin1(terrainPathAscii.c_str()));
+	}
+
+	void terrainDockTryPushTerrainFileToLiveServer(std::string const & writtenDiskPath, char const * proceduralTerrainTemplateTreeName)
+	{
+		static uint32 const maxBytes = 32u * 1024u * 1024u;
+		static uint32 const chunkBytes = 45000u;
+
+		if (!proceduralTerrainTemplateTreeName || !proceduralTerrainTemplateTreeName[0])
+			return;
+		if (!GameNetwork::isConnectedToConnectionServer())
+			return;
+
+		std::ifstream input(writtenDiskPath.c_str(), std::ios::binary | std::ios::ate);
+		if (!input)
+			return;
+
+		std::streamoff const endPos = input.tellg();
+		if (endPos <= 0)
+			return;
+
+		size_t const fileSizeUnsigned = static_cast<size_t>(endPos);
+		if (fileSizeUnsigned > static_cast<size_t>(maxBytes))
+		{
+			MainFrame::getInstance().textToConsole("Terrain not pushed: file exceeds procedural sync limit (32MiB).");
+			return;
+		}
+
+		input.seekg(0);
+		std::vector<unsigned char> bytes(fileSizeUnsigned);
+		input.read(reinterpret_cast<char *>(&bytes[0]), static_cast<std::streamsize>(fileSizeUnsigned));
+		if (!input)
+			return;
+
+		uint32 const totalSize = static_cast<uint32>(bytes.size());
+		uint32 const crc = Crc::calculate(&bytes[0], static_cast<int>(bytes.size()), Crc::crcInit);
+		std::string const terrainName(proceduralTerrainTemplateTreeName);
+
+		for (uint32 offset = 0; offset < totalSize; )
+		{
+			uint32 const slice = std::min(chunkBytes, totalSize - offset);
+			std::vector<unsigned char> chunk(
+				bytes.begin() + static_cast<std::vector<unsigned char>::difference_type>(offset),
+				bytes.begin() + static_cast<std::vector<unsigned char>::difference_type>(offset + slice));
+			ProceduralTerrainSyncChunkMessage const chunkMessage(terrainName, totalSize, crc, offset, chunk);
+			GameNetwork::send(chunkMessage, true);
+			offset += slice;
+		}
+
+		MainFrame::getInstance().textToConsole("Terrain pushed to live server (procedural .trn replication).");
 	}
 
 	void terrainDockAppendUniqueCanonDir(QStringList& dirsCanon, QString const& dirCanonCandidate)
@@ -1371,31 +1424,17 @@ void TerrainDock::syncGodClientEditorBrushSettings()
 		 editorMode == GodClientTerrainEditor::TM_StampBitmap))
 	{
 		QString const catalogPath = m_globalShaderPaintingSelection ? m_savedGlobalPickTrnCanon : QString();
-		int famToEnsure = m_selectedShaderFamilyId;
-		if (editorMode == GodClientTerrainEditor::TM_PaintShader &&
-			m_shaderColorConstantPaintEnabled &&
-			m_shaderColorConstantPickValid &&
-			!m_globalShaderPaintingSelection)
-		{
-			famToEnsure = resolveShaderFamilyIdForColorPaint(
-				m_shaderColorConstantR, m_shaderColorConstantG, m_shaderColorConstantB);
-		}
+		int const famToEnsure = m_selectedShaderFamilyId;
 		if (!ensureLiveTerrainShaderFamilyForPaint(famToEnsure, catalogPath))
 			clampSelectedShaderFamilyToLiveTerrain();
 	}
 
-	int shaderFamilyForLiveBrush = m_selectedShaderFamilyId;
-	if (editorMode == GodClientTerrainEditor::TM_PaintShader &&
-		m_shaderColorConstantPaintEnabled &&
-		m_shaderColorConstantPickValid &&
-		!m_globalShaderPaintingSelection)
-	{
-		shaderFamilyForLiveBrush = resolveShaderFamilyIdForColorPaint(
-			m_shaderColorConstantR, m_shaderColorConstantG, m_shaderColorConstantB);
-	}
+	bool const tintOn = m_shaderColorConstantPaintEnabled && m_shaderColorConstantPickValid && !m_globalShaderPaintingSelection;
+	editor.setShaderPaintTintMode(editorMode == GodClientTerrainEditor::TM_PaintShader && tintOn);
+	if (editorMode == GodClientTerrainEditor::TM_PaintShader && tintOn)
+		editor.setShaderPaintTintRgb(m_shaderColorConstantR, m_shaderColorConstantG, m_shaderColorConstantB);
 
-	editor.setSelectedShaderFamily(
-		editorMode == GodClientTerrainEditor::TM_PaintShader ? shaderFamilyForLiveBrush : m_selectedShaderFamilyId);
+	editor.setSelectedShaderFamily(m_selectedShaderFamilyId);
 	{
 		int floraFamilyId = 0;
 		if (m_floraFamilyIndex >= 0 && m_floraFamilyIndex < static_cast<int>(m_floraFamilyIds.size()))
@@ -2083,6 +2122,10 @@ bool TerrainDock::writeCurrentTerrainTemplateToFile(std::string const& path, boo
 
 	if (clearModifiedOnSuccess)
 		m_terrainModified = false;
+
+	char const * const templateTreeName = terrainTemplate->getName();
+	if (templateTreeName && templateTreeName[0])
+		terrainDockTryPushTerrainFileToLiveServer(path, templateTreeName);
 
 	return true;
 }
@@ -4443,7 +4486,44 @@ void TerrainDock::onFillRegion()
 			return;
 		}
 
-		int const fillFamily = currentShaderPaintFamilyId();
+		if (m_shaderColorConstantPaintEnabled && !m_globalShaderPaintingSelection && m_shaderColorConstantPickValid)
+		{
+			PackedRgb const rgb(m_shaderColorConstantR, m_shaderColorConstantG, m_shaderColorConstantB);
+			bool const circ = (m_regionSelectionShape == RSS_Circle && m_regionCircleRadius > 0.01f);
+			if (GodClientTerrainEditor::getInstance().applyRectangularVertexColorPaint(
+					m_regionMinX,
+					m_regionMinZ,
+					m_regionMaxX,
+					m_regionMaxZ,
+					rgb,
+					m_brushStrength,
+					circ,
+					m_regionCircleCenterX,
+					m_regionCircleCenterZ,
+					m_regionCircleRadius))
+			{
+				m_terrainModified = true;
+				updateUndoRedoState();
+				QString msg;
+				msg.sprintf(
+					"Region filled with vertex color tint RGB(%d,%d,%d): (%.1f, %.1f) - (%.1f, %.1f)",
+					static_cast<int>(m_shaderColorConstantR),
+					static_cast<int>(m_shaderColorConstantG),
+					static_cast<int>(m_shaderColorConstantB),
+					m_regionMinX,
+					m_regionMinZ,
+					m_regionMaxX,
+					m_regionMaxZ);
+				MainFrame::getInstance().textToConsole(msg.latin1());
+			}
+			else
+			{
+				IGNORE_RETURN(QMessageBox::warning(this, "Fill Region", "Could not apply color tint fill (no terrain or invalid region)."));
+			}
+			return;
+		}
+
+		int const fillFamily = m_selectedShaderFamilyId;
 		QString const catalogPath = m_globalShaderPaintingSelection ? m_savedGlobalPickTrnCanon : QString();
 		if (!ensureLiveTerrainShaderFamilyForPaint(fillFamily, catalogPath))
 		{
@@ -4701,184 +4781,6 @@ void TerrainDock::onAddProceduralExcludeFromRegion()
 	MainFrame::getInstance().textToConsole("Added AffectorExclude layer for current region.");
 }
 
-void TerrainDock::onMapTemplateSettingsClicked()
-{
-	ProceduralTerrainAppearanceTemplate* const tpl = getTerrainTemplate();
-	if (!tpl)
-	{
-		IGNORE_RETURN(QMessageBox::warning(this, "Map template", "No procedural terrain template."));
-		return;
-	}
-
-	MapTemplateSettingsDialog dlg(this, tpl);
-	if (dlg.exec() != QDialog::Accepted)
-		return;
-
-	float mapW = 0.f;
-	float chunkW = 0.f;
-	int tiles = 1;
-	bool useGlobalWater = false;
-	float wh = 0.f;
-	float ws = 0.f;
-	float envc = 0.f;
-	if (!dlg.readValues(mapW, chunkW, tiles, useGlobalWater, wh, ws, envc))
-	{
-		IGNORE_RETURN(QMessageBox::warning(this, "Map template", "Invalid values. Map and chunk width must be positive, tiles per chunk at least 1, environment cycle greater than zero."));
-		return;
-	}
-
-	tpl->setMapLayoutParameters(mapW, chunkW, tiles);
-	tpl->setUseGlobalWaterTable(useGlobalWater);
-	tpl->setGlobalWaterTableHeight(wh);
-	tpl->setGlobalWaterTableShaderSize(ws);
-	tpl->setEnvironmentCycleTime(envc);
-
-	TerrainGenerator* const gen = getTerrainGenerator();
-	if (gen)
-		gen->prepare();
-
-	if (m_terrainFilePath.empty())
-	{
-		IGNORE_RETURN(QMessageBox::information(this, "Map template",
-			"Choose a terrain file path (Save As) so the client can reload the .trn from disk."));
-		onSaveTerrainAs();
-	}
-
-	if (m_terrainFilePath.empty())
-	{
-		IGNORE_RETURN(QMessageBox::warning(this, "Map template", "No file path: changes were not saved and terrain was not reloaded."));
-		m_terrainModified = true;
-		updateUndoRedoState();
-		refreshFromScene(true);
-		return;
-	}
-
-	if (GodClientTerrainEditor::isInstalled())
-		GodClientTerrainEditor::getInstance().flushTerrainChanges();
-
-	m_terrainModified = true;
-	onSaveTerrain();
-	if (m_terrainModified)
-	{
-		IGNORE_RETURN(QMessageBox::warning(this, "Map template", "Save failed; terrain was not reloaded."));
-		refreshFromScene(true);
-		return;
-	}
-
-	GroundScene* const gs = dynamic_cast<GroundScene*>(Game::getScene());
-	if (gs)
-		gs->reloadTerrain();
-	else
-		IGNORE_RETURN(QMessageBox::warning(this, "Map template", "No ground scene; terrain could not be reloaded."));
-
-	refreshFromScene(true);
-	MainFrame::getInstance().textToConsole("Map template updated, terrain saved and reloaded.");
-}
-
-void TerrainDock::onAddProceduralHeightConstantLayer()
-{
-	if (!GodClientTerrainEditor::isInstalled())
-	{
-		IGNORE_RETURN(QMessageBox::warning(this, "Procedural", "Terrain editor is not ready."));
-		return;
-	}
-
-	bool ok = false;
-	float const h = QInputDialog::getDouble(
-		tr("New height constant layer"),
-		tr("Height (meters) for full-map layer:"),
-		0.0,
-		-1.0e6,
-		1.0e6,
-		2,
-		&ok,
-		this);
-
-	if (!ok)
-		return;
-
-	if (!GodClientTerrainEditor::getInstance().addFullMapHeightConstantLayer(h, 32.f, 0))
-	{
-		IGNORE_RETURN(QMessageBox::warning(this, "Procedural", "Could not add layer (no generator or invalid map size)."));
-		return;
-	}
-
-	m_terrainModified = true;
-	updateUndoRedoState();
-	populateLayerList();
-	MainFrame::getInstance().textToConsole("Added full-map AffectorHeightConstant layer.");
-}
-
-void TerrainDock::onAddProceduralShaderConstantLayer()
-{
-	if (!GodClientTerrainEditor::isInstalled())
-	{
-		IGNORE_RETURN(QMessageBox::warning(this, "Procedural", "Terrain editor is not ready."));
-		return;
-	}
-
-	if (m_selectedShaderFamilyId == 0)
-	{
-		IGNORE_RETURN(QMessageBox::warning(this, "Procedural", "Select a shader family in the Shaders list first."));
-		return;
-	}
-
-	if (!GodClientTerrainEditor::getInstance().addFullMapShaderConstantLayer(m_selectedShaderFamilyId, 48.f, 0))
-	{
-		IGNORE_RETURN(QMessageBox::warning(this, "Procedural", "Could not add shader layer."));
-		return;
-	}
-
-	m_terrainModified = true;
-	updateUndoRedoState();
-	populateLayerList();
-	MainFrame::getInstance().textToConsole("Added full-map AffectorShaderConstant layer.");
-}
-
-void TerrainDock::onAddProceduralExcludeFromRegion()
-{
-	if (!GodClientTerrainEditor::isInstalled())
-	{
-		IGNORE_RETURN(QMessageBox::warning(this, "Procedural", "Terrain editor is not ready."));
-		return;
-	}
-
-	if (!m_hasRegionSelection)
-	{
-		IGNORE_RETURN(QMessageBox::warning(this, "Procedural", "Select a rectangular region first."));
-		return;
-	}
-
-	bool ok = false;
-	float feather = QInputDialog::getDouble(
-		tr("Exclude layer"),
-		tr("Boundary feather (meters):"),
-		8.0,
-		0.0,
-		4096.0,
-		2,
-		&ok,
-		this);
-	if (!ok)
-		return;
-
-	Rectangle2d const rect(
-		std::min(m_regionMinX, m_regionMaxX),
-		std::min(m_regionMinZ, m_regionMaxZ),
-		std::max(m_regionMinX, m_regionMaxX),
-		std::max(m_regionMinZ, m_regionMaxZ));
-
-	if (!GodClientTerrainEditor::getInstance().addExcludeLayerForRectangle(rect, feather, 0))
-	{
-		IGNORE_RETURN(QMessageBox::warning(this, "Procedural", "Could not add exclude layer (region too small?)."));
-		return;
-	}
-
-	m_terrainModified = true;
-	updateUndoRedoState();
-	populateLayerList();
-	MainFrame::getInstance().textToConsole("Added AffectorExclude layer for current region.");
-}
 
 // ======================================================================
 // Polyline/Road/Ribbon Operations
@@ -5114,6 +5016,7 @@ void TerrainDock::onExportToLayer()
 	
 	int modCount = editor.getHeightModificationCount() + 
 	               editor.getShaderModificationCount() + 
+	               editor.getVertexColorModificationCount() +
 	               editor.getFloraModificationCount();
 	
 	if (modCount == 0)
@@ -5742,46 +5645,6 @@ void TerrainDock::addNoiseAtPoint(float worldX, float worldZ)
 	MainFrame::getInstance().textToConsole(msg.latin1());
 }
 
-int TerrainDock::resolveShaderFamilyIdForColorPaint(uint8 r, uint8 g, uint8 b) const
-{
-	TerrainGenerator* const generator = getTerrainGenerator();
-	if (!generator)
-		return m_selectedShaderFamilyId;
-
-	ShaderGroup const& sg = generator->getShaderGroup();
-	int const nFamilies = sg.getNumberOfFamilies();
-	if (nFamilies <= 0)
-		return m_selectedShaderFamilyId;
-
-	PackedRgb const target(r, g, b);
-	int bestId = sg.getFamilyId(0);
-	int bestScore = 0x7fffffff;
-
-	for (int i = 0; i < nFamilies; ++i)
-	{
-		int const fid = sg.getFamilyId(i);
-		PackedRgb const fc = sg.getFamilyColor(fid);
-		int const dr = static_cast<int>(fc.r) - static_cast<int>(target.r);
-		int const dg = static_cast<int>(fc.g) - static_cast<int>(target.g);
-		int const db = static_cast<int>(fc.b) - static_cast<int>(target.b);
-		int const score = dr * dr + dg * dg + db * db;
-		if (score < bestScore)
-		{
-			bestScore = score;
-			bestId = fid;
-		}
-	}
-
-	return bestId;
-}
-
-int TerrainDock::currentShaderPaintFamilyId() const
-{
-	if (!m_shaderColorConstantPaintEnabled || m_globalShaderPaintingSelection || !m_shaderColorConstantPickValid)
-		return m_selectedShaderFamilyId;
-	return resolveShaderFamilyIdForColorPaint(m_shaderColorConstantR, m_shaderColorConstantG, m_shaderColorConstantB);
-}
-
 void TerrainDock::updateShaderColorConstantControls()
 {
 	bool const sceneShaderList = hasActiveTerrain() && !m_globalShaderPaintingSelection;
@@ -5801,7 +5664,7 @@ void TerrainDock::updateShaderColorConstantControls()
 
 	if (!sceneShaderList)
 	{
-		m_shaderColorSummaryLabel->setText(QString::fromLatin1("(Color paint: scene shader list only.)"));
+		m_shaderColorSummaryLabel->setText(QString::fromLatin1("(Color tint: scene shader list only.)"));
 		return;
 	}
 	if (!m_shaderColorConstantPickValid)
@@ -5810,23 +5673,12 @@ void TerrainDock::updateShaderColorConstantControls()
 		return;
 	}
 
-	int const fid = resolveShaderFamilyIdForColorPaint(m_shaderColorConstantR, m_shaderColorConstantG, m_shaderColorConstantB);
-	char const* nm = 0;
-	if (TerrainGenerator* const gen = getTerrainGenerator())
-	{
-		ShaderGroup const& sg = gen->getShaderGroup();
-		if (sg.hasFamily(fid))
-			nm = sg.getFamilyName(fid);
-	}
-
 	QString line;
 	line.sprintf(
-		"RGB(%d,%d,%d) → family %d %s",
+		"RGB(%d,%d,%d) — vertex tint (shader family unchanged)",
 		static_cast<int>(m_shaderColorConstantR),
 		static_cast<int>(m_shaderColorConstantG),
-		static_cast<int>(m_shaderColorConstantB),
-		fid,
-		(nm && *nm) ? nm : "");
+		static_cast<int>(m_shaderColorConstantB));
 	m_shaderColorSummaryLabel->setText(line);
 }
 
@@ -5872,7 +5724,35 @@ void TerrainDock::paintShaderAtPoint(float worldX, float worldZ, int shaderFamil
 		return;
 	}
 
-	int const paintFamilyId = currentShaderPaintFamilyId();
+	if (m_shaderColorConstantPaintEnabled && !m_globalShaderPaintingSelection && m_shaderColorConstantPickValid)
+	{
+		if (!GodClientTerrainEditor::isInstalled())
+		{
+			MainFrame::getInstance().textToConsole("paintShaderAtPoint: Terrain editor not ready");
+			return;
+		}
+
+		PackedRgb const rgb(m_shaderColorConstantR, m_shaderColorConstantG, m_shaderColorConstantB);
+		GodClientTerrainEditor& terrainEditor = GodClientTerrainEditor::getInstance();
+		terrainEditor.beginShaderUndoBatch();
+		terrainEditor.applyVertexColorPaintDab(worldX, worldZ, rgb, m_brushStrength);
+		terrainEditor.endShaderUndoBatch();
+		updateUndoRedoState();
+		m_terrainModified = true;
+
+		QString msg;
+		msg.sprintf(
+			"Vertex color tint RGB(%d,%d,%d) at (%.1f, %.1f)",
+			static_cast<int>(m_shaderColorConstantR),
+			static_cast<int>(m_shaderColorConstantG),
+			static_cast<int>(m_shaderColorConstantB),
+			worldX,
+			worldZ);
+		MainFrame::getInstance().textToConsole(msg.latin1());
+		return;
+	}
+
+	int const paintFamilyId = m_selectedShaderFamilyId;
 
 	QString const catalogPath = m_globalShaderPaintingSelection ? m_savedGlobalPickTrnCanon : QString();
 	if (!ensureLiveTerrainShaderFamilyForPaint(paintFamilyId, catalogPath))
@@ -5904,14 +5784,11 @@ void TerrainDock::paintShaderAtPoint(float worldX, float worldZ, int shaderFamil
 
 	QString msg;
 	msg.sprintf(
-		"Shader '%s' (id %d) painted at (%.1f, %.1f)%s",
+		"Shader '%s' (id %d) painted at (%.1f, %.1f)",
 		familyName ? familyName : "Unknown",
 		paintFamilyId,
 		worldX,
-		worldZ,
-		(m_shaderColorConstantPaintEnabled && m_shaderColorConstantPickValid && !m_globalShaderPaintingSelection)
-			? " [color match]"
-			: "");
+		worldZ);
 	MainFrame::getInstance().textToConsole(msg.latin1());
 }
 
