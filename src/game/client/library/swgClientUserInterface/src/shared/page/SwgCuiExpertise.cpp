@@ -320,16 +320,16 @@ m_treeBackgroundImage(0)
 	getCodeDataObject(TUITextbox, m_buildCodeTextbox, "BuildCodeTextbox");
 	registerMediatorObject(*m_buildCodeTextbox, true);
 
-	getCodeDataObject(TUIButton, m_importBuildButton, "buttonImportBuild");
+	getCodeDataObject(TUIButton, m_importBuildButton, "ImportBuildButton");
 	registerMediatorObject(*m_importBuildButton, true);
 
-	getCodeDataObject(TUIButton, m_exportBuildButton, "buttonExportBuild");
+	getCodeDataObject(TUIButton, m_exportBuildButton, "ExportBuildButton");
 	registerMediatorObject(*m_exportBuildButton, true);
 
-	getCodeDataObject(TUIButton, m_importBuildFileButton, "buttonImportBuildFile");
+	getCodeDataObject(TUIButton, m_importBuildFileButton, "ImportBuildFileButton");
 	registerMediatorObject(*m_importBuildFileButton, true);
 
-	getCodeDataObject(TUIButton, m_exportBuildFileButton, "buttonExportBuildFile");
+	getCodeDataObject(TUIButton, m_exportBuildFileButton, "ExportBuildFileButton");
 	registerMediatorObject(*m_exportBuildFileButton, true);
 
 	getCodeDataObject(TUIPage, m_sampleIconPage, "sampleIconPage");

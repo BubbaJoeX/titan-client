@@ -1,6 +1,7 @@
 #include "_precompile.h"
 #include "UIPage.h"
 
+#include "UIComposite.h"
 #include "UIButton.h"
 #include "UICanvas.h"
 #include "UIData.h"
@@ -454,7 +455,7 @@ bool UIPage::ProcessMessage( const UIMessage &msg )
 		}
 
 		bool childWasHit = false;
-		if (!ProcessMouseMessageUsingControlSet( msg, *mObjects, childWasHit ))
+		if (!processMouseMessageDirectChildrenPaintOrder( msg, childWasHit ))
 		{
 			if (UIWidget::ProcessUserMessage (msg))
 				return true;
@@ -491,6 +492,121 @@ void UIPage::SetWidgetWithMouseLock (UIWidget * w)
 		
 		mWidgetWithMouseLock = w;
 	}
+}
+
+//======================================================================================
+
+bool UIPage::processMouseMessageDirectChildrenPaintOrder( const UIMessage &msg, bool & childWasHit )
+{
+	if (HasPageAttribute(PA_WidgetVectorDirty))
+		BuildWidgetVector ();
+
+	const UIPoint & ScrollLocation = GetScrollLocation();
+
+	for (UIWidgetVector::const_iterator i = mWidgets->begin (); i != mWidgets->end (); ++i)
+	{
+		UIWidget * const w = *i;
+
+		if (!w)
+			continue;
+
+		if (!w->IsEnabled ())
+			continue;
+
+		const UIPoint p ((msg.MouseCoords - w->GetLocation ()) + ScrollLocation);
+
+		if (w->WantsMessage (msg) && ((msg.Type == UIMessage::MouseExit && w == mWidgetUnderMouse) || (w->WillDraw () && w->HitTest (p))))
+		{
+			bool Processed;
+			childWasHit = true;
+
+			UIMessage TranslatedMessage   = msg;
+			TranslatedMessage.MouseCoords = p;
+
+			w->Attach (0);
+			Processed = w->ProcessMessage (TranslatedMessage);
+			UI_DEBUG_REPORT_LOG_PRINT ((w->GetRefCount () <= 1), ("UI Widget %s has an invalid reference count (did you close a page during a callback?).\n", w->GetFullPath ().c_str ()));
+			assert (w->GetRefCount () > 1); //lint !e1776
+			w->Detach (0);
+
+			if ((msg.Type == UIMessage::LeftMouseDown) ||
+				(msg.Type == UIMessage::MiddleMouseDown) ||
+				(msg.Type == UIMessage::RightMouseDown))
+			{
+				if (Processed && w != mWidgetWithMouseLock)
+					SetWidgetWithMouseLock (w);
+			}
+
+			if (!Processed && w->IsAbsorbsInput ())
+			{
+				if (UIManager::gUIManager ().IsContextMessage (msg, true) && w->IsContextCapable (true))
+					Processed = true;
+				if (UIManager::gUIManager ().IsContextMessage (msg, false) && w->IsContextCapable (false))
+					Processed = true;
+			}
+
+			if (Processed || w->IsAbsorbsInput ())
+			{
+				if (msg.Type == UIMessage::MouseMove)
+				{
+					if (mWidgetUnderMouse != w)
+					{
+						UIMessage MouseOverMessage (TranslatedMessage);
+
+						if (mWidgetUnderMouse)
+						{
+							MouseOverMessage.Type        = UIMessage::MouseExit;
+							MouseOverMessage.MouseCoords = UIPoint::zero;
+							UI_IGNORE_RETURN (mWidgetUnderMouse->ProcessMessage (MouseOverMessage));
+							if (mWidgetUnderMouse)
+							{
+								mWidgetUnderMouse->Detach (this);
+								mWidgetUnderMouse = 0;
+							}
+						}
+
+						mWidgetUnderMouse     = w;
+						MouseOverMessage.Type = UIMessage::MouseEnter;
+						MouseOverMessage.MouseCoords = p;
+						UI_IGNORE_RETURN (mWidgetUnderMouse->ProcessMessage (MouseOverMessage));
+						mWidgetUnderMouse->Attach (this);
+					}
+				}
+
+				if (msg.MovesFocus () && w != mWidgetWithKeyboardFocus)
+				{
+					if (w->IsA (TUIPage))
+					{
+						if (static_cast<UIPage *>(w)->CanSelectForTab ())
+							SelectChild (w);
+					}
+					else if (w->CanSelect ())
+						SelectChild (w);
+				}
+				return Processed;
+			}
+		}
+	}
+
+	if (childWasHit)
+		return false;
+
+	if (msg.Type == UIMessage::MouseMove)
+	{
+		if (mWidgetUnderMouse)
+		{
+			UIMessage MouseOverMessage (msg);
+
+			const UIPoint & pt = mWidgetUnderMouse->GetLocation ();
+			MouseOverMessage.MouseCoords = (msg.MouseCoords - pt) + ScrollLocation;
+			MouseOverMessage.Type = UIMessage::MouseExit;
+
+			UI_IGNORE_RETURN (mWidgetUnderMouse->ProcessMessage (MouseOverMessage));
+			mWidgetUnderMouse->Detach (this);
+			mWidgetUnderMouse = 0;
+		}
+	}
+	return false;
 }
 
 //======================================================================================
@@ -774,27 +890,31 @@ UIWidget *UIPage::GetWidgetFromPoint( const UIPoint &PointToTest, bool mustGetIn
 
 	const UIPoint & ScrollLocation = GetScrollLocation();
 
-	for( UIObjectList::const_iterator i = mObjects->begin(); i != mObjects->end(); ++i )
+	// Match paint order: UIRenderHelper::RenderObjects walks mWidgets in reverse, so element [0]
+	// is topmost. Hit-test topmost first; using mObjects (document order) would test the wrong
+	// child first (e.g. a fullscreen CuiWidget3dObjectListViewer listed before dialog chrome).
+	if (HasPageAttribute(PA_WidgetVectorDirty))
+		BuildWidgetVector ();
+
+	for (UIWidgetVector::const_iterator i = mWidgets->begin (); i != mWidgets->end (); ++i)
 	{
-		UIBaseObject * const o = *i;
+		UIWidget * const w = *i;
+		if (!w)
+			continue;
 
-		if( o->IsA( TUIWidget ) )
+		const UIPoint p ((adjustedPoint - w->GetLocation()) + ScrollLocation);
+
+		if (w->WillDraw () && w->HitTest (p))
 		{
-			UIWidget * const w = static_cast<UIWidget *>( o );
-			const UIPoint p ((adjustedPoint - w->GetLocation()) + ScrollLocation);
-
-			if( w->WillDraw() && w->HitTest( p ) )
+			if (!mustGetInput || (w->GetsInput () && w->IsEnabled ()))
 			{
-				if (!mustGetInput || (w->GetsInput () && w->IsEnabled ()))
-				{
-					UIWidget * const leaf = w->GetWidgetFromPoint( p, mustGetInput );
+				UIWidget * const leaf = w->GetWidgetFromPoint (p, mustGetInput);
 
-					if (leaf && leaf->IsAbsorbsInput ())
-						return leaf;
+				if (leaf && leaf->IsAbsorbsInput ())
+					return leaf;
 
-					if (w->IsAbsorbsInput ())
-						return w;
-				}
+				if (w->IsAbsorbsInput ())
+					return w;
 			}
 		}
 	}
@@ -1545,15 +1665,48 @@ void UIPage::Link ()
 
 void UIPage::BuildWidgetVector () const
 {
-	UI_IGNORE_RETURN(mWidgets->erase(mWidgets->begin(), mWidgets->end()));
+	mWidgets->clear ();
 
-	for( UIObjectList::const_iterator i = mObjects->begin(); i != mObjects->end(); ++i )
+	// UIRenderHelper::RenderObjects walks mWidgets in reverse document order. That means the first
+	// widget in mObjects is drawn last (nearest to the user). Defer certain children to the end
+	// of mWidgets so they are drawn under siblings:
+	// - Full-bleed decorative UIPage with Enabled=false (common before tables/chrome).
+	// - 3D object viewers: CuiWidget3dObjectListViewer reports IsA(TUI3DObjectListViewer) but is
+	//   often declared before 2D UI (e.g. avatar selection); otherwise it clears/overpaints the
+	//   whole viewport on top of the HUD.
+
+	UIWidgetVector deferred;
+
+	for (UIObjectList::const_iterator i = mObjects->begin(); i != mObjects->end(); ++i)
 	{
-		UIBaseObject *o = *i;
+		UIBaseObject * const o = *i;
 
-		if( o->IsA( TUIWidget ) )
-			mWidgets->push_back( static_cast<UIWidget *>( o ) );
+		if (!o->IsA (TUIWidget))
+			continue;
+
+		UIWidget * const w = static_cast<UIWidget *>(o);
+
+		if (w->IsA (TUI3DObjectListViewer))
+		{
+			deferred.push_back (w);
+			continue;
+		}
+
+		if (w->IsA (TUIPage) && !w->IsA (TUIComposite))
+		{
+			UIPage const * const page = static_cast<UIPage *>(w);
+			if (!page->IsEnabled ())
+			{
+				deferred.push_back (w);
+				continue;
+			}
+		}
+
+		mWidgets->push_back (w);
 	}
+
+	for (UIWidgetVector::const_iterator j = deferred.begin (); j != deferred.end (); ++j)
+		mWidgets->push_back (*j);
 
 	UI_IGNORE_RETURN(SetPageAttribute(PA_WidgetVectorDirty, false));
 }

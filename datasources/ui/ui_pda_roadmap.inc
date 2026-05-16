@@ -80,18 +80,18 @@
 								Name='TabData'
 								Size='128,64'
 							>
-								<Data
-									Name='Basics'
-									Target='target.profs'
-								/>
-								<Data
-									Name='Space'
-									Target='target.profs'
-								/>
-								<Data
-									Name='Politician'
-									Target='target.profs'
-								/>
+							<Data
+								Name='Basics'
+								Target='Smuggler'
+							/>
+							<Data
+								Name='Space'
+								Target='Smuggler'
+							/>
+							<Data
+								Name='Politician'
+								Target='Smuggler'
+							/>
 							</DataSource>
 							<TabbedPane
 								BackgroundColor='#009977'
@@ -104,8 +104,6 @@
 								TargetPage='parent.body.right'
 								DataSource='TabData'
 								ActiveTab='0'
-								Style='/Styles.New.tabs.horizontal_10.style'
-								TargetPage='parent.body.right'
 							>
 							</TabbedPane>
 						</Page>

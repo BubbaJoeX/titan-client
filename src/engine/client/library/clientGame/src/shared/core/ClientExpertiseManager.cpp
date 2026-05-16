@@ -1373,7 +1373,8 @@ namespace
 		{
 			out.resize(bufLen);
 			uLongf destLen = static_cast<uLongf>(bufLen);
-			int const zr = uncompress(out.data(), &destLen, compressed, static_cast<uLong>(compressedLen));
+			int const zr = uncompress(reinterpret_cast<Bytef *>(&out[0]), &destLen, reinterpret_cast<Bytef const *>(compressed),
+			                          static_cast<uLong>(compressedLen));
 			if (zr == Z_OK)
 			{
 				out.resize(static_cast<size_t>(destLen));
@@ -1549,7 +1550,7 @@ namespace
 				return false;
 			}
 			std::vector<uint8_t> decomp;
-			if (!zlibUncompressPayload(bin.data() + 1, bin.size() - 1, decomp, err))
+			if (!zlibUncompressPayload(&bin[1], bin.size() - 1, decomp, err))
 				return false;
 			bin.swap(decomp);
 		}
@@ -1729,7 +1730,8 @@ namespace
 		}
 		uLongf compBound = compressBound(static_cast<uLong>(blob.size()));
 		std::vector<uint8_t> zlibBuf(compBound);
-		int const zr = compress2(zlibBuf.data(), &compBound, blob.data(), static_cast<uLong>(blob.size()), Z_DEFAULT_COMPRESSION);
+		int const zr = compress2(reinterpret_cast<Bytef *>(&zlibBuf[0]), &compBound, reinterpret_cast<Bytef const *>(&blob[0]),
+		                         static_cast<uLong>(blob.size()), Z_DEFAULT_COMPRESSION);
 		std::vector<uint8_t> wire;
 		if (zr == Z_OK)
 		{

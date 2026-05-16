@@ -16,6 +16,7 @@
 
 #include <cassert>
 #include <list>
+#include <set>
 #include <vector>
 
 const char * UITabbedPane::TypeName	= "TabbedPane";
@@ -122,6 +123,27 @@ namespace UITabbedPaneNamespace
 			count++;
 		}
 
+		return 0;
+	}
+
+	//----------------------------------------------------------------------
+
+	/// Walk from \p leaf up to the direct child of \p targetPage (the tab "page" root).
+	/// If \p leaf is nested (e.g. UITable under a UIPage), returns that UIPage so tab switching
+	/// does not hide every sibling of \p leaf on \p targetPage.
+	UIWidget * getDirectChildOfTargetPage(UIPage const * const targetPage, UIWidget * const leaf)
+	{
+		if (!targetPage || !leaf)
+			return 0;
+
+		UIBaseObject * walk = leaf;
+		while (walk)
+		{
+			UIBaseObject * const parent = walk->GetParent();
+			if (parent == static_cast<UIBaseObject const *>(targetPage))
+				return static_cast<UIWidget *>(walk);
+			walk = parent;
+		}
 		return 0;
 	}
 
@@ -927,18 +949,51 @@ void UITabbedPane::SetActiveTab(long index)
 			}
 		}
 
-		UIObjectList olist;
-		mTargetPage->GetChildren(olist);
-
-		for (UIObjectList::iterator it = olist.begin(); it != olist.end(); ++it)
+		std::set<UIWidget *> tabPanelRoots;
 		{
-			if (!(*it)->IsA(TUIWidget))
-				continue;
+			const long tabCount = mDataSource->GetChildCount();
+			for (long ti = 0; ti < tabCount; ++ti)
+			{
+				UIData * const tabData = static_cast<UIData *>(mDataSource->GetChildByPosition(ti));
+				if (!tabData)
+					continue;
+				UIString tabTargetPath;
+				if (!tabData->GetProperty(DataProperties::DATA_TARGET, tabTargetPath))
+					continue;
+				UIWidget * const tabTargetWidget =
+					static_cast<UIWidget *>(mTargetPage->GetObjectFromPath(tabTargetPath, TUIWidget));
+				if (!tabTargetWidget)
+					continue;
+				UIWidget * const root = getDirectChildOfTargetPage(mTargetPage, tabTargetWidget);
+				if (root)
+					tabPanelRoots.insert(root);
+			}
+		}
 
-			UIWidget * const w = static_cast<UIWidget *>(*it);
+		UIWidget * const activeRoot = getDirectChildOfTargetPage(mTargetPage, newWidget);
 
-			w->SetVisible(w == newWidget);
-			w->SetEnabled(w == newWidget);
+		// Only toggle tab-panel roots when we resolved a real direct child. If activeRoot is
+		// null (missing Target, path off-TargetPage, etc.), toggling would hide every root and
+		// wipe the whole panel — seen after splitter/tab layout changes.
+		if (activeRoot)
+		{
+			UIObjectList olist;
+			mTargetPage->GetChildren(olist);
+
+			for (UIObjectList::iterator it = olist.begin(); it != olist.end(); ++it)
+			{
+				if (!(*it)->IsA(TUIWidget))
+					continue;
+
+				UIWidget * const w = static_cast<UIWidget *>(*it);
+
+				if (tabPanelRoots.find(w) != tabPanelRoots.end())
+				{
+					const bool on = (w == activeRoot);
+					w->SetVisible(on);
+					w->SetEnabled(on);
+				}
+			}
 		}
 	}
 

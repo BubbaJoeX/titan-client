@@ -144,15 +144,15 @@
 					>
 						<Data
 							Name='Tree1'
-							Target='target.expertises'
+							Target='rightVertical'
 						/>
 						<Data
 							Name='Tree2'
-							Target='target.expertises'
+							Target='rightVertical'
 						/>
 						<Data
 							Name='Tree3'
-							Target='target.expertises'
+							Target='rightVertical'
 						/>
 					</DataSource>
 					<TabbedPane
@@ -167,8 +167,6 @@
 						TargetPage='parent.body.right'
 						DataSource='TabData'
 						ActiveTab='0'
-						Style='horizontal_10.style'
-						TargetPage='parent.body.right'
 					>
 					</TabbedPane>
 					<Namespace
@@ -1909,8 +1907,8 @@
 							<Page
 								Location='0,462'
 								Name='Bottom'
-								ScrollExtent='305,260'
-								Size='305,260'
+								ScrollExtent='305,248'
+								Size='305,248'
 							>
 								<Page
 									Location='34,20'
@@ -2064,7 +2062,7 @@
 								<Text
 									Font='bold_11'
 									LocalText='Build code (SWG1…):'
-									Location='12,146'
+									Location='12,136'
 									Name='BuildCodeLabel'
 									ScrollExtent='280,16'
 									Size='280,16'
@@ -2074,39 +2072,39 @@
 									BackgroundOpacity='0.85'
 									BackgroundTint='#1E3544'
 									Font='bold_11'
-									Location='12,164'
+									Location='12,154'
 									MaxLength='32767'
-									MaxLines='-1'
+									MaxLines='1'
 									Name='BuildCodeTextbox'
 									RStyleDefault='/Styles.New.whiteOutline.rs_default'
-									ScrollExtent='281,52'
-									Size='281,52'
+									ScrollExtent='281,26'
+									Size='281,26'
 									Style='/Styles.textbox.default.Style'
 									TextColor='#FFFFFF'
 								></Textbox>
 								<Button
-									LocalText='Import'
-									Location='12,222'
+									LocalText='Import code'
+									Location='12,186'
 									MinimumSize='0,19'
 									Name='buttonImportBuild'
 									OpacityRelativeMin='0.70'
 									ScrollExtent='133,22'
 									Size='133,22'
 									Style='buttonClearTreeStyle.style'
-								>Import</Button>
+								>Import code</Button>
 								<Button
-									LocalText='Export'
-									Location='151,222'
+									LocalText='Export code'
+									Location='151,186'
 									MinimumSize='0,19'
 									Name='buttonExportBuild'
 									OpacityRelativeMin='0.70'
 									ScrollExtent='133,22'
 									Size='133,22'
 									Style='buttonClearTreeStyle.style'
-								>Export</Button>
+								>Export code</Button>
 								<Button
 									LocalText='Import file...'
-									Location='12,248'
+									Location='12,212'
 									MinimumSize='0,19'
 									Name='buttonImportBuildFile'
 									OpacityRelativeMin='0.70'
@@ -2116,7 +2114,7 @@
 								>Import file...</Button>
 								<Button
 									LocalText='Export file...'
-									Location='151,248'
+									Location='151,212'
 									MinimumSize='0,19'
 									Name='buttonExportBuildFile'
 									OpacityRelativeMin='0.70'

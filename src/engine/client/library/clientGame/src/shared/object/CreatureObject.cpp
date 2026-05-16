@@ -2891,9 +2891,33 @@ void CreatureObject::Callbacks::AlternateAppearanceSharedObjectTemplateNameChang
 
 //----------------------------------------------------------------------
 
+namespace
+{
+	bool s_deferPlayerSkillsChanged = false;
+}
+
 void CreatureObject::skillsOnChanged          ()
 {
+	if (this == Game::getPlayerCreature ())
+	{
+		s_deferPlayerSkillsChanged = true;
+		return;
+	}
 	Transceivers::skillsChanged.emitMessage (*this);
+}
+
+//----------------------------------------------------------------------
+
+void CreatureObject::flushDeferredPlayerSkillsChanged ()
+{
+	if (!s_deferPlayerSkillsChanged)
+		return;
+
+	s_deferPlayerSkillsChanged = false;
+
+	CreatureObject * const player = Game::getPlayerCreature ();
+	if (player)
+		Transceivers::skillsChanged.emitMessage (*player);
 }
 
 //----------------------------------------------------------------------

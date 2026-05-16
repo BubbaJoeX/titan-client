@@ -20,6 +20,7 @@
 #include "sharedNetworkMessages/MessageQueueDraftSlotsQueryResponse.h"
 #include "sharedNetworkMessages/MessageQueueResourceWeights.h"
 #include <algorithm>
+#include <deque>
 #include <vector>
 
 //======================================================================
@@ -97,6 +98,67 @@ namespace DraftSchematicManagerNamespace
 	MyCallback s_callback;
 
 	bool       s_ready = false;
+
+	typedef std::pair<uint32, uint32>     DraftCrc;
+	typedef std::deque<DraftCrc>          PendingDraftDeque;
+
+	PendingDraftDeque s_pendingDraftAdds;
+
+	int const cs_maxDraftAddsPerFrame = 20;
+
+	//----------------------------------------------------------------------
+
+	void removePendingDraftAdds (DraftCrc const & crc)
+	{
+		for (PendingDraftDeque::iterator it = s_pendingDraftAdds.begin (); it != s_pendingDraftAdds.end (); )
+		{
+			if (*it == crc)
+				it = s_pendingDraftAdds.erase (it);
+			else
+				++it;
+		}
+	}
+
+	//----------------------------------------------------------------------
+
+	void drainPendingDraftAdds (size_t maxPerCall)
+	{
+		if (s_pendingDraftAdds.empty ())
+			return;
+
+		if (!s_ready)
+		{
+			DraftSchematicManager::refresh ();
+			return;
+		}
+
+		CreatureObject const * const player = Game::getPlayerCreature ();
+		bool anyAdded = false;
+		size_t n = 0;
+
+		while (!s_pendingDraftAdds.empty () && n < maxPerCall)
+		{
+			DraftCrc const crc = s_pendingDraftAdds.front ();
+			s_pendingDraftAdds.pop_front ();
+			++n;
+
+			if (player && player->getDraftSchematics ().find (crc) == player->getDraftSchematics ().end ())
+				continue;
+
+			if (!DraftSchematicManager::findDraftSchematic (crc))
+			{
+				s_slots.push_back (new DraftSchematicInfo (crc));
+				anyAdded = true;
+			}
+		}
+
+		if (anyAdded)
+		{
+			std::sort (s_slots.begin (), s_slots.end (), SlotSorter ());
+			if (player)
+				Transceivers::changed.emitMessage (*player);
+		}
+	}
 }
 
 using namespace DraftSchematicManagerNamespace;
@@ -134,6 +196,7 @@ void DraftSchematicManager::remove  ()
 
 void DraftSchematicManager::reset   ()
 {
+	s_pendingDraftAdds.clear ();
 	for (InfoVector::iterator it = s_slots.begin (); it != s_slots.end (); ++it)
 	{
 		const DraftSchematicInfo * const info = NON_NULL (*it);
@@ -222,16 +285,15 @@ const DraftSchematicInfo * DraftSchematicManager::cacheDraftSchematic (const std
 
 void DraftSchematicManager::addDraftSchematic (const std::pair<uint32, uint32> & crc)
 {
-	cacheDraftSchematic (crc);
-	const CreatureObject * const player = Game::getPlayerCreature ();
-	if (player)
-		Transceivers::changed.emitMessage (*player);
+	s_pendingDraftAdds.push_back (crc);
 }
 
 //----------------------------------------------------------------------
 
 void DraftSchematicManager::removeDraftSchematic (const std::pair<uint32, uint32> & crc)
 {
+	removePendingDraftAdds (crc);
+
 	if (!s_ready)
 		refresh ();
 
@@ -399,6 +461,8 @@ void DraftSchematicManager::requestResourceWeights(const DraftSchematicInfo* inf
 
 void DraftSchematicManager::update(float )
 {
+	drainPendingDraftAdds (static_cast<size_t>(cs_maxDraftAddsPerFrame));
+
 	if(!ms_requestDraftSlotsBatch.empty())
 	{
 		std::string params;

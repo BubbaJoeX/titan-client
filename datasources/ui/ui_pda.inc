@@ -104,19 +104,19 @@
 							>
 								<Data
 									Name='Basics'
-									Target='target.profs'
+									Target='Smuggler'
 								/>
 								<Data
 									Name='Space'
-									Target='target.profs'
+									Target='Smuggler'
 								/>
 								<Data
 									Name='Politician'
-									Target='target.profs'
+									Target='Smuggler'
 								/>
 								<Data
 									Name='Chronicler'
-									Target='target.profs'
+									Target='Smuggler'
 								/>
 							</DataSource>
 							<TabbedPane
@@ -130,8 +130,6 @@
 								TargetPage='parent.body.right'
 								DataSource='TabData'
 								ActiveTab='0'
-								Style='/Styles.New.tabs.horizontal_10.style'
-								TargetPage='parent.body.right'
 							>
 							</TabbedPane>
 						</Page>

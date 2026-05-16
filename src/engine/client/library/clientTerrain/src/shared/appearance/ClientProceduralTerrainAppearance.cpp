@@ -692,10 +692,8 @@ ClientProceduralTerrainAppearance::~ClientProceduralTerrainAppearance ()
 	m_dpvsObject = NULL;
 
 	delete m_invalidateChunkRequestInfoList;
-	m_invalidateChunkRequestInfoList = 0;
 
 	delete m_invalidateRegionList;
-	m_invalidateRegionList = 0;
 
 	delete m_chunkTree;
 	m_chunkTree = 0;

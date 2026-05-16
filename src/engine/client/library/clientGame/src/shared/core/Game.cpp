@@ -1205,6 +1205,7 @@ void Game::runGameLoopOnce(bool presentToWindow, HWND hwnd, int width, int heigh
 		ClientCommandQueue::update(elapsedTime);
 		ObjectAttributeManager::update(elapsedTime);
 		DraftSchematicManager::update(elapsedTime);
+		CreatureObject::flushDeferredPlayerSkillsChanged ();
 		ClientWaypointObject::checkWaypoints(elapsedTime);
 
 		NP_PROFILER_NAMED_AUTO_BLOCK_TRANSFER(profilerMainLoop, "update");

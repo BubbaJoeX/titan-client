@@ -223,6 +223,8 @@ public:
 	static void                remove();
 	static void                setDisablePostureRevert (bool disablePostureRevert);
 	static int                 getNumberOfInstances ();
+	/// Emit at most one SkillsChanged per frame for the local player (bulk skill grants).
+	static void                flushDeferredPlayerSkillsChanged ();
 
 	virtual float              alter                           (float deltaTime);
 	virtual void               containedByModified             (NetworkId const &oldValue, NetworkId const &newValue, bool isLocal);

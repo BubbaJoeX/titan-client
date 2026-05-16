@@ -893,14 +893,21 @@ UIBaseObject *UIBaseObject::GetObjectFromPath( const char * const ObjectName ) c
 	if (ObjectName == 0 || *ObjectName == 0)
 		return 0;
 
-	UIBaseObject const * ObjectToSearch = this;
-
 	if( *ObjectName == '/' )
 	{
 		UIBaseObject const * const root = GetRoot();
 		UIBaseObject * const result = root ? root->GetObjectFromPath( ObjectName + 1 ) : NULL;
 		return result;
 	}
+
+	// Paths like "parent.body.right" begin resolution at our parent (used by TabbedPane TargetPage, etc.).
+	if (!_strnicmp(ObjectName, "parent.", 7))
+	{
+		const UIBaseObject * const p = GetParent();
+		return p ? p->GetObjectFromPath(ObjectName + 7) : 0;
+	}
+
+	UIBaseObject const * ObjectToSearch = this;
 
 	while( ObjectToSearch )
 	{
