@@ -24,6 +24,7 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{C2D99672-5341-3E94-B771-152469C4871E}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
     <Platform>x64</Platform>
     <ProjectName>unicode</ProjectName>
     <VCProjectUpgraderObjectName>NoUpgrade</VCProjectUpgraderObjectName>
@@ -84,7 +85,8 @@
       <CallingConvention></CallingConvention>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
-      <ExceptionHandling>Sync</ExceptionHandling>
+      <ExceptionHandling>
+      </ExceptionHandling>
       <FloatingPointModel></FloatingPointModel>
       <ForceConformanceInForLoopScope></ForceConformanceInForLoopScope>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -93,17 +95,15 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <RemoveUnreferencedCodeData></RemoveUnreferencedCodeData>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
-      <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <SupportJustMyCode></SupportJustMyCode>
       <TreatWChar_tAsBuiltInType></TreatWChar_tAsBuiltInType>
       <UseFullPaths>false</UseFullPaths>
-      <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NT_PLUGIN;USERDLL;CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_CRT_SECURE_NO_WARNINGS;PARTIO_WIN32;CMAKE_INTDIR="Debug"</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);NT_PLUGIN;USERDLL;CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_CRT_SECURE_NO_WARNINGS;PARTIO_WIN32;CMAKE_INTDIR="Debug"</PreprocessorDefinitions>
       <ObjectFileName>$(IntDir)</ObjectFileName>
       <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
     </ClCompile>
     <ResourceCompile>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_DEBUG;_WINDOWS;NT_PLUGIN;USERDLL;CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_CRT_SECURE_NO_WARNINGS;PARTIO_WIN32;CMAKE_INTDIR=\"Debug\"</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_DEBUG;NT_PLUGIN;USERDLL;CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_CRT_SECURE_NO_WARNINGS;PARTIO_WIN32;CMAKE_INTDIR=\"Debug\"</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>D:\titan\client\src\engine\client\application\MayaModern\sharedFoundation;D:\titan\client\src\engine\client\application\MayaModern\sharedFile;D:\titan\client\src\engine\client\application\MayaModern\sharedMath;D:\titan\client\src\engine\client\application\MayaModern\unicode;D:\titan\client\src\engine\client\application\MayaModern\clientGraphics;D:\titan\client\src\engine\client\application\MayaModern\clientSkeletalAnimation;D:\titan\client\src\engine\client\application\MayaModern\sharedCollision;D:\titan\client\src\engine\client\application\MayaModern\util;D:\titan\client\src\engine\client\application\MayaModern\third;D:\titan\client\src\engine\client\application\MayaModern\utility;D:\titan\client\src\engine\client\application\MayaModern\commands;D:\titan\client\src\engine\client\application\MayaModern\translators;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
@@ -127,7 +127,8 @@
       <CallingConvention></CallingConvention>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
-      <ExceptionHandling>Sync</ExceptionHandling>
+      <ExceptionHandling>
+      </ExceptionHandling>
       <FloatingPointModel></FloatingPointModel>
       <ForceConformanceInForLoopScope></ForceConformanceInForLoopScope>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
@@ -137,17 +138,15 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <RemoveUnreferencedCodeData></RemoveUnreferencedCodeData>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
-      <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <SupportJustMyCode></SupportJustMyCode>
       <TreatWChar_tAsBuiltInType></TreatWChar_tAsBuiltInType>
       <UseFullPaths>false</UseFullPaths>
-      <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;NT_PLUGIN;USERDLL;CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_CRT_SECURE_NO_WARNINGS;PARTIO_WIN32;CMAKE_INTDIR="Release"</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);NDEBUG;NT_PLUGIN;USERDLL;CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_CRT_SECURE_NO_WARNINGS;PARTIO_WIN32;CMAKE_INTDIR="Release"</PreprocessorDefinitions>
       <ObjectFileName>$(IntDir)</ObjectFileName>
       <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
     </ClCompile>
     <ResourceCompile>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;NT_PLUGIN;USERDLL;CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_CRT_SECURE_NO_WARNINGS;PARTIO_WIN32;CMAKE_INTDIR=\"Release\"</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;NDEBUG;NT_PLUGIN;USERDLL;CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_CRT_SECURE_NO_WARNINGS;PARTIO_WIN32;CMAKE_INTDIR=\"Release\"</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>D:\titan\client\src\engine\client\application\MayaModern\sharedFoundation;D:\titan\client\src\engine\client\application\MayaModern\sharedFile;D:\titan\client\src\engine\client\application\MayaModern\sharedMath;D:\titan\client\src\engine\client\application\MayaModern\unicode;D:\titan\client\src\engine\client\application\MayaModern\clientGraphics;D:\titan\client\src\engine\client\application\MayaModern\clientSkeletalAnimation;D:\titan\client\src\engine\client\application\MayaModern\sharedCollision;D:\titan\client\src\engine\client\application\MayaModern\util;D:\titan\client\src\engine\client\application\MayaModern\third;D:\titan\client\src\engine\client\application\MayaModern\utility;D:\titan\client\src\engine\client\application\MayaModern\commands;D:\titan\client\src\engine\client\application\MayaModern\translators;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
@@ -171,7 +170,8 @@
       <CallingConvention></CallingConvention>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
-      <ExceptionHandling>Sync</ExceptionHandling>
+      <ExceptionHandling>
+      </ExceptionHandling>
       <FloatingPointModel></FloatingPointModel>
       <ForceConformanceInForLoopScope></ForceConformanceInForLoopScope>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
@@ -181,17 +181,15 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <RemoveUnreferencedCodeData></RemoveUnreferencedCodeData>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
-      <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <SupportJustMyCode></SupportJustMyCode>
       <TreatWChar_tAsBuiltInType></TreatWChar_tAsBuiltInType>
       <UseFullPaths>false</UseFullPaths>
-      <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;NT_PLUGIN;USERDLL;CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_CRT_SECURE_NO_WARNINGS;PARTIO_WIN32;CMAKE_INTDIR="MinSizeRel"</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);NDEBUG;NT_PLUGIN;USERDLL;CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_CRT_SECURE_NO_WARNINGS;PARTIO_WIN32;CMAKE_INTDIR="MinSizeRel"</PreprocessorDefinitions>
       <ObjectFileName>$(IntDir)</ObjectFileName>
       <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
     </ClCompile>
     <ResourceCompile>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;NT_PLUGIN;USERDLL;CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_CRT_SECURE_NO_WARNINGS;PARTIO_WIN32;CMAKE_INTDIR=\"MinSizeRel\"</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;NDEBUG;NT_PLUGIN;USERDLL;CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_CRT_SECURE_NO_WARNINGS;PARTIO_WIN32;CMAKE_INTDIR=\"MinSizeRel\"</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>D:\titan\client\src\engine\client\application\MayaModern\sharedFoundation;D:\titan\client\src\engine\client\application\MayaModern\sharedFile;D:\titan\client\src\engine\client\application\MayaModern\sharedMath;D:\titan\client\src\engine\client\application\MayaModern\unicode;D:\titan\client\src\engine\client\application\MayaModern\clientGraphics;D:\titan\client\src\engine\client\application\MayaModern\clientSkeletalAnimation;D:\titan\client\src\engine\client\application\MayaModern\sharedCollision;D:\titan\client\src\engine\client\application\MayaModern\util;D:\titan\client\src\engine\client\application\MayaModern\third;D:\titan\client\src\engine\client\application\MayaModern\utility;D:\titan\client\src\engine\client\application\MayaModern\commands;D:\titan\client\src\engine\client\application\MayaModern\translators;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
@@ -215,7 +213,8 @@
       <CallingConvention></CallingConvention>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
-      <ExceptionHandling>Sync</ExceptionHandling>
+      <ExceptionHandling>
+      </ExceptionHandling>
       <FloatingPointModel></FloatingPointModel>
       <ForceConformanceInForLoopScope></ForceConformanceInForLoopScope>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
@@ -225,17 +224,15 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <RemoveUnreferencedCodeData></RemoveUnreferencedCodeData>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
-      <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <SupportJustMyCode></SupportJustMyCode>
       <TreatWChar_tAsBuiltInType></TreatWChar_tAsBuiltInType>
       <UseFullPaths>false</UseFullPaths>
-      <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;NT_PLUGIN;USERDLL;CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_CRT_SECURE_NO_WARNINGS;PARTIO_WIN32;CMAKE_INTDIR="RelWithDebInfo"</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);NDEBUG;NT_PLUGIN;USERDLL;CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_CRT_SECURE_NO_WARNINGS;PARTIO_WIN32;CMAKE_INTDIR="RelWithDebInfo"</PreprocessorDefinitions>
       <ObjectFileName>$(IntDir)</ObjectFileName>
       <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
     </ClCompile>
     <ResourceCompile>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;NT_PLUGIN;USERDLL;CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_CRT_SECURE_NO_WARNINGS;PARTIO_WIN32;CMAKE_INTDIR=\"RelWithDebInfo\"</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;NDEBUG;NT_PLUGIN;USERDLL;CRT_SECURE_NO_DEPRECATE;_HAS_ITERATOR_DEBUGGING=0;_CRT_SECURE_NO_WARNINGS;PARTIO_WIN32;CMAKE_INTDIR=\"RelWithDebInfo\"</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>D:\titan\client\src\engine\client\application\MayaModern\sharedFoundation;D:\titan\client\src\engine\client\application\MayaModern\sharedFile;D:\titan\client\src\engine\client\application\MayaModern\sharedMath;D:\titan\client\src\engine\client\application\MayaModern\unicode;D:\titan\client\src\engine\client\application\MayaModern\clientGraphics;D:\titan\client\src\engine\client\application\MayaModern\clientSkeletalAnimation;D:\titan\client\src\engine\client\application\MayaModern\sharedCollision;D:\titan\client\src\engine\client\application\MayaModern\util;D:\titan\client\src\engine\client\application\MayaModern\third;D:\titan\client\src\engine\client\application\MayaModern\utility;D:\titan\client\src\engine\client\application\MayaModern\commands;D:\titan\client\src\engine\client\application\MayaModern\translators;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>

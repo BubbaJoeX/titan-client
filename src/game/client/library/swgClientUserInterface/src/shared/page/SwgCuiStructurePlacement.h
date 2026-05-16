@@ -21,6 +21,7 @@ class Object;
 class ObjectTemplate;
 class StructureFootprint;
 class UIButton;
+class UIText;
 
 //===================================================================
 
@@ -39,15 +40,17 @@ public:
 
 private:
 
-	void cleanup ();
+	static void visualHelpRefresh (void * context);
 
-private:
+	void cleanup ();
+	void layoutOrientationHelpText ();
+	void updateOrientationHelpText ();
+	void installGlobalRenderSkipForPlacement ();
+	void restoreGlobalRenderSkipFromPlacement ();
 
 	virtual ~SwgCuiStructurePlacement ();
 	SwgCuiStructurePlacement (const SwgCuiStructurePlacement&);
 	SwgCuiStructurePlacement& operator= (const SwgCuiStructurePlacement&);
-
-private:
 
 	char*                     m_structureSharedObjectTemplateName;
 	NetworkId                 m_deedNetworkId;
@@ -56,6 +59,7 @@ private:
 	const StructureFootprint* m_structureFootprint;
 	Object*                   m_structureObject;
 	RotationType              m_rotationType;
+	UIText*                   m_orientationHelpText;
 };
 
 //===================================================================

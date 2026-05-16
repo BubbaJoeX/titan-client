@@ -17,6 +17,13 @@
 #include <string>
 #include <vector>
 
+static const Tag gSwtsTag = TAG(S,W,T,S);
+static const Tag gSwtsTextTag = TAG(T,E,X,T);
+static const Tag gSwtsMainTag = TAG(M,A,I,N);
+static const Tag gSwtsDRTS = TAG(D,R,T,S);
+static const Tag gSwtsDRFT = TAG(D,R,F,T);
+static const Tag gSwtsDPPT = TAG(D,P,P,T);
+
 namespace
 {
     const Tag TAG_CSHD = TAG(C,S,H,D);
@@ -620,4 +627,106 @@ std::string ShaderExporter::exportShaderClonedFromPrototype(
         std::cerr << "[ShaderExporter] Warning: prototype had no TXM NAME to replace; output may reference prototype textures\n";
 
     return out;
+}
+
+std::string ShaderExporter::exportSwitchTextureAnimatedShader(
+    const std::string& outputShaderTreeRel,
+    const std::string& baseShaderTreeRel,
+    Tag switcherFormTag,
+    float fpsMin,
+    float fpsMax,
+    const std::vector<std::string>& frameTextureTreePathsDds)
+{
+    if (outputShaderTreeRel.empty() || baseShaderTreeRel.empty() || frameTextureTreePathsDds.empty())
+        return std::string();
+
+    if (switcherFormTag != gSwtsDRTS && switcherFormTag != gSwtsDRFT && switcherFormTag != gSwtsDPPT)
+    {
+        std::cerr << "[ShaderExporter] exportSwitchTextureAnimatedShader: switcher tag must be DRTS, DRFT, or DPPT\n";
+        return std::string();
+    }
+
+    const char* shaderWriteDir = SetDirectoryCommand::getDirectoryString(SetDirectoryCommand::SHADER_TEMPLATE_WRITE_DIR_INDEX);
+    if (!shaderWriteDir || !shaderWriteDir[0])
+    {
+        std::cerr << "[ShaderExporter] shaderTemplateWriteDir not configured\n";
+        MGlobal::displayError("[ShaderExporter] shaderTemplateWriteDir not set — run setBaseDir before animated shader export.");
+        return std::string();
+    }
+
+    if (fpsMin <= 0.f)
+        fpsMin = 8.f;
+    if (fpsMax <= 0.f)
+        fpsMax = fpsMin;
+    if (fpsMax < fpsMin)
+    {
+        const float t = fpsMin;
+        fpsMin = fpsMax;
+        fpsMax = t;
+    }
+
+    const float timeMax = 1.f / fpsMin;
+    const float timeMin = 1.f / fpsMax;
+    const int frameCount = static_cast<int>(frameTextureTreePathsDds.size());
+
+    std::string relOut = normalizeShaderRelPath(outputShaderTreeRel);
+    if (relOut.empty())
+        relOut = "shader";
+    std::string outputPath = ensureTrailingSlash(shaderWriteDir) + relOut + ".sht";
+
+    {
+        size_t lastSlash = outputPath.find_last_of("/\\");
+        if (lastSlash != std::string::npos)
+        {
+            std::string outDir = outputPath.substr(0, lastSlash);
+            MayaUtility::createDirectory(outDir.c_str());
+        }
+    }
+
+    std::string relBase = normalizeShaderRelPath(baseShaderTreeRel);
+    if (relBase.empty())
+    {
+        std::cerr << "[ShaderExporter] exportSwitchTextureAnimatedShader: invalid base shader path\n";
+        return std::string();
+    }
+    const std::string nameRefToBase = std::string("shader/") + relBase + ".sht";
+
+    Iff dest(65536, true);
+    dest.insertForm(gSwtsTag);
+    dest.insertForm(TAG_0000);
+    dest.insertChunk(TAG_NAME);
+    dest.insertChunkString(nameRefToBase.c_str());
+    dest.exitChunk(TAG_NAME);
+
+    dest.insertForm(switcherFormTag);
+    dest.insertChunk(TAG_0000);
+    dest.insertChunkData(frameCount);
+    dest.insertChunkData(timeMin);
+    dest.insertChunkData(timeMax);
+    dest.exitChunk(TAG_0000);
+    dest.exitForm(switcherFormTag);
+
+    for (const std::string& rawTp : frameTextureTreePathsDds)
+    {
+        const std::string tp = ensureTextureTreePathForTxmNameImpl(rawTp);
+        dest.insertChunk(gSwtsTextTag);
+        dest.insertChunkData(gSwtsMainTag);
+        dest.insertChunkString(tp.c_str());
+        dest.exitChunk(gSwtsTextTag);
+    }
+
+    dest.exitForm(TAG_0000);
+    dest.exitForm(TAG_SWTS);
+
+    if (!dest.write(outputPath.c_str(), true))
+    {
+        std::cerr << "[ShaderExporter] Failed to write SWTS: " << outputPath << "\n";
+        MGlobal::displayError(MString("[ShaderExporter] Failed to write animated shader: ") + outputPath.c_str());
+        return std::string();
+    }
+
+    std::cerr << "[ShaderExporter] wrote SwitchTexture (animated) " << outputPath << " -> base " << nameRefToBase << " frames=" << frameCount
+              << " fps=" << fpsMin << ".." << fpsMax << "\n";
+    MGlobal::displayInfo(MString("[ShaderExporter] Animated .sht (SWTS): ") + outputPath.c_str());
+    return outputPath;
 }

@@ -90,6 +90,19 @@ public:
 	static void sendAllocatedExpertiseListAndClear();
 
 	//----------------------------------------------------------------------
+	// IMPORT / EXPORT (stable skill names — survives grid moves; unknown skills skipped)
+
+	/// Opaque share code: "SWG1" + base64url( 0x02 + zlib(payload) ) where payload is raw v1 blob (0x01 + template + skills).
+	/// Older codes omit zlib: "SWG1" + base64url( raw v1 blob ) starting with 0x01. Import accepts both.
+	static std::string exportExpertiseBuildCompactLine();
+	/// Human-readable backup (SWGEXP1 header, template, one skill per line).
+	static std::string exportExpertiseBuildMultiline();
+	/// Parses compact or multiline text. Clears pending allocations, then allocates toward the
+	/// target set (existing trained skills are kept). Populates \p resultMessage with a summary.
+	/// \return false only when the format is invalid (no partial apply).
+	static bool importExpertiseBuildFromText(std::string const & rawText, std::string & resultMessage);
+
+	//----------------------------------------------------------------------
 	// UI SUPPORT
 
 	// Expertise Strings

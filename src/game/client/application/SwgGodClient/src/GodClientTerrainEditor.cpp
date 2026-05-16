@@ -24,6 +24,7 @@
 #include "sharedFoundation/Clock.h"
 #include "sharedFoundation/ExitChain.h"
 #include "sharedImage/Image.h"
+#include "sharedImage/ImageFormatList.h"
 #include "sharedMath/Rectangle2d.h"
 #include "sharedMath/PackedRgb.h"
 #include "sharedMath/Transform.h"
@@ -48,6 +49,7 @@
 #include <cfloat>
 #include <cstring>
 #include <algorithm>
+#include <set>
 
 #include "TerrainDock.h"
 
@@ -108,6 +110,38 @@ namespace
 			std::max(a.x1, b.x1), std::max(a.y1, b.y1));
 	}
 
+	inline bool gdIsFiniteTerrainScalar(float const v)
+	{
+		return v == v && std::fabs(static_cast<double>(v)) < 1.0e24;
+	}
+
+	inline bool gdIsValidWorldFootprint(Rectangle2d const& n)
+	{
+		return gdIsFiniteTerrainScalar(n.x0) && gdIsFiniteTerrainScalar(n.x1) && gdIsFiniteTerrainScalar(n.y0) &&
+			gdIsFiniteTerrainScalar(n.y1) && n.x0 <= n.x1 && n.y0 <= n.y1;
+	}
+
+	/// Clamp live-edit footprints to sane world XZ; NaNs / inversions corrupt BoundaryRectangle union and procedural rebuild.
+	inline Rectangle2d gdSanitizeTerrainWorldFootprint(TerrainObject const* const toeConst, Rectangle2d const& rawExtent)
+	{
+		Rectangle2d const normalized = godClientNormalizeRect2d(rawExtent);
+		float halfClamp = 16384.f;
+		if (toeConst)
+			halfClamp = std::max(halfClamp, toeConst->getMapWidthInMeters() * 0.5f + 8192.f);
+
+		if (!gdIsValidWorldFootprint(normalized))
+			return Rectangle2d(-halfClamp, -halfClamp, halfClamp, halfClamp);
+
+		float x0 = std::max(-halfClamp, normalized.x0);
+		float x1 = std::min(halfClamp, normalized.x1);
+		float z0 = std::max(-halfClamp, normalized.y0);
+		float z1 = std::min(halfClamp, normalized.y1);
+		if (!(x0 < x1 && z0 < z1))
+			return Rectangle2d(-halfClamp, -halfClamp, halfClamp, halfClamp);
+
+		return Rectangle2d(x0, z0, x1, z1);
+	}
+
 	int s_godWaterLayerSerial = 0;
 	int s_godPolygonLayerSerial = 0;
 	int s_godProceduralAuthoringSerial = 0;
@@ -130,6 +164,86 @@ namespace
 			if (z > maxZ) maxZ = z;
 		}
 		return Rectangle2d(minX - pad, minZ - pad, maxX + pad, maxZ + pad);
+	}
+
+	inline double gdClamp01d(double const t)
+	{
+		if (t < 0.0)
+			return 0.0;
+		if (t > 1.0)
+			return 1.0;
+		return t;
+	}
+
+	inline bool gdBuildGrey01RowMajorFromImage(Image const& image, std::vector<float>& outGrey01, int& outW, int& outH)
+	{
+		outGrey01.clear();
+		outW = 0;
+		outH = 0;
+		int const w = image.getWidth();
+		int const h = image.getHeight();
+		if (w < 2 || h < 2)
+			return false;
+
+		uint8 const* base = image.lockReadOnly(true);
+		if (!base)
+			return false;
+		Image const* const imagePtr = &image;
+		Image::UnlockGuard const guard(imagePtr);
+
+		Image::PixelFormat const pf = image.getPixelFormat();
+		int const bpp = image.getBytesPerPixel();
+		int const stride = image.getStride();
+		outGrey01.resize(static_cast<size_t>(w * h));
+		for (int z = 0; z < h; ++z)
+		{
+			uint8 const* row = base + z * stride;
+			uint8 const* p = row;
+			for (int x = 0; x < w; ++x)
+			{
+				uint8 r = 0;
+				uint8 g = 0;
+				uint8 b = 0;
+				uint8 a = 255;
+				Image::getPixel(r, g, b, a, p, pf);
+				double const lum = (0.299 * static_cast<double>(r) + 0.587 * static_cast<double>(g) + 0.114 * static_cast<double>(b)) / 255.0;
+				outGrey01[static_cast<size_t>(z * w + x)] = static_cast<float>(lum);
+				p += bpp;
+			}
+		}
+		outW = w;
+		outH = h;
+		return true;
+	}
+
+	inline float gdBilinearGrey01(std::vector<float> const& g01, int const w, int const h, double const colWest01, double const rowNorthTop01)
+	{
+		if (w < 2 || h < 2 || g01.size() < static_cast<size_t>(w * h))
+			return 0.f;
+
+		double const cx = gdClamp01d(colWest01) * static_cast<double>(w - 1);
+		double const rowT = gdClamp01d(rowNorthTop01);
+		double const ry = rowT * static_cast<double>(h - 1);
+
+		int const x0 = static_cast<int>(std::floor(cx));
+		int const y0 = static_cast<int>(std::floor(ry));
+		int const x1 = std::min(x0 + 1, w - 1);
+		int const y1 = std::min(y0 + 1, h - 1);
+
+		double const fx = cx - std::floor(cx);
+		double const fy = ry - std::floor(ry);
+
+		double const s00 = static_cast<double>(g01[static_cast<size_t>(y0 * w + x0)]);
+		double const s10 = static_cast<double>(g01[static_cast<size_t>(y0 * w + x1)]);
+		double const s01 = static_cast<double>(g01[static_cast<size_t>(y1 * w + x0)]);
+		double const s11 = static_cast<double>(g01[static_cast<size_t>(y1 * w + x1)]);
+
+		double const v = s00 * (1. - fx) * (1. - fy) +
+			s10 * fx * (1. - fy) +
+			s01 * (1. - fx) * fy +
+			s11 * fx * fy;
+
+		return static_cast<float>(v);
 	}
 }
 
@@ -271,6 +385,13 @@ GodClientTerrainEditor& GodClientTerrainEditor::getInstance()
 {
 	DEBUG_FATAL(ms_instance == 0, ("GodClientTerrainEditor not installed"));
 	return *ms_instance;
+}
+
+// ----------------------------------------------------------------------
+
+GodClientTerrainEditor* GodClientTerrainEditor::getInstanceNullable()
+{
+	return ms_instance;
 }
 
 // ----------------------------------------------------------------------
@@ -1774,6 +1895,8 @@ void GodClientTerrainEditor::flushTerrainChanges()
 	TerrainObject* const terrainObject = TerrainObject::getInstance();
 	if (!terrainObject)
 		return;
+	if (!terrainObject->getAppearance())
+		return;
 
 	float minX = 1e9f, maxX = -1e9f;
 	float minZ = 1e9f, maxZ = -1e9f;
@@ -1833,7 +1956,9 @@ void GodClientTerrainEditor::flushTerrainChanges()
 		return;
 
 	const float margin = 32.0f;
-	Rectangle2d extent2d(minX - margin, minZ - margin, maxX + margin, maxZ + margin);
+	Rectangle2d const extentRaw(minX - margin, minZ - margin, maxX + margin, maxZ + margin);
+	TerrainObject const* const toeConst = TerrainObject::getConstInstance();
+	Rectangle2d const extent2d = gdSanitizeTerrainWorldFootprint(toeConst, extentRaw);
 
 	godClientSyncLiveStagingAoiLayer(extent2d);
 
@@ -1849,7 +1974,8 @@ void GodClientTerrainEditor::godClientSyncLiveStagingAoiLayer(Rectangle2d const&
 	if (!gen)
 		return;
 
-	Rectangle2d const roi = godClientNormalizeRect2d(worldExtentFootprintXZ);
+	TerrainObject const* const toeConstSync = TerrainObject::getConstInstance();
+	Rectangle2d const roi = gdSanitizeTerrainWorldFootprint(toeConstSync, worldExtentFootprintXZ);
 
 	TerrainGenerator::Layer* found = 0;
 	for (int i = 0; i < gen->getNumberOfLayers(); ++i)
@@ -1888,8 +2014,9 @@ void GodClientTerrainEditor::godClientSyncLiveStagingAoiLayer(Rectangle2d const&
 		}
 	}
 
-	if (TerrainDock* const dock = MainFrame::getInstance().getTerrainDock())
-		dock->refreshTerrainLayerListFromGenerator();
+	if (MainFrame* const mf = MainFrame::getInstanceNullable())
+		if (TerrainDock* const dock = mf->getTerrainDock())
+			dock->refreshTerrainLayerListFromGenerator();
 }
 
 // ----------------------------------------------------------------------
@@ -3297,6 +3424,12 @@ void GodClientTerrainEditor::modifyFloraPaint(float worldX, float worldZ, int fl
 	if (!terrainObject)
 		return;
 
+	int const familyIdClamped = std::max (0, std::min (255, floraFamilyId));
+
+	TerrainGenerator* const generator = getTerrainGenerator();
+	if (generator && !generator->getFloraGroup ().hasFamily (familyIdClamped))
+		return;
+
 	const float halfBrush = m_brushSize * 0.5f;
 
 	const int minX = static_cast<int>(std::floor(worldX - halfBrush));
@@ -3327,7 +3460,7 @@ void GodClientTerrainEditor::modifyFloraPaint(float worldX, float worldZ, int fl
 				FloraModification mod;
 				mod.worldX = lx;
 				mod.worldZ = lz;
-				mod.modifiedFamilyId = floraFamilyId;
+				mod.modifiedFamilyId = familyIdClamped;
 				mod.density = density * effect * m_brushStrength;
 				mod.collidable = collidable;
 
@@ -5044,6 +5177,202 @@ bool GodClientTerrainEditor::addFullMapHeightConstantLayer(float height, float f
 
 	flushTerrainChanges();
 	nudgeGodClientCameraToRefreshDpvs();
+	return true;
+}
+
+// ----------------------------------------------------------------------
+
+bool GodClientTerrainEditor::applyImportedHeightRasterFromImageFile(
+	char const* const localFilesystemPath,
+	int elevationMinMeters,
+	int elevationMaxMeters,
+	int latticePointsPerEdge,
+	bool invertLuminance)
+{
+	if (!localFilesystemPath || !localFilesystemPath[0])
+		return false;
+
+	TerrainObject const* const toeConst = TerrainObject::getConstInstance();
+	if (!toeConst)
+		return false;
+
+	Appearance const* const appearance = toeConst->getAppearance();
+	if (!appearance)
+		return false;
+
+	ProceduralTerrainAppearanceTemplate const* const tpl =
+		dynamic_cast<ProceduralTerrainAppearanceTemplate const*>(appearance->getAppearanceTemplate());
+	if (!tpl)
+		return false;
+
+	float const half = tpl->getMapWidthInMeters() * 0.5f;
+	if (!(half >= 1.f))
+		return false;
+
+	if (!(elevationMaxMeters > elevationMinMeters))
+		return false;
+
+	Image* loaded = ImageFormatList::loadImage(localFilesystemPath, true);
+	if (!loaded)
+	{
+		if (MainFrame::getInstanceNullable())
+			MainFrame::getInstanceNullable()->textToConsole("Height raster: could not load image (unsupported format?).");
+		return false;
+	}
+
+	std::vector<float> grey01;
+	int iw = 0;
+	int ih = 0;
+	bool const sampled = gdBuildGrey01RowMajorFromImage(*loaded, grey01, iw, ih);
+	delete loaded;
+
+	if (!sampled || iw < 2 || ih < 2 || grey01.size() != static_cast<size_t>(iw * ih))
+	{
+		if (MainFrame::getInstanceNullable())
+			MainFrame::getInstanceNullable()->textToConsole("Height raster: image too small or empty after decode.");
+		return false;
+	}
+
+	int maxCoordInt = std::max(1, static_cast<int>(std::floor(static_cast<double>(half) + 1e-4)));
+	int const latticeKeyClamp = 32767;
+	if (maxCoordInt > latticeKeyClamp)
+	{
+		maxCoordInt = latticeKeyClamp;
+		if (MainFrame::getInstanceNullable())
+			MainFrame::getInstanceNullable()->textToConsole(
+				"Height raster: keyed live edits clamp to +/-32767 m; clipping lattice extent.");
+	}
+
+	int const minGx = -maxCoordInt;
+	int const maxGx = maxCoordInt;
+
+	int spanInclusive = maxGx - minGx;
+	if (spanInclusive <= 0)
+		return false;
+
+	int edgeN = std::max(2, latticePointsPerEdge);
+	if (edgeN > 1025)
+		edgeN = 1025;
+
+	std::set<int> gxcoords;
+	std::set<int> gzcoords;
+	for (int i = 0; i < edgeN; ++i)
+	{
+		int gx = minGx + (i * spanInclusive) / (edgeN - 1);
+		gxcoords.insert(gx);
+		gzcoords.insert(gx); // symmetrical Z axis
+	}
+
+	long long totalCellsEst = static_cast<long long>(gxcoords.size()) * static_cast<long long>(gzcoords.size());
+	if (totalCellsEst <= 0)
+		return false;
+
+	bool const granularUndo = (totalCellsEst <= static_cast<long long>(256 * 256));
+
+	double const denom = std::max(1e-6, static_cast<double>(tpl->getMapWidthInMeters()));
+	float const elevMin = static_cast<float>(elevationMinMeters);
+	float const elevSpan = static_cast<float>(elevationMaxMeters - elevationMinMeters);
+
+	BrushStroke stroke;
+	stroke.centerX = 0.0f;
+	stroke.centerZ = 0.0f;
+	stroke.radius = half + 1.0f;
+	stroke.strength = 1.0f;
+	stroke.tool = TM_SetHeight;
+	stroke.targetHeight = 0.0f;
+
+	size_t modsWritten = 0;
+
+	typedef std::set<int>::const_iterator IntSetIterator;
+	for (IntSetIterator zig = gxcoords.begin(); zig != gxcoords.end(); ++zig)
+	{
+		for (IntSetIterator ixg = gzcoords.begin(); ixg != gzcoords.end(); ++ixg)
+		{
+			int const gxWorld = (*zig); // lattice along X axis
+			int const gzWorld = (*ixg);
+
+			double const westToEast01 = static_cast<double>(gxWorld + static_cast<double>(half)) / denom;
+			double const northTop01 = static_cast<double>(static_cast<double>(half) - static_cast<double>(gzWorld)) / denom;
+
+			float lum = gdBilinearGrey01(grey01, iw, ih, westToEast01, northTop01);
+			if (invertLuminance)
+				lum = 1.f - lum;
+			lum = std::max(0.f, std::min(1.f, lum));
+
+			float const newH = elevMin + lum * elevSpan;
+
+			int const gxBiasPacked = gxWorld + 32768;
+			int const gzBiasPacked = gzWorld + 32768;
+			if (gxBiasPacked < 0 || gxBiasPacked > 65535 || gzBiasPacked < 0 || gzBiasPacked > 65535)
+				continue;
+
+			uint64 const key = (static_cast<uint64>(static_cast<uint32>(gxBiasPacked)) << 32) |
+				static_cast<uint64>(static_cast<uint32>(gzBiasPacked));
+
+			HeightModificationMap::iterator hit = m_heightModifications.find(key);
+
+			// IMPORTANT: Avoid TerrainObject::getHeight(...) here — it walks client chunks/collision asynchronously and has
+			// repeatedly faulted during large bulk applies. Cells already keyed use prior edits as the "before"; cold
+			// cells approximate pre-import mesh using the UI min elevation (undo for first-time vertices restores that floor).
+			float beforeH = elevMin;
+			float baselineForUndo = elevMin;
+			if (hit != m_heightModifications.end())
+			{
+				beforeH = hit->second.modifiedHeight;
+				baselineForUndo = hit->second.originalHeight;
+			}
+
+			HeightModification snapshot;
+			snapshot.worldX = static_cast<float>(gxWorld);
+			snapshot.worldZ = static_cast<float>(gzWorld);
+			snapshot.originalHeight = beforeH;
+			snapshot.modifiedHeight = newH;
+			snapshot.timestamp = Clock::frameTime();
+
+			if (granularUndo)
+				stroke.modifications.push_back(snapshot);
+
+			HeightModification stored;
+			stored.worldX = snapshot.worldX;
+			stored.worldZ = snapshot.worldZ;
+			stored.originalHeight = baselineForUndo;
+			stored.modifiedHeight = newH;
+			stored.timestamp = snapshot.timestamp;
+			m_heightModifications[key] = stored;
+			++modsWritten;
+		}
+	}
+
+	if (modsWritten == 0)
+	{
+		if (MainFrame::getInstanceNullable())
+			MainFrame::getInstanceNullable()->textToConsole("Height raster: no lattice points written (coordinate range?).");
+		return false;
+	}
+
+	if (granularUndo && !stroke.modifications.empty())
+	{
+		m_undoStack.push_back(stroke);
+		while (static_cast<int>(m_undoStack.size()) > MAX_UNDO_STROKES)
+			m_undoStack.erase(m_undoStack.begin());
+		m_redoStack.clear();
+	}
+
+	flushTerrainChanges();
+	nudgeGodClientCameraToRefreshDpvs();
+
+	if (MainFrame::getInstanceNullable())
+	{
+		char summary[320];
+		snprintf(
+			summary,
+			sizeof(summary),
+			"Height raster: wrote %zu lattice heights (granular_undo=%s); cold cells baseline=min elevation.",
+			static_cast<size_t>(modsWritten),
+			granularUndo ? "yes" : "no");
+		MainFrame::getInstanceNullable()->textToConsole(summary);
+	}
+
 	return true;
 }
 

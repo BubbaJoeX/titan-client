@@ -43,6 +43,10 @@ public slots:
 
 	void onFamilyListSelectionChanged();
 	void onApplyEdits();
+	void onAddFamily();
+	void onRemoveFamily();
+	void onAddChildAppearance();
+	void onRemoveChild();
 	void onClose();
 
 private:
@@ -58,7 +62,7 @@ private:
 
 	QListBox*     m_familyList;
 	QLabel*       m_idLabel;
-	QLabel*       m_nameLabel;
+	QLineEdit*    m_nameEdit;
 	QSpinBox*     m_redSpin;
 	QSpinBox*     m_greenSpin;
 	QSpinBox*     m_blueSpin;
@@ -66,6 +70,10 @@ private:
 	QCheckBox*    m_floatsCheck;
 	QListView*    m_childList;
 	QPushButton*  m_applyButton;
+	QPushButton*  m_addFamilyButton;
+	QPushButton*  m_removeFamilyButton;
+	QPushButton*  m_addChildAppearanceButton;
+	QPushButton*  m_removeChildButton;
 	QPushButton*  m_closeButton;
 
 	std::vector<int> m_listFamilyIds;

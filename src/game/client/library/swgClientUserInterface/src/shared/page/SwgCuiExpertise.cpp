@@ -35,6 +35,82 @@
 #include "UIMessage.h"
 #include "UITabbedPane.h"
 #include "UIText.h"
+#include "UITextbox.h"
+
+#include <fstream>
+
+#if defined(_WIN32)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#include <commdlg.h>
+#pragma comment(lib, "comdlg32.lib")
+#endif
+
+//======================================================================
+
+namespace
+{
+#if defined(_WIN32)
+	bool win32PickExpertiseLoadPath(std::string & pathOut)
+	{
+		char buf[MAX_PATH * 4] = { 0 };
+		OPENFILENAMEA ofn = { sizeof(ofn) };
+		ofn.lpstrFile = buf;
+		ofn.nMaxFile = sizeof(buf);
+		static char filter[] = "Text files (*.txt)\0*.txt\0All files\0*.*\0\0";
+		ofn.lpstrFilter = filter;
+		ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST;
+		if (!GetOpenFileNameA(&ofn))
+			return false;
+		pathOut = buf;
+		return true;
+	}
+
+	bool win32PickExpertiseSavePath(std::string & pathOut)
+	{
+		char buf[MAX_PATH * 4] = { 0 };
+		OPENFILENAMEA ofn = { sizeof(ofn) };
+		ofn.lpstrFile = buf;
+		ofn.nMaxFile = sizeof(buf);
+		static char filter[] = "Text files (*.txt)\0*.txt\0All files\0*.*\0\0";
+		ofn.lpstrFilter = filter;
+		ofn.Flags = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST;
+		if (!GetSaveFileNameA(&ofn))
+			return false;
+		pathOut = buf;
+		return true;
+	}
+#endif
+
+	bool readBinaryFile(std::string const & path, std::string & out)
+	{
+		std::ifstream in(path.c_str(), std::ios::binary);
+		if (!in)
+			return false;
+		in.seekg(0, std::ios::end);
+		std::streamoff const len = in.tellg();
+		in.seekg(0, std::ios::beg);
+		if (len <= 0)
+		{
+			out.clear();
+			return true;
+		}
+		out.resize(static_cast<size_t>(len));
+		in.read(&out[0], len);
+		return in.good();
+	}
+
+	bool writeBinaryFile(std::string const & path, std::string const & data)
+	{
+		std::ofstream out(path.c_str(), std::ios::binary);
+		if (!out)
+			return false;
+		out.write(data.data(), static_cast<std::streamsize>(data.size()));
+		return out.good();
+	}
+}
 
 //======================================================================
 
@@ -171,8 +247,7 @@ int SwgCuiExpertiseNamespace::getTreeIdForTab(long tab)
 	if(treeIdList.empty())
 		return 0;
 
-	// bounds check
-	if (tab >= 0 || static_cast<ClientExpertiseManager::TreeIdList::size_type>(tab) < treeIdList.size())
+	if (tab >= 0 && static_cast<ClientExpertiseManager::TreeIdList::size_type>(tab) < treeIdList.size())
 	{
 		result = treeIdList[tab];
 	}
@@ -194,6 +269,11 @@ m_allocatedPointsText(0),
 m_clearTreeButton(0),
 m_clearAllButton(0),
 m_switchNumbersButton(0),
+m_importBuildButton(0),
+m_exportBuildButton(0),
+m_importBuildFileButton(0),
+m_exportBuildFileButton(0),
+m_buildCodeTextbox(0),
 m_treeGrid(0),
 m_sampleIconPage(0),
 m_sampleComponentPage(0),
@@ -236,6 +316,21 @@ m_treeBackgroundImage(0)
 
 	getCodeDataObject(TUIButton, m_switchNumbersButton, "SwitchNumbersButton");
 	registerMediatorObject(*m_switchNumbersButton, true);
+
+	getCodeDataObject(TUITextbox, m_buildCodeTextbox, "BuildCodeTextbox");
+	registerMediatorObject(*m_buildCodeTextbox, true);
+
+	getCodeDataObject(TUIButton, m_importBuildButton, "buttonImportBuild");
+	registerMediatorObject(*m_importBuildButton, true);
+
+	getCodeDataObject(TUIButton, m_exportBuildButton, "buttonExportBuild");
+	registerMediatorObject(*m_exportBuildButton, true);
+
+	getCodeDataObject(TUIButton, m_importBuildFileButton, "buttonImportBuildFile");
+	registerMediatorObject(*m_importBuildFileButton, true);
+
+	getCodeDataObject(TUIButton, m_exportBuildFileButton, "buttonExportBuildFile");
+	registerMediatorObject(*m_exportBuildFileButton, true);
 
 	getCodeDataObject(TUIPage, m_sampleIconPage, "sampleIconPage");
 	m_sampleIconPage->SetVisible(false);
@@ -514,6 +609,83 @@ void SwgCuiExpertise::OnButtonPressed(UIWidget * context)
 		m_lastExpertiseClickedOn = 0;
 		displayExpertiseTree();
 		displayExpertisePoints();
+	}
+	else if (context == m_exportBuildButton)
+	{
+		std::string const code = ClientExpertiseManager::exportExpertiseBuildCompactLine();
+		m_buildCodeTextbox->SetLocalText(Unicode::narrowToWide(code));
+		CuiSoundManager::play (CuiSounds::select_popup);
+	}
+	else if (context == m_importBuildButton)
+	{
+		std::string const narrow = Unicode::wideToNarrow(m_buildCodeTextbox->GetText());
+		std::string msg;
+		bool const ok = ClientExpertiseManager::importExpertiseBuildFromText(narrow, msg);
+		CuiMessageBox::createInfoBox(Unicode::narrowToWide(msg), 0, true);
+		if (ok)
+		{
+			m_lastExpertiseClickedOn = 0;
+			m_currentSkillName = s_emptyString;
+			m_currentBaseSkillName = s_emptyString;
+			displayExpertiseTree();
+			displayExpertisePoints();
+			updateButtonStatus();
+			updateExpertiseIconHighlighting();
+			CuiSoundManager::play (CuiSounds::select_popup);
+		}
+		else
+			CuiSoundManager::play (CuiSounds::negative);
+	}
+	else if (context == m_importBuildFileButton)
+	{
+#if defined(_WIN32)
+		std::string path;
+		if (!win32PickExpertiseLoadPath(path))
+			return;
+		std::string contents;
+		if (!readBinaryFile(path, contents))
+		{
+			CuiMessageBox::createInfoBox(Unicode::narrowToWide("Could not read file."), 0, true);
+			CuiSoundManager::play (CuiSounds::negative);
+			return;
+		}
+		std::string msg;
+		bool const ok = ClientExpertiseManager::importExpertiseBuildFromText(contents, msg);
+		CuiMessageBox::createInfoBox(Unicode::narrowToWide(msg), 0, true);
+		if (ok)
+		{
+			m_lastExpertiseClickedOn = 0;
+			m_currentSkillName = s_emptyString;
+			m_currentBaseSkillName = s_emptyString;
+			displayExpertiseTree();
+			displayExpertisePoints();
+			updateButtonStatus();
+			updateExpertiseIconHighlighting();
+			CuiSoundManager::play (CuiSounds::select_popup);
+		}
+		else
+			CuiSoundManager::play (CuiSounds::negative);
+#else
+		CuiMessageBox::createInfoBox(Unicode::narrowToWide("Import from file is only supported on Windows."), 0, true);
+#endif
+	}
+	else if (context == m_exportBuildFileButton)
+	{
+#if defined(_WIN32)
+		std::string path;
+		if (!win32PickExpertiseSavePath(path))
+			return;
+		std::string const body = ClientExpertiseManager::exportExpertiseBuildCompactLine();
+		if (!writeBinaryFile(path, body))
+		{
+			CuiMessageBox::createInfoBox(Unicode::narrowToWide("Could not write file."), 0, true);
+			CuiSoundManager::play (CuiSounds::negative);
+			return;
+		}
+		CuiSoundManager::play (CuiSounds::select_popup);
+#else
+		CuiMessageBox::createInfoBox(Unicode::narrowToWide("Export to file is only supported on Windows."), 0, true);
+#endif
 	}
 	else if (context->IsA(TUIButton))
 	{

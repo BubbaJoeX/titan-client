@@ -24,6 +24,7 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{736AE3F5-0DC0-3003-AC0D-B55721C90F29}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
     <Platform>x64</Platform>
     <ProjectName>SwgMayaEditor</ProjectName>
     <VCProjectUpgraderObjectName>NoUpgrade</VCProjectUpgraderObjectName>
@@ -132,6 +133,10 @@ if %errorlevel% neq 0 goto :cmEnd
 if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/pobAuthoring.mel D:/titan/client/src/engine/client/application/MayaModern/build/Debug/pobAuthoring.mel
 if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/pobSingleCellPreset.mel D:/titan/client/src/engine/client/application/MayaModern/build/Debug/pobSingleCellPreset.mel
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/pobFillerFromMesh.mel D:/titan/client/src/engine/client/application/MayaModern/build/Debug/pobFillerFromMesh.mel
+if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgLightsaberToolkit.mel D:/titan/client/src/engine/client/application/MayaModern/build/Debug/swgLightsaberToolkit.mel
 if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgVehicleToolkit.mel D:/titan/client/src/engine/client/application/MayaModern/build/Debug/swgVehicleToolkit.mel
@@ -152,7 +157,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <Link>
       <AdditionalDependencies>D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMaya.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\Foundation.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaUI.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaAnim.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaFX.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaRender.lib;ws2_32.lib;Debug\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalOptions>%(AdditionalOptions) /machine:x64 /IGNORE:4099</AdditionalOptions>
+      <AdditionalOptions>%(AdditionalOptions) /IGNORE:4099</AdditionalOptions>
       <DataExecutionPrevention></DataExecutionPrevention>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
@@ -216,6 +221,10 @@ if %errorlevel% neq 0 goto :cmEnd
 if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/pobAuthoring.mel D:/titan/client/src/engine/client/application/MayaModern/build/Release/pobAuthoring.mel
 if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/pobSingleCellPreset.mel D:/titan/client/src/engine/client/application/MayaModern/build/Release/pobSingleCellPreset.mel
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/pobFillerFromMesh.mel D:/titan/client/src/engine/client/application/MayaModern/build/Release/pobFillerFromMesh.mel
+if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgLightsaberToolkit.mel D:/titan/client/src/engine/client/application/MayaModern/build/Release/swgLightsaberToolkit.mel
 if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgVehicleToolkit.mel D:/titan/client/src/engine/client/application/MayaModern/build/Release/swgVehicleToolkit.mel
@@ -236,7 +245,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <Link>
       <AdditionalDependencies>D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMaya.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\Foundation.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaUI.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaAnim.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaFX.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaRender.lib;ws2_32.lib;Release\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalOptions>%(AdditionalOptions) /machine:x64 /IGNORE:4099</AdditionalOptions>
+      <AdditionalOptions>%(AdditionalOptions) /IGNORE:4099</AdditionalOptions>
       <DataExecutionPrevention></DataExecutionPrevention>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
@@ -300,6 +309,10 @@ if %errorlevel% neq 0 goto :cmEnd
 if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/pobAuthoring.mel D:/titan/client/src/engine/client/application/MayaModern/build/MinSizeRel/pobAuthoring.mel
 if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/pobSingleCellPreset.mel D:/titan/client/src/engine/client/application/MayaModern/build/MinSizeRel/pobSingleCellPreset.mel
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/pobFillerFromMesh.mel D:/titan/client/src/engine/client/application/MayaModern/build/MinSizeRel/pobFillerFromMesh.mel
+if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgLightsaberToolkit.mel D:/titan/client/src/engine/client/application/MayaModern/build/MinSizeRel/swgLightsaberToolkit.mel
 if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgVehicleToolkit.mel D:/titan/client/src/engine/client/application/MayaModern/build/MinSizeRel/swgVehicleToolkit.mel
@@ -320,7 +333,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <Link>
       <AdditionalDependencies>D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMaya.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\Foundation.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaUI.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaAnim.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaFX.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaRender.lib;ws2_32.lib;MinSizeRel\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalOptions>%(AdditionalOptions) /machine:x64 /IGNORE:4099</AdditionalOptions>
+      <AdditionalOptions>%(AdditionalOptions) /IGNORE:4099</AdditionalOptions>
       <DataExecutionPrevention></DataExecutionPrevention>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
@@ -383,6 +396,10 @@ if %errorlevel% neq 0 goto :cmEnd
 if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/pobAuthoring.mel D:/titan/client/src/engine/client/application/MayaModern/build/RelWithDebInfo/pobAuthoring.mel
 if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/pobSingleCellPreset.mel D:/titan/client/src/engine/client/application/MayaModern/build/RelWithDebInfo/pobSingleCellPreset.mel
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/pobFillerFromMesh.mel D:/titan/client/src/engine/client/application/MayaModern/build/RelWithDebInfo/pobFillerFromMesh.mel
+if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgLightsaberToolkit.mel D:/titan/client/src/engine/client/application/MayaModern/build/RelWithDebInfo/swgLightsaberToolkit.mel
 if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgVehicleToolkit.mel D:/titan/client/src/engine/client/application/MayaModern/build/RelWithDebInfo/swgVehicleToolkit.mel
@@ -403,7 +420,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <Link>
       <AdditionalDependencies>D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMaya.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\Foundation.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaUI.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaAnim.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaFX.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaRender.lib;ws2_32.lib;RelWithDebInfo\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalOptions>%(AdditionalOptions) /machine:x64 /IGNORE:4099</AdditionalOptions>
+      <AdditionalOptions>%(AdditionalOptions) /IGNORE:4099</AdditionalOptions>
       <DataExecutionPrevention></DataExecutionPrevention>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>

@@ -856,18 +856,26 @@ void ClientProceduralTerrainAppearance::threadRoutine()
 			{
 				break;
 			}
-			
-			TerrainQuadTree::Node * const startNode = getChunkTree ()->getTopNode ();
-			if (startNode->getChunk () == 0)		
-				WARNING(true, ("ClientProceduralTerrainAppearance_LevelOfDetail processing threadRoutine with no master chunk"));
-			
-			
+
 			ChunkRequestInfoMap::reverse_iterator riter = m_pendingChunkRequestInfoMap->rbegin ();
 			//-- make a copy
 			ChunkRequestInfo requestInfo = (*riter).second;
 			m_pendingChunkRequestInfoMap->erase ((++riter).base ());
 
 			DEBUG_FATAL (requestInfo.m_chunk, ("pending chunk request had non-null chunk\n"));
+
+			TerrainQuadTree* const tree = getChunkTree ();
+			TerrainQuadTree::Node* const startNode = tree ? tree->getTopNode () : 0;
+			if (!tree || !startNode)
+			{
+				WARNING(
+					true,
+					("ClientProceduralTerrainAppearance threadRoutine: chunk tree or root missing; dropping request (%d,%d,%d)\n", requestInfo.m_x, requestInfo.m_z, requestInfo.m_size));
+				continue;
+			}
+
+			if (startNode->getChunk () == 0)
+				WARNING(true, ("ClientProceduralTerrainAppearance_LevelOfDetail processing threadRoutine with no master chunk"));
 
 			//-- go ahead and insert the chunkless request on the completed set
 			m_completedChunkRequestInfoList->push_back (requestInfo);
@@ -909,6 +917,13 @@ void ClientProceduralTerrainAppearance::retrieveCompletedChunkCreationRequests (
 			{
 				if (!m_completedChunkRequestInfoList->empty ())
 				{
+					TerrainQuadTree* const treeRt = getChunkTree ();
+					if (!treeRt || !treeRt->getTopNode ())
+					{
+						WARNING(true, ("retrieveCompletedChunkCreationRequests: chunk tree or root missing; deferring chunk installs this frame\n"));
+						break;
+					}
+
 					BoxExtent boxExtent;
 					boxExtent.setMin (Vector::maxXYZ);
 					boxExtent.setMax (Vector::negativeMaxXYZ);
@@ -926,9 +941,9 @@ void ClientProceduralTerrainAppearance::retrieveCompletedChunkCreationRequests (
 							break;
 
 						// add it to the terrain
-						if (getChunkTree ()->findChunk (requestInfo.m_x, requestInfo.m_z, requestInfo.m_size) == 0)
+						if (treeRt->findChunk (requestInfo.m_x, requestInfo.m_z, requestInfo.m_size) == 0)
 						{
-							IGNORE_RETURN (getChunkTree ()->addChunk (requestInfo.m_chunk, requestInfo.m_size));
+							IGNORE_RETURN (treeRt->addChunk (requestInfo.m_chunk, requestInfo.m_size));
 							createFlora (requestInfo.m_chunk);
 
 							//-- tell the flora system the chunk has changed
@@ -1178,6 +1193,11 @@ void ClientProceduralTerrainAppearance::insertChunkRebuildRequests (const ChunkR
 
 void ClientProceduralTerrainAppearance::invalidateRegion (const Rectangle2d& extent2d)
 {
+	// Teardown may delete the list slightly before chunk tree disposal; concurrent invalidates during destruction
+	// have been observed to fault Release builds where NOT_NULL is stripped.
+	if (!m_invalidateRegionList)
+		return;
+
 	// While a procedural rebuild is in flight, God Client brush drags can call invalidateRegion many times per
 	// frame; coalesce into one growing bbox so clearInvalidRegionList does not walk an enormous list on unlock.
 	if (Game::isGodClient () && m_lockTerrainLevelOfDetail)
@@ -1206,6 +1226,9 @@ void ClientProceduralTerrainAppearance::invalidateRegion (const Rectangle2d& ext
 
 void ClientProceduralTerrainAppearance::clearInvalidRegionList ()
 {
+	if (!m_invalidateRegionList || !m_chunkTree)
+		return;
+
 	//-- If the list is empty, we have nothing to do
 	if (m_invalidateRegionList->empty ())
 		return;

@@ -111,6 +111,8 @@ protected:
 	afx_msg void OnHardpointAttachSelected();
 	afx_msg void OnUpdateHardpointAttachSelected(CCmdUI* pCmdUI);
 	afx_msg void OnRemoveAttachedObject();
+	afx_msg void OnTimer(UINT_PTR nIDEvent);
+	afx_msg void OnDestroy();
 	//}}AFX_MSG
 
 protected:

@@ -15,7 +15,9 @@
 
 #include "sharedMath/PackedRgb.h"
 #include "sharedTerrain/EnvironmentGroup.h"
+#include "sharedTerrain/ProceduralTerrainAppearanceTemplate.h"
 #include "sharedTerrain/TerrainGenerator.h"
+#include "sharedUtility/FileName.h"
 
 #include <qframe.h>
 #include <qlabel.h>
@@ -52,6 +54,7 @@ EnvironmentEditorWindow::EnvironmentEditorWindow(QWidget* parent, const char* na
 : QDialog(parent, name, false),
   m_familyList(0),
   m_idLabel(0),
+  m_linkagePathsLabel(0),
   m_nameEdit(0),
   m_redSpin(0),
   m_greenSpin(0),
@@ -65,7 +68,7 @@ EnvironmentEditorWindow::EnvironmentEditorWindow(QWidget* parent, const char* na
   m_loadingFields(false)
 {
 	setCaption("Environment families");
-	resize(520, 420);
+	resize(560, 520);
 
 	QVBoxLayout* const mainLayout = new QVBoxLayout(this, 8, 6);
 
@@ -74,44 +77,67 @@ EnvironmentEditorWindow::EnvironmentEditorWindow(QWidget* parent, const char* na
 		this);
 	mainLayout->addWidget(hint);
 
+	m_linkagePathsLabel = new QLabel("", this);
+	m_linkagePathsLabel->setAlignment(Qt::AlignTop | Qt::AlignLeft);
+	m_linkagePathsLabel->setMinimumWidth(480);
+	mainLayout->addWidget(m_linkagePathsLabel);
+
 	m_familyList = new QListBox(this);
 	m_familyList->setColumnMode(QListBox::FitToWidth);
-	mainLayout->addWidget(m_familyList, 1);
+	mainLayout->addWidget(m_familyList);
 
 	QFrame* const fieldsFrame = new QFrame(this);
 	fieldsFrame->setFrameStyle(QFrame::StyledPanel | QFrame::Sunken);
-	QGridLayout* const grid = new QGridLayout(fieldsFrame, 5, 4, 6, 6);
+	QVBoxLayout* const detailLayout = new QVBoxLayout(fieldsFrame, 8, 8);
 
-	m_idLabel = new QLabel("(no selection)", fieldsFrame);
-	grid->addWidget(new QLabel("Family id:", fieldsFrame), 0, 0);
-	grid->addMultiCellWidget(m_idLabel, 0, 0, 1, 3);
+	{
+		QHBoxLayout* const idRow = new QHBoxLayout(0, 0, 8);
+		idRow->addWidget(new QLabel("Family id:", fieldsFrame));
+		m_idLabel = new QLabel("(no selection)", fieldsFrame);
+		idRow->addWidget(m_idLabel, 1);
+		detailLayout->addLayout(idRow);
+	}
 
-	grid->addWidget(new QLabel("Name:", fieldsFrame), 1, 0);
-	m_nameEdit = new QLineEdit(fieldsFrame);
-	grid->addMultiCellWidget(m_nameEdit, 1, 1, 1, 3);
+	{
+		QHBoxLayout* const nameRow = new QHBoxLayout(0, 0, 8);
+		nameRow->addWidget(new QLabel("Name:", fieldsFrame));
+		m_nameEdit = new QLineEdit(fieldsFrame);
+		nameRow->addWidget(m_nameEdit, 1);
+		detailLayout->addLayout(nameRow);
+	}
 
-	grid->addWidget(new QLabel("Color (RGB):", fieldsFrame), 2, 0);
-	m_redSpin = new QSpinBox(fieldsFrame);
-	m_greenSpin = new QSpinBox(fieldsFrame);
-	m_blueSpin = new QSpinBox(fieldsFrame);
-	m_redSpin->setMinValue(0);
-	m_redSpin->setMaxValue(255);
-	m_greenSpin->setMinValue(0);
-	m_greenSpin->setMaxValue(255);
-	m_blueSpin->setMinValue(0);
-	m_blueSpin->setMaxValue(255);
-	QHBoxLayout* const rgbRow = new QHBoxLayout(0, 0, 4);
-	rgbRow->addWidget(m_redSpin);
-	rgbRow->addWidget(m_greenSpin);
-	rgbRow->addWidget(m_blueSpin);
-	grid->addLayout(rgbRow, 2, 1);
+	{
+		QHBoxLayout* const rgbRow = new QHBoxLayout(0, 0, 8);
+		rgbRow->addWidget(new QLabel("Color (RGB):", fieldsFrame));
+		m_redSpin = new QSpinBox(fieldsFrame);
+		m_greenSpin = new QSpinBox(fieldsFrame);
+		m_blueSpin = new QSpinBox(fieldsFrame);
+		m_redSpin->setMinValue(0);
+		m_redSpin->setMaxValue(255);
+		m_greenSpin->setMinValue(0);
+		m_greenSpin->setMaxValue(255);
+		m_blueSpin->setMinValue(0);
+		m_blueSpin->setMaxValue(255);
+		rgbRow->addWidget(m_redSpin);
+		rgbRow->addWidget(m_greenSpin);
+		rgbRow->addWidget(m_blueSpin);
+		rgbRow->addStretch(1);
+		detailLayout->addLayout(rgbRow);
+	}
 
-	grid->addWidget(new QLabel("Feather clamp:", fieldsFrame), 3, 0);
-	m_featherClampEdit = new QLineEdit(fieldsFrame);
-	m_featherClampEdit->setText("1.0");
-	grid->addMultiCellWidget(m_featherClampEdit, 3, 1, 3, 3);
+	{
+		QHBoxLayout* const featherRow = new QHBoxLayout(0, 0, 8);
+		featherRow->addWidget(new QLabel("Feather clamp:", fieldsFrame));
+		m_featherClampEdit = new QLineEdit(fieldsFrame);
+		m_featherClampEdit->setMinimumWidth(80);
+		m_featherClampEdit->setText("1.0");
+		featherRow->addWidget(m_featherClampEdit, 1);
+		detailLayout->addLayout(featherRow);
+	}
 
 	mainLayout->addWidget(fieldsFrame);
+	mainLayout->setStretchFactor(m_familyList, 1);
+	mainLayout->setStretchFactor(fieldsFrame, 2);
 
 	QHBoxLayout* const buttonRow = new QHBoxLayout(0, 0, 6);
 	m_applyButton = new QPushButton("Apply row", this);
@@ -145,6 +171,7 @@ EnvironmentEditorWindow::~EnvironmentEditorWindow()
 void EnvironmentEditorWindow::reloadFromTerrain()
 {
 	rebuildFamilyList();
+	refreshEnvironmentLinkageLabels();
 }
 
 // ----------------------------------------------------------------------
@@ -426,6 +453,37 @@ void EnvironmentEditorWindow::onRemoveFamily()
 	commitEnvironmentGroupToTerrain();
 	rebuildFamilyList();
 	MainFrame::getInstance().textToConsole("Removed environment family.");
+}
+
+// ----------------------------------------------------------------------
+
+void EnvironmentEditorWindow::refreshEnvironmentLinkageLabels()
+{
+	if (!m_linkagePathsLabel)
+		return;
+
+	TerrainDock* const dock = MainFrame::getInstance().getTerrainDock();
+	ProceduralTerrainAppearanceTemplate* const t = dock ? dock->getTerrainTemplate() : 0;
+	if (!t || !t->getName() || !t->getName()[0])
+	{
+		m_linkagePathsLabel->setText(
+			"Sky, stars, moon, and cloud/gradient tables are loaded from .iff files keyed off the procedural terrain template "
+			"basename (GroundEnvironment). Open a terrain in TerrainDock to see resolved paths here.");
+		return;
+	}
+
+	FileName fn(t->getName());
+	fn.stripPathAndExt();
+	char const* const base = fn.getString();
+
+	QString body;
+	body.sprintf(
+		"GroundEnvironment basename: %s\n\n"
+		"[A] terrain/environment/%s.iff — client environment blob (stars, moon, skybox, timings tied to this terrain).\n\n"
+		"[B] datatables/environment/%s.iff — environment block table; rows are keyed by the family NAME strings in this dialog.\n\n"
+		"Author [A] and [B] on disk (or copy from an existing basename) so in-world lookup matches your .trn data.",
+		base, base, base);
+	m_linkagePathsLabel->setText(body);
 }
 
 // ----------------------------------------------------------------------

@@ -37,15 +37,20 @@
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
+#include <filesystem>
 #include <map>
 #include <sstream>
 #include <string>
+#include <system_error>
 #include <vector>
 
 #ifdef _WIN32
 #include <windows.h>
 #endif
+
+namespace fs = std::filesystem;
 
 namespace
 {
@@ -60,6 +65,9 @@ namespace
     constexpr int DEFAULT_IFF_SIZE = 65536;
 
     const Tag TAG_APT = TAG3(A,P,T);
+    const Tag TAG_DRTS = TAG(D,R,T,S);
+    const Tag TAG_DRFT = TAG(D,R,F,T);
+    const Tag TAG_DPPT = TAG(D,P,P,T);
 
     static std::string getStringAttr(MFnDependencyNode& fn, const char* attrName)
     {
@@ -504,6 +512,209 @@ namespace
         const std::string stem = textureStemFromSwgOrTreePath(texTree);
         if (stem.empty()) return std::string();
         return dir + stem + ".dds";
+    }
+
+    static bool seqAllDigits(const std::string& s)
+    {
+        if (s.empty()) return false;
+        for (unsigned char u : s)
+        {
+            const char c = static_cast<char>(u);
+            if (c < '0' || c > '9') return false;
+        }
+        return true;
+    }
+
+    static bool seqEndsWithIgnoreCase(const std::string& name, const std::string& extWithDot)
+    {
+        if (name.size() < extWithDot.size()) return false;
+        for (size_t i = 0; i < extWithDot.size(); ++i)
+        {
+            const char a = name[name.size() - extWithDot.size() + i];
+            const char b = extWithDot[i];
+            if (std::tolower(static_cast<unsigned char>(a)) != std::tolower(static_cast<unsigned char>(b)))
+                return false;
+        }
+        return true;
+    }
+
+    /// Builds a sorted frame list from any one resolved frame path (same directory + naming convention).
+    /// Supports Maya-style names with **no hardcoded base paths**:
+    ///   - `stem.1234.ext` (padding / dot before frame index)
+    ///   - `stem1234.ext` (digits glued to stem before extension)
+    /// Requires 2+ matching files in the sample's directory. Uses directory scan (UTF-8 paths via u8path).
+    static bool collectNumericSequenceFramesFromSamplePath(const std::string& absSamplePath, std::vector<std::string>& outSortedAbs)
+    {
+        outSortedAbs.clear();
+        if (absSamplePath.empty()) return false;
+
+        struct Entry
+        {
+            std::string path;
+            int n;
+        };
+        std::vector<Entry> acc;
+
+        const fs::path sampleU8 = fs::u8path(absSamplePath);
+        fs::path dir = sampleU8.parent_path();
+        if (dir.empty())
+            dir = fs::current_path();
+        std::string fileName = sampleU8.filename().u8string();
+        if (fileName.empty()) return false;
+
+        const size_t lastDot = fileName.find_last_of('.');
+        if (lastDot == std::string::npos || lastDot == 0) return false;
+        const std::string extWithDot = fileName.substr(lastDot);
+        const std::string withoutExt = fileName.substr(0, lastDot);
+
+        std::error_code ec;
+
+        auto collectDottedStem = [&](const std::string& stem) {
+            acc.clear();
+            ec.clear();
+            const std::string prefix = stem + '.';
+            for (const auto& ent : fs::directory_iterator(dir, ec))
+            {
+                if (ec) break;
+                std::error_code fe;
+                if (!ent.is_regular_file(fe)) continue;
+                const std::string name = ent.path().filename().u8string();
+                if (!seqEndsWithIgnoreCase(name, extWithDot)) continue;
+                if (name.size() <= prefix.size() + extWithDot.size()) continue;
+                if (name.compare(0, prefix.size(), prefix) != 0) continue;
+                const std::string mid = name.substr(prefix.size(), name.size() - prefix.size() - extWithDot.size());
+                if (!seqAllDigits(mid)) continue;
+                acc.push_back({ent.path().u8string(), std::atoi(mid.c_str())});
+            }
+        };
+
+        auto collectSuffixDigits = [&](const std::string& prefix) {
+            acc.clear();
+            ec.clear();
+            if (prefix.empty()) return;
+            for (const auto& ent : fs::directory_iterator(dir, ec))
+            {
+                if (ec) break;
+                std::error_code fe;
+                if (!ent.is_regular_file(fe)) continue;
+                const std::string name = ent.path().filename().u8string();
+                if (!seqEndsWithIgnoreCase(name, extWithDot)) continue;
+                if (name.size() <= prefix.size() + extWithDot.size()) continue;
+                if (name.compare(0, prefix.size(), prefix) != 0) continue;
+                const std::string mid = name.substr(prefix.size(), name.size() - prefix.size() - extWithDot.size());
+                if (!seqAllDigits(mid)) continue;
+                acc.push_back({ent.path().u8string(), std::atoi(mid.c_str())});
+            }
+        };
+
+        const size_t innerDot = withoutExt.find_last_of('.');
+        if (innerDot != std::string::npos && innerDot + 1 < withoutExt.size())
+        {
+            const std::string mid = withoutExt.substr(innerDot + 1);
+            if (seqAllDigits(mid))
+            {
+                const std::string stem = withoutExt.substr(0, innerDot);
+                collectDottedStem(stem);
+            }
+        }
+
+        if (acc.size() < 2)
+        {
+            size_t i = withoutExt.size();
+            while (i > 0 && withoutExt[i - 1] >= '0' && withoutExt[i - 1] <= '9') --i;
+            if (i > 0 && i < withoutExt.size())
+                collectSuffixDigits(withoutExt.substr(0, i));
+        }
+
+        if (acc.size() < 2)
+        {
+            outSortedAbs.clear();
+            return false;
+        }
+        std::sort(acc.begin(), acc.end(), [](const Entry& a, const Entry& b) {
+            if (a.n != b.n) return a.n < b.n;
+            return a.path < b.path;
+        });
+        outSortedAbs.reserve(acc.size());
+        for (const Entry& e : acc) outSortedAbs.push_back(e.path);
+        return true;
+    }
+
+    static bool readAnimatingTextureParamsFromFileNode(MFnDependencyNode& fileFn, float& fpsMin, float& fpsMax, int& orderEnum)
+    {
+        auto tryFloatAttr = [&](const char* a, const char* b, float& v) -> bool {
+            for (const char* nm : {a, b})
+            {
+                MPlug p = fileFn.findPlug(nm, true);
+                if (p.isNull()) continue;
+                if (p.getValue(v) == MS::kSuccess) return true;
+            }
+            return false;
+        };
+
+        const bool ha = tryFloatAttr("swgAnimFpsMin", "soe_animatingFpsMin", fpsMin);
+        const bool hb = tryFloatAttr("swgAnimFpsMax", "soe_animatingFpsMax", fpsMax);
+
+        orderEnum = 0;
+        MPlug o = fileFn.findPlug("swgAnimOrder", true);
+        if (o.isNull()) o = fileFn.findPlug("soe_animatingOrder", true);
+        if (!o.isNull()) o.getValue(orderEnum);
+
+        return ha && hb && fpsMin > 0.f;
+    }
+
+    static Tag switcherTagForAnimOrder(int orderEnum012)
+    {
+        switch (orderEnum012)
+        {
+            case 1:
+                return TAG_DPPT;
+            case 2:
+                return TAG_DRFT;
+            case 0:
+            default:
+                return TAG_DRTS;
+        }
+    }
+
+    static std::string frameStemForAnim(const std::string& texBase, size_t frameIdx)
+    {
+        char buf[384];
+        std::snprintf(buf, sizeof(buf), "%s_f%04zu", texBase.c_str(), frameIdx);
+        return std::string(buf);
+    }
+
+    /// Verifies SWTS main file, _base SSHT, and every published frame DDS.
+    static bool verifyAnimatedShaderExportArtifacts(const std::string& absSwtsWritten, const std::string& absBaseWritten,
+        const std::vector<std::string>& frameTextureTrees, const std::string& outShaderTreeForLog)
+    {
+        if (getFileSizeBytes(absSwtsWritten) < 32)
+        {
+            std::cerr << "[ExportStaticMesh] Verify failed: animated shader missing or too small: " << absSwtsWritten << "\n";
+            MGlobal::displayError(
+                MString("SwgMsh export verify: animated .sht invalid: ") + absSwtsWritten.c_str());
+            return false;
+        }
+        if (getFileSizeBytes(absBaseWritten) < 32)
+        {
+            std::cerr << "[ExportStaticMesh] Verify failed: base shader for SWTS invalid: " << absBaseWritten << "\n";
+            MGlobal::displayError(
+                MString("SwgMsh export verify: base shader for animation invalid: ") + absBaseWritten.c_str());
+            return false;
+        }
+        for (const std::string& tree : frameTextureTrees)
+        {
+            const std::string ddsAbs = absolutePathForTextureWriteDirDds(tree);
+            if (ddsAbs.empty() || !fileStartsWithDdsMagic(ddsAbs))
+            {
+                std::cerr << "[ExportStaticMesh] Verify failed: animated frame DDS missing or invalid for " << tree << "\n";
+                MGlobal::displayError(MString("SwgMsh export verify: invalid DDS for animated frame ") + tree.c_str());
+                return false;
+            }
+        }
+        std::cerr << "[ExportStaticMesh] Verified animated shader \"" << outShaderTreeForLog << "\" + base + "
+                  << frameTextureTrees.size() << " frame DDS\n";
+        return true;
     }
 
     /// Confirms the cloned .sht exists and, when a diffuse tree path was set, the matching DDS is present and valid.
@@ -1005,6 +1216,23 @@ namespace
             }
             if (!dup) outFiles.push_back(o);
         }
+    }
+
+    static bool primaryFileTextureFromShadingGroup(const MObject& sgObj, MObject& outFile)
+    {
+        outFile = MObject();
+        MStatus st;
+        MFnDependencyNode sgFn(sgObj, &st);
+        if (!st) return false;
+        MPlug surf = sgFn.findPlug("surfaceShader", true);
+        MPlugArray scon;
+        surf.connectedTo(scon, true, false);
+        if (scon.length() == 0) return false;
+        std::vector<MObject> files;
+        collectUpstreamFileTextureNodes(scon[0].node(), files);
+        if (files.empty()) return false;
+        outFile = files[0];
+        return true;
     }
 
     /// OBJ / kitbash graphs sometimes insert nodes we do not traverse; filenames like *_normal* are usually not diffuse.
@@ -1789,83 +2017,166 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
             const std::string texBase =
                 (geomMaterialCount > 1) ? (meshName + "_m" + std::to_string(si)) : (meshName + std::string("_d"));
 
+            std::string outShaderTree = std::string("shader/") + meshName;
+            if (geomMaterialCount > 1)
+                outShaderTree += "_sg" + std::to_string(si);
+
+            bool doAnimSwts = false;
+            std::vector<std::string> animFrameAbsPaths;
+            std::vector<std::string> animFrameTreePaths;
+            float animFpsMin = 8.f;
+            float animFpsMax = 8.f;
+            Tag animSwitcherTag = TAG_DRTS;
+            MObject animFileObj;
+            if (primaryFileTextureFromShadingGroup(shaderObjs[si], animFileObj))
+            {
+                MFnDependencyNode animFileFn(animFileObj);
+                bool useFrameExt = false;
+                MPlug ufePlug = animFileFn.findPlug("useFrameExtension", true);
+                if (!ufePlug.isNull()) ufePlug.getValue(useFrameExt);
+                if (useFrameExt)
+                {
+                    std::string samplePath;
+                    if (tryReadFileOrMovieTexturePath(animFileFn, samplePath)
+                        && collectNumericSequenceFramesFromSamplePath(samplePath, animFrameAbsPaths))
+                    {
+                        doAnimSwts = true;
+                        int orderEnum = 0;
+                        if (!readAnimatingTextureParamsFromFileNode(animFileFn, animFpsMin, animFpsMax, orderEnum))
+                        {
+                            animFpsMin
+                                = 8.f; // defaults when useFrameExtension is on but legacy attrs are missing
+                            animFpsMax = 8.f;
+                            orderEnum = 0;
+                        }
+                        animSwitcherTag = switcherTagForAnimOrder(orderEnum);
+                    }
+                }
+            }
+
             std::string texTree;
             std::string absImage;
 
-            // 1) Drop-in under textureWriteDir (<mesh>_d / <mesh>_mN.*) wins over the file node path so swapping a
-            //    .tga/.png beside the published DDS actually exports (viewport may still point at an older path).
-            absImage = tryFindImageInTextureWriteDir(texBase);
-            if (!absImage.empty())
+            if (doAnimSwts)
             {
-                texTree = ShaderExporter::publishDiffuseTextureForGame(absImage, texBase);
-                if (texTree.empty())
-                    std::cerr << "[ExportStaticMesh] Could not publish texture from textureWriteDir drop-in: " << absImage
-                              << "\n";
-                else
-                    std::cerr << "[ExportStaticMesh] Published diffuse from textureWriteDir (" << texBase << "): " << absImage
-                              << " -> " << texTree << "\n";
-            }
-
-            // 2) Maya shading network (file/aiImage) — viewport / source images when no drop-in.
-            if (texTree.empty() && tryGetDiffuseImageAbsolutePath(shaderObjs[si], absImage))
-            {
-                texTree = ShaderExporter::publishDiffuseTextureForGame(absImage, texBase);
-                if (texTree.empty())
-                    std::cerr << "[ExportStaticMesh] Could not publish texture (textureWriteDir / nvtt). Image: " << absImage
-                              << "\n";
-            }
-
-            // 3) swgTexturePath (often set on import): bake from disk when possible, not only a tree string.
-            if (texTree.empty())
-            {
-                std::string swgTex = getStringAttr(sgFn, "swgTexturePath");
-                if (!swgTex.empty())
+                animFrameTreePaths.clear();
+                bool framesPublished = true;
+                for (size_t fi = 0; fi < animFrameAbsPaths.size(); ++fi)
                 {
-                    if (looksLikeFilesystemImagePathLocal(swgTex))
+                    const std::string stem = frameStemForAnim(texBase, fi);
+                    const std::string ft =
+                        ShaderExporter::publishDiffuseTextureForGame(animFrameAbsPaths[fi], stem);
+                    if (ft.empty())
                     {
-                        texTree = ShaderExporter::publishDiffuseTextureForGame(swgTex, texBase);
-                        if (texTree.empty())
-                            std::cerr << "[ExportStaticMesh] Could not publish swgTexturePath image: " << swgTex << "\n";
+                        framesPublished = false;
+                        std::cerr << "[ExportStaticMesh] Animated texture: failed to publish frame " << fi << " from "
+                                  << animFrameAbsPaths[fi] << "\n";
+                        break;
                     }
-                    else
+                    animFrameTreePaths.push_back(ft);
+                }
+                if (!framesPublished)
+                {
+                    doAnimSwts = false;
+                    MGlobal::displayWarning(
+                        MString("SwgMayaEditor: animated texture export failed for \"") + outShaderTree.c_str()
+                        + "\" — check nvtt / paths. Falling back to static shader if possible.");
+                }
+                else
+                {
+                    texTree = animFrameTreePaths[0];
+                    absImage = animFrameAbsPaths[0];
+                    for (const std::string& ft : animFrameTreePaths)
                     {
-                        const std::string stem = textureStemFromSwgOrTreePath(swgTex);
-                        absImage = tryFindImageInTextureWriteDir(stem);
-                        if (!absImage.empty())
+                        const std::string ddsAbs = absolutePathForTextureWriteDirDds(ft);
+                        if (!ddsAbs.empty()) pushUniquePath(exportedDdsAbsPaths, ddsAbs);
+                    }
+                    std::cerr << "[ExportStaticMesh] Animated texture: " << animFrameAbsPaths.size()
+                              << " frames -> SWTS \"" << outShaderTree << "\" (fps " << animFpsMin << ".." << animFpsMax
+                              << ")\n";
+                }
+            }
+
+            if (!doAnimSwts)
+            {
+                // 1) Drop-in under textureWriteDir (<mesh>_d / <mesh>_mN.*) wins over the file node path so swapping a
+                //    .tga/.png beside the published DDS actually exports (viewport may still point at an older path).
+                absImage = tryFindImageInTextureWriteDir(texBase);
+                if (!absImage.empty())
+                {
+                    texTree = ShaderExporter::publishDiffuseTextureForGame(absImage, texBase);
+                    if (texTree.empty())
+                        std::cerr << "[ExportStaticMesh] Could not publish texture from textureWriteDir drop-in: " << absImage
+                                  << "\n";
+                    else
+                        std::cerr << "[ExportStaticMesh] Published diffuse from textureWriteDir (" << texBase << "): " << absImage
+                                  << " -> " << texTree << "\n";
+                }
+
+                // 2) Maya shading network (file/aiImage) — viewport / source images when no drop-in.
+                if (texTree.empty() && tryGetDiffuseImageAbsolutePath(shaderObjs[si], absImage))
+                {
+                    texTree = ShaderExporter::publishDiffuseTextureForGame(absImage, texBase);
+                    if (texTree.empty())
+                        std::cerr << "[ExportStaticMesh] Could not publish texture (textureWriteDir / nvtt). Image: " << absImage
+                                  << "\n";
+                }
+
+                // 3) swgTexturePath (often set on import): bake from disk when possible, not only a tree string.
+                if (texTree.empty())
+                {
+                    std::string swgTex = getStringAttr(sgFn, "swgTexturePath");
+                    if (!swgTex.empty())
+                    {
+                        if (looksLikeFilesystemImagePathLocal(swgTex))
                         {
-                            texTree = ShaderExporter::publishDiffuseTextureForGame(absImage, texBase);
+                            texTree = ShaderExporter::publishDiffuseTextureForGame(swgTex, texBase);
                             if (texTree.empty())
-                                std::cerr << "[ExportStaticMesh] Could not publish swgTexturePath disk file: " << absImage
-                                          << "\n";
-                            else
-                                std::cerr << "[ExportStaticMesh] Published diffuse from swgTexturePath basename in textureWriteDir: "
-                                          << absImage << " -> " << texTree << "\n";
+                                std::cerr << "[ExportStaticMesh] Could not publish swgTexturePath image: " << swgTex << "\n";
                         }
                         else
-                            texTree = normalizeTextureTreeForShader(swgTex);
+                        {
+                            const std::string stem = textureStemFromSwgOrTreePath(swgTex);
+                            absImage = tryFindImageInTextureWriteDir(stem);
+                            if (!absImage.empty())
+                            {
+                                texTree = ShaderExporter::publishDiffuseTextureForGame(absImage, texBase);
+                                if (texTree.empty())
+                                    std::cerr << "[ExportStaticMesh] Could not publish swgTexturePath disk file: " << absImage
+                                              << "\n";
+                                else
+                                    std::cerr << "[ExportStaticMesh] Published diffuse from swgTexturePath basename in textureWriteDir: "
+                                              << absImage << " -> " << texTree << "\n";
+                            }
+                            else
+                                texTree = normalizeTextureTreeForShader(swgTex);
+                        }
                     }
                 }
             }
 
             if (texTree.empty())
             {
-                MString surfaceType("unknown");
-                MPlug surfPlug = sgFn.findPlug("surfaceShader", true);
-                if (!surfPlug.isNull())
+                if (!doAnimSwts)
                 {
-                    MPlugArray scon;
-                    surfPlug.connectedTo(scon, true, false);
-                    if (scon.length() > 0)
+                    MString surfaceType("unknown");
+                    MPlug surfPlug = sgFn.findPlug("surfaceShader", true);
+                    if (!surfPlug.isNull())
                     {
-                        MStatus stSurf;
-                        MFnDependencyNode sfn(scon[0].node(), &stSurf);
-                        if (stSurf)
-                            surfaceType = sfn.typeName();
+                        MPlugArray scon;
+                        surfPlug.connectedTo(scon, true, false);
+                        if (scon.length() > 0)
+                        {
+                            MStatus stSurf;
+                            MFnDependencyNode sfn(scon[0].node(), &stSurf);
+                            if (stSurf)
+                                surfaceType = sfn.typeName();
+                        }
                     }
+                    std::cerr << "[ExportStaticMesh] No diffuse/DDS source for shading group \""
+                              << sgFn.name().asChar() << "\" (slot " << si << ", surface=" << surfaceType.asChar()
+                              << "). Connect file/aiImage to baseColor/color, or set swgTexturePath.\n";
                 }
-                std::cerr << "[ExportStaticMesh] No diffuse/DDS source for shading group \""
-                          << sgFn.name().asChar() << "\" (slot " << si << ", surface=" << surfaceType.asChar()
-                          << "). Connect file/aiImage to baseColor/color, or set swgTexturePath.\n";
             }
 
             if (!texTree.empty())
@@ -1874,10 +2185,6 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
                 if (!ddsAbsForBundle.empty())
                     pushUniquePath(exportedDdsAbsPaths, ddsAbsForBundle);
             }
-
-            std::string outShaderTree = std::string("shader/") + meshName;
-            if (geomMaterialCount > 1)
-                outShaderTree += "_sg" + std::to_string(si);
 
             std::string diffuseAbsForAlpha = absImage;
             if (diffuseAbsForAlpha.empty())
@@ -1891,23 +2198,71 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
             const bool transparent =
                 shadingGroupIndicatesTransparency(shaderObjs[si]) || fileAlphaHint;
 
-            const std::string cloned = ShaderExporter::exportShaderClonedFromPrototype(
-                outShaderTree, swgShaderPrototype, texTree, hue, !texTree.empty(), transparent);
+            std::string cloned;
+            std::string animBaseWrittenAbsForVerify;
+            if (doAnimSwts && !animFrameTreePaths.empty())
+            {
+                const std::string baseTree = outShaderTree + "_base";
+                const std::string baseCloned = ShaderExporter::exportShaderClonedFromPrototype(
+                    baseTree, swgShaderPrototype, animFrameTreePaths[0], hue, true, transparent);
+                if (baseCloned.empty())
+                {
+                    anyShaderRebuildFailed = true;
+                    std::cerr << "[ExportStaticMesh] Animated export: failed to write base shader " << baseTree << "\n";
+                    MGlobal::displayWarning(
+                        MString("SwgMayaEditor: failed base shader for animated export: ") + baseTree.c_str());
+                }
+                else
+                {
+                    animBaseWrittenAbsForVerify = baseCloned;
+                    pushUniquePath(exportedShaderAbsPaths, baseCloned);
+                    cloned = ShaderExporter::exportSwitchTextureAnimatedShader(
+                        outShaderTree, baseTree, animSwitcherTag, animFpsMin, animFpsMax, animFrameTreePaths);
+                    if (cloned.empty())
+                    {
+                        anyShaderRebuildFailed = true;
+                        std::cerr << "[ExportStaticMesh] Animated export: failed SWTS " << outShaderTree << "\n";
+                    }
+                }
+            }
+            else
+            {
+                cloned = ShaderExporter::exportShaderClonedFromPrototype(
+                    outShaderTree, swgShaderPrototype, texTree, hue, !texTree.empty(), transparent);
+            }
             if (!cloned.empty())
             {
-                if (!verifyShaderExportArtifacts(cloned, texTree, outShaderTree))
-                    return false;
+                if (doAnimSwts && !animFrameTreePaths.empty() && !animBaseWrittenAbsForVerify.empty())
+                {
+                    if (!verifyAnimatedShaderExportArtifacts(
+                            cloned, animBaseWrittenAbsForVerify, animFrameTreePaths, outShaderTree))
+                        return false;
 
-                g.shaderTemplateName = outShaderTree;
-                std::cerr << "[ExportStaticMesh] Rebuilt shader: " << outShaderTree
-                          << " proto=" << (swgShaderPrototype.empty() ? "<default>" : swgShaderPrototype.c_str())
-                          << " hueable=" << (hue ? "yes" : "no")
-                          << " transparent=" << (transparent ? "yes" : "no")
-                          << " tex=" << (texTree.empty() ? "<prototype>" : texTree.c_str()) << "\n";
-                pushUniquePath(exportedShaderAbsPaths, cloned);
-                MGlobal::displayInfo(
-                    MString("SwgMayaEditor: wrote shader - copy shader/ + texture/ + appearance/ as one tree into the viewer (same as setBaseDir): ")
-                    + cloned.c_str());
+                    g.shaderTemplateName = outShaderTree;
+                    std::cerr << "[ExportStaticMesh] Rebuilt animated shader (SWTS): " << outShaderTree
+                              << " base=" << (outShaderTree + "_base") << " frames=" << animFrameTreePaths.size()
+                              << " fps=" << animFpsMin << ".." << animFpsMax << "\n";
+                    pushUniquePath(exportedShaderAbsPaths, cloned);
+                    MGlobal::displayInfo(
+                        MString("SwgMayaEditor: wrote animated shader (SWTS) — copy shader/ + texture/ + appearance/ to viewer: ")
+                        + cloned.c_str());
+                }
+                else
+                {
+                    if (!verifyShaderExportArtifacts(cloned, texTree, outShaderTree))
+                        return false;
+
+                    g.shaderTemplateName = outShaderTree;
+                    std::cerr << "[ExportStaticMesh] Rebuilt shader: " << outShaderTree
+                              << " proto=" << (swgShaderPrototype.empty() ? "<default>" : swgShaderPrototype.c_str())
+                              << " hueable=" << (hue ? "yes" : "no")
+                              << " transparent=" << (transparent ? "yes" : "no")
+                              << " tex=" << (texTree.empty() ? "<prototype>" : texTree.c_str()) << "\n";
+                    pushUniquePath(exportedShaderAbsPaths, cloned);
+                    MGlobal::displayInfo(
+                        MString("SwgMayaEditor: wrote shader - copy shader/ + texture/ + appearance/ as one tree into the viewer (same as setBaseDir): ")
+                        + cloned.c_str());
+                }
             }
             else
             {

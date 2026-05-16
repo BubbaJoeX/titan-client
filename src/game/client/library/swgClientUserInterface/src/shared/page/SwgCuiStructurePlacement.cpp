@@ -15,6 +15,10 @@
 #include "UIManager.h"
 #include "UIMessage.h"
 #include "UIPage.h"
+#include "UIText.h"
+#include "UITypes.h"
+
+
 #include "clientGame/ClientCommandQueue.h"
 #include "clientGame/ClientObject.h"
 #include "clientGame/ClientWorld.h"
@@ -23,6 +27,7 @@
 #include "clientGame/ClientWorld.h"
 #include "clientGame/GroundScene.h"
 #include "clientGame/StructurePlacementCamera.h"
+#include "clientGame/StructurePlacementVisualState.h"
 #include "clientGraphics/RenderWorld.h"
 #include "clientUserInterface/CuiManager.h"
 #include "clientUserInterface/CuiMediatorFactory.h"
@@ -33,8 +38,11 @@
 #include "sharedGame/SharedInstallationObjectTemplate.h"
 #include "sharedGame/SharedTangibleObjectTemplate.h"
 #include "sharedNetworkMessages/ConsoleChannelMessages.h"
+#include "sharedCollision/CollisionProperty.h"
 #include "sharedObject/AppearanceTemplateList.h"
-#include "sharedObject/LotManager.h" 
+#include "sharedObject/LotManager.h"
+#include "sharedObject/ObjectList.h"
+#include "sharedObject/Object.h"
 #include "sharedObject/ObjectTemplateList.h"
 #include "sharedObject/PortalProperty.h"
 #include "sharedObject/PortalPropertyTemplate.h"
@@ -42,7 +50,28 @@
 #include "sharedObject/StructureFootprint.h"
 #include "sharedTerrain/TerrainObject.h"
 #include "swgClientUserInterface/SwgCuiMediatorTypes.h"
+#include <algorithm>
 #include <cstdio>
+
+//===================================================================
+
+namespace
+{
+	ObjectList::ObjectRenderSkipPredicate s_structurePlacement_priorRenderSkip = 0;
+	int                                   s_structurePlacement_renderPolicyDepth   = 0;
+
+	bool structurePlacement_objectRenderSkip (Object const * const object)
+	{
+		if (StructurePlacementVisualState::hidesFlora ())
+		{
+			CollisionProperty const * const cp = object->getCollisionProperty ();
+			if (cp && cp->isFlora ())
+				return true;
+		}
+
+		return s_structurePlacement_priorRenderSkip && s_structurePlacement_priorRenderSkip (object);
+	}
+}
 
 //===================================================================
 
@@ -111,13 +140,24 @@ SwgCuiStructurePlacement::SwgCuiStructurePlacement (UIPage & page) :
 	m_structureObjectTemplate (0),
 	m_structureFootprint (0),
 	m_structureObject (0),
-	m_rotationType (RT_0)
+	m_rotationType (RT_0),
+	m_orientationHelpText (0)
 {
 	getPage ().SetSelectable (true);
 
 	UIButton * button = 0;
 	getCodeDataObject (TUIButton, button, "cancelbutton");
 	button->SetSelectable (true);
+
+	m_orientationHelpText = new UIText;
+	m_orientationHelpText->SetName (UINarrowString ("StructurePlacementCompassHelp"));
+	m_orientationHelpText->SetPreLocalized (true);
+	IGNORE_RETURN (m_orientationHelpText->SetProperty (UIText::PropertyName::Style, Unicode::narrowToWide ("default_12")));
+	m_orientationHelpText->SetTextColor (UIColor::white);
+	m_orientationHelpText->SetTextFlag (UIText::TF_drawLast, true);
+	getPage ().AddChild (m_orientationHelpText);
+	m_orientationHelpText->Link ();
+	m_orientationHelpText->SetVisible (false);
 }
 
 //-------------------------------------------------------------------
@@ -127,6 +167,7 @@ SwgCuiStructurePlacement::~SwgCuiStructurePlacement ()
 	DEBUG_FATAL (m_structureSharedObjectTemplateName, ("SwgCuiStructurePlacement::~SwgCuiStructurePlacement(): m_structureSharedObjectTemplateName should be 0"));
 	DEBUG_FATAL (m_structureObjectTemplate, ("SwgCuiStructurePlacement::~SwgCuiStructurePlacement(): m_structureObjectTemplate should be 0"));
 	DEBUG_FATAL (m_structureObject, ("SwgCuiStructurePlacement::~SwgCuiStructurePlacement(): m_structureObject should be 0"));
+	m_orientationHelpText = 0;
 }
 
 //-------------------------------------------------------------------
@@ -143,7 +184,17 @@ bool SwgCuiStructurePlacement::OnMessage (UIWidget* context, const UIMessage& ms
 		StructurePlacementCamera* const camera = safe_cast<StructurePlacementCamera*> (groundScene->getCamera (GroundScene::CI_structurePlacement));
 		camera->setMouseCoordinates (msg.MouseCoords.x, msg.MouseCoords.y);
 
-		if (msg.Type == UIMessage::KeyDown || msg.Type == UIMessage::RightMouseDown)
+		if (msg.Type == UIMessage::RightMouseDown)
+		{
+			//-- modify rotation (right-click rotates forward)
+			if (m_rotationType == RT_270)
+				m_rotationType = RT_0;
+			else
+				m_rotationType = static_cast<RotationType> (static_cast<int> (m_rotationType) + 1);
+
+			camera->setRotation (m_rotationType);
+		}
+		else if (msg.Type == UIMessage::KeyDown && !msg.Modifiers.isControlDown ())
 		{
 			bool updateStructure = false;
 
@@ -158,7 +209,7 @@ bool SwgCuiStructurePlacement::OnMessage (UIWidget* context, const UIMessage& ms
 				updateStructure = true;
 			}
 
-			if (msg.Keystroke == UIMessage::PageDown || msg.Type == UIMessage::RightMouseDown)
+			if (msg.Keystroke == UIMessage::PageDown)
 			{
 				//-- modify rotation
 				if (m_rotationType == RT_270)
@@ -214,6 +265,9 @@ bool SwgCuiStructurePlacement::OnMessage (UIWidget* context, const UIMessage& ms
 
 void SwgCuiStructurePlacement::performActivate ()
 {
+	StructurePlacementVisualState::setHelpRefreshCallback (&SwgCuiStructurePlacement::visualHelpRefresh, this);
+	StructurePlacementVisualState::placementSessionBegin ();
+
 	//-- setup callbacks
 	getPage ().AddCallback (this);
 
@@ -233,12 +287,28 @@ void SwgCuiStructurePlacement::performActivate ()
 	}
 
 	m_rotationType = RT_0;
+
+	installGlobalRenderSkipForPlacement ();
+
+	if (m_orientationHelpText)
+	{
+		layoutOrientationHelpText ();
+		updateOrientationHelpText ();
+		m_orientationHelpText->SetVisible (true);
+	}
 }
 
 //-------------------------------------------------------------------
 
 void SwgCuiStructurePlacement::performDeactivate ()
 {
+	StructurePlacementVisualState::placementSessionEnd ();
+
+	restoreGlobalRenderSkipFromPlacement ();
+
+	if (m_orientationHelpText)
+		m_orientationHelpText->SetVisible (false);
+
 	//-- remove callbacks
 	getPage ().RemoveCallback (this);
 
@@ -362,6 +432,83 @@ bool SwgCuiStructurePlacement::setData (const NetworkId& deedNetworkId, const ch
 
 //===================================================================
 // PRIVATE SwgCuiStructurePlacement
+//===================================================================
+
+void SwgCuiStructurePlacement::layoutOrientationHelpText ()
+{
+	UISize const pageSize = getPage ().GetSize ();
+
+	long const margin    = 8L;
+	long const wrapWidth = std::max (100L, pageSize.x - margin * 2L);
+	long const textHeight = 180L;
+
+	if (m_orientationHelpText)
+	{
+		m_orientationHelpText->SetLocation (UIPoint (margin, margin));
+		m_orientationHelpText->SetSize     (UISize (wrapWidth, textHeight));
+	}
+}
+
+//-------------------------------------------------------------------
+
+void SwgCuiStructurePlacement::updateOrientationHelpText ()
+{
+	if (!m_orientationHelpText)
+		return;
+
+	Unicode::String line =
+		Unicode::narrowToWide(
+		"PLAYER FACING: bold gold arrow at the pivot lot shows your character's facing direction.\r\n"
+		"Ground compass at ghost: cyan N (+Z) | magenta E (+X) | red S (-Z) | yellow W (-X).\r\n"
+		"Mouse wheel: zoom view in/out (distance is clamped).\r\n"
+		"PgUp / PgDn or right-click: rotate structure.\r\n"
+		"Ctrl+H: hide/show grass and plant overlay (visual only).\r\n");
+
+	if (StructurePlacementVisualState::hidesFlora ())
+		line += Unicode::narrowToWide ("Status: flora overlay hidden (placement and collision logic unchanged).\r\n");
+	else
+		line += Unicode::narrowToWide ("Status: flora visible.\r\n");
+
+	m_orientationHelpText->SetLocalText (line);
+}
+
+//-------------------------------------------------------------------
+
+void SwgCuiStructurePlacement::visualHelpRefresh (void * const context)
+{
+	SwgCuiStructurePlacement * const self = static_cast<SwgCuiStructurePlacement *>(context);
+	if (self && self->m_orientationHelpText)
+		self->updateOrientationHelpText ();
+}
+
+//-------------------------------------------------------------------
+
+void SwgCuiStructurePlacement::installGlobalRenderSkipForPlacement ()
+{
+	if (s_structurePlacement_renderPolicyDepth == 0)
+	{
+		s_structurePlacement_priorRenderSkip = ObjectList::getObjectRenderSkipPredicate ();
+		ObjectList::setObjectRenderSkipPredicate (&structurePlacement_objectRenderSkip);
+	}
+
+	++s_structurePlacement_renderPolicyDepth;
+}
+
+//-------------------------------------------------------------------
+
+void SwgCuiStructurePlacement::restoreGlobalRenderSkipFromPlacement ()
+{
+	DEBUG_FATAL (s_structurePlacement_renderPolicyDepth <= 0, ("SwgCuiStructurePlacement::restoreGlobalRenderSkipFromPlacement: policy depth mismatch"));
+
+	--s_structurePlacement_renderPolicyDepth;
+
+	if (s_structurePlacement_renderPolicyDepth == 0)
+	{
+		ObjectList::setObjectRenderSkipPredicate (s_structurePlacement_priorRenderSkip);
+		s_structurePlacement_priorRenderSkip = 0;
+	}
+}
+
 //===================================================================
 
 void SwgCuiStructurePlacement::cleanup ()

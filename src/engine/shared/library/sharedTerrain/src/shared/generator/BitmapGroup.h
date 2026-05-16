@@ -32,6 +32,8 @@ public:
 	//--
 	const char*           getFamilyName (int familyId) const;
 	void                  setFamilyName (int familyId, const char* name);
+	/// Terrain bitmap stamp source basename (terrain/<basename>.tga), or empty until first load.
+	const char*           getFamilyBitmapBasename (int familyId) const;
 	void                  loadFamilyBitmap(int familyId, const char* name);
 	const Image*   getFamilyBitmap (int familyId) const;
 	Image*         getFamilyBitmap (int familyId);

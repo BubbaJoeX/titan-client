@@ -303,14 +303,15 @@ namespace
             return false;
 
         unsigned char header[18] = {};
-        header[2] = 2;   // Uncompressed RGB
+        header[2] = 2;   // Uncompressed true-color
         header[12] = width & 0xFF;
         header[13] = (width >> 8) & 0xFF;
         header[14] = height & 0xFF;
         header[15] = (height >> 8) & 0xFF;
-        header[16] = 32;  // 32 bpp
-        // 8 alpha attribute bits (0-3) + top-left origin (bit 5): matches prior MayaModern behavior and most viewers.
-        header[17] = 40;
+        header[16] = 32;  // 32 bpp (BGRA order in payload)
+        // Bits 0–3: attribute (alpha) channel depth = 8. Bit 5: top-left origin (not bottom-up).
+        // Without alpha depth = 8, GIMP and others treat A as fully opaque or ignore premultiplication hints.
+        header[17] = static_cast<unsigned char>(8 | (1 << 5));
 
         if (fwrite(header, 1, 18, f) != 18)
         {
@@ -328,6 +329,16 @@ namespace
             }
         }
 
+        // TGA 2.0 footer — marks file as TRUEVISION-XFILE so GIMP/Inkscape reliably load 32-bit alpha as RGBA.
+        static const unsigned char kTga20Footer[26] = {
+            0, 0, 0, 0,
+            0, 0, 0, 0,
+            'T', 'R', 'U', 'E', 'V', 'I', 'S', 'I', 'O', 'N', '-', 'X', 'F', 'I', 'L', 'E', '.', 0};
+        if (fwrite(kTga20Footer, 1, sizeof(kTga20Footer), f) != sizeof(kTga20Footer))
+        {
+            fclose(f);
+            return false;
+        }
         fclose(f);
         return true;
     }
@@ -457,7 +468,12 @@ std::string DdsToTgaConverter::convertToTga(const std::string& ddsPath, const st
         const unsigned long rMask = header.ddspf.dwRBitMask;
         const unsigned long gMask = header.ddspf.dwGBitMask;
         const unsigned long bMask = header.ddspf.dwBBitMask;
-        const unsigned long aMask = header.ddspf.dwABitMask;
+        // Some writers set DDPF_ALPHAPIXELS but leave dwABitMask zero; preserve A8 in high byte for A8R8G8B8.
+        unsigned long aMask = header.ddspf.dwABitMask;
+        const bool hasAlphaPixelsFlag = (header.ddspf.dwFlags & 0x1) != 0;
+        if (aMask == 0 && header.ddspf.dwRGBBitCount == 32 && hasAlphaPixelsFlag && rMask == 0x00FF0000UL &&
+            gMask == 0x0000FF00UL && bMask == 0x000000FFUL)
+            aMask = 0xFF000000UL;
 
         const size_t rowBytes = static_cast<size_t>(width) * 4;
         unsigned long pitch = static_cast<unsigned long>(rowBytes);

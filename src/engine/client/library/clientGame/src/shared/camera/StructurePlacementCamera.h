@@ -64,9 +64,9 @@ private:
 	bool                      m_keys [K_COUNT];
 	ConstWatcher<Object>      m_target;
 	Vector                    m_pivot;
-	float                     m_zoom;
 	int                       m_mouseX;
 	int                       m_mouseY;
+	float                     m_placementViewDistance;
 	const StructureFootprint* m_structureFootprint;
 	mutable Object*           m_structureObject;
 	mutable Vector            m_createLocation;

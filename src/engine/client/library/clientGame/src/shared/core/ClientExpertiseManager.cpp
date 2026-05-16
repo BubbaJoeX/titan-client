@@ -22,6 +22,13 @@
 #include "sharedUtility/DataTableManager.h"
 
 #include <algorithm>
+#include <cctype>
+#include <cstdint>
+#include <sstream>
+#include <vector>
+#include <set>
+
+#include <zlib.h>
 
 //======================================================================
 
@@ -52,7 +59,162 @@ namespace ClientExpertiseManagerNamespace
 
 	std::vector<std::string> s_allocatedExpertises;
 
-	std::string s_emptyString;	
+	std::string s_emptyString;
+
+	char const cs_buildMagic[] = "SWGEXP1";
+
+	void trimBuildToken(std::string &token)
+	{
+		std::string::size_type a = 0;
+		while (a < token.size() && (token[a] == ' ' || token[a] == '\t' || token[a] == '\r'))
+			++a;
+		std::string::size_type b = token.size();
+		while (b > a && (token[b - 1] == ' ' || token[b - 1] == '\t' || token[b - 1] == '\r'))
+			--b;
+		if (a != 0 || b != token.size())
+			token = token.substr(a, b - a);
+	}
+
+	bool playerTreeIdAllowed(int treeId)
+	{
+		ClientExpertiseManager::TreeIdList const & allowed = ClientExpertiseManager::getExpertiseTreesForPlayer();
+		for (ClientExpertiseManager::TreeIdList::const_iterator it = allowed.begin(); it != allowed.end(); ++it)
+		{
+			if (*it == treeId)
+				return true;
+		}
+		return false;
+	}
+
+	bool compareExpertiseSkillNames(std::string const &a, std::string const &b)
+	{
+		int const ta = ExpertiseManager::getExpertiseTree(a);
+		int const tb = ExpertiseManager::getExpertiseTree(b);
+		if (ta != tb)
+			return ta < tb;
+		int const tia = ExpertiseManager::getExpertiseTier(a);
+		int const tib = ExpertiseManager::getExpertiseTier(b);
+		if (tia != tib)
+			return tia < tib;
+		int const ga = ExpertiseManager::getExpertiseGrid(a);
+		int const gb = ExpertiseManager::getExpertiseGrid(b);
+		if (ga != gb)
+			return ga < gb;
+		int const ra = ExpertiseManager::getExpertiseRank(a);
+		int const rb = ExpertiseManager::getExpertiseRank(b);
+		if (ra != rb)
+			return ra < rb;
+		return a < b;
+	}
+
+	void collectFullExpertiseBuildSkillNames(std::set<std::string> & out)
+	{
+		out.clear();
+		CreatureObject const * const player = Game::getPlayerCreature();
+		if (!player)
+			return;
+		CreatureObject::SkillList expertiseList;
+		ClientExpertiseManager::getExpertisesForPlayer(expertiseList);
+		for (CreatureObject::SkillList::const_iterator i = expertiseList.begin(); i != expertiseList.end(); ++i)
+		{
+			if (*i)
+			{
+				std::string const &n = (*i)->getSkillName();
+				if (n != "expertise")
+					out.insert(n);
+			}
+		}
+		for (std::vector<std::string>::const_iterator j = s_allocatedExpertises.begin(); j != s_allocatedExpertises.end(); ++j)
+		{
+			if (!j->empty())
+				out.insert(*j);
+		}
+	}
+
+	bool parseBuildBody(std::string const & sourceSkillTemplate, std::vector<std::string> const & rawSkills,
+	                    std::string & resultMessage)
+	{
+		CreatureObject const * const player = Game::getPlayerCreature();
+		if (!player)
+		{
+			resultMessage = "No player creature.";
+			return false;
+		}
+
+		std::string const currentTemplate = CuiSkillManager::getSkillTemplate();
+		bool professionMismatch = !sourceSkillTemplate.empty() && !currentTemplate.empty() &&
+		                          sourceSkillTemplate != currentTemplate;
+
+		std::set<std::string> targetSkills;
+		int skippedUnknown = 0;
+		int skippedWrongTree = 0;
+
+		for (std::vector<std::string>::const_iterator it = rawSkills.begin(); it != rawSkills.end(); ++it)
+		{
+			std::string name = *it;
+			trimBuildToken(name);
+			if (name.empty())
+				continue;
+			SkillObject const * sk = SkillManager::getInstance().getSkill(name);
+			if (!sk || !ExpertiseManager::isExpertise(sk))
+			{
+				++skippedUnknown;
+				continue;
+			}
+			int const tree = ExpertiseManager::getExpertiseTree(name);
+			if (!playerTreeIdAllowed(tree))
+			{
+				++skippedWrongTree;
+				continue;
+			}
+			targetSkills.insert(name);
+		}
+
+		ClientExpertiseManager::clearAllocatedExpertises();
+
+		std::vector<std::string> ordered(targetSkills.begin(), targetSkills.end());
+		std::sort(ordered.begin(), ordered.end(), compareExpertiseSkillNames);
+
+		int allocatedPasses = 0;
+		bool progress = true;
+		while (progress)
+		{
+			progress = false;
+			for (std::vector<std::string>::const_iterator o = ordered.begin(); o != ordered.end(); ++o)
+			{
+				if (ClientExpertiseManager::playerHasExpertise(*o))
+					continue;
+				if (ClientExpertiseManager::hasAllocatedExpertise(*o))
+					continue;
+				if (ClientExpertiseManager::allocateExpertise(*o, true))
+				{
+					progress = true;
+					++allocatedPasses;
+				}
+			}
+		}
+
+		int couldNotAllocate = 0;
+		for (std::vector<std::string>::const_iterator o = ordered.begin(); o != ordered.end(); ++o)
+		{
+			if (!ClientExpertiseManager::playerHasExpertise(*o) && !ClientExpertiseManager::hasAllocatedExpertise(*o))
+				++couldNotAllocate;
+		}
+
+		std::ostringstream msg;
+		if (professionMismatch)
+			msg << "Warning: build is for profession \"" << sourceSkillTemplate << "\" but you are \"" << currentTemplate << "\".\n";
+		msg << "Imported toward " << (ordered.size() - couldNotAllocate) << " of " << ordered.size()
+		    << " valid expertise skills (" << allocatedPasses << " new allocations pending train).";
+		if (skippedUnknown)
+			msg << "\nSkipped " << skippedUnknown << " unknown or non-expertise names.";
+		if (skippedWrongTree)
+			msg << "\nSkipped " << skippedWrongTree << " skills not in your expertise trees.";
+		if (couldNotAllocate)
+			msg << "\nCould not reach " << couldNotAllocate << " skills (points, prerequisites, or tier gates).";
+		resultMessage = msg.str();
+		return true;
+	}
 };
 
 using namespace ClientExpertiseManagerNamespace;
@@ -1188,6 +1350,436 @@ void ClientExpertiseManager::sendAllocatedExpertiseListAndClear()
 	erm.setClearAllExpertisesFirst(false);
 	GameNetwork::send(erm, true);
 	s_allocatedExpertises.clear();
+}
+
+//----------------------------------------------------------------------
+
+namespace
+{
+	static char const cs_opaquePrefix[] = "SWG";
+
+	static uint8_t const cs_opaqueWireRaw = 1;
+	static uint8_t const cs_opaqueWireZlib = 2;
+
+	static bool zlibUncompressPayload(uint8_t const * compressed, size_t compressedLen, std::vector<uint8_t> & out, std::string & err)
+	{
+		if (!compressed || compressedLen == 0)
+		{
+			err = "Invalid expertise code (empty compressed block).";
+			return false;
+		}
+		for (size_t bufLen = std::max(compressedLen * 4, size_t(4096)); bufLen <= 1024u * 1024u;
+		     bufLen = (bufLen < 256u * 1024u) ? bufLen * 2u : bufLen + bufLen / 2u)
+		{
+			out.resize(bufLen);
+			uLongf destLen = static_cast<uLongf>(bufLen);
+			int const zr = uncompress(out.data(), &destLen, compressed, static_cast<uLong>(compressedLen));
+			if (zr == Z_OK)
+			{
+				out.resize(static_cast<size_t>(destLen));
+				return true;
+			}
+			if (zr != Z_BUF_ERROR && zr != Z_MEM_ERROR)
+				break;
+		}
+		err = "Invalid expertise code (zlib decompress failed).";
+		return false;
+	}
+
+	static int base64UrlDecodeChar(unsigned char c)
+	{
+		if (c >= 'A' && c <= 'Z')
+			return static_cast<int>(c - 'A');
+		if (c >= 'a' && c <= 'z')
+			return static_cast<int>(c - 'a' + 26);
+		if (c >= '0' && c <= '9')
+			return static_cast<int>(c - '0' + 52);
+		if (c == '-')
+			return 62;
+		if (c == '_')
+			return 63;
+		return -1;
+	}
+
+	static void appendBase64UrlEncoded(std::vector<uint8_t> const & data, std::string & out)
+	{
+		static char const digits[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+		size_t const len = data.size();
+		for (size_t i = 0; i < len; i += 3)
+		{
+			uint32_t const b = (static_cast<uint32_t>(data[i]) << 16) |
+				(i + 1 < len ? static_cast<uint32_t>(data[i + 1]) << 8 : 0) |
+				(i + 2 < len ? static_cast<uint32_t>(data[i + 2]) : 0);
+			out += digits[(b >> 18) & 63];
+			out += digits[(b >> 12) & 63];
+			if (i + 1 < len)
+				out += digits[(b >> 6) & 63];
+			if (i + 2 < len)
+				out += digits[b & 63];
+		}
+	}
+
+	static bool base64UrlDecode(std::string const & in, std::vector<uint8_t> & out)
+	{
+		std::string s;
+		s.reserve(in.size());
+		for (size_t k = 0; k < in.size(); ++k)
+		{
+			unsigned char const c = static_cast<unsigned char>(in[k]);
+			if (std::isspace(c))
+				continue;
+			s += static_cast<char>(c);
+		}
+		if (s.empty())
+			return false;
+		switch (s.size() % 4)
+		{
+		case 2:
+			s += "==";
+			break;
+		case 3:
+			s += "=";
+			break;
+		case 1:
+			return false;
+		default:
+			break;
+		}
+		out.clear();
+		out.reserve(s.size() * 3 / 4);
+		for (size_t k = 0; k < s.size(); k += 4)
+		{
+			if (k + 4 > s.size())
+				return false;
+			int const v0 = base64UrlDecodeChar(static_cast<unsigned char>(s[k]));
+			int const v1 = base64UrlDecodeChar(static_cast<unsigned char>(s[k + 1]));
+			unsigned char const c2 = static_cast<unsigned char>(s[k + 2]);
+			unsigned char const c3 = static_cast<unsigned char>(s[k + 3]);
+			if (v0 < 0 || v1 < 0)
+				return false;
+			if (c2 == '=' && c3 == '=')
+			{
+				uint32_t const triple = (static_cast<uint32_t>(v0) << 18) | (static_cast<uint32_t>(v1) << 12);
+				out.push_back(static_cast<uint8_t>((triple >> 16) & 0xFF));
+			}
+			else if (c3 == '=')
+			{
+				int const v2 = base64UrlDecodeChar(c2);
+				if (v2 < 0)
+					return false;
+				uint32_t const triple =
+					(static_cast<uint32_t>(v0) << 18) | (static_cast<uint32_t>(v1) << 12) | (static_cast<uint32_t>(v2) << 6);
+				out.push_back(static_cast<uint8_t>((triple >> 16) & 0xFF));
+				out.push_back(static_cast<uint8_t>((triple >> 8) & 0xFF));
+			}
+			else
+			{
+				int const v2 = base64UrlDecodeChar(c2);
+				int const v3 = base64UrlDecodeChar(c3);
+				if (v2 < 0 || v3 < 0)
+					return false;
+				uint32_t const triple = (static_cast<uint32_t>(v0) << 18) | (static_cast<uint32_t>(v1) << 12) |
+					(static_cast<uint32_t>(v2) << 6) | static_cast<uint32_t>(v3);
+				out.push_back(static_cast<uint8_t>((triple >> 16) & 0xFF));
+				out.push_back(static_cast<uint8_t>((triple >> 8) & 0xFF));
+				out.push_back(static_cast<uint8_t>(triple & 0xFF));
+			}
+		}
+		return true;
+	}
+
+	static void appendLe16(std::vector<uint8_t> & blob, uint16_t v)
+	{
+		blob.push_back(static_cast<uint8_t>(v & 0xFF));
+		blob.push_back(static_cast<uint8_t>((v >> 8) & 0xFF));
+	}
+
+	static bool readLe16(std::vector<uint8_t> const & blob, size_t & o, uint16_t & v)
+	{
+		if (o + 2 > blob.size())
+			return false;
+		v = static_cast<uint16_t>(blob[o] | (static_cast<uint16_t>(blob[o + 1]) << 8));
+		o += 2;
+		return true;
+	}
+
+	static bool parseOpaqueExpertiseCode(std::string raw, std::string & templateOut, std::vector<std::string> & skillsOut, std::string & err)
+	{
+		while (!raw.empty() && (raw[0] == ' ' || raw[0] == '\t' || raw[0] == '\r' || raw[0] == '\n'))
+			raw.erase(0, 1);
+		while (!raw.empty() && (raw[raw.size() - 1] == ' ' || raw[raw.size() - 1] == '\t' || raw[raw.size() - 1] == '\r' ||
+		                        raw[raw.size() - 1] == '\n'))
+			raw.erase(raw.size() - 1, 1);
+		if (raw.size() < 5)
+		{
+			err.clear();
+			return false;
+		}
+		for (size_t p = 0; p < 3; ++p)
+			if (p < raw.size())
+				raw[p] = static_cast<char>(std::toupper(static_cast<unsigned char>(raw[p])));
+		if (raw.compare(0, 3, cs_opaquePrefix) != 0)
+		{
+			err.clear();
+			return false;
+		}
+		char const ver = raw[3];
+		if (!std::isdigit(static_cast<unsigned char>(ver)))
+		{
+			err.clear();
+			return false;
+		}
+		if (ver != '1')
+		{
+			err = "Unsupported expertise code version.";
+			return false;
+		}
+		std::string const b64 = raw.substr(4);
+		std::vector<uint8_t> bin;
+		if (!base64UrlDecode(b64, bin) || bin.empty())
+		{
+			err = "Invalid expertise code (corrupt encoding).";
+			return false;
+		}
+		if (bin[0] == cs_opaqueWireZlib)
+		{
+			if (bin.size() < 2)
+			{
+				err = "Invalid expertise code payload.";
+				return false;
+			}
+			std::vector<uint8_t> decomp;
+			if (!zlibUncompressPayload(bin.data() + 1, bin.size() - 1, decomp, err))
+				return false;
+			bin.swap(decomp);
+		}
+		else if (bin[0] != cs_opaqueWireRaw)
+		{
+			err = "Invalid expertise code payload.";
+			return false;
+		}
+		size_t o = 0;
+		if (o >= bin.size() || bin[o] != 1)
+		{
+			err = "Invalid expertise code payload.";
+			return false;
+		}
+		++o;
+		uint16_t tlen = 0;
+		if (!readLe16(bin, o, tlen))
+		{
+			err = "Invalid expertise code (truncated).";
+			return false;
+		}
+		if (o + static_cast<size_t>(tlen) > bin.size())
+		{
+			err = "Invalid expertise code (truncated).";
+			return false;
+		}
+		templateOut.assign(reinterpret_cast<char const *>(&bin[o]), tlen);
+		o += tlen;
+		uint16_t nskills = 0;
+		if (!readLe16(bin, o, nskills))
+		{
+			err = "Invalid expertise code (truncated).";
+			return false;
+		}
+		skillsOut.clear();
+		for (uint16_t i = 0; i < nskills; ++i)
+		{
+			uint16_t slen = 0;
+			if (!readLe16(bin, o, slen))
+			{
+				err = "Invalid expertise code (truncated).";
+				return false;
+			}
+			if (o + static_cast<size_t>(slen) > bin.size())
+			{
+				err = "Invalid expertise code (truncated).";
+				return false;
+			}
+			std::string sk(reinterpret_cast<char const *>(&bin[o]), slen);
+			o += slen;
+			skillsOut.push_back(sk);
+		}
+		if (o != bin.size())
+		{
+			err = "Invalid expertise code (extra data).";
+			return false;
+		}
+		err.clear();
+		return true;
+	}
+
+	void splitByChar(std::string const &s, char delim, std::vector<std::string> &out)
+	{
+		out.clear();
+		std::string::size_type a = 0;
+		while (a <= s.size())
+		{
+			std::string::size_type b = s.find(delim, a);
+			if (b == std::string::npos)
+			{
+				out.push_back(s.substr(a));
+				break;
+			}
+			out.push_back(s.substr(a, b - a));
+			a = b + 1;
+		}
+	}
+
+	bool parseExpertiseBuildImportText(std::string raw, std::string & templateOut, std::vector<std::string> & skillsOut, std::string & err)
+	{
+		while (!raw.empty() && (raw[0] == ' ' || raw[0] == '\t' || raw[0] == '\r' || raw[0] == '\n'))
+			raw.erase(0, 1);
+		while (!raw.empty() && (raw[raw.size() - 1] == ' ' || raw[raw.size() - 1] == '\t' || raw[raw.size() - 1] == '\r' ||
+		                        raw[raw.size() - 1] == '\n'))
+			raw.erase(raw.size() - 1, 1);
+		if (raw.empty())
+		{
+			err = "Empty build data.";
+			return false;
+		}
+
+		std::string opaqueErr;
+		if (parseOpaqueExpertiseCode(raw, templateOut, skillsOut, opaqueErr))
+			return true;
+		if (!opaqueErr.empty())
+		{
+			err = opaqueErr;
+			return false;
+		}
+
+		bool const usePipe =
+			(raw.find('\n') == std::string::npos && raw.find('\r') == std::string::npos && raw.find('|') != std::string::npos);
+
+		if (usePipe)
+		{
+			std::vector<std::string> parts;
+			splitByChar(raw, '|', parts);
+			if (parts.size() < 3)
+			{
+				err = "Invalid compact build code (expected SWGEXP1|<profession>|<skill>|...).";
+				return false;
+			}
+			ClientExpertiseManagerNamespace::trimBuildToken(parts[0]);
+			if (parts[0] != ClientExpertiseManagerNamespace::cs_buildMagic)
+			{
+				err = "Unknown build format (must start with SWGEXP1).";
+				return false;
+			}
+			templateOut = parts[1];
+			ClientExpertiseManagerNamespace::trimBuildToken(templateOut);
+			skillsOut.clear();
+			for (size_t i = 2; i < parts.size(); ++i)
+			{
+				std::string sk = parts[i];
+				ClientExpertiseManagerNamespace::trimBuildToken(sk);
+				if (!sk.empty())
+					skillsOut.push_back(sk);
+			}
+			return true;
+		}
+
+		std::vector<std::string> lines;
+		std::string::size_type pos = 0;
+		while (pos < raw.size())
+		{
+			std::string::size_type const end = raw.find_first_of("\r\n", pos);
+			std::string line = (end == std::string::npos) ? raw.substr(pos) : raw.substr(pos, end - pos);
+			if (end == std::string::npos)
+				pos = raw.size();
+			else
+			{
+				pos = end + 1;
+				if (end < raw.size() && raw[end] == '\r' && pos < raw.size() && raw[pos] == '\n')
+					++pos;
+			}
+			ClientExpertiseManagerNamespace::trimBuildToken(line);
+			if (!line.empty() && line[0] != '#')
+				lines.push_back(line);
+		}
+		if (lines.size() < 2)
+		{
+			err = "Invalid build text (need SWGEXP1 header and profession line).";
+			return false;
+		}
+		if (lines[0] != ClientExpertiseManagerNamespace::cs_buildMagic)
+		{
+			err = "Unknown build format (first line must be SWGEXP1).";
+			return false;
+		}
+		templateOut = lines[1];
+		skillsOut.assign(lines.begin() + 2, lines.end());
+		return true;
+	}
+
+	std::string buildOpaqueExpertiseShareCode(std::string const & tpl, std::vector<std::string> const & ordered)
+	{
+		std::vector<uint8_t> blob;
+		blob.push_back(1);
+		appendLe16(blob, static_cast<uint16_t>(tpl.size()));
+		blob.insert(blob.end(), tpl.begin(), tpl.end());
+		appendLe16(blob, static_cast<uint16_t>(ordered.size()));
+		for (size_t i = 0; i < ordered.size(); ++i)
+		{
+			std::string const & sk = ordered[i];
+			appendLe16(blob, static_cast<uint16_t>(sk.size()));
+			blob.insert(blob.end(), sk.begin(), sk.end());
+		}
+		uLongf compBound = compressBound(static_cast<uLong>(blob.size()));
+		std::vector<uint8_t> zlibBuf(compBound);
+		int const zr = compress2(zlibBuf.data(), &compBound, blob.data(), static_cast<uLong>(blob.size()), Z_DEFAULT_COMPRESSION);
+		std::vector<uint8_t> wire;
+		if (zr == Z_OK)
+		{
+			zlibBuf.resize(static_cast<size_t>(compBound));
+			wire.reserve(1 + zlibBuf.size());
+			wire.push_back(cs_opaqueWireZlib);
+			wire.insert(wire.end(), zlibBuf.begin(), zlibBuf.end());
+		}
+		else
+			wire.swap(blob);
+		std::string result = std::string(cs_opaquePrefix) + '1';
+		appendBase64UrlEncoded(wire, result);
+		return result;
+	}
+}
+
+std::string ClientExpertiseManager::exportExpertiseBuildCompactLine()
+{
+	std::set<std::string> names;
+	ClientExpertiseManagerNamespace::collectFullExpertiseBuildSkillNames(names);
+	std::vector<std::string> ordered(names.begin(), names.end());
+	std::sort(ordered.begin(), ordered.end(), ClientExpertiseManagerNamespace::compareExpertiseSkillNames);
+	return buildOpaqueExpertiseShareCode(CuiSkillManager::getSkillTemplate(), ordered);
+}
+
+std::string ClientExpertiseManager::exportExpertiseBuildMultiline()
+{
+	std::set<std::string> names;
+	ClientExpertiseManagerNamespace::collectFullExpertiseBuildSkillNames(names);
+	std::vector<std::string> ordered(names.begin(), names.end());
+	std::sort(ordered.begin(), ordered.end(), ClientExpertiseManagerNamespace::compareExpertiseSkillNames);
+	std::ostringstream os;
+	os << ClientExpertiseManagerNamespace::cs_buildMagic << '\n';
+	os << CuiSkillManager::getSkillTemplate() << '\n';
+	for (size_t i = 0; i < ordered.size(); ++i)
+		os << ordered[i] << '\n';
+	return os.str();
+}
+
+bool ClientExpertiseManager::importExpertiseBuildFromText(std::string const & rawText, std::string & resultMessage)
+{
+	std::string tpl;
+	std::vector<std::string> skills;
+	std::string err;
+	if (!parseExpertiseBuildImportText(rawText, tpl, skills, err))
+	{
+		resultMessage = err;
+		return false;
+	}
+	return ClientExpertiseManagerNamespace::parseBuildBody(tpl, skills, resultMessage);
 }
 
 //----------------------------------------------------------------------

@@ -285,8 +285,17 @@ add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
         ${CMAKE_CURRENT_SOURCE_DIR}/scripts/swgStaticMeshExport.mel
         $<TARGET_FILE_DIR:${CMAKE_PROJECT_NAME}>/swgStaticMeshExport.mel
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_CURRENT_SOURCE_DIR}/scripts/swgMeshAnimate.mel
+        $<TARGET_FILE_DIR:${CMAKE_PROJECT_NAME}>/swgMeshAnimate.mel
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_CURRENT_SOURCE_DIR}/scripts/pobAuthoring.mel
         $<TARGET_FILE_DIR:${CMAKE_PROJECT_NAME}>/pobAuthoring.mel
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_CURRENT_SOURCE_DIR}/scripts/pobSingleCellPreset.mel
+        $<TARGET_FILE_DIR:${CMAKE_PROJECT_NAME}>/pobSingleCellPreset.mel
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_CURRENT_SOURCE_DIR}/scripts/pobFillerFromMesh.mel
+        $<TARGET_FILE_DIR:${CMAKE_PROJECT_NAME}>/pobFillerFromMesh.mel
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_CURRENT_SOURCE_DIR}/scripts/swgLightsaberToolkit.mel
         $<TARGET_FILE_DIR:${CMAKE_PROJECT_NAME}>/swgLightsaberToolkit.mel
@@ -322,7 +331,16 @@ if(SWG_MAYA_PLUGIN_INSTALL_DIR)
             ${CMAKE_CURRENT_SOURCE_DIR}/scripts/swgStaticMeshExport.mel
             "${SWG_MAYA_PLUGIN_INSTALL_DIR}"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${CMAKE_CURRENT_SOURCE_DIR}/scripts/swgMeshAnimate.mel
+            "${SWG_MAYA_PLUGIN_INSTALL_DIR}"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
             ${CMAKE_CURRENT_SOURCE_DIR}/scripts/pobAuthoring.mel
+            "${SWG_MAYA_PLUGIN_INSTALL_DIR}"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${CMAKE_CURRENT_SOURCE_DIR}/scripts/pobSingleCellPreset.mel
+            "${SWG_MAYA_PLUGIN_INSTALL_DIR}"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${CMAKE_CURRENT_SOURCE_DIR}/scripts/pobFillerFromMesh.mel
             "${SWG_MAYA_PLUGIN_INSTALL_DIR}"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             ${CMAKE_CURRENT_SOURCE_DIR}/scripts/swgLightsaberToolkit.mel

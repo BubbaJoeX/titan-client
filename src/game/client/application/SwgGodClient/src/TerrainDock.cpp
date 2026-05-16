@@ -71,6 +71,8 @@
 #include <qcheckbox.h>
 #include <qcolor.h>
 #include <qcolordialog.h>
+#include <qlayout.h>
+#include <qgroupbox.h>
 #include <qlabel.h>
 #include <qlineedit.h>
 #include <qtabwidget.h>
@@ -392,36 +394,37 @@ namespace
 		return terrainDockCanonFromPathQString(QString::fromLatin1(terrainPathAscii.c_str()));
 	}
 
-	void terrainDockTryPushTerrainFileToLiveServer(std::string const & writtenDiskPath, char const * proceduralTerrainTemplateTreeName)
+	/// Streams \a writtenDiskPath to connected clients via `ProceduralTerrainSyncChunkMessage`. Returns false on preflight/read failures.
+	bool terrainDockTryPushTerrainFileToLiveServer(std::string const & writtenDiskPath, char const * proceduralTerrainTemplateTreeName)
 	{
 		static uint32 const maxBytes = 32u * 1024u * 1024u;
 		static uint32 const chunkBytes = 45000u;
 
 		if (!proceduralTerrainTemplateTreeName || !proceduralTerrainTemplateTreeName[0])
-			return;
+			return false;
 		if (!GameNetwork::isConnectedToConnectionServer())
-			return;
+			return false;
 
 		std::ifstream input(writtenDiskPath.c_str(), std::ios::binary | std::ios::ate);
 		if (!input)
-			return;
+			return false;
 
 		std::streamoff const endPos = input.tellg();
 		if (endPos <= 0)
-			return;
+			return false;
 
 		size_t const fileSizeUnsigned = static_cast<size_t>(endPos);
 		if (fileSizeUnsigned > static_cast<size_t>(maxBytes))
 		{
 			MainFrame::getInstance().textToConsole("Terrain not pushed: file exceeds procedural sync limit (32MiB).");
-			return;
+			return false;
 		}
 
 		input.seekg(0);
 		std::vector<unsigned char> bytes(fileSizeUnsigned);
 		input.read(reinterpret_cast<char *>(&bytes[0]), static_cast<std::streamsize>(fileSizeUnsigned));
 		if (!input)
-			return;
+			return false;
 
 		uint32 const totalSize = static_cast<uint32>(bytes.size());
 		uint32 const crc = Crc::calculate(&bytes[0], static_cast<int>(bytes.size()), Crc::crcInit);
@@ -439,6 +442,7 @@ namespace
 		}
 
 		MainFrame::getInstance().textToConsole("Terrain pushed to live server (procedural .trn replication).");
+		return true;
 	}
 
 	void terrainDockAppendUniqueCanonDir(QStringList& dirsCanon, QString const& dirCanonCandidate)
@@ -929,7 +933,21 @@ TerrainDock::TerrainDock(QWidget* parent, const char* name)
   m_savedGlobalPickFamilyId(0),
   m_callback(0),
   m_liveEditGroundPickFallbackValid(false),
-  m_liveEditGroundPickFallbackY(0.0f)
+  m_liveEditGroundPickFallbackY(0.0f),
+  m_pendingDeferredTerrainGeneratorHeavyInvalidate(false),
+  m_pendingDeferredTerrainGeneratorLiveCommitAfterHeavyApply(false),
+  m_importHeightRasterGroup(0),
+  m_importHeightRasterHintLabel(0),
+  m_importHeightRasterPathEdit(0),
+  m_importHeightRasterBrowseButton(0),
+  m_importHeightRasterMinElevLabel(0),
+  m_importHeightRasterMinElevSpin(0),
+  m_importHeightRasterMaxElevLabel(0),
+  m_importHeightRasterMaxElevSpin(0),
+  m_importHeightRasterPointsLabel(0),
+  m_importHeightRasterPointsSpin(0),
+  m_importHeightRasterInvertCheck(0),
+  m_importHeightRasterApplyButton(0)
 {
 	initializeUI();
 	loadTerrainShaderScanRootsFromSettings();
@@ -1032,6 +1050,14 @@ void TerrainDock::initializeUI()
 		IGNORE_RETURN(connect(m_saveButton, SIGNAL(clicked()), this, SLOT(onSaveTerrain())));
 	if (m_saveAsButton)
 		IGNORE_RETURN(connect(m_saveAsButton, SIGNAL(clicked()), this, SLOT(onSaveTerrainAs())));
+	if (m_publishButton)
+	{
+		IGNORE_RETURN(connect(m_publishButton, SIGNAL(clicked()), this, SLOT(onPublishTerrainToLiveServer())));
+		QToolTip::add(m_publishButton, QString::fromLatin1(
+			"Send the procedural .trn on disk to the connected game session (chunked replication).\n"
+			"Saving and autosaving stay local-only; use Publish when you want clients to pull your file.\n"
+			"Unsaved edits are written to disk first if needed."));
+	}
 	if (m_refreshButton)
 		IGNORE_RETURN(connect(m_refreshButton, SIGNAL(clicked()), this, SLOT(onRefreshFromScene())));
 	
@@ -1270,7 +1296,9 @@ void TerrainDock::initializeUI()
 
 	if (m_scrollAreaContents)
 		polishTerrainDockWideControls(m_scrollAreaContents);
-	
+
+	createImportHeightRasterSection();
+
 	updateToolButtonStates();
 	updateUndoRedoState();
 	if (m_brushFeatherSlider)
@@ -1775,6 +1803,207 @@ void TerrainDock::onOpenBitmapFamilyEditor()
 
 // ----------------------------------------------------------------------
 
+void TerrainDock::createImportHeightRasterSection()
+{
+	if (m_importHeightRasterGroup || !m_advancedToolsTab)
+		return;
+
+	QVBoxLayout* const tabLayout = dynamic_cast<QVBoxLayout*>(m_advancedToolsTab->layout());
+	if (!tabLayout)
+		return;
+
+	m_importHeightRasterGroup = new QGroupBox(m_advancedToolsTab, "m_importHeightRasterGroupGod");
+	m_importHeightRasterGroup->setColumnLayout(0, Qt::Vertical);
+	m_importHeightRasterGroup->layout()->setSpacing(4);
+	m_importHeightRasterGroup->layout()->setMargin(6);
+	m_importHeightRasterGroup->setTitle(QString::fromLatin1("Imported height raster (PNG / TGA / TIFF)"));
+
+	QVBoxLayout* const grOuter = new QVBoxLayout(m_importHeightRasterGroup->layout());
+
+	m_importHeightRasterHintLabel = new QLabel(m_importHeightRasterGroup);
+	m_importHeightRasterHintLabel->setText(QString::fromLatin1(
+		"Luminance maps to elevation (white = max height). Applies a spaced lattice across the procedural map; values between lattice points are interpolated by the terrain. Very large planets: keep lattice points modest (257–513) for responsiveness."));
+	m_importHeightRasterHintLabel->setAlignment(Qt::AlignTop | Qt::AlignLeft);
+	grOuter->addWidget(m_importHeightRasterHintLabel);
+
+	QHBoxLayout* const pathRow = new QHBoxLayout(0, 0, 6);
+	m_importHeightRasterPathEdit = new QLineEdit(m_importHeightRasterGroup);
+	m_importHeightRasterBrowseButton = new QPushButton(QString::fromLatin1("Select file..."), m_importHeightRasterGroup);
+	pathRow->addWidget(m_importHeightRasterPathEdit, 1);
+	pathRow->addWidget(m_importHeightRasterBrowseButton);
+	grOuter->addLayout(pathRow);
+
+	QHBoxLayout* const elevRow = new QHBoxLayout(0, 0, 8);
+	m_importHeightRasterMinElevLabel = new QLabel(QString::fromLatin1("Min height (m):"), m_importHeightRasterGroup);
+	m_importHeightRasterMinElevSpin = new QSpinBox(m_importHeightRasterGroup);
+	m_importHeightRasterMinElevSpin->setMinValue(-2000);
+	m_importHeightRasterMinElevSpin->setMaxValue(8000);
+	m_importHeightRasterMinElevSpin->setValue(0);
+
+	m_importHeightRasterMaxElevLabel = new QLabel(QString::fromLatin1("Max height (m):"), m_importHeightRasterGroup);
+	m_importHeightRasterMaxElevSpin = new QSpinBox(m_importHeightRasterGroup);
+	m_importHeightRasterMaxElevSpin->setMinValue(-2000);
+	m_importHeightRasterMaxElevSpin->setMaxValue(8000);
+	m_importHeightRasterMaxElevSpin->setValue(450);
+
+	elevRow->addWidget(m_importHeightRasterMinElevLabel);
+	elevRow->addWidget(m_importHeightRasterMinElevSpin);
+	elevRow->addWidget(m_importHeightRasterMaxElevLabel);
+	elevRow->addWidget(m_importHeightRasterMaxElevSpin);
+	elevRow->addStretch(1);
+	grOuter->addLayout(elevRow);
+
+	QHBoxLayout* const optsRow = new QHBoxLayout(0, 0, 8);
+	m_importHeightRasterPointsLabel = new QLabel(QString::fromLatin1("Lattice points / edge:"), m_importHeightRasterGroup);
+	m_importHeightRasterPointsSpin = new QSpinBox(m_importHeightRasterGroup);
+	m_importHeightRasterPointsSpin->setMinValue(33);
+	m_importHeightRasterPointsSpin->setMaxValue(1025);
+	m_importHeightRasterPointsSpin->setValue(513);
+
+	m_importHeightRasterInvertCheck = new QCheckBox(QString::fromLatin1("Invert luminance"), m_importHeightRasterGroup);
+
+	optsRow->addWidget(m_importHeightRasterPointsLabel);
+	optsRow->addWidget(m_importHeightRasterPointsSpin);
+	optsRow->addWidget(m_importHeightRasterInvertCheck);
+	optsRow->addStretch(1);
+	grOuter->addLayout(optsRow);
+
+	m_importHeightRasterApplyButton = new QPushButton(QString::fromLatin1("Apply raster to heights"), m_importHeightRasterGroup);
+	grOuter->addWidget(m_importHeightRasterApplyButton);
+
+	// Qt 3.3: QVBoxLayout has no itemAt()/count(); walk layout items explicitly.
+	int insertBefore = -1;
+	int layoutIndex = 0;
+	for (QLayoutIterator lit = tabLayout->iterator(); QLayoutItem* li = lit.current(); ++lit)
+	{
+		QSpacerItem* const si = li->spacerItem();
+		if (si && si == m_advancedSpacer)
+		{
+			insertBefore = layoutIndex;
+			break;
+		}
+		++layoutIndex;
+	}
+	if (insertBefore < 0)
+		insertBefore = layoutIndex;
+
+	tabLayout->insertWidget(insertBefore, m_importHeightRasterGroup);
+
+	IGNORE_RETURN(connect(m_importHeightRasterBrowseButton, SIGNAL(clicked()), this, SLOT(onBrowseImportHeightRaster())));
+	IGNORE_RETURN(connect(m_importHeightRasterApplyButton, SIGNAL(clicked()), this, SLOT(onApplyImportHeightRaster())));
+
+	updateEnvironmentAuthoringControls();
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::onBrowseImportHeightRaster()
+{
+	QString startWith;
+	if (m_importHeightRasterPathEdit)
+	{
+		QString const cur = m_importHeightRasterPathEdit->text().stripWhiteSpace();
+		if (!cur.isEmpty())
+		{
+			QFileInfo const fi(cur);
+			if (fi.exists() && fi.isDir())
+				startWith = fi.absFilePath();
+			else if (fi.exists())
+				startWith = fi.dirPath(true);
+		}
+	}
+
+	QString const fn = QFileDialog::getOpenFileName(
+		startWith.isEmpty() ? QString::null : startWith,
+		QString::fromLatin1("Raster images (*.png *.tga *.tif *.tiff *.bmp *.jpg *.jpeg);;All Files (*.*)"),
+		this,
+		"browse height raster dialog",
+		"Raster height map");
+
+	if (!fn.isEmpty() && m_importHeightRasterPathEdit)
+		m_importHeightRasterPathEdit->setText(QDir::convertSeparators(fn));
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::onApplyImportHeightRaster()
+{
+	if (!GodClientTerrainEditor::isInstalled() || !hasActiveTerrain())
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Height raster", "Load procedural terrain first."));
+		return;
+	}
+
+	if (!m_importHeightRasterPathEdit)
+		return;
+
+	QString const pathQs = m_importHeightRasterPathEdit->text().stripWhiteSpace();
+	if (pathQs.isEmpty())
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Height raster", "Choose an image file first."));
+		return;
+	}
+
+	QFileInfo const fi(pathQs);
+	if (!fi.exists() || !fi.isFile())
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Height raster", "File does not exist or is not readable."));
+		return;
+	}
+
+	int const mn = m_importHeightRasterMinElevSpin ? m_importHeightRasterMinElevSpin->value() : 0;
+	int const mx = m_importHeightRasterMaxElevSpin ? m_importHeightRasterMaxElevSpin->value() : 0;
+	if (mx <= mn)
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Height raster", "Max elevation must be greater than min."));
+		return;
+	}
+
+	int const latticeEdge = m_importHeightRasterPointsSpin ? m_importHeightRasterPointsSpin->value() : 513;
+	long long const projected = static_cast<long long>(std::max(2, latticeEdge)) * static_cast<long long>(std::max(2, latticeEdge));
+	if (projected > static_cast<long long>(256 * 256))
+	{
+		int const r = QMessageBox::question(
+			this,
+			"Height raster",
+			"This lattice is large — height writes may stall briefly and granular undo may be skipped.\nProceed?",
+			QMessageBox::Yes,
+			QMessageBox::No);
+		if (r != QMessageBox::Yes)
+			return;
+	}
+
+	bool const invert = m_importHeightRasterInvertCheck && m_importHeightRasterInvertCheck->isChecked();
+
+	QCString const encoded = QFile::encodeName(pathQs);
+	syncGodClientEditorBrushSettings();
+
+	GodClientTerrainEditor* const terrainEditor = GodClientTerrainEditor::getInstanceNullable();
+	if (!terrainEditor)
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, "Height raster", "Terrain editor is not available."));
+		return;
+	}
+
+	if (!terrainEditor->applyImportedHeightRasterFromImageFile(
+		    encoded.data(), mn, mx, latticeEdge, invert))
+	{
+		IGNORE_RETURN(QMessageBox::warning(
+			this,
+			"Height raster",
+			"Could not apply raster (unsupported format, image load failure, or invalid map size — see console)."));
+		return;
+	}
+
+	markLiveTerrainModified();
+	scheduleDeferredTerrainGeneratorLiveCommitAfterHeavyApply();
+
+	if (MainFrame* const mainFrame = MainFrame::getInstanceNullable())
+		mainFrame->textToConsole("Applied imported height raster to live edits (save .trn to persist).");
+}
+
+// ----------------------------------------------------------------------
+
 void TerrainDock::onApplyEnvironmentToRegion()
 {
 	(void)tryApplyEnvironmentAffectorToCurrentRegion(true);
@@ -1795,6 +2024,23 @@ void TerrainDock::updateEnvironmentAuthoringControls()
 		m_openRadialFamilyEditorButton->setEnabled(terrainOk);
 	if (m_openBitmapFamilyEditorButton)
 		m_openBitmapFamilyEditorButton->setEnabled(terrainOk);
+
+	if (m_importHeightRasterBrowseButton)
+		m_importHeightRasterBrowseButton->setEnabled(terrainOk);
+	if (m_importHeightRasterApplyButton)
+		m_importHeightRasterApplyButton->setEnabled(terrainOk);
+	if (m_importHeightRasterPointsSpin)
+		m_importHeightRasterPointsSpin->setEnabled(terrainOk);
+	if (m_importHeightRasterMinElevSpin)
+		m_importHeightRasterMinElevSpin->setEnabled(terrainOk);
+	if (m_importHeightRasterMaxElevSpin)
+		m_importHeightRasterMaxElevSpin->setEnabled(terrainOk);
+	if (m_importHeightRasterInvertCheck)
+		m_importHeightRasterInvertCheck->setEnabled(terrainOk);
+	if (m_importHeightRasterPathEdit)
+		m_importHeightRasterPathEdit->setEnabled(terrainOk);
+	if (m_importHeightRasterGroup)
+		m_importHeightRasterGroup->setEnabled(terrainOk);
 
 	bool const canApply = terrainOk && m_hasRegionSelection && !m_environmentFamilyIds.empty();
 	if (m_applyEnvironmentToRegionButton)
@@ -2097,6 +2343,71 @@ void TerrainDock::onSaveTerrainAs()
 	onSaveTerrain();
 }
 
+void TerrainDock::onPublishTerrainToLiveServer()
+{
+	if (!GameNetwork::isConnectedToConnectionServer())
+	{
+		IGNORE_RETURN(QMessageBox::information(
+			this,
+			QString::fromLatin1("Publish"),
+			QString::fromLatin1(
+				"Connect to a game server first. Publish streams the procedural terrain file on disk to joined clients "
+				"(chunked replication messages).")));
+		return;
+	}
+
+	ProceduralTerrainAppearanceTemplate* const tpl = getTerrainTemplate();
+	if (!tpl)
+	{
+		IGNORE_RETURN(QMessageBox::warning(this, QString::fromLatin1("Publish"), QString::fromLatin1("No procedural terrain loaded.")));
+		return;
+	}
+
+	std::string path(m_terrainFilePath);
+	if (path.empty())
+	{
+		IGNORE_RETURN(QMessageBox::warning(
+			this,
+			QString::fromLatin1("Publish"),
+			QString::fromLatin1("Choose Save or Save As to set a writable .trn path before publishing.")));
+		return;
+	}
+
+	if (m_terrainModified)
+	{
+		if (!writeCurrentTerrainTemplateToFile(path, true))
+		{
+			IGNORE_RETURN(QMessageBox::critical(
+				this,
+				QString::fromLatin1("Publish"),
+				QString::fromLatin1("Could not write terrain to disk before publish.")));
+			return;
+		}
+		MainFrame::getInstance().textToConsole("Terrain saved to disk prior to publish.");
+	}
+
+	QString const diskPathQs(QString::fromLatin1(path.c_str()));
+	QFileInfo const fi(diskPathQs);
+	if (!fi.exists() || !fi.isFile())
+	{
+		IGNORE_RETURN(QMessageBox::warning(
+			this,
+			QString::fromLatin1("Publish"),
+			QString::fromLatin1("Terrain file is not on disk. Use Save first.")));
+		return;
+	}
+
+	char const* const treeName = tpl->getName();
+	if (!terrainDockTryPushTerrainFileToLiveServer(path, treeName))
+	{
+		IGNORE_RETURN(QMessageBox::warning(
+			this,
+			QString::fromLatin1("Publish"),
+			QString::fromLatin1(
+				"Replication did not start: check console (file read, 32MiB cap, or invalid template tree name).")));
+	}
+}
+
 bool TerrainDock::writeCurrentTerrainTemplateToFile(std::string const& path, bool const clearModifiedOnSuccess)
 {
 	if (path.empty())
@@ -2122,10 +2433,6 @@ bool TerrainDock::writeCurrentTerrainTemplateToFile(std::string const& path, boo
 
 	if (clearModifiedOnSuccess)
 		m_terrainModified = false;
-
-	char const * const templateTreeName = terrainTemplate->getName();
-	if (templateTreeName && templateTreeName[0])
-		terrainDockTryPushTerrainFileToLiveServer(path, templateTreeName);
 
 	return true;
 }
@@ -2450,17 +2757,32 @@ void TerrainDock::refreshFromScene(bool const skipGlobalShaderCatalogScan)
 	const char* name = terrainTemplate->getName();
 	if (name)
 	{
-		if (!m_terrainFilePath.empty())
+		QString const templateNameQs(QString::fromLatin1(name));
+		QString const diskPathQs(QString::fromLatin1(m_terrainFilePath.c_str()));
+		QFileInfo const diskFi(diskPathQs);
+		bool const haveRealDiskFile = !m_terrainFilePath.empty() && diskFi.exists() && diskFi.isFile();
+
+		QString const incomingBase(QFileInfo(templateNameQs).fileName().lower());
+		QString const diskBase(haveRealDiskFile ? diskFi.fileName().lower() : QString());
+		bool const sameLeafTrn = haveRealDiskFile && !incomingBase.isEmpty() && incomingBase == diskBase;
+
+		// If the dock already tracks a real .trn on disk and the live template still refers to the
+		// same leaf filename, keep the absolute path so Save keeps working. (getName() is often a
+		// repository-relative path; overwriting m_terrainFilePath breaks Os::write.)
+		if (!haveRealDiskFile || !sameLeafTrn)
 		{
-			QString const oldCanon(terrainDockCanonFromStdTerrainPath(m_terrainFilePath));
-			QString const incomingCanon(terrainDockCanonFromPathQString(QString::fromLatin1(name)));
-			if (!oldCanon.isEmpty() && !incomingCanon.isEmpty() && oldCanon != incomingCanon)
+			if (!sameLeafTrn && haveRealDiskFile)
 				m_terrainModified = false;
+			m_terrainFilePath = name;
 		}
 
-		m_terrainFilePath = name;
 		if (m_terrainFileLabel)
-			m_terrainFileLabel->setText(name);
+		{
+			if (!m_terrainFilePath.empty())
+				m_terrainFileLabel->setText(QString::fromLatin1(m_terrainFilePath.c_str()));
+			else
+				m_terrainFileLabel->setText(templateNameQs);
+		}
 	}
 	else
 	{
@@ -2879,14 +3201,56 @@ void TerrainDock::terrainGeneratorLiveCommit()
 	if (ClientProceduralTerrainAppearance* const app = getClientTerrain())
 		app->rebuildLocalWaterTablesFromTerrainGenerator();
 
+	populateLayerList();
+
+	// Huge synchronous invalidates from pop-out dialogs (flora/shader/etc.) wedge the GUI thread —
+	// postpone until after the current Qt event completes so Apply / Add yields and repaints first.
+	scheduleDeferredTerrainGeneratorHeavyInvalidate();
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::scheduleDeferredTerrainGeneratorHeavyInvalidate()
+{
+	if (m_pendingDeferredTerrainGeneratorHeavyInvalidate)
+		return;
+	m_pendingDeferredTerrainGeneratorHeavyInvalidate = true;
+	IGNORE_RETURN(QTimer::singleShot(0, this, SLOT(onDeferredTerrainGeneratorHeavyInvalidate())));
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::scheduleDeferredTerrainGeneratorLiveCommitAfterHeavyApply()
+{
+	if (m_pendingDeferredTerrainGeneratorLiveCommitAfterHeavyApply)
+		return;
+	m_pendingDeferredTerrainGeneratorLiveCommitAfterHeavyApply = true;
+	IGNORE_RETURN(QTimer::singleShot(0, this, SLOT(onDeferredTerrainGeneratorLiveCommitAfterHeavyApply())));
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::onDeferredTerrainGeneratorHeavyInvalidate()
+{
+	m_pendingDeferredTerrainGeneratorHeavyInvalidate = false;
 	if (TerrainObject* const to = TerrainObject::getInstance())
 	{
 		static float const kHuge = 25000.f;
 		Rectangle2d const huge(-kHuge, -kHuge, kHuge, kHuge);
 		to->invalidateRegion(huge);
 	}
+}
 
-	populateLayerList();
+// ----------------------------------------------------------------------
+
+void TerrainDock::onDeferredTerrainGeneratorLiveCommitAfterHeavyApply()
+{
+	m_pendingDeferredTerrainGeneratorLiveCommitAfterHeavyApply = false;
+
+	if (!hasActiveTerrain())
+		return;
+
+	terrainGeneratorLiveCommit();
 }
 
 // ----------------------------------------------------------------------
@@ -5792,7 +6156,7 @@ void TerrainDock::paintShaderAtPoint(float worldX, float worldZ, int shaderFamil
 	MainFrame::getInstance().textToConsole(msg.latin1());
 }
 
-void TerrainDock::placeFloraAtPoint(float worldX, float worldZ, int floraFamily)
+void TerrainDock::placeFloraAtPoint(float worldX, float worldZ, int floraFamilyIndex)
 {
 	TerrainGenerator* const generator = getTerrainGenerator();
 	if (!generator)
@@ -5800,31 +6164,50 @@ void TerrainDock::placeFloraAtPoint(float worldX, float worldZ, int floraFamily)
 		MainFrame::getInstance().textToConsole("placeFloraAtPoint: No terrain generator available");
 		return;
 	}
-	
+
 	const FloraGroup& floraGroup = generator->getFloraGroup();
 	const int numFamilies = floraGroup.getNumberOfFamilies();
-	
-	if (floraFamily < 0 || floraFamily >= numFamilies)
+
+	if (floraFamilyIndex < 0 || floraFamilyIndex >= numFamilies)
 	{
 		QString msg;
-		msg.sprintf("Invalid flora family %d (valid range: 0-%d)", floraFamily, numFamilies - 1);
+		msg.sprintf("Invalid flora family index %d (valid range: 0-%d)", floraFamilyIndex, numFamilies - 1);
 		MainFrame::getInstance().textToConsole(msg.latin1());
 		return;
 	}
-	
+
+	// Live paint path: same as LMB stroke (CityTerrainLayerManager / GodClient overlay map).
+	if (GodClientTerrainEditor::isInstalled())
+	{
+		syncGodClientEditorBrushSettings();
+		GodClientTerrainEditor::getInstance().applyBrushAtPoint(worldX, worldZ);
+		m_terrainModified = true;
+
+		const int familyId = floraGroup.getFamilyId(floraFamilyIndex);
+		const char* familyName = floraGroup.getFamilyName(familyId);
+
+		QString msg;
+		msg.sprintf(
+			"Flora family '%s' (id %d) painted at (%.1f, %.1f)",
+			familyName ? familyName : "Unknown",
+			familyId,
+			worldX,
+			worldZ);
+		MainFrame::getInstance().textToConsole(msg.latin1());
+		return;
+	}
+
 	const float halfBrush = m_brushSize * 0.5f;
-	
-	// Create undo entry
+
 	UndoEntry entry;
 	entry.type = UO_Flora;
 	entry.worldX = worldX;
 	entry.worldZ = worldZ;
 	entry.radius = m_brushSize;
 	entry.description = "Paint flora";
-	
+
 	pushUndoEntry(entry);
-	
-	// Invalidate the terrain region to trigger flora regeneration
+
 	TerrainObject* const terrainObject = TerrainObject::getInstance();
 	if (terrainObject)
 	{
@@ -5835,15 +6218,15 @@ void TerrainDock::placeFloraAtPoint(float worldX, float worldZ, int floraFamily)
 			worldX + invalidateRadius,
 			worldZ + invalidateRadius
 		);
-		
+
 		terrainObject->invalidateRegion(extent2d);
 	}
-	
-	const int familyId = floraGroup.getFamilyId(floraFamily);
+
+	const int familyId = floraGroup.getFamilyId(floraFamilyIndex);
 	const char* familyName = floraGroup.getFamilyName(familyId);
-	
+
 	QString msg;
-	msg.sprintf("Flora family '%s' painted at (%.1f, %.1f)", 
+	msg.sprintf("Flora family '%s' painted at (%.1f, %.1f)",
 		familyName ? familyName : "Unknown", worldX, worldZ);
 	MainFrame::getInstance().textToConsole(msg.latin1());
 }

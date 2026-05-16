@@ -247,6 +247,8 @@ public:
 	static void install();
 	static void remove();
 	static GodClientTerrainEditor& getInstance();
+	/// Nullable; usable in Release when \ref getInstance's DEBUG_FATAL checks are stripped.
+	static GodClientTerrainEditor* getInstanceNullable();
 	static bool isInstalled();
 
 	// Tool and brush settings
@@ -558,6 +560,9 @@ public:
 	bool addFullMapHeightConstantLayer(float height, float featherDistance, char const* optionalLayerNameBase = 0);
 	bool addFullMapShaderConstantLayer(int shaderFamilyId, float featherDistance, char const* optionalLayerNameBase = 0);
 	bool addExcludeLayerForRectangle(Rectangle2d const& rectXZ, float featherDistance, char const* optionalLayerNameBase = 0);
+
+	/// Full-map lattice of live height edits from a luminance raster (PNG / TGA via \ref ImageFormatList). Saves with .trn like brush edits when exported.
+	bool applyImportedHeightRasterFromImageFile(char const* localFilesystemPath, int elevationMinMeters, int elevationMaxMeters, int latticePointsPerEdge, bool invertLuminance);
 
 	/// Append a procedural layer that paints environment inside the current region selection (rectangle or circle).
 	bool addEnvironmentAffectorForCurrentRegionSelection(int familyId, float featherDistance);

@@ -70,6 +70,8 @@ public:
 	* clients who simply need the widget or object pointer don't need to include this other baggage
 	*/
 	static MainFrame & getInstance();
+	/// For engine paths that might run early (release builds compile NOT_NULL away); never dereference a null singleton.
+	static MainFrame * getInstanceNullable();
 
 	bool             isActive() const;
 	void             textToConsole(const char * text);

@@ -164,6 +164,7 @@ CityTerrainLayerManager::CityTerrainUiRefreshFn CityTerrainLayerManager::ms_city
 CityTerrainLayerManager::OpenCityTerrainPainterAlreadyActiveFn CityTerrainLayerManager::ms_openCityTerrainPainterAlreadyActiveFn = 0;
 CityTerrainLayerManager::OpenTerraformingAlreadyActiveFn CityTerrainLayerManager::ms_openTerraformingAlreadyActiveFn = 0;
 CityTerrainLayerManager::ExternalHeightModifierCallback CityTerrainLayerManager::ms_externalHeightModifierCallback = 0;
+int CityTerrainLayerManager::ms_externalHeightBaselineSuspendDepth = 0;
 CityTerrainLayerManager::ExternalShaderModifierCallback CityTerrainLayerManager::ms_externalShaderModifierCallback = 0;
 CityTerrainLayerManager::ExternalVertexColorModifierCallback CityTerrainLayerManager::ms_externalVertexColorModifierCallback = 0;
 CityTerrainLayerManager::ExternalFloraModifierCallback CityTerrainLayerManager::ms_externalFloraModifierCallback = 0;
@@ -198,6 +199,7 @@ void CityTerrainLayerManager::remove()
 	ms_openCityTerrainPainterAlreadyActiveFn = 0;
 	ms_openTerraformingAlreadyActiveFn = 0;
 	ms_externalHeightModifierCallback = 0;
+	ms_externalHeightBaselineSuspendDepth = 0;
 	ms_externalShaderModifierCallback = 0;
 	ms_externalVertexColorModifierCallback = 0;
 	ms_externalFloraModifierCallback = 0;
@@ -352,6 +354,21 @@ void CityTerrainLayerManager::setExternalHeightModifierCallback(ExternalHeightMo
 void CityTerrainLayerManager::clearExternalHeightModifierCallback()
 {
 	ms_externalHeightModifierCallback = 0;
+}
+
+// ----------------------------------------------------------------------
+
+void CityTerrainLayerManager::pushSuspendGodExternalHeightBaselineSamplingDepth()
+{
+	++ms_externalHeightBaselineSuspendDepth;
+}
+
+// ----------------------------------------------------------------------
+
+void CityTerrainLayerManager::popSuspendGodExternalHeightBaselineSamplingDepth()
+{
+	if (ms_externalHeightBaselineSuspendDepth > 0)
+		--ms_externalHeightBaselineSuspendDepth;
 }
 
 // ----------------------------------------------------------------------
@@ -552,7 +569,7 @@ bool CityTerrainLayerManager::getModifiedHeight(float x, float z, float original
 	}
 
 	// Then check external height modifier (e.g., God Client terrain editing)
-	if (ms_externalHeightModifierCallback)
+	if (ms_externalHeightModifierCallback && ms_externalHeightBaselineSuspendDepth <= 0)
 	{
 		float externalHeight = currentHeight;
 		if (ms_externalHeightModifierCallback(x, z, currentHeight, externalHeight))

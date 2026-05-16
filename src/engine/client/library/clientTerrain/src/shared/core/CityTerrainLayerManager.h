@@ -140,6 +140,11 @@ public:
 	static void setExternalHeightModifierCallback(ExternalHeightModifierCallback callback);
 	static void clearExternalHeightModifierCallback();
 
+	// While >0, getModifiedHeight skips the external (God Client) overlay callback — used when bulk-querying the
+	// collision mesh baseline so height sampling doesn't recurse through enormous live-edit maps mid-query.
+	static void pushSuspendGodExternalHeightBaselineSamplingDepth();
+	static void popSuspendGodExternalHeightBaselineSamplingDepth();
+
 	// External shader modifier callback (for God Client terrain editing, etc.)
 	// Return true if shader was modified, outFamilyId will contain the new family, outFeather the blend amount
 	typedef bool (*ExternalShaderModifierCallback)(float x, float z, int originalFamilyId, int & outFamilyId, float & outFeather);
@@ -202,6 +207,7 @@ private:
 	static OpenCityTerrainPainterAlreadyActiveFn ms_openCityTerrainPainterAlreadyActiveFn;
 	static OpenTerraformingAlreadyActiveFn ms_openTerraformingAlreadyActiveFn;
 	static ExternalHeightModifierCallback ms_externalHeightModifierCallback;
+	static int                        ms_externalHeightBaselineSuspendDepth;
 	static ExternalShaderModifierCallback ms_externalShaderModifierCallback;
 	static ExternalVertexColorModifierCallback ms_externalVertexColorModifierCallback;
 	static ExternalFloraModifierCallback ms_externalFloraModifierCallback;

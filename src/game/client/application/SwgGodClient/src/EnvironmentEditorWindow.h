@@ -56,9 +56,11 @@ private:
 	int selectedFamilyId() const;
 	void loadFieldsForFamily(int familyId);
 	void commitEnvironmentGroupToTerrain();
+	void refreshEnvironmentLinkageLabels();
 
 	QListBox*     m_familyList;
 	QLabel*       m_idLabel;
+	QLabel*       m_linkagePathsLabel;
 	QLineEdit*    m_nameEdit;
 	QSpinBox*     m_redSpin;
 	QSpinBox*     m_greenSpin;

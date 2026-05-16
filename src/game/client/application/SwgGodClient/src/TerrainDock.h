@@ -28,6 +28,12 @@ class ProceduralTerrainAppearanceTemplate;
 class TerrainGenerator;
 class QListViewItem;
 class QResizeEvent;
+class QGroupBox;
+class QLineEdit;
+class QSpinBox;
+class QLabel;
+class QPushButton;
+class QCheckBox;
 
 namespace MessageDispatch
 {
@@ -128,6 +134,9 @@ public:
 	// Terrain access
 	bool        hasActiveTerrain() const;
 	const char* getTerrainFilePath() const;
+	ClientProceduralTerrainAppearance*   getClientTerrain() const;
+	ProceduralTerrainAppearanceTemplate* getTerrainTemplate() const;
+	TerrainGenerator*                     getTerrainGenerator() const;
 
 	/// True while a rectangular world region is selected (Select Region / drag tool).
 	bool        hasTerrainWorldRegionSelection() const;
@@ -219,6 +228,8 @@ public slots:
 	void onLoadTerrain();
 	void onSaveTerrain();
 	void onSaveTerrainAs();
+	/// Write unsaved edits if needed, then replicate current disk .trn to connected clients (not invoked from Save/autosave).
+	void onPublishTerrainToLiveServer();
 	void onReloadTerrain();
 
 	// Undo/redo
@@ -298,6 +309,8 @@ public slots:
 	void onBitmapScaleChanged(int value);
 	void onBitmapAffectsHeightToggled(bool enabled);
 	void onBitmapAffectsShaderToggled(bool enabled);
+	void onBrowseImportHeightRaster();
+	void onApplyImportHeightRaster();
 
 	// TerrainGenerator export operations
 	void onExportToLayer();
@@ -320,6 +333,12 @@ private slots:
 
 	/// Runs after \ref Game::Messages::SCENE_CHANGED so terrain / scene pointers are stable.
 	void onDeferredRefreshAfterSceneChange();
+
+	/// Applies the expensive full-map procedural invalidate after generator commits (runs next event-loop tick).
+	void onDeferredTerrainGeneratorHeavyInvalidate();
+
+	/// Runs generator prepare / water rebuild / layer list refresh after bulky Apply paths (next event-loop tick).
+	void onDeferredTerrainGeneratorLiveCommitAfterHeavyApply();
 
 private:
 	// Nested type used by region / .lay helpers below; full definition is with member data.
@@ -369,6 +388,10 @@ private:
 	void populatePolylineShaderCombo();
 	void populateEnvironmentFamilyCombo();
 	void populateBitmapStampCombo();
+	void createImportHeightRasterSection();
+
+	void scheduleDeferredTerrainGeneratorHeavyInvalidate();
+	void scheduleDeferredTerrainGeneratorLiveCommitAfterHeavyApply();
 
 	bool tryApplyEnvironmentAffectorToCurrentRegion(bool promptFeather);
 	void updateEnvironmentAuthoringControls();
@@ -418,11 +441,6 @@ private:
 	// Undo/redo helpers
 	void pushUndoEntry(const UndoEntry& entry);
 	void clearRedoStack();
-
-	// Terrain data access
-	ClientProceduralTerrainAppearance* getClientTerrain() const;
-	ProceduralTerrainAppearanceTemplate* getTerrainTemplate() const;
-	TerrainGenerator* getTerrainGenerator() const;
 
 	/// Alt+Maya camera should win over brush tools unless the tool binds Alt (road/ribbon).
 	bool cameraModifierOverridesTerrainInput(int qtButtonState) const;
@@ -599,6 +617,23 @@ private:
 
 	mutable bool               m_liveEditGroundPickFallbackValid;
 	mutable float              m_liveEditGroundPickFallbackY;
+
+	bool                       m_pendingDeferredTerrainGeneratorHeavyInvalidate;
+	bool                       m_pendingDeferredTerrainGeneratorLiveCommitAfterHeavyApply;
+
+	/// Built at runtime onto the Advanced tab (not in BaseTerrainDock.ui until uic is run).
+	QGroupBox*                 m_importHeightRasterGroup;
+	QLabel*                    m_importHeightRasterHintLabel;
+	QLineEdit*                 m_importHeightRasterPathEdit;
+	QPushButton*               m_importHeightRasterBrowseButton;
+	QLabel*                    m_importHeightRasterMinElevLabel;
+	QSpinBox*                  m_importHeightRasterMinElevSpin;
+	QLabel*                    m_importHeightRasterMaxElevLabel;
+	QSpinBox*                  m_importHeightRasterMaxElevSpin;
+	QLabel*                    m_importHeightRasterPointsLabel;
+	QSpinBox*                  m_importHeightRasterPointsSpin;
+	QCheckBox*                 m_importHeightRasterInvertCheck;
+	QPushButton*               m_importHeightRasterApplyButton;
 
 	// Message callback
 	MessageDispatch::Callback* m_callback;

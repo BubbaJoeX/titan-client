@@ -72,6 +72,8 @@
 #include "sharedXml/SetupSharedXml.h"
 
 #include <direct.h>
+#include <cstring>
+#include <cstdio>
 
 // ==================================================================
 // constants
@@ -155,6 +157,21 @@ CViewerApp::~CViewerApp()
 
 BOOL CViewerApp::InitInstance()
 {
+	// Elevated launches and some shortcuts leave the process CWD as
+	// System32 (or another folder), not the directory that contains the
+	// exe and shipped DLLs. Relative paths (tools.cfg, TreeFile manifest)
+	// then fail and we FATAL during engine setup. Match cwd to the exe.
+	char modulePath[MAX_PATH];
+	if (GetModuleFileNameA(NULL, modulePath, MAX_PATH))
+	{
+		char *const lastSlash = strrchr(modulePath, '\\');
+		if (lastSlash)
+		{
+			*lastSlash = '\0';
+			IGNORE_RETURN(SetCurrentDirectoryA(modulePath));
+		}
+	}
+
 	_getcwd(m_applicationDirectory, MAX_PATH);
 
 	// Standard initialization
@@ -175,7 +192,7 @@ BOOL CViewerApp::InitInstance()
 	// Change the registry key under which our settings are stored.
 	// You should modify this string to be something appropriate
 	// such as the name of your company or organization.
-	SetRegistryKey(_T("Verant Interactive\\Engine Viewer"));
+	SetRegistryKey(_T("Titan\\Engine Viewer"));
 
 	LoadStdProfileSettings();  // Load standard INI file options (including MRU)
 
@@ -212,7 +229,10 @@ BOOL CViewerApp::InitInstance()
 	// create main MDI Frame window
 	CMainFrame* pMainFrame = new CMainFrame;
 	if (!pMainFrame->LoadFrame(IDR_MAINFRAME))
+	{
+		AfxMessageBox(_T("Viewer: main window or toolbar failed to load (LoadFrame). Check win32_rel resources."));
 		return FALSE;
+	}
 	m_pMainWnd = pMainFrame;
 
 	// Parse command line for standard shell commands, DDE, file open
@@ -224,7 +244,13 @@ BOOL CViewerApp::InitInstance()
 //		return FALSE;
 
 	// The main window has been initialized, so show and update it.
-	pMainFrame->ShowWindow(m_nCmdShow);
+	// Some launch contexts pass SW_HIDE (0); the frame would then never appear.
+	{
+		int showCmd = m_nCmdShow;
+		if (showCmd == SW_HIDE)
+			showCmd = SW_SHOWNORMAL;
+		pMainFrame->ShowWindow(showCmd);
+	}
 	pMainFrame->UpdateWindow();
 
 	//-- setup shared
@@ -239,8 +265,14 @@ BOOL CViewerApp::InitInstance()
 		SetupSharedFoundation::Data setupFoundationData(SetupSharedFoundation::Data::D_mfc);
 		setupFoundationData.useWindowHandle = true;
 		setupFoundationData.windowHandle    = pMainFrame->m_hWnd;
+		// Same as SoundEditor / ShipComponentEditor: Os::update() must not run a nested
+		// GetMessage loop while this MFC app owns PumpMessage(), or dispatch breaks and
+		// the frame often never appears or quits immediately.
+		setupFoundationData.processMessagePump = false;
 		setupFoundationData.configFile      = "tools.cfg";
 		setupFoundationData.verboseWarnings = true;
+		// Match SoundEditor / ShipComponentEditor: gentler clock in embedded MFC tools.
+		setupFoundationData.clockUsesSleep  = true;
         setupFoundationData.writeMiniDumps  = ApplicationVersion::isBootlegBuild();
 	    SetupSharedFoundation::install(setupFoundationData);
 
@@ -300,6 +332,7 @@ BOOL CViewerApp::InitInstance()
 	//-- setup client
 	{
 		//-- audio
+		Audio::setToolApplication(true);
 		SetupClientAudio::install ();
 
 		//-- graphics
@@ -369,6 +402,10 @@ BOOL CViewerApp::InitInstance()
 	//if given a command line file to open, do it
 	if(cmdInfo.m_nShellCommand == CCommandLineInfo::FileOpen)
 		OpenDocumentFile(cmdInfo.m_strFileName);
+
+	// Engine tick must not run inside a custom Run() loop; use MFC's default pump
+	// and a timer on the frame so WM_PAINT / activation are not starved.
+	pMainFrame->SetTimer(static_cast<UINT_PTR>(kEngineAlterTimerId), 1, NULL);
 
 	return TRUE;
 }
@@ -459,35 +496,9 @@ void CViewerApp::alterDocuments(void)
 
 // ----------------------------------------------------------------------
 
-int CViewerApp::Run(void)
+void CViewerApp::engineAlterTick(void)
 {
-	ASSERT_VALID(this);
-	LONG lIdleCount = 0;
-    MSG msg;
-
-	// acquire and dispatch messages until a WM_QUIT message is received.
-	for (;;)
-	{
-		// allow MFC to update our widgets
-		while (OnIdle(lIdleCount++))
-			{}
-
-		// pump messages
-		do
-		{
-			// pump message, but quit on WM_QUIT
-			if (!PumpMessage())
-				return ExitInstance();
-
-			// reset the idle state so widgets properly update
-			if (IsIdleMessage(&msg))
-				lIdleCount = 0;
-
-		} while (::PeekMessage(&msg, NULL, NULL, NULL, PM_NOREMOVE));
-
-		// allow all documents to alter
-		alterDocuments();
-	}
+	alterDocuments();
 }
 
 // ======================================================================

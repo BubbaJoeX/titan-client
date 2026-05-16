@@ -363,6 +363,17 @@ const char* BitmapGroup::getFamilyName (int familyId) const
 
 //-------------------------------------------------------------------
 
+const char* BitmapGroup::getFamilyBitmapBasename(int familyId) const
+{
+	const Family* const family = getFamily(familyId);
+	if (!family)
+		return "";
+	char const* const bm = family->getBitmapName();
+	return bm ? bm : "";
+}
+
+//-------------------------------------------------------------------
+
 void BitmapGroup::setFamilyName (int familyId, const char* name)
 {
 	Family* const family = getFamily (familyId);

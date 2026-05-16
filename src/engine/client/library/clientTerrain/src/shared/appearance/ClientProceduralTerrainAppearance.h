@@ -395,6 +395,11 @@ public:
 	static float         getStaticNonCollidableFloraDistance ();
 	static void          setStaticNonCollidableFloraDistance (float staticNonCollidableFloraDistance);
 
+	/// Temporary (structure placement overlay): skips drawing all procedural radial flora layers
+	/// (dynamic near/far and static non-collidable billboards). Does not modify player flora options or collision.
+	static void          setRadialFloraDrawSuppressed (bool suppressed);
+	static bool          getRadialFloraDrawSuppressed ();
+
 	static float         getMaximumThresholdHigh ();
 	static float         getMaximumThreshold     ();
 

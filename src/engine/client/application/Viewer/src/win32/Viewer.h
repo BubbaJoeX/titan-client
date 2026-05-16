@@ -22,15 +22,19 @@ class CViewerApp : public CWinApp
 {
 public:
 
+	enum { kEngineAlterTimerId = 0x5649 };
+
 	CViewerApp();
 	~CViewerApp();
 
 	//{{AFX_VIRTUAL(CViewerApp)
 	public:
 	virtual BOOL InitInstance();
-	virtual int  Run(void);
 	virtual int ExitInstance();
 	//}}AFX_VIRTUAL
+
+	// Driven from CMainFrame WM_TIMER; default CWinApp::Run must own the message pump.
+	void               engineAlterTick(void);
 
 	CViewerDoc*        getDocument () const;
 	void               setCleanDatabinDirectory (const CString& newCleanDatabinDirectory);

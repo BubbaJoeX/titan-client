@@ -40,6 +40,9 @@ public slots:
 
 	void onFamilyListSelectionChanged();
 	void onApplyEdits();
+	void onAddFamily();
+	void onRemoveFamily();
+	void onBrowseTgaBasename();
 	void onReloadTgaClicked();
 	void onClose();
 
@@ -58,6 +61,9 @@ private:
 	QLineEdit*    m_displayNameEdit;
 	QLineEdit*    m_tgaBasenameEdit;
 	QLabel*       m_hintLabel;
+	QPushButton*  m_addFamilyButton;
+	QPushButton*  m_removeFamilyButton;
+	QPushButton*  m_browseTgaBasenameButton;
 	QPushButton*  m_reloadTgaButton;
 	QPushButton*  m_applyButton;
 	QPushButton*  m_closeButton;

@@ -2,6 +2,9 @@
 #define SWGMAYAEDITOR_SHADEREXPORTER_H
 
 #include <string>
+#include <vector>
+
+#include "Tag.h"
 
 /**
  * Exports shader templates (.sht) with image->DDS conversion for edited textures.
@@ -36,6 +39,20 @@ public:
         bool hueable = false,
         bool bindPublishedDiffuseToAllTxmSlots = false,
         bool transparent = false);
+
+    /// Writes a SwitchTextureShaderTemplate (.sht, TAG_SWTS) for frame-animated diffuse textures (terminals, etc.).
+    /// \a baseShaderTreeRel is the static shader (SSHT) path without .sht, e.g. "shader/foo_base" or "foo_base".
+    /// \a outputShaderTreeRel is the outer SWTS path, e.g. "shader/foo".
+    /// \a switcherFormTag is one of DRTS (loop), DPPT (ping-pong), DRFT (random frame/time).
+    /// \a frameTextureTreePathsDds entries are full tree paths like "texture/frame01.dds" (same order as frames).
+    /// \a fpsMin / fpsMax match legacy soe_animatingFps* (frames per second); timing uses 1/fps like the original exporter.
+    static std::string exportSwitchTextureAnimatedShader(
+        const std::string& outputShaderTreeRel,
+        const std::string& baseShaderTreeRel,
+        Tag switcherFormTag,
+        float fpsMin,
+        float fpsMax,
+        const std::vector<std::string>& frameTextureTreePathsDds);
 };
 
 #endif

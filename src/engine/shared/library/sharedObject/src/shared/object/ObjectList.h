@@ -56,6 +56,7 @@ public:
 
 	typedef bool (*ObjectRenderSkipPredicate)(Object const *object);
 	static void setObjectRenderSkipPredicate(ObjectRenderSkipPredicate predicate);
+	static ObjectRenderSkipPredicate getObjectRenderSkipPredicate();
 	static void clearObjectRenderSkipPredicate();
 
 private:

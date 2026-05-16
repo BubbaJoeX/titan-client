@@ -47,6 +47,13 @@ void ObjectList::clearObjectRenderSkipPredicate()
 	ms_objectRenderSkipPredicate = 0;
 }
 
+//----------------------------------------------------------------------
+
+ObjectList::ObjectRenderSkipPredicate ObjectList::getObjectRenderSkipPredicate ()
+{
+	return ms_objectRenderSkipPredicate;
+}
+
 // ======================================================================
 // Construct an ObjectList
 

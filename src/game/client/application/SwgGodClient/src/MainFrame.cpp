@@ -78,6 +78,13 @@ using namespace MainFrameNamespace;
 //static definitions
 MainFrame * MainFrame::ms_singleton;
 
+// ----------------------------------------------------------------------
+
+MainFrame * MainFrame::getInstanceNullable()
+{
+	return ms_singleton;
+}
+
 //----------------------------------------------------------------------
 
 MainFrame::MainFrame(QWidget *theParent, const char *theName)

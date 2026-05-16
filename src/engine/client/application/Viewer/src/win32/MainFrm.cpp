@@ -20,6 +20,8 @@ IMPLEMENT_DYNAMIC(CMainFrame, CMDIFrameWnd)
 BEGIN_MESSAGE_MAP(CMainFrame, CMDIFrameWnd)
 	//{{AFX_MSG_MAP(CMainFrame)
 	ON_WM_CREATE()
+	ON_WM_TIMER()
+	ON_WM_DESTROY()
 	ON_COMMAND(ID_VIEW_DIRECTORYVIEW, OnViewDirectoryview)
 	ON_UPDATE_COMMAND_UI(ID_VIEW_DIRECTORYVIEW, OnUpdateViewDirectoryview)
 	ON_COMMAND(ID_VIEW_OUTPUTWINDOW, OnViewOutputwindow)
@@ -129,6 +131,22 @@ CMainFrame::CMainFrame()
 
 CMainFrame::~CMainFrame()
 {
+}
+
+void CMainFrame::OnTimer(UINT_PTR const nIDEvent)
+{
+	if (nIDEvent == static_cast<UINT_PTR>(CViewerApp::kEngineAlterTimerId))
+	{
+		GetViewerApp()->engineAlterTick();
+		return;
+	}
+	CMDIFrameWnd::OnTimer(nIDEvent);
+}
+
+void CMainFrame::OnDestroy()
+{
+	KillTimer(CViewerApp::kEngineAlterTimerId);
+	CMDIFrameWnd::OnDestroy();
 }
 
 int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)

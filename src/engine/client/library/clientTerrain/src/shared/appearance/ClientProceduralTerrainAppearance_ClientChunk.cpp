@@ -242,8 +242,13 @@ bool ClientProceduralTerrainAppearance::ClientChunk::collide (const Vector& star
 		const uint n = m_shaderSetList.size();
 		uint i;
 		for (i = 0; i < n; ++i)
-			if (m_shaderSetList[i]->collide (start, end, info))
+		{
+			ShaderSet* const ss = m_shaderSetList[i];
+			if (!ss)
+				continue;
+			if (ss->collide (start, end, info))
 				found = true;
+		}
 	}
 
 	return found;
@@ -268,7 +273,11 @@ bool ClientProceduralTerrainAppearance::ClientChunk::getHeightAt (const Vector& 
 		const uint n = m_shaderSetList.size();
 		uint i;
 		for (i = 0; i < n; ++i)
-			if (m_shaderSetList[i]->getHeightAt (start, end, info))
+		{
+			ShaderSet* const ss = m_shaderSetList[i];
+			if (!ss)
+				continue;
+			if (ss->getHeightAt (start, end, info))
 			{
 				if (height)
 				{
@@ -287,6 +296,7 @@ bool ClientProceduralTerrainAppearance::ClientChunk::getHeightAt (const Vector& 
 
 				return true;
 			}
+		}
 	}
 
 	return false;
@@ -311,7 +321,11 @@ bool ClientProceduralTerrainAppearance::ClientChunk::getHeightAt (const Vector& 
 		const uint n = m_shaderSetList.size();
 		uint i;
 		for (i = 0; i < n; ++i)
-			if (m_shaderSetList[i]->getHeightAt (start, end, info))
+		{
+			ShaderSet* const ss = m_shaderSetList[i];
+			if (!ss)
+				continue;
+			if (ss->getHeightAt (start, end, info))
 			{
 				if (height)
 				{
@@ -338,6 +352,7 @@ bool ClientProceduralTerrainAppearance::ClientChunk::getHeightAt (const Vector& 
 
 				return true;
 			}
+		}
 	}
 
 	return false;

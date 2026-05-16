@@ -74,7 +74,10 @@ static const char* const kCompanionMelFiles[] =
             "swgAssetDissector.mel",
             "swgAnimationBrowser.mel",
             "swgStaticMeshExport.mel",
+            "swgMeshAnimate.mel",
             "pobAuthoring.mel",
+            "pobSingleCellPreset.mel",
+            "pobFillerFromMesh.mel",
             "swgLightsaberToolkit.mel",
             "swgVehicleToolkit.mel",
             "swgKeepFrameZeroKeys.mel"

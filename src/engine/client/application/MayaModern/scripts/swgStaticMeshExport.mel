@@ -12,6 +12,8 @@
 //   swgStaticMeshCombineValidateExport;
 // That runs swgPrepareStaticMeshExport -combine -fixUvSet, then exportStaticMesh.
 //
+// Animated diffuse (SWTS): swgMeshAnimate.mel — swgSetupMeshAnimatedTextureExport;
+//
 // Validate only (any selection count):
 //   swgStaticMeshValidateSelection;
 

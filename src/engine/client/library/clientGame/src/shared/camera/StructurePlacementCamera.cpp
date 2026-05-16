@@ -9,6 +9,7 @@
 
 #include "clientGame/FirstClientGame.h"
 #include "clientGame/StructurePlacementCamera.h"
+#include "clientGame/StructurePlacementVisualState.h"
 
 #include "clientGame/ClientWorld.h"
 #include "clientGame/CreatureObject.h"
@@ -23,12 +24,15 @@
 #include "sharedDebug/DebugFlags.h"
 #include "sharedFoundation/GameControllerMessage.h"
 #include "sharedFoundation/MessageQueue.h"
-#include "sharedFoundation/Production.h"
 #include "sharedObject/AlterResult.h"
 #include "sharedObject/CellProperty.h"
 #include "sharedObject/LotManager.h"
 #include "sharedObject/StructureFootprint.h"
+#include "sharedMath/VectorArgb.h"
 #include "sharedTerrain/TerrainObject.h"
+
+#include <algorithm>
+#include <cmath>
 
 //===================================================================
 // StructurePlacementCameraNamespace
@@ -38,8 +42,11 @@ namespace StructurePlacementCameraNamespace
 {
 	//- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-	const float ms_glassWallRadius  = 32.f;
-	const float ms_zoom             = 50.f;
+	const float ks_defaultPlacementViewDistance = 50.f;
+	float const ks_minPlacementViewDistance     = 22.f;
+	float const ks_maxPlacementViewDistance    = 175.f;
+	float const ks_mouseWheelToViewDistance    = 1.f / 5200.f;
+	const float ms_glassWallRadius             = 32.f;
 	bool        ms_renderLotManager = true;
 	bool        ms_alwaysAllowStructurePlacement;
 
@@ -174,46 +181,60 @@ namespace StructurePlacementCameraNamespace
 			}
 		}
 
-		UNREF (showDirection);
-
-#if PRODUCTION == 0
-		//-- indicate direction
+		//-- Indicate FRONT toward model north (+local Z for RT_0) - aligns with doorway / playable facing.
 		{
-			if (showDirection)
+			const float x_0   =  static_cast<float> (x)         * chunkWidthInMeters;
+			const float x_1_2 = (static_cast<float> (x) + 0.5f) * chunkWidthInMeters;
+			const float x_1   = (static_cast<float> (x) + 1.f)  * chunkWidthInMeters;
+			const float z_0   =  static_cast<float> (z)         * chunkWidthInMeters;
+			const float z_1_2 = (static_cast<float> (z) + 0.5f) * chunkWidthInMeters;
+			const float z_1   = (static_cast<float> (z) + 1.f)  * chunkWidthInMeters;
+
+			Vector direction [2];
+			direction [0].set (x_1_2, Vector::linearInterpolate (corners [0], corners [2], 0.5f).y, z_1_2);
+
+			switch (rotation)
 			{
-				const float x_0   =  static_cast<float> (x)         * chunkWidthInMeters;
-				const float x_1_2 = (static_cast<float> (x) + 0.5f) * chunkWidthInMeters;
-				const float x_1   = (static_cast<float> (x) + 1.f)  * chunkWidthInMeters;
-				const float z_0   =  static_cast<float> (z)         * chunkWidthInMeters;
-				const float z_1_2 = (static_cast<float> (z) + 0.5f) * chunkWidthInMeters;
-				const float z_1   = (static_cast<float> (z) + 1.f)  * chunkWidthInMeters;
+			case RT_0:
+				direction [1].set (x_1_2, Vector::linearInterpolate (corners [1], corners [2], 0.5f).y, z_1);
+				break;
 
-				Vector direction [2];
-				direction [0].set (x_1_2, Vector::linearInterpolate (corners [0], corners [2], 0.5f).y, z_1_2);
+			case RT_90:
+				direction [1].set (x_1, Vector::linearInterpolate (corners [2], corners [3], 0.5f).y, z_1_2);
+				break;
 
-				switch (rotation)
-				{
-				case RT_0:
-					direction [1].set (x_1_2, Vector::linearInterpolate (corners [1], corners [2], 0.5f).y, z_1);
-					break;
+			case RT_180:
+				direction [1].set (x_1_2, Vector::linearInterpolate (corners [0], corners [3], 0.5f).y, z_0);
+				break;
 
-				case RT_90:
-					direction [1].set (x_1, Vector::linearInterpolate (corners [2], corners [3], 0.5f).y, z_1_2);
-					break;
-
-				case RT_180:
-					direction [1].set (x_1_2, Vector::linearInterpolate (corners [0], corners [3], 0.5f).y, z_0);
-					break;
-
-				case RT_270:
-					direction [1].set (x_0, Vector::linearInterpolate (corners [0], corners [1], 0.5f).y, z_1_2);
-					break;
-				}
-
-				Graphics::drawLine (direction [0], direction [1], VectorArgb::solidWhite);
+			case RT_270:
+				direction [1].set (x_0, Vector::linearInterpolate (corners [0], corners [1], 0.5f).y, z_1_2);
+				break;
 			}
+
+			VectorArgb const arrowColor =
+				showDirection ? VectorArgb (1.f, 1.f, 0.92f, 0.09f)
+				              : VectorArgb::solidWhite;
+			float const head = chunkWidthInMeters * (showDirection ? 0.12f : 0.08f);
+
+			Vector const mid = Vector::linearInterpolate (direction [0], direction [1], showDirection ? 0.92f : 0.82f);
+
+			Vector perpFlat (direction [1]);
+			perpFlat -= direction [0];
+			perpFlat.y = 0.f;
+			perpFlat.normalize ();
+			if (perpFlat.magnitudeSquared () < CONST_REAL (0.001))
+				perpFlat.set (1.f, 0.f, 0.f);
+
+			Vector side = Vector::unitY.cross (perpFlat);
+			side.normalize ();
+			Vector headA = mid + side * head;
+			Vector headB = mid - side * head;
+
+			Graphics::drawLine (direction [0], direction [1], arrowColor);
+			Graphics::drawLine (direction [1], headA, arrowColor);
+			Graphics::drawLine (direction [1], headB, arrowColor);
 		}
-#endif
 	}
 
 	//- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -230,7 +251,7 @@ StructurePlacementCamera::StructurePlacementCamera () :
 	m_queue (0),
 	m_target (),
 	m_pivot (),
-	m_zoom (0),
+	m_placementViewDistance (ks_defaultPlacementViewDistance),
 	m_mouseX (Graphics::getCurrentRenderTargetWidth () >> 1),
 	m_mouseY (Graphics::getCurrentRenderTargetHeight () >> 1),
 	m_structureFootprint (0),
@@ -297,6 +318,8 @@ void StructurePlacementCamera::setActive (bool active)
 
 		m_rotationType = RT_0;
 
+		m_placementViewDistance = ks_defaultPlacementViewDistance;
+
 		m_fov = getHorizontalFieldOfView ();
 		setHorizontalFieldOfView (PI_OVER_2);
 	}
@@ -346,6 +369,7 @@ float StructurePlacementCamera::alter (float elapsedTime)
 		m_keys [i] = false;
 
 	//-- handle camera specific messages
+	float mouseWheelAccum = 0.f;
 	for (i = 0; i < m_queue->getNumberOfMessages (); i++)
 	{
 		int  message;
@@ -359,12 +383,21 @@ float StructurePlacementCamera::alter (float elapsedTime)
 		case CM_down:         m_keys [K_down]   = true;  break;
 		case CM_left:         m_keys [K_left]   = true;  break;
 		case CM_right:        m_keys [K_right]  = true;  break;
+		case CM_mouseWheel:
+		case CM_cameraPivotZoom:
+			mouseWheelAccum += value;
+			break;
 		default:
 			break;
 		}
 	}
 
-	m_zoom = ms_zoom;
+	if (mouseWheelAccum != CONST_REAL (0))
+	{
+		float const scale = std::sqrt (std::max (CONST_REAL (10), m_placementViewDistance));
+		m_placementViewDistance += mouseWheelAccum * ks_mouseWheelToViewDistance * scale;
+		m_placementViewDistance  = std::max (ks_minPlacementViewDistance, std::min (ks_maxPlacementViewDistance, m_placementViewDistance));
+	}
 	
 	const Vector x = Vector::unitX * 2.f;
 	const Vector z = Vector::unitZ * 2.f;
@@ -391,9 +424,11 @@ float StructurePlacementCamera::alter (float elapsedTime)
 	Transform t;
 	t.setPosition_p (m_pivot);
 	t.pitch_l (PI_OVER_2 - (PI / 32.f));
-	t.move_l (Vector (0.f, 0.f, -m_zoom));
+	t.move_l (Vector (0.f, 0.f, -m_placementViewDistance));
 
 	setTransform_o2p (t);
+
+	StructurePlacementVisualState::pollChordEachFrame ();
 
 	return GameCamera::alter (elapsedTime);
 }
@@ -622,6 +657,29 @@ void StructurePlacementCamera::drawScene () const
 				}
 				break;
 			}
+		}
+
+		//-- Ground-plane world compass (chunk X,Z); matches UI copy for N/E/S/W.
+		{
+			Graphics::setStaticShader (ShaderTemplateList::get3dVertexColorStaticShader ());
+			Vector pivot = result.getPoint ();
+			IGNORE_RETURN (terrainObject->getHeight (pivot, pivot.y));
+			pivot.y += chunkWidthInMeters * 0.08f;
+
+			float const limb = chunkWidthInMeters * 0.24f;
+
+			Vector nTip = pivot + Vector (0.f, 0.f, limb);
+
+			Vector sTip = pivot + Vector (0.f, 0.f, -limb);
+
+			Vector eTip = pivot + Vector (limb, 0.f, 0.f);
+
+			Vector wTip = pivot + Vector (-limb, 0.f, 0.f);
+
+			Graphics::drawLine (pivot, nTip, VectorArgb::solidCyan);
+			Graphics::drawLine (pivot, eTip, VectorArgb::solidMagenta);
+			Graphics::drawLine (pivot, sTip, VectorArgb::solidRed);
+			Graphics::drawLine (pivot, wTip, VectorArgb::solidYellow);
 		}
 
 		//-- update createLocation (we use 0.495 because 0.5 causes us to miss collisions)

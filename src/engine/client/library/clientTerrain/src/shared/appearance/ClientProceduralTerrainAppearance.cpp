@@ -128,6 +128,7 @@ namespace
 	float ms_dynamicFarFloraDistance = 0.f;
 	bool  ms_dynamicNearFloraEnabled = true;
 	float ms_dynamicNearFloraDistance = 0.f;
+	bool  ms_radialFloraDrawSuppressedForPlacementOverlay = false;
 	int   ms_maximumNumberOfInvalidatedNodes = 0;
 	bool ms_specularTerrainEnabled = true;
 	bool ms_deferredSpecularTerrainEnabled = true; // spec terrain changes are deferred until the terrain is re-created
@@ -398,6 +399,20 @@ float ClientProceduralTerrainAppearance::getStaticNonCollidableFloraDistance ()
 
 //-------------------------------------------------------------------
 
+void ClientProceduralTerrainAppearance::setRadialFloraDrawSuppressed (bool suppressed)
+{
+	ms_radialFloraDrawSuppressedForPlacementOverlay = suppressed;
+}
+
+//-------------------------------------------------------------------
+
+bool ClientProceduralTerrainAppearance::getRadialFloraDrawSuppressed ()
+{
+	return ms_radialFloraDrawSuppressedForPlacementOverlay;
+}
+
+//-------------------------------------------------------------------
+
 float ClientProceduralTerrainAppearance::getMaximumThresholdHigh ()
 {
 	return ms_maximumThresholdHigh;
@@ -531,11 +546,31 @@ ClientProceduralTerrainAppearance::ClientProceduralTerrainAppearance (const Proc
 		//-- then non-collidable
 		if (generator->getFloraGroup ().getNumberOfFamilies () > 0)
 		{
-			if (nonCollidableMaximumDistance > nonCollidableMinimumDistance)
+			// Legacy Turf_r bake fills non-collidable min/max distances; without it both are commonly 0 so
+			// the radial flora manager was never built and CityTerrainLayerManager live flora overlays
+			// were never queried. Camera-ring extent still uses ms_staticNonCollidableFloraDistance.
+			float nonCollidableMinForMgr = nonCollidableMinimumDistance;
+			float nonCollidableMaxForMgr = nonCollidableMaximumDistance;
+			if (!(nonCollidableMaxForMgr > nonCollidableMinForMgr))
 			{
-				m_staticNonCollidableFloraManager = new ClientStaticRadialFloraManager (*this, ms_staticNonCollidableFloraEnabled, nonCollidableMinimumDistance, ms_staticNonCollidableFloraDistance, &ClientProceduralTerrainAppearance::findStaticNonCollidableFlora);
+				nonCollidableMinForMgr = 0.f;
+				nonCollidableMaxForMgr = std::max (nonCollidableMaxForMgr, 1.f);
+			}
+
+			float floraTileSizeNc = nonCollidableTileSize;
+			float floraTileBorderNc = nonCollidableTileBorder;
+			if (floraTileSizeNc < 0.5f)
+				floraTileSizeNc = std::max (8.f, chunkWidthInMeters * 0.25f);
+			if (floraTileSizeNc < 0.5f)
+				floraTileSizeNc = 16.f;
+			if (floraTileBorderNc < 0.f || floraTileBorderNc * 2.f >= floraTileSizeNc)
+				floraTileBorderNc = std::min (2.f, floraTileSizeNc * 0.125f);
+
+			if (nonCollidableMaxForMgr > nonCollidableMinForMgr)
+			{
+				m_staticNonCollidableFloraManager = new ClientStaticRadialFloraManager (*this, ms_staticNonCollidableFloraEnabled, nonCollidableMinForMgr, ms_staticNonCollidableFloraDistance, &ClientProceduralTerrainAppearance::findStaticNonCollidableFlora);
 				m_staticNonCollidableFloraManager->setDebugName ("FloraStaticNonCollidable");
-				m_staticNonCollidableFloraManager->initialize (nonCollidableTileSize, nonCollidableTileBorder, nonCollidableSeed);
+				m_staticNonCollidableFloraManager->initialize (floraTileSizeNc, floraTileBorderNc, nonCollidableSeed);
 				m_floraManagerList->push_back (m_staticNonCollidableFloraManager);
 			}
 		}
@@ -657,7 +692,10 @@ ClientProceduralTerrainAppearance::~ClientProceduralTerrainAppearance ()
 	m_dpvsObject = NULL;
 
 	delete m_invalidateChunkRequestInfoList;
+	m_invalidateChunkRequestInfoList = 0;
+
 	delete m_invalidateRegionList;
+	m_invalidateRegionList = 0;
 
 	delete m_chunkTree;
 	m_chunkTree = 0;
@@ -1384,7 +1422,8 @@ void ClientProceduralTerrainAppearance::render () const
 	//-- render the environment
 	GroundEnvironment::getInstance().draw();
 
-	//-- render flora
+	//-- render flora (radial: static NC + dynamic near/far; draw-only suppression for placement overlays)
+	if (!ms_radialFloraDrawSuppressedForPlacementOverlay)
 	{
 		PROFILER_AUTO_BLOCK_DEFINE ("terrain draw flora");
 		std::for_each (m_floraManagerList->begin (), m_floraManagerList->end (), VoidMemberFunction (&ClientRadialFloraManager::draw));
@@ -1936,17 +1975,22 @@ void ClientProceduralTerrainAppearance::purgeChunks ()
 
 	REPORT_LOG_PRINT (m_totalNumberOfChunksCreated, ("average chunk create: %1.3f generate, %1.3f client\n", m_totalChunkGenerationTime / m_totalNumberOfChunksCreated, m_totalChunkCreationTime / m_totalNumberOfChunksCreated));
 
-	IGNORE_RETURN (getChunkTree ()->getTopNode ()->removeSubNodes (true));
-	if (getChunkTree ()->getTopNode ()->getChunk ())
-		getChunkTree ()->getTopNode ()->removeChunk (getChunkTree ()->getTopNode ()->getChunk (), true);
+	if (TerrainQuadTree* const tree = getChunkTree ())
+	{
+		if (TerrainQuadTree::Node* const top = tree->getTopNode ())
+		{
+			IGNORE_RETURN (top->removeSubNodes (true));
+			if (top->getChunk ())
+				top->removeChunk (top->getChunk (), true);
+		}
+	}
 
 	m_totalChunkCreationTime     = 0;
 	m_totalChunkGenerationTime   = 0;
 	m_totalNumberOfChunksCreated = 0;
 
-	NOT_NULL (m_levelOfDetail);
-
-	m_levelOfDetail->setDirty (true);
+	if (m_levelOfDetail)
+		m_levelOfDetail->setDirty (true);
 
 	m_requestCriticalSection.leave();
 }
@@ -2314,14 +2358,26 @@ void ClientProceduralTerrainAppearance::debugDump () const
 
 const ProceduralTerrainAppearance::Chunk* ClientProceduralTerrainAppearance::findChunk (const int x, const int z, const int chunkSize) const
 {
-	return getChunkTree ()->findChunk (x, z, chunkSize);
+	TerrainQuadTree const* const tree = getChunkTree ();
+	if (!tree)
+		return 0;
+	return tree->findChunk (x, z, chunkSize);
 }
 
 //-------------------------------------------------------------------
 
 const ProceduralTerrainAppearance::Chunk* ClientProceduralTerrainAppearance::findFirstRenderableChunk (const int x, const int z) const
 {
-	const TerrainQuadTree::Node* const node = getChunkTree ()->getTopNode ()->findFirstRenderableNode (x, z);
+	// Terrain quad-tree can transiently lack a root node during setup / teardown; never dereference a null top.
+	TerrainQuadTree const* const tree = getChunkTree ();
+	if (!tree)
+		return 0;
+
+	TerrainQuadTree::Node const* const top = tree->getTopNode ();
+	if (!top)
+		return 0;
+
+	TerrainQuadTree::Node const* const node = top->findFirstRenderableNode (x, z);
 
 	return node ? node->getChunk () : 0;
 }

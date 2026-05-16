@@ -111,6 +111,14 @@
                                     </widget>
                                     <widget class="QPushButton">
                                         <property name="name">
+                                            <cstring>m_publishButton</cstring>
+                                        </property>
+                                        <property name="text">
+                                            <string>Publish</string>
+                                        </property>
+                                    </widget>
+                                    <widget class="QPushButton">
+                                        <property name="name">
                                             <cstring>m_refreshButton</cstring>
                                         </property>
                                         <property name="text">

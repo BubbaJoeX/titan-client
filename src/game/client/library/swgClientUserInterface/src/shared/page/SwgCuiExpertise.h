@@ -23,6 +23,7 @@ class PlayerObject;
 class SkillObject;
 class UIImage;
 class UIText;
+class UITextbox;
 
 namespace MessageDispatch
 {
@@ -130,6 +131,12 @@ private:
 	UIPage *                     m_skillModTypeMarkers[MAX_NUM_SKILL_MODS_PER_EXPERTISE][MAX_NUM_EXPERTISE_RANKS];
 
 	int m_numberMode;
+
+	UIButton *                   m_importBuildButton;
+	UIButton *                   m_exportBuildButton;
+	UIButton *                   m_importBuildFileButton;
+	UIButton *                   m_exportBuildFileButton;
+	UITextbox *                  m_buildCodeTextbox;
 
 	CuiMessageBox *              m_messageBoxTrainExpertises;
 

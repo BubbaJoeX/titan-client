@@ -1,10 +1,10 @@
 		<Page
 			Location='86,18'
-			MaximumSize='906,653'
-			MinimumSize='906,653'
+			MaximumSize='906,735'
+			MinimumSize='906,735'
 			Name='Expertise'
-			ScrollExtent='906,653'
-			Size='906,653'
+			ScrollExtent='906,735'
+			Size='906,735'
 			UserMovable='true'
 		>
 			<Data
@@ -22,6 +22,11 @@
 				CurrentRank='fg.body.right.rightVertical.Middle.ScrollablePage.ExpertiseRankCurrent.Text'
 				ExpertiseDisplayDescription='fg.body.right.rightVertical.Middle.ScrollablePage.ExpertiseDescription.Text'
 				ExpertiseDisplayName='fg.body.right.rightVertical.Top.ExpertiseName.Text'
+				ExportBuildButton='fg.body.right.rightVertical.Bottom.buttonExportBuild'
+				ExportBuildFileButton='fg.body.right.rightVertical.Bottom.buttonExportBuildFile'
+				ImportBuildButton='fg.body.right.rightVertical.Bottom.buttonImportBuild'
+				ImportBuildFileButton='fg.body.right.rightVertical.Bottom.buttonImportBuildFile'
+				BuildCodeTextbox='fg.body.right.rightVertical.Bottom.BuildCodeTextbox'
 				Grid_1_1='fg.body.left.Grid.Grid_1_1'
 				Grid_1_2='fg.body.left.Grid.Grid_1_2'
 				Grid_1_3='fg.body.left.Grid.Grid_1_3'
@@ -125,8 +130,8 @@
 				Location='20,21'
 				Name='fg'
 				PackSize='a,a'
-				ScrollExtent='870,622'
-				Size='870,622'
+				ScrollExtent='870,699'
+				Size='870,699'
 			>
 				<Page
 					Name='Tabs'
@@ -349,8 +354,8 @@
 					Location='0,29'
 					Name='body'
 					Orientation='Horizontal'
-					ScrollExtent='870,593'
-					Size='870,593'
+					ScrollExtent='870,675'
+					Size='870,675'
 					Spacing='5'
 					SpacingType='Constant'
 				>
@@ -1000,14 +1005,14 @@
 						Location='565,0'
 						Name='right'
 						RStyleDefault='/Styles.Roadmap.whiteOutline.rs_default'
-						ScrollExtent='305,591'
-						Size='305,591'
+						ScrollExtent='305,730'
+						Size='305,722'
 					>
 						<Composite
 							Location='1,5'
 							Name='rightVertical'
-							ScrollExtent='305,604'
-							Size='305,585'
+							ScrollExtent='305,730'
+							Size='305,722'
 						>
 							<Page
 								Name='Top'
@@ -1904,8 +1909,8 @@
 							<Page
 								Location='0,462'
 								Name='Bottom'
-								ScrollExtent='305,142'
-								Size='305,142'
+								ScrollExtent='305,260'
+								Size='305,260'
 							>
 								<Page
 									Location='34,20'
@@ -2056,6 +2061,69 @@
 									Style='buttonAcceptStyle.style'
 									Visible='false'
 								>switch #s</Button>
+								<Text
+									Font='bold_11'
+									LocalText='Build code (SWG1…):'
+									Location='12,146'
+									Name='BuildCodeLabel'
+									ScrollExtent='280,16'
+									Size='280,16'
+									TextColor='#CECECE'
+								>Build code (SWG1…):</Text>
+								<Textbox
+									BackgroundOpacity='0.85'
+									BackgroundTint='#1E3544'
+									Font='bold_11'
+									Location='12,164'
+									MaxLength='32767'
+									MaxLines='-1'
+									Name='BuildCodeTextbox'
+									RStyleDefault='/Styles.New.whiteOutline.rs_default'
+									ScrollExtent='281,52'
+									Size='281,52'
+									Style='/Styles.textbox.default.Style'
+									TextColor='#FFFFFF'
+								></Textbox>
+								<Button
+									LocalText='Import'
+									Location='12,222'
+									MinimumSize='0,19'
+									Name='buttonImportBuild'
+									OpacityRelativeMin='0.70'
+									ScrollExtent='133,22'
+									Size='133,22'
+									Style='buttonClearTreeStyle.style'
+								>Import</Button>
+								<Button
+									LocalText='Export'
+									Location='151,222'
+									MinimumSize='0,19'
+									Name='buttonExportBuild'
+									OpacityRelativeMin='0.70'
+									ScrollExtent='133,22'
+									Size='133,22'
+									Style='buttonClearTreeStyle.style'
+								>Export</Button>
+								<Button
+									LocalText='Import file...'
+									Location='12,248'
+									MinimumSize='0,19'
+									Name='buttonImportBuildFile'
+									OpacityRelativeMin='0.70'
+									ScrollExtent='133,22'
+									Size='133,22'
+									Style='buttonClearTreeStyle.style'
+								>Import file...</Button>
+								<Button
+									LocalText='Export file...'
+									Location='151,248'
+									MinimumSize='0,19'
+									Name='buttonExportBuildFile'
+									OpacityRelativeMin='0.70'
+									ScrollExtent='133,22'
+									Size='133,22'
+									Style='buttonClearTreeStyle.style'
+								>Export file...</Button>
 								<Namespace
 									Name='buttonClearTreeStyle'
 									Size='128,64'

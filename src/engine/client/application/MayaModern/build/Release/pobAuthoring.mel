@@ -1,6 +1,7 @@
 // SwgMayaEditor — .pob (portal object) authoring helpers for large buildings / apartments.
-// After loading SwgMayaEditor.mll:  source "…/pobAuthoring.mel";
-// Single cell + entry/exit portals preset:  source "…/pobSingleCellPreset.mel";  swg_pob_singleCellEntryExitDefault;
+// After loading SwgMayaEditor.mll:  source "…/pobAuthoring.mel";  swg_pob_sourceCompanionScripts;
+// Room presets (pobSingleCellPreset.mel):  swg_pob_oneRoomOneExit;  |  swg_pob_oneRoomTwoExits;
+// Filler mesh → POB rig (pobFillerFromMesh.mel):  swg_pob_fillerFromExteriorSelection "r" "appearance/a/b" "" 1 2 2.5 1;
 //
 // EMPTY / BLACK VIEWPORT?
 //   New scene + no lights = black. Run:  swg_pob_defaultLight;
@@ -16,6 +17,8 @@
 //   exportPob -i "path.appearance/name.pob"
 //
 // MEL helpers (this file):
+//   swg_pob_sourceCompanionScripts       — loads pobSingleCellPreset.mel + pobFillerFromMesh.mel from plugin dir
+//   swg_pob_oneRoomOneExit / swg_pob_oneRoomTwoExits  — quick single-cell presets
 //   swg_pob_setAllMeshRefs / swg_pob_setAllFloorRefs / swg_pob_setCellRefs
 //   swg_pob_addTemplatePlaceholders       swg_pob_connectRing "r0,r1,r2,r3" …
 //   swg_pob_exportDialog   swg_pob_layoutColumnY   swg_pob_clearAllPortals
@@ -426,4 +429,83 @@ global proc swg_pob_clearAllPortals(string $rootName)
         }
     }
     print ("// swg_pob_clearAllPortals: removed " + $total + " portal transform(s)\n");
+}
+
+// ---------------------------------------------------------------------------
+// Companion scripts (same directory as SwgMayaEditor.mll)
+// ---------------------------------------------------------------------------
+
+/// Sources pobSingleCellPreset.mel and pobFillerFromMesh.mel from the loaded plugin path.
+global proc swg_pob_sourceCompanionScripts()
+{
+    if (`pluginInfo -q -loaded SwgMayaEditor` != 1)
+        loadPlugin SwgMayaEditor;
+
+    string $p = `pluginInfo -q -path SwgMayaEditor`;
+    if (size($p) < 1)
+    {
+        warning "swg_pob_sourceCompanionScripts: pluginInfo could not resolve SwgMayaEditor path";
+        return;
+    }
+    $p = `substituteAllString $p "\\" "/"`;
+    string $tok[];
+    int $n = `tokenize $p "/" $tok`;
+    if ($n < 2)
+    {
+        warning "swg_pob_sourceCompanionScripts: unexpected plugin path";
+        return;
+    }
+    string $dir = "";
+    int $ti;
+    for ($ti = 0; $ti < $n - 1; $ti++)
+    {
+        if ($ti > 0)
+            $dir += "/";
+        $dir += $tok[$ti];
+    }
+    string $preset = $dir + "/pobSingleCellPreset.mel";
+    string $filler = $dir + "/pobFillerFromMesh.mel";
+    if (`eval ("filetest -f \"" + $preset + "\"")`)
+        eval ("source \"" + $preset + "\"");
+    else
+        print ("// swg_pob_sourceCompanionScripts: not found — " + $preset + "\n");
+
+    if (`eval ("filetest -f \"" + $filler + "\"")`)
+        eval ("source \"" + $filler + "\"");
+    else
+        print ("// swg_pob_sourceCompanionScripts: not found — " + $filler + "\n");
+}
+
+/// 1 cell, 1 exterior portal (see pobSingleCellPreset.mel).
+global proc swg_pob_oneRoomOneExit()
+{
+    swg_pob_sourceCompanionScripts;
+    swg_pob_singleCellOneExitDefault;
+}
+
+/// 1 cell, 2 exterior portals (+Z / -Z bays), default sizes.
+global proc swg_pob_oneRoomTwoExits()
+{
+    swg_pob_sourceCompanionScripts;
+    swg_pob_singleCellEntryExitDefault;
+}
+
+/// Lit scene + two-exit single cell; reuses apartment-style bootstrap naming.
+global proc swg_pob_quickStartSingleBuilding(string $rootName, string $meshRef, string $floorRef)
+{
+    swg_pob_defaultLight;
+    swg_pob_sourceCompanionScripts;
+    swg_pob_singleCellEntryExit($rootName, 2.0, 2.5, 8.0, 0);
+    string $rl[] = `ls -long $rootName`;
+    if (size($rl) > 0)
+    {
+        string $base = $rl[0];
+        if (size($meshRef) > 0)
+            setAttr -type "string" ($base + "|r0|mesh.external_reference") $meshRef;
+        if (size($floorRef) > 0)
+            setAttr -type "string" ($base + "|r0|collision|floor0.external_reference") $floorRef;
+    }
+    validatePob -root $rootName;
+    select -r $rootName;
+    print ("// swg_pob_quickStartSingleBuilding: set refs if provided; run exportPob -i\n");
 }

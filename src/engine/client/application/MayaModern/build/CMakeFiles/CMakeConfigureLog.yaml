@@ -2,482 +2,330 @@
 ---
 events:
   -
-    kind: "message-v1"
+    kind: "find-v1"
     backtrace:
-      - "D:/Strawberry/c/share/cmake-3.29/Modules/CMakeDetermineSystem.cmake:205 (message)"
-      - "unicode/CMakeLists.txt:3 (project)"
-    message: |
-      The system is: Windows - 10.0 - AMD64
+      - "D:/titan/client/src/external/3rd/library/devkitBase/cmake/devkit.cmake:59 (find_path)"
+      - "D:/titan/client/src/external/3rd/library/devkitBase/cmake/pluginEntry.cmake:37 (include)"
+      - "CMakeLists.txt:17 (include)"
+    mode: "path"
+    variable: "DEVKIT_LIBRARY_DIR"
+    description: "Devkit library path"
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "OpenMaya.lib"
+    candidate_directories:
+      - "C:/Program Files (x86)/Alias/Maya8.0/bin/"
+      - "C:/Python314/Scripts/"
+      - "C:/Python314/"
+      - "C:/Program Files/Eclipse Adoptium/jdk-25.0.2.10-hotspot/bin/"
+      - "C:/Windows/System32/"
+      - "C:/Windows/"
+      - "C:/Windows/System32/wbem/"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/"
+      - "C:/Windows/System32/OpenSSH/"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
+      - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
+      - "C:/Program Files/Git/cmd/"
+      - "C:/Program Files/Microsoft SQL Server/110/Tools/Binn/"
+      - "C:/Program Files (x86)/Microsoft SDKs/TypeScript/1.0/"
+      - "D:/Program Files/Java/JavaFX/javafx-sdk-25.0.2/lib/"
+      - "D:/Program Files (x86)/Maven/apache-maven-3.9.12/bin/"
+      - "C:/Program Files/nodejs/"
+      - "C:/ProgramData/chocolatey/bin/"
+      - "C:/Program Files/CMake/bin/"
+      - "C:/Program Files/dotnet/"
+      - "C:/Program Files/Docker/Docker/resources/bin/"
+      - "C:/Users/jojoj/AppData/Local/Programs/PHP/current/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/"
+      - "D:/Program Files/Jetbrains/PhpStorm 2025.3.2/bin/"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2025.3.2/bin/"
+      - "C:/Users/jojoj/AppData/Local/PowerToys/DSCModules/"
+      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/"
+      - "C:/Users/jojoj/AppData/Roaming/npm/"
+      - "C:/Users/jojoj/.dotnet/tools/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Zed/bin/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Antigravity/bin/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe/"
+      - "D:/titan/client/src/external/3rd/library/devkitBase/lib/"
+      - "D:/titan/client/src/external/3rd/runTime/lib/"
+    searched_directories:
+      - "C:/Program Files (x86)/Alias/Maya8.0/bin/OpenMaya.lib"
+      - "C:/Python314/Scripts/OpenMaya.lib"
+      - "C:/Python314/OpenMaya.lib"
+      - "C:/Program Files/Eclipse Adoptium/jdk-25.0.2.10-hotspot/bin/OpenMaya.lib"
+      - "C:/Windows/System32/OpenMaya.lib"
+      - "C:/Windows/OpenMaya.lib"
+      - "C:/Windows/System32/wbem/OpenMaya.lib"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/OpenMaya.lib"
+      - "C:/Windows/System32/OpenSSH/OpenMaya.lib"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/OpenMaya.lib"
+      - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/OpenMaya.lib"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/OpenMaya.lib"
+      - "C:/Program Files/Git/cmd/OpenMaya.lib"
+      - "C:/Program Files/Microsoft SQL Server/110/Tools/Binn/OpenMaya.lib"
+      - "C:/Program Files (x86)/Microsoft SDKs/TypeScript/1.0/OpenMaya.lib"
+      - "D:/Program Files/Java/JavaFX/javafx-sdk-25.0.2/lib/OpenMaya.lib"
+      - "D:/Program Files (x86)/Maven/apache-maven-3.9.12/bin/OpenMaya.lib"
+      - "C:/Program Files/nodejs/OpenMaya.lib"
+      - "C:/ProgramData/chocolatey/bin/OpenMaya.lib"
+      - "C:/Program Files/CMake/bin/OpenMaya.lib"
+      - "C:/Program Files/dotnet/OpenMaya.lib"
+      - "C:/Program Files/Docker/Docker/resources/bin/OpenMaya.lib"
+      - "C:/Users/jojoj/AppData/Local/Programs/PHP/current/OpenMaya.lib"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/OpenMaya.lib"
+      - "D:/Program Files/Jetbrains/PhpStorm 2025.3.2/bin/OpenMaya.lib"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2025.3.2/bin/OpenMaya.lib"
+      - "C:/Users/jojoj/AppData/Local/PowerToys/DSCModules/OpenMaya.lib"
+      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/OpenMaya.lib"
+      - "C:/Users/jojoj/AppData/Roaming/npm/OpenMaya.lib"
+      - "C:/Users/jojoj/.dotnet/tools/OpenMaya.lib"
+      - "C:/Users/jojoj/AppData/Local/Programs/Zed/bin/OpenMaya.lib"
+      - "C:/Users/jojoj/AppData/Local/Programs/Antigravity/bin/OpenMaya.lib"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe/OpenMaya.lib"
+    found: "D:/titan/client/src/external/3rd/library/devkitBase/lib/"
+    search_context:
+      ENV{PATH}:
+        - "C:\\Program Files (x86)\\Alias\\Maya8.0\\bin"
+        - "C:\\Python314\\Scripts\\"
+        - "C:\\Python314\\"
+        - "C:\\Program Files\\Eclipse Adoptium\\jdk-25.0.2.10-hotspot\\bin"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\Windows\\System32\\OpenSSH\\"
+        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA App\\NvDLISR"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files\\Microsoft SQL Server\\110\\Tools\\Binn\\"
+        - "C:\\Program Files (x86)\\Microsoft SDKs\\TypeScript\\1.0\\"
+        - "D:\\Program Files\\Java\\JavaFX\\javafx-sdk-25.0.2\\lib"
+        - "D:\\Program Files (x86)\\Maven\\apache-maven-3.9.12\\bin"
+        - "C:\\Program Files\\nodejs\\"
+        - "C:\\ProgramData\\chocolatey\\bin"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\dotnet\\"
+        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\PHP\\current"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WindowsApps"
+        - "D:\\Program Files\\Jetbrains\\PhpStorm 2025.3.2\\bin"
+        - "D:\\Program Files\\Jetbrains\\IntelliJ IDEA 2025.3.2\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\PowerToys\\DSCModules\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Roaming\\npm"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Zed\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Antigravity\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe"
   -
-    kind: "message-v1"
+    kind: "find-v1"
     backtrace:
-      - "D:/Strawberry/c/share/cmake-3.29/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
-      - "D:/Strawberry/c/share/cmake-3.29/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
-      - "D:/Strawberry/c/share/cmake-3.29/Modules/CMakeDetermineCCompiler.cmake:123 (CMAKE_DETERMINE_COMPILER_ID)"
-      - "unicode/CMakeLists.txt:3 (project)"
-    message: |
-      Compiling the C compiler identification source file "CMakeCCompilerId.c" succeeded.
-      Compiler:  
-      Build flags: 
-      Id flags:  
-      
-      The output was:
-      0
-      MSBuild version 17.14.40+3e7442088 for .NET Framework
-      Build started 4/28/2026 4:25:05 .
-      
-      Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\3.29.2\\CompilerIdC\\CompilerIdC.vcxproj" on node 1 (default targets).
-      PrepareForBuild:
-        Creating directory "Debug\\".
-        Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-        Creating directory "Debug\\CompilerIdC.tlog\\".
-      InitializeBuildStatus:
-        Creating "Debug\\CompilerIdC.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-        Touching "Debug\\CompilerIdC.tlog\\unsuccessfulbuild".
-      ClCompile:
-        C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /nologo /W0 /WX- /diagnostics:column /Od /D _MBCS /Gm- /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"Debug\\\\" /Fd"Debug\\vc143.pdb" /external:W0 /Gd /TC /FC /errorReport:queue CMakeCCompilerId.c
-        CMakeCCompilerId.c
-      Link:
-        C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /ERRORREPORT:QUEUE /OUT:".\\CompilerIdC.exe" /INCREMENTAL:NO /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /PDB:".\\CompilerIdC.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:".\\CompilerIdC.lib" /MACHINE:X64 Debug\\CMakeCCompilerId.obj
-        CompilerIdC.vcxproj -> D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\3.29.2\\CompilerIdC\\CompilerIdC.exe
-      PostBuildEvent:
-        for %%i in (cl.exe) do @echo CMAKE_C_COMPILER=%%~$PATH:i
-        :VCEnd
-        CMAKE_C_COMPILER=C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\Hostx64\\x64\\cl.exe
-      FinalizeBuildStatus:
-        Deleting file "Debug\\CompilerIdC.tlog\\unsuccessfulbuild".
-        Touching "Debug\\CompilerIdC.tlog\\CompilerIdC.lastbuildstate".
-      Done Building Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\3.29.2\\CompilerIdC\\CompilerIdC.vcxproj" (default targets).
-      
-      Build succeeded.
-          0 Warning(s)
-          0 Error(s)
-      
-      Time Elapsed 00:00:00.55
-      
-      
-      Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "CompilerIdC.exe"
-      
-      Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "CompilerIdC.vcxproj"
-      
-      The C compiler identification is MSVC, found in:
-        D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/3.29.2/CompilerIdC/CompilerIdC.exe
-      
-  -
-    kind: "message-v1"
-    backtrace:
-      - "D:/Strawberry/c/share/cmake-3.29/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
-      - "D:/Strawberry/c/share/cmake-3.29/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
-      - "D:/Strawberry/c/share/cmake-3.29/Modules/CMakeDetermineCXXCompiler.cmake:126 (CMAKE_DETERMINE_COMPILER_ID)"
-      - "unicode/CMakeLists.txt:3 (project)"
-    message: |
-      Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" succeeded.
-      Compiler:  
-      Build flags: /Zi;/wd4996
-      Id flags:  
-      
-      The output was:
-      0
-      MSBuild version 17.14.40+3e7442088 for .NET Framework
-      Build started 4/28/2026 4:25:06 .
-      
-      Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\3.29.2\\CompilerIdCXX\\CompilerIdCXX.vcxproj" on node 1 (default targets).
-      PrepareForBuild:
-        Creating directory "Debug\\".
-        Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-        Creating directory "Debug\\CompilerIdCXX.tlog\\".
-      InitializeBuildStatus:
-        Creating "Debug\\CompilerIdCXX.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-        Touching "Debug\\CompilerIdCXX.tlog\\unsuccessfulbuild".
-      ClCompile:
-        C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /nologo /W0 /WX- /diagnostics:column /Od /D _MBCS /Gm- /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"Debug\\\\" /Fd"Debug\\vc143.pdb" /external:W0 /Gd /TP /FC /errorReport:queue CMakeCXXCompilerId.cpp
-        CMakeCXXCompilerId.cpp
-      Link:
-        C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /ERRORREPORT:QUEUE /OUT:".\\CompilerIdCXX.exe" /INCREMENTAL:NO /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /PDB:".\\CompilerIdCXX.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:".\\CompilerIdCXX.lib" /MACHINE:X64 Debug\\CMakeCXXCompilerId.obj
-        CompilerIdCXX.vcxproj -> D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\3.29.2\\CompilerIdCXX\\CompilerIdCXX.exe
-      PostBuildEvent:
-        for %%i in (cl.exe) do @echo CMAKE_CXX_COMPILER=%%~$PATH:i
-        :VCEnd
-        CMAKE_CXX_COMPILER=C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\Hostx64\\x64\\cl.exe
-      FinalizeBuildStatus:
-        Deleting file "Debug\\CompilerIdCXX.tlog\\unsuccessfulbuild".
-        Touching "Debug\\CompilerIdCXX.tlog\\CompilerIdCXX.lastbuildstate".
-      Done Building Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\3.29.2\\CompilerIdCXX\\CompilerIdCXX.vcxproj" (default targets).
-      
-      Build succeeded.
-          0 Warning(s)
-          0 Error(s)
-      
-      Time Elapsed 00:00:00.51
-      
-      
-      Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "CompilerIdCXX.exe"
-      
-      Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "CompilerIdCXX.vcxproj"
-      
-      The CXX compiler identification is MSVC, found in:
-        D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/3.29.2/CompilerIdCXX/CompilerIdCXX.exe
-      
-  -
-    kind: "try_compile-v1"
-    backtrace:
-      - "D:/Strawberry/c/share/cmake-3.29/Modules/CMakeDetermineCompilerABI.cmake:64 (try_compile)"
-      - "D:/Strawberry/c/share/cmake-3.29/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
-      - "unicode/CMakeLists.txt:3 (project)"
-    checks:
-      - "Detecting C compiler ABI info"
-    directories:
-      source: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-v5iz4y"
-      binary: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-v5iz4y"
-    cmakeVariables:
-      CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS /W3"
-      CMAKE_C_FLAGS_DEBUG: "/MDd /Zi /Ob0 /Od /RTC1"
-      CMAKE_EXE_LINKER_FLAGS: " /DEBUG /IGNORE:4099"
-      CMAKE_MODULE_PATH: "D:/titan/client/src/external/3rd/library/devkitBase/cmake/modules"
-      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
-    buildResult:
-      variable: "CMAKE_C_ABI_COMPILED"
-      cached: true
-      stdout: |
-        Change Dir: 'D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-v5iz4y'
-        
-        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_e9329.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
-        MSBuild version 17.14.40+3e7442088 for .NET Framework
-        Build started 4/28/2026 4:25:07 .
-        
-        Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-v5iz4y\\cmTC_e9329.vcxproj" on node 1 (default targets).
-        PrepareForBuild:
-          Creating directory "cmTC_e9329.dir\\Debug\\".
-          Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-v5iz4y\\Debug\\".
-          Creating directory "cmTC_e9329.dir\\Debug\\cmTC_e9329.tlog\\".
-        InitializeBuildStatus:
-          Creating "cmTC_e9329.dir\\Debug\\cmTC_e9329.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_e9329.dir\\Debug\\cmTC_e9329.tlog\\unsuccessfulbuild".
-        ClCompile:
-          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\\"Debug\\"" /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_e9329.dir\\Debug\\\\" /Fd"cmTC_e9329.dir\\Debug\\vc143.pdb" /external:W3 /Gd /TC /errorReport:queue "D:\\Strawberry\\c\\share\\cmake-3.29\\Modules\\CMakeCCompilerABI.c"
-          Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
-          Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\\"Debug\\"" /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_e9329.dir\\Debug\\\\" /Fd"cmTC_e9329.dir\\Debug\\vc143.pdb" /external:W3 /Gd /TC /errorReport:queue "D:\\Strawberry\\c\\share\\cmake-3.29\\Modules\\CMakeCCompilerABI.c"
-          CMakeCCompilerABI.c
-        Link:
-          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /ERRORREPORT:QUEUE /OUT:"D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-v5iz4y\\Debug\\cmTC_e9329.exe" /INCREMENTAL /ILK:"cmTC_e9329.dir\\Debug\\cmTC_e9329.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-v5iz4y/Debug/cmTC_e9329.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-v5iz4y/Debug/cmTC_e9329.lib" /MACHINE:X64  /IGNORE:4099 cmTC_e9329.dir\\Debug\\CMakeCCompilerABI.obj
-          cmTC_e9329.vcxproj -> D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-v5iz4y\\Debug\\cmTC_e9329.exe
-        FinalizeBuildStatus:
-          Deleting file "cmTC_e9329.dir\\Debug\\cmTC_e9329.tlog\\unsuccessfulbuild".
-          Touching "cmTC_e9329.dir\\Debug\\cmTC_e9329.tlog\\cmTC_e9329.lastbuildstate".
-        Done Building Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-v5iz4y\\cmTC_e9329.vcxproj" (default targets).
-        
-        Build succeeded.
-            0 Warning(s)
-            0 Error(s)
-        
-        Time Elapsed 00:00:00.52
-        
-      exitCode: 0
-  -
-    kind: "message-v1"
-    backtrace:
-      - "D:/Strawberry/c/share/cmake-3.29/Modules/CMakeDetermineCompilerABI.cmake:170 (message)"
-      - "D:/Strawberry/c/share/cmake-3.29/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
-      - "unicode/CMakeLists.txt:3 (project)"
-    message: |
-      Parsed C implicit link information:
-        link line regex: [^( *|.*[/\\])(ld[0-9]*(\\.[a-z]+)?|link\\.exe|lld-link(\\.exe)?|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
-        linker tool regex: [^[ 	]*(->|")?[ 	]*(([^"]*[/\\])?(ld[0-9]*(\\.[a-z]+)?|link\\.exe|lld-link(\\.exe)?))("|,| |$)]
-        linker tool for 'C': C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/HostX64/x64/link.exe
-        implicit libs: []
-        implicit objs: []
-        implicit dirs: []
-        implicit fwks: []
-      
-      
-  -
-    kind: "message-v1"
-    backtrace:
-      - "D:/Strawberry/c/share/cmake-3.29/Modules/Internal/CMakeDetermineLinkerId.cmake:40 (message)"
-      - "D:/Strawberry/c/share/cmake-3.29/Modules/CMakeDetermineCompilerABI.cmake:207 (cmake_determine_linker_id)"
-      - "D:/Strawberry/c/share/cmake-3.29/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
-      - "unicode/CMakeLists.txt:3 (project)"
-    message: |
-      Running the C compiler's linker: "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/HostX64/x64/link.exe" "-v"
-      Microsoft (R) Incremental Linker Version 14.44.35222.0
-      Copyright (C) Microsoft Corporation.  All rights reserved.
-  -
-    kind: "try_compile-v1"
-    backtrace:
-      - "D:/Strawberry/c/share/cmake-3.29/Modules/CMakeDetermineCompilerABI.cmake:64 (try_compile)"
-      - "D:/Strawberry/c/share/cmake-3.29/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
-      - "unicode/CMakeLists.txt:3 (project)"
-    checks:
-      - "Detecting CXX compiler ABI info"
-    directories:
-      source: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-yi586q"
-      binary: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-yi586q"
-    cmakeVariables:
-      CMAKE_CXX_FLAGS: " /Zi /wd4996"
-      CMAKE_CXX_FLAGS_DEBUG: "/MD"
-      CMAKE_EXE_LINKER_FLAGS: " /DEBUG /IGNORE:4099"
-      CMAKE_MODULE_PATH: "D:/titan/client/src/external/3rd/library/devkitBase/cmake/modules"
-      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
-    buildResult:
-      variable: "CMAKE_CXX_ABI_COMPILED"
-      cached: true
-      stdout: |
-        Change Dir: 'D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-yi586q'
-        
-        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_a119c.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
-        MSBuild version 17.14.40+3e7442088 for .NET Framework
-        Build started 4/28/2026 4:25:08 .
-        
-        Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-yi586q\\cmTC_a119c.vcxproj" on node 1 (default targets).
-        PrepareForBuild:
-          Creating directory "cmTC_a119c.dir\\Debug\\".
-          Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-yi586q\\Debug\\".
-          Creating directory "cmTC_a119c.dir\\Debug\\cmTC_a119c.tlog\\".
-        InitializeBuildStatus:
-          Creating "cmTC_a119c.dir\\Debug\\cmTC_a119c.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_a119c.dir\\Debug\\cmTC_a119c.tlog\\unsuccessfulbuild".
-        ClCompile:
-          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /O2 /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /Gm- /MD /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /std:c++17 /Fo"cmTC_a119c.dir\\Debug\\\\" /Fd"cmTC_a119c.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /wd4996 /errorReport:queue "D:\\Strawberry\\c\\share\\cmake-3.29\\Modules\\CMakeCXXCompilerABI.cpp"
-          Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
-          Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W1 /WX- /diagnostics:column /O2 /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /Gm- /MD /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /std:c++17 /Fo"cmTC_a119c.dir\\Debug\\\\" /Fd"cmTC_a119c.dir\\Debug\\vc143.pdb" /external:W1 /Gd /TP /wd4996 /errorReport:queue "D:\\Strawberry\\c\\share\\cmake-3.29\\Modules\\CMakeCXXCompilerABI.cpp"
-          CMakeCXXCompilerABI.cpp
-        Link:
-          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /ERRORREPORT:QUEUE /OUT:"D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-yi586q\\Debug\\cmTC_a119c.exe" /INCREMENTAL /ILK:"cmTC_a119c.dir\\Debug\\cmTC_a119c.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-yi586q/Debug/cmTC_a119c.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-yi586q/Debug/cmTC_a119c.lib" /MACHINE:X64  /IGNORE:4099 cmTC_a119c.dir\\Debug\\CMakeCXXCompilerABI.obj
-          cmTC_a119c.vcxproj -> D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-yi586q\\Debug\\cmTC_a119c.exe
-        FinalizeBuildStatus:
-          Deleting file "cmTC_a119c.dir\\Debug\\cmTC_a119c.tlog\\unsuccessfulbuild".
-          Touching "cmTC_a119c.dir\\Debug\\cmTC_a119c.tlog\\cmTC_a119c.lastbuildstate".
-        Done Building Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-yi586q\\cmTC_a119c.vcxproj" (default targets).
-        
-        Build succeeded.
-            0 Warning(s)
-            0 Error(s)
-        
-        Time Elapsed 00:00:00.52
-        
-      exitCode: 0
-  -
-    kind: "message-v1"
-    backtrace:
-      - "D:/Strawberry/c/share/cmake-3.29/Modules/CMakeDetermineCompilerABI.cmake:170 (message)"
-      - "D:/Strawberry/c/share/cmake-3.29/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
-      - "unicode/CMakeLists.txt:3 (project)"
-    message: |
-      Parsed CXX implicit link information:
-        link line regex: [^( *|.*[/\\])(ld[0-9]*(\\.[a-z]+)?|link\\.exe|lld-link(\\.exe)?|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
-        linker tool regex: [^[ 	]*(->|")?[ 	]*(([^"]*[/\\])?(ld[0-9]*(\\.[a-z]+)?|link\\.exe|lld-link(\\.exe)?))("|,| |$)]
-        linker tool for 'CXX': C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/HostX64/x64/link.exe
-        implicit libs: []
-        implicit objs: []
-        implicit dirs: []
-        implicit fwks: []
-      
-      
-  -
-    kind: "message-v1"
-    backtrace:
-      - "D:/Strawberry/c/share/cmake-3.29/Modules/Internal/CMakeDetermineLinkerId.cmake:40 (message)"
-      - "D:/Strawberry/c/share/cmake-3.29/Modules/CMakeDetermineCompilerABI.cmake:207 (cmake_determine_linker_id)"
-      - "D:/Strawberry/c/share/cmake-3.29/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
-      - "unicode/CMakeLists.txt:3 (project)"
-    message: |
-      Running the CXX compiler's linker: "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/HostX64/x64/link.exe" "-v"
-      Microsoft (R) Incremental Linker Version 14.44.35222.0
-      Copyright (C) Microsoft Corporation.  All rights reserved.
-  -
-    kind: "try_compile-v1"
-    backtrace:
-      - "D:/Strawberry/c/share/cmake-3.29/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
-      - "D:/Strawberry/c/share/cmake-3.29/Modules/CheckCSourceCompiles.cmake:52 (cmake_check_source_compiles)"
-      - "D:/Strawberry/c/share/cmake-3.29/Modules/FindThreads.cmake:97 (CHECK_C_SOURCE_COMPILES)"
-      - "D:/Strawberry/c/share/cmake-3.29/Modules/FindThreads.cmake:163 (_threads_check_libc)"
-      - "CMakeLists.txt:246 (find_package)"
-    checks:
-      - "Performing Test CMAKE_HAVE_LIBC_PTHREAD"
-    directories:
-      source: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-lxkix2"
-      binary: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-lxkix2"
-    cmakeVariables:
-      CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS /W3"
-      CMAKE_C_FLAGS_DEBUG: "/MDd /Zi /Ob0 /Od /RTC1"
-      CMAKE_EXE_LINKER_FLAGS: " /DEBUG /IGNORE:4099"
-      CMAKE_MODULE_PATH: "D:/titan/client/src/external/3rd/library/devkitBase/cmake/modules"
-      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
-    buildResult:
-      variable: "CMAKE_HAVE_LIBC_PTHREAD"
-      cached: true
-      stdout: |
-        Change Dir: 'D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-lxkix2'
-        
-        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_1d0e7.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
-        MSBuild version 17.14.40+3e7442088 for .NET Framework
-        Build started 4/28/2026 4:25:09 .
-        
-        Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-lxkix2\\cmTC_1d0e7.vcxproj" on node 1 (default targets).
-        PrepareForBuild:
-          Creating directory "cmTC_1d0e7.dir\\Debug\\".
-          Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-lxkix2\\Debug\\".
-          Creating directory "cmTC_1d0e7.dir\\Debug\\cmTC_1d0e7.tlog\\".
-        InitializeBuildStatus:
-          Creating "cmTC_1d0e7.dir\\Debug\\cmTC_1d0e7.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_1d0e7.dir\\Debug\\cmTC_1d0e7.tlog\\unsuccessfulbuild".
-        ClCompile:
-          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CMAKE_HAVE_LIBC_PTHREAD /D "CMAKE_INTDIR=\\"Debug\\"" /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_1d0e7.dir\\Debug\\\\" /Fd"cmTC_1d0e7.dir\\Debug\\vc143.pdb" /external:W3 /Gd /TC /errorReport:queue "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-lxkix2\\src.c"
-          Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
-          Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CMAKE_HAVE_LIBC_PTHREAD /D "CMAKE_INTDIR=\\"Debug\\"" /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_1d0e7.dir\\Debug\\\\" /Fd"cmTC_1d0e7.dir\\Debug\\vc143.pdb" /external:W3 /Gd /TC /errorReport:queue "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-lxkix2\\src.c"
-          src.c
-        D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-lxkix2\\src.c(1,10): error C1083: Cannot open include file: 'pthread.h': No such file or directory [D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-lxkix2\\cmTC_1d0e7.vcxproj]
-        Done Building Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-lxkix2\\cmTC_1d0e7.vcxproj" (default targets) -- FAILED.
-        
-        Build FAILED.
-        
-        "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-lxkix2\\cmTC_1d0e7.vcxproj" (default target) (1) ->
-        (ClCompile target) -> 
-          D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-lxkix2\\src.c(1,10): error C1083: Cannot open include file: 'pthread.h': No such file or directory [D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-lxkix2\\cmTC_1d0e7.vcxproj]
-        
-            0 Warning(s)
-            1 Error(s)
-        
-        Time Elapsed 00:00:00.35
-        
-      exitCode: 1
-  -
-    kind: "try_compile-v1"
-    backtrace:
-      - "D:/Strawberry/c/share/cmake-3.29/Modules/CheckLibraryExists.cmake:69 (try_compile)"
-      - "D:/Strawberry/c/share/cmake-3.29/Modules/FindThreads.cmake:112 (CHECK_LIBRARY_EXISTS)"
-      - "D:/Strawberry/c/share/cmake-3.29/Modules/FindThreads.cmake:175 (_threads_check_lib)"
-      - "CMakeLists.txt:246 (find_package)"
-    checks:
-      - "Looking for pthread_create in pthreads"
-    directories:
-      source: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-xubsbo"
-      binary: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-xubsbo"
-    cmakeVariables:
-      CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS /W3"
-      CMAKE_C_FLAGS_DEBUG: "/MDd /Zi /Ob0 /Od /RTC1"
-      CMAKE_EXE_LINKER_FLAGS: " /DEBUG /IGNORE:4099"
-      CMAKE_MODULE_PATH: "D:/titan/client/src/external/3rd/library/devkitBase/cmake/modules"
-      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
-    buildResult:
-      variable: "CMAKE_HAVE_PTHREADS_CREATE"
-      cached: true
-      stdout: |
-        Change Dir: 'D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-xubsbo'
-        
-        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_15c9e.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
-        MSBuild version 17.14.40+3e7442088 for .NET Framework
-        Build started 4/28/2026 4:25:10 .
-        
-        Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xubsbo\\cmTC_15c9e.vcxproj" on node 1 (default targets).
-        PrepareForBuild:
-          Creating directory "cmTC_15c9e.dir\\Debug\\".
-          Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xubsbo\\Debug\\".
-          Creating directory "cmTC_15c9e.dir\\Debug\\cmTC_15c9e.tlog\\".
-        InitializeBuildStatus:
-          Creating "cmTC_15c9e.dir\\Debug\\cmTC_15c9e.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_15c9e.dir\\Debug\\cmTC_15c9e.tlog\\unsuccessfulbuild".
-        ClCompile:
-          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D "CMAKE_INTDIR=\\"Debug\\"" /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_15c9e.dir\\Debug\\\\" /Fd"cmTC_15c9e.dir\\Debug\\vc143.pdb" /external:W3 /Gd /TC /errorReport:queue "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xubsbo\\CheckFunctionExists.c"
-          Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
-          Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D "CMAKE_INTDIR=\\"Debug\\"" /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_15c9e.dir\\Debug\\\\" /Fd"cmTC_15c9e.dir\\Debug\\vc143.pdb" /external:W3 /Gd /TC /errorReport:queue "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xubsbo\\CheckFunctionExists.c"
-          CheckFunctionExists.c
-        Link:
-          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /ERRORREPORT:QUEUE /OUT:"D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xubsbo\\Debug\\cmTC_15c9e.exe" /INCREMENTAL /ILK:"cmTC_15c9e.dir\\Debug\\cmTC_15c9e.ilk" /NOLOGO pthreads.lib kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-xubsbo/Debug/cmTC_15c9e.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-xubsbo/Debug/cmTC_15c9e.lib" /MACHINE:X64  /IGNORE:4099 cmTC_15c9e.dir\\Debug\\CheckFunctionExists.obj
-        LINK : fatal error LNK1104: cannot open file 'pthreads.lib' [D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xubsbo\\cmTC_15c9e.vcxproj]
-        Done Building Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xubsbo\\cmTC_15c9e.vcxproj" (default targets) -- FAILED.
-        
-        Build FAILED.
-        
-        "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xubsbo\\cmTC_15c9e.vcxproj" (default target) (1) ->
-        (Link target) -> 
-          LINK : fatal error LNK1104: cannot open file 'pthreads.lib' [D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-xubsbo\\cmTC_15c9e.vcxproj]
-        
-            0 Warning(s)
-            1 Error(s)
-        
-        Time Elapsed 00:00:00.40
-        
-      exitCode: 1
-  -
-    kind: "try_compile-v1"
-    backtrace:
-      - "D:/Strawberry/c/share/cmake-3.29/Modules/CheckLibraryExists.cmake:69 (try_compile)"
-      - "D:/Strawberry/c/share/cmake-3.29/Modules/FindThreads.cmake:112 (CHECK_LIBRARY_EXISTS)"
-      - "D:/Strawberry/c/share/cmake-3.29/Modules/FindThreads.cmake:176 (_threads_check_lib)"
-      - "CMakeLists.txt:246 (find_package)"
-    checks:
-      - "Looking for pthread_create in pthread"
-    directories:
-      source: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-0wrpn6"
-      binary: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-0wrpn6"
-    cmakeVariables:
-      CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS /W3"
-      CMAKE_C_FLAGS_DEBUG: "/MDd /Zi /Ob0 /Od /RTC1"
-      CMAKE_EXE_LINKER_FLAGS: " /DEBUG /IGNORE:4099"
-      CMAKE_MODULE_PATH: "D:/titan/client/src/external/3rd/library/devkitBase/cmake/modules"
-      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
-    buildResult:
-      variable: "CMAKE_HAVE_PTHREAD_CREATE"
-      cached: true
-      stdout: |
-        Change Dir: 'D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-0wrpn6'
-        
-        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_7f956.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
-        MSBuild version 17.14.40+3e7442088 for .NET Framework
-        Build started 4/28/2026 4:25:11 .
-        
-        Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-0wrpn6\\cmTC_7f956.vcxproj" on node 1 (default targets).
-        PrepareForBuild:
-          Creating directory "cmTC_7f956.dir\\Debug\\".
-          Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-0wrpn6\\Debug\\".
-          Creating directory "cmTC_7f956.dir\\Debug\\cmTC_7f956.tlog\\".
-        InitializeBuildStatus:
-          Creating "cmTC_7f956.dir\\Debug\\cmTC_7f956.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_7f956.dir\\Debug\\cmTC_7f956.tlog\\unsuccessfulbuild".
-        ClCompile:
-          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D "CMAKE_INTDIR=\\"Debug\\"" /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_7f956.dir\\Debug\\\\" /Fd"cmTC_7f956.dir\\Debug\\vc143.pdb" /external:W3 /Gd /TC /errorReport:queue "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-0wrpn6\\CheckFunctionExists.c"
-          Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
-          Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D "CMAKE_INTDIR=\\"Debug\\"" /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_7f956.dir\\Debug\\\\" /Fd"cmTC_7f956.dir\\Debug\\vc143.pdb" /external:W3 /Gd /TC /errorReport:queue "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-0wrpn6\\CheckFunctionExists.c"
-          CheckFunctionExists.c
-        Link:
-          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /ERRORREPORT:QUEUE /OUT:"D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-0wrpn6\\Debug\\cmTC_7f956.exe" /INCREMENTAL /ILK:"cmTC_7f956.dir\\Debug\\cmTC_7f956.ilk" /NOLOGO pthread.lib kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-0wrpn6/Debug/cmTC_7f956.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-0wrpn6/Debug/cmTC_7f956.lib" /MACHINE:X64  /IGNORE:4099 cmTC_7f956.dir\\Debug\\CheckFunctionExists.obj
-        LINK : fatal error LNK1104: cannot open file 'pthread.lib' [D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-0wrpn6\\cmTC_7f956.vcxproj]
-        Done Building Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-0wrpn6\\cmTC_7f956.vcxproj" (default targets) -- FAILED.
-        
-        Build FAILED.
-        
-        "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-0wrpn6\\cmTC_7f956.vcxproj" (default target) (1) ->
-        (Link target) -> 
-          LINK : fatal error LNK1104: cannot open file 'pthread.lib' [D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-0wrpn6\\cmTC_7f956.vcxproj]
-        
-            0 Warning(s)
-            1 Error(s)
-        
-        Time Elapsed 00:00:00.36
-        
-      exitCode: 1
-...
-
----
-events:
+      - "D:/titan/client/src/external/3rd/library/devkitBase/cmake/devkit.cmake:67 (find_path)"
+      - "D:/titan/client/src/external/3rd/library/devkitBase/cmake/pluginEntry.cmake:37 (include)"
+      - "CMakeLists.txt:17 (include)"
+    mode: "path"
+    variable: "DEVKIT_INCLUDE_DIR"
+    description: "Devkit include path"
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "maya/MFn.h"
+    candidate_directories:
+      - "C:/Program Files (x86)/Alias/Maya8.0/bin/include/"
+      - "C:/Program Files (x86)/Alias/Maya8.0/bin/"
+      - "C:/Python314/Scripts/include/"
+      - "C:/Python314/Scripts/"
+      - "C:/Python314/include/"
+      - "C:/Python314/"
+      - "C:/Program Files/Eclipse Adoptium/jdk-25.0.2.10-hotspot/bin/include/"
+      - "C:/Program Files/Eclipse Adoptium/jdk-25.0.2.10-hotspot/bin/"
+      - "C:/Windows/System32/include/"
+      - "C:/Windows/System32/"
+      - "C:/Windows/include/"
+      - "C:/Windows/"
+      - "C:/Windows/System32/wbem/include/"
+      - "C:/Windows/System32/wbem/"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/include/"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/"
+      - "C:/Windows/System32/OpenSSH/include/"
+      - "C:/Windows/System32/OpenSSH/"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/include/"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
+      - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/include/"
+      - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/include/"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
+      - "C:/Program Files/Git/cmd/include/"
+      - "C:/Program Files/Git/cmd/"
+      - "C:/Program Files/Microsoft SQL Server/110/Tools/Binn/include/"
+      - "C:/Program Files/Microsoft SQL Server/110/Tools/Binn/"
+      - "C:/Program Files (x86)/Microsoft SDKs/TypeScript/1.0/include/"
+      - "C:/Program Files (x86)/Microsoft SDKs/TypeScript/1.0/"
+      - "D:/Program Files/Java/JavaFX/javafx-sdk-25.0.2/lib/include/"
+      - "D:/Program Files/Java/JavaFX/javafx-sdk-25.0.2/lib/"
+      - "D:/Program Files (x86)/Maven/apache-maven-3.9.12/bin/include/"
+      - "D:/Program Files (x86)/Maven/apache-maven-3.9.12/bin/"
+      - "C:/Program Files/nodejs/include/"
+      - "C:/Program Files/nodejs/"
+      - "C:/ProgramData/chocolatey/bin/include/"
+      - "C:/ProgramData/chocolatey/bin/"
+      - "C:/Program Files/CMake/bin/include/"
+      - "C:/Program Files/CMake/bin/"
+      - "C:/Program Files/dotnet/include/"
+      - "C:/Program Files/dotnet/"
+      - "C:/Program Files/Docker/Docker/resources/bin/include/"
+      - "C:/Program Files/Docker/Docker/resources/bin/"
+      - "C:/Users/jojoj/AppData/Local/Programs/PHP/current/include/"
+      - "C:/Users/jojoj/AppData/Local/Programs/PHP/current/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/include/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/"
+      - "D:/Program Files/Jetbrains/PhpStorm 2025.3.2/bin/include/"
+      - "D:/Program Files/Jetbrains/PhpStorm 2025.3.2/bin/"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2025.3.2/bin/include/"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2025.3.2/bin/"
+      - "C:/Users/jojoj/AppData/Local/PowerToys/DSCModules/include/"
+      - "C:/Users/jojoj/AppData/Local/PowerToys/DSCModules/"
+      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/include/"
+      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/"
+      - "C:/Users/jojoj/AppData/Roaming/npm/include/"
+      - "C:/Users/jojoj/AppData/Roaming/npm/"
+      - "C:/Users/jojoj/.dotnet/tools/include/"
+      - "C:/Users/jojoj/.dotnet/tools/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Zed/bin/include/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Zed/bin/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Antigravity/bin/include/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Antigravity/bin/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe/include/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe/"
+      - "D:/titan/client/src/external/3rd/library/devkitBase/include/"
+      - "D:/titan/client/src/external/3rd/library/devkitBase/"
+    searched_directories:
+      - "C:/Program Files (x86)/Alias/Maya8.0/bin/include/maya/MFn.h"
+      - "C:/Program Files (x86)/Alias/Maya8.0/bin/maya/MFn.h"
+      - "C:/Python314/Scripts/include/maya/MFn.h"
+      - "C:/Python314/Scripts/maya/MFn.h"
+      - "C:/Python314/include/maya/MFn.h"
+      - "C:/Python314/maya/MFn.h"
+      - "C:/Program Files/Eclipse Adoptium/jdk-25.0.2.10-hotspot/bin/include/maya/MFn.h"
+      - "C:/Program Files/Eclipse Adoptium/jdk-25.0.2.10-hotspot/bin/maya/MFn.h"
+      - "C:/Windows/System32/include/maya/MFn.h"
+      - "C:/Windows/System32/maya/MFn.h"
+      - "C:/Windows/include/maya/MFn.h"
+      - "C:/Windows/maya/MFn.h"
+      - "C:/Windows/System32/wbem/include/maya/MFn.h"
+      - "C:/Windows/System32/wbem/maya/MFn.h"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/include/maya/MFn.h"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/maya/MFn.h"
+      - "C:/Windows/System32/OpenSSH/include/maya/MFn.h"
+      - "C:/Windows/System32/OpenSSH/maya/MFn.h"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/include/maya/MFn.h"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/maya/MFn.h"
+      - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/include/maya/MFn.h"
+      - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/maya/MFn.h"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/include/maya/MFn.h"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/maya/MFn.h"
+      - "C:/Program Files/Git/cmd/include/maya/MFn.h"
+      - "C:/Program Files/Git/cmd/maya/MFn.h"
+      - "C:/Program Files/Microsoft SQL Server/110/Tools/Binn/include/maya/MFn.h"
+      - "C:/Program Files/Microsoft SQL Server/110/Tools/Binn/maya/MFn.h"
+      - "C:/Program Files (x86)/Microsoft SDKs/TypeScript/1.0/include/maya/MFn.h"
+      - "C:/Program Files (x86)/Microsoft SDKs/TypeScript/1.0/maya/MFn.h"
+      - "D:/Program Files/Java/JavaFX/javafx-sdk-25.0.2/lib/include/maya/MFn.h"
+      - "D:/Program Files/Java/JavaFX/javafx-sdk-25.0.2/lib/maya/MFn.h"
+      - "D:/Program Files (x86)/Maven/apache-maven-3.9.12/bin/include/maya/MFn.h"
+      - "D:/Program Files (x86)/Maven/apache-maven-3.9.12/bin/maya/MFn.h"
+      - "C:/Program Files/nodejs/include/maya/MFn.h"
+      - "C:/Program Files/nodejs/maya/MFn.h"
+      - "C:/ProgramData/chocolatey/bin/include/maya/MFn.h"
+      - "C:/ProgramData/chocolatey/bin/maya/MFn.h"
+      - "C:/Program Files/CMake/bin/include/maya/MFn.h"
+      - "C:/Program Files/CMake/bin/maya/MFn.h"
+      - "C:/Program Files/dotnet/include/maya/MFn.h"
+      - "C:/Program Files/dotnet/maya/MFn.h"
+      - "C:/Program Files/Docker/Docker/resources/bin/include/maya/MFn.h"
+      - "C:/Program Files/Docker/Docker/resources/bin/maya/MFn.h"
+      - "C:/Users/jojoj/AppData/Local/Programs/PHP/current/include/maya/MFn.h"
+      - "C:/Users/jojoj/AppData/Local/Programs/PHP/current/maya/MFn.h"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/include/maya/MFn.h"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/maya/MFn.h"
+      - "D:/Program Files/Jetbrains/PhpStorm 2025.3.2/bin/include/maya/MFn.h"
+      - "D:/Program Files/Jetbrains/PhpStorm 2025.3.2/bin/maya/MFn.h"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2025.3.2/bin/include/maya/MFn.h"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2025.3.2/bin/maya/MFn.h"
+      - "C:/Users/jojoj/AppData/Local/PowerToys/DSCModules/include/maya/MFn.h"
+      - "C:/Users/jojoj/AppData/Local/PowerToys/DSCModules/maya/MFn.h"
+      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/include/maya/MFn.h"
+      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/maya/MFn.h"
+      - "C:/Users/jojoj/AppData/Roaming/npm/include/maya/MFn.h"
+      - "C:/Users/jojoj/AppData/Roaming/npm/maya/MFn.h"
+      - "C:/Users/jojoj/.dotnet/tools/include/maya/MFn.h"
+      - "C:/Users/jojoj/.dotnet/tools/maya/MFn.h"
+      - "C:/Users/jojoj/AppData/Local/Programs/Zed/bin/include/maya/MFn.h"
+      - "C:/Users/jojoj/AppData/Local/Programs/Zed/bin/maya/MFn.h"
+      - "C:/Users/jojoj/AppData/Local/Programs/Antigravity/bin/include/maya/MFn.h"
+      - "C:/Users/jojoj/AppData/Local/Programs/Antigravity/bin/maya/MFn.h"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe/include/maya/MFn.h"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe/maya/MFn.h"
+    found: "D:/titan/client/src/external/3rd/library/devkitBase/include/"
+    search_context:
+      ENV{PATH}:
+        - "C:\\Program Files (x86)\\Alias\\Maya8.0\\bin"
+        - "C:\\Python314\\Scripts\\"
+        - "C:\\Python314\\"
+        - "C:\\Program Files\\Eclipse Adoptium\\jdk-25.0.2.10-hotspot\\bin"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\Windows\\System32\\OpenSSH\\"
+        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA App\\NvDLISR"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files\\Microsoft SQL Server\\110\\Tools\\Binn\\"
+        - "C:\\Program Files (x86)\\Microsoft SDKs\\TypeScript\\1.0\\"
+        - "D:\\Program Files\\Java\\JavaFX\\javafx-sdk-25.0.2\\lib"
+        - "D:\\Program Files (x86)\\Maven\\apache-maven-3.9.12\\bin"
+        - "C:\\Program Files\\nodejs\\"
+        - "C:\\ProgramData\\chocolatey\\bin"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\dotnet\\"
+        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\PHP\\current"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WindowsApps"
+        - "D:\\Program Files\\Jetbrains\\PhpStorm 2025.3.2\\bin"
+        - "D:\\Program Files\\Jetbrains\\IntelliJ IDEA 2025.3.2\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\PowerToys\\DSCModules\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Roaming\\npm"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Zed\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Antigravity\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe"
   -
     kind: "message-v1"
     backtrace:
       - "C:/Program Files/CMake/share/cmake-4.3/Modules/CMakeDetermineSystem.cmake:212 (message)"
       - "unicode/CMakeLists.txt:3 (project)"
     message: |
-      The system is: Windows - 10 - AMD64
+      The system is: Windows - 10.0 - AMD64
   -
     kind: "find-v1"
     backtrace:
@@ -537,7 +385,9 @@ events:
         - "C:\\Users\\jojoj\\AppData\\Roaming\\npm"
         - "C:\\Users\\jojoj\\.dotnet\\tools"
         - "C:\\Users\\jojoj\\.dotnet\\tools"
-      CMAKE_INSTALL_PREFIX: "C:/Program Files/unicode"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Zed\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Antigravity\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe"
   -
     kind: "message-v1"
     backtrace:
@@ -548,13 +398,13 @@ events:
     message: |
       Compiling the C compiler identification source file "CMakeCCompilerId.c" succeeded.
       Compiler:  
-      Build flags: /DWIN32;/D_WINDOWS;/W3
+      Build flags: 
       Id flags:  
       
       The output was:
       0
       MSBuild version 17.14.40+3e7442088 for .NET Framework
-      Build started 4/28/2026 4:27:39 .
+      Build started 5/16/2026 8:37:06 AM.
       
       Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\4.3.0-rc3\\CompilerIdC\\CompilerIdC.vcxproj" on node 1 (default targets).
       PrepareForBuild:
@@ -583,7 +433,7 @@ events:
           0 Warning(s)
           0 Error(s)
       
-      Time Elapsed 00:00:00.47
+      Time Elapsed 00:00:00.74
       
       
       Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "CompilerIdC.exe"
@@ -646,6 +496,9 @@ events:
       - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/"
       - "C:/Users/jojoj/AppData/Roaming/npm/"
       - "C:/Users/jojoj/.dotnet/tools/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Zed/bin/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Antigravity/bin/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe/"
     searched_directories:
       - "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/link.com"
     found: "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/link.exe"
@@ -682,7 +535,9 @@ events:
         - "C:\\Users\\jojoj\\AppData\\Roaming\\npm"
         - "C:\\Users\\jojoj\\.dotnet\\tools"
         - "C:\\Users\\jojoj\\.dotnet\\tools"
-      CMAKE_INSTALL_PREFIX: "C:/Program Files/unicode"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Zed\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Antigravity\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe"
   -
     kind: "find-v1"
     backtrace:
@@ -736,6 +591,9 @@ events:
       - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/"
       - "C:/Users/jojoj/AppData/Roaming/npm/"
       - "C:/Users/jojoj/.dotnet/tools/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Zed/bin/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Antigravity/bin/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe/"
     searched_directories:
       - "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/lld-link.com"
       - "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/lld-link.exe"
@@ -830,6 +688,15 @@ events:
       - "C:/Users/jojoj/.dotnet/tools/lld-link.com"
       - "C:/Users/jojoj/.dotnet/tools/lld-link.exe"
       - "C:/Users/jojoj/.dotnet/tools/lld-link"
+      - "C:/Users/jojoj/AppData/Local/Programs/Zed/bin/lld-link.com"
+      - "C:/Users/jojoj/AppData/Local/Programs/Zed/bin/lld-link.exe"
+      - "C:/Users/jojoj/AppData/Local/Programs/Zed/bin/lld-link"
+      - "C:/Users/jojoj/AppData/Local/Programs/Antigravity/bin/lld-link.com"
+      - "C:/Users/jojoj/AppData/Local/Programs/Antigravity/bin/lld-link.exe"
+      - "C:/Users/jojoj/AppData/Local/Programs/Antigravity/bin/lld-link"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe/lld-link.com"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe/lld-link.exe"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe/lld-link"
     found: false
     search_context:
       ENV{PATH}:
@@ -864,7 +731,389 @@ events:
         - "C:\\Users\\jojoj\\AppData\\Roaming\\npm"
         - "C:\\Users\\jojoj\\.dotnet\\tools"
         - "C:\\Users\\jojoj\\.dotnet\\tools"
-      CMAKE_INSTALL_PREFIX: "C:/Program Files/unicode"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Zed\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Antigravity\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.3/Modules/CMakeFindBinUtils.cmake:243 (find_program)"
+      - "C:/Program Files/CMake/share/cmake-4.3/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
+      - "unicode/CMakeLists.txt:3 (project)"
+    mode: "program"
+    variable: "CMAKE_LINKER"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "link"
+    candidate_directories:
+      - "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/"
+      - "C:/Program Files (x86)/Alias/Maya8.0/bin/"
+      - "C:/Python314/Scripts/"
+      - "C:/Python314/"
+      - "C:/Program Files/Eclipse Adoptium/jdk-25.0.2.10-hotspot/bin/"
+      - "C:/Windows/System32/"
+      - "C:/Windows/"
+      - "C:/Windows/System32/wbem/"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/"
+      - "C:/Windows/System32/OpenSSH/"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
+      - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
+      - "C:/Program Files/Git/cmd/"
+      - "C:/Program Files/Microsoft SQL Server/110/Tools/Binn/"
+      - "C:/Program Files (x86)/Microsoft SDKs/TypeScript/1.0/"
+      - "D:/Program Files/Java/JavaFX/javafx-sdk-25.0.2/lib/"
+      - "D:/Program Files (x86)/Maven/apache-maven-3.9.12/bin/"
+      - "C:/Program Files/nodejs/"
+      - "C:/ProgramData/chocolatey/bin/"
+      - "C:/Program Files/CMake/bin/"
+      - "C:/Program Files/dotnet/"
+      - "C:/Program Files/Docker/Docker/resources/bin/"
+      - "C:/Users/jojoj/AppData/Local/Programs/PHP/current/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/"
+      - "D:/Program Files/Jetbrains/PhpStorm 2025.3.2/bin/"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2025.3.2/bin/"
+      - "C:/Users/jojoj/AppData/Local/PowerToys/DSCModules/"
+      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/"
+      - "C:/Users/jojoj/AppData/Roaming/npm/"
+      - "C:/Users/jojoj/.dotnet/tools/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Zed/bin/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Antigravity/bin/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe/"
+    searched_directories:
+      - "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/link.com"
+    found: "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/link.exe"
+    search_context:
+      ENV{PATH}:
+        - "C:\\Program Files (x86)\\Alias\\Maya8.0\\bin"
+        - "C:\\Python314\\Scripts\\"
+        - "C:\\Python314\\"
+        - "C:\\Program Files\\Eclipse Adoptium\\jdk-25.0.2.10-hotspot\\bin"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\Windows\\System32\\OpenSSH\\"
+        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA App\\NvDLISR"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files\\Microsoft SQL Server\\110\\Tools\\Binn\\"
+        - "C:\\Program Files (x86)\\Microsoft SDKs\\TypeScript\\1.0\\"
+        - "D:\\Program Files\\Java\\JavaFX\\javafx-sdk-25.0.2\\lib"
+        - "D:\\Program Files (x86)\\Maven\\apache-maven-3.9.12\\bin"
+        - "C:\\Program Files\\nodejs\\"
+        - "C:\\ProgramData\\chocolatey\\bin"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\dotnet\\"
+        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\PHP\\current"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WindowsApps"
+        - "D:\\Program Files\\Jetbrains\\PhpStorm 2025.3.2\\bin"
+        - "D:\\Program Files\\Jetbrains\\IntelliJ IDEA 2025.3.2\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\PowerToys\\DSCModules\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Roaming\\npm"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Zed\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Antigravity\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.3/Modules/CMakeFindBinUtils.cmake:243 (find_program)"
+      - "C:/Program Files/CMake/share/cmake-4.3/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
+      - "unicode/CMakeLists.txt:3 (project)"
+    mode: "program"
+    variable: "CMAKE_MT"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "mt"
+    candidate_directories:
+      - "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/"
+      - "C:/Program Files (x86)/Alias/Maya8.0/bin/"
+      - "C:/Python314/Scripts/"
+      - "C:/Python314/"
+      - "C:/Program Files/Eclipse Adoptium/jdk-25.0.2.10-hotspot/bin/"
+      - "C:/Windows/System32/"
+      - "C:/Windows/"
+      - "C:/Windows/System32/wbem/"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/"
+      - "C:/Windows/System32/OpenSSH/"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
+      - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
+      - "C:/Program Files/Git/cmd/"
+      - "C:/Program Files/Microsoft SQL Server/110/Tools/Binn/"
+      - "C:/Program Files (x86)/Microsoft SDKs/TypeScript/1.0/"
+      - "D:/Program Files/Java/JavaFX/javafx-sdk-25.0.2/lib/"
+      - "D:/Program Files (x86)/Maven/apache-maven-3.9.12/bin/"
+      - "C:/Program Files/nodejs/"
+      - "C:/ProgramData/chocolatey/bin/"
+      - "C:/Program Files/CMake/bin/"
+      - "C:/Program Files/dotnet/"
+      - "C:/Program Files/Docker/Docker/resources/bin/"
+      - "C:/Users/jojoj/AppData/Local/Programs/PHP/current/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/"
+      - "D:/Program Files/Jetbrains/PhpStorm 2025.3.2/bin/"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2025.3.2/bin/"
+      - "C:/Users/jojoj/AppData/Local/PowerToys/DSCModules/"
+      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/"
+      - "C:/Users/jojoj/AppData/Roaming/npm/"
+      - "C:/Users/jojoj/.dotnet/tools/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Zed/bin/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Antigravity/bin/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe/"
+    searched_directories:
+      - "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/mt.com"
+      - "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/mt.exe"
+      - "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/mt"
+      - "C:/Program Files (x86)/Alias/Maya8.0/bin/mt.com"
+      - "C:/Program Files (x86)/Alias/Maya8.0/bin/mt.exe"
+      - "C:/Program Files (x86)/Alias/Maya8.0/bin/mt"
+      - "C:/Python314/Scripts/mt.com"
+      - "C:/Python314/Scripts/mt.exe"
+      - "C:/Python314/Scripts/mt"
+      - "C:/Python314/mt.com"
+      - "C:/Python314/mt.exe"
+      - "C:/Python314/mt"
+      - "C:/Program Files/Eclipse Adoptium/jdk-25.0.2.10-hotspot/bin/mt.com"
+      - "C:/Program Files/Eclipse Adoptium/jdk-25.0.2.10-hotspot/bin/mt.exe"
+      - "C:/Program Files/Eclipse Adoptium/jdk-25.0.2.10-hotspot/bin/mt"
+      - "C:/Windows/System32/mt.com"
+      - "C:/Windows/System32/mt.exe"
+      - "C:/Windows/System32/mt"
+      - "C:/Windows/mt.com"
+      - "C:/Windows/mt.exe"
+      - "C:/Windows/mt"
+      - "C:/Windows/System32/wbem/mt.com"
+      - "C:/Windows/System32/wbem/mt.exe"
+      - "C:/Windows/System32/wbem/mt"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/mt.com"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/mt.exe"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/mt"
+      - "C:/Windows/System32/OpenSSH/mt.com"
+      - "C:/Windows/System32/OpenSSH/mt.exe"
+      - "C:/Windows/System32/OpenSSH/mt"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/mt.com"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/mt.exe"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/mt"
+      - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/mt.com"
+      - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/mt.exe"
+      - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/mt"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/mt.com"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/mt.exe"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/mt"
+      - "C:/Program Files/Git/cmd/mt.com"
+      - "C:/Program Files/Git/cmd/mt.exe"
+      - "C:/Program Files/Git/cmd/mt"
+      - "C:/Program Files/Microsoft SQL Server/110/Tools/Binn/mt.com"
+      - "C:/Program Files/Microsoft SQL Server/110/Tools/Binn/mt.exe"
+      - "C:/Program Files/Microsoft SQL Server/110/Tools/Binn/mt"
+      - "C:/Program Files (x86)/Microsoft SDKs/TypeScript/1.0/mt.com"
+      - "C:/Program Files (x86)/Microsoft SDKs/TypeScript/1.0/mt.exe"
+      - "C:/Program Files (x86)/Microsoft SDKs/TypeScript/1.0/mt"
+      - "D:/Program Files/Java/JavaFX/javafx-sdk-25.0.2/lib/mt.com"
+      - "D:/Program Files/Java/JavaFX/javafx-sdk-25.0.2/lib/mt.exe"
+      - "D:/Program Files/Java/JavaFX/javafx-sdk-25.0.2/lib/mt"
+      - "D:/Program Files (x86)/Maven/apache-maven-3.9.12/bin/mt.com"
+      - "D:/Program Files (x86)/Maven/apache-maven-3.9.12/bin/mt.exe"
+      - "D:/Program Files (x86)/Maven/apache-maven-3.9.12/bin/mt"
+      - "C:/Program Files/nodejs/mt.com"
+      - "C:/Program Files/nodejs/mt.exe"
+      - "C:/Program Files/nodejs/mt"
+      - "C:/ProgramData/chocolatey/bin/mt.com"
+      - "C:/ProgramData/chocolatey/bin/mt.exe"
+      - "C:/ProgramData/chocolatey/bin/mt"
+      - "C:/Program Files/CMake/bin/mt.com"
+      - "C:/Program Files/CMake/bin/mt.exe"
+      - "C:/Program Files/CMake/bin/mt"
+      - "C:/Program Files/dotnet/mt.com"
+      - "C:/Program Files/dotnet/mt.exe"
+      - "C:/Program Files/dotnet/mt"
+      - "C:/Program Files/Docker/Docker/resources/bin/mt.com"
+      - "C:/Program Files/Docker/Docker/resources/bin/mt.exe"
+      - "C:/Program Files/Docker/Docker/resources/bin/mt"
+      - "C:/Users/jojoj/AppData/Local/Programs/PHP/current/mt.com"
+      - "C:/Users/jojoj/AppData/Local/Programs/PHP/current/mt.exe"
+      - "C:/Users/jojoj/AppData/Local/Programs/PHP/current/mt"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/mt.com"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/mt.exe"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/mt"
+      - "D:/Program Files/Jetbrains/PhpStorm 2025.3.2/bin/mt.com"
+      - "D:/Program Files/Jetbrains/PhpStorm 2025.3.2/bin/mt.exe"
+      - "D:/Program Files/Jetbrains/PhpStorm 2025.3.2/bin/mt"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2025.3.2/bin/mt.com"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2025.3.2/bin/mt.exe"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2025.3.2/bin/mt"
+      - "C:/Users/jojoj/AppData/Local/PowerToys/DSCModules/mt.com"
+      - "C:/Users/jojoj/AppData/Local/PowerToys/DSCModules/mt.exe"
+      - "C:/Users/jojoj/AppData/Local/PowerToys/DSCModules/mt"
+      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/mt.com"
+      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/mt.exe"
+      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/mt"
+      - "C:/Users/jojoj/AppData/Roaming/npm/mt.com"
+      - "C:/Users/jojoj/AppData/Roaming/npm/mt.exe"
+      - "C:/Users/jojoj/AppData/Roaming/npm/mt"
+      - "C:/Users/jojoj/.dotnet/tools/mt.com"
+      - "C:/Users/jojoj/.dotnet/tools/mt.exe"
+      - "C:/Users/jojoj/.dotnet/tools/mt"
+      - "C:/Users/jojoj/AppData/Local/Programs/Zed/bin/mt.com"
+      - "C:/Users/jojoj/AppData/Local/Programs/Zed/bin/mt.exe"
+      - "C:/Users/jojoj/AppData/Local/Programs/Zed/bin/mt"
+      - "C:/Users/jojoj/AppData/Local/Programs/Antigravity/bin/mt.com"
+      - "C:/Users/jojoj/AppData/Local/Programs/Antigravity/bin/mt.exe"
+      - "C:/Users/jojoj/AppData/Local/Programs/Antigravity/bin/mt"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe/mt.com"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe/mt.exe"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe/mt"
+    found: false
+    search_context:
+      ENV{PATH}:
+        - "C:\\Program Files (x86)\\Alias\\Maya8.0\\bin"
+        - "C:\\Python314\\Scripts\\"
+        - "C:\\Python314\\"
+        - "C:\\Program Files\\Eclipse Adoptium\\jdk-25.0.2.10-hotspot\\bin"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\Windows\\System32\\OpenSSH\\"
+        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA App\\NvDLISR"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files\\Microsoft SQL Server\\110\\Tools\\Binn\\"
+        - "C:\\Program Files (x86)\\Microsoft SDKs\\TypeScript\\1.0\\"
+        - "D:\\Program Files\\Java\\JavaFX\\javafx-sdk-25.0.2\\lib"
+        - "D:\\Program Files (x86)\\Maven\\apache-maven-3.9.12\\bin"
+        - "C:\\Program Files\\nodejs\\"
+        - "C:\\ProgramData\\chocolatey\\bin"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\dotnet\\"
+        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\PHP\\current"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WindowsApps"
+        - "D:\\Program Files\\Jetbrains\\PhpStorm 2025.3.2\\bin"
+        - "D:\\Program Files\\Jetbrains\\IntelliJ IDEA 2025.3.2\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\PowerToys\\DSCModules\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Roaming\\npm"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Zed\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Antigravity\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.3/Modules/CMakeFindBinUtils.cmake:243 (find_program)"
+      - "C:/Program Files/CMake/share/cmake-4.3/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
+      - "unicode/CMakeLists.txt:3 (project)"
+    mode: "program"
+    variable: "CMAKE_AR"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "lib"
+    candidate_directories:
+      - "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/"
+      - "C:/Program Files (x86)/Alias/Maya8.0/bin/"
+      - "C:/Python314/Scripts/"
+      - "C:/Python314/"
+      - "C:/Program Files/Eclipse Adoptium/jdk-25.0.2.10-hotspot/bin/"
+      - "C:/Windows/System32/"
+      - "C:/Windows/"
+      - "C:/Windows/System32/wbem/"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/"
+      - "C:/Windows/System32/OpenSSH/"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
+      - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
+      - "C:/Program Files/Git/cmd/"
+      - "C:/Program Files/Microsoft SQL Server/110/Tools/Binn/"
+      - "C:/Program Files (x86)/Microsoft SDKs/TypeScript/1.0/"
+      - "D:/Program Files/Java/JavaFX/javafx-sdk-25.0.2/lib/"
+      - "D:/Program Files (x86)/Maven/apache-maven-3.9.12/bin/"
+      - "C:/Program Files/nodejs/"
+      - "C:/ProgramData/chocolatey/bin/"
+      - "C:/Program Files/CMake/bin/"
+      - "C:/Program Files/dotnet/"
+      - "C:/Program Files/Docker/Docker/resources/bin/"
+      - "C:/Users/jojoj/AppData/Local/Programs/PHP/current/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/"
+      - "D:/Program Files/Jetbrains/PhpStorm 2025.3.2/bin/"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2025.3.2/bin/"
+      - "C:/Users/jojoj/AppData/Local/PowerToys/DSCModules/"
+      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/"
+      - "C:/Users/jojoj/AppData/Roaming/npm/"
+      - "C:/Users/jojoj/.dotnet/tools/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Zed/bin/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Antigravity/bin/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe/"
+    searched_directories:
+      - "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/lib.com"
+    found: "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/lib.exe"
+    search_context:
+      ENV{PATH}:
+        - "C:\\Program Files (x86)\\Alias\\Maya8.0\\bin"
+        - "C:\\Python314\\Scripts\\"
+        - "C:\\Python314\\"
+        - "C:\\Program Files\\Eclipse Adoptium\\jdk-25.0.2.10-hotspot\\bin"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\Windows\\System32\\OpenSSH\\"
+        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA App\\NvDLISR"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files\\Microsoft SQL Server\\110\\Tools\\Binn\\"
+        - "C:\\Program Files (x86)\\Microsoft SDKs\\TypeScript\\1.0\\"
+        - "D:\\Program Files\\Java\\JavaFX\\javafx-sdk-25.0.2\\lib"
+        - "D:\\Program Files (x86)\\Maven\\apache-maven-3.9.12\\bin"
+        - "C:\\Program Files\\nodejs\\"
+        - "C:\\ProgramData\\chocolatey\\bin"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\dotnet\\"
+        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\PHP\\current"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WindowsApps"
+        - "D:\\Program Files\\Jetbrains\\PhpStorm 2025.3.2\\bin"
+        - "D:\\Program Files\\Jetbrains\\IntelliJ IDEA 2025.3.2\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\PowerToys\\DSCModules\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Roaming\\npm"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Zed\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Antigravity\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe"
   -
     kind: "find-v1"
     backtrace:
@@ -924,7 +1173,9 @@ events:
         - "C:\\Users\\jojoj\\AppData\\Roaming\\npm"
         - "C:\\Users\\jojoj\\.dotnet\\tools"
         - "C:\\Users\\jojoj\\.dotnet\\tools"
-      CMAKE_INSTALL_PREFIX: "C:/Program Files/unicode"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Zed\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Antigravity\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe"
   -
     kind: "message-v1"
     backtrace:
@@ -935,13 +1186,13 @@ events:
     message: |
       Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" succeeded.
       Compiler:  
-      Build flags: /DWIN32;/D_WINDOWS;/W3;/GR;/EHsc;/Zi;/wd4996
+      Build flags: /Zi;/wd4996
       Id flags:  
       
       The output was:
       0
       MSBuild version 17.14.40+3e7442088 for .NET Framework
-      Build started 4/28/2026 4:27:39 .
+      Build started 5/16/2026 8:37:08 AM.
       
       Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\4.3.0-rc3\\CompilerIdCXX\\CompilerIdCXX.vcxproj" on node 1 (default targets).
       PrepareForBuild:
@@ -970,7 +1221,7 @@ events:
           0 Warning(s)
           0 Error(s)
       
-      Time Elapsed 00:00:00.46
+      Time Elapsed 00:00:00.51
       
       
       Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "CompilerIdCXX.exe"
@@ -1033,6 +1284,9 @@ events:
       - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/"
       - "C:/Users/jojoj/AppData/Roaming/npm/"
       - "C:/Users/jojoj/.dotnet/tools/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Zed/bin/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Antigravity/bin/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe/"
     searched_directories:
       - "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/lld-link.com"
       - "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/lld-link.exe"
@@ -1127,6 +1381,15 @@ events:
       - "C:/Users/jojoj/.dotnet/tools/lld-link.com"
       - "C:/Users/jojoj/.dotnet/tools/lld-link.exe"
       - "C:/Users/jojoj/.dotnet/tools/lld-link"
+      - "C:/Users/jojoj/AppData/Local/Programs/Zed/bin/lld-link.com"
+      - "C:/Users/jojoj/AppData/Local/Programs/Zed/bin/lld-link.exe"
+      - "C:/Users/jojoj/AppData/Local/Programs/Zed/bin/lld-link"
+      - "C:/Users/jojoj/AppData/Local/Programs/Antigravity/bin/lld-link.com"
+      - "C:/Users/jojoj/AppData/Local/Programs/Antigravity/bin/lld-link.exe"
+      - "C:/Users/jojoj/AppData/Local/Programs/Antigravity/bin/lld-link"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe/lld-link.com"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe/lld-link.exe"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe/lld-link"
     found: false
     search_context:
       ENV{PATH}:
@@ -1161,7 +1424,256 @@ events:
         - "C:\\Users\\jojoj\\AppData\\Roaming\\npm"
         - "C:\\Users\\jojoj\\.dotnet\\tools"
         - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Zed\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Antigravity\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.3/Modules/CMakeDetermineRCCompiler.cmake:40 (find_program)"
+      - "C:/Program Files/CMake/share/cmake-4.3/Modules/Platform/Windows-MSVC.cmake:583 (enable_language)"
+      - "C:/Program Files/CMake/share/cmake-4.3/Modules/Platform/Windows-MSVC.cmake:556 (__windows_compiler_msvc_enable_rc)"
+      - "C:/Program Files/CMake/share/cmake-4.3/Modules/Platform/Windows-MSVC-C.cmake:5 (__windows_compiler_msvc)"
+      - "C:/Program Files/CMake/share/cmake-4.3/Modules/CMakeCInformation.cmake:48 (include)"
+      - "unicode/CMakeLists.txt:3 (project)"
+    mode: "program"
+    variable: "CMAKE_RC_COMPILER"
+    description: "RC compiler"
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "rc"
+    candidate_directories:
+      - "C:/Program Files (x86)/Alias/Maya8.0/bin/"
+      - "C:/Python314/Scripts/"
+      - "C:/Python314/"
+      - "C:/Program Files/Eclipse Adoptium/jdk-25.0.2.10-hotspot/bin/"
+      - "C:/Windows/System32/"
+      - "C:/Windows/"
+      - "C:/Windows/System32/wbem/"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/"
+      - "C:/Windows/System32/OpenSSH/"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
+      - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
+      - "C:/Program Files/Git/cmd/"
+      - "C:/Program Files/Microsoft SQL Server/110/Tools/Binn/"
+      - "C:/Program Files (x86)/Microsoft SDKs/TypeScript/1.0/"
+      - "D:/Program Files/Java/JavaFX/javafx-sdk-25.0.2/lib/"
+      - "D:/Program Files (x86)/Maven/apache-maven-3.9.12/bin/"
+      - "C:/Program Files/nodejs/"
+      - "C:/ProgramData/chocolatey/bin/"
+      - "C:/Program Files/CMake/bin/"
+      - "C:/Program Files/dotnet/"
+      - "C:/Program Files/Docker/Docker/resources/bin/"
+      - "C:/Users/jojoj/AppData/Local/Programs/PHP/current/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/"
+      - "D:/Program Files/Jetbrains/PhpStorm 2025.3.2/bin/"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2025.3.2/bin/"
+      - "C:/Users/jojoj/AppData/Local/PowerToys/DSCModules/"
+      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/"
+      - "C:/Users/jojoj/AppData/Roaming/npm/"
+      - "C:/Users/jojoj/.dotnet/tools/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Zed/bin/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Antigravity/bin/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe/"
+      - "C:/Program Files/bin/"
+      - "C:/Program Files/sbin/"
+      - "C:/Program Files/"
+      - "C:/Program Files (x86)/bin/"
+      - "C:/Program Files (x86)/sbin/"
+      - "C:/Program Files (x86)/"
+      - "C:/Program Files/CMake/bin/"
+      - "C:/Program Files/CMake/sbin/"
+      - "C:/Program Files/CMake/"
+      - "C:/Program Files/unicode/bin/"
+      - "C:/Program Files/unicode/sbin/"
+      - "C:/Program Files/unicode/"
+    searched_directories:
+      - "C:/Program Files (x86)/Alias/Maya8.0/bin/rc.com"
+      - "C:/Program Files (x86)/Alias/Maya8.0/bin/rc.exe"
+      - "C:/Program Files (x86)/Alias/Maya8.0/bin/rc"
+      - "C:/Python314/Scripts/rc.com"
+      - "C:/Python314/Scripts/rc.exe"
+      - "C:/Python314/Scripts/rc"
+      - "C:/Python314/rc.com"
+      - "C:/Python314/rc.exe"
+      - "C:/Python314/rc"
+      - "C:/Program Files/Eclipse Adoptium/jdk-25.0.2.10-hotspot/bin/rc.com"
+      - "C:/Program Files/Eclipse Adoptium/jdk-25.0.2.10-hotspot/bin/rc.exe"
+      - "C:/Program Files/Eclipse Adoptium/jdk-25.0.2.10-hotspot/bin/rc"
+      - "C:/Windows/System32/rc.com"
+      - "C:/Windows/System32/rc.exe"
+      - "C:/Windows/System32/rc"
+      - "C:/Windows/rc.com"
+      - "C:/Windows/rc.exe"
+      - "C:/Windows/rc"
+      - "C:/Windows/System32/wbem/rc.com"
+      - "C:/Windows/System32/wbem/rc.exe"
+      - "C:/Windows/System32/wbem/rc"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/rc.com"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/rc.exe"
+      - "C:/Windows/System32/WindowsPowerShell/v1.0/rc"
+      - "C:/Windows/System32/OpenSSH/rc.com"
+      - "C:/Windows/System32/OpenSSH/rc.exe"
+      - "C:/Windows/System32/OpenSSH/rc"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/rc.com"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/rc.exe"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/rc"
+      - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/rc.com"
+      - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/rc.exe"
+      - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/rc"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/rc.com"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/rc.exe"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/rc"
+      - "C:/Program Files/Git/cmd/rc.com"
+      - "C:/Program Files/Git/cmd/rc.exe"
+      - "C:/Program Files/Git/cmd/rc"
+      - "C:/Program Files/Microsoft SQL Server/110/Tools/Binn/rc.com"
+      - "C:/Program Files/Microsoft SQL Server/110/Tools/Binn/rc.exe"
+      - "C:/Program Files/Microsoft SQL Server/110/Tools/Binn/rc"
+      - "C:/Program Files (x86)/Microsoft SDKs/TypeScript/1.0/rc.com"
+      - "C:/Program Files (x86)/Microsoft SDKs/TypeScript/1.0/rc.exe"
+      - "C:/Program Files (x86)/Microsoft SDKs/TypeScript/1.0/rc"
+      - "D:/Program Files/Java/JavaFX/javafx-sdk-25.0.2/lib/rc.com"
+      - "D:/Program Files/Java/JavaFX/javafx-sdk-25.0.2/lib/rc.exe"
+      - "D:/Program Files/Java/JavaFX/javafx-sdk-25.0.2/lib/rc"
+      - "D:/Program Files (x86)/Maven/apache-maven-3.9.12/bin/rc.com"
+      - "D:/Program Files (x86)/Maven/apache-maven-3.9.12/bin/rc.exe"
+      - "D:/Program Files (x86)/Maven/apache-maven-3.9.12/bin/rc"
+      - "C:/Program Files/nodejs/rc.com"
+      - "C:/Program Files/nodejs/rc.exe"
+      - "C:/Program Files/nodejs/rc"
+      - "C:/ProgramData/chocolatey/bin/rc.com"
+      - "C:/ProgramData/chocolatey/bin/rc.exe"
+      - "C:/ProgramData/chocolatey/bin/rc"
+      - "C:/Program Files/CMake/bin/rc.com"
+      - "C:/Program Files/CMake/bin/rc.exe"
+      - "C:/Program Files/CMake/bin/rc"
+      - "C:/Program Files/dotnet/rc.com"
+      - "C:/Program Files/dotnet/rc.exe"
+      - "C:/Program Files/dotnet/rc"
+      - "C:/Program Files/Docker/Docker/resources/bin/rc.com"
+      - "C:/Program Files/Docker/Docker/resources/bin/rc.exe"
+      - "C:/Program Files/Docker/Docker/resources/bin/rc"
+      - "C:/Users/jojoj/AppData/Local/Programs/PHP/current/rc.com"
+      - "C:/Users/jojoj/AppData/Local/Programs/PHP/current/rc.exe"
+      - "C:/Users/jojoj/AppData/Local/Programs/PHP/current/rc"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/rc.com"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/rc.exe"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/rc"
+      - "D:/Program Files/Jetbrains/PhpStorm 2025.3.2/bin/rc.com"
+      - "D:/Program Files/Jetbrains/PhpStorm 2025.3.2/bin/rc.exe"
+      - "D:/Program Files/Jetbrains/PhpStorm 2025.3.2/bin/rc"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2025.3.2/bin/rc.com"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2025.3.2/bin/rc.exe"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2025.3.2/bin/rc"
+      - "C:/Users/jojoj/AppData/Local/PowerToys/DSCModules/rc.com"
+      - "C:/Users/jojoj/AppData/Local/PowerToys/DSCModules/rc.exe"
+      - "C:/Users/jojoj/AppData/Local/PowerToys/DSCModules/rc"
+      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/rc.com"
+      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/rc.exe"
+      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/rc"
+      - "C:/Users/jojoj/AppData/Roaming/npm/rc.com"
+      - "C:/Users/jojoj/AppData/Roaming/npm/rc.exe"
+      - "C:/Users/jojoj/AppData/Roaming/npm/rc"
+      - "C:/Users/jojoj/.dotnet/tools/rc.com"
+      - "C:/Users/jojoj/.dotnet/tools/rc.exe"
+      - "C:/Users/jojoj/.dotnet/tools/rc"
+      - "C:/Users/jojoj/AppData/Local/Programs/Zed/bin/rc.com"
+      - "C:/Users/jojoj/AppData/Local/Programs/Zed/bin/rc.exe"
+      - "C:/Users/jojoj/AppData/Local/Programs/Zed/bin/rc"
+      - "C:/Users/jojoj/AppData/Local/Programs/Antigravity/bin/rc.com"
+      - "C:/Users/jojoj/AppData/Local/Programs/Antigravity/bin/rc.exe"
+      - "C:/Users/jojoj/AppData/Local/Programs/Antigravity/bin/rc"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe/rc.com"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe/rc.exe"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe/rc"
+      - "C:/Program Files/bin/rc.com"
+      - "C:/Program Files/bin/rc.exe"
+      - "C:/Program Files/bin/rc"
+      - "C:/Program Files/sbin/rc.com"
+      - "C:/Program Files/sbin/rc.exe"
+      - "C:/Program Files/sbin/rc"
+      - "C:/Program Files/rc.com"
+      - "C:/Program Files/rc.exe"
+      - "C:/Program Files/rc"
+      - "C:/Program Files (x86)/bin/rc.com"
+      - "C:/Program Files (x86)/bin/rc.exe"
+      - "C:/Program Files (x86)/bin/rc"
+      - "C:/Program Files (x86)/sbin/rc.com"
+      - "C:/Program Files (x86)/sbin/rc.exe"
+      - "C:/Program Files (x86)/sbin/rc"
+      - "C:/Program Files (x86)/rc.com"
+      - "C:/Program Files (x86)/rc.exe"
+      - "C:/Program Files (x86)/rc"
+      - "C:/Program Files/CMake/bin/rc.com"
+      - "C:/Program Files/CMake/bin/rc.exe"
+      - "C:/Program Files/CMake/bin/rc"
+      - "C:/Program Files/CMake/sbin/rc.com"
+      - "C:/Program Files/CMake/sbin/rc.exe"
+      - "C:/Program Files/CMake/sbin/rc"
+      - "C:/Program Files/CMake/rc.com"
+      - "C:/Program Files/CMake/rc.exe"
+      - "C:/Program Files/CMake/rc"
+      - "C:/Program Files/unicode/bin/rc.com"
+      - "C:/Program Files/unicode/bin/rc.exe"
+      - "C:/Program Files/unicode/bin/rc"
+      - "C:/Program Files/unicode/sbin/rc.com"
+      - "C:/Program Files/unicode/sbin/rc.exe"
+      - "C:/Program Files/unicode/sbin/rc"
+      - "C:/Program Files/unicode/rc.com"
+      - "C:/Program Files/unicode/rc.exe"
+      - "C:/Program Files/unicode/rc"
+    found: false
+    search_context:
+      ENV{PATH}:
+        - "C:\\Program Files (x86)\\Alias\\Maya8.0\\bin"
+        - "C:\\Python314\\Scripts\\"
+        - "C:\\Python314\\"
+        - "C:\\Program Files\\Eclipse Adoptium\\jdk-25.0.2.10-hotspot\\bin"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\Windows\\System32\\OpenSSH\\"
+        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA App\\NvDLISR"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files\\Microsoft SQL Server\\110\\Tools\\Binn\\"
+        - "C:\\Program Files (x86)\\Microsoft SDKs\\TypeScript\\1.0\\"
+        - "D:\\Program Files\\Java\\JavaFX\\javafx-sdk-25.0.2\\lib"
+        - "D:\\Program Files (x86)\\Maven\\apache-maven-3.9.12\\bin"
+        - "C:\\Program Files\\nodejs\\"
+        - "C:\\ProgramData\\chocolatey\\bin"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\dotnet\\"
+        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\PHP\\current"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WindowsApps"
+        - "D:\\Program Files\\Jetbrains\\PhpStorm 2025.3.2\\bin"
+        - "D:\\Program Files\\Jetbrains\\IntelliJ IDEA 2025.3.2\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\PowerToys\\DSCModules\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Roaming\\npm"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Zed\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Antigravity\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe"
       CMAKE_INSTALL_PREFIX: "C:/Program Files/unicode"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "C:/Program Files"
+        - "C:/Program Files (x86)"
+        - "C:/Program Files/CMake"
+        - "C:/Program Files/unicode"
   -
     kind: "try_compile-v1"
     backtrace:
@@ -1171,52 +1683,52 @@ events:
     checks:
       - "Detecting C compiler ABI info"
     directories:
-      source: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-1p4mlm"
-      binary: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-1p4mlm"
+      source: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-s7015i"
+      binary: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-s7015i"
     cmakeVariables:
       CMAKE_CXX_STDLIB_MODULES_JSON: ""
       CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS /W3"
       CMAKE_C_FLAGS_DEBUG: "/MDd /Zi /Ob0 /Od /RTC1"
-      CMAKE_EXE_LINKER_FLAGS: "/machine:x64 /DEBUG /IGNORE:4099"
+      CMAKE_EXE_LINKER_FLAGS: " /DEBUG /IGNORE:4099"
       CMAKE_MODULE_PATH: "D:/titan/client/src/external/3rd/library/devkitBase/cmake/modules"
       CMAKE_POSITION_INDEPENDENT_CODE: "ON"
     buildResult:
       variable: "CMAKE_C_ABI_COMPILED"
       cached: true
       stdout: |
-        Change Dir: 'D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-1p4mlm'
+        Change Dir: 'D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-s7015i'
         
-        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_c5515.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_ffb30.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         MSBuild version 17.14.40+3e7442088 for .NET Framework
-        Build started 4/28/2026 4:27:41 .
+        Build started 5/16/2026 8:37:09 AM.
         
-        Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-1p4mlm\\cmTC_c5515.vcxproj" on node 1 (default targets).
+        Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-s7015i\\cmTC_ffb30.vcxproj" on node 1 (default targets).
         PrepareForBuild:
           Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-1p4mlm\\Debug\\".
-          Creating directory "cmTC_c5515.dir\\Debug\\cmTC_c5515.tlog\\".
+          Creating directory "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-s7015i\\Debug\\".
+          Creating directory "cmTC_ffb30.dir\\Debug\\cmTC_ffb30.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_c5515.dir\\Debug\\cmTC_c5515.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_c5515.dir\\Debug\\cmTC_c5515.tlog\\unsuccessfulbuild".
+          Creating "cmTC_ffb30.dir\\Debug\\cmTC_ffb30.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_ffb30.dir\\Debug\\cmTC_ffb30.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_c5515.dir\\Debug\\\\" /Fd"cmTC_c5515.dir\\Debug\\vc143.pdb" /external:W3 /TC /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCCompilerABI.c"
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_ffb30.dir\\Debug\\\\" /Fd"cmTC_ffb30.dir\\Debug\\vc143.pdb" /external:W3 /TC /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCCompilerABI.c"
           Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_c5515.dir\\Debug\\\\" /Fd"cmTC_c5515.dir\\Debug\\vc143.pdb" /external:W3 /TC /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCCompilerABI.c"
+          cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_ffb30.dir\\Debug\\\\" /Fd"cmTC_ffb30.dir\\Debug\\vc143.pdb" /external:W3 /TC /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCCompilerABI.c"
           CMakeCCompilerABI.c
         Link:
-          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-1p4mlm\\Debug\\cmTC_c5515.exe" /INCREMENTAL /ILK:"cmTC_c5515.dir\\Debug\\cmTC_c5515.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-1p4mlm/Debug/cmTC_c5515.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-1p4mlm/Debug/cmTC_c5515.lib" /MACHINE:X64  /machine:x64 /IGNORE:4099 cmTC_c5515.dir\\Debug\\CMakeCCompilerABI.obj
-          cmTC_c5515.vcxproj -> D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-1p4mlm\\Debug\\cmTC_c5515.exe
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-s7015i\\Debug\\cmTC_ffb30.exe" /INCREMENTAL /ILK:"cmTC_ffb30.dir\\Debug\\cmTC_ffb30.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-s7015i/Debug/cmTC_ffb30.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-s7015i/Debug/cmTC_ffb30.lib" /MACHINE:X64  /IGNORE:4099 cmTC_ffb30.dir\\Debug\\CMakeCCompilerABI.obj
+          cmTC_ffb30.vcxproj -> D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-s7015i\\Debug\\cmTC_ffb30.exe
         FinalizeBuildStatus:
-          Deleting file "cmTC_c5515.dir\\Debug\\cmTC_c5515.tlog\\unsuccessfulbuild".
-          Touching "cmTC_c5515.dir\\Debug\\cmTC_c5515.tlog\\cmTC_c5515.lastbuildstate".
-        Done Building Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-1p4mlm\\cmTC_c5515.vcxproj" (default targets).
+          Deleting file "cmTC_ffb30.dir\\Debug\\cmTC_ffb30.tlog\\unsuccessfulbuild".
+          Touching "cmTC_ffb30.dir\\Debug\\cmTC_ffb30.tlog\\cmTC_ffb30.lastbuildstate".
+        Done Building Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-s7015i\\cmTC_ffb30.vcxproj" (default targets).
         
         Build succeeded.
             0 Warning(s)
             0 Error(s)
         
-        Time Elapsed 00:00:00.45
+        Time Elapsed 00:00:00.44
         
       exitCode: 0
   -
@@ -1256,53 +1768,53 @@ events:
     checks:
       - "Detecting CXX compiler ABI info"
     directories:
-      source: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-l26u61"
-      binary: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-l26u61"
+      source: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-v0xxqz"
+      binary: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-v0xxqz"
     cmakeVariables:
-      CMAKE_CXX_FLAGS: "/DWIN32 /D_WINDOWS /W3 /GR /EHsc /Zi /wd4996"
+      CMAKE_CXX_FLAGS: " /Zi /wd4996"
       CMAKE_CXX_FLAGS_DEBUG: "/MD"
       CMAKE_CXX_SCAN_FOR_MODULES: "OFF"
       CMAKE_CXX_STDLIB_MODULES_JSON: ""
-      CMAKE_EXE_LINKER_FLAGS: "/machine:x64 /DEBUG /IGNORE:4099"
+      CMAKE_EXE_LINKER_FLAGS: " /DEBUG /IGNORE:4099"
       CMAKE_MODULE_PATH: "D:/titan/client/src/external/3rd/library/devkitBase/cmake/modules"
       CMAKE_POSITION_INDEPENDENT_CODE: "ON"
     buildResult:
       variable: "CMAKE_CXX_ABI_COMPILED"
       cached: true
       stdout: |
-        Change Dir: 'D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-l26u61'
+        Change Dir: 'D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-v0xxqz'
         
-        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_a14a6.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_9841a.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         MSBuild version 17.14.40+3e7442088 for .NET Framework
-        Build started 4/28/2026 4:27:42 .
+        Build started 5/16/2026 8:37:10 AM.
         
-        Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-l26u61\\cmTC_a14a6.vcxproj" on node 1 (default targets).
+        Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-v0xxqz\\cmTC_9841a.vcxproj" on node 1 (default targets).
         PrepareForBuild:
           Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-l26u61\\Debug\\".
-          Creating directory "cmTC_a14a6.dir\\Debug\\cmTC_a14a6.tlog\\".
+          Creating directory "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-v0xxqz\\Debug\\".
+          Creating directory "cmTC_9841a.dir\\Debug\\cmTC_9841a.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_a14a6.dir\\Debug\\cmTC_a14a6.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_a14a6.dir\\Debug\\cmTC_a14a6.tlog\\unsuccessfulbuild".
+          Creating "cmTC_9841a.dir\\Debug\\cmTC_9841a.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_9841a.dir\\Debug\\cmTC_9841a.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W3 /WX- /diagnostics:column /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /MD /GR /std:c++17 /Fo"cmTC_a14a6.dir\\Debug\\\\" /Fd"cmTC_a14a6.dir\\Debug\\vc143.pdb" /external:W3 /TP /wd4996 /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCXXCompilerABI.cpp"
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /D _MBCS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /MD /std:c++17 /Fo"cmTC_9841a.dir\\Debug\\\\" /Fd"cmTC_9841a.dir\\Debug\\vc143.pdb" /external:W1 /TP /wd4996 /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCXXCompilerABI.cpp"
           Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W3 /WX- /diagnostics:column /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /MD /GR /std:c++17 /Fo"cmTC_a14a6.dir\\Debug\\\\" /Fd"cmTC_a14a6.dir\\Debug\\vc143.pdb" /external:W3 /TP /wd4996 /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCXXCompilerABI.cpp"
+          cl /c /Zi /W1 /WX- /diagnostics:column /D _MBCS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /MD /std:c++17 /Fo"cmTC_9841a.dir\\Debug\\\\" /Fd"cmTC_9841a.dir\\Debug\\vc143.pdb" /external:W1 /TP /wd4996 /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCXXCompilerABI.cpp"
           CMakeCXXCompilerABI.cpp
         Link:
-          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-l26u61\\Debug\\cmTC_a14a6.exe" /INCREMENTAL /ILK:"cmTC_a14a6.dir\\Debug\\cmTC_a14a6.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-l26u61/Debug/cmTC_a14a6.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-l26u61/Debug/cmTC_a14a6.lib" /MACHINE:X64  /machine:x64 /IGNORE:4099 cmTC_a14a6.dir\\Debug\\CMakeCXXCompilerABI.obj
-          cmTC_a14a6.vcxproj -> D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-l26u61\\Debug\\cmTC_a14a6.exe
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-v0xxqz\\Debug\\cmTC_9841a.exe" /INCREMENTAL /ILK:"cmTC_9841a.dir\\Debug\\cmTC_9841a.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-v0xxqz/Debug/cmTC_9841a.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-v0xxqz/Debug/cmTC_9841a.lib" /MACHINE:X64  /IGNORE:4099 cmTC_9841a.dir\\Debug\\CMakeCXXCompilerABI.obj
+          cmTC_9841a.vcxproj -> D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-v0xxqz\\Debug\\cmTC_9841a.exe
         FinalizeBuildStatus:
-          Deleting file "cmTC_a14a6.dir\\Debug\\cmTC_a14a6.tlog\\unsuccessfulbuild".
-          Touching "cmTC_a14a6.dir\\Debug\\cmTC_a14a6.tlog\\cmTC_a14a6.lastbuildstate".
-        Done Building Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-l26u61\\cmTC_a14a6.vcxproj" (default targets).
+          Deleting file "cmTC_9841a.dir\\Debug\\cmTC_9841a.tlog\\unsuccessfulbuild".
+          Touching "cmTC_9841a.dir\\Debug\\cmTC_9841a.tlog\\cmTC_9841a.lastbuildstate".
+        Done Building Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-v0xxqz\\cmTC_9841a.vcxproj" (default targets).
         
         Build succeeded.
             0 Warning(s)
             0 Error(s)
         
-        Time Elapsed 00:00:00.44
+        Time Elapsed 00:00:00.59
         
       exitCode: 0
   -
@@ -1333,4 +1845,585 @@ events:
       Running the CXX compiler's linker: "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/HostX64/x64/link.exe" "-v"
       Microsoft (R) Incremental Linker Version 14.44.35222.0
       Copyright (C) Microsoft Corporation.  All rights reserved.
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.3/Modules/Internal/CheckSourceCompiles.cmake:104 (try_compile)"
+      - "C:/Program Files/CMake/share/cmake-4.3/Modules/CheckCSourceCompiles.cmake:103 (cmake_check_source_compiles)"
+      - "C:/Program Files/CMake/share/cmake-4.3/Modules/FindThreads.cmake:160 (check_c_source_compiles)"
+      - "C:/Program Files/CMake/share/cmake-4.3/Modules/FindThreads.cmake:226 (_threads_check_libc)"
+      - "CMakeLists.txt:246 (find_package)"
+    checks:
+      - "Performing Test CMAKE_HAVE_LIBC_PTHREAD"
+    directories:
+      source: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-tjcbfb"
+      binary: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-tjcbfb"
+    cmakeVariables:
+      CMAKE_CXX_STDLIB_MODULES_JSON: ""
+      CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS /W3"
+      CMAKE_C_FLAGS_DEBUG: "/MDd /Zi /Ob0 /Od /RTC1"
+      CMAKE_EXE_LINKER_FLAGS: " /DEBUG /IGNORE:4099"
+      CMAKE_MODULE_PATH: "D:/titan/client/src/external/3rd/library/devkitBase/cmake/modules"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "CMAKE_HAVE_LIBC_PTHREAD"
+      cached: true
+      stdout: |
+        Change Dir: 'D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-tjcbfb'
+        
+        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_c62c6.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        MSBuild version 17.14.40+3e7442088 for .NET Framework
+        Build started 5/16/2026 8:37:12 AM.
+        
+        Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-tjcbfb\\cmTC_c62c6.vcxproj" on node 1 (default targets).
+        PrepareForBuild:
+          Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
+          Creating directory "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-tjcbfb\\Debug\\".
+          Creating directory "cmTC_c62c6.dir\\Debug\\cmTC_c62c6.tlog\\".
+        InitializeBuildStatus:
+          Creating "cmTC_c62c6.dir\\Debug\\cmTC_c62c6.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_c62c6.dir\\Debug\\cmTC_c62c6.tlog\\unsuccessfulbuild".
+        ClCompile:
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CMAKE_HAVE_LIBC_PTHREAD /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_c62c6.dir\\Debug\\\\" /Fd"cmTC_c62c6.dir\\Debug\\vc143.pdb" /external:W3 /TC /errorReport:queue "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-tjcbfb\\src.c"
+          Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
+          Copyright (C) Microsoft Corporation.  All rights reserved.
+          cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CMAKE_HAVE_LIBC_PTHREAD /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_c62c6.dir\\Debug\\\\" /Fd"cmTC_c62c6.dir\\Debug\\vc143.pdb" /external:W3 /TC /errorReport:queue "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-tjcbfb\\src.c"
+          src.c
+        D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-tjcbfb\\src.c(1,10): error C1083: Cannot open include file: 'pthread.h': No such file or directory [D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-tjcbfb\\cmTC_c62c6.vcxproj]
+        Done Building Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-tjcbfb\\cmTC_c62c6.vcxproj" (default targets) -- FAILED.
+        
+        Build FAILED.
+        
+        "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-tjcbfb\\cmTC_c62c6.vcxproj" (default target) (1) ->
+        (ClCompile target) -> 
+          D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-tjcbfb\\src.c(1,10): error C1083: Cannot open include file: 'pthread.h': No such file or directory [D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-tjcbfb\\cmTC_c62c6.vcxproj]
+        
+            0 Warning(s)
+            1 Error(s)
+        
+        Time Elapsed 00:00:00.32
+        
+      exitCode: 1
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.3/Modules/CheckLibraryExists.cmake:154 (try_compile)"
+      - "C:/Program Files/CMake/share/cmake-4.3/Modules/FindThreads.cmake:175 (check_library_exists)"
+      - "C:/Program Files/CMake/share/cmake-4.3/Modules/FindThreads.cmake:238 (_threads_check_lib)"
+      - "CMakeLists.txt:246 (find_package)"
+    checks:
+      - "Looking for pthread_create in pthreads"
+    directories:
+      source: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-wxwblq"
+      binary: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-wxwblq"
+    cmakeVariables:
+      CMAKE_CXX_STDLIB_MODULES_JSON: ""
+      CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS /W3"
+      CMAKE_C_FLAGS_DEBUG: "/MDd /Zi /Ob0 /Od /RTC1"
+      CMAKE_EXE_LINKER_FLAGS: " /DEBUG /IGNORE:4099"
+      CMAKE_MODULE_PATH: "D:/titan/client/src/external/3rd/library/devkitBase/cmake/modules"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "CMAKE_HAVE_PTHREADS_CREATE"
+      cached: true
+      stdout: |
+        Change Dir: 'D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-wxwblq'
+        
+        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_441a1.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        MSBuild version 17.14.40+3e7442088 for .NET Framework
+        Build started 5/16/2026 8:37:12 AM.
+        
+        Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-wxwblq\\cmTC_441a1.vcxproj" on node 1 (default targets).
+        PrepareForBuild:
+          Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
+          Creating directory "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-wxwblq\\Debug\\".
+          Creating directory "cmTC_441a1.dir\\Debug\\cmTC_441a1.tlog\\".
+        InitializeBuildStatus:
+          Creating "cmTC_441a1.dir\\Debug\\cmTC_441a1.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_441a1.dir\\Debug\\cmTC_441a1.tlog\\unsuccessfulbuild".
+        ClCompile:
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_441a1.dir\\Debug\\\\" /Fd"cmTC_441a1.dir\\Debug\\vc143.pdb" /external:W3 /TC /errorReport:queue "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-wxwblq\\CheckFunctionExists.c"
+          Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
+          Copyright (C) Microsoft Corporation.  All rights reserved.
+          cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_441a1.dir\\Debug\\\\" /Fd"cmTC_441a1.dir\\Debug\\vc143.pdb" /external:W3 /TC /errorReport:queue "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-wxwblq\\CheckFunctionExists.c"
+          CheckFunctionExists.c
+        Link:
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-wxwblq\\Debug\\cmTC_441a1.exe" /INCREMENTAL /ILK:"cmTC_441a1.dir\\Debug\\cmTC_441a1.ilk" /NOLOGO pthreads.lib kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-wxwblq/Debug/cmTC_441a1.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-wxwblq/Debug/cmTC_441a1.lib" /MACHINE:X64  /IGNORE:4099 cmTC_441a1.dir\\Debug\\CheckFunctionExists.obj
+        LINK : fatal error LNK1104: cannot open file 'pthreads.lib' [D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-wxwblq\\cmTC_441a1.vcxproj]
+        Done Building Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-wxwblq\\cmTC_441a1.vcxproj" (default targets) -- FAILED.
+        
+        Build FAILED.
+        
+        "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-wxwblq\\cmTC_441a1.vcxproj" (default target) (1) ->
+        (Link target) -> 
+          LINK : fatal error LNK1104: cannot open file 'pthreads.lib' [D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-wxwblq\\cmTC_441a1.vcxproj]
+        
+            0 Warning(s)
+            1 Error(s)
+        
+        Time Elapsed 00:00:00.33
+        
+      exitCode: 1
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.3/Modules/CheckLibraryExists.cmake:154 (try_compile)"
+      - "C:/Program Files/CMake/share/cmake-4.3/Modules/FindThreads.cmake:175 (check_library_exists)"
+      - "C:/Program Files/CMake/share/cmake-4.3/Modules/FindThreads.cmake:239 (_threads_check_lib)"
+      - "CMakeLists.txt:246 (find_package)"
+    checks:
+      - "Looking for pthread_create in pthread"
+    directories:
+      source: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-97pbno"
+      binary: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-97pbno"
+    cmakeVariables:
+      CMAKE_CXX_STDLIB_MODULES_JSON: ""
+      CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS /W3"
+      CMAKE_C_FLAGS_DEBUG: "/MDd /Zi /Ob0 /Od /RTC1"
+      CMAKE_EXE_LINKER_FLAGS: " /DEBUG /IGNORE:4099"
+      CMAKE_MODULE_PATH: "D:/titan/client/src/external/3rd/library/devkitBase/cmake/modules"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "CMAKE_HAVE_PTHREAD_CREATE"
+      cached: true
+      stdout: |
+        Change Dir: 'D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-97pbno'
+        
+        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_7afe0.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        MSBuild version 17.14.40+3e7442088 for .NET Framework
+        Build started 5/16/2026 8:37:13 AM.
+        
+        Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-97pbno\\cmTC_7afe0.vcxproj" on node 1 (default targets).
+        PrepareForBuild:
+          Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
+          Creating directory "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-97pbno\\Debug\\".
+          Creating directory "cmTC_7afe0.dir\\Debug\\cmTC_7afe0.tlog\\".
+        InitializeBuildStatus:
+          Creating "cmTC_7afe0.dir\\Debug\\cmTC_7afe0.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_7afe0.dir\\Debug\\cmTC_7afe0.tlog\\unsuccessfulbuild".
+        ClCompile:
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_7afe0.dir\\Debug\\\\" /Fd"cmTC_7afe0.dir\\Debug\\vc143.pdb" /external:W3 /TC /errorReport:queue "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-97pbno\\CheckFunctionExists.c"
+          Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35222 for x64
+          Copyright (C) Microsoft Corporation.  All rights reserved.
+          cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_7afe0.dir\\Debug\\\\" /Fd"cmTC_7afe0.dir\\Debug\\vc143.pdb" /external:W3 /TC /errorReport:queue "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-97pbno\\CheckFunctionExists.c"
+          CheckFunctionExists.c
+        Link:
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-97pbno\\Debug\\cmTC_7afe0.exe" /INCREMENTAL /ILK:"cmTC_7afe0.dir\\Debug\\cmTC_7afe0.ilk" /NOLOGO pthread.lib kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-97pbno/Debug/cmTC_7afe0.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-97pbno/Debug/cmTC_7afe0.lib" /MACHINE:X64  /IGNORE:4099 cmTC_7afe0.dir\\Debug\\CheckFunctionExists.obj
+        LINK : fatal error LNK1104: cannot open file 'pthread.lib' [D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-97pbno\\cmTC_7afe0.vcxproj]
+        Done Building Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-97pbno\\cmTC_7afe0.vcxproj" (default targets) -- FAILED.
+        
+        Build FAILED.
+        
+        "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-97pbno\\cmTC_7afe0.vcxproj" (default target) (1) ->
+        (Link target) -> 
+          LINK : fatal error LNK1104: cannot open file 'pthread.lib' [D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-97pbno\\cmTC_7afe0.vcxproj]
+        
+            0 Warning(s)
+            1 Error(s)
+        
+        Time Elapsed 00:00:00.33
+        
+      exitCode: 1
+  -
+    kind: "find-v1"
+    backtrace:
+      - "D:/titan/client/src/external/3rd/library/devkitBase/cmake/pluginEntry.cmake:257 (find_library)"
+      - "CMakeLists.txt:268 (build_plugin)"
+    mode: "library"
+    variable: "OpenMaya_PATH"
+    description: "Path to a library."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "OpenMaya"
+    candidate_directories:
+      - "D:/titan/client/src/external/3rd/library/devkitBase/lib/"
+    found: "D:/titan/client/src/external/3rd/library/devkitBase/lib/OpenMaya.lib"
+    search_context:
+      ENV{PATH}:
+        - "C:\\Program Files (x86)\\Alias\\Maya8.0\\bin"
+        - "C:\\Python314\\Scripts\\"
+        - "C:\\Python314\\"
+        - "C:\\Program Files\\Eclipse Adoptium\\jdk-25.0.2.10-hotspot\\bin"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\Windows\\System32\\OpenSSH\\"
+        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA App\\NvDLISR"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files\\Microsoft SQL Server\\110\\Tools\\Binn\\"
+        - "C:\\Program Files (x86)\\Microsoft SDKs\\TypeScript\\1.0\\"
+        - "D:\\Program Files\\Java\\JavaFX\\javafx-sdk-25.0.2\\lib"
+        - "D:\\Program Files (x86)\\Maven\\apache-maven-3.9.12\\bin"
+        - "C:\\Program Files\\nodejs\\"
+        - "C:\\ProgramData\\chocolatey\\bin"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\dotnet\\"
+        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\PHP\\current"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WindowsApps"
+        - "D:\\Program Files\\Jetbrains\\PhpStorm 2025.3.2\\bin"
+        - "D:\\Program Files\\Jetbrains\\IntelliJ IDEA 2025.3.2\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\PowerToys\\DSCModules\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Roaming\\npm"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Zed\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Antigravity\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe"
+      CMAKE_INSTALL_PREFIX: "C:/Program Files/unicode"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "C:/Program Files"
+        - "C:/Program Files (x86)"
+        - "C:/Program Files/CMake"
+        - "C:/Program Files/unicode"
+      CMAKE_SYSTEM_LIBRARY_PATH:
+        - "C:/Program Files/unicode/bin"
+        - "C:/Program Files/CMake/bin"
+        - "/bin"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "D:/titan/client/src/external/3rd/library/devkitBase/cmake/pluginEntry.cmake:257 (find_library)"
+      - "CMakeLists.txt:268 (build_plugin)"
+    mode: "library"
+    variable: "Foundation_PATH"
+    description: "Path to a library."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "Foundation"
+    candidate_directories:
+      - "D:/titan/client/src/external/3rd/library/devkitBase/lib/"
+    found: "D:/titan/client/src/external/3rd/library/devkitBase/lib/Foundation.lib"
+    search_context:
+      ENV{PATH}:
+        - "C:\\Program Files (x86)\\Alias\\Maya8.0\\bin"
+        - "C:\\Python314\\Scripts\\"
+        - "C:\\Python314\\"
+        - "C:\\Program Files\\Eclipse Adoptium\\jdk-25.0.2.10-hotspot\\bin"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\Windows\\System32\\OpenSSH\\"
+        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA App\\NvDLISR"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files\\Microsoft SQL Server\\110\\Tools\\Binn\\"
+        - "C:\\Program Files (x86)\\Microsoft SDKs\\TypeScript\\1.0\\"
+        - "D:\\Program Files\\Java\\JavaFX\\javafx-sdk-25.0.2\\lib"
+        - "D:\\Program Files (x86)\\Maven\\apache-maven-3.9.12\\bin"
+        - "C:\\Program Files\\nodejs\\"
+        - "C:\\ProgramData\\chocolatey\\bin"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\dotnet\\"
+        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\PHP\\current"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WindowsApps"
+        - "D:\\Program Files\\Jetbrains\\PhpStorm 2025.3.2\\bin"
+        - "D:\\Program Files\\Jetbrains\\IntelliJ IDEA 2025.3.2\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\PowerToys\\DSCModules\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Roaming\\npm"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Zed\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Antigravity\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe"
+      CMAKE_INSTALL_PREFIX: "C:/Program Files/unicode"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "C:/Program Files"
+        - "C:/Program Files (x86)"
+        - "C:/Program Files/CMake"
+        - "C:/Program Files/unicode"
+      CMAKE_SYSTEM_LIBRARY_PATH:
+        - "C:/Program Files/unicode/bin"
+        - "C:/Program Files/CMake/bin"
+        - "/bin"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "D:/titan/client/src/external/3rd/library/devkitBase/cmake/pluginEntry.cmake:257 (find_library)"
+      - "CMakeLists.txt:268 (build_plugin)"
+    mode: "library"
+    variable: "OpenMayaUI_PATH"
+    description: "Path to a library."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "OpenMayaUI"
+    candidate_directories:
+      - "D:/titan/client/src/external/3rd/library/devkitBase/lib/"
+    found: "D:/titan/client/src/external/3rd/library/devkitBase/lib/OpenMayaUI.lib"
+    search_context:
+      ENV{PATH}:
+        - "C:\\Program Files (x86)\\Alias\\Maya8.0\\bin"
+        - "C:\\Python314\\Scripts\\"
+        - "C:\\Python314\\"
+        - "C:\\Program Files\\Eclipse Adoptium\\jdk-25.0.2.10-hotspot\\bin"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\Windows\\System32\\OpenSSH\\"
+        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA App\\NvDLISR"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files\\Microsoft SQL Server\\110\\Tools\\Binn\\"
+        - "C:\\Program Files (x86)\\Microsoft SDKs\\TypeScript\\1.0\\"
+        - "D:\\Program Files\\Java\\JavaFX\\javafx-sdk-25.0.2\\lib"
+        - "D:\\Program Files (x86)\\Maven\\apache-maven-3.9.12\\bin"
+        - "C:\\Program Files\\nodejs\\"
+        - "C:\\ProgramData\\chocolatey\\bin"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\dotnet\\"
+        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\PHP\\current"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WindowsApps"
+        - "D:\\Program Files\\Jetbrains\\PhpStorm 2025.3.2\\bin"
+        - "D:\\Program Files\\Jetbrains\\IntelliJ IDEA 2025.3.2\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\PowerToys\\DSCModules\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Roaming\\npm"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Zed\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Antigravity\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe"
+      CMAKE_INSTALL_PREFIX: "C:/Program Files/unicode"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "C:/Program Files"
+        - "C:/Program Files (x86)"
+        - "C:/Program Files/CMake"
+        - "C:/Program Files/unicode"
+      CMAKE_SYSTEM_LIBRARY_PATH:
+        - "C:/Program Files/unicode/bin"
+        - "C:/Program Files/CMake/bin"
+        - "/bin"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "D:/titan/client/src/external/3rd/library/devkitBase/cmake/pluginEntry.cmake:257 (find_library)"
+      - "CMakeLists.txt:268 (build_plugin)"
+    mode: "library"
+    variable: "OpenMayaAnim_PATH"
+    description: "Path to a library."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "OpenMayaAnim"
+    candidate_directories:
+      - "D:/titan/client/src/external/3rd/library/devkitBase/lib/"
+    found: "D:/titan/client/src/external/3rd/library/devkitBase/lib/OpenMayaAnim.lib"
+    search_context:
+      ENV{PATH}:
+        - "C:\\Program Files (x86)\\Alias\\Maya8.0\\bin"
+        - "C:\\Python314\\Scripts\\"
+        - "C:\\Python314\\"
+        - "C:\\Program Files\\Eclipse Adoptium\\jdk-25.0.2.10-hotspot\\bin"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\Windows\\System32\\OpenSSH\\"
+        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA App\\NvDLISR"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files\\Microsoft SQL Server\\110\\Tools\\Binn\\"
+        - "C:\\Program Files (x86)\\Microsoft SDKs\\TypeScript\\1.0\\"
+        - "D:\\Program Files\\Java\\JavaFX\\javafx-sdk-25.0.2\\lib"
+        - "D:\\Program Files (x86)\\Maven\\apache-maven-3.9.12\\bin"
+        - "C:\\Program Files\\nodejs\\"
+        - "C:\\ProgramData\\chocolatey\\bin"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\dotnet\\"
+        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\PHP\\current"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WindowsApps"
+        - "D:\\Program Files\\Jetbrains\\PhpStorm 2025.3.2\\bin"
+        - "D:\\Program Files\\Jetbrains\\IntelliJ IDEA 2025.3.2\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\PowerToys\\DSCModules\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Roaming\\npm"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Zed\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Antigravity\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe"
+      CMAKE_INSTALL_PREFIX: "C:/Program Files/unicode"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "C:/Program Files"
+        - "C:/Program Files (x86)"
+        - "C:/Program Files/CMake"
+        - "C:/Program Files/unicode"
+      CMAKE_SYSTEM_LIBRARY_PATH:
+        - "C:/Program Files/unicode/bin"
+        - "C:/Program Files/CMake/bin"
+        - "/bin"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "D:/titan/client/src/external/3rd/library/devkitBase/cmake/pluginEntry.cmake:257 (find_library)"
+      - "CMakeLists.txt:268 (build_plugin)"
+    mode: "library"
+    variable: "OpenMayaFX_PATH"
+    description: "Path to a library."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "OpenMayaFX"
+    candidate_directories:
+      - "D:/titan/client/src/external/3rd/library/devkitBase/lib/"
+    found: "D:/titan/client/src/external/3rd/library/devkitBase/lib/OpenMayaFX.lib"
+    search_context:
+      ENV{PATH}:
+        - "C:\\Program Files (x86)\\Alias\\Maya8.0\\bin"
+        - "C:\\Python314\\Scripts\\"
+        - "C:\\Python314\\"
+        - "C:\\Program Files\\Eclipse Adoptium\\jdk-25.0.2.10-hotspot\\bin"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\Windows\\System32\\OpenSSH\\"
+        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA App\\NvDLISR"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files\\Microsoft SQL Server\\110\\Tools\\Binn\\"
+        - "C:\\Program Files (x86)\\Microsoft SDKs\\TypeScript\\1.0\\"
+        - "D:\\Program Files\\Java\\JavaFX\\javafx-sdk-25.0.2\\lib"
+        - "D:\\Program Files (x86)\\Maven\\apache-maven-3.9.12\\bin"
+        - "C:\\Program Files\\nodejs\\"
+        - "C:\\ProgramData\\chocolatey\\bin"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\dotnet\\"
+        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\PHP\\current"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WindowsApps"
+        - "D:\\Program Files\\Jetbrains\\PhpStorm 2025.3.2\\bin"
+        - "D:\\Program Files\\Jetbrains\\IntelliJ IDEA 2025.3.2\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\PowerToys\\DSCModules\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Roaming\\npm"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Zed\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Antigravity\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe"
+      CMAKE_INSTALL_PREFIX: "C:/Program Files/unicode"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "C:/Program Files"
+        - "C:/Program Files (x86)"
+        - "C:/Program Files/CMake"
+        - "C:/Program Files/unicode"
+      CMAKE_SYSTEM_LIBRARY_PATH:
+        - "C:/Program Files/unicode/bin"
+        - "C:/Program Files/CMake/bin"
+        - "/bin"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "D:/titan/client/src/external/3rd/library/devkitBase/cmake/pluginEntry.cmake:257 (find_library)"
+      - "CMakeLists.txt:268 (build_plugin)"
+    mode: "library"
+    variable: "OpenMayaRender_PATH"
+    description: "Path to a library."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "OpenMayaRender"
+    candidate_directories:
+      - "D:/titan/client/src/external/3rd/library/devkitBase/lib/"
+    found: "D:/titan/client/src/external/3rd/library/devkitBase/lib/OpenMayaRender.lib"
+    search_context:
+      ENV{PATH}:
+        - "C:\\Program Files (x86)\\Alias\\Maya8.0\\bin"
+        - "C:\\Python314\\Scripts\\"
+        - "C:\\Python314\\"
+        - "C:\\Program Files\\Eclipse Adoptium\\jdk-25.0.2.10-hotspot\\bin"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\Windows\\System32\\OpenSSH\\"
+        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA App\\NvDLISR"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files\\Microsoft SQL Server\\110\\Tools\\Binn\\"
+        - "C:\\Program Files (x86)\\Microsoft SDKs\\TypeScript\\1.0\\"
+        - "D:\\Program Files\\Java\\JavaFX\\javafx-sdk-25.0.2\\lib"
+        - "D:\\Program Files (x86)\\Maven\\apache-maven-3.9.12\\bin"
+        - "C:\\Program Files\\nodejs\\"
+        - "C:\\ProgramData\\chocolatey\\bin"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\dotnet\\"
+        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\PHP\\current"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WindowsApps"
+        - "D:\\Program Files\\Jetbrains\\PhpStorm 2025.3.2\\bin"
+        - "D:\\Program Files\\Jetbrains\\IntelliJ IDEA 2025.3.2\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\PowerToys\\DSCModules\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Roaming\\npm"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Zed\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Antigravity\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe"
+      CMAKE_INSTALL_PREFIX: "C:/Program Files/unicode"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "C:/Program Files"
+        - "C:/Program Files (x86)"
+        - "C:/Program Files/CMake"
+        - "C:/Program Files/unicode"
+      CMAKE_SYSTEM_LIBRARY_PATH:
+        - "C:/Program Files/unicode/bin"
+        - "C:/Program Files/CMake/bin"
+        - "/bin"
 ...
