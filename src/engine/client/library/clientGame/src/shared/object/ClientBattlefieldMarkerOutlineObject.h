@@ -15,6 +15,7 @@
 #include "sharedObject/Object.h"
 
 class ObjectList;
+class VectorArgb;
 
 // ======================================================================
 
@@ -24,12 +25,16 @@ public:
 
 	static void install ();
 
+	/** Pole count for circular claim / battlefield outlines (~1 pole per 4m, clamped 8–32). */
+	static int calculatePoleCountForRadius (float radiusMeters);
+
 public:
 
 	ClientBattlefieldMarkerOutlineObject (int numberOfPoles, float radius);
 	virtual ~ClientBattlefieldMarkerOutlineObject ();
 
 	void resetBoundary ();
+	void setRibbonColor (VectorArgb const & color);
 
 private:
 

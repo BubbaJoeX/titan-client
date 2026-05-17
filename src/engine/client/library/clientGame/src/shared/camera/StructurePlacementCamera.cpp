@@ -11,7 +11,10 @@
 #include "clientGame/StructurePlacementCamera.h"
 #include "clientGame/StructurePlacementVisualState.h"
 
+#include "clientGame/ClientBattlefieldMarkerOutlineObject.h"
 #include "clientGame/ClientWorld.h"
+#include "clientGraphics/RenderWorld.h"
+#include "clientGame/ConfigClientGame.h"
 #include "clientGame/CreatureObject.h"
 #include "clientGraphics/Graphics.h"
 #include "clientGraphics/Light.h"
@@ -265,7 +268,9 @@ StructurePlacementCamera::StructurePlacementCamera () :
 	m_lotOccupiedShader (ShaderTemplateList::fetchShader ("shader/placement_yellow.sht")),
 	m_allowedFootprintShader (ShaderTemplateList::fetchShader ("shader/placement_green.sht")),
 	m_disallowedFootprintShader (ShaderTemplateList::fetchShader ("shader/placement_red.sht")),
-	m_claimFootprintRadiusMeters (-1.f)
+	m_claimFootprintRadiusMeters (-1.f),
+	m_claimOutline (0),
+	m_claimOutlineRadiusMeters (-1.f)
 {
 	DebugFlags::registerFlag (ms_renderLotManager, "ClientGame", "renderLotManager");
 	DebugFlags::registerFlag (ms_alwaysAllowStructurePlacement, "ClientGame", "alwaysAllowStructurePlacement");
@@ -279,6 +284,8 @@ StructurePlacementCamera::StructurePlacementCamera () :
 
 StructurePlacementCamera::~StructurePlacementCamera ()
 {
+	destroyClaimOutline ();
+
 	m_queue  = 0;
 	m_target = 0;
 	m_structureFootprint = 0;
@@ -328,6 +335,8 @@ void StructurePlacementCamera::setActive (bool active)
 		//-- deactivating
 		if (!active && isActive ())
 		{
+			destroyClaimOutline ();
+
 			TerrainObject* const terrainObject = TerrainObject::getInstance ();
 			if (terrainObject)
 			{
@@ -478,6 +487,59 @@ void StructurePlacementCamera::setStructureObject (Object* structureObject)
 void StructurePlacementCamera::setClaimFootprintRadiusMeters (float const radiusMeters)
 {
 	m_claimFootprintRadiusMeters = radiusMeters;
+	if (radiusMeters <= 0.f)
+		destroyClaimOutline ();
+}
+
+//-------------------------------------------------------------------
+
+void StructurePlacementCamera::destroyClaimOutline () const
+{
+	if (m_claimOutline)
+	{
+		m_claimOutline->removeFromWorld ();
+		delete m_claimOutline;
+		m_claimOutline = 0;
+	}
+	m_claimOutlineRadiusMeters = -1.f;
+}
+
+//-------------------------------------------------------------------
+
+void StructurePlacementCamera::ensureClaimOutline (float const radiusMeters) const
+{
+	if (radiusMeters <= 0.f)
+	{
+		destroyClaimOutline ();
+		return;
+	}
+
+	if (m_claimOutline && m_claimOutlineRadiusMeters == radiusMeters)
+		return;
+
+	destroyClaimOutline ();
+
+	int const poleCount = ClientBattlefieldMarkerOutlineObject::calculatePoleCountForRadius (radiusMeters);
+	m_claimOutline = new ClientBattlefieldMarkerOutlineObject (poleCount, radiusMeters);
+	m_claimOutline->addNotification (ClientWorld::getIntangibleNotification ());
+	RenderWorld::addObjectNotifications (*m_claimOutline);
+	m_claimOutline->addToWorld ();
+	m_claimOutlineRadiusMeters = radiusMeters;
+}
+
+//-------------------------------------------------------------------
+
+void StructurePlacementCamera::updateClaimOutline (Vector const & center_w, bool const canPlace) const
+{
+	if (!m_claimOutline)
+		return;
+
+	m_claimOutline->setPosition_w (center_w);
+	VectorArgb const ribbonColor = canPlace
+		? VectorArgb (0.5f, VectorArgb::solidGreen.r, VectorArgb::solidGreen.g, VectorArgb::solidGreen.b)
+		: VectorArgb (0.5f, VectorArgb::solidRed.r, VectorArgb::solidRed.g, VectorArgb::solidRed.b);
+	m_claimOutline->setRibbonColor (ribbonColor);
+	m_claimOutline->resetBoundary ();
 }
 
 //-------------------------------------------------------------------
@@ -703,26 +765,14 @@ void StructurePlacementCamera::drawScene () const
 		NOT_NULL (m_structureObject);
 		m_structureObject->setPosition_w (m_createLocation);
 
-		if (m_claimFootprintRadiusMeters > 0.f)
+		if (m_claimFootprintRadiusMeters > 0.f && ConfigClientGame::getClaimPlacementCirclePreviewEnabled ())
 		{
-			Graphics::setStaticShader (ShaderTemplateList::get3dVertexColorStaticShader ());
-			Vector center = m_createLocation;
-			center.y += chunkWidthInMeters * 0.05f;
-			float const radius = m_claimFootprintRadiusMeters;
-			int const segments = 64;
-			VectorArgb const ringColor = canPlace ? VectorArgb::solidGreen : VectorArgb::solidRed;
-			for (int seg = 0; seg < segments; ++seg)
-			{
-				float const a0 = (static_cast<float>(seg) / static_cast<float>(segments)) * (PI * 2.f);
-				float const a1 = (static_cast<float>(seg + 1) / static_cast<float>(segments)) * (PI * 2.f);
-				Vector p0 (center.x + std::cos(a0) * radius, center.y, center.z + std::sin(a0) * radius);
-				Vector p1 (center.x + std::cos(a1) * radius, center.y, center.z + std::sin(a1) * radius);
-				IGNORE_RETURN (terrainObject->getHeight (p0, p0.y));
-				IGNORE_RETURN (terrainObject->getHeight (p1, p1.y));
-				p0.y += chunkWidthInMeters * 0.05f;
-				p1.y += chunkWidthInMeters * 0.05f;
-				Graphics::drawLine (p0, p1, ringColor);
-			}
+			ensureClaimOutline (m_claimFootprintRadiusMeters);
+			updateClaimOutline (m_createLocation, canPlace);
+		}
+		else
+		{
+			destroyClaimOutline ();
 		}
 	}
 }

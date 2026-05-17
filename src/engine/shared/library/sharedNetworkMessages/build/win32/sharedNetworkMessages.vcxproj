@@ -516,6 +516,15 @@
     <ClCompile Include="..\..\src\shared\clientGameServer\EditStatsMessage.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
     </ClCompile>
+    <ClCompile Include="..\..\src\shared\clientGameServer\ClaimFootprintSyncMessage.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+    </ClCompile>
+    <ClCompile Include="..\..\src\shared\clientGameServer\ClaimManipulateStateMessage.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+    </ClCompile>
+    <ClCompile Include="..\..\src\shared\clientGameServer\ClaimClientMessageDispatch.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+    </ClCompile>
     <ClCompile Include="..\..\src\shared\clientGameServer\EnterStructurePlacementModeMessage.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
     </ClCompile>
@@ -1320,6 +1329,9 @@
     <ClInclude Include="..\..\src\shared\clientGameServer\DroidCommandProgrammingMessage.h" />
     <ClInclude Include="..\..\src\shared\clientGameServer\EditAppearanceMessage.h" />
     <ClInclude Include="..\..\src\shared\clientGameServer\EditStatsMessage.h" />
+    <ClInclude Include="..\..\src\shared\clientGameServer\ClaimFootprintSyncMessage.h" />
+    <ClInclude Include="..\..\src\shared\clientGameServer\ClaimManipulateStateMessage.h" />
+    <ClInclude Include="..\..\src\shared\clientGameServer\ClaimClientMessageDispatch.h" />
     <ClInclude Include="..\..\src\shared\clientGameServer\EnterStructurePlacementModeMessage.h" />
     <ClInclude Include="..\..\src\shared\clientGameServer\EnterTicketPurchaseModeMessage.h" />
     <ClInclude Include="..\..\src\shared\clientGameServer\ShowAirspeederPanelMessage.h" />

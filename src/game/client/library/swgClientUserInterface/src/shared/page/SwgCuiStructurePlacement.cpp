@@ -492,7 +492,7 @@ void SwgCuiStructurePlacement::updateOrientationHelpText ()
 	if (m_isClaimPlacement && m_claimFootprintRadiusMeters > 0.f)
 	{
 		char buf[128];
-		sprintf(buf, "Claim footprint: %.0fm radius (green/red ring).\r\n", m_claimFootprintRadiusMeters);
+		sprintf(buf, "Claim footprint: %.0fm radius (poles + ribbon, green=ok / red=blocked).\r\n", m_claimFootprintRadiusMeters);
 		line += Unicode::narrowToWide(buf);
 	}
 

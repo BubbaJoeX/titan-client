@@ -24,6 +24,7 @@
 #include "clientGame/ClientEffectManager.h"
 #include "clientGame/ClientObject.h"
 #include "clientGame/ClientRegionManager.h"
+#include "clientGame/ClientClaimFootprintManager.h"
 #include "clientGame/ClientWaypointObject.h"
 #include "clientGame/CollisionTest.h"
 #include "clientGame/CommandCppFuncs.h"
@@ -1207,6 +1208,7 @@ void Game::runGameLoopOnce(bool presentToWindow, HWND hwnd, int width, int heigh
 		DraftSchematicManager::update(elapsedTime);
 		CreatureObject::flushDeferredPlayerSkillsChanged ();
 		ClientWaypointObject::checkWaypoints(elapsedTime);
+		ClientClaimFootprintManager::update(elapsedTime);
 
 		NP_PROFILER_NAMED_AUTO_BLOCK_TRANSFER(profilerMainLoop, "update");
 		CutScene::update();

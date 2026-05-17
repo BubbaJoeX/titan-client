@@ -16,6 +16,7 @@
 #include "../../../../../../engine/shared/library/sharedFoundation/include/public/sharedFoundation/Watcher.h"
 #include "sharedObject/LotType.h"
 
+class ClientBattlefieldMarkerOutlineObject;
 class Object;
 class MessageQueue;
 class Shader;
@@ -46,6 +47,12 @@ public:
 protected:
 
 	virtual void  drawScene () const;
+
+private:
+
+	void          destroyClaimOutline () const;
+	void          ensureClaimOutline (float radiusMeters) const;
+	void          updateClaimOutline (Vector const & center_w, bool canPlace) const;
 
 private:
 
@@ -80,6 +87,8 @@ private:
 	const Shader* const       m_allowedFootprintShader;
 	const Shader* const       m_disallowedFootprintShader;
 	float                     m_claimFootprintRadiusMeters;
+	mutable ClientBattlefieldMarkerOutlineObject * m_claimOutline;
+	mutable float             m_claimOutlineRadiusMeters;
 
 private:
 

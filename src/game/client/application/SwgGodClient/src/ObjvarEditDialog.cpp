@@ -192,7 +192,8 @@ bool ObjvarEditDialog::run(QWidget * parent, std::string const & type, std::stri
 		QPushButton * const cancel = new QPushButton("Cancel", &dialog);
 		IGNORE_RETURN(buttons->addWidget(ok));
 		IGNORE_RETURN(buttons->addWidget(cancel));
-		IGNORE_RETURN(dialog.setDefault(ok));
+		ok->setDefault(true);
+		cancel->setAutoDefault(false);
 		QObject::connect(ok, SIGNAL(clicked()), &dialog, SLOT(accept()));
 		QObject::connect(cancel, SIGNAL(clicked()), &dialog, SLOT(reject()));
 
@@ -223,7 +224,8 @@ bool ObjvarEditDialog::run(QWidget * parent, std::string const & type, std::stri
 		QPushButton * const cancel = new QPushButton("Cancel", &dialog);
 		IGNORE_RETURN(buttons->addWidget(ok));
 		IGNORE_RETURN(buttons->addWidget(cancel));
-		IGNORE_RETURN(dialog.setDefault(ok));
+		ok->setDefault(true);
+		cancel->setAutoDefault(false);
 		QObject::connect(ok, SIGNAL(clicked()), &dialog, SLOT(accept()));
 		QObject::connect(cancel, SIGNAL(clicked()), &dialog, SLOT(reject()));
 
@@ -261,7 +263,8 @@ bool ObjvarEditDialog::run(QWidget * parent, std::string const & type, std::stri
 		QPushButton * const cancel = new QPushButton("Cancel", &dialog);
 		IGNORE_RETURN(buttons->addWidget(ok));
 		IGNORE_RETURN(buttons->addWidget(cancel));
-		IGNORE_RETURN(dialog.setDefault(ok));
+		ok->setDefault(true);
+		cancel->setAutoDefault(false);
 		QObject::connect(ok, SIGNAL(clicked()), &dialog, SLOT(accept()));
 		QObject::connect(cancel, SIGNAL(clicked()), &dialog, SLOT(reject()));
 
@@ -283,7 +286,8 @@ bool ObjvarEditDialog::run(QWidget * parent, std::string const & type, std::stri
 		QPushButton * const cancel = new QPushButton("Cancel", &dialog);
 		IGNORE_RETURN(buttons->addWidget(ok));
 		IGNORE_RETURN(buttons->addWidget(cancel));
-		IGNORE_RETURN(dialog.setDefault(ok));
+		ok->setDefault(true);
+		cancel->setAutoDefault(false);
 		QObject::connect(ok, SIGNAL(clicked()), &dialog, SLOT(accept()));
 		QObject::connect(cancel, SIGNAL(clicked()), &dialog, SLOT(reject()));
 
@@ -315,7 +319,8 @@ bool ObjvarEditDialog::run(QWidget * parent, std::string const & type, std::stri
 		QPushButton * const cancel = new QPushButton("Cancel", &dialog);
 		IGNORE_RETURN(buttons->addWidget(ok));
 		IGNORE_RETURN(buttons->addWidget(cancel));
-		IGNORE_RETURN(dialog.setDefault(ok));
+		ok->setDefault(true);
+		cancel->setAutoDefault(false);
 		QObject::connect(ok, SIGNAL(clicked()), &dialog, SLOT(accept()));
 		QObject::connect(cancel, SIGNAL(clicked()), &dialog, SLOT(reject()));
 

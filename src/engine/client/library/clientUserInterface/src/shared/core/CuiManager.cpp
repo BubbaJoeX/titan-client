@@ -38,6 +38,7 @@
 #include "clientUserInterface/CuiActions.h"
 #include "clientUserInterface/CuiBackdrop.h"
 #include "clientUserInterface/CuiChatBubbleManager.h"
+#include "clientUserInterface/CuiClaimManipulateState.h"
 #include "clientUserInterface/CuiCombatManager.h"
 #include "clientUserInterface/CuiConsoleHelper.h"
 #include "clientUserInterface/CuiDamageManager.h"
@@ -358,6 +359,8 @@ void CuiManager::install ()
 	DebugFlags::registerFlag (s_textDropShadow,              "ClientUserInterface", "textDropShadow");
 
 	REPORT_LOG_PRINT (s_debugReportInstallVerbose, ("CuiManager::install start\n"));
+
+	CuiClaimManipulateState::install();
 
 	PerformanceTimer ptimer;
 	ptimer.start ();

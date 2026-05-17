@@ -24,6 +24,7 @@
 #include "clientGame/ClientAsteroidManager.h"
 #include "clientGame/ClientBattlefieldMarkerObjectTemplate.h"
 #include "clientGame/ClientBattlefieldMarkerOutlineObject.h"
+#include "clientGame/ClientClaimFootprintManager.h"
 #include "clientGame/ClientBattlefieldMarkerOutlineObjectNotification.h"
 #include "clientGame/ClientBuffBuilderManager.h"
 #include "clientGame/ClientBuffManager.h"
@@ -573,6 +574,7 @@ void SetupClientGame::install (const Data &data)
 		ClientStructureFootprintObjectNotification::install ();
 		TerrainObject::addTerrainChangedFunction (ClientStructureFootprintObjectNotification::terrainChanged);
 		ClientBattlefieldMarkerOutlineObject::install ();
+		ClientClaimFootprintManager::install();
 		ClientBattlefieldMarkerOutlineObjectNotification::install();
 		TerrainObject::addTerrainChangedFunction (ClientBattlefieldMarkerOutlineObjectNotification::terrainChanged);
 		ClientPathObject::install ();

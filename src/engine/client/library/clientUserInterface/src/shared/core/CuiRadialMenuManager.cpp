@@ -10,6 +10,7 @@
 #include "clientUserInterface/CuiRadialMenuManager.h"
 
 #include "clientGame/BuildingObject.h"
+#include "clientUserInterface/CuiClaimManipulateState.h"
 #include "clientGame/CellObject.h"
 #include "clientGame/ClientCommandQueue.h"
 #include "clientGame/ClientImageDesignerManager.h"
@@ -1695,7 +1696,10 @@ bool CuiRadialMenuManager::populateMenu (CuiMenuInfoHelper & helper, const Objec
 			const CellProperty * const parentCell = player->getParentCell ();
 			if (parentCell && parentCell != CellProperty::getWorldCellProperty () && !appearanceItem)
 				helper.addRootMenu (ITEM_DROP, got);
-			
+			else if (parentCell && parentCell == CellProperty::getWorldCellProperty () && !appearanceItem
+				&& CuiClaimManipulateState::canDropInOpenClaim())
+				helper.addRootMenu (ITEM_DROP, got);
+
 			if(!appearanceItem)
 				helper.addRootMenu (ITEM_DESTROY, got);
 

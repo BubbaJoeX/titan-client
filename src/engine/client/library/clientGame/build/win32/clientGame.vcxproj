@@ -381,6 +381,12 @@
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\shared\core\ClientRegionEffectManager.cpp" />
+    <ClCompile Include="..\..\src\shared\core\ClientClaimFootprintManager.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+    </ClCompile>
+    <ClCompile Include="..\..\src\shared\core\ClientClaimManipulateState.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+    </ClCompile>
     <ClCompile Include="..\..\src\shared\core\ClientRegionManager.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
     </ClCompile>
@@ -1272,6 +1278,8 @@
     <ClInclude Include="..\..\src\shared\core\ClientMacroManager.h" />
     <ClInclude Include="..\..\src\shared\core\ClientObjectUsabilityManager.h" />
     <ClInclude Include="..\..\src\shared\core\ClientRegionEffectManager.h" />
+    <ClInclude Include="..\..\src\shared\core\ClientClaimFootprintManager.h" />
+    <ClInclude Include="..\..\src\shared\core\ClientClaimManipulateState.h" />
     <ClInclude Include="..\..\src\shared\core\ClientRegionManager.h" />
     <ClInclude Include="..\..\src\shared\core\ClientStringIds.h" />
     <ClInclude Include="..\..\src\shared\core\ClientTextManager.h" />

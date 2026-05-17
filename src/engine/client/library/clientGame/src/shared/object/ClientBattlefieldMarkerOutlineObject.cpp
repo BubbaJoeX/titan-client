@@ -22,6 +22,7 @@
 #include "sharedObject/StructureFootprint.h"
 #include "sharedTerrain/TerrainObject.h"
 
+#include <algorithm>
 #include <vector>
 
 // ======================================================================
@@ -44,6 +45,17 @@ using namespace ClientBattlefieldMarkerOutlineObjectNamespace;
 // ======================================================================
 // STATIC PUBLIC ClientBattlefieldMarkerOutlineObject
 // ======================================================================
+
+int ClientBattlefieldMarkerOutlineObject::calculatePoleCountForRadius (float const radiusMeters)
+{
+	if (radiusMeters <= 0.f)
+		return 8;
+
+	int const poles = static_cast<int>(radiusMeters * 0.5f);
+	return std::max (8, std::min (32, poles));
+}
+
+// ----------------------------------------------------------------------
 
 void ClientBattlefieldMarkerOutlineObject::install ()
 {
@@ -102,20 +114,25 @@ ClientBattlefieldMarkerOutlineObject::~ClientBattlefieldMarkerOutlineObject ()
 
 void ClientBattlefieldMarkerOutlineObject::resetBoundary ()
 {
-	//-- resnap all objects to the terrain
-	const TerrainObject* const terrainObject = TerrainObject::getConstInstance ();
-	NOT_NULL (terrainObject);
+	if (!m_ribbonObject)
+		return;
 
-	const Vector center_w = getPosition_w ();
+	const TerrainObject * const terrainObject = TerrainObject::getConstInstance ();
+	if (!terrainObject)
+		return;
 
-	RibbonAppearance* const ribbonAppearance = safe_cast<RibbonAppearance*> (m_ribbonObject->getAppearance ());
+	RibbonAppearance * const ribbonAppearance = dynamic_cast<RibbonAppearance *>(m_ribbonObject->getAppearance ());
+	if (!ribbonAppearance)
+		return;
 
 	PointList pointList = ribbonAppearance->getPointList ();
 
-	uint i;
-	for (i = 0; i < pointList.size (); ++i)
+	uint const poleCount = pointList.size ();
+	for (uint i = 0; i < poleCount; ++i)
 	{
-		Object* const childObject = getChildObject (static_cast<int> (i));
+		Object * const childObject = getChildObject (static_cast<int> (i));
+		if (!childObject)
+			continue;
 
 		Vector point = rotateTranslate_o2w (pointList [i]);
 		IGNORE_RETURN (terrainObject->getHeight (point, point.y));
@@ -126,6 +143,21 @@ void ClientBattlefieldMarkerOutlineObject::resetBoundary ()
 	}
 
 	ribbonAppearance->setPointList (pointList);
+}
+
+// ----------------------------------------------------------------------
+
+void ClientBattlefieldMarkerOutlineObject::setRibbonColor (VectorArgb const & color)
+{
+	if (!m_ribbonObject)
+		return;
+
+	RibbonAppearance const * const oldRibbon = safe_cast<RibbonAppearance const *> (m_ribbonObject->getAppearance ());
+	if (!oldRibbon)
+		return;
+
+	RibbonAppearance::PointList const pointList = oldRibbon->getPointList ();
+	m_ribbonObject->setAppearance (new RibbonAppearance (pointList, ms_width, color));
 }
 
 // ======================================================================
