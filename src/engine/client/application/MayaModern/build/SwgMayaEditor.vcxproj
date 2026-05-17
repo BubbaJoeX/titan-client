@@ -131,6 +131,8 @@ if %errorlevel% neq 0 goto :cmEnd
 if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgStaticMeshExport.mel D:/titan/client/src/engine/client/application/MayaModern/build/Debug/swgStaticMeshExport.mel
 if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgMeshAnimate.mel D:/titan/client/src/engine/client/application/MayaModern/build/Debug/swgMeshAnimate.mel
+if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/pobAuthoring.mel D:/titan/client/src/engine/client/application/MayaModern/build/Debug/pobAuthoring.mel
 if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/pobSingleCellPreset.mel D:/titan/client/src/engine/client/application/MayaModern/build/Debug/pobSingleCellPreset.mel
@@ -157,7 +159,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <Link>
       <AdditionalDependencies>D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMaya.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\Foundation.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaUI.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaAnim.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaFX.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaRender.lib;ws2_32.lib;Debug\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalOptions>%(AdditionalOptions) /IGNORE:4099</AdditionalOptions>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64 /IGNORE:4099</AdditionalOptions>
       <DataExecutionPrevention></DataExecutionPrevention>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
@@ -219,6 +221,8 @@ if %errorlevel% neq 0 goto :cmEnd
 if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgStaticMeshExport.mel D:/titan/client/src/engine/client/application/MayaModern/build/Release/swgStaticMeshExport.mel
 if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgMeshAnimate.mel D:/titan/client/src/engine/client/application/MayaModern/build/Release/swgMeshAnimate.mel
+if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/pobAuthoring.mel D:/titan/client/src/engine/client/application/MayaModern/build/Release/pobAuthoring.mel
 if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/pobSingleCellPreset.mel D:/titan/client/src/engine/client/application/MayaModern/build/Release/pobSingleCellPreset.mel
@@ -245,7 +249,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <Link>
       <AdditionalDependencies>D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMaya.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\Foundation.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaUI.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaAnim.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaFX.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaRender.lib;ws2_32.lib;Release\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalOptions>%(AdditionalOptions) /IGNORE:4099</AdditionalOptions>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64 /IGNORE:4099</AdditionalOptions>
       <DataExecutionPrevention></DataExecutionPrevention>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
@@ -307,6 +311,8 @@ if %errorlevel% neq 0 goto :cmEnd
 if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgStaticMeshExport.mel D:/titan/client/src/engine/client/application/MayaModern/build/MinSizeRel/swgStaticMeshExport.mel
 if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgMeshAnimate.mel D:/titan/client/src/engine/client/application/MayaModern/build/MinSizeRel/swgMeshAnimate.mel
+if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/pobAuthoring.mel D:/titan/client/src/engine/client/application/MayaModern/build/MinSizeRel/pobAuthoring.mel
 if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/pobSingleCellPreset.mel D:/titan/client/src/engine/client/application/MayaModern/build/MinSizeRel/pobSingleCellPreset.mel
@@ -333,7 +339,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <Link>
       <AdditionalDependencies>D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMaya.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\Foundation.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaUI.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaAnim.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaFX.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaRender.lib;ws2_32.lib;MinSizeRel\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalOptions>%(AdditionalOptions) /IGNORE:4099</AdditionalOptions>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64 /IGNORE:4099</AdditionalOptions>
       <DataExecutionPrevention></DataExecutionPrevention>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
@@ -394,6 +400,8 @@ if %errorlevel% neq 0 goto :cmEnd
 if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgStaticMeshExport.mel D:/titan/client/src/engine/client/application/MayaModern/build/RelWithDebInfo/swgStaticMeshExport.mel
 if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgMeshAnimate.mel D:/titan/client/src/engine/client/application/MayaModern/build/RelWithDebInfo/swgMeshAnimate.mel
+if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/pobAuthoring.mel D:/titan/client/src/engine/client/application/MayaModern/build/RelWithDebInfo/pobAuthoring.mel
 if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/pobSingleCellPreset.mel D:/titan/client/src/engine/client/application/MayaModern/build/RelWithDebInfo/pobSingleCellPreset.mel
@@ -420,7 +428,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <Link>
       <AdditionalDependencies>D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMaya.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\Foundation.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaUI.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaAnim.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaFX.lib;D:\titan\client\src\external\3rd\library\devkitBase\lib\OpenMayaRender.lib;ws2_32.lib;RelWithDebInfo\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalOptions>%(AdditionalOptions) /IGNORE:4099</AdditionalOptions>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64 /IGNORE:4099</AdditionalOptions>
       <DataExecutionPrevention></DataExecutionPrevention>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>

@@ -30,7 +30,6 @@ namespace
     const Tag TAG_SSHT = TAG(S,S,H,T);
     const Tag TAG_PASS = TAG(P,A,S,S);
     const Tag TAG_DATA = TAG(D,A,T,A);
-    const Tag TAG_NAME = TAG(N,A,M,E);
     const Tag TAG_TXMS = TAG(T,X,M,S);
     const Tag TAG_TXM = TAG3(T,X,M);
 
@@ -239,6 +238,19 @@ namespace
         buf[off] = 1;
     }
 
+    static bool pathLooksLikeEffectReference(const std::string& path)
+    {
+        if (path.size() < 4)
+            return false;
+        size_t dot = path.rfind('.');
+        if (dot == std::string::npos || dot + 1 >= path.size())
+            return false;
+        std::string ext = path.substr(dot);
+        for (char& c : ext)
+            c = static_cast<char>(tolower(static_cast<unsigned char>(c)));
+        return ext == ".eft";
+    }
+
     static void copyIffRecursive(
         Iff& src,
         Iff& dest,
@@ -247,7 +259,8 @@ namespace
         CopyTxmOpts* txmOpts,
         bool patchPassForTransparent,
         bool passNextChildIsVersionTag,
-        Tag passVersionTag)
+        Tag passVersionTag,
+        const std::string* effectPathOverride)
     {
         while (src.getNumberOfBlocksLeft() > 0)
         {
@@ -283,7 +296,8 @@ namespace
                     txmOpts,
                     patchPassForTransparent,
                     nextPassChild,
-                    nextPassVer);
+                    nextPassVer,
+                    effectPathOverride);
 
                 dest.exitForm(formTag);
                 src.exitForm(formTag);
@@ -293,7 +307,16 @@ namespace
                 Tag chunkTag = src.getCurrentName();
                 src.enterChunk(chunkTag);
 
-                if (chunkTag == TAG_NAME && insideTxm)
+                if (chunkTag == TAG_NAME && !insideTxm && effectPathOverride && !effectPathOverride->empty())
+                {
+                    std::string path = src.read_stdstring();
+                    if (pathLooksLikeEffectReference(path))
+                        path = *effectPathOverride;
+                    dest.insertChunk(TAG_NAME);
+                    dest.insertChunkString(path.c_str());
+                    dest.exitChunk(TAG_NAME);
+                }
+                else if (chunkTag == TAG_NAME && insideTxm)
                 {
                     std::string path = src.read_stdstring();
                     bool fromMayaPublish = false;
@@ -357,9 +380,10 @@ namespace
         }
     }
 
-    static void copyIffWithContext(Iff& src, Iff& dest, CopyTxmOpts* txmOpts, bool patchPassForTransparent)
+    static void copyIffWithContext(
+        Iff& src, Iff& dest, CopyTxmOpts* txmOpts, bool patchPassForTransparent, const std::string* effectPathOverride)
     {
-        copyIffRecursive(src, dest, false, 0, txmOpts, patchPassForTransparent, false, 0);
+        copyIffRecursive(src, dest, false, 0, txmOpts, patchPassForTransparent, false, 0, effectPathOverride);
     }
 
     static std::string normalizeShaderRelPath(std::string relPath)
@@ -443,7 +467,11 @@ namespace
     }
 
     static std::string writeClonedShaderIff(
-        Iff& src, const std::string& outputShaderTreeRel, CopyTxmOpts* txmOpts, bool patchPassForTransparent)
+        Iff& src,
+        const std::string& outputShaderTreeRel,
+        CopyTxmOpts* txmOpts,
+        bool patchPassForTransparent,
+        const std::string* effectPathOverride)
     {
         const char* shaderWriteDir = SetDirectoryCommand::getDirectoryString(SetDirectoryCommand::SHADER_TEMPLATE_WRITE_DIR_INDEX);
         if (!shaderWriteDir || !shaderWriteDir[0])
@@ -474,7 +502,7 @@ namespace
             Tag verTag = src.getCurrentName();
             src.enterForm(verTag);
             dest.insertForm(verTag);
-            copyIffWithContext(src, dest, txmOpts, patchPassForTransparent);
+            copyIffWithContext(src, dest, txmOpts, patchPassForTransparent, effectPathOverride);
             dest.exitForm(verTag);
             src.exitForm(verTag);
             dest.exitForm(TAG_SSHT);
@@ -487,7 +515,7 @@ namespace
             Tag verTag = src.getCurrentName();
             src.enterForm(verTag);
             dest.insertForm(verTag);
-            copyIffWithContext(src, dest, txmOpts, patchPassForTransparent);
+            copyIffWithContext(src, dest, txmOpts, patchPassForTransparent, effectPathOverride);
             dest.exitForm(verTag);
             src.exitForm(verTag);
             dest.exitForm(TAG_CSHD);
@@ -523,7 +551,7 @@ std::string ShaderExporter::exportShader(const std::string& sourceShaderPath)
         return std::string();
     }
 
-    std::string out = writeClonedShaderIff(src, sourceShaderPath, nullptr, false);
+    std::string out = writeClonedShaderIff(src, sourceShaderPath, nullptr, false, nullptr);
     src.close();
     return out;
 }
@@ -593,7 +621,8 @@ std::string ShaderExporter::exportShaderClonedFromPrototype(
     const std::string& diffuseTextureTreePathNoExt,
     bool hueable,
     bool bindPublishedDiffuseToAllTxmSlots,
-    bool transparent)
+    bool transparent,
+    const std::string* effectPathOverride)
 {
     if (outputShaderTreeRel.empty())
         return std::string();
@@ -620,7 +649,7 @@ std::string ShaderExporter::exportShaderClonedFromPrototype(
         optsPtr = &opts;
     }
 
-    std::string out = writeClonedShaderIff(src, outputShaderTreeRel, optsPtr, transparent);
+    std::string out = writeClonedShaderIff(src, outputShaderTreeRel, optsPtr, transparent, effectPathOverride);
     src.close();
 
     if (!out.empty() && optsPtr && optsPtr->txmPublishedApplyCount == 0)
@@ -716,7 +745,7 @@ std::string ShaderExporter::exportSwitchTextureAnimatedShader(
     }
 
     dest.exitForm(TAG_0000);
-    dest.exitForm(TAG_SWTS);
+    dest.exitForm(gSwtsTag);
 
     if (!dest.write(outputPath.c_str(), true))
     {

@@ -281,6 +281,34 @@ namespace
         return surfaceShaderIndicatesTransparency(surfaceFn);
     }
 
+    /// soe_effectName (static template writer) or legacy soe_effect — applied when cloning .sht if prototype has a NAME chunk ending in .eft.
+    static std::string normalizedEffectPathFromSurfaceShader(MObject shadingGroupObj)
+    {
+        MStatus st;
+        MFnDependencyNode sgFn(shadingGroupObj, &st);
+        if (!st)
+            return std::string();
+        MPlug surfPlug = sgFn.findPlug("surfaceShader", true);
+        if (surfPlug.isNull())
+            return std::string();
+        MPlugArray scon;
+        surfPlug.connectedTo(scon, true, false);
+        if (scon.length() == 0)
+            return std::string();
+        MFnDependencyNode surfaceFn(scon[0].node(), &st);
+        if (!st)
+            return std::string();
+        std::string e = getStringAttr(surfaceFn, "soe_effectName");
+        if (e.empty())
+            e = getStringAttr(surfaceFn, "soe_effect");
+        while (!e.empty() && (e[0] == '/' || e[0] == '\\'))
+            e.erase(0, 1);
+        for (char& c : e)
+            if (c == '\\')
+                c = '/';
+        return e;
+    }
+
     static bool diffuseImagePathOftenHasAlphaFile(const std::string& absPath)
     {
         size_t dot = absPath.find_last_of('.');
@@ -2198,13 +2226,16 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
             const bool transparent =
                 shadingGroupIndicatesTransparency(shaderObjs[si]) || fileAlphaHint;
 
+            std::string effectOverrideStr = normalizedEffectPathFromSurfaceShader(shaderObjs[si]);
+            const std::string* effectOverridePtr = effectOverrideStr.empty() ? nullptr : &effectOverrideStr;
+
             std::string cloned;
             std::string animBaseWrittenAbsForVerify;
             if (doAnimSwts && !animFrameTreePaths.empty())
             {
                 const std::string baseTree = outShaderTree + "_base";
                 const std::string baseCloned = ShaderExporter::exportShaderClonedFromPrototype(
-                    baseTree, swgShaderPrototype, animFrameTreePaths[0], hue, true, transparent);
+                    baseTree, swgShaderPrototype, animFrameTreePaths[0], hue, true, transparent, effectOverridePtr);
                 if (baseCloned.empty())
                 {
                     anyShaderRebuildFailed = true;
@@ -2228,7 +2259,7 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
             else
             {
                 cloned = ShaderExporter::exportShaderClonedFromPrototype(
-                    outShaderTree, swgShaderPrototype, texTree, hue, !texTree.empty(), transparent);
+                    outShaderTree, swgShaderPrototype, texTree, hue, !texTree.empty(), transparent, effectOverridePtr);
             }
             if (!cloned.empty())
             {
@@ -2257,6 +2288,7 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
                               << " proto=" << (swgShaderPrototype.empty() ? "<default>" : swgShaderPrototype.c_str())
                               << " hueable=" << (hue ? "yes" : "no")
                               << " transparent=" << (transparent ? "yes" : "no")
+                              << " effectOverride=" << (effectOverrideStr.empty() ? "<none>" : effectOverrideStr.c_str())
                               << " tex=" << (texTree.empty() ? "<prototype>" : texTree.c_str()) << "\n";
                     pushUniquePath(exportedShaderAbsPaths, cloned);
                     MGlobal::displayInfo(
