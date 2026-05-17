@@ -229,6 +229,41 @@ namespace
         return s < 0.999;
     }
 
+    /// Transmission-style weight: >0 or textured => treat like transparency for static shader clone (physical glass often leaves opacity at 1).
+    static bool transmissionWeightPlugIndicatesTransparency(MPlug p)
+    {
+        if (p.isNull()) return false;
+        MPlugArray con;
+        p.connectedTo(con, true, false);
+        if (con.length() > 0) return true;
+        if (p.isCompound())
+        {
+            double mx = 0.0;
+            const unsigned nc = p.numChildren();
+            for (unsigned i = 0; i < nc && i < 4u; ++i)
+            {
+                double v = 0.0;
+                p.child(i).getValue(v);
+                if (v > mx) mx = v;
+            }
+            return mx > 1e-4;
+        }
+        double s = 0.0;
+        p.getValue(s);
+        return s > 1e-4;
+    }
+
+    static bool standardSurfaceTransmissionIndicatesGlass(MFnDependencyNode& surfaceFn)
+    {
+        static const char* const weightPlugs[] = {"transmission", "specularTransmission", "specular_transmission"};
+        for (const char* name : weightPlugs)
+        {
+            MPlug w = surfaceFn.findPlug(name, true);
+            if (!w.isNull() && transmissionWeightPlugIndicatesTransparency(w)) return true;
+        }
+        return false;
+    }
+
     /// Lambert / Phong / Blinn: transparency (0,0,0)=opaque; white=transparent; connection => blend.
     static bool surfaceShaderIndicatesTransparency(MFnDependencyNode& surfaceFn)
     {
@@ -240,6 +275,7 @@ namespace
             if (!op.isNull() && opacityPlugIndicatesTransparency(op)) return true;
             MPlug mat = surfaceFn.findPlug("matteOpacity", true);
             if (!mat.isNull() && opacityPlugIndicatesTransparency(mat)) return true;
+            if (standardSurfaceTransmissionIndicatesGlass(surfaceFn)) return true;
             return false;
         }
 

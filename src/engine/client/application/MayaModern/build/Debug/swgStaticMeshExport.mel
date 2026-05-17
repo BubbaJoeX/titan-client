@@ -20,13 +20,63 @@
 // Shader effect + transparency (SwgMsh export):
 //   swgSetEffectOnSelection "effect/a_alpha.eft";   — writes soe_effectName on surface shader; static mesh export rewrites prototype .sht NAME chunks that end in .eft
 //   swgSetTransparentOnSelection 1;                — bool swgTransparent on shadingEngine (forces transparent / alpha-blend clone path; use with glass .eft or shaderPrototypeTransparentSht)
+// Selecting polygon faces is OK — resolves the face’s shadingEngine via sets -q -fe.
 // Legacy ImportShader string on surface shader (also read on export if soe_effectName unset):
 //   swgSetLegacySoeEffectOnSelection "effect/a_alpha.eft";
+
+/// shadingEngines assigned to selected faces only (not every material on the mesh).
+global proc string[] swgResolveShadingEnginesFromFaceComponents()
+{
+    string $result[];
+    string $selFlat[] = `ls -sl -flatten`;
+    string $faceLike[];
+    string $x;
+    for ($x in $selFlat)
+    {
+        if (`gmatch $x "*.f[*]"`)
+            $faceLike[size($faceLike)] = $x;
+    }
+    if (size($faceLike) < 1)
+        return $result;
+
+    string $fc;
+    for ($fc in $faceLike)
+    {
+        // sets -q -fe: membership sets for this face (includes shadingEngine).
+        string $qcmd = "string $gSwgSetsFeTmp[] = `sets -q -fe \"" + $fc + "\"`";
+        if (catch($qcmd))
+            continue;
+        string $st;
+        for ($st in $gSwgSetsFeTmp)
+        {
+            if (`nodeType $st` != "shadingEngine")
+                continue;
+            int $already = 0;
+            string $y;
+            for ($y in $result)
+            {
+                if ($y == $st)
+                {
+                    $already = 1;
+                    break;
+                }
+            }
+            if (!$already)
+                $result[size($result)] = $st;
+        }
+    }
+    return $result;
+}
 
 /// Collect shadingEngine nodes from selection: SG itself, surface shader from Hypershade, mesh shape, or transform (first mesh).
 global proc string[] swgResolveShadingEnginesFromSelection()
 {
     string $result[];
+    // Polygon faces: only those shading groups (fixes “selected window faces” tagging the wrong SG or none).
+    $result = `swgResolveShadingEnginesFromFaceComponents`;
+    if (size($result) > 0)
+        return $result;
+
     string $sel[] = `ls -sl`;
     if (size($sel) < 1)
         return $result;
