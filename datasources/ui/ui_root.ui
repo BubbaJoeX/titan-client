@@ -43,6 +43,7 @@
 	<include>ui_spaceloading.inc</include>
 	<include>ui_largeloading.inc</include>
 	<include>ui_structure_placement.inc</include>
+	<include>ui_claim_management.inc</include>
 	<include>ui_pda.inc</include>
 	<include>ui_calendar.inc</include>
 	<include>ui_space.inc</include>

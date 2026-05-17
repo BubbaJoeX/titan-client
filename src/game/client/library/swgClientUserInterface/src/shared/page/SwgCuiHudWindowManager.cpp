@@ -581,7 +581,7 @@ void SwgCuiHudWindowManager::receiveMessage(const MessageDispatch::Emitter & , c
 		const std::string& structureSharedObjectTemplateName = msg.getStructureSharedObjectTemplateName ();
 
 		CuiMediatorFactory::activate (CuiMediatorTypes::StructurePlacement);
-		if (!safe_cast<SwgCuiStructurePlacement*> (NON_NULL (CuiMediatorFactory::get (CuiMediatorTypes::StructurePlacement, false)))->setData (deedNetworkId, structureSharedObjectTemplateName.c_str ()))
+		if (!safe_cast<SwgCuiStructurePlacement*> (NON_NULL (CuiMediatorFactory::get (CuiMediatorTypes::StructurePlacement, false)))->setData (deedNetworkId, structureSharedObjectTemplateName.c_str (), msg.getClaimFootprintRadiusMeters()))
 		{
 			DEBUG_WARNING (true, ("GroundScene::receiveMessage (EnterStructurePlacementModeMessage): setting structure placement data failed!"));
 			CuiMediatorFactory::deactivate (CuiMediatorTypes::StructurePlacement);

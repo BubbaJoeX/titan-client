@@ -118,6 +118,7 @@
 #include "sharedUtility/DataTableManager.h"
 #include "sharedUtility/FileName.h"
 #include "swgClientUserInterface/SwgCuiMediatorTypes.h"
+#include "swgClientUserInterface/SwgCuiClaimManagement.h"
 #include "swgClientUserInterface/SwgCuiStructurePlacement.h"
 #include "swgSharedUtility/Postures.def"
 #include "swgSharedUtility/States.def"
@@ -171,6 +172,7 @@ namespace
 	const char* const ms_objectCreateAt                 = "objectCreateAt";
 	const char* const ms_objectSetName                  = "objectSetName";
 	const char* const ms_placeStructureCommand          = "placeStructure";
+	const char* const ms_openClaimManagementCommand   = "openClaimManagement";
 	const char* const ms_popupDebugMenu                 = "popupDebugMenu";
 	const char* const ms_purchaseTicketCommand          = "purchaseTicket";
 	const char* const ms_renderRunTimeRules             = "renderRunTimeRules";
@@ -463,6 +465,7 @@ static const CommandParser::CmdInfo cmds[] =
 	{ms_snapAllObjectsToTerrainCommand, 0, "",                                       "Snap all clientside objects to the terrain." },
 	{ms_onOff,                          1, "<0|1>",                                  "" },
 	{ms_placeStructureCommand,          1, "<filename>",                             "Place a structure" },
+	{ms_openClaimManagementCommand,     0, "",                                       "Open claim management help panel" },
 	{ms_purchaseTicketCommand,          0, "",                                       "Purchase a ticket" },
 	{ms_clientSkillGrant,               1, "<skillname>",                            "" },
 	{ms_clientExpGrant,                 2, "<exptype> <amount>",                     "" },
@@ -2784,6 +2787,15 @@ bool SwgCuiCommandParserScene::performParsing (const NetworkId & , const StringV
 			else
 				result += Unicode::narrowToWide ("file not found");
 		}
+	}
+
+	//----------------------------------------------------------------------
+
+	else if (isCommand (argv [0], ms_openClaimManagementCommand))
+	{
+		CuiMediatorFactory::activate (CuiMediatorTypes::ClaimManagement);
+		IGNORE_RETURN (safe_cast<SwgCuiClaimManagement*> (NON_NULL (CuiMediatorFactory::get (CuiMediatorTypes::ClaimManagement, false))));
+		CuiMediatorFactory::deactivate (CuiMediatorTypes::Console);
 	}
 
 	//----------------------------------------------------------------------

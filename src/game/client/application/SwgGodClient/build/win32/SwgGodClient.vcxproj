@@ -1112,6 +1112,13 @@ for /r "D:\titan\client\src\compile\win32" %%f in (*_r.dll) do copy /Y "%%f" "D:
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
     </ClCompile>
+    <ClCompile Include="..\..\src\ObjvarEditDialog.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+      </PrecompiledHeader>
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Level3</WarningLevel>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\..\src\ObjectEditor.cpp">
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>

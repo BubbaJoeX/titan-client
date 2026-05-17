@@ -12,6 +12,9 @@
 
 #include "BaseObjectEditor.h"
 
+#include <string>
+#include <vector>
+
 // ======================================================================
 class ClientObject;
 namespace MessageDispatch
@@ -25,9 +28,7 @@ struct UpdateObjects;
 /**
 * The ObjectEditor allows the user to browse and modify all object properties.
 *
-* @todo: this should use QTables, not QListViews
-* @todo: this should allow the user to modify properties
-* @todo: ObjVar view/edit/add support should be coded
+* Browse and edit object attributes, attached scripts, and objvars.
 */
 class ObjectEditor : public BaseObjectEditor, public MessageDispatch::Receiver
 {
@@ -45,12 +46,17 @@ public slots:
 	void onCreatureSkillsContextMenuRequested(QListBoxItem *, const QPoint &);
 	void onRevokeCreatureSkill();
 	void onRemoveScript();
+	void onAttachScript();
 	void onRemoveObjvar();
 	void onSetObjvar();
+	void onRefreshLists();
 	void onScriptsListContextMenuRequested(QListViewItem *, const QPoint &, int);
+	void onScriptsListDoubleClicked(QListViewItem * item);
 	void onObjvarListContextMenuRequested(QListViewItem *, const QPoint &, int);
 	void onObjvarRenamed(QListViewItem* item, int col, const QString &text);
 	void onObjvarDoubleClicked(QListViewItem* item);
+	void onObjvarRenameName();
+	void onObjvarEditValue();
 public:
 	virtual void receiveMessage(const MessageDispatch::Emitter& source, const MessageDispatch::MessageBase& message);
 
@@ -165,6 +171,11 @@ private:
 	PropertiesMenuItems     m_pmi;
 	ClientObject*           m_obj;
 	MessageDispatch::Callback * m_callback;
+	std::string             m_objvarEditOldName;
+	void applyObjvarValue(ClientObject const & obj, std::string const & objvarName, std::string const & type, std::string const & valueText);
+	void openScriptSourceInEditor(std::string const & scriptClasspath) const;
+	void populateObjvarListFromLines(std::vector<std::string> const & lines);
+	void editObjvarItem(QListViewItem * item);
 	void addInfoClientObject();
 	void addInfoTangibleObject();
 	void addInfoCreatureObject();

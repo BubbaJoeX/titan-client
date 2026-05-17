@@ -39,6 +39,7 @@ public:
 	void          setStructureFootprint (const StructureFootprint* structureFootprint);
 	void          setStructureObject (Object* structureObject);
 	void          setRotation (RotationType rotationType);
+	void          setClaimFootprintRadiusMeters (float radiusMeters);
 
 	const Vector& getCreateLocation () const;
 
@@ -78,6 +79,7 @@ private:
 	const Shader* const       m_lotOccupiedShader;
 	const Shader* const       m_allowedFootprintShader;
 	const Shader* const       m_disallowedFootprintShader;
+	float                     m_claimFootprintRadiusMeters;
 
 private:
 

@@ -59,6 +59,7 @@ public:
 	unsigned int          objvarSet             (const ClientObject& obj, const std::string& objvarName, float value);
 	unsigned int          objvarSet             (const ClientObject& obj, const std::string& objvarName, std::string const &value);
 	unsigned int          objvarRemove          (const ClientObject& obj, const std::string& objvarName);
+	unsigned int          objvarSetEx           (const ClientObject& obj, const std::string& objvarName, const std::string& type, const std::string& value);
 
 	unsigned int          scriptRequestList     (const NetworkId& networkId);
 	unsigned int          skillRequestList      (const NetworkId& networkId);

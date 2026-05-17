@@ -24,6 +24,8 @@
 #include "ActionHack.h"
 #include "ActionsScript.h"
 #include "ActionsSkill.h"
+#include "ConfigGodClient.h"
+#include "ObjvarEditDialog.h"
 #include "GameWidget.h"
 #include "GodClientData.h"
 #include "MainFrame.h"
@@ -34,7 +36,9 @@
 #include "Unicode.h"
 #include "UnicodeUtils.h"
 
+#include <cstdio>
 #include <cstdlib>
+#include <vector>
 
 #include <qdragobject.h>
 #include <qinputdialog.h>
@@ -50,8 +54,17 @@ namespace ObjectEditorNamespace
 	void emptyListView(QListView * const list);
 	void deleteListViewItem(QListView * const list, QListViewItem * const item);
 
-	// Parse objvar string into name and value. Formats: "name\tvalue" (tab) or "name type value" (buildout).
-	void parseObjvarString(std::string const &str, std::string &name, std::string &value);
+	struct ParsedObjvarLine
+	{
+		int           depth;
+		std::string   name;
+		std::string   type;
+		std::string   value;
+	};
+
+	void parseObjvarString(std::string const &str, std::string &name, std::string &type, std::string &value);
+	bool parseObjvarListLine(std::string const & line, ParsedObjvarLine & out);
+	QListViewItem * createObjvarListItem(QListView * list, QListViewItem * parent, ParsedObjvarLine const & parsed);
 };
 
 using namespace ObjectEditorNamespace;
@@ -79,32 +92,96 @@ void ObjectEditorNamespace::deleteListViewItem(QListView * const list, QListView
 
 //-----------------------------------------------------------------
 
-void ObjectEditorNamespace::parseObjvarString(std::string const &str, std::string &name, std::string &value)
+void ObjectEditorNamespace::parseObjvarString(std::string const &str, std::string &name, std::string &type, std::string &value)
 {
 	name.clear();
+	type.clear();
 	value.clear();
-	std::string::size_type const tabPos = str.find('\t');
-	if (tabPos != std::string::npos)
+	ParsedObjvarLine parsed;
+	if (parseObjvarListLine(str, parsed))
 	{
-		name = str.substr(0, tabPos);
-		value = str.substr(tabPos + 1);
-		return;
+		name = parsed.name;
+		type = parsed.type;
+		value = parsed.value;
 	}
-	std::string::size_type p1 = str.find_first_of(" \t");
-	if (p1 == std::string::npos)
+}
+
+//-----------------------------------------------------------------
+
+bool ObjectEditorNamespace::parseObjvarListLine(std::string const & line, ParsedObjvarLine & out)
+{
+	out.depth = 0;
+	out.name.clear();
+	out.type.clear();
+	out.value.clear();
+
+	size_t i = 0;
+	while (i < line.size() && line[i] == ' ')
 	{
-		name = str;
-		return;
+		++out.depth;
+		++i;
 	}
-	name = str.substr(0, p1);
-	std::string::size_type p2 = str.find_first_of(" \t", p1 + 1);
-	if (p2 != std::string::npos)
+	out.depth /= 2;
+
+	std::string const rest = line.substr(i);
+	if (rest.empty())
+		return false;
+
+	std::vector<std::string> cols;
+	size_t start = 0;
+	for (size_t t = 0; t <= rest.size(); ++t)
 	{
-		value = str.substr(p2 + 1);
-		std::string::size_type trim = value.find_first_not_of(" \t");
-		if (trim != std::string::npos)
-			value = value.substr(trim);
+		if (t == rest.size() || rest[t] == '\t')
+		{
+			if (t > start)
+				cols.push_back(rest.substr(start, t - start));
+			start = t + 1;
+		}
 	}
+
+	if (cols.empty())
+		return false;
+
+	out.name = cols[0];
+	if (cols.size() >= 3)
+	{
+		out.type = cols[1];
+		out.value = cols[2];
+		for (size_t c = 3; c < cols.size(); ++c)
+		{
+			out.value += "\t";
+			out.value += cols[c];
+		}
+	}
+	else if (cols.size() == 2)
+	{
+		out.value = cols[1];
+		out.type = ObjvarEditDialog::inferTypeFromDisplay(out.value);
+	}
+	else
+	{
+		out.type = "string";
+	}
+
+	if (out.type.empty())
+		out.type = ObjvarEditDialog::inferTypeFromDisplay(out.value);
+	return !out.name.empty();
+}
+
+//-----------------------------------------------------------------
+
+QListViewItem * ObjectEditorNamespace::createObjvarListItem(QListView * list, QListViewItem * parent, ParsedObjvarLine const & parsed)
+{
+	QListViewItem * const item = parent
+		? new QListViewItem(parent, parsed.name.c_str(), parsed.type.c_str(), parsed.value.c_str())
+		: new QListViewItem(list, parsed.name.c_str(), parsed.type.c_str(), parsed.value.c_str());
+
+	if (parsed.type != "list")
+	{
+		item->setRenameEnabled(0, true);
+		item->setRenameEnabled(2, true);
+	}
+	return item;
 }
 
 //-----------------------------------------------------------------
@@ -114,7 +191,8 @@ ObjectEditor::ObjectEditor(QWidget* theParent, const char* theName)
   MessageDispatch::Receiver(),
 	m_pmi(),
   m_obj(NULL),
-	m_callback(NULL)
+	m_callback(NULL),
+	m_objvarEditOldName()
 {
 	setAcceptDrops(true);
 
@@ -255,17 +333,23 @@ ObjectEditor::ObjectEditor(QWidget* theParent, const char* theName)
 
 	if(m_scriptsList)
 	{
+		m_scriptsList->setAllColumnsShowFocus(true);
 		IGNORE_RETURN(connect(m_scriptsList, SIGNAL(contextMenuRequested (QListViewItem *, const QPoint &, int)), this, SLOT(onScriptsListContextMenuRequested(QListViewItem *, const QPoint &, int))));
+		IGNORE_RETURN(connect(m_scriptsList, SIGNAL(doubleClicked(QListViewItem*)), this, SLOT(onScriptsListDoubleClicked(QListViewItem*))));
 		IGNORE_RETURN(connect(Singleton<ActionsScript>::getInstance().removeScript, SIGNAL(activated()), this, SLOT(onRemoveScript())));
+		IGNORE_RETURN(connect(Singleton<ActionsScript>::getInstance().attachScript, SIGNAL(activated()), this, SLOT(onAttachScript())));
+		IGNORE_RETURN(connect(Singleton<ActionsScript>::getInstance().refresh, SIGNAL(activated()), this, SLOT(onRefreshLists())));
 	}
 
 	if(m_objVarsList)
 	{
+		m_objVarsList->setAllColumnsShowFocus(true);
 		IGNORE_RETURN(connect(m_objVarsList, SIGNAL(contextMenuRequested (QListViewItem *, const QPoint &, int)), this, SLOT(onObjvarListContextMenuRequested(QListViewItem *, const QPoint &, int))));
 		IGNORE_RETURN(connect(m_objVarsList, SIGNAL(itemRenamed(QListViewItem*, int, const QString&)), this, SLOT(onObjvarRenamed(QListViewItem*, int, const QString&))));
 		IGNORE_RETURN(connect(m_objVarsList, SIGNAL(doubleClicked(QListViewItem*)), this, SLOT(onObjvarDoubleClicked(QListViewItem*))));
 		IGNORE_RETURN(connect(Singleton<ActionsScript>::getInstance().removeObjvar, SIGNAL(activated()), this, SLOT(onRemoveObjvar())));
 		IGNORE_RETURN(connect(Singleton<ActionsScript>::getInstance().setObjvar, SIGNAL(activated()), this, SLOT(onSetObjvar())));
+		IGNORE_RETURN(connect(Singleton<ActionsScript>::getInstance().refresh, SIGNAL(activated()), this, SLOT(onRefreshLists())));
 	}
 
 	// Whenever anyone says that the object's view needs to be 
@@ -381,11 +465,9 @@ void ObjectEditor::updateObjectData()
 
 		if(thisStringOk)
 		{
-			std::string objvarName;
-			std::string objvarValue;
-			parseObjvarString(*oli, objvarName, objvarValue);
-			QListViewItem* objvarItem = new QListViewItem(m_objVarsList, objvarName.c_str(), objvarValue.c_str());
-			objvarItem->setRenameEnabled(1, true);
+			ParsedObjvarLine parsed;
+			if (parseObjvarListLine(*oli, parsed))
+				IGNORE_RETURN(createObjvarListItem(m_objVarsList, 0, parsed));
 		}
 	}
 
@@ -591,22 +673,9 @@ void ObjectEditor::receiveMessage(const MessageDispatch::Emitter &, const Messag
 					lines.push_back(line);
 					startpos = endpos + 1;
 				}
-				std::vector<std::string>::iterator i = lines.begin();
-				//advance past header line				
-				++i;
-
-				QListViewItem* last = NULL;
-				for(; i != lines.end(); ++i)
-				{
-					std::string objvarName;
-					std::string objvarValue;
-					parseObjvarString(*i, objvarName, objvarValue);
-					QListViewItem* current = new QListViewItem(m_objVarsList, objvarName.c_str(), objvarValue.c_str());
-					current->setRenameEnabled(1, true);
-					if(last)
-						current->moveItem(last);
-					last = current;
-				}
+				if (!lines.empty())
+					lines.erase(lines.begin());
+				populateObjvarListFromLines(lines);
 			}
 		}
 	}
@@ -766,43 +835,68 @@ void ObjectEditor::onCreatureSkillsContextMenuRequested(QListBoxItem * item, con
 
 void ObjectEditor::onScriptsListContextMenuRequested(QListViewItem * item, const QPoint & point, int)
 {
-	if(item == 0)
-		return;
 	QPopupMenu* const m_pop = new QPopupMenu(this, "menu");
+	ActionsScript* as = &ActionsScript::getInstance();
 
+	IGNORE_RETURN(as->attachScript->addTo(m_pop));
+	IGNORE_RETURN(as->refresh->addTo(m_pop));
 
-	ActionsScript* as =&ActionsScript::getInstance();
+	if (item)
+	{
+		IGNORE_RETURN(m_pop->insertSeparator());
+		IGNORE_RETURN(as->removeScript->addTo(m_pop));
+		IGNORE_RETURN(m_pop->insertSeparator());
+		IGNORE_RETURN(as->view->addTo(m_pop));
+		IGNORE_RETURN(as->edit->addTo(m_pop));
+		IGNORE_RETURN(as->revert->addTo(m_pop));
+		IGNORE_RETURN(as->submit->addTo(m_pop));
+		IGNORE_RETURN(m_pop->insertSeparator());
+		IGNORE_RETURN(as->compile->addTo(m_pop));
+		IGNORE_RETURN(as->serverReload->addTo(m_pop));
+	}
 
-	IGNORE_RETURN(as->removeScript->addTo(m_pop));
-
-	IGNORE_RETURN(m_pop->insertSeparator());
-
-	IGNORE_RETURN(as->edit->addTo   (m_pop));
-	IGNORE_RETURN(as->view->addTo   (m_pop));
-	IGNORE_RETURN(as->revert->addTo (m_pop));
-	IGNORE_RETURN(as->submit->addTo (m_pop));
-
-	IGNORE_RETURN(m_pop->insertSeparator());
-
-	IGNORE_RETURN(as->compile->addTo(m_pop));
-	IGNORE_RETURN(as->serverReload->addTo(m_pop));
 	m_pop->popup(point);
 } //lint !e818 item could be const, don't change sig of Qt function
 
 //-----------------------------------------------------------------------
 
-void ObjectEditor::onObjvarDoubleClicked(QListViewItem* item)
+void ObjectEditor::onScriptsListDoubleClicked(QListViewItem * item)
 {
-	if (!item || !m_obj)
+	if (!item || !item->text(0).ascii())
 		return;
-	item->startRename(1);
+	openScriptSourceInEditor(item->text(0).ascii());
 }
 
 //-----------------------------------------------------------------------
 
-void ObjectEditor::onObjvarRenamed(QListViewItem* item, int col, const QString &text)
+void ObjectEditor::populateObjvarListFromLines(std::vector<std::string> const & lines)
 {
-	if (col != 1 || !item || !m_obj)
+	QListViewItem * stack[32];
+	for (int i = 0; i < 32; ++i)
+		stack[i] = 0;
+
+	for (size_t li = 0; li < lines.size(); ++li)
+	{
+		ParsedObjvarLine parsed;
+		if (!parseObjvarListLine(lines[li], parsed))
+			continue;
+
+		QListViewItem * parent = 0;
+		if (parsed.depth > 0)
+			parent = stack[parsed.depth - 1];
+
+		QListViewItem * const item = createObjvarListItem(m_objVarsList, parent, parsed);
+		stack[parsed.depth] = item;
+		for (int d = parsed.depth + 1; d < 32; ++d)
+			stack[d] = 0;
+	}
+}
+
+//-----------------------------------------------------------------------
+
+void ObjectEditor::editObjvarItem(QListViewItem * item)
+{
+	if (!item || !m_obj)
 		return;
 
 	ClientObject const * const o = dynamic_cast<ClientObject const *>(m_obj);
@@ -810,32 +904,158 @@ void ObjectEditor::onObjvarRenamed(QListViewItem* item, int col, const QString &
 		return;
 
 	std::string const objvarName = item->text(0).ascii() ? item->text(0).ascii() : "";
-	if (objvarName.empty())
+	std::string const type = item->text(1).ascii() ? item->text(1).ascii() : "";
+	std::string const displayValue = item->text(2).ascii() ? item->text(2).ascii() : "";
+
+	if (type == "list")
 		return;
 
-	std::string const newValue = text.ascii() ? text.ascii() : "";
-
-	// Try to preserve type: int if integer, float if decimal, else string
-	char* endptr = 0;
-	long const intVal = strtol(newValue.c_str(), &endptr, 10);
-	if (endptr && *endptr == '\0')
+	std::string setexValue;
+	if (ObjvarEditDialog::isComplexType(type))
 	{
-		IGNORE_RETURN(ServerCommander::getInstance().objvarSet(*o, objvarName, static_cast<int>(intVal)));
+		if (!ObjvarEditDialog::run(this, type, displayValue, setexValue))
+			return;
 	}
 	else
 	{
-		endptr = 0;
-		double const floatVal = strtod(newValue.c_str(), &endptr);
-		if (endptr && *endptr == '\0')
-		{
-			IGNORE_RETURN(ServerCommander::getInstance().objvarSet(*o, objvarName, static_cast<float>(floatVal)));
-		}
-		else
-		{
-			IGNORE_RETURN(ServerCommander::getInstance().objvarSet(*o, objvarName, newValue));
-		}
+		setexValue = displayValue;
 	}
-	refreshObjects();
+
+	applyObjvarValue(*o, objvarName, type, setexValue);
+	onRefreshLists();
+}
+
+//-----------------------------------------------------------------------
+
+void ObjectEditor::onObjvarDoubleClicked(QListViewItem* item)
+{
+	if (!item || !m_obj)
+		return;
+	m_objvarEditOldName = item->text(0).ascii() ? item->text(0).ascii() : "";
+
+	std::string const type = item->text(1).ascii() ? item->text(1).ascii() : "";
+	if (ObjvarEditDialog::isComplexType(type))
+	{
+		editObjvarItem(item);
+		return;
+	}
+
+	item->startRename(2);
+}
+
+//-----------------------------------------------------------------------
+
+void ObjectEditor::onObjvarRenameName()
+{
+	QListViewItem * const item = m_objVarsList->currentItem();
+	if (!item || !m_obj)
+		return;
+	m_objvarEditOldName = item->text(0).ascii() ? item->text(0).ascii() : "";
+	item->startRename(0);
+}
+
+//-----------------------------------------------------------------------
+
+void ObjectEditor::onObjvarEditValue()
+{
+	QListViewItem * const item = m_objVarsList->currentItem();
+	if (!item || !m_obj)
+		return;
+	editObjvarItem(item);
+}
+
+//-----------------------------------------------------------------------
+
+void ObjectEditor::applyObjvarValue(ClientObject const & obj, std::string const & objvarName, std::string const & type, std::string const & valueText)
+{
+	if (objvarName.empty())
+		return;
+
+	if (!type.empty() && ObjvarEditDialog::isComplexType(type))
+	{
+		IGNORE_RETURN(ServerCommander::getInstance().objvarSetEx(obj, objvarName, type, valueText));
+		return;
+	}
+
+	if (type == "int")
+	{
+		IGNORE_RETURN(ServerCommander::getInstance().objvarSet(obj, objvarName, atoi(valueText.c_str())));
+		return;
+	}
+	if (type == "float")
+	{
+		IGNORE_RETURN(ServerCommander::getInstance().objvarSet(obj, objvarName, static_cast<float>(atof(valueText.c_str()))));
+		return;
+	}
+	if (type == "networkid")
+	{
+		IGNORE_RETURN(ServerCommander::getInstance().objvarSetEx(obj, objvarName, "networkid", valueText));
+		return;
+	}
+
+	char* endptr = 0;
+	long const intVal = strtol(valueText.c_str(), &endptr, 10);
+	if (endptr && *endptr == '\0')
+	{
+		IGNORE_RETURN(ServerCommander::getInstance().objvarSet(obj, objvarName, static_cast<int>(intVal)));
+		return;
+	}
+
+	endptr = 0;
+	double const floatVal = strtod(valueText.c_str(), &endptr);
+	if (endptr && *endptr == '\0')
+	{
+		IGNORE_RETURN(ServerCommander::getInstance().objvarSet(obj, objvarName, static_cast<float>(floatVal)));
+		return;
+	}
+
+	IGNORE_RETURN(ServerCommander::getInstance().objvarSet(obj, objvarName, valueText));
+}
+
+//-----------------------------------------------------------------------
+
+void ObjectEditor::openScriptSourceInEditor(std::string const & scriptClasspath) const
+{
+	ActionsScript::getInstance().openScriptClasspathInEditor(scriptClasspath);
+}
+
+//-----------------------------------------------------------------------
+
+void ObjectEditor::onObjvarRenamed(QListViewItem* item, int col, const QString &text)
+{
+	if (!item || !m_obj)
+		return;
+
+	ClientObject const * const o = dynamic_cast<ClientObject const *>(m_obj);
+	if (!o)
+		return;
+
+	if (col == 0)
+	{
+		std::string const newName = text.ascii() ? text.ascii() : "";
+		std::string const oldName = m_objvarEditOldName;
+		std::string const type = item->text(1).ascii() ? item->text(1).ascii() : "";
+		std::string const value = item->text(2).ascii() ? item->text(2).ascii() : "";
+		m_objvarEditOldName.clear();
+		if (newName.empty() || oldName.empty() || newName == oldName)
+			return;
+		IGNORE_RETURN(ServerCommander::getInstance().objvarRemove(*o, oldName));
+		applyObjvarValue(*o, newName, type, value);
+		onRefreshLists();
+		return;
+	}
+
+	if (col != 2)
+		return;
+
+	std::string const objvarName = item->text(0).ascii() ? item->text(0).ascii() : "";
+	if (objvarName.empty())
+		return;
+
+	std::string const type = item->text(1).ascii() ? item->text(1).ascii() : "";
+	std::string const newValue = text.ascii() ? text.ascii() : "";
+	applyObjvarValue(*o, objvarName, type, newValue);
+	onRefreshLists();
 }
 
 //-----------------------------------------------------------------------
@@ -843,12 +1063,17 @@ void ObjectEditor::onObjvarRenamed(QListViewItem* item, int col, const QString &
 void ObjectEditor::onObjvarListContextMenuRequested(QListViewItem * item, const QPoint & point, int)
 {
 	QPopupMenu * const m_pop = new QPopupMenu(this, "menu");
-
 	ActionsScript * const as = &ActionsScript::getInstance();
 
 	IGNORE_RETURN(as->setObjvar->addTo(m_pop));
+	IGNORE_RETURN(as->refresh->addTo(m_pop));
 	if (item)
+	{
+		IGNORE_RETURN(m_pop->insertSeparator());
+		IGNORE_RETURN(m_pop->insertItem("Rename Name...", this, SLOT(onObjvarRenameName())));
+		IGNORE_RETURN(m_pop->insertItem("Edit Value...", this, SLOT(onObjvarEditValue())));
 		IGNORE_RETURN(as->removeObjvar->addTo(m_pop));
+	}
 
 	m_pop->popup(point);
 }
@@ -876,6 +1101,43 @@ void ObjectEditor::onRevokeCreatureSkill()
 
 //-----------------------------------------------------------------------
 
+void ObjectEditor::onRefreshLists()
+{
+	if (!m_obj)
+		return;
+
+	emptyListView(m_scriptsList);
+	emptyListView(m_objVarsList);
+	IGNORE_RETURN(ServerCommander::getInstance().scriptRequestList(m_obj->getNetworkId()));
+	IGNORE_RETURN(ServerCommander::getInstance().objvarRequestList(m_obj->getNetworkId()));
+}
+
+//-----------------------------------------------------------------------
+
+void ObjectEditor::onAttachScript()
+{
+	ClientObject const * const o = dynamic_cast<ClientObject const *>(m_obj);
+	if (!o)
+		return;
+
+	bool ok = false;
+	QString const scriptName =
+		QInputDialog::getText(
+			tr("Attach Script"),
+			tr("Script classpath (e.g. item.claim.claim_marker_deed):"),
+			QLineEdit::Normal,
+			QString::null,
+			&ok);
+
+	if (ok && !scriptName.isEmpty())
+	{
+		IGNORE_RETURN(ServerCommander::getInstance().scriptAttach(*o, std::string(scriptName.ascii())));
+		onRefreshLists();
+	}
+}
+
+//-----------------------------------------------------------------------
+
 void ObjectEditor::onRemoveScript()
 {
 	QListViewItem * item = m_scriptsList->currentItem();
@@ -891,7 +1153,7 @@ void ObjectEditor::onRemoveScript()
 	{
 		IGNORE_RETURN(ServerCommander::getInstance().scriptDetach(*o, scriptName));
 		deleteListViewItem(m_scriptsList, item);
-		refreshObjects();
+		onRefreshLists();
 	}
 }
 
@@ -906,16 +1168,14 @@ void ObjectEditor::onRemoveObjvar()
 	if (!item->text(0).ascii())
 		return;
 
-	size_t endpos = 0;
-	std::string objvarName;
-	IGNORE_RETURN(Unicode::getFirstToken(std::string(item->text(0).ascii()), 0, endpos, objvarName));
+	std::string const objvarName = item->text(0).ascii() ? item->text(0).ascii() : "";
 
 	ClientObject const * const o = dynamic_cast<ClientObject const *>(m_obj);
 	if (o)
 	{		
 		IGNORE_RETURN(ServerCommander::getInstance().objvarRemove(*o, objvarName));
 		deleteListViewItem(m_objVarsList, item);
-		refreshObjects();
+		onRefreshLists();
 	}
 }
 
@@ -939,7 +1199,11 @@ void ObjectEditor::onSetObjvar()
 		if (ok)
 		{
 			QStringList typeList;
-			typeList << "int" << "float" << "string";
+			typeList
+				<< "int" << "float" << "string" << "networkid"
+				<< "vector" << "location" << "stringid" << "transform"
+				<< "intarray" << "floatarray" << "stringarray" << "networkidarray"
+				<< "locationarray" << "vectorarray" << "stringidarray" << "transformarray";
 
 			QString const typeResult =
 				QInputDialog::getItem(
@@ -949,39 +1213,57 @@ void ObjectEditor::onSetObjvar()
 
 			if (ok)
 			{
-				if (typeResult == "int")
+				std::string const type = typeResult.ascii();
+				std::string const name = nameResult.ascii();
+				std::string setexValue;
+
+				if (ObjvarEditDialog::isComplexType(type))
+				{
+					if (!ObjvarEditDialog::run(this, type, std::string(), setexValue))
+						return;
+				}
+				else if (type == "int")
 				{
 					int const valueResult =
 						QInputDialog::getInteger(
 							tr("Setting an Objvar..."),
 							tr("Enter int value to set:"),
 							0, -2147483647, 2147483647, 1, &ok);
-					if (ok)
-						IGNORE_RETURN(ServerCommander::getInstance().objvarSet(*o, nameResult.ascii(), valueResult));
+					if (!ok)
+						return;
+					char buf[64];
+					IGNORE_RETURN(sprintf(buf, "%d", valueResult));
+					setexValue = buf;
 				}
-				else if (typeResult == "float")
+				else if (type == "float")
 				{
 					float const valueResult =
 						QInputDialog::getDouble(
 							tr("Setting an Objvar..."),
 							tr("Enter float value to set:"),
 							0, -1e30, 1e30, 8, &ok);
-					if (ok)
-						IGNORE_RETURN(ServerCommander::getInstance().objvarSet(*o, nameResult.ascii(), valueResult));
+					if (!ok)
+						return;
+					char buf[64];
+					IGNORE_RETURN(sprintf(buf, "%g", valueResult));
+					setexValue = buf;
 				}
-				else if (typeResult == "string")
+				else
 				{
 					QString const valueResult =
 						QInputDialog::getText(
 							tr("Setting an Objvar..."),
-							tr("Enter string value to set:"),
+							tr("Enter value to set:"),
 							QLineEdit::Normal,
 							QString::null,
 							&ok);
-					if (ok)
-						IGNORE_RETURN(ServerCommander::getInstance().objvarSet(*o, nameResult.ascii(), std::string(valueResult.ascii())));
+					if (!ok)
+						return;
+					setexValue = valueResult.ascii();
 				}
-				refreshObjects();
+
+				applyObjvarValue(*o, name, type, setexValue);
+				onRefreshLists();
 			}
 		}
 	}

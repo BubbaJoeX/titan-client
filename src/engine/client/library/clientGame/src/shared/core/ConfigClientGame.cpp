@@ -262,6 +262,9 @@ namespace ConfigClientGameNamespace
 #endif
 
 	int             ms_maxWaypoints;
+
+	bool            ms_claimPlacementCirclePreviewEnabled;
+	float           ms_claimDefaultFootprintRadiusMeters;
 }
 
 using namespace ConfigClientGameNamespace;
@@ -1281,6 +1284,9 @@ void ConfigClientGame::install(void)
 
 	KEY_INT(maxWaypoints, 100); // Should be in sync with ConfigServerGames's maxWaypointsPerCharacter 
 
+	KEY_BOOL  (claimPlacementCirclePreviewEnabled, true);
+	KEY_FLOAT (claimDefaultFootprintRadiusMeters, 32.0f);
+
 	ExitChain::add(ConfigClientGame::remove, "ConfigClientGame::remove", 0, false);
 }
 
@@ -1745,6 +1751,20 @@ std::string const & ConfigClientGame::getafa5930b6c2b42e6b6ec38954855abc2() // g
 int ConfigClientGame::getMaxWaypoints()
 {
    return ms_maxWaypoints;
+}
+
+// ----------------------------------------------------------------------
+
+bool ConfigClientGame::getClaimPlacementCirclePreviewEnabled()
+{
+	return ms_claimPlacementCirclePreviewEnabled;
+}
+
+// ----------------------------------------------------------------------
+
+float ConfigClientGame::getClaimDefaultFootprintRadiusMeters()
+{
+	return ms_claimDefaultFootprintRadiusMeters;
 }
 
 //===================================================================

@@ -37,6 +37,7 @@ public:
 	virtual void performDeactivate ();
 
 	bool         setData (const NetworkId& deedNetworkId, const char* structureSharedObjectTemplateName);
+	bool         setData (const NetworkId& deedNetworkId, const char* structureSharedObjectTemplateName, float claimFootprintRadiusMeters);
 
 private:
 
@@ -60,6 +61,8 @@ private:
 	Object*                   m_structureObject;
 	RotationType              m_rotationType;
 	UIText*                   m_orientationHelpText;
+	float                     m_claimFootprintRadiusMeters;
+	bool                      m_isClaimPlacement;
 };
 
 //===================================================================

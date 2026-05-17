@@ -42,6 +42,7 @@ ActionsScript::ActionsScript() :
 	compile(0),
 	serverReload(0),
 	removeScript(0),
+	attachScript(0),
 	removeObjvar(0),
 	setObjvar(0),
 	m_selectedPath(),
@@ -75,8 +76,9 @@ ActionsScript::ActionsScript() :
 	IGNORE_RETURN(connect(serverReload, SIGNAL(activated()), this, SLOT(onServerReload())));
 
 	removeScript = new ActionHack("Detach this script from the currently selected object.", IL_PIXMAP(hi16_action_editdelete), "Detach", 0, p, "detach_script");
+	attachScript = new ActionHack("Attach a script to the currently selected object.", IL_PIXMAP(hi16_action_edit), "Attach Script", 0, p, "attach_script");
 	removeObjvar = new ActionHack("Remove this objvar from the currently selected object.", IL_PIXMAP(hi16_action_editdelete), "Remove Objvar", 0, p, "remove_objvar");
-	setObjvar = new ActionHack("Set an objvar on the currently selected object.", IL_PIXMAP(hi16_action_editdelete), "Set Objvar", 0, p, "set_objvar");
+	setObjvar = new ActionHack("Set an objvar on the currently selected object.", IL_PIXMAP(hi16_action_edit), "Set Objvar", 0, p, "set_objvar");
 
 	view->setEnabled        (false);
 	edit->setEnabled        (false);
@@ -99,6 +101,7 @@ ActionsScript::~ActionsScript()
 	compile = 0;
 	serverReload = 0;
 	removeScript = 0;
+	attachScript = 0;
 	removeObjvar = 0;
 	setObjvar = 0;
 }
@@ -367,6 +370,21 @@ bool ActionsScript::getSelectedScript(std::string & path) const
 
 	path = convertToClasspath(m_selectedPath);
 	return true;
+}
+
+//----------------------------------------------------------------------
+
+void ActionsScript::openScriptClasspathInEditor(std::string const & scriptClasspath) const
+{
+	if (scriptClasspath.empty())
+		return;
+
+	std::string path = NON_NULL(ConfigGodClient::getData().scriptSourcePath);
+	path += "/";
+	for (size_t i = 0; i < scriptClasspath.size(); ++i)
+		path += (scriptClasspath[i] == '.') ? '/' : scriptClasspath[i];
+	path += ".java";
+	doEditFile(path);
 }
 
 //----------------------------------------------------------------------

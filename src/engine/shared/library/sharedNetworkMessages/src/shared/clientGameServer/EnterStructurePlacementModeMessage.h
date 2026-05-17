@@ -20,12 +20,13 @@ class EnterStructurePlacementModeMessage : public GameNetworkMessage
 {
 public: 
 
-	EnterStructurePlacementModeMessage (const NetworkId& deedNetworkId, const std::string& structureSharedObjectTemplateName);
+	EnterStructurePlacementModeMessage (const NetworkId& deedNetworkId, const std::string& structureSharedObjectTemplateName, float claimFootprintRadiusMeters = -1.f);
 	explicit EnterStructurePlacementModeMessage (Archive::ReadIterator &source);
 	virtual ~EnterStructurePlacementModeMessage();
 
 	const NetworkId&   getDeedNetworkId () const;
 	const std::string& getStructureSharedObjectTemplateName () const;
+	float              getClaimFootprintRadiusMeters () const;
 
 public:
 
@@ -35,6 +36,7 @@ private:
 
 	Archive::AutoVariable<NetworkId>   m_deedNetworkId;
 	Archive::AutoVariable<std::string> m_structureSharedObjectTemplateName;
+	Archive::AutoVariable<float>       m_claimFootprintRadiusMeters;
 };
 
 // ==================================================================

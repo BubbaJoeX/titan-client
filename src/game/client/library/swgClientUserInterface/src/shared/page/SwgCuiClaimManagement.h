@@ -2,9 +2,8 @@
 //
 // SwgCuiClaimManagement.h
 //
-// Client shell for the claim management terminal. Gameplay actions are
-// driven by server-side SUI from terminal_claim_management.java; this
-// mediator exists for future dedicated UI wiring.
+// Client reference panel for the open-world claim system. Terminal
+// actions (maintenance, tax, bans) are driven by server SUI.
 //
 //======================================================================
 
@@ -12,14 +11,20 @@
 #define INCLUDED_SwgCuiClaimManagement_H
 
 class UIPage;
+class UIButton;
+class UIText;
+
+#include "UIEventCallback.h"
 #include "clientUserInterface/CuiMediator.h"
 
 //----------------------------------------------------------------------
 
-class SwgCuiClaimManagement : public CuiMediator
+class SwgCuiClaimManagement : public UIEventCallback, public CuiMediator
 {
 public:
 	explicit SwgCuiClaimManagement(UIPage & page);
+
+	virtual void OnButtonPressed(UIWidget * context);
 
 protected:
 	virtual void performActivate();
@@ -30,6 +35,9 @@ private:
 	SwgCuiClaimManagement();
 	SwgCuiClaimManagement(SwgCuiClaimManagement const &);
 	SwgCuiClaimManagement & operator=(SwgCuiClaimManagement const &);
+
+	UIButton * m_closeButton;
+	UIText *   m_infoText;
 };
 
 //======================================================================

@@ -537,6 +537,31 @@ unsigned int ServerCommander::objvarRemove(const ClientObject& obj, const std::s
 
 //----------------------------------------------------------------------
 
+unsigned int ServerCommander::objvarSetEx(const ClientObject& obj, const std::string& objvarName, const std::string& type, const std::string& value)
+{
+	if (Game::getSinglePlayer())
+	{
+		// Single-player buildout uses simple scalar setters only.
+		if (type == "int")
+			return objvarSet(obj, objvarName, atoi(value.c_str()));
+		if (type == "float")
+			return objvarSet(obj, objvarName, static_cast<float>(atof(value.c_str())));
+		if (type == "string" || type == "networkid")
+			return objvarSet(obj, objvarName, value);
+		return 0;
+	}
+
+	char buf[8192];
+	IGNORE_RETURN(_snprintf(buf, sizeof(buf) - 1, "objvar setex %s %s %s %s",
+		obj.getNetworkId().getValueString().c_str(),
+		objvarName.c_str(),
+		type.c_str(),
+		value.c_str()));
+	return issueCommand(buf);
+}
+
+//----------------------------------------------------------------------
+
 /**
  * Build a command to ask the server to return a list of all the scripts attached to an object
  *

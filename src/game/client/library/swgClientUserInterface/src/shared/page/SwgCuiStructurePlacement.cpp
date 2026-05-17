@@ -19,6 +19,7 @@
 #include "UITypes.h"
 
 
+#include "clientGame/ConfigClientGame.h"
 #include "clientGame/ClientCommandQueue.h"
 #include "clientGame/ClientObject.h"
 #include "clientGame/ClientWorld.h"
@@ -141,7 +142,9 @@ SwgCuiStructurePlacement::SwgCuiStructurePlacement (UIPage & page) :
 	m_structureFootprint (0),
 	m_structureObject (0),
 	m_rotationType (RT_0),
-	m_orientationHelpText (0)
+	m_orientationHelpText (0),
+	m_claimFootprintRadiusMeters (-1.f),
+	m_isClaimPlacement (false)
 {
 	getPage ().SetSelectable (true);
 
@@ -331,9 +334,18 @@ void SwgCuiStructurePlacement::performDeactivate ()
 
 bool SwgCuiStructurePlacement::setData (const NetworkId& deedNetworkId, const char* const structureSharedObjectTemplateName)
 {
+	return setData (deedNetworkId, structureSharedObjectTemplateName, -1.f);
+}
+
+//----------------------------------------------------------------------
+
+bool SwgCuiStructurePlacement::setData (const NetworkId& deedNetworkId, const char* const structureSharedObjectTemplateName, float const claimFootprintRadiusMeters)
+{
 	cleanup ();
 
 	m_deedNetworkId = deedNetworkId;
+	m_claimFootprintRadiusMeters = claimFootprintRadiusMeters;
+	m_isClaimPlacement = (claimFootprintRadiusMeters > 0.f);
 
 	//-- see if the object template name is valid
 	if (!structureSharedObjectTemplateName || !*structureSharedObjectTemplateName)
@@ -425,6 +437,14 @@ bool SwgCuiStructurePlacement::setData (const NetworkId& deedNetworkId, const ch
 		
 		camera->setStructureFootprint (m_structureFootprint);
 		camera->setStructureObject (m_structureObject);
+
+		float previewRadius = m_claimFootprintRadiusMeters;
+		if (previewRadius <= 0.f && m_isClaimPlacement && ConfigClientGame::getClaimPlacementCirclePreviewEnabled())
+			previewRadius = ConfigClientGame::getClaimDefaultFootprintRadiusMeters();
+		if (previewRadius > 0.f && ConfigClientGame::getClaimPlacementCirclePreviewEnabled())
+			camera->setClaimFootprintRadiusMeters (previewRadius);
+		else
+			camera->setClaimFootprintRadiusMeters (-1.f);
 	}
 
 	return true;
@@ -468,6 +488,13 @@ void SwgCuiStructurePlacement::updateOrientationHelpText ()
 		line += Unicode::narrowToWide ("Status: flora overlay hidden (placement and collision logic unchanged).\r\n");
 	else
 		line += Unicode::narrowToWide ("Status: flora visible.\r\n");
+
+	if (m_isClaimPlacement && m_claimFootprintRadiusMeters > 0.f)
+	{
+		char buf[128];
+		sprintf(buf, "Claim footprint: %.0fm radius (green/red ring).\r\n", m_claimFootprintRadiusMeters);
+		line += Unicode::narrowToWide(buf);
+	}
 
 	m_orientationHelpText->SetLocalText (line);
 }
@@ -531,6 +558,17 @@ void SwgCuiStructurePlacement::cleanup ()
 	{
 		delete m_structureObject;
 		m_structureObject = 0;
+	}
+
+	m_claimFootprintRadiusMeters = -1.f;
+	m_isClaimPlacement = false;
+
+	GroundScene* const groundScene = safe_cast<GroundScene*> (Game::getScene ());
+	if (groundScene)
+	{
+		StructurePlacementCamera* const camera = safe_cast<StructurePlacementCamera*> (groundScene->getCamera (GroundScene::CI_structurePlacement));
+		if (camera)
+			camera->setClaimFootprintRadiusMeters (-1.f);
 	}
 }
 

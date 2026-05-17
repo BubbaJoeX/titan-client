@@ -1696,7 +1696,7 @@ namespace VideoStreamNamespace
 		std::string cur;
 		for (size_t i = 0; i <= raw.size(); ++i)
 		{
-			if (i == raw.size() || raw[i] == ';' || raw[i] == '|')
+			if (i == raw.size() || raw[i] == '@' || raw[i] == '|')
 			{
 				trimAscii(cur);
 				if (!cur.empty())

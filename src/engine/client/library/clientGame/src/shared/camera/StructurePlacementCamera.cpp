@@ -264,7 +264,8 @@ StructurePlacementCamera::StructurePlacementCamera () :
 	m_light (new Light (Light::T_ambient, VectorArgb::solidWhite)),
 	m_lotOccupiedShader (ShaderTemplateList::fetchShader ("shader/placement_yellow.sht")),
 	m_allowedFootprintShader (ShaderTemplateList::fetchShader ("shader/placement_green.sht")),
-	m_disallowedFootprintShader (ShaderTemplateList::fetchShader ("shader/placement_red.sht"))
+	m_disallowedFootprintShader (ShaderTemplateList::fetchShader ("shader/placement_red.sht")),
+	m_claimFootprintRadiusMeters (-1.f)
 {
 	DebugFlags::registerFlag (ms_renderLotManager, "ClientGame", "renderLotManager");
 	DebugFlags::registerFlag (ms_alwaysAllowStructurePlacement, "ClientGame", "alwaysAllowStructurePlacement");
@@ -470,6 +471,13 @@ void StructurePlacementCamera::setStructureFootprint (const StructureFootprint* 
 void StructurePlacementCamera::setStructureObject (Object* structureObject)
 {
 	m_structureObject = structureObject;
+}
+
+//-------------------------------------------------------------------
+
+void StructurePlacementCamera::setClaimFootprintRadiusMeters (float const radiusMeters)
+{
+	m_claimFootprintRadiusMeters = radiusMeters;
 }
 
 //-------------------------------------------------------------------
@@ -694,6 +702,28 @@ void StructurePlacementCamera::drawScene () const
 
 		NOT_NULL (m_structureObject);
 		m_structureObject->setPosition_w (m_createLocation);
+
+		if (m_claimFootprintRadiusMeters > 0.f)
+		{
+			Graphics::setStaticShader (ShaderTemplateList::get3dVertexColorStaticShader ());
+			Vector center = m_createLocation;
+			center.y += chunkWidthInMeters * 0.05f;
+			float const radius = m_claimFootprintRadiusMeters;
+			int const segments = 64;
+			VectorArgb const ringColor = canPlace ? VectorArgb::solidGreen : VectorArgb::solidRed;
+			for (int seg = 0; seg < segments; ++seg)
+			{
+				float const a0 = (static_cast<float>(seg) / static_cast<float>(segments)) * (PI * 2.f);
+				float const a1 = (static_cast<float>(seg + 1) / static_cast<float>(segments)) * (PI * 2.f);
+				Vector p0 (center.x + std::cos(a0) * radius, center.y, center.z + std::sin(a0) * radius);
+				Vector p1 (center.x + std::cos(a1) * radius, center.y, center.z + std::sin(a1) * radius);
+				IGNORE_RETURN (terrainObject->getHeight (p0, p0.y));
+				IGNORE_RETURN (terrainObject->getHeight (p1, p1.y));
+				p0.y += chunkWidthInMeters * 0.05f;
+				p1.y += chunkWidthInMeters * 0.05f;
+				Graphics::drawLine (p0, p1, ringColor);
+			}
+		}
 	}
 }
 

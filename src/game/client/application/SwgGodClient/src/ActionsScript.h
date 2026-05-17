@@ -43,6 +43,7 @@ public:
 	ActionHack*             compile;
 	ActionHack*             serverReload;
 	ActionHack*             removeScript;
+	ActionHack*             attachScript;
 	ActionHack*             removeObjvar;
 	ActionHack*             setObjvar;
 
@@ -65,6 +66,8 @@ private slots:
 public:
 	ActionsScript ();
 	~ActionsScript();
+
+	void openScriptClasspathInEditor(std::string const & scriptClasspath) const;
 
 private:
 	//disabled

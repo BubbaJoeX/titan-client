@@ -120,7 +120,7 @@ namespace CuiMediatorTypes
 	MAKE_MEDIATOR_TYPE (WS_CalendarEventDetails);
 	MAKE_MEDIATOR_TYPE (WS_CalendarSettings);
 
-	// Open-world claims (reserved client shell; management uses server SUI)
+	// Open-world claims: placement preview + help panel; terminal ops use server SUI
 	MAKE_MEDIATOR_TYPE (ClaimManagement);
 
 	// KOTOR-style cinematic conversation (ground only)

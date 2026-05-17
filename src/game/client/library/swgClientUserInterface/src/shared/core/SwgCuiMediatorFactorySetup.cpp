@@ -225,7 +225,7 @@ void SwgCuiMediatorFactorySetup::install ()
 	MAKE_SWG_CTOR (IMEInput,                          "/Debug.IME");
 	MAKE_SWG_CTOR (Splash,                            "/Splash");
 	MAKE_SWG_CTOR (StructurePlacement,                "/Placement");
-	MAKE_SWG_CTOR (ClaimManagement,                  "DO NOT USE");
+	MAKE_SWG_CTOR (ClaimManagement,                  "/ClaimManagement");
 	MAKE_SWG_CTOR_WS (Vendor,                         "/Auction.AuctionList");
 	MAKE_SWG_CTOR_WS (VendorSetPrice,                 "/Auction.AuctionsetPrice");
 	MAKE_SWG_CTOR_WS (ChatRooms,                      "/pda.ChatRooms");

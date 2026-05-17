@@ -263,6 +263,9 @@ public:
 
 	static int                 getMaxWaypoints();
 
+	static bool                getClaimPlacementCirclePreviewEnabled();
+	static float               getClaimDefaultFootprintRadiusMeters();
+
 private:
 
 	static void                remove();
