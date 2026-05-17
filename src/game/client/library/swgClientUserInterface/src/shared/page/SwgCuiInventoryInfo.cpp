@@ -9,6 +9,7 @@
 #include "swgClientUserInterface/SwgCuiInventoryInfo.h"
 
 #include "UIButton.h"
+#include "UIBaseObject.h"
 #include "UICheckbox.h"
 #include "UIComposite.h"
 #include "UIData.h"
@@ -579,6 +580,13 @@ void SwgCuiInventoryInfo::update (float)
 	{
 		ObjectAttributeManager::stopWatching(this);
 		return;
+	}
+
+	if (m_viewer)
+	{
+		UIBaseObject * const p = m_viewer->GetParent ();
+		if (p && p->IsA (TUIPage))
+			IGNORE_RETURN (static_cast<UIPage *>(p)->MoveChild (m_viewer, UIBaseObject::Bottom));
 	}
 
 	if (!m_isPlayer) 

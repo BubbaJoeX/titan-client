@@ -10,6 +10,7 @@
 
 #include "Archive/ByteStream.h"
 #include "UIButton.h"
+#include "UIBaseObject.h"
 #include "UICheckbox.h"
 #include "UIData.h"
 #include "UIDataSource.h"
@@ -166,11 +167,12 @@ m_callback               (new MessageDispatch::Callback),
 m_selectedAvatar         (new CuiLoginManagerAvatarInfo),
 m_waitingDeletion        (false),
 m_deletingAvatar         (new CuiLoginManagerAvatarInfo),
-m_updateAvatar           (0),
+m_refreshingCharacterList (false),
 m_waitingForConnection   (false),
 m_dropFromCluster        (false),
 m_waitingForClusterId    (0),
 m_connectionTimeout      (0.0f),
+m_connectingToGame       (false),
 m_avatarPopulateFirstTime (true),
 m_deleteAvatarConfirmationPage(NULL),
 m_deleteAvatarConfirmationMediator(NULL),
@@ -319,6 +321,7 @@ void SwgCuiAvatarSelection::performActivate ()
 //		reconnectLoginServer (false);
 	clearCharacterList ();
 	refreshList        (false);
+	ensureViewerBehindChrome ();
 
 	m_table->SetEnabled        (true);
 	m_table->SetFocus          ();
@@ -377,41 +380,52 @@ void SwgCuiAvatarSelection::performDeactivate ()
 void SwgCuiAvatarSelection::refreshList (bool updateSelection)
 {
 	const long oldRowSelected = m_table->GetLastSelectedRow ();
-	m_table->SelectRow (-1);
 
 	UITableModelDefault * const model = NON_NULL (safe_cast<UITableModelDefault *>(m_table->GetTableModel ()));
-	model->ClearData ();
-
-	typedef CuiLoginManager::AvatarInfoVector AvatarInfoVector;
 
 	CuiLoginManager::AvatarInfoVector aiv;
-	CuiLoginManager::getAvatarInfo  (aiv);
 
-	AvatarInfoVector::const_iterator it;
-
-	bool hasAvatarOnClosedServers = false;
-	for (it = aiv.begin (); it != aiv.end (); ++it)
 	{
-		const CuiLoginManagerAvatarInfo & avatarInfo = *it;
-		//if (isClosedServer(avatarInfo.clusterId))
-		//{
-		//	hasAvatarOnClosedServers = true;
-		//	break;
-		//}
+		struct RefreshCharacterListScope
+		{
+			bool & m_flag;
+			explicit RefreshCharacterListScope (bool & flag) : m_flag (flag) { m_flag = true; }
+			~RefreshCharacterListScope () { m_flag = false; }
+		} const refreshScope (m_refreshingCharacterList);
+
+		m_table->SelectRow (-1);
+		model->ClearData ();
+
+		typedef CuiLoginManager::AvatarInfoVector AvatarInfoVector;
+
+		CuiLoginManager::getAvatarInfo  (aiv);
+
+		AvatarInfoVector::const_iterator it;
+
+		bool hasAvatarOnClosedServers = false;
+		for (it = aiv.begin (); it != aiv.end (); ++it)
+		{
+			const CuiLoginManagerAvatarInfo & avatarInfo = *it;
+			//if (isClosedServer(avatarInfo.clusterId))
+			//{
+			//	hasAvatarOnClosedServers = true;
+			//	break;
+			//}
+		}
+
+		m_hideClosed->SetVisible(hasAvatarOnClosedServers);
+		
+		for (it = aiv.begin (); it != aiv.end (); ++it)
+		{
+			const CuiLoginManagerAvatarInfo & avatarInfo = *it;
+			addAvatar (avatarInfo);
+
+			if (!isActive ())
+				break;
+		}
+
+		m_table->Link ();
 	}
-
-	m_hideClosed->SetVisible(hasAvatarOnClosedServers);
-	
-	for (it = aiv.begin (); it != aiv.end (); ++it)
-	{
-		const CuiLoginManagerAvatarInfo & avatarInfo = *it;
-		addAvatar (avatarInfo);
-
-		if (!isActive ())
-			break;
-	}
-
-	m_table->Link ();
 	
 	//-- if autoconnecting, don't waste time updating the player model
 	if (updateSelection || m_table->GetLastSelectedRow () < 0)
@@ -443,6 +457,19 @@ void SwgCuiAvatarSelection::refreshList (bool updateSelection)
 	CuiCachedAvatarManager::saveCharacterList ();
 
 	m_avatarPopulateFirstTime = false;
+
+	ensureViewerBehindChrome ();
+}
+
+//----------------------------------------------------------------------
+
+void SwgCuiAvatarSelection::ensureViewerBehindChrome ()
+{
+	if (!m_objectViewer)
+		return;
+	UIBaseObject * const p = m_objectViewer->GetParent ();
+	if (p && p->IsA (TUIPage))
+		IGNORE_RETURN (static_cast<UIPage *>(p)->MoveChild (m_objectViewer, UIBaseObject::Bottom));
 }
 
 //----------------------------------------------------------------------
@@ -699,10 +726,12 @@ void SwgCuiAvatarSelection::OnGenericSelectionChanged (UIWidget * context)
 {
 	if (context == m_table)
 	{
+		if (m_refreshingCharacterList)
+			return;
+
 		//-- if autoconnecting, don't waste time updating the player model
 		if (!autoConnectOk ())
-			m_updateAvatar = 2;
-//			updateAvatarSelection ();
+			updateAvatarSelection ();
 	}
 } //lint !e818 //stfu noob
 
@@ -710,76 +739,91 @@ void SwgCuiAvatarSelection::OnGenericSelectionChanged (UIWidget * context)
 
 void SwgCuiAvatarSelection::updateAvatarSelection ()
 {
-	m_objectViewer->clearObjects ();
-	m_avatarNameText->Clear ();
+	// Full-screen 3D viewer must stay at the back of AvSel's paint order; table/cell updates can
+	// disturb child list order so chrome would paint underneath (black screen + character only).
+	struct MoveViewerToBack
+	{
+		SwgCuiAvatarSelection & self;
+		explicit MoveViewerToBack (SwgCuiAvatarSelection & s) : self (s) {}
+		~MoveViewerToBack ()
+		{
+			if (self.m_objectViewer)
+				IGNORE_RETURN (self.getPage ().MoveChild (self.m_objectViewer, UIBaseObject::Bottom));
+		}
+	} moveViewerGuard (*this);
 
 	UITableModelDefault * const model = NON_NULL (safe_cast<UITableModelDefault *>(m_table->GetTableModel ()));
 
 	const int row = m_table->GetLastSelectedRow ();
-	Unicode::String currentlySelectedCharacter;
-
-	const UIData * const cellData = model->GetCellDataVisual (row, 0);
-	if (row >= 0 && cellData)
+	const UIData * const cellData = (row >= 0) ? model->GetCellDataVisual (row, 0) : 0;
+	if (row < 0 || !cellData)
 	{
-		UIString selectionName;
-		cellData->GetProperty (UITableModelDefault::DataProperties::Value, selectionName);
-		WARNING (selectionName.empty (), ("Empty selection name"));
+		m_objectViewer->clearObjects ();
+		m_avatarNameText->Clear ();
+		return;
+	}
 
-		m_avatarNameText->SetLocalText (selectionName);
+	m_objectViewer->clearObjects ();
+	m_avatarNameText->Clear ();
 
-		std::string networkIdStr;
-		if (!cellData->GetPropertyNarrow (Properties::AvatarNetworkId, networkIdStr))
-			WARNING (true, ("Can't get networkid"));
-		const NetworkId networkId (networkIdStr);
+	UIString selectionName;
+	cellData->GetProperty (UITableModelDefault::DataProperties::Value, selectionName);
+	WARNING (selectionName.empty (), ("Empty selection name"));
 
-		long l_clusterId = 0;
-		if (!cellData->GetPropertyLong (Properties::ClusterId, l_clusterId))
-			WARNING (true, ("Can't get clusterid"));
+	m_avatarNameText->SetLocalText (selectionName);
 
-		const uint32 clusterId = static_cast<uint32>(l_clusterId);
+	std::string networkIdStr;
+	if (!cellData->GetPropertyNarrow (Properties::AvatarNetworkId, networkIdStr))
+		WARNING (true, ("Can't get networkid"));
+	const NetworkId networkId (networkIdStr);
 
-		CreatureObject * const avatar = CuiLoginManager::getAvatarCreature (clusterId, networkId);
+	long l_clusterId = 0;
+	if (!cellData->GetPropertyLong (Properties::ClusterId, l_clusterId))
+		WARNING (true, ("Can't get clusterid"));
 
-		if (!avatar)
+	const uint32 clusterId = static_cast<uint32>(l_clusterId);
+
+	CreatureObject * const avatar = CuiLoginManager::getAvatarCreature (clusterId, networkId);
+
+	if (!avatar)
+	{
+		WARNING (true, ("no avatar?"));
+
+		CuiMessageBox::createInfoBox (CuiStringIdsServer::server_err_avatar_not_found.localize ());
+		m_table->SelectRow (-1);
+	}
+	else
+	{
+		const CuiLoginManagerAvatarInfo * const avatarInfo = CuiLoginManager::findAvatarInfo (clusterId, avatar->getLocalizedName ());
+
+		if (avatarInfo)
 		{
-			WARNING (true, ("no avatar?"));
-
-			CuiMessageBox::createInfoBox (CuiStringIdsServer::server_err_avatar_not_found.localize ());
-			m_table->SelectRow (-1);
-		}
-		else
-		{
-			const CuiLoginManagerAvatarInfo * const avatarInfo = CuiLoginManager::findAvatarInfo (clusterId, avatar->getLocalizedName ());
-
-			if (avatarInfo)
+			UIData * const planetCellData = model->GetCellDataVisual (row, 2);
+			if (planetCellData)
 			{
-				UIData * const planetCellData = model->GetCellDataVisual (row, 2);
-				if (planetCellData)
-				{
-					if (avatarInfo->planetName.empty ())
-						planetCellData->SetProperty (UITableModelDefault::DataProperties::Value, Unicode::emptyString);
-					else
-						planetCellData->SetProperty (UITableModelDefault::DataProperties::Value, StringId ("planet_n", avatarInfo->planetName).localize ());
-				}
+				if (avatarInfo->planetName.empty ())
+					planetCellData->SetProperty (UITableModelDefault::DataProperties::Value, Unicode::emptyString);
+				else
+					planetCellData->SetProperty (UITableModelDefault::DataProperties::Value, StringId ("planet_n", avatarInfo->planetName).localize ());
+			}
 
-				UIData * const nameCellData = model->GetCellDataVisual (row, 0);
-				if (nameCellData)
+			UIData * const nameCellData = model->GetCellDataVisual (row, 0);
+			if (nameCellData)
+			{
+				Unicode::String tooltipText = CreateTooltipText (*avatarInfo);
+				if (!tooltipText.empty ())
 				{
-					Unicode::String tooltipText = CreateTooltipText (*avatarInfo);
-					if (!tooltipText.empty ())
-					{
-						nameCellData->SetProperty(UITableModelDefault::DataProperties::LocalTooltip, tooltipText);
-					}
+					nameCellData->SetProperty(UITableModelDefault::DataProperties::LocalTooltip, tooltipText);
 				}
 			}
-				
-			m_objectViewer->addObject (*avatar);
-
-			m_objectViewer->setCameraForceTarget     (true);
-			m_objectViewer->recomputeZoom            ();
-			m_objectViewer->setCameraForceTarget     (false);
-	
 		}
+			
+		m_objectViewer->addObject (*avatar);
+
+		m_objectViewer->setCameraForceTarget     (true);
+		m_objectViewer->recomputeZoom            ();
+		m_objectViewer->setCameraForceTarget     (false);
+
 	}
 }
 
@@ -789,11 +833,8 @@ void SwgCuiAvatarSelection::update (float deltaTimeSecs)
 {
 	CuiMediator::update (deltaTimeSecs);
 
-	if (m_updateAvatar > 0)
-	{
-		if (--m_updateAvatar == 0)
-			updateAvatarSelection ();
-	}
+	// Table refresh / Link() / workspace can reorder siblings; keep preview behind chrome (paint + hit-test).
+	ensureViewerBehindChrome ();
 
 	if (m_dropFromCluster)
 	{

@@ -107,9 +107,13 @@ inline void UIRenderHelper::RenderWidget (UICanvas & DestinationCanvas, UIWidget
 			else
 				w.Render (DestinationCanvas);
 		}
-		
-		UITextStyle::setOpacityRelativeMin (oldTextOpacityRelativeMin);
 	}
+
+	// Embedded 3D (CuiWidget3d*) narrows the D3D viewport / may alter clip state. When the canvas is
+	// fully transparent (alpha 0) we skip the draw block above but a *previous* widget in the same
+	// pass may have left a sub-viewport active — always run restore (default no-op for normal widgets).
+	UITextStyle::setOpacityRelativeMin (oldTextOpacityRelativeMin);
+	w.RestoreRenderTargetViewportAfterRender ();
 
 	if (deformer)
 	{

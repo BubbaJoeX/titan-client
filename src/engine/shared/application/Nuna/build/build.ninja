@@ -12,7 +12,7 @@
 
 # =============================================================================
 # Project: Nuna
-# Configurations: Debug
+# Configurations: Release
 # =============================================================================
 
 #############################################
@@ -24,7 +24,7 @@ ninja_required_version = 1.5
 #############################################
 # Set configuration variable for custom commands.
 
-CONFIGURATION = Debug
+CONFIGURATION = Release
 # =============================================================================
 # Include auxiliary files.
 
@@ -49,10 +49,10 @@ cmake_ninja_workdir = D$:\titan\client\src\engine\shared\application\Nuna\build\
 
 build cmake_object_order_depends_target_zlib_bundled: phony || .
 
-build CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\adler32.c.obj: C_COMPILER__zlib_bundled_unscanned_Debug D$:\titan\client\src\external\3rd\library\zlib-1.2.3\adler32.c || cmake_object_order_depends_target_zlib_bundled
-  CONFIG = Debug
+build CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\adler32.c.obj: C_COMPILER__zlib_bundled_unscanned_Release D$:\titan\client\src\external\3rd\library\zlib-1.2.3\adler32.c || cmake_object_order_depends_target_zlib_bundled
+  CONFIG = Release
   DEFINES = -D_CRT_SECURE_NO_WARNINGS
-  FLAGS = /DWIN32 /D_WINDOWS /Zi /Ob0 /Od /RTC1 -MDd /W0
+  FLAGS = /DWIN32 /D_WINDOWS /O2 /Ob2 /DNDEBUG -MD /W0
   INCLUDES = -ID:\titan\client\src\engine\shared\application\Nuna\..\..\..\..\external\3rd\library\zlib-1.2.3
   OBJECT_DIR = CMakeFiles\zlib_bundled.dir
   OBJECT_FILE_DIR = CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3
@@ -60,10 +60,10 @@ build CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-
   TARGET_PDB = zlib_bundled.pdb
   TARGET_SUPPORT_DIR = CMakeFiles\zlib_bundled.dir
 
-build CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\compress.c.obj: C_COMPILER__zlib_bundled_unscanned_Debug D$:\titan\client\src\external\3rd\library\zlib-1.2.3\compress.c || cmake_object_order_depends_target_zlib_bundled
-  CONFIG = Debug
+build CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\compress.c.obj: C_COMPILER__zlib_bundled_unscanned_Release D$:\titan\client\src\external\3rd\library\zlib-1.2.3\compress.c || cmake_object_order_depends_target_zlib_bundled
+  CONFIG = Release
   DEFINES = -D_CRT_SECURE_NO_WARNINGS
-  FLAGS = /DWIN32 /D_WINDOWS /Zi /Ob0 /Od /RTC1 -MDd /W0
+  FLAGS = /DWIN32 /D_WINDOWS /O2 /Ob2 /DNDEBUG -MD /W0
   INCLUDES = -ID:\titan\client\src\engine\shared\application\Nuna\..\..\..\..\external\3rd\library\zlib-1.2.3
   OBJECT_DIR = CMakeFiles\zlib_bundled.dir
   OBJECT_FILE_DIR = CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3
@@ -71,10 +71,10 @@ build CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-
   TARGET_PDB = zlib_bundled.pdb
   TARGET_SUPPORT_DIR = CMakeFiles\zlib_bundled.dir
 
-build CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\crc32.c.obj: C_COMPILER__zlib_bundled_unscanned_Debug D$:\titan\client\src\external\3rd\library\zlib-1.2.3\crc32.c || cmake_object_order_depends_target_zlib_bundled
-  CONFIG = Debug
+build CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\crc32.c.obj: C_COMPILER__zlib_bundled_unscanned_Release D$:\titan\client\src\external\3rd\library\zlib-1.2.3\crc32.c || cmake_object_order_depends_target_zlib_bundled
+  CONFIG = Release
   DEFINES = -D_CRT_SECURE_NO_WARNINGS
-  FLAGS = /DWIN32 /D_WINDOWS /Zi /Ob0 /Od /RTC1 -MDd /W0
+  FLAGS = /DWIN32 /D_WINDOWS /O2 /Ob2 /DNDEBUG -MD /W0
   INCLUDES = -ID:\titan\client\src\engine\shared\application\Nuna\..\..\..\..\external\3rd\library\zlib-1.2.3
   OBJECT_DIR = CMakeFiles\zlib_bundled.dir
   OBJECT_FILE_DIR = CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3
@@ -82,10 +82,10 @@ build CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-
   TARGET_PDB = zlib_bundled.pdb
   TARGET_SUPPORT_DIR = CMakeFiles\zlib_bundled.dir
 
-build CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\deflate.c.obj: C_COMPILER__zlib_bundled_unscanned_Debug D$:\titan\client\src\external\3rd\library\zlib-1.2.3\deflate.c || cmake_object_order_depends_target_zlib_bundled
-  CONFIG = Debug
+build CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\deflate.c.obj: C_COMPILER__zlib_bundled_unscanned_Release D$:\titan\client\src\external\3rd\library\zlib-1.2.3\deflate.c || cmake_object_order_depends_target_zlib_bundled
+  CONFIG = Release
   DEFINES = -D_CRT_SECURE_NO_WARNINGS
-  FLAGS = /DWIN32 /D_WINDOWS /Zi /Ob0 /Od /RTC1 -MDd /W0
+  FLAGS = /DWIN32 /D_WINDOWS /O2 /Ob2 /DNDEBUG -MD /W0
   INCLUDES = -ID:\titan\client\src\engine\shared\application\Nuna\..\..\..\..\external\3rd\library\zlib-1.2.3
   OBJECT_DIR = CMakeFiles\zlib_bundled.dir
   OBJECT_FILE_DIR = CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3
@@ -93,10 +93,10 @@ build CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-
   TARGET_PDB = zlib_bundled.pdb
   TARGET_SUPPORT_DIR = CMakeFiles\zlib_bundled.dir
 
-build CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\gzio.c.obj: C_COMPILER__zlib_bundled_unscanned_Debug D$:\titan\client\src\external\3rd\library\zlib-1.2.3\gzio.c || cmake_object_order_depends_target_zlib_bundled
-  CONFIG = Debug
+build CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\gzio.c.obj: C_COMPILER__zlib_bundled_unscanned_Release D$:\titan\client\src\external\3rd\library\zlib-1.2.3\gzio.c || cmake_object_order_depends_target_zlib_bundled
+  CONFIG = Release
   DEFINES = -D_CRT_SECURE_NO_WARNINGS
-  FLAGS = /DWIN32 /D_WINDOWS /Zi /Ob0 /Od /RTC1 -MDd /W0
+  FLAGS = /DWIN32 /D_WINDOWS /O2 /Ob2 /DNDEBUG -MD /W0
   INCLUDES = -ID:\titan\client\src\engine\shared\application\Nuna\..\..\..\..\external\3rd\library\zlib-1.2.3
   OBJECT_DIR = CMakeFiles\zlib_bundled.dir
   OBJECT_FILE_DIR = CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3
@@ -104,10 +104,10 @@ build CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-
   TARGET_PDB = zlib_bundled.pdb
   TARGET_SUPPORT_DIR = CMakeFiles\zlib_bundled.dir
 
-build CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\infback.c.obj: C_COMPILER__zlib_bundled_unscanned_Debug D$:\titan\client\src\external\3rd\library\zlib-1.2.3\infback.c || cmake_object_order_depends_target_zlib_bundled
-  CONFIG = Debug
+build CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\infback.c.obj: C_COMPILER__zlib_bundled_unscanned_Release D$:\titan\client\src\external\3rd\library\zlib-1.2.3\infback.c || cmake_object_order_depends_target_zlib_bundled
+  CONFIG = Release
   DEFINES = -D_CRT_SECURE_NO_WARNINGS
-  FLAGS = /DWIN32 /D_WINDOWS /Zi /Ob0 /Od /RTC1 -MDd /W0
+  FLAGS = /DWIN32 /D_WINDOWS /O2 /Ob2 /DNDEBUG -MD /W0
   INCLUDES = -ID:\titan\client\src\engine\shared\application\Nuna\..\..\..\..\external\3rd\library\zlib-1.2.3
   OBJECT_DIR = CMakeFiles\zlib_bundled.dir
   OBJECT_FILE_DIR = CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3
@@ -115,10 +115,10 @@ build CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-
   TARGET_PDB = zlib_bundled.pdb
   TARGET_SUPPORT_DIR = CMakeFiles\zlib_bundled.dir
 
-build CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\inffast.c.obj: C_COMPILER__zlib_bundled_unscanned_Debug D$:\titan\client\src\external\3rd\library\zlib-1.2.3\inffast.c || cmake_object_order_depends_target_zlib_bundled
-  CONFIG = Debug
+build CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\inffast.c.obj: C_COMPILER__zlib_bundled_unscanned_Release D$:\titan\client\src\external\3rd\library\zlib-1.2.3\inffast.c || cmake_object_order_depends_target_zlib_bundled
+  CONFIG = Release
   DEFINES = -D_CRT_SECURE_NO_WARNINGS
-  FLAGS = /DWIN32 /D_WINDOWS /Zi /Ob0 /Od /RTC1 -MDd /W0
+  FLAGS = /DWIN32 /D_WINDOWS /O2 /Ob2 /DNDEBUG -MD /W0
   INCLUDES = -ID:\titan\client\src\engine\shared\application\Nuna\..\..\..\..\external\3rd\library\zlib-1.2.3
   OBJECT_DIR = CMakeFiles\zlib_bundled.dir
   OBJECT_FILE_DIR = CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3
@@ -126,10 +126,10 @@ build CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-
   TARGET_PDB = zlib_bundled.pdb
   TARGET_SUPPORT_DIR = CMakeFiles\zlib_bundled.dir
 
-build CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\inflate.c.obj: C_COMPILER__zlib_bundled_unscanned_Debug D$:\titan\client\src\external\3rd\library\zlib-1.2.3\inflate.c || cmake_object_order_depends_target_zlib_bundled
-  CONFIG = Debug
+build CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\inflate.c.obj: C_COMPILER__zlib_bundled_unscanned_Release D$:\titan\client\src\external\3rd\library\zlib-1.2.3\inflate.c || cmake_object_order_depends_target_zlib_bundled
+  CONFIG = Release
   DEFINES = -D_CRT_SECURE_NO_WARNINGS
-  FLAGS = /DWIN32 /D_WINDOWS /Zi /Ob0 /Od /RTC1 -MDd /W0
+  FLAGS = /DWIN32 /D_WINDOWS /O2 /Ob2 /DNDEBUG -MD /W0
   INCLUDES = -ID:\titan\client\src\engine\shared\application\Nuna\..\..\..\..\external\3rd\library\zlib-1.2.3
   OBJECT_DIR = CMakeFiles\zlib_bundled.dir
   OBJECT_FILE_DIR = CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3
@@ -137,10 +137,10 @@ build CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-
   TARGET_PDB = zlib_bundled.pdb
   TARGET_SUPPORT_DIR = CMakeFiles\zlib_bundled.dir
 
-build CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\inftrees.c.obj: C_COMPILER__zlib_bundled_unscanned_Debug D$:\titan\client\src\external\3rd\library\zlib-1.2.3\inftrees.c || cmake_object_order_depends_target_zlib_bundled
-  CONFIG = Debug
+build CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\inftrees.c.obj: C_COMPILER__zlib_bundled_unscanned_Release D$:\titan\client\src\external\3rd\library\zlib-1.2.3\inftrees.c || cmake_object_order_depends_target_zlib_bundled
+  CONFIG = Release
   DEFINES = -D_CRT_SECURE_NO_WARNINGS
-  FLAGS = /DWIN32 /D_WINDOWS /Zi /Ob0 /Od /RTC1 -MDd /W0
+  FLAGS = /DWIN32 /D_WINDOWS /O2 /Ob2 /DNDEBUG -MD /W0
   INCLUDES = -ID:\titan\client\src\engine\shared\application\Nuna\..\..\..\..\external\3rd\library\zlib-1.2.3
   OBJECT_DIR = CMakeFiles\zlib_bundled.dir
   OBJECT_FILE_DIR = CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3
@@ -148,10 +148,10 @@ build CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-
   TARGET_PDB = zlib_bundled.pdb
   TARGET_SUPPORT_DIR = CMakeFiles\zlib_bundled.dir
 
-build CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\trees.c.obj: C_COMPILER__zlib_bundled_unscanned_Debug D$:\titan\client\src\external\3rd\library\zlib-1.2.3\trees.c || cmake_object_order_depends_target_zlib_bundled
-  CONFIG = Debug
+build CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\trees.c.obj: C_COMPILER__zlib_bundled_unscanned_Release D$:\titan\client\src\external\3rd\library\zlib-1.2.3\trees.c || cmake_object_order_depends_target_zlib_bundled
+  CONFIG = Release
   DEFINES = -D_CRT_SECURE_NO_WARNINGS
-  FLAGS = /DWIN32 /D_WINDOWS /Zi /Ob0 /Od /RTC1 -MDd /W0
+  FLAGS = /DWIN32 /D_WINDOWS /O2 /Ob2 /DNDEBUG -MD /W0
   INCLUDES = -ID:\titan\client\src\engine\shared\application\Nuna\..\..\..\..\external\3rd\library\zlib-1.2.3
   OBJECT_DIR = CMakeFiles\zlib_bundled.dir
   OBJECT_FILE_DIR = CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3
@@ -159,10 +159,10 @@ build CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-
   TARGET_PDB = zlib_bundled.pdb
   TARGET_SUPPORT_DIR = CMakeFiles\zlib_bundled.dir
 
-build CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\uncompr.c.obj: C_COMPILER__zlib_bundled_unscanned_Debug D$:\titan\client\src\external\3rd\library\zlib-1.2.3\uncompr.c || cmake_object_order_depends_target_zlib_bundled
-  CONFIG = Debug
+build CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\uncompr.c.obj: C_COMPILER__zlib_bundled_unscanned_Release D$:\titan\client\src\external\3rd\library\zlib-1.2.3\uncompr.c || cmake_object_order_depends_target_zlib_bundled
+  CONFIG = Release
   DEFINES = -D_CRT_SECURE_NO_WARNINGS
-  FLAGS = /DWIN32 /D_WINDOWS /Zi /Ob0 /Od /RTC1 -MDd /W0
+  FLAGS = /DWIN32 /D_WINDOWS /O2 /Ob2 /DNDEBUG -MD /W0
   INCLUDES = -ID:\titan\client\src\engine\shared\application\Nuna\..\..\..\..\external\3rd\library\zlib-1.2.3
   OBJECT_DIR = CMakeFiles\zlib_bundled.dir
   OBJECT_FILE_DIR = CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3
@@ -170,10 +170,10 @@ build CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-
   TARGET_PDB = zlib_bundled.pdb
   TARGET_SUPPORT_DIR = CMakeFiles\zlib_bundled.dir
 
-build CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\zutil.c.obj: C_COMPILER__zlib_bundled_unscanned_Debug D$:\titan\client\src\external\3rd\library\zlib-1.2.3\zutil.c || cmake_object_order_depends_target_zlib_bundled
-  CONFIG = Debug
+build CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\zutil.c.obj: C_COMPILER__zlib_bundled_unscanned_Release D$:\titan\client\src\external\3rd\library\zlib-1.2.3\zutil.c || cmake_object_order_depends_target_zlib_bundled
+  CONFIG = Release
   DEFINES = -D_CRT_SECURE_NO_WARNINGS
-  FLAGS = /DWIN32 /D_WINDOWS /Zi /Ob0 /Od /RTC1 -MDd /W0
+  FLAGS = /DWIN32 /D_WINDOWS /O2 /Ob2 /DNDEBUG -MD /W0
   INCLUDES = -ID:\titan\client\src\engine\shared\application\Nuna\..\..\..\..\external\3rd\library\zlib-1.2.3
   OBJECT_DIR = CMakeFiles\zlib_bundled.dir
   OBJECT_FILE_DIR = CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3
@@ -189,9 +189,9 @@ build CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-
 #############################################
 # Link the static library zlib_bundled.lib
 
-build zlib_bundled.lib: C_STATIC_LIBRARY_LINKER__zlib_bundled_Debug CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\adler32.c.obj CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\compress.c.obj CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\crc32.c.obj CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\deflate.c.obj CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\gzio.c.obj CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\infback.c.obj CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\inffast.c.obj CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\inflate.c.obj CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\inftrees.c.obj CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\trees.c.obj CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\uncompr.c.obj CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\zutil.c.obj
-  CONFIG = Debug
-  LANGUAGE_COMPILE_FLAGS = /DWIN32 /D_WINDOWS /Zi /Ob0 /Od /RTC1 -MDd
+build zlib_bundled.lib: C_STATIC_LIBRARY_LINKER__zlib_bundled_Release CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\adler32.c.obj CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\compress.c.obj CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\crc32.c.obj CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\deflate.c.obj CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\gzio.c.obj CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\infback.c.obj CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\inffast.c.obj CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\inflate.c.obj CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\inftrees.c.obj CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\trees.c.obj CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\uncompr.c.obj CMakeFiles\zlib_bundled.dir\D_\titan\client\src\external\3rd\library\zlib-1.2.3\zutil.c.obj
+  CONFIG = Release
+  LANGUAGE_COMPILE_FLAGS = /DWIN32 /D_WINDOWS /O2 /Ob2 /DNDEBUG -MD
   LINK_FLAGS = /machine:x64
   OBJECT_DIR = CMakeFiles\zlib_bundled.dir
   POST_BUILD = cd .
@@ -210,10 +210,10 @@ build zlib_bundled.lib: C_STATIC_LIBRARY_LINKER__zlib_bundled_Debug CMakeFiles\z
 
 build cmake_object_order_depends_target_nuna: phony || cmake_object_order_depends_target_zlib_bundled
 
-build CMakeFiles\nuna.dir\src\Nuna.cpp.obj: CXX_COMPILER__nuna_unscanned_Debug D$:\titan\client\src\engine\shared\application\Nuna\src\Nuna.cpp || cmake_object_order_depends_target_nuna
-  CONFIG = Debug
+build CMakeFiles\nuna.dir\src\Nuna.cpp.obj: CXX_COMPILER__nuna_unscanned_Release D$:\titan\client\src\engine\shared\application\Nuna\src\Nuna.cpp || cmake_object_order_depends_target_nuna
+  CONFIG = Release
   DEFINES = -DNOMINMAX -DWIN32_LEAN_AND_MEAN -D_CRT_SECURE_NO_WARNINGS
-  FLAGS = /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++17 -MDd /W4
+  FLAGS = /DWIN32 /D_WINDOWS /GR /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD /W4
   INCLUDES = -ID:\titan\client\src\engine\shared\application\Nuna\src -ID:\titan\client\src\engine\shared\application\Nuna\..\..\..\..\external\3rd\library\zlib-1.2.3
   OBJECT_DIR = CMakeFiles\nuna.dir
   OBJECT_FILE_DIR = CMakeFiles\nuna.dir\src
@@ -221,10 +221,10 @@ build CMakeFiles\nuna.dir\src\Nuna.cpp.obj: CXX_COMPILER__nuna_unscanned_Debug D
   TARGET_PDB = nuna.pdb
   TARGET_SUPPORT_DIR = CMakeFiles\nuna.dir
 
-build CMakeFiles\nuna.dir\src\NunaToc.cpp.obj: CXX_COMPILER__nuna_unscanned_Debug D$:\titan\client\src\engine\shared\application\Nuna\src\NunaToc.cpp || cmake_object_order_depends_target_nuna
-  CONFIG = Debug
+build CMakeFiles\nuna.dir\src\NunaToc.cpp.obj: CXX_COMPILER__nuna_unscanned_Release D$:\titan\client\src\engine\shared\application\Nuna\src\NunaToc.cpp || cmake_object_order_depends_target_nuna
+  CONFIG = Release
   DEFINES = -DNOMINMAX -DWIN32_LEAN_AND_MEAN -D_CRT_SECURE_NO_WARNINGS
-  FLAGS = /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++17 -MDd /W4
+  FLAGS = /DWIN32 /D_WINDOWS /GR /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD /W4
   INCLUDES = -ID:\titan\client\src\engine\shared\application\Nuna\src -ID:\titan\client\src\engine\shared\application\Nuna\..\..\..\..\external\3rd\library\zlib-1.2.3
   OBJECT_DIR = CMakeFiles\nuna.dir
   OBJECT_FILE_DIR = CMakeFiles\nuna.dir\src
@@ -232,10 +232,10 @@ build CMakeFiles\nuna.dir\src\NunaToc.cpp.obj: CXX_COMPILER__nuna_unscanned_Debu
   TARGET_PDB = nuna.pdb
   TARGET_SUPPORT_DIR = CMakeFiles\nuna.dir
 
-build CMakeFiles\nuna.dir\src\main.cpp.obj: CXX_COMPILER__nuna_unscanned_Debug D$:\titan\client\src\engine\shared\application\Nuna\src\main.cpp || cmake_object_order_depends_target_nuna
-  CONFIG = Debug
+build CMakeFiles\nuna.dir\src\main.cpp.obj: CXX_COMPILER__nuna_unscanned_Release D$:\titan\client\src\engine\shared\application\Nuna\src\main.cpp || cmake_object_order_depends_target_nuna
+  CONFIG = Release
   DEFINES = -DNOMINMAX -DWIN32_LEAN_AND_MEAN -D_CRT_SECURE_NO_WARNINGS
-  FLAGS = /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++17 -MDd /W4
+  FLAGS = /DWIN32 /D_WINDOWS /GR /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD /W4
   INCLUDES = -ID:\titan\client\src\engine\shared\application\Nuna\src -ID:\titan\client\src\engine\shared\application\Nuna\..\..\..\..\external\3rd\library\zlib-1.2.3
   OBJECT_DIR = CMakeFiles\nuna.dir
   OBJECT_FILE_DIR = CMakeFiles\nuna.dir\src
@@ -251,10 +251,10 @@ build CMakeFiles\nuna.dir\src\main.cpp.obj: CXX_COMPILER__nuna_unscanned_Debug D
 #############################################
 # Link the executable nuna.exe
 
-build nuna.exe: CXX_EXECUTABLE_LINKER__nuna_Debug CMakeFiles\nuna.dir\src\Nuna.cpp.obj CMakeFiles\nuna.dir\src\NunaToc.cpp.obj CMakeFiles\nuna.dir\src\main.cpp.obj | zlib_bundled.lib || zlib_bundled.lib
-  CONFIG = Debug
-  FLAGS = /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -MDd
-  LINK_FLAGS = /machine:x64 /debug /INCREMENTAL /subsystem:console
+build nuna.exe: CXX_EXECUTABLE_LINKER__nuna_Release CMakeFiles\nuna.dir\src\Nuna.cpp.obj CMakeFiles\nuna.dir\src\NunaToc.cpp.obj CMakeFiles\nuna.dir\src\main.cpp.obj | zlib_bundled.lib || zlib_bundled.lib
+  CONFIG = Release
+  FLAGS = /DWIN32 /D_WINDOWS /GR /EHsc /O2 /Ob2 /DNDEBUG -MD
+  LINK_FLAGS = /machine:x64 /INCREMENTAL:NO /subsystem:console
   LINK_LIBRARIES = zlib_bundled.lib  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib
   OBJECT_DIR = CMakeFiles\nuna.dir
   POST_BUILD = cd .
@@ -274,10 +274,10 @@ build nuna.exe: CXX_EXECUTABLE_LINKER__nuna_Debug CMakeFiles\nuna.dir\src\Nuna.c
 
 build cmake_object_order_depends_target_nuna_gui: phony || cmake_object_order_depends_target_nuna_lib cmake_object_order_depends_target_zlib_bundled
 
-build CMakeFiles\nuna_gui.dir\TreBrowser\TreBrowserMain.cpp.obj: CXX_COMPILER__nuna_gui_unscanned_Debug D$:\titan\client\src\engine\shared\application\Nuna\TreBrowser\TreBrowserMain.cpp || cmake_object_order_depends_target_nuna_gui
-  CONFIG = Debug
+build CMakeFiles\nuna_gui.dir\TreBrowser\TreBrowserMain.cpp.obj: CXX_COMPILER__nuna_gui_unscanned_Release D$:\titan\client\src\engine\shared\application\Nuna\TreBrowser\TreBrowserMain.cpp || cmake_object_order_depends_target_nuna_gui
+  CONFIG = Release
   DEFINES = -DNOMINMAX -DUNICODE -DWIN32_LEAN_AND_MEAN -D_CRT_SECURE_NO_WARNINGS -D_UNICODE
-  FLAGS = /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++17 -MDd /W4 /utf-8
+  FLAGS = /DWIN32 /D_WINDOWS /GR /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD /W4 /utf-8
   INCLUDES = -ID:\titan\client\src\engine\shared\application\Nuna\src -ID:\titan\client\src\engine\shared\application\Nuna\..\..\..\..\external\3rd\library\zlib-1.2.3
   OBJECT_DIR = CMakeFiles\nuna_gui.dir
   OBJECT_FILE_DIR = CMakeFiles\nuna_gui.dir\TreBrowser
@@ -293,10 +293,10 @@ build CMakeFiles\nuna_gui.dir\TreBrowser\TreBrowserMain.cpp.obj: CXX_COMPILER__n
 #############################################
 # Link the executable nuna_gui.exe
 
-build nuna_gui.exe: CXX_EXECUTABLE_LINKER__nuna_gui_Debug CMakeFiles\nuna_gui.dir\TreBrowser\TreBrowserMain.cpp.obj | nuna_lib.lib zlib_bundled.lib || nuna_lib.lib zlib_bundled.lib
-  CONFIG = Debug
-  FLAGS = /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -MDd
-  LINK_FLAGS = /machine:x64 /debug /INCREMENTAL /subsystem:windows
+build nuna_gui.exe: CXX_EXECUTABLE_LINKER__nuna_gui_Release CMakeFiles\nuna_gui.dir\TreBrowser\TreBrowserMain.cpp.obj | nuna_lib.lib zlib_bundled.lib || nuna_lib.lib zlib_bundled.lib
+  CONFIG = Release
+  FLAGS = /DWIN32 /D_WINDOWS /GR /EHsc /O2 /Ob2 /DNDEBUG -MD
+  LINK_FLAGS = /machine:x64 /INCREMENTAL:NO /subsystem:windows
   LINK_LIBRARIES = nuna_lib.lib  zlib_bundled.lib  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib
   OBJECT_DIR = CMakeFiles\nuna_gui.dir
   POST_BUILD = cd .
@@ -316,10 +316,10 @@ build nuna_gui.exe: CXX_EXECUTABLE_LINKER__nuna_gui_Debug CMakeFiles\nuna_gui.di
 
 build cmake_object_order_depends_target_nuna_lib: phony || cmake_object_order_depends_target_zlib_bundled
 
-build CMakeFiles\nuna_lib.dir\src\Nuna.cpp.obj: CXX_COMPILER__nuna_lib_unscanned_Debug D$:\titan\client\src\engine\shared\application\Nuna\src\Nuna.cpp || cmake_object_order_depends_target_nuna_lib
-  CONFIG = Debug
+build CMakeFiles\nuna_lib.dir\src\Nuna.cpp.obj: CXX_COMPILER__nuna_lib_unscanned_Release D$:\titan\client\src\engine\shared\application\Nuna\src\Nuna.cpp || cmake_object_order_depends_target_nuna_lib
+  CONFIG = Release
   DEFINES = -D_CRT_SECURE_NO_WARNINGS
-  FLAGS = /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++17 -MDd
+  FLAGS = /DWIN32 /D_WINDOWS /GR /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD
   INCLUDES = -ID:\titan\client\src\engine\shared\application\Nuna\src -ID:\titan\client\src\engine\shared\application\Nuna\..\..\..\..\external\3rd\library\zlib-1.2.3
   OBJECT_DIR = CMakeFiles\nuna_lib.dir
   OBJECT_FILE_DIR = CMakeFiles\nuna_lib.dir\src
@@ -327,10 +327,10 @@ build CMakeFiles\nuna_lib.dir\src\Nuna.cpp.obj: CXX_COMPILER__nuna_lib_unscanned
   TARGET_PDB = nuna_lib.pdb
   TARGET_SUPPORT_DIR = CMakeFiles\nuna_lib.dir
 
-build CMakeFiles\nuna_lib.dir\src\NunaToc.cpp.obj: CXX_COMPILER__nuna_lib_unscanned_Debug D$:\titan\client\src\engine\shared\application\Nuna\src\NunaToc.cpp || cmake_object_order_depends_target_nuna_lib
-  CONFIG = Debug
+build CMakeFiles\nuna_lib.dir\src\NunaToc.cpp.obj: CXX_COMPILER__nuna_lib_unscanned_Release D$:\titan\client\src\engine\shared\application\Nuna\src\NunaToc.cpp || cmake_object_order_depends_target_nuna_lib
+  CONFIG = Release
   DEFINES = -D_CRT_SECURE_NO_WARNINGS
-  FLAGS = /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++17 -MDd
+  FLAGS = /DWIN32 /D_WINDOWS /GR /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD
   INCLUDES = -ID:\titan\client\src\engine\shared\application\Nuna\src -ID:\titan\client\src\engine\shared\application\Nuna\..\..\..\..\external\3rd\library\zlib-1.2.3
   OBJECT_DIR = CMakeFiles\nuna_lib.dir
   OBJECT_FILE_DIR = CMakeFiles\nuna_lib.dir\src
@@ -346,9 +346,9 @@ build CMakeFiles\nuna_lib.dir\src\NunaToc.cpp.obj: CXX_COMPILER__nuna_lib_unscan
 #############################################
 # Link the static library nuna_lib.lib
 
-build nuna_lib.lib: CXX_STATIC_LIBRARY_LINKER__nuna_lib_Debug CMakeFiles\nuna_lib.dir\src\Nuna.cpp.obj CMakeFiles\nuna_lib.dir\src\NunaToc.cpp.obj || zlib_bundled.lib
-  CONFIG = Debug
-  LANGUAGE_COMPILE_FLAGS = /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -MDd
+build nuna_lib.lib: CXX_STATIC_LIBRARY_LINKER__nuna_lib_Release CMakeFiles\nuna_lib.dir\src\Nuna.cpp.obj CMakeFiles\nuna_lib.dir\src\NunaToc.cpp.obj || zlib_bundled.lib
+  CONFIG = Release
+  LANGUAGE_COMPILE_FLAGS = /DWIN32 /D_WINDOWS /GR /EHsc /O2 /Ob2 /DNDEBUG -MD
   LINK_FLAGS = /machine:x64
   OBJECT_DIR = CMakeFiles\nuna_lib.dir
   POST_BUILD = cd .

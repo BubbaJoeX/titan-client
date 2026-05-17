@@ -85,6 +85,8 @@ private:
 	void                       reconnectLoginServer       (bool forDelete);
 	void                       handleCreate               ();
 
+	void                       ensureViewerBehindChrome   ();
+
 private:
 
 	UIButton *                 m_okButton;
@@ -118,7 +120,7 @@ private:
 	bool                              m_waitingDeletion;
 	CuiLoginManagerAvatarInfo *       m_deletingAvatar;
 
-	int                               m_updateAvatar;
+	bool                              m_refreshingCharacterList;
 
 	bool                              m_waitingForConnection;
 	bool                              m_dropFromCluster;

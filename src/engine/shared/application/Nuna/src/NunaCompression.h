@@ -16,6 +16,59 @@ namespace Nuna
 namespace Compression
 {
 
+// Default-window zlib inflate until Z_STREAM_END, allowing extra tail bytes in `data` (slot reads that
+// include padding or the next archive chunk make `uncompress()` fail with Z_DATA_ERROR).
+inline bool decompressZlibStreamAllowTrailing(const uint8_t* data, size_t dataSize,
+                                              std::vector<uint8_t>& decompressed, size_t expectedOutSize)
+{
+    if (!data || dataSize < 2)
+        return false;
+
+    z_stream strm{};
+    strm.next_in = const_cast<Bytef*>(reinterpret_cast<const Bytef*>(data));
+    strm.avail_in = static_cast<uInt>(dataSize);
+    strm.zalloc = Z_NULL;
+    strm.zfree = Z_NULL;
+    strm.opaque = Z_NULL;
+
+    if (inflateInit(&strm) != Z_OK)
+        return false;
+
+    decompressed.clear();
+    decompressed.resize(std::max(std::max(expectedOutSize * 2, dataSize * 4), size_t(65536)));
+    strm.next_out = decompressed.data();
+    strm.avail_out = static_cast<uInt>(decompressed.size());
+
+    for (;;)
+    {
+        const int ret = inflate(&strm, Z_FINISH);
+        if (ret == Z_STREAM_END)
+            break;
+        if (ret != Z_OK && ret != Z_BUF_ERROR)
+        {
+            inflateEnd(&strm);
+            return false;
+        }
+        const size_t oldSz = decompressed.size();
+        if (oldSz > 128u * 1024u * 1024u)
+        {
+            inflateEnd(&strm);
+            return false;
+        }
+        decompressed.resize(oldSz * 2);
+        strm.next_out = reinterpret_cast<Bytef*>(decompressed.data() + strm.total_out);
+        strm.avail_out = static_cast<uInt>(decompressed.size() - strm.total_out);
+    }
+
+    inflateEnd(&strm);
+    decompressed.resize(strm.total_out);
+    if (strm.total_out == 0)
+        return false;
+    if (expectedOutSize != 0 && strm.total_out != expectedOutSize)
+        return false;
+    return true;
+}
+
 // Compress data using zlib
 inline bool compress(const uint8_t* data, size_t dataSize, 
                      std::vector<uint8_t>& compressed, int level = Z_DEFAULT_COMPRESSION)
@@ -65,8 +118,14 @@ inline bool decompress(const uint8_t* data, size_t dataSize,
                 return true;
             }
             if (zr != Z_BUF_ERROR && zr != Z_MEM_ERROR)
+            {
+                if (decompressZlibStreamAllowTrailing(data, dataSize, decompressed, expectedSize))
+                    return true;
                 break;
+            }
         }
+        if (decompressZlibStreamAllowTrailing(data, dataSize, decompressed, expectedSize))
+            return true;
     }
     else
     {
@@ -85,8 +144,14 @@ inline bool decompress(const uint8_t* data, size_t dataSize,
                 return true;
             }
             if (zr != Z_BUF_ERROR && zr != Z_MEM_ERROR)
+            {
+                if (decompressZlibStreamAllowTrailing(data, dataSize, decompressed, 0))
+                    return true;
                 break;
+            }
         }
+        if (decompressZlibStreamAllowTrailing(data, dataSize, decompressed, 0))
+            return true;
     }
 
     // Raw DEFLATE (inflateInit2 windowBits -15) — pipelines that omit zlib CMF/FLG

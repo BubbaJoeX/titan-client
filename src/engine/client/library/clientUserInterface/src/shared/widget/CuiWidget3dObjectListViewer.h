@@ -157,6 +157,7 @@ public:
 	virtual void              Destroy                     ();
 
 	virtual void              Render                      (UICanvas & ) const;
+	virtual void              RestoreRenderTargetViewportAfterRender () const;
 	virtual bool              ProcessMessage              (const UIMessage & );
 	virtual void              SetSize                     (const UISize & );
 	

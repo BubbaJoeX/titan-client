@@ -40,6 +40,7 @@
 #include "swgClientUserInterface/SwgCuiMediatorTypes.h"
 
 #include "UIButton.h"
+#include "UIBaseObject.h"
 #include "UIComposite.h"
 #include "UIData.h"
 #include "UIDataSource.h"
@@ -387,6 +388,7 @@ void SwgCuiAvatarCustomizationBase::performActivate   ()
 	}
 
 	m_transitionFinished = false;
+	ensureObjectViewerBehindChrome ();
 }
 
 //-----------------------------------------------------------------
@@ -419,6 +421,17 @@ void SwgCuiAvatarCustomizationBase::performDeactivate ()
 	m_patternVar = 0;
 
 	setObject (0, 0);
+}
+
+//-----------------------------------------------------------------
+
+void SwgCuiAvatarCustomizationBase::ensureObjectViewerBehindChrome ()
+{
+	if (!m_objectViewer)
+		return;
+	UIBaseObject * const p = m_objectViewer->GetParent ();
+	if (p && p->IsA (TUIPage))
+		IGNORE_RETURN (static_cast<UIPage *>(p)->MoveChild (m_objectViewer, UIBaseObject::Bottom));
 }
 
 // ----------------------------------------------------------------------
@@ -792,6 +805,8 @@ void SwgCuiAvatarCustomizationBase::OnHoverOut (UIWidget * const context)
 void SwgCuiAvatarCustomizationBase::update (float const deltaTimeSecs)
 {
 	CuiMediator::update (deltaTimeSecs);
+
+	ensureObjectViewerBehindChrome ();
 
 	Object * const player     = m_objectViewer->getLastObject ();
 
@@ -1500,6 +1515,8 @@ void SwgCuiAvatarCustomizationBase::setGroup (std::string const & groupName)
 			m_compositeColorPicker->SetVisible (false);
 		}
 	}
+
+	ensureObjectViewerBehindChrome ();
 }
 
 //----------------------------------------------------------------------

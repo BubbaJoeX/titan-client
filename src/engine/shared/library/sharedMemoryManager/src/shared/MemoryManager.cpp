@@ -22,6 +22,7 @@
 
 #include <cstdio>
 #include <cstdint>
+#include <climits>
 
 #ifdef _WIN32
 #include <io.h>
@@ -403,7 +404,7 @@ inline Block const * Block::getNext() const
 
 inline void Block::setNext(Block *next)
 {
-	DEBUG_FATAL(next && reinterpret_cast<int>(next) - reinterpret_cast<int>(this) < cms_blockSize, ("too small"));
+	DEBUG_FATAL(next && (reinterpret_cast<byte const *>(next) - reinterpret_cast<byte const *>(this)) < cms_blockSize, ("too small"));
 	m_next = next;
 }
 
@@ -1198,17 +1199,24 @@ void * MemoryManager::allocate(size_t size, std::uintptr_t owner, bool array, bo
 
 	ms_criticalSection->enter();
 
-		// get the size of the allocation
-		int allocSize = (cms_allocatedBlockSize + cms_guardBandSize + (size ? static_cast<int>(size) : 1) + cms_guardBandSize + 15) & ~15;
+		// get the size of the allocation (guard against size_t -> int truncation / overflow in downstream int math)
+		size_t const paddedUser = size ? size : 1u;
+		size_t const overhead = static_cast<size_t>(cms_allocatedBlockSize) + static_cast<size_t>(cms_guardBandSize) * 2u + 15u;
+		if (paddedUser > static_cast<size_t>(INT_MAX) - overhead)
+		{
+			ms_criticalSection->leave();
+			FATAL(true, ("allocation size too large (%zu bytes)", size));
+		}
+		int const blockSizeForSearch = static_cast<int>((overhead + paddedUser) & ~15u);
 
 		FreeBlock * bestFreeBlock = NULL;
 		for (int tries = 0; !bestFreeBlock && tries < 2; ++tries)
 		{
-			bestFreeBlock = searchFreeList(allocSize);
+			bestFreeBlock = searchFreeList(blockSizeForSearch);
 
 			// if the memory allocation failed, try to get some more memory
 			if (!bestFreeBlock)
-				allocateSystemMemory(convertBytesToMegabytesForSystemAllocation(cms_blockSize + cms_blockSize + allocSize + cms_blockSize));
+				allocateSystemMemory(convertBytesToMegabytesForSystemAllocation(cms_blockSize + cms_blockSize + blockSizeForSearch + cms_blockSize));
 		}
 
 		// make sure memory was available
@@ -1222,7 +1230,7 @@ void * MemoryManager::allocate(size_t size, std::uintptr_t owner, bool array, bo
 			}
 
 			ms_criticalSection->leave();
-			FATAL(true, ("failed allocation attempt for %d (%d actual)", allocSize, size));
+			FATAL(true, ("failed allocation attempt for %d (%zu actual)", blockSizeForSearch, size));
 		}
 
 		removeFromFreeList(bestFreeBlock);
@@ -1231,9 +1239,9 @@ void * MemoryManager::allocate(size_t size, std::uintptr_t owner, bool array, bo
 		bestFreeBlock->setFree(false);
 
 		// check to see if we should subdivide this block
-		if (bestFreeBlock->getSize() > (allocSize + cms_allocatedBlockSize + cms_guardBandSize + 1 + cms_guardBandSize))
+		if (bestFreeBlock->getSize() > (blockSizeForSearch + cms_allocatedBlockSize + cms_guardBandSize + 1 + cms_guardBandSize))
 		{
-			Block *block = reinterpret_cast<Block *>(reinterpret_cast<byte *>(bestFreeBlock) + allocSize);
+			Block *block = reinterpret_cast<Block *>(reinterpret_cast<byte *>(bestFreeBlock) + blockSizeForSearch);
 			block->setPrevious(bestFreeBlock);
 			block->setNext(bestFreeBlock->getNext());
 			block->setFree(true);
@@ -1290,16 +1298,16 @@ void * MemoryManager::allocate(size_t size, std::uintptr_t owner, bool array, bo
 #endif
 
 		// update the size of the allocation because our block may not have been large enough to subdivide
-		allocSize = best->getSize();
+		int const actualBlockSize = best->getSize();
 
 		// update the number of bytes allocated
 		++ms_allocateCalls;
-		ms_allocateBytesTotal += allocSize;
-		ms_currentBytesAllocated += allocSize;
+		ms_allocateBytesTotal += actualBlockSize;
+		ms_currentBytesAllocated += actualBlockSize;
 
 #if DO_TRACK
 		if (!leakTest)
-			ms_currentBytesAllocatedNoLeakTest += allocSize;
+			ms_currentBytesAllocatedNoLeakTest += actualBlockSize;
 #endif
 
 		if (++ms_allocations > ms_maxAllocations)
@@ -1327,14 +1335,14 @@ void * MemoryManager::allocate(size_t size, std::uintptr_t owner, bool array, bo
 
 	ms_criticalSection->leave();
 
-	DEBUG_REPORT_LOG_PRINT(ms_debugReportLogMemoryAllocFreePointers, ("MM::alloc %08x\n", reinterpret_cast<int>(memory)));
+	DEBUG_REPORT_LOG_PRINT(ms_debugReportLogMemoryAllocFreePointers, ("MM::alloc %p\n", static_cast<void const *>(memory)));
 
 #ifdef _DEBUG
 	if (ms_debugProfileAllocate)
 		PROFILER_BLOCK_LEAVE(ms_allocateProfilerBlock);
 #endif
 
-//	DEBUG_REPORT_LOG(ms_logEachAlloc, ("MemoryManager::allocate() requested_size=%d, alloc_size=%d, ptr=%p\n", size, allocSize, memory));
+//	DEBUG_REPORT_LOG(ms_logEachAlloc, ("MemoryManager::allocate() requested_size=%zu, alloc_size=%d, ptr=%p\n", size, actualBlockSize, memory));
 
 	return memory;
 #endif
@@ -1348,26 +1356,31 @@ void *MemoryManager::reallocate(void *userPointer, size_t newSize)
 	bool array = false;
 	int oldSize = 0;
 
-	if (userPointer)
+	// realloc(nullptr, n) must behave like malloc — avoid touching block metadata or memcpy'ing from null.
+	if (!userPointer)
 	{
-		allocatedBlock = reinterpret_cast<AllocatedBlock *>(reinterpret_cast<byte *>(userPointer) - (cms_allocatedBlockSize + cms_guardBandSize));
-		#if DO_SCALAR
-		array = allocatedBlock->isAllocatedAsArray();
-		#endif
-		if (!newSize)
-		{
-			MemoryManager::free(userPointer, array);
+		if (newSize == 0)
+			return 0;
+		return allocate(newSize, 0, false, false);
+	}
+
+	allocatedBlock = reinterpret_cast<AllocatedBlock *>(reinterpret_cast<byte *>(userPointer) - (cms_allocatedBlockSize + cms_guardBandSize));
+#if DO_SCALAR
+	array = allocatedBlock->isAllocatedAsArray();
+#endif
+	if (!newSize)
+	{
+		MemoryManager::free(userPointer, array);
 
 //			DEBUG_REPORT_LOG(ms_logEachAlloc, ("MemoryManager::reallocate() new_requested_size=%d, org ptr=%p, new ptr=NULL\n", newSize, userPointer));
 
-			return 0;
-		}
-		#if DO_TRACK || DO_GUARDS
-		oldSize = allocatedBlock->getRequestedSize();
-		#else
-		oldSize = allocatedBlock->getSize()-cms_allocatedBlockSize;
-		#endif
+		return 0;
 	}
+#if DO_TRACK || DO_GUARDS
+	oldSize = allocatedBlock->getRequestedSize();
+#else
+	oldSize = allocatedBlock->getSize()-cms_allocatedBlockSize;
+#endif
 
 	if (newSize <= static_cast<size_t>(oldSize))
 	{
@@ -1385,10 +1398,9 @@ void *MemoryManager::reallocate(void *userPointer, size_t newSize)
 #endif
 
 	void *newPointer = allocate(newSize, owner, array, leakTest);
-	if (oldSize)
-		memcpy(newPointer, userPointer, oldSize);
-	if (userPointer)
-		MemoryManager::free(userPointer, array);
+	if (oldSize > 0)
+		memcpy(newPointer, userPointer, static_cast<size_t>(oldSize));
+	MemoryManager::free(userPointer, array);
 
 //	DEBUG_REPORT_LOG(ms_logEachAlloc, ("MemoryManager::reallocate() new_requested_size=%d, org ptr=%p, new ptr=%p\n", newSize, userPointer, newPointer));
 
@@ -1424,7 +1436,7 @@ void MemoryManager::free(void * userPointer, bool array)
 		verify(ms_debugVerifyGuardPatterns, ms_debugVerifyFreePatterns);
 #endif
 
-	DEBUG_REPORT_LOG_PRINT(ms_debugReportLogMemoryAllocFreePointers, ("MM::free %08x\n", reinterpret_cast<int>(userPointer)));
+	DEBUG_REPORT_LOG_PRINT(ms_debugReportLogMemoryAllocFreePointers, ("MM::free %p\n", userPointer));
 
 	UNREF(array);
 
@@ -1674,7 +1686,7 @@ void MemoryManager::verify(bool guardPatterns, bool freePatterns)
 							if (*memory != cms_freeFillPattern)
 							{
 								corrupt = true;
-								DEBUG_REPORT_LOG_PRINT(true, ("corrupted free pattern at position %3d [membase=0x%x, memaddr=0x%x] = %02x\n", i, reinterpret_cast<unsigned int>(reinterpret_cast<byte *>(block) + cms_freeBlockSize), reinterpret_cast<unsigned int>(reinterpret_cast<byte *>(block) + cms_freeBlockSize + i), static_cast<int>(*memory)));
+								DEBUG_REPORT_LOG_PRINT(true, ("corrupted free pattern at position %3d [membase=%p, memaddr=%p] = %02x\n", i, static_cast<void *>(reinterpret_cast<byte *>(block) + cms_freeBlockSize), static_cast<void *>(reinterpret_cast<byte *>(block) + cms_freeBlockSize + i), static_cast<int>(*memory)));
 								DEBUG_OUTPUT_CHANNEL("Foundation\\MemoryManager", ("corrupted free pattern at position %3d = %02x\n", i, static_cast<int>(*memory)));
 							}
 
@@ -1742,7 +1754,7 @@ void MemoryManagerNamespace::report(AllocatedBlock const * block, bool leak)
 	std::uintptr_t const owner = 0;
 #endif
 #if DO_TRACK || DO_GUARDS
-	int const requestedSize = block->getRequestedSize();;
+	int const requestedSize = block->getRequestedSize();
 #else
 	int const requestedSize = 0;
 #endif
@@ -1751,11 +1763,11 @@ void MemoryManagerNamespace::report(AllocatedBlock const * block, bool leak)
 	char      libName[256];
 	char      fileName[256];
 	int       line = 0;
-	int const memory = reinterpret_cast<int>(reinterpret_cast<byte const *>(block) + cms_allocatedBlockSize + cms_guardBandSize);
+	void const * const memory = reinterpret_cast<byte const *>(block) + cms_allocatedBlockSize + cms_guardBandSize;
 
 	if (ms_allowNameLookup && DebugHelp::lookupAddress(owner, libName, fileName, sizeof(fileName), line))
 	{
-		sprintf(buffer, "%s(%d) : %08X memory %s, %d bytes\n", fileName, line, memory, leak ? "leak" : "allocation", static_cast<int>(requestedSize));
+		sprintf(buffer, "%s(%d) : %p memory %s, %d bytes\n", fileName, line, memory, leak ? "leak" : "allocation", static_cast<int>(requestedSize));
 	}
 	else
 	{

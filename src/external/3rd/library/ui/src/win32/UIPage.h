@@ -180,7 +180,6 @@ private:
 	                        UIPage                 &operator = ( UIPage const & );
 	
 	        void            ProcessTab                  (const UIMessage &, bool allowParentCycling = true);
-	        bool            processMouseMessageDirectChildrenPaintOrder (const UIMessage &msg, bool & childWasHit);
 	        UIWidget       *GetNextWidgetInTabOrder     (const UIBaseObject * ) const;
 	        UIWidget       *GetPreviousWidgetInTabOrder (const UIBaseObject * ) const;
 	        void            BuildWidgetVector           () const;

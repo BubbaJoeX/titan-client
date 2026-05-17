@@ -74,6 +74,9 @@ protected:
 	virtual void               performDeactivate              ();
 
 protected:
+	void                       ensureObjectViewerBehindChrome ();
+
+protected:
 	void                       randomize                        (bool all);
 	void                       setCustomizationGroupNameVisible (bool visible);
 	void                       SetDisableSubPagesWhenNotSelected(bool disableSubPages);

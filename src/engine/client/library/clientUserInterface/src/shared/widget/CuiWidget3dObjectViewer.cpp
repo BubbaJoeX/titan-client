@@ -601,11 +601,6 @@ void CuiWidget3dObjectViewer::RenderStart   (UICanvas & canvas) const
 
 void CuiWidget3dObjectViewer::RenderStop () const
 {
-	if (m_renderObject == 0)
-		return;
-	
-	Graphics::setViewport (0, 0, Graphics::getCurrentRenderTargetWidth (), Graphics::getCurrentRenderTargetHeight ());
-
 }
 
 //-----------------------------------------------------------------
@@ -614,6 +609,14 @@ void CuiWidget3dObjectViewer::Render (UICanvas & canvas) const
 {
 	RenderStart   (canvas);
 	RenderStop    ();
+	Graphics::setViewport (0, 0, Graphics::getCurrentRenderTargetWidth (), Graphics::getCurrentRenderTargetHeight (), 0.0f, 1.0f);
+}
+
+//----------------------------------------------------------------------
+
+void CuiWidget3dObjectViewer::RestoreRenderTargetViewportAfterRender () const
+{
+	Graphics::setViewport (0, 0, Graphics::getCurrentRenderTargetWidth (), Graphics::getCurrentRenderTargetHeight (), 0.0f, 1.0f);
 }
 
 //----------------------------------------------------------------------

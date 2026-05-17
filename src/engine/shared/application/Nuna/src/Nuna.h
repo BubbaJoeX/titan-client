@@ -61,6 +61,8 @@ inline bool isTreHeaderSupported(uint32_t token, uint32_t version)
 constexpr uint32_t TAG_TOC  = ' ' | ('C' << 8) | ('O' << 16) | ('T' << 24);  // "TOC " (space-C-O-T in little-endian)
 constexpr uint32_t TAG_NTOC = 'N' | ('T' << 8) | ('O' << 16) | ('C' << 24);  // "NTOC" (encrypted titanlst)
 constexpr uint32_t TAG_0001 = '1' | ('0' << 8) | ('0' << 16) | ('0' << 24);  // "0001"
+/// Titanlst / SearchTOC table-of-contents file version (some community patch stacks write 0002 with a custom index blob).
+constexpr uint32_t TAG_0002 = '2' | ('0' << 8) | ('0' << 16) | ('0' << 24);  // "0002"
 
 // ======================================================================
 // Compression Types
@@ -72,6 +74,13 @@ enum class CompressionType : uint32_t
     Deprecated = 1,
     Zlib = 2
 };
+
+/// TreeFile treats any non-zero TOC / name-block / per-file compressor as zlib-wrapped payload (see
+/// TreeFile::SearchTree: `isCompressed` / `if (header.blockCompressor)`). Nuna matches that for unpack.
+inline bool treFieldImpliesZlibPayload(uint32_t field)
+{
+    return field != 0;
+}
 
 // ======================================================================
 // TRE Header Structure (36 bytes)
@@ -108,6 +117,14 @@ struct TocEntry
 /// Map a raw TOC blob to `TocEntry` rows. Some SWG `.tre` archives pad each row (e.g. 32 bytes per file);
 /// only the leading fields are read into `TocEntry`.
 bool layoutTocEntriesFromBlob(const uint8_t* blob, size_t blobLen, uint32_t numberOfFiles, std::vector<TocEntry>& out);
+
+/// After XOR decrypt: decode TOC bytes per `tocCompressor` hint, with opposite-path fallback (TREE v4–v6 blind recovery).
+bool decodeTreTocBytes(uint32_t tocCompressorField, const uint8_t* tocBytes, size_t tocSize, uint32_t numberOfFiles,
+                       std::vector<TocEntry>& outToc);
+
+/// After XOR decrypt: decode filename blob per `blockCompressor` hint, with loose zlib and mis-tag fallbacks.
+bool decodeTreNameBlock(uint32_t blockCompressorField, const uint8_t* src, size_t srcSize, uint32_t uncompSize,
+                        std::vector<char>& nameBlockOut);
 
 // ======================================================================
 // TOC File Header (32 bytes)
@@ -231,6 +248,14 @@ struct SaltGuessGenOptions
     uint64_t maxCandidates = 500000; ///< Hard cap on emitted lines (deduped).
 };
 
+/// Options for `carve-zlib` — scan arbitrary binary for embedded zlib-wrapped deflate streams (no archive TOC).
+struct CarveZlibOptions
+{
+    size_t minInflatedBytes = 64;       ///< Ignore tiny successful inflates.
+    size_t maxExtractedStreams = 0;     ///< 0 = no limit.
+    bool   quiet = false;
+};
+
 struct ListOptions
 {
     bool               showSize = true;
@@ -293,6 +318,11 @@ Result extractPathPrefix(const std::string& inputTre,
                          const std::string& outputRootDir,
                          const UnpackOptions& options = UnpackOptions());
 
+/// Print TOC row, contiguous slot size, optional next-file gap, and hex head (decrypted if NUNA/LEGE) — use when extract fails or for RE.
+Result inspectEntry(const std::string& inputTre,
+                    const std::string& archiveInternalPath,
+                    const EncryptionOptions& encryption = EncryptionOptions());
+
 Result list(const std::string& inputTre, 
             const ListOptions& options = ListOptions(),
             std::vector<std::pair<std::string, TocEntry>>* entries = nullptr);
@@ -310,6 +340,10 @@ Result analyze(const std::string& inputTre,
 
 /// Copy on-disk ciphertext regions (header, encryption header, TOC, names, payload tail) without decrypting — for inspection when the password is unknown.
 Result dumpCipher(const std::string& inputTre, const std::string& outputDir);
+
+/// Forensic: scan a file for zlib CMF/FLG + deflate streams and write each successful inflate to `outputDir` as `zlib_off_0x........_out_N.bin`. Does not use the TRE TOC; works on plaintext or mixed binary (will not recover XOR ciphertext as zlib).
+Result carveZlibStreams(const std::string& inputPath, const std::string& outputDir,
+                        const CarveZlibOptions& opts = CarveZlibOptions());
 
 /// Try each non-empty line of `wordlistPath` as the TitanPak/LEGE password until TOC decrypt validates (same checks as `analyze` TOC probe).
 Result tryPasswordWordlist(const std::string& inputTre, const std::string& wordlistPath,

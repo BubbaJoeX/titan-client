@@ -89,6 +89,7 @@ public:
 
 
 	virtual void              Render( UICanvas & ) const;
+	virtual void              RestoreRenderTargetViewportAfterRender () const;
 	virtual bool			  OnMessage( UIWidget *context, const UIMessage & msg );
 	virtual void              OnShow( UIWidget *Context );
 	virtual void              OnHide( UIWidget *Context );

@@ -34,6 +34,7 @@ struct CommandLine
     std::string command;
     std::string arg1;
     std::string arg2;
+    std::string arg3;
     std::string password;
     std::string filter;
     std::string treSearchPath;
@@ -60,10 +61,13 @@ Copyright (c) Titan Project
 Usage:
   nuna pack <directory> <output.titanpak> [options]
   nuna unpack <input.titanpak> <directory> [options]
+  nuna extract-one <input.tre> <internal/path> <output_file> [options]
   nuna list <input.titanpak> [options]
   nuna validate <input.titanpak> [options]
   nuna analyze <input.tre|.titanpak> [options]
+  nuna inspect-entry <input.tre> <internal/path> [options]
   nuna dump-cipher <input.tre> <output_dir>
+  nuna carve-zlib <input.bin> <output_dir>
   nuna try-passwords <input.tre> <wordlist.txt> [options]
   nuna salt-guesses <input.tre> [--guess-out <file>] [--seeds <file>] [--guess-cap N]
   nuna toc create <output.titanlst> <tre1> <tre2> ... [options]
@@ -73,11 +77,14 @@ Usage:
 
 Commands:
   pack       Create a TitanPak archive from a directory
-  unpack     Extract a TitanPak archive to a directory  
+  unpack     Extract a TitanPak archive to a directory
+  extract-one Extract a single internal path from one .tre (does not walk all entries)
   list       List contents of a TitanPak archive
   validate   Validate a TitanPak archive
   analyze    Dump header / encryption metadata / layout (for RE without crypto source)
+  inspect-entry  Print TOC row, slot span, next offset gap, hex head — when extract fails or for RE
   dump-cipher Copy ciphertext regions to files (no password; offline inspection)
+  carve-zlib   Scan file for embedded zlib streams; extract without TRE TOC (plaintext zlib only)
   try-passwords Dictionary attack: try each wordlist line until TOC decrypt OK (NUNA/LEGE)
   salt-guesses Build candidate passwords from archive salt/IV + bases (pipe to try-passwords)
   toc        Work with titanlst/TOC files (create, list, unpack, validate)
@@ -117,6 +124,7 @@ Examples:
   nuna toc unpack default.titanlst ./extracted -s ./tre_files
   nuna analyze mystery.titanpak
   nuna analyze mystery.titanpak -d guess_password
+  nuna inspect-entry patch_00.tre misc/object_template_crc_string_table.iff
 
 )" << std::endl;
 }
@@ -222,6 +230,10 @@ CommandLine parseCommandLine(int argc, char* argv[])
         {
             cmd.arg2 = arg;
         }
+        else if (cmd.arg3.empty())
+        {
+            cmd.arg3 = arg;
+        }
     }
     
     return cmd;
@@ -297,9 +309,27 @@ int main(int argc, char* argv[])
         // Always enable encryption with hardcoded password for encrypted archives
         // The unpack function will detect if the archive is actually encrypted
         options.encryption.enabled = true;
-        options.encryption.password = Nuna::Crypto::resolveTrePassword(cmd.password);
+        options.encryption.password = cmd.password;
 
         result = Nuna::unpack(cmd.arg1, cmd.arg2, options);
+    }
+    else if (cmd.command == "extract-one" || cmd.command == "extractone" || cmd.command == "eo")
+    {
+        if (cmd.arg1.empty() || cmd.arg2.empty() || cmd.arg3.empty())
+        {
+            std::cerr << "Error: extract-one requires <input.tre> <internal/path> <output_file>\n";
+            std::cerr << "  Example: nuna extract-one patch.tre misc/foo.iff out/foo.iff -o\n";
+            return 1;
+        }
+
+        Nuna::UnpackOptions options;
+        options.overwrite = cmd.overwrite;
+        options.quiet = cmd.quiet;
+        options.verbose = cmd.verbose;
+        options.encryption.enabled = true;
+        options.encryption.password = cmd.password;
+
+        result = Nuna::extractOne(cmd.arg1, cmd.arg2, cmd.arg3, options);
     }
     // List command
     else if (cmd.command == "list" || cmd.command == "l")
@@ -316,7 +346,7 @@ int main(int argc, char* argv[])
         
         // Always enable encryption with hardcoded password for encrypted archives
         options.encryption.enabled = true;
-        options.encryption.password = Nuna::Crypto::resolveTrePassword(cmd.password);
+        options.encryption.password = cmd.password;
 
         result = Nuna::list(cmd.arg1, options);
     }
@@ -352,6 +382,22 @@ int main(int argc, char* argv[])
 
         result = Nuna::analyze(cmd.arg1, encryption);
     }
+    else if (cmd.command == "inspect-entry" || cmd.command == "inspectentry" || cmd.command == "slot")
+    {
+        if (cmd.arg1.empty() || cmd.arg2.empty())
+        {
+            std::cerr << "Error: inspect-entry requires <input.tre> <internal/path>\n";
+            std::cerr << "  Example: nuna inspect-entry patch_00.tre misc/object_template_crc_string_table.iff\n";
+            std::cerr << "  Options: -d / --decrypt <password> (same as list/unpack)\n";
+            return 1;
+        }
+
+        Nuna::EncryptionOptions encryption;
+        encryption.enabled = true;
+        encryption.password = cmd.password;
+
+        result = Nuna::inspectEntry(cmd.arg1, cmd.arg2, encryption);
+    }
     else if (cmd.command == "dump-cipher" || cmd.command == "dumpcipher")
     {
         if (cmd.arg1.empty() || cmd.arg2.empty())
@@ -361,6 +407,19 @@ int main(int argc, char* argv[])
         }
 
         result = Nuna::dumpCipher(cmd.arg1, cmd.arg2);
+    }
+    else if (cmd.command == "carve-zlib" || cmd.command == "carvezlib")
+    {
+        if (cmd.arg1.empty() || cmd.arg2.empty())
+        {
+            std::cerr << "Error: carve-zlib requires <input_file> <output_directory>" << std::endl;
+            std::cerr << "  Forensic zlib scan; does not decrypt NUNA/LEGE XOR (use try-passwords / dump-cipher)." << std::endl;
+            return 1;
+        }
+
+        Nuna::CarveZlibOptions cz;
+        cz.quiet = cmd.quiet;
+        result = Nuna::carveZlibStreams(cmd.arg1, cmd.arg2, cz);
     }
     else if (cmd.command == "try-passwords" || cmd.command == "guess-password" || cmd.command == "try-password")
     {
@@ -504,11 +563,6 @@ int main(int argc, char* argv[])
             }
             
             result = Nuna::validateTitanlst(cmd.arg2);
-            
-            if (result.ok())
-            {
-                std::cout << "titanlst file is valid" << std::endl;
-            }
         }
         else
         {

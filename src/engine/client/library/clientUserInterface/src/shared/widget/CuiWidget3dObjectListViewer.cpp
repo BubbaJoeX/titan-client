@@ -569,12 +569,23 @@ void CuiWidget3dObjectListViewer::Render( UICanvas & canvas) const
 	ShaderPrimitiveSorter::setUseClipRectangle(false);
 	RenderStart   (canvas);
 	RenderStop    ();
+	// Always restore the full render-target viewport. Graphics::getViewport() only tracks the last
+	// setViewport() call; saving/restoring that cache can leave a 3D sub-rect active and the rest of
+	// the UI pass draws black/off-screen (e.g. switching avatar rows after one preview render).
+	Graphics::setViewport (0, 0, Graphics::getCurrentRenderTargetWidth (), Graphics::getCurrentRenderTargetHeight (), 0.0f, 1.0f);
 	ShaderPrimitiveSorter::setUseClipRectangle(useClip);
 
 	if (boolEqual(m_renderObjectEffects, false))
 	{
 		Appearance::enableRenderEffects(true);
 	}
+}
+
+//----------------------------------------------------------------------
+
+void CuiWidget3dObjectListViewer::RestoreRenderTargetViewportAfterRender () const
+{
+	Graphics::setViewport (0, 0, Graphics::getCurrentRenderTargetWidth (), Graphics::getCurrentRenderTargetHeight (), 0.0f, 1.0f);
 }
 
 //----------------------------------------------------------------------
@@ -1100,7 +1111,7 @@ void CuiWidget3dObjectListViewer::debugRender () const
 
 void  CuiWidget3dObjectListViewer::RenderStop    () const
 {
-	Graphics::setViewport (0, 0, Graphics::getCurrentRenderTargetWidth (), Graphics::getCurrentRenderTargetHeight ());
+	// Render() restores the full render-target viewport after RenderStart (embedded 3D narrows it).
 }
 
 //----------------------------------------------------------------------

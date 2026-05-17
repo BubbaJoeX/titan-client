@@ -75,6 +75,7 @@
 #include <cfloat>
 #include <cstdio>
 #include <cstdlib>
+#include <cstdarg>
 #include <cstring>
 #include <string.h>
 
@@ -120,6 +121,10 @@ typedef void                    (*pfn_libvlc_audio_set_callbacks)(libvlc_media_p
 typedef void                    (*pfn_libvlc_audio_set_format)(libvlc_media_player_t *mp, const char *format, unsigned rate, unsigned channels);
 typedef libvlc_time_t           (*pfn_libvlc_media_player_get_time)(libvlc_media_player_t *p_mi);
 typedef libvlc_time_t           (*pfn_libvlc_media_player_get_length)(libvlc_media_player_t *p_mi);
+
+typedef struct libvlc_log_t libvlc_log_t;
+typedef void (*libvlc_log_cb)(void *data, int level, libvlc_log_t const *ctx, char const *fmt, va_list args);
+typedef void (*pfn_libvlc_log_set)(libvlc_instance_t *p_instance, libvlc_log_cb cb, void *opaque);
 
 // ======================================================================
 
@@ -300,7 +305,7 @@ namespace TangibleObjectNamespace
 
 		Camera const * playerCamera = Game::getCamera();
 		if (!playerCamera)
-			return true;  // No camera, allow rendering
+			return false;  // Defer media until a camera exists (avoids spawning every video player during load)
 
 		Vector const objPos = obj->getPosition_w();
 		Vector const camPos = playerCamera->getPosition_w();
@@ -405,28 +410,6 @@ namespace TangibleObjectNamespace
 		objectToRemove = 0;
 	}
 
-	void updateOverlayObjectTransform(Object & overlayObject, bool backFace, MagicPaintingDisplayMode displayMode, bool isPaintingTemplate)
-	{
-		Transform overlayTransform = Transform::identity;
-
-		float const yOffset = isPaintingTemplate ? 0.0f : cs_magicPaintingOverlayHeight;
-		overlayTransform.setPosition_p(Vector(0.0f, yOffset, 0.0f));
-
-		if (displayMode == MPDM_flat || displayMode == MPDM_doubleSided)
-		{
-			overlayTransform.pitch_l(1.5707963267948966f);
-			if (backFace)
-				overlayTransform.yaw_l(cs_magicPaintingOverlayBackYaw);
-		}
-		else
-		{
-			if (backFace)
-				overlayTransform.yaw_l(cs_magicPaintingOverlayBackYaw);
-		}
-
-		overlayObject.setTransform_o2p(overlayTransform);
-	}
-
 	void applyRemoteTextureToCompositePrimitive(Object const *wearableObject, ShaderPrimitive *primitive)
 	{
 		if (!wearableObject || !primitive)
@@ -463,21 +446,7 @@ namespace TangibleObjectNamespace
 		if (!runtimeData.texture)
 			return;
 
-		if (runtimeData.isPaintingTemplate)
-		{
-			if (ownerAppearance)
-				ownerAppearance->setTexture(TAG_MAIN, *runtimeData.texture);
-			return;
-		}
-
-		Appearance * const overlayAppearance = runtimeData.overlayObject ? runtimeData.overlayObject->getAppearance() : 0;
-		if (overlayAppearance)
-			overlayAppearance->setTexture(TAG_MAIN, *runtimeData.texture);
-
-		Appearance * const overlayBackAppearance = runtimeData.overlayBackObject ? runtimeData.overlayBackObject->getAppearance() : 0;
-		if (overlayBackAppearance)
-			overlayBackAppearance->setTexture(TAG_MAIN, *runtimeData.texture);
-
+		// Magic painting: drive the tangible's shader only (no child cube/prism overlays).
 		if (ownerAppearance)
 			ownerAppearance->setTexture(TAG_MAIN, *runtimeData.texture);
 	}
@@ -532,77 +501,6 @@ namespace TangibleObjectNamespace
 
 			iter = parent;
 		}
-	}
-
-	void createOverlayObject(TangibleObject & owner, RemoteImageRuntimeData & runtimeData, Object *& target, bool backFace, MagicPaintingDisplayMode displayMode)
-	{
-		if (target)
-			return;
-
-		if (!owner.isInWorld())
-			return;
-
-		Appearance * const appearance = createMagicPaintingOverlayAppearance();
-		if (!appearance)
-			return;
-
-		target = new Object();
-		target->setAppearance(appearance);
-		target->addNotification(ClientWorld::getIntangibleNotification());
-		RenderWorld::addObjectNotifications(*target);
-
-		updateOverlayObjectTransform(*target, backFace, displayMode, runtimeData.isPaintingTemplate);
-		target->setScale(Vector(cs_magicPaintingOverlayBaseScale, cs_magicPaintingOverlayBaseScale, cs_magicPaintingOverlayBaseScale));
-
-		bool const portalDisabled = (owner.getCellProperty() != 0);
-		if (portalDisabled)
-		{
-			CellProperty::setPortalTransitionsEnabled(false);
-			target->setParentCell(owner.getCellProperty());
-		}
-
-		target->attachToObject_w(&owner, true);
-		target->addToWorld();
-
-		if (runtimeData.texture)
-			appearance->setTexture(TAG_MAIN, *runtimeData.texture);
-
-		if (portalDisabled)
-			CellProperty::setPortalTransitionsEnabled(true);
-	}
-
-	void ensureRemoteImageOverlayObjects(TangibleObject & owner, RemoteImageRuntimeData & runtimeData, MagicPaintingDisplayMode displayMode, bool forceRecreate)
-	{
-		if (runtimeData.isPaintingTemplate)
-		{
-			removeOverlayObject(owner, runtimeData.overlayBackObject);
-			removeOverlayObject(owner, runtimeData.overlayObject);
-			return;
-		}
-
-		if (forceRecreate)
-		{
-			removeOverlayObject(owner, runtimeData.overlayBackObject);
-			removeOverlayObject(owner, runtimeData.overlayObject);
-		}
-
-		createOverlayObject(owner, runtimeData, runtimeData.overlayObject, false, displayMode);
-		if (!runtimeData.overlayObject)
-			return;
-
-		if (displayMode == MPDM_doubleSided)
-		{
-			createOverlayObject(owner, runtimeData, runtimeData.overlayBackObject, true, displayMode);
-		}
-		else
-		{
-			removeOverlayObject(owner, runtimeData.overlayBackObject);
-		}
-
-		if (runtimeData.overlayObject)
-			updateOverlayObjectTransform(*runtimeData.overlayObject, false, displayMode, runtimeData.isPaintingTemplate);
-		if (runtimeData.overlayBackObject)
-			updateOverlayObjectTransform(*runtimeData.overlayBackObject, true, displayMode, runtimeData.isPaintingTemplate);
 	}
 
 	void clearRemoteImageOverlayObjects(TangibleObject & owner, RemoteImageRuntimeData & runtimeData)
@@ -781,8 +679,54 @@ namespace TangibleObjectNamespace
 		if (FAILED(hr) || !decoder)
 		{
 			wicStream->Release();
-			factory->Release();
-			return false;
+			wicStream = 0;
+
+			bool const looksLikeWebp = bytes.size() >= 12
+				&& bytes[0] == 'R' && bytes[1] == 'I' && bytes[2] == 'F' && bytes[3] == 'F'
+				&& bytes[8] == 'W' && bytes[9] == 'E' && bytes[10] == 'B' && bytes[11] == 'P';
+			if (!looksLikeWebp)
+			{
+				factory->Release();
+				return false;
+			}
+
+			// Sniffing can fail on some WIC builds; WebP has a stable RIFF/WEBP header.
+			// CLSID_WICWebpDecoder is not in older SDK headers — match Windows 10+ WIC.
+			static CLSID const s_clsidWicWebpDecoder =
+				{ 0x7693e886, 0x51c9, 0x4070, { 0x84, 0x19, 0x9f, 0x70, 0x73, 0x8e, 0xc8, 0xfa } };
+
+			hr = factory->CreateStream(&wicStream);
+			if (FAILED(hr) || !wicStream)
+			{
+				factory->Release();
+				return false;
+			}
+
+			hr = wicStream->InitializeFromMemory(const_cast<unsigned char *>(&bytes[0]), static_cast<DWORD>(bytes.size()));
+			if (FAILED(hr))
+			{
+				wicStream->Release();
+				factory->Release();
+				return false;
+			}
+
+			hr = CoCreateInstance(s_clsidWicWebpDecoder, 0, CLSCTX_INPROC_SERVER, IID_IWICBitmapDecoder, reinterpret_cast<void **>(&decoder));
+			if (FAILED(hr) || !decoder)
+			{
+				wicStream->Release();
+				factory->Release();
+				return false;
+			}
+
+			hr = decoder->Initialize(wicStream, WICDecodeMetadataCacheOnDemand);
+			if (FAILED(hr))
+			{
+				decoder->Release();
+				decoder = 0;
+				wicStream->Release();
+				factory->Release();
+				return false;
+			}
 		}
 
 		IWICBitmapFrameDecode * frame = 0;
@@ -1142,6 +1086,7 @@ namespace TangibleObjectNamespace
 
 	bool ms_useTestDamageLevel;
 	bool ms_logChangedConditions;
+	bool ms_logVideoStreamDiagnostics;
 
 	void remove ();
 
@@ -1187,6 +1132,25 @@ namespace VideoStreamNamespace
 
 	VlcApi ms_vlcApi = {};
 
+	// VLC 3.x: LIBVLC_ERROR = 4 (debug/notice/warning are lower — too chatty for normal play)
+	enum { LIBVLC_LOG_LEVEL_ERROR = 4 };
+
+	extern "C" void vlcLogCallback(void *data, int level, libvlc_log_t const *ctx, char const *fmt, va_list args)
+	{
+		UNREF(data);
+		UNREF(ctx);
+		if (!fmt)
+			return;
+		if (!TangibleObjectNamespace::ms_logVideoStreamDiagnostics)
+			return;
+		if (level < LIBVLC_LOG_LEVEL_ERROR)
+			return;
+		char buf[768];
+		buf[0] = '\0';
+		_vsnprintf_s(buf, sizeof(buf), _TRUNCATE, fmt, args);
+		DEBUG_REPORT_LOG(true, ("[Titan] VLC] level=%d %s\n", level, buf));
+	}
+
 	bool loadVlcApi()
 	{
 		if (ms_vlcApi.loadAttempted)
@@ -1228,15 +1192,22 @@ namespace VideoStreamNamespace
 		#undef LOAD_VLC_FUNC
 
 		const char * const vlcArgs[] = {
+			"--quiet",
 			"--no-xlib",
 			"--no-video-title-show"
 		};
-		ms_vlcApi.vlcInstance = ms_vlcApi.pNew(2, vlcArgs);
+		ms_vlcApi.vlcInstance = ms_vlcApi.pNew(3, vlcArgs);
 		if (!ms_vlcApi.vlcInstance)
 		{
 			DEBUG_REPORT_LOG(true, ("[Titan] VideoStream: Failed to create VLC instance\n"));
 			return false;
 		}
+
+		pfn_libvlc_log_set const pLogSet = reinterpret_cast<pfn_libvlc_log_set>(GetProcAddress(ms_vlcApi.hLibVlc, "libvlc_log_set"));
+		if (pLogSet)
+			pLogSet(ms_vlcApi.vlcInstance, vlcLogCallback, 0);
+		else
+			DEBUG_REPORT_LOG(true, ("[Titan] VideoStream: libvlc_log_set missing; VLC may spam the console\n"));
 
 		ms_vlcApi.loaded = true;
 		DEBUG_REPORT_LOG(true, ("[Titan] VideoStream: libVLC loaded successfully\n"));
@@ -1268,6 +1239,7 @@ namespace VideoStreamNamespace
 			resolvedUrl(),
 			resolveState(RS_none),
 			resolveThread(0),
+			resolveCancelRequested(0),
 			mediaPlayer(0),
 			videoBuffer(0),
 			videoBufferSize(0),
@@ -1281,7 +1253,8 @@ namespace VideoStreamNamespace
 			frameReady(0),
 			appliedTimestamp(0),
 			requestedTimestamp(0),
-			looping(false)
+			looping(false),
+			lastLibvlcAudioVolumeSet(-999)
 		{
 		}
 
@@ -1291,6 +1264,7 @@ namespace VideoStreamNamespace
 		std::string resolvedUrl;
 		volatile ResolveState resolveState;
 		HANDLE resolveThread;
+		volatile LONG resolveCancelRequested;
 		libvlc_media_player_t * mediaPlayer;
 		unsigned char * videoBuffer;
 		unsigned int videoBufferSize;
@@ -1306,9 +1280,10 @@ namespace VideoStreamNamespace
 		int requestedTimestamp;
 		CRITICAL_SECTION bufferLock;
 		bool looping;
+		int lastLibvlcAudioVolumeSet;
 	};
 
-	typedef std::map<TangibleObject const *, VideoStreamRuntimeData> VideoStreamRuntimeDataMap;
+	typedef std::map<TangibleObject const *, VideoStreamRuntimeData *> VideoStreamRuntimeDataMap;
 	VideoStreamRuntimeDataMap ms_videoStreamRuntimeDataMap;
 
 	struct EmitterRuntimeData
@@ -1442,15 +1417,60 @@ namespace VideoStreamNamespace
 
 		std::string output;
 		char readBuf[4096];
-		DWORD bytesRead = 0;
-		while (ReadFile(hReadPipe, readBuf, sizeof(readBuf) - 1, &bytesRead, 0) && bytesRead > 0)
+		bool processEnded = false;
+		for (;;)
 		{
-			readBuf[bytesRead] = '\0';
-			output += readBuf;
+			if (InterlockedCompareExchange(&runtimeData->resolveCancelRequested, 0, 0) != 0)
+			{
+				TerminateProcess(pi.hProcess, 1);
+				break;
+			}
+
+			DWORD avail = 0;
+			if (!PeekNamedPipe(hReadPipe, NULL, 0, &avail, NULL, NULL))
+			{
+				DWORD const err = GetLastError();
+				if (err == ERROR_BROKEN_PIPE || err == ERROR_PIPE_NOT_CONNECTED)
+					break;
+				break;
+			}
+
+			if (avail > 0)
+			{
+				DWORD bytesRead = 0;
+				DWORD const chunk = avail < (sizeof(readBuf) - 1) ? avail : (sizeof(readBuf) - 1);
+				if (!ReadFile(hReadPipe, readBuf, chunk, &bytesRead, NULL) || bytesRead == 0)
+					break;
+				output.append(readBuf, bytesRead);
+				continue;
+			}
+
+			DWORD const wr = WaitForSingleObject(pi.hProcess, 100);
+			if (wr == WAIT_OBJECT_0)
+			{
+				processEnded = true;
+				break;
+			}
+		}
+
+		if (InterlockedCompareExchange(&runtimeData->resolveCancelRequested, 0, 0) != 0)
+			TerminateProcess(pi.hProcess, 1);
+
+		for (;;)
+		{
+			DWORD bytesRead = 0;
+			if (!ReadFile(hReadPipe, readBuf, sizeof(readBuf) - 1, &bytesRead, 0) || bytesRead == 0)
+				break;
+			output.append(readBuf, bytesRead);
 		}
 		CloseHandle(hReadPipe);
 
-		WaitForSingleObject(pi.hProcess, 15000);
+		if (!processEnded)
+		{
+			DWORD const wrProcess = WaitForSingleObject(pi.hProcess, 2000);
+			if (wrProcess == WAIT_TIMEOUT)
+				TerminateProcess(pi.hProcess, 1);
+		}
 
 		DWORD exitCode = 1;
 		GetExitCodeProcess(pi.hProcess, &exitCode);
@@ -1510,26 +1530,41 @@ namespace VideoStreamNamespace
 		VideoStreamRuntimeDataMap::iterator it = ms_videoStreamRuntimeDataMap.find(owner);
 		if (it == ms_videoStreamRuntimeDataMap.end())
 		{
-			VideoStreamRuntimeData newData;
-			newData.owner = owner;
-			newData.videoBufferSize = VIDEO_WIDTH * VIDEO_HEIGHT * 4;
-			newData.videoBuffer = new unsigned char[newData.videoBufferSize];
-			memset(newData.videoBuffer, 0, newData.videoBufferSize);
-			InitializeCriticalSection(&newData.bufferLock);
-			it = ms_videoStreamRuntimeDataMap.insert(std::make_pair(owner, newData)).first;
+			VideoStreamRuntimeData * const p = new VideoStreamRuntimeData;
+			p->owner = owner;
+			p->videoBufferSize = VIDEO_WIDTH * VIDEO_HEIGHT * 4;
+			p->videoBuffer = new unsigned char[p->videoBufferSize];
+			memset(p->videoBuffer, 0, p->videoBufferSize);
+			InitializeCriticalSection(&p->bufferLock);
+			it = ms_videoStreamRuntimeDataMap.insert(std::make_pair(owner, p)).first;
 		}
-		return it->second;
+		return *it->second;
+	}
+
+	void applyLibvlcPlayerVolume(VideoStreamRuntimeData & data, int vlcVolume)
+	{
+		if (!data.mediaPlayer || !ms_vlcApi.loaded)
+			return;
+		if (vlcVolume < 0)
+			vlcVolume = 0;
+		if (vlcVolume > 100)
+			vlcVolume = 100;
+		if (data.lastLibvlcAudioVolumeSet == vlcVolume)
+			return;
+		ms_vlcApi.pAudioSetVolume(data.mediaPlayer, vlcVolume);
+		data.lastLibvlcAudioVolumeSet = vlcVolume;
 	}
 
 	void stopAndReleaseMediaPlayer(VideoStreamRuntimeData & data)
 	{
 		if (data.mediaPlayer && ms_vlcApi.loaded)
 		{
-			ms_vlcApi.pAudioSetVolume(data.mediaPlayer, 0);
+			applyLibvlcPlayerVolume(data, 0);
 			ms_vlcApi.pMediaPlayerStop(data.mediaPlayer);
 			ms_vlcApi.pMediaPlayerRelease(data.mediaPlayer);
 			data.mediaPlayer = 0;
 		}
+		data.lastLibvlcAudioVolumeSet = -999;
 	}
 
 	void removeVideoOverlayObject(TangibleObject & owner, Object *& objectToRemove)
@@ -1631,12 +1666,124 @@ namespace VideoStreamNamespace
 			ownerAppearance->setTexture(TAG_MAIN, *runtimeData.texture);
 	}
 
+	// remoteStreamAspect: optional tuning for magic video (same replicated string as aspect ratio).
+	// Examples:
+	//   "16:9"
+	//   "16:9;brightness=1.25"
+	//   "brightness=1.35;lift=12"
+	// brightness: linear RGB multiplier after decode (default 1), clamped ~0.25..3.
+	// lift: added to each RGB channel after brightness (0..64) to lift crushed blacks / read better in dark scenes.
+	//       Values in (0,1] are treated as a fraction of 255 (e.g. lift=0.08 -> ~20).
+
+	static void trimAscii(std::string & s)
+	{
+		size_t a = 0;
+		size_t b = s.size();
+		while (a < b && std::isspace(static_cast<unsigned char>(s[a])))
+			++a;
+		while (b > a && std::isspace(static_cast<unsigned char>(s[b - 1])))
+			--b;
+		if (a > 0 || b < s.size())
+			s = s.substr(a, b - a);
+	}
+
+	void parseRemoteStreamVideoAspectTuning(std::string const & raw, std::string & outAspectRatioToken, float & outBrightness, int & outLiftRgb)
+	{
+		outAspectRatioToken.clear();
+		outBrightness = 1.0f;
+		outLiftRgb = 0;
+
+		std::string cur;
+		for (size_t i = 0; i <= raw.size(); ++i)
+		{
+			if (i == raw.size() || raw[i] == ';' || raw[i] == '|')
+			{
+				trimAscii(cur);
+				if (!cur.empty())
+				{
+					size_t const eq = cur.find('=');
+					if (eq == std::string::npos)
+					{
+						if (outAspectRatioToken.empty())
+							outAspectRatioToken = cur;
+					}
+					else
+					{
+						std::string key = cur.substr(0, eq);
+						std::string val = cur.substr(eq + 1);
+						trimAscii(key);
+						trimAscii(val);
+						for (size_t k = 0; k < key.size(); ++k)
+							key[k] = static_cast<char>(std::tolower(static_cast<unsigned char>(key[k])));
+						float const v = strtof(val.c_str(), 0);
+						if (key == "brightness" || key == "bright")
+							outBrightness = v;
+						else if (key == "lift" || key == "ambient" || key == "shadowlift")
+						{
+							if (v > 0.0f && v <= 1.0f)
+								outLiftRgb = static_cast<int>(v * 255.0f + 0.5f);
+							else
+								outLiftRgb = static_cast<int>(v + 0.5f);
+						}
+					}
+				}
+				cur.clear();
+			}
+			else
+				cur += raw[i];
+		}
+
+		if (outBrightness < 0.25f)
+			outBrightness = 0.25f;
+		else if (outBrightness > 3.0f)
+			outBrightness = 3.0f;
+
+		if (outLiftRgb < 0)
+			outLiftRgb = 0;
+		else if (outLiftRgb > 64)
+			outLiftRgb = 64;
+	}
+
+	void applyVideoToneMapToBgraFrame(unsigned char * buf, int width, int height, int pitchBytes, float brightness, int liftRgb)
+	{
+		if ((!buf || width <= 0 || height <= 0 || pitchBytes < width * 4))
+			return;
+		if (brightness == 1.0f && liftRgb <= 0)
+			return;
+
+		int const brInt = static_cast<int>(brightness * 256.0f + 0.5f);
+		unsigned char * row = buf;
+		for (int y = 0; y < height; ++y)
+		{
+			unsigned char * p = row;
+			for (int x = 0; x < width; ++x)
+			{
+				for (int c = 0; c < 3; ++c)
+				{
+					int v = (static_cast<int>(p[c]) * brInt) >> 8;
+					v += liftRgb;
+					if (v > 255)
+						v = 255;
+					p[c] = static_cast<unsigned char>(v);
+				}
+				p += 4;
+			}
+			row += pitchBytes;
+		}
+	}
+
 	void applyVideoAspectScale(TangibleObject & owner)
 	{
-		std::string const & aspect = owner.getRemoteStreamAspect();
+		std::string aspectToken;
+		float brightness = 1.0f;
+		int liftRgb = 0;
+		parseRemoteStreamVideoAspectTuning(owner.getRemoteStreamAspect(), aspectToken, brightness, liftRgb);
+		UNREF(brightness);
+		UNREF(liftRgb);
+
 		Vector scale(Vector::xyz111);
 
-		if (aspect == "16:9")
+		if (aspectToken == "16:9")
 			scale.y = 0.75f;
 
 		owner.setScale(scale);
@@ -1661,7 +1808,7 @@ bool TangibleObject::getVideoPlaybackInfo(TangibleObject const * obj, __int64 & 
 	if (it == ms_videoStreamRuntimeDataMap.end())
 		return false;
 
-	VideoStreamRuntimeData const & rd = it->second;
+	VideoStreamRuntimeData const & rd = *it->second;
 	if (!rd.mediaPlayer)
 		return false;
 
@@ -1684,7 +1831,7 @@ bool TangibleObject::seekVideoPlayback(TangibleObject const * obj, __int64 timeM
 	if (it == ms_videoStreamRuntimeDataMap.end())
 		return false;
 
-	VideoStreamRuntimeData const & rd = it->second;
+	VideoStreamRuntimeData const & rd = *it->second;
 	if (!rd.mediaPlayer)
 		return false;
 
@@ -1702,6 +1849,7 @@ void TangibleObject::install()
 
 	DebugFlags::registerFlag (ms_useTestDamageLevel, "ClientGame/TangibleObject", "useTestDamageLevel");
 	DebugFlags::registerFlag(ms_logChangedConditions, "ClientGame/TangibleObject", "logChangedConditions");
+	DebugFlags::registerFlag(ms_logVideoStreamDiagnostics, "ClientGame/TangibleObject", "logVideoStreamDiagnostics");
 	ExitChain::add (TangibleObjectNamespace::remove, "TangibleObjectNamespace::remove");
 }
 
@@ -1711,6 +1859,7 @@ void TangibleObjectNamespace::remove ()
 {
 	DebugFlags::unregisterFlag (ms_useTestDamageLevel);
 	DebugFlags::unregisterFlag(ms_logChangedConditions);
+	DebugFlags::unregisterFlag(ms_logVideoStreamDiagnostics);
 }
 
 // ----------------------------------------------------------------------
@@ -2171,8 +2320,6 @@ void TangibleObject::addToWorld()
 	updateInterestingAttachedObject(getCondition ());
 	if (usesRemoteImageTextureConsumer())
 		updateRemoteImageTexture();
-	if (hasCondition(C_magicVideoPlayer))
-		updateRemoteVideoStream();
 	if (!m_remoteEmitterParentId.get().empty())
 		updateVideoEmitterAudio();
 	if (!m_rtScreenLinkedCamera.get().empty())
@@ -2589,6 +2736,8 @@ void TangibleObject::updateRemoteImageTexture()
 
 	if (runtimeData.dirty)
 	{
+		clearRemoteImageOverlayObjects(*this, runtimeData);
+
 		std::string const & remoteTextureMode = m_remoteTextureMode.get();
 		std::string const & remoteDisplayModeStr = m_remoteTextureDisplayMode.get();
 		std::string const & remoteScrollHStr = m_remoteTextureScrollH.get();
@@ -2611,7 +2760,6 @@ void TangibleObject::updateRemoteImageTexture()
 
 		if (displayModeChanged)
 		{
-			ensureRemoteImageOverlayObjects(*this, runtimeData, displayMode, true);
 			runtimeData.appliedDisplayMode = displayMode;
 			runtimeData.appliedDisplayModeStr = remoteDisplayModeStr;
 
@@ -2623,10 +2771,6 @@ void TangibleObject::updateRemoteImageTexture()
 					markRemoteTextureMeshesDirty(*this);
 			}
 		}
-		else if (!runtimeData.overlayObject && !runtimeData.isPaintingTemplate)
-		{
-			ensureRemoteImageOverlayObjects(*this, runtimeData, displayMode, false);
-		}
 
 		if (scrollChanged && runtimeData.texture)
 		{
@@ -2634,18 +2778,10 @@ void TangibleObject::updateRemoteImageTexture()
 			runtimeData.appliedScrollV = scrollV;
 			runtimeData.scrollH = scrollH;
 			runtimeData.scrollV = scrollV;
+			if (Appearance * const app = getAppearance())
+				applyTextureScrollToAppearance(app, scrollH, scrollV);
 			if (runtimeData.isPaintingTemplate)
-			{
-				applyTextureScrollToAppearance(getAppearance(), scrollH, scrollV);
 				markRemoteTextureMeshesDirty(*this);
-			}
-			else
-			{
-				if (runtimeData.overlayObject && runtimeData.overlayObject->getAppearance())
-					applyTextureScrollToAppearance(runtimeData.overlayObject->getAppearance(), scrollH, scrollV);
-				if (runtimeData.overlayBackObject && runtimeData.overlayBackObject->getAppearance())
-					applyTextureScrollToAppearance(runtimeData.overlayBackObject->getAppearance(), scrollH, scrollV);
-			}
 		}
 
 		runtimeData.dirty = false;
@@ -2658,9 +2794,6 @@ void TangibleObject::updateRemoteImageTexture()
 			return;
 		}
 	}
-
-	if (!runtimeData.isPaintingTemplate && !runtimeData.overlayObject)
-		return;
 
 	if ((fetchState == RIFS_idle || fetchState == RIFS_failed) && urlChanged)
 	{
@@ -2764,17 +2897,10 @@ void TangibleObject::updateRemoteImageTexture()
 
 	if (runtimeData.scrollH != 0.0f || runtimeData.scrollV != 0.0f)
 	{
+		if (Appearance * const app = getAppearance())
+			applyTextureScrollToAppearance(app, runtimeData.scrollH, runtimeData.scrollV);
 		if (runtimeData.isPaintingTemplate)
-		{
-			applyTextureScrollToAppearance(appearance, runtimeData.scrollH, runtimeData.scrollV);
-		}
-		else
-		{
-			if (runtimeData.overlayObject && runtimeData.overlayObject->getAppearance())
-				applyTextureScrollToAppearance(runtimeData.overlayObject->getAppearance(), runtimeData.scrollH, runtimeData.scrollV);
-			if (runtimeData.overlayBackObject && runtimeData.overlayBackObject->getAppearance())
-				applyTextureScrollToAppearance(runtimeData.overlayBackObject->getAppearance(), runtimeData.scrollH, runtimeData.scrollV);
-		}
+			markRemoteTextureMeshesDirty(*this);
 	}
 	runtimeData.appliedScrollH = runtimeData.scrollH;
 	runtimeData.appliedScrollV = runtimeData.scrollV;
@@ -2873,28 +2999,10 @@ void TangibleObject::updateGifAnimation(float elapsedTime)
 	runtimeData.texture = frameTexture;
 	runtimeData.texture->fetch();
 
-	if (runtimeData.isPaintingTemplate)
-	{
-		Appearance * const ownerApp = getAppearance();
-		if (ownerApp)
-			ownerApp->setTexture(TAG_MAIN, *frameTexture);
+	if (Appearance * const ownerApp = getAppearance())
+		ownerApp->setTexture(TAG_MAIN, *frameTexture);
+	if (runtimeData.isPaintingTemplate || usesTailorRemoteTextureMode())
 		markRemoteTextureMeshesDirty(*this);
-	}
-	else
-	{
-		if (runtimeData.overlayObject)
-		{
-			Appearance * const app = runtimeData.overlayObject->getAppearance();
-			if (app)
-				app->setTexture(TAG_MAIN, *frameTexture);
-		}
-		if (runtimeData.overlayBackObject)
-		{
-			Appearance * const app = runtimeData.overlayBackObject->getAppearance();
-			if (app)
-				app->setTexture(TAG_MAIN, *frameTexture);
-		}
-	}
 
 	scheduleForAlter();
 }
@@ -2907,8 +3015,8 @@ void TangibleObject::remoteStreamUrlModified(const std::string & value)
 	VideoStreamRuntimeDataMap::iterator it = ms_videoStreamRuntimeDataMap.find(this);
 	if (it != ms_videoStreamRuntimeDataMap.end())
 	{
-		it->second.dirty = true;
-		it->second.settled = false;
+		it->second->dirty = true;
+		it->second->settled = false;
 	}
 	scheduleForAlter();
 }
@@ -2921,8 +3029,8 @@ void TangibleObject::remoteStreamTimestampModified(const std::string & value)
 	VideoStreamRuntimeDataMap::iterator it = ms_videoStreamRuntimeDataMap.find(this);
 	if (it != ms_videoStreamRuntimeDataMap.end())
 	{
-		it->second.dirty = true;
-		it->second.settled = false;
+		it->second->dirty = true;
+		it->second->settled = false;
 	}
 	scheduleForAlter();
 }
@@ -2931,6 +3039,9 @@ void TangibleObject::remoteStreamTimestampModified(const std::string & value)
 
 void TangibleObject::updateRemoteVideoStream()
 {
+	bool const diagWall = ms_logVideoStreamDiagnostics;
+	DWORD const diagWall0 = diagWall ? GetTickCount() : 0;
+
 	if (!hasCondition(C_magicVideoPlayer) || !isInWorld())
 	{
 		VideoStreamRuntimeDataMap::iterator runtimeIt = ms_videoStreamRuntimeDataMap.find(this);
@@ -2941,23 +3052,49 @@ void TangibleObject::updateRemoteVideoStream()
 
 	// Distance check - don't create video resources for distant objects
 	Camera const * playerCamera = Game::getCamera();
-	if (playerCamera)
+	if (!playerCamera)
 	{
-		Vector const objPos = getPosition_w();
-		Vector const camPos = playerCamera->getPosition_w();
-		float const distSq = objPos.magnitudeBetweenSquared(camPos);
-		if (distSq > cs_mediaMaxRenderDistanceSquared)
-		{
-			// Too far away - clean up any existing resources
-			VideoStreamRuntimeDataMap::iterator runtimeIt = ms_videoStreamRuntimeDataMap.find(this);
-			if (runtimeIt != ms_videoStreamRuntimeDataMap.end())
-				clearRemoteVideoStream();
-			return;
-		}
+		if (ms_logVideoStreamDiagnostics)
+			DEBUG_REPORT_LOG(true, ("[Titan] VideoStream: update deferred until camera exists\n"));
+		scheduleForAlter();
+		return;
 	}
 
+	if (ms_logVideoStreamDiagnostics)
+	{
+		int vlcActive = 0;
+		for (VideoStreamRuntimeDataMap::const_iterator it = ms_videoStreamRuntimeDataMap.begin(); it != ms_videoStreamRuntimeDataMap.end(); ++it)
+		{
+			if (it->second && it->second->mediaPlayer)
+				++vlcActive;
+		}
+		std::string const & urlEarly = m_remoteStreamUrl.get();
+		DEBUG_REPORT_LOG(true, ("[Titan] VideoStream: update enter caller=alter cam=%p mapSz=%d vlcActive=%d needsYtDlp=%s netId=%s\n",
+			playerCamera, static_cast<int>(ms_videoStreamRuntimeDataMap.size()), vlcActive,
+			urlNeedsResolution(urlEarly) ? "yes" : "no", getNetworkId().getValueString().c_str()));
+	}
+
+	Vector const objPos = getPosition_w();
+	Vector const camPos = playerCamera->getPosition_w();
+	float const distSq = objPos.magnitudeBetweenSquared(camPos);
+	if (distSq > cs_mediaMaxRenderDistanceSquared)
+	{
+		// Too far away - clean up any existing resources
+		VideoStreamRuntimeDataMap::iterator runtimeIt = ms_videoStreamRuntimeDataMap.find(this);
+		if (runtimeIt != ms_videoStreamRuntimeDataMap.end())
+			clearRemoteVideoStream();
+		return;
+	}
+
+	DWORD const tLoadVlc = ms_logVideoStreamDiagnostics ? GetTickCount() : 0;
 	if (!loadVlcApi())
 		return;
+	if (ms_logVideoStreamDiagnostics && tLoadVlc != 0)
+	{
+		DWORD const dt = GetTickCount() - tLoadVlc;
+		if (dt > 20)
+			DEBUG_REPORT_LOG(true, ("[Titan] VideoStream: loadVlcApi slow %lums\n", dt));
+	}
 
 	VideoStreamRuntimeData & runtimeData = getVideoStreamRuntimeData(this);
 
@@ -2965,23 +3102,47 @@ void TangibleObject::updateRemoteVideoStream()
 	{
 		if (InterlockedCompareExchange(&runtimeData.frameReady, 0, 1) == 1)
 		{
+			DWORD const tTex = ms_logVideoStreamDiagnostics ? GetTickCount() : 0;
+
+			std::string aspectToken;
+			float toneBrightness = 1.0f;
+			int toneLiftRgb = 0;
+			parseRemoteStreamVideoAspectTuning(m_remoteStreamAspect.get(), aspectToken, toneBrightness, toneLiftRgb);
+			UNREF(aspectToken);
+
 			EnterCriticalSection(&runtimeData.bufferLock);
 
+			if (toneBrightness != 1.0f || toneLiftRgb > 0)
+				applyVideoToneMapToBgraFrame(runtimeData.videoBuffer, static_cast<int>(VIDEO_WIDTH), static_cast<int>(VIDEO_HEIGHT), static_cast<int>(VIDEO_PITCH), toneBrightness, toneLiftRgb);
+
+			bool appliedNewTexture = false;
 			if (runtimeData.texture)
 			{
-				runtimeData.texture->release();
-				runtimeData.texture = 0;
+				Texture * const modifiableTexture = const_cast<Texture *>(runtimeData.texture);
+				modifiableTexture->copyPixels(runtimeData.videoBuffer, TF_ARGB_8888, static_cast<int>(VIDEO_WIDTH), static_cast<int>(VIDEO_HEIGHT));
 			}
-
-			TextureFormat const runtimeFormats[] = { TF_ARGB_8888 };
-			Texture const * newTexture = TextureList::fetch(runtimeData.videoBuffer, TF_ARGB_8888, static_cast<int>(VIDEO_WIDTH), static_cast<int>(VIDEO_HEIGHT), runtimeFormats, 1);
-			if (newTexture)
+			else
 			{
-				runtimeData.texture = newTexture;
-				applyVideoTextureToSurfaces(runtimeData, getAppearance());
+				TextureFormat const runtimeFormats[] = { TF_ARGB_8888 };
+				Texture const * const newTexture = TextureList::fetch(runtimeData.videoBuffer, TF_ARGB_8888, static_cast<int>(VIDEO_WIDTH), static_cast<int>(VIDEO_HEIGHT), runtimeFormats, 1);
+				if (newTexture)
+				{
+					runtimeData.texture = newTexture;
+					appliedNewTexture = true;
+				}
 			}
 
 			LeaveCriticalSection(&runtimeData.bufferLock);
+
+			if (appliedNewTexture)
+				applyVideoTextureToSurfaces(runtimeData, getAppearance());
+
+			if (ms_logVideoStreamDiagnostics && tTex != 0)
+			{
+				DWORD const dt = GetTickCount() - tTex;
+				if (dt > 16)
+					DEBUG_REPORT_LOG(true, ("[Titan] VideoStream: frame texture path took %lums newTexture=%d\n", dt, appliedNewTexture ? 1 : 0));
+			}
 		}
 		scheduleForAlter();
 		return;
@@ -3028,6 +3189,12 @@ void TangibleObject::updateRemoteVideoStream()
 	{
 		stopAndReleaseMediaPlayer(runtimeData);
 
+		if (runtimeData.texture)
+		{
+			runtimeData.texture->release();
+			runtimeData.texture = 0;
+		}
+
 		if (runtimeData.resolveThread)
 		{
 			DWORD waitResult = WaitForSingleObject(runtimeData.resolveThread, 0);
@@ -3052,6 +3219,7 @@ void TangibleObject::updateRemoteVideoStream()
 			threadData->runtimeData = &runtimeData;
 
 			runtimeData.resolveState = RS_pending;
+			InterlockedExchange(&runtimeData.resolveCancelRequested, 0);
 			runtimeData.resolveThread = CreateThread(0, 0, resolveUrlThreadProc, threadData, 0, 0);
 			if (!runtimeData.resolveThread)
 			{
@@ -3118,8 +3286,15 @@ void TangibleObject::updateRemoteVideoStream()
 			reinterpret_cast<libvlc_video_display_cb>(videoDisplayCallback),
 			&runtimeData);
 
-		ms_vlcApi.pAudioSetVolume(runtimeData.mediaPlayer, 0);
+		applyLibvlcPlayerVolume(runtimeData, 0);
+		DWORD const tPlay = ms_logVideoStreamDiagnostics ? GetTickCount() : 0;
 		ms_vlcApi.pMediaPlayerPlay(runtimeData.mediaPlayer);
+		if (ms_logVideoStreamDiagnostics && tPlay != 0)
+		{
+			DWORD const dt = GetTickCount() - tPlay;
+			if (dt > 20)
+				DEBUG_REPORT_LOG(true, ("[Titan] VideoStream: libvlc_media_player_play slow %lums\n", dt));
+		}
 
 		int seekSeconds = requestedTimestamp;
 		std::string const & startTimeStr = m_remoteStreamStartTime.get();
@@ -3146,6 +3321,13 @@ void TangibleObject::updateRemoteVideoStream()
 		DEBUG_REPORT_LOG(true, ("[Titan] VideoStream: Playing %s (seek=%ds)\n", playUrl.c_str(), seekSeconds));
 	}
 
+	if (diagWall && diagWall0 != 0)
+	{
+		DWORD const wallDt = GetTickCount() - diagWall0;
+		if (wallDt > 100)
+			DEBUG_REPORT_LOG(true, ("[Titan] VideoStream: updateRemoteVideoStream wall clock %lums before settle\n", wallDt));
+	}
+
 	runtimeData.settled = true;
 	scheduleForAlter();
 }
@@ -3158,11 +3340,36 @@ void TangibleObject::clearRemoteVideoStream()
 	if (runtimeIt == ms_videoStreamRuntimeDataMap.end())
 		return;
 
-	VideoStreamRuntimeData & runtimeData = runtimeIt->second;
+	VideoStreamRuntimeData * const heapData = runtimeIt->second;
+	VideoStreamRuntimeData & runtimeData = *heapData;
 
 	if (runtimeData.resolveThread)
 	{
-		WaitForSingleObject(runtimeData.resolveThread, 5000);
+		DWORD const tJoin = ms_logVideoStreamDiagnostics ? GetTickCount() : 0;
+		InterlockedExchange(&runtimeData.resolveCancelRequested, 1);
+		DWORD waited = 0;
+		DWORD const sliceMs = 50;
+		DWORD const maxWaitMs = 2000;
+		while (waited < maxWaitMs)
+		{
+			DWORD const waitResult = WaitForSingleObject(runtimeData.resolveThread, sliceMs);
+			if (waitResult == WAIT_OBJECT_0)
+				break;
+			waited += sliceMs;
+		}
+		if (WaitForSingleObject(runtimeData.resolveThread, 0) != WAIT_OBJECT_0)
+		{
+			DEBUG_REPORT_LOG(true, ("[Titan] VideoStream: resolve thread did not exit within %lums after cancel; terminating thread (yt-dlp child may be orphaned)\n", maxWaitMs));
+			TerminateThread(runtimeData.resolveThread, 3);
+			WaitForSingleObject(runtimeData.resolveThread, 200);
+		}
+		if (ms_logVideoStreamDiagnostics && tJoin != 0)
+		{
+			DWORD const dt = GetTickCount() - tJoin;
+			if (dt > 50)
+				DEBUG_REPORT_LOG(true, ("[Titan] VideoStream: clearRemoteVideoStream join resolve thread %lums\n", dt));
+		}
+		InterlockedExchange(&runtimeData.resolveCancelRequested, 0);
 		CloseHandle(runtimeData.resolveThread);
 		runtimeData.resolveThread = 0;
 	}
@@ -3204,6 +3411,7 @@ void TangibleObject::clearRemoteVideoStream()
 	}
 
 	ms_videoStreamRuntimeDataMap.erase(runtimeIt);
+	delete heapData;
 }
 
 //----------------------------------------------------------------------
@@ -3214,8 +3422,8 @@ void TangibleObject::remoteStreamLoopModified(const std::string & value)
 	VideoStreamRuntimeDataMap::iterator it = ms_videoStreamRuntimeDataMap.find(this);
 	if (it != ms_videoStreamRuntimeDataMap.end())
 	{
-		it->second.dirty = true;
-		it->second.settled = false;
+		it->second->dirty = true;
+		it->second->settled = false;
 	}
 	scheduleForAlter();
 }
@@ -3225,7 +3433,13 @@ void TangibleObject::remoteStreamLoopModified(const std::string & value)
 void TangibleObject::remoteStreamAspectModified(const std::string & value)
 {
 	UNREF(value);
-	applyVideoAspectScale(*this);
+	// Only apply 16:9 / unity scale while the video player condition is active. When playback stops,
+	// the server may still refresh stream.aspect; applying here would stomp authored or user scale.
+	if (hasCondition(C_magicVideoPlayer))
+	{
+		applyVideoAspectScale(*this);
+		scheduleForAlter();
+	}
 }
 
 //----------------------------------------------------------------------
@@ -3236,8 +3450,8 @@ void TangibleObject::remoteStreamStartTimeModified(const std::string & value)
 	VideoStreamRuntimeDataMap::iterator it = ms_videoStreamRuntimeDataMap.find(this);
 	if (it != ms_videoStreamRuntimeDataMap.end())
 	{
-		it->second.dirty = true;
-		it->second.settled = false;
+		it->second->dirty = true;
+		it->second->settled = false;
 	}
 	scheduleForAlter();
 }
@@ -3285,13 +3499,13 @@ void TangibleObject::updateVideoEmitterAudio()
 	}
 
 	VideoStreamRuntimeDataMap::iterator parentIt = ms_videoStreamRuntimeDataMap.find(parentTangible);
-	if (parentIt == ms_videoStreamRuntimeDataMap.end() || !parentIt->second.mediaPlayer)
+	if (parentIt == ms_videoStreamRuntimeDataMap.end() || !parentIt->second->mediaPlayer)
 	{
 		scheduleForAlter();
 		return;
 	}
 
-	VideoStreamRuntimeData & parentVideoData = parentIt->second;
+	VideoStreamRuntimeData & parentVideoData = *parentIt->second;
 
 	Object const * const player = Game::getPlayer();
 	if (!player)
@@ -3303,7 +3517,7 @@ void TangibleObject::updateVideoEmitterAudio()
 
 	if (distance > AUDIO_MAX_DISTANCE)
 	{
-		ms_vlcApi.pAudioSetVolume(parentVideoData.mediaPlayer, 0);
+		applyLibvlcPlayerVolume(parentVideoData, 0);
 		scheduleForAlter();
 		return;
 	}
@@ -3348,7 +3562,7 @@ void TangibleObject::updateVideoEmitterAudio()
 	if (vlcVolume < 0) vlcVolume = 0;
 	if (vlcVolume > 100) vlcVolume = 100;
 
-	ms_vlcApi.pAudioSetVolume(parentVideoData.mediaPlayer, vlcVolume);
+	applyLibvlcPlayerVolume(parentVideoData, vlcVolume);
 	scheduleForAlter();
 }
 
@@ -3368,8 +3582,8 @@ void TangibleObject::clearVideoEmitterAudio()
 		if (parentTangible)
 		{
 			VideoStreamRuntimeDataMap::iterator parentIt = ms_videoStreamRuntimeDataMap.find(parentTangible);
-			if (parentIt != ms_videoStreamRuntimeDataMap.end() && parentIt->second.mediaPlayer && ms_vlcApi.loaded)
-				ms_vlcApi.pAudioSetVolume(parentIt->second.mediaPlayer, 0);
+			if (parentIt != ms_videoStreamRuntimeDataMap.end() && parentIt->second->mediaPlayer && ms_vlcApi.loaded)
+				applyLibvlcPlayerVolume(*parentIt->second, 0);
 		}
 	}
 

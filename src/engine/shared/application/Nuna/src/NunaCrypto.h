@@ -49,14 +49,52 @@ public:
         return TITANPAK_PASSWORD;
     }
 
+    static std::string trimAsciiWhitespaceCopy(std::string s)
+    {
+        while (!s.empty() && (static_cast<unsigned char>(s.back()) <= 32u || s.back() == '\t'))
+            s.pop_back();
+        size_t i = 0;
+        while (i < s.size() && (static_cast<unsigned char>(s[i]) <= 32u || s[i] == '\t'))
+            ++i;
+        return s.substr(i);
+    }
+
+    static void appendUniquePassword(std::vector<std::string>& out, const std::string& cand)
+    {
+        if (cand.empty())
+            return;
+        for (const auto& x : out)
+            if (x == cand)
+                return;
+        out.push_back(cand);
+    }
+
+    /// Ordered XOR keystream candidates for NUNA/LEGE: empty password (salt-only deriveKey),
+    /// explicit GUI/CLI, SWG_TRE_PASSWORD, built-in Titan key. All are tried until TOC decodes.
+    static std::vector<std::string> trePasswordCandidates(const std::string& explicitPasswordOrEmptyFromUi)
+    {
+        std::vector<std::string> c;
+        c.emplace_back(); // deriveKey early-outs: key is salt + zero padding only
+        const std::string ex = trimAsciiWhitespaceCopy(explicitPasswordOrEmptyFromUi);
+        appendUniquePassword(c, ex);
+        if (const char* e = std::getenv("SWG_TRE_PASSWORD"))
+            appendUniquePassword(c, trimAsciiWhitespaceCopy(std::string(e)));
+        appendUniquePassword(c, std::string(TITANPAK_PASSWORD));
+        return c;
+    }
+
     /// Empty explicitPassword → `SWG_TRE_PASSWORD` env (if set), else built-in TitanPak key.
     static std::string resolveTrePassword(const std::string& explicitPassword)
     {
-        if (!explicitPassword.empty())
-            return explicitPassword;
+        const std::string t = trimAsciiWhitespaceCopy(explicitPassword);
+        if (!t.empty())
+            return t;
         if (const char* e = std::getenv("SWG_TRE_PASSWORD"))
-            if (e[0] != '\0')
-                return std::string(e);
+        {
+            const std::string v = trimAsciiWhitespaceCopy(std::string(e));
+            if (!v.empty())
+                return v;
+        }
         return std::string(TITANPAK_PASSWORD);
     }
 
@@ -73,6 +111,68 @@ public:
         }
     }
 
+    /// Standard RC4 (ARCFOUR): `output[n] = input[n] ^ KS[n]`. `input` and `output` may alias for in-place.
+    /// No-op if `keyLen == 0` or `len == 0`.
+    static void rc4Crypt(const uint8_t* key, size_t keyLen, const uint8_t* input, size_t len, uint8_t* output)
+    {
+        if (!key || keyLen == 0 || !input || !output || len == 0)
+            return;
+
+        uint8_t S[256];
+        for (int i = 0; i < 256; ++i)
+            S[i] = static_cast<uint8_t>(i);
+        int j = 0;
+        for (int i = 0; i < 256; ++i)
+        {
+            j = (j + S[i] + key[static_cast<size_t>(i) % keyLen]) & 255;
+            std::swap(S[static_cast<unsigned>(i)], S[static_cast<unsigned>(j)]);
+        }
+        int i = 0;
+        j = 0;
+        for (size_t n = 0; n < len; ++n)
+        {
+            i = (i + 1) & 255;
+            j = (j + S[static_cast<unsigned>(i)]) & 255;
+            std::swap(S[static_cast<unsigned>(i)], S[static_cast<unsigned>(j)]);
+            const uint8_t K = S[(S[static_cast<unsigned>(i)] + S[static_cast<unsigned>(j)]) & 255];
+            output[n] = static_cast<uint8_t>(input[n] ^ K);
+        }
+    }
+
+    /// RC4 (ARCFOUR) after discarding the first `dropKeystreamBytes` PRGA output bytes (some stacks sync this way).
+    static void rc4CryptDropKeystream(const uint8_t* key, size_t keyLen, size_t dropKeystreamBytes,
+                                      const uint8_t* input, size_t len, uint8_t* output)
+    {
+        if (!key || keyLen == 0 || !input || !output || len == 0)
+            return;
+
+        uint8_t S[256];
+        for (int i = 0; i < 256; ++i)
+            S[i] = static_cast<uint8_t>(i);
+        int j = 0;
+        for (int i = 0; i < 256; ++i)
+        {
+            j = (j + S[i] + key[static_cast<size_t>(i) % keyLen]) & 255;
+            std::swap(S[static_cast<unsigned>(i)], S[static_cast<unsigned>(j)]);
+        }
+        int i = 0;
+        j = 0;
+        for (size_t n = 0; n < dropKeystreamBytes; ++n)
+        {
+            i = (i + 1) & 255;
+            j = (j + S[static_cast<unsigned>(i)]) & 255;
+            std::swap(S[static_cast<unsigned>(i)], S[static_cast<unsigned>(j)]);
+            (void)S[(S[static_cast<unsigned>(i)] + S[static_cast<unsigned>(j)]) & 255];
+        }
+        for (size_t n = 0; n < len; ++n)
+        {
+            i = (i + 1) & 255;
+            j = (j + S[static_cast<unsigned>(i)]) & 255;
+            std::swap(S[static_cast<unsigned>(i)], S[static_cast<unsigned>(j)]);
+            const uint8_t K = S[(S[static_cast<unsigned>(i)] + S[static_cast<unsigned>(j)]) & 255];
+            output[n] = static_cast<uint8_t>(input[n] ^ K);
+        }
+    }
 
     // Derive a key from password and salt using a simple PBKDF-like function
     static void deriveKey(const std::string& password, 

@@ -9,6 +9,7 @@
 #include "swgClientUserInterface/SwgCuiAvatarSetupProf.h"
 
 #include "UIButton.h"
+#include "UIBaseObject.h"
 #include "UIComboBox.h"
 #include "UIData.h"
 #include "UIDataSource.h"
@@ -284,6 +285,12 @@ void SwgCuiAvatarSetupProf::performActivate ()
 	m_begunWookieeTransition = false;
 
 	setIsUpdating (true);
+
+	{
+		UIBaseObject * const p = m_viewer->GetParent ();
+		if (p && p->IsA (TUIPage))
+			IGNORE_RETURN (static_cast<UIPage *>(p)->MoveChild (m_viewer, UIBaseObject::Bottom));
+	}
 }
 
 //-----------------------------------------------------------------
@@ -593,6 +600,13 @@ void SwgCuiAvatarSetupProf::updateProfessionInfo (bool playSound)
 void SwgCuiAvatarSetupProf::update (float deltaTimeSecs)
 {
 	CuiMediator::update (deltaTimeSecs);
+
+	if (m_viewer)
+	{
+		UIBaseObject * const p = m_viewer->GetParent ();
+		if (p && p->IsA (TUIPage))
+			IGNORE_RETURN (static_cast<UIPage *>(p)->MoveChild (m_viewer, UIBaseObject::Bottom));
+	}
 
 	if (!m_transitionFinished)
 	{

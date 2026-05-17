@@ -814,6 +814,9 @@
     <ClCompile Include="..\..\src\shared\page\SwgCuiStatusSpace.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
     </ClCompile>
+    <ClCompile Include="..\..\src\shared\page\SwgCuiClaimManagement.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+    </ClCompile>
     <ClCompile Include="..\..\src\shared\page\SwgCuiStructurePlacement.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
     </ClCompile>
@@ -1153,6 +1156,7 @@
     <ClInclude Include="..\..\src\shared\page\SwgCuiStatusFactory.h" />
     <ClInclude Include="..\..\src\shared\page\SwgCuiStatusGround.h" />
     <ClInclude Include="..\..\src\shared\page\SwgCuiStatusSpace.h" />
+    <ClInclude Include="..\..\src\shared\page\SwgCuiClaimManagement.h" />
     <ClInclude Include="..\..\src\shared\page\SwgCuiStructurePlacement.h" />
     <ClInclude Include="..\..\src\shared\page\SwgCuiSurvey.h" />
     <ClInclude Include="..\..\src\shared\page\SwgCuiSystemMessage.h" />

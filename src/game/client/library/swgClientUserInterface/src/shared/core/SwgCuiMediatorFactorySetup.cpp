@@ -132,6 +132,7 @@
 #include "swgClientUserInterface/SwgCuiSpaceGroupLaunch.h"
 #include "swgClientUserInterface/SwgCuiSpaceMiningSale.h"
 #include "swgClientUserInterface/SwgCuiSpaceZoneMap.h"
+#include "swgClientUserInterface/SwgCuiClaimManagement.h"
 #include "swgClientUserInterface/SwgCuiSplash.h"
 #include "swgClientUserInterface/SwgCuiStructurePlacement.h"
 #include "swgClientUserInterface/SwgCuiTcgWindow.h"
@@ -224,6 +225,7 @@ void SwgCuiMediatorFactorySetup::install ()
 	MAKE_SWG_CTOR (IMEInput,                          "/Debug.IME");
 	MAKE_SWG_CTOR (Splash,                            "/Splash");
 	MAKE_SWG_CTOR (StructurePlacement,                "/Placement");
+	MAKE_SWG_CTOR (ClaimManagement,                  "DO NOT USE");
 	MAKE_SWG_CTOR_WS (Vendor,                         "/Auction.AuctionList");
 	MAKE_SWG_CTOR_WS (VendorSetPrice,                 "/Auction.AuctionsetPrice");
 	MAKE_SWG_CTOR_WS (ChatRooms,                      "/pda.ChatRooms");

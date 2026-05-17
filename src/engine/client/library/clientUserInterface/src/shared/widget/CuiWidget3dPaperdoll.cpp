@@ -121,6 +121,7 @@ void CuiWidget3dPaperdoll::Render( UICanvas & canvas ) const
 	}
 
 	CuiWidget3dObjectViewer::RenderStop ();
+	Graphics::setViewport (0, 0, Graphics::getCurrentRenderTargetWidth (), Graphics::getCurrentRenderTargetHeight (), 0.0f, 1.0f);
 }
 
 //-----------------------------------------------------------------

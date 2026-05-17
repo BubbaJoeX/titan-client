@@ -184,6 +184,7 @@ public:
 	static void                          setAllowMouseCursorConstrained(bool allowMouseCursorConstrained);
 
 	static void                          setViewport(int x, int y, int width, int height, float minZ=0.0f, float maxZ=1.0f);
+	static void                          getViewport(int &x, int &y, int &width, int &height);
 	static void                          setScissorRect(bool enabled, int x, int y, int width, int height);
 	static void                          setWorldToCameraTransform(const Transform &transform, const Vector &cameraPosition);
 	static void                          setProjectionMatrix(const GlMatrix4x4 &projectionMatrix);

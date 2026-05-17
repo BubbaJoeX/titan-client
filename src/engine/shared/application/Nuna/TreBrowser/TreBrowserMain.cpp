@@ -721,6 +721,26 @@ void RunExtractArchive()
     }
 }
 
+// Prefer the top overlay layer, but if that archive's payload is bad, older layers may still decode.
+Nuna::Result ExtractOneBestEffort(const PathOverlay& po, const fs::path& outPath, const Nuna::UnpackOptions& uo,
+                                  const fs::path& preferredTre, bool* usedFallback)
+{
+    if (usedFallback)
+        *usedFallback = false;
+    Nuna::Result last;
+    for (auto it = po.layers.rbegin(); it != po.layers.rend(); ++it)
+    {
+        last = Nuna::extractOne(it->trePath.u8string(), po.displayPath, outPath.u8string(), uo);
+        if (last.ok())
+        {
+            if (usedFallback && it->trePath != preferredTre)
+                *usedFallback = true;
+            return last;
+        }
+    }
+    return last;
+}
+
 void RunExtractSingleFile()
 {
     TreeItemData* d = GetSelectedTreeData();
@@ -762,12 +782,16 @@ void RunExtractSingleFile()
     uo.quiet = true;
     uo.encryption = PasswordOptionsFromUi();
 
-    const Nuna::Result r =
-        Nuna::extractOne(winnerTre.u8string(), internalPath, outFile.u8string(), uo);
+    bool fallback = false;
+    const Nuna::Result r = ExtractOneBestEffort(it->second, outFile, uo, winnerTre, &fallback);
     if (!r.ok())
         AppendLogUtf8(std::string("Extract file: ") + r.message + "\r\n");
     else
+    {
         AppendLogUtf8(std::string("Wrote: ") + outFile.u8string() + "\r\n");
+        if (fallback)
+            AppendLogUtf8("(used older overlay .tre; top layer failed to decode)\r\n");
+    }
 }
 
 void CollectFilesUnderFolderPrefix(const std::string& normFolderPrefix, std::vector<std::string>& outKeys)
@@ -831,9 +855,14 @@ void RunExtractFolder()
         std::error_code ec;
         fs::create_directories(outPath.parent_path(), ec);
 
-        const Nuna::Result r = Nuna::extractOne(winnerTre.u8string(), internalPath, outPath.u8string(), uo);
+        bool fallback = false;
+        const Nuna::Result r = ExtractOneBestEffort(it->second, outPath, uo, winnerTre, &fallback);
         if (r.ok())
+        {
             ++okCount;
+            if (fallback)
+                AppendLogUtf8(std::string("OK (older .tre) ") + internalPath + "\r\n");
+        }
         else
             AppendLogUtf8(std::string("FAIL ") + internalPath + " : " + r.message + "\r\n");
     }

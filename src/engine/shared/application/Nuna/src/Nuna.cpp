@@ -20,6 +20,9 @@
 #include <iomanip>
 #include <sstream>
 #include <unordered_set>
+#include <cstdint>
+#include <vector>
+#include <cctype>
 
 namespace fs = std::filesystem;
 
@@ -57,6 +60,102 @@ bool layoutTocEntriesFromBlob(const uint8_t* blob, size_t blobLen, uint32_t numb
     if (trimmedLen >= minBytes && trimmedLen / numberOfFiles >= entrySize)
         return layoutTocEntriesFromBlob(blob, trimmedLen, numberOfFiles, out);
 
+    return false;
+}
+
+bool decodeTreTocBytes(uint32_t tocCompressorField, const uint8_t* tocBytes, size_t tocSize, uint32_t numberOfFiles,
+                       std::vector<TocEntry>& outToc)
+{
+    if (!tocBytes || tocSize == 0)
+        return false;
+
+    auto tocRowsLookPlausible = [](const std::vector<TocEntry>& toc, uint32_t numberOfFiles) -> bool {
+        if (numberOfFiles == 0)
+            return true;
+        if (toc.size() != static_cast<size_t>(numberOfFiles))
+            return false;
+        return toc[0].offset >= 0 && toc[0].length >= 0;
+    };
+
+    auto tryRaw = [&]() -> bool {
+        if (!layoutTocEntriesFromBlob(tocBytes, tocSize, numberOfFiles, outToc))
+            return false;
+        return tocRowsLookPlausible(outToc, numberOfFiles);
+    };
+    auto tryZlib = [&]() -> bool {
+        std::vector<uint8_t> dec;
+        if (!Compression::decompress(tocBytes, tocSize, dec, 0))
+            return false;
+        if (!layoutTocEntriesFromBlob(dec.data(), dec.size(), numberOfFiles, outToc))
+            return false;
+        return tocRowsLookPlausible(outToc, numberOfFiles);
+    };
+
+    const bool zlibFirst = treFieldImpliesZlibPayload(tocCompressorField);
+    if (zlibFirst)
+    {
+        if (tryZlib())
+            return true;
+        if (tryRaw())
+            return true;
+    }
+    else
+    {
+        if (tryRaw())
+            return true;
+        if (tryZlib())
+            return true;
+    }
+    return false;
+}
+
+bool decodeTreNameBlock(uint32_t blockCompressorField, const uint8_t* src, size_t srcSize, uint32_t uncompSize,
+                        std::vector<char>& nameBlockOut)
+{
+    if (!src || uncompSize == 0)
+        return false;
+
+    nameBlockOut.resize(uncompSize);
+    std::vector<uint8_t> dec;
+    const bool zlibFirst = treFieldImpliesZlibPayload(blockCompressorField);
+
+    if (zlibFirst)
+    {
+        if (Compression::decompress(src, srcSize, dec, uncompSize))
+        {
+            std::memcpy(nameBlockOut.data(), dec.data(), uncompSize);
+            return true;
+        }
+        if (Compression::decompress(src, srcSize, dec, 0) && dec.size() >= uncompSize)
+        {
+            std::memcpy(nameBlockOut.data(), dec.data(), uncompSize);
+            return true;
+        }
+        if (srcSize == uncompSize)
+        {
+            std::memcpy(nameBlockOut.data(), src, uncompSize);
+            return true;
+        }
+        return false;
+    }
+
+    if (srcSize >= uncompSize)
+    {
+        std::memcpy(nameBlockOut.data(), src, uncompSize);
+        return true;
+    }
+    if (srcSize >= 2u)
+    {
+        const uint8_t cmf = static_cast<uint8_t>(src[0]);
+        const uint8_t flg = static_cast<uint8_t>(src[1]);
+        const uint32_t hdr = (static_cast<uint32_t>(cmf) << 8) | flg;
+        const bool zlibHdr = (cmf & 0xF) == 8 && (cmf >> 4) <= 7 && (hdr % 31u) == 0 && (flg & 0x20) == 0;
+        if (zlibHdr && Compression::decompress(src, srcSize, dec, 0) && dec.size() >= uncompSize)
+        {
+            std::memcpy(nameBlockOut.data(), dec.data(), uncompSize);
+            return true;
+        }
+    }
     return false;
 }
 
@@ -330,7 +429,8 @@ Nuna::Result dumpCipherRegions(const std::string& inputTre, const std::string& o
         << "name_block_region: bytes [" << nameOff << ", " << (nameOff + header.sizeOfNameBlock)
         << ") size=" << header.sizeOfNameBlock << "\n"
         << "payload_tail: bytes [" << payloadStart << ", " << fsz << ")\n"
-        << "\nSet SWG_TRE_PASSWORD if you obtain the key; run \"nuna analyze\" for probes.\n";
+        << "\nWithout the XOR password, inspect blobs offline. Tools: `nuna carve-zlib <file> <dir>` (plaintext zlib only), "
+           "`nuna try-passwords`, `nuna salt-guesses`.\n";
 
     const std::string manifest = man.str();
     if (!writeBin("README_manifest.txt", reinterpret_cast<const uint8_t*>(manifest.data()), manifest.size()))
@@ -341,6 +441,126 @@ Nuna::Result dumpCipherRegions(const std::string& inputTre, const std::string& o
     }
 
     result.message = "Wrote ciphertext blobs to " + outputDir;
+    return result;
+}
+
+namespace
+{
+bool zlibCarveHeaderValid(uint8_t cmf, uint8_t flg)
+{
+    if ((cmf & 0xF) != 8)
+        return false;
+    if ((cmf >> 4) > 7)
+        return false;
+    const uint32_t hdr = (static_cast<uint32_t>(cmf) << 8) | flg;
+    if (hdr % 31u != 0)
+        return false;
+    if ((flg & 0x20) != 0)
+        return false;
+    return true;
+}
+
+bool zlibInflateOneShot(const uint8_t* src, size_t srcLen, size_t& totalIn, std::vector<uint8_t>& out)
+{
+    z_stream strm{};
+    strm.next_in = const_cast<Bytef*>(reinterpret_cast<const Bytef*>(src));
+    strm.avail_in = static_cast<uInt>(srcLen);
+    strm.zalloc = Z_NULL;
+    strm.zfree = Z_NULL;
+    strm.opaque = Z_NULL;
+
+    if (inflateInit(&strm) != Z_OK)
+        return false;
+
+    out.clear();
+    out.resize(std::max(srcLen * 4u, size_t(65536)));
+    strm.next_out = reinterpret_cast<Bytef*>(out.data());
+    strm.avail_out = static_cast<uInt>(out.size());
+
+    for (;;)
+    {
+        const int ret = inflate(&strm, Z_FINISH);
+        if (ret == Z_STREAM_END)
+            break;
+        if (ret != Z_OK && ret != Z_BUF_ERROR)
+        {
+            inflateEnd(&strm);
+            return false;
+        }
+        const size_t oldSz = out.size();
+        if (oldSz > 128u * 1024u * 1024u)
+        {
+            inflateEnd(&strm);
+            return false;
+        }
+        out.resize(oldSz * 2);
+        strm.next_out = reinterpret_cast<Bytef*>(out.data() + strm.total_out);
+        strm.avail_out = static_cast<uInt>(out.size() - strm.total_out);
+    }
+
+    inflateEnd(&strm);
+    totalIn = strm.total_in;
+    out.resize(strm.total_out);
+    return true;
+}
+} // namespace
+
+Result carveZlibStreamsInternal(const std::string& inputPath, const std::string& outputDir, const CarveZlibOptions& opts)
+{
+    Result result;
+    std::vector<uint8_t> data;
+    if (!readFile(inputPath, data))
+    {
+        result.code = ResultCode::FileNotFound;
+        result.message = "Cannot read file: " + inputPath;
+        return result;
+    }
+    if (!createDirectories(outputDir))
+    {
+        result.code = ResultCode::IOError;
+        result.message = "Cannot create output directory: " + outputDir;
+        return result;
+    }
+
+    const fs::path outRoot(outputDir);
+    size_t written = 0;
+    size_t skipUntil = 0;
+    const size_t maxOut =
+        (opts.maxExtractedStreams == 0) ? static_cast<size_t>(-1) : static_cast<size_t>(opts.maxExtractedStreams);
+
+    for (size_t i = 0; i + 2 < data.size(); ++i)
+    {
+        if (i < skipUntil)
+            continue;
+        if (!zlibCarveHeaderValid(data[i], data[i + 1]))
+            continue;
+
+        size_t consumed = 0;
+        std::vector<uint8_t> inflated;
+        if (!zlibInflateOneShot(data.data() + i, data.size() - i, consumed, inflated))
+            continue;
+        if (inflated.size() < opts.minInflatedBytes)
+            continue;
+        if (written >= maxOut)
+            break;
+
+        std::ostringstream name;
+        name << "zlib_off_0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(8) << i << std::dec
+             << "_out_" << inflated.size() << ".bin";
+        const std::string path = (outRoot / name.str()).string();
+        if (!writeFile(path, inflated.data(), inflated.size()))
+        {
+            result.code = ResultCode::IOError;
+            result.message = "Failed writing " + path;
+            return result;
+        }
+        ++written;
+        skipUntil = i + std::max<size_t>(1, consumed);
+        if (!opts.quiet)
+            std::cout << "carve-zlib: " << path << " (" << inflated.size() << " bytes)\n";
+    }
+
+    result.message = "Carved " + std::to_string(written) + " zlib stream(s) to " + outputDir;
     return result;
 }
 
@@ -411,31 +631,14 @@ bool analyzeProbeTocDecrypt(std::ifstream& inFile, const TreHeader& header, Encr
 {
     inFile.seekg(header.tocOffset);
 
-    if (header.tocCompressor == static_cast<uint32_t>(CompressionType::Zlib))
-    {
-        std::vector<uint8_t> compressed(header.sizeOfTOC);
-        inFile.read(reinterpret_cast<char*>(compressed.data()), header.sizeOfTOC);
-        encCtx.decryptAt(compressed.data(), compressed.size(), header.tocOffset);
-        std::vector<uint8_t> decompressed;
-        if (!Compression::decompress(compressed.data(), compressed.size(), decompressed, 0))
-            return false;
-        std::vector<TocEntry> toc;
-        if (!layoutTocEntriesFromBlob(decompressed.data(), decompressed.size(), header.numberOfFiles, toc))
-            return false;
-        if (header.numberOfFiles == 0)
-            return true;
-        return toc[0].length >= 0 && toc[0].offset >= 0;
-    }
-
     std::vector<uint8_t> tocData(header.sizeOfTOC);
     inFile.read(reinterpret_cast<char*>(tocData.data()), header.sizeOfTOC);
-    encCtx.decryptAt(tocData.data(), tocData.size(), header.tocOffset);
-    std::vector<TocEntry> toc;
-    if (!layoutTocEntriesFromBlob(tocData.data(), tocData.size(), header.numberOfFiles, toc))
+    if (static_cast<size_t>(inFile.gcount()) != header.sizeOfTOC)
         return false;
-    if (header.numberOfFiles == 0)
-        return true;
-    return toc[0].length >= 0 && toc[0].offset >= 0;
+    encCtx.decryptAt(tocData.data(), tocData.size(), header.tocOffset);
+
+    std::vector<TocEntry> toc;
+    return decodeTreTocBytes(header.tocCompressor, tocData.data(), tocData.size(), header.numberOfFiles, toc);
 }
 
 bool compareEntries(const FileEntry& a, const FileEntry& b)
@@ -462,7 +665,7 @@ bool compareEntries(const FileEntry& a, const FileEntry& b)
 namespace
 {
 
-Result loadTreDirectoryFromOpenFile(std::ifstream& inFile, const UnpackOptions& options,
+Result loadTreDirectoryFromOpenFile(std::ifstream& inFile, const EncryptionOptions& encryption,
                                     TreHeader& header, std::vector<TocEntry>& toc,
                                     std::vector<char>& nameBlock, bool& isEncrypted,
                                     EncryptionContext& encCtx)
@@ -489,92 +692,101 @@ Result loadTreDirectoryFromOpenFile(std::ifstream& inFile, const UnpackOptions& 
 
     EncryptionHeader encHeader = {};
     if (isEncrypted)
-    {
         inFile.read(reinterpret_cast<char*>(&encHeader), sizeof(encHeader));
 
-        const std::string password = Crypto::resolveTrePassword(options.encryption.password);
-
-        encCtx.initDecrypt(password, encHeader.salt, encHeader.iv);
-    }
-
-    inFile.seekg(header.tocOffset);
-
-    std::vector<uint8_t> tocData(header.sizeOfTOC);
-    inFile.read(reinterpret_cast<char*>(tocData.data()), header.sizeOfTOC);
-    if (static_cast<size_t>(inFile.gcount()) != header.sizeOfTOC)
+    auto finishTocAndNames = [&]() -> Result
     {
-        result.code = ResultCode::InvalidArchive;
-        result.message = "Short read on TOC (got " + std::to_string(inFile.gcount()) + ", expected " +
+        Result r;
+        inFile.clear();
+        inFile.seekg(header.tocOffset);
+
+        std::vector<uint8_t> tocData(header.sizeOfTOC);
+        inFile.read(reinterpret_cast<char*>(tocData.data()), header.sizeOfTOC);
+        if (static_cast<size_t>(inFile.gcount()) != header.sizeOfTOC)
+        {
+            r.code = ResultCode::InvalidArchive;
+            r.message = "Short read on TOC (got " + std::to_string(inFile.gcount()) + ", expected " +
                          std::to_string(header.sizeOfTOC) + ")";
-        return result;
-    }
-
-    if (isEncrypted)
-        encCtx.decryptAt(tocData.data(), tocData.size(), header.tocOffset);
-
-    if (header.tocCompressor == static_cast<uint32_t>(CompressionType::Zlib))
-    {
-        std::vector<uint8_t> decompressed;
-        if (!Compression::decompress(tocData.data(), tocData.size(), decompressed, 0))
-        {
-            result.code = ResultCode::DecompressionError;
-            result.message = "Failed to decompress TOC";
-            return result;
+            return r;
         }
-        if (!layoutTocEntriesFromBlob(decompressed.data(), decompressed.size(), header.numberOfFiles, toc))
+
+        if (isEncrypted)
+            encCtx.decryptAt(tocData.data(), tocData.size(), header.tocOffset);
+
+        if (!decodeTreTocBytes(header.tocCompressor, tocData.data(), tocData.size(), header.numberOfFiles, toc))
         {
-            result.code = ResultCode::InvalidArchive;
-            result.message = "TOC size does not match file count (unsupported TOC row layout)";
-            return result;
+            r.code = ResultCode::InvalidPassword;
+            r.message = "TOC decode/layout failed after decrypt (wrong key, corrupt archive, or unknown TOC packing)";
+            return r;
         }
-    }
-    else
-    {
-        if (!layoutTocEntriesFromBlob(tocData.data(), tocData.size(), header.numberOfFiles, toc))
+
+        if (header.numberOfFiles > 0 && (toc[0].offset < 0 || toc[0].length < 0))
         {
-            result.code = ResultCode::InvalidArchive;
-            result.message = "TOC size does not match file count (expected uncompressed TOC blob)";
-            return result;
+            r.code = ResultCode::InvalidPassword;
+            r.message = "TOC entry fields invalid after decrypt";
+            return r;
         }
-    }
 
-    const uint64_t nameBlockOffset = static_cast<uint64_t>(header.tocOffset) + header.sizeOfTOC;
-    inFile.seekg(nameBlockOffset);
+        const uint64_t nameBlockOffset = static_cast<uint64_t>(header.tocOffset) + header.sizeOfTOC;
+        inFile.clear();
+        inFile.seekg(static_cast<std::streamoff>(nameBlockOffset));
 
-    std::vector<uint8_t> nameBlockData(header.sizeOfNameBlock);
-    inFile.read(reinterpret_cast<char*>(nameBlockData.data()), header.sizeOfNameBlock);
-    if (static_cast<size_t>(inFile.gcount()) != header.sizeOfNameBlock)
-    {
-        result.code = ResultCode::InvalidArchive;
-        result.message = "Short read on name block (got " + std::to_string(inFile.gcount()) + ", expected " +
-                         std::to_string(header.sizeOfNameBlock) + ")";
-        return result;
-    }
-
-    if (isEncrypted)
-        encCtx.decryptAt(nameBlockData.data(), nameBlockData.size(), nameBlockOffset);
-
-    nameBlock.resize(header.uncompSizeOfNameBlock);
-
-    if (header.blockCompressor == static_cast<uint32_t>(CompressionType::Zlib))
-    {
-        std::vector<uint8_t> decompressed;
-        if (!Compression::decompress(nameBlockData.data(), nameBlockData.size(),
-                                     decompressed, header.uncompSizeOfNameBlock))
+        const uint64_t nameReadBytes = treFieldImpliesZlibPayload(header.blockCompressor)
+                                           ? static_cast<uint64_t>(header.sizeOfNameBlock)
+                                           : static_cast<uint64_t>(header.uncompSizeOfNameBlock);
+        std::vector<uint8_t> nameBlockData(static_cast<size_t>(nameReadBytes));
+        inFile.read(reinterpret_cast<char*>(nameBlockData.data()), static_cast<std::streamsize>(nameReadBytes));
+        if (static_cast<uint64_t>(inFile.gcount()) != nameReadBytes)
         {
-            result.code = ResultCode::DecompressionError;
-            result.message = "Failed to decompress name block";
-            return result;
+            r.code = ResultCode::InvalidArchive;
+            r.message = "Short read on name block (got " + std::to_string(inFile.gcount()) + ", expected " +
+                         std::to_string(nameReadBytes) + ")";
+            return r;
         }
-        std::memcpy(nameBlock.data(), decompressed.data(), header.uncompSizeOfNameBlock);
-    }
-    else
+
+        if (isEncrypted)
+            encCtx.decryptAt(nameBlockData.data(), nameBlockData.size(), nameBlockOffset);
+
+        if (!decodeTreNameBlock(header.blockCompressor, nameBlockData.data(), nameBlockData.size(),
+                                header.uncompSizeOfNameBlock, nameBlock))
+        {
+            r.code = ResultCode::InvalidPassword;
+            r.message = "Failed to decode name block (wrong password, corrupt archive, or compressor flags mismatch)";
+            return r;
+        }
+
+        r.message = "OK";
+        return r;
+    };
+
+    if (!isEncrypted)
     {
-        std::memcpy(nameBlock.data(), nameBlockData.data(), header.uncompSizeOfNameBlock);
+        encCtx = EncryptionContext();
+        return finishTocAndNames();
     }
 
-    result.message = "OK";
-    return result;
+    const std::vector<std::string> candidates = Crypto::trePasswordCandidates(encryption.password);
+    Result lastFail;
+    lastFail.code = ResultCode::InvalidPassword;
+    lastFail.message = "Could not decrypt TOC/name blocks";
+
+    for (const std::string& pw : candidates)
+    {
+        encCtx.initDecrypt(pw, encHeader.salt, encHeader.iv);
+        result = finishTocAndNames();
+        if (result.ok())
+            return result;
+        lastFail = result;
+        if (lastFail.code == ResultCode::InvalidArchive &&
+            lastFail.message.find("Short read") != std::string::npos)
+            break;
+    }
+
+    lastFail.message +=
+        ". Tried: no passphrase (salt-only deriveKey), explicit password, SWG_TRE_PASSWORD, "
+        "built-in Titan key. XOR-encrypted regions are not zlib streams until decrypted. "
+        "Alternatives: `nuna dump-cipher`, `nuna carve-zlib` (plaintext zlib carve), `nuna try-passwords`.";
+    return lastFail;
 }
 
 bool pathIsUnderDirectoryPrefix(const std::string& normPath, const std::string& normPrefix)
@@ -590,9 +802,494 @@ bool pathIsUnderDirectoryPrefix(const std::string& normPath, const std::string& 
     return normPath[normPrefix.size()] == '/';
 }
 
+// Bytes available for this entry's payload: up to the next higher file offset, or EOF.
+// Prevents reading past the slot when TOC compressedLength is too large (zlib then sees
+// trailing garbage and fails — same class of bug as reading into the next file).
+static uint64_t contiguousPayloadBytes(const std::vector<TocEntry>& toc, int32_t offset, uint64_t fileSize)
+{
+    int64_t nextStart = -1;
+    for (const TocEntry& e : toc)
+    {
+        if (e.offset > offset && (nextStart < 0 || e.offset < nextStart))
+            nextStart = e.offset;
+    }
+    if (nextStart < 0)
+    {
+        if (fileSize <= static_cast<uint64_t>(offset))
+            return 0;
+        return fileSize - static_cast<uint64_t>(offset);
+    }
+    return static_cast<uint64_t>(std::max<int64_t>(0, nextStart - offset));
+}
+
+static uint64_t streamFileSize(std::ifstream& inFile)
+{
+    const std::streampos cur = inFile.tellg();
+    inFile.clear();
+    inFile.seekg(0, std::ios::end);
+    const uint64_t sz = static_cast<uint64_t>(inFile.tellg());
+    inFile.clear();
+    inFile.seekg(cur);
+    return sz;
+}
+
+/// zlib RFC CMF/FLG sanity check (filters XOR-key attempts on huge payloads).
+static bool zlibCmfFlgPlausible(uint8_t cmf, uint8_t flg)
+{
+    if ((cmf & 0xF) != 8)
+        return false;
+    if ((cmf >> 4) > 7)
+        return false;
+    const uint32_t hdr = (static_cast<uint32_t>(cmf) << 8) | flg;
+    if (hdr % 31u != 0)
+        return false;
+    if ((flg & 0x20) != 0)
+        return false;
+    return true;
+}
+
+/// Cheap pre-filter: after uniform XOR/ADD `k` on every byte, might `cmf/flg` appear in the first `maxScanOffsets` positions?
+static bool uniformTransformMayYieldZlibPrefix(const uint8_t* d, size_t n, size_t maxScanOffsets, bool isAdd, uint8_t k)
+{
+    for (size_t s = 0; s + 1 < n && s < maxScanOffsets; ++s)
+    {
+        uint8_t a;
+        uint8_t b;
+        if (!isAdd)
+        {
+            a = static_cast<uint8_t>(d[s] ^ k);
+            b = static_cast<uint8_t>(d[s + 1] ^ k);
+        }
+        else
+        {
+            a = static_cast<uint8_t>(d[s] + k);
+            b = static_cast<uint8_t>(d[s + 1] + k);
+        }
+        if (zlibCmfFlgPlausible(a, b))
+            return true;
+    }
+    return false;
+}
+
+static bool payloadLooksLikeUncompressedAsset(const uint8_t* p, size_t n)
+{
+    if (n < 4u)
+        return false;
+    if (p[0] == 'D' && p[1] == 'D' && p[2] == 'S' && p[3] == ' ')
+        return true;
+    // SWG client meshes / IFF-style containers often start with FORM
+    if (p[0] == 'F' && p[1] == 'O' && p[2] == 'R' && p[3] == 'M')
+        return true;
+    // Client data / config (e.g. .cdf) often UTF-8 or "<?xml"
+    if (p[0] == '<' && n >= 2 && (p[1] == '?' || p[1] == '!'))
+        return true;
+    return false;
+}
+
+static bool zlibFamilyDecompressFromBytes(const uint8_t* data, size_t dataSize, int32_t nominalUncompressedLen,
+                                          std::vector<uint8_t>& outputData)
+{
+    if (!data || dataSize == 0)
+        return false;
+    if (Compression::decompress(data, dataSize, outputData, nominalUncompressedLen))
+        return true;
+    std::vector<uint8_t> loose;
+    if (Compression::decompress(data, dataSize, loose, 0))
+    {
+        // TOC known length: reject "success" at wrong size (damaged streams can still inflate to garbage).
+        if (nominalUncompressedLen <= 0 || loose.size() == static_cast<size_t>(nominalUncompressedLen))
+        {
+            outputData = std::move(loose);
+            return true;
+        }
+    }
+    // Do not treat raw bytes as "stored" IFF/XML here: skips inside a zlib-marked slot often match false positives
+    // (e.g. '<' '?' bit patterns). Mis-flagged stored assets are handled in writeEntryDataToFile.
+
+    // Padded slots or non-zlib preamble: try zlib + raw DEFLATE (see NunaCompression::decompress) from each offset.
+    const size_t maxSkip = std::min<size_t>(128, dataSize > 10 ? dataSize - 8 : 0);
+    for (size_t skip = 1; skip <= maxSkip; ++skip)
+    {
+        const uint8_t* p = data + skip;
+        const size_t len = dataSize - skip;
+        if (len < 4u)
+            break;
+        if (Compression::decompress(p, len, outputData, nominalUncompressedLen))
+            return true;
+        loose.clear();
+        if (Compression::decompress(p, len, loose, 0))
+        {
+            if (nominalUncompressedLen > 0 && loose.size() != static_cast<size_t>(nominalUncompressedLen))
+                continue;
+            outputData = std::move(loose);
+            return true;
+        }
+    }
+    return false;
+}
+
+static void appendRc4KeyGuesses(std::vector<std::string>& keys, const std::string& pathHint)
+{
+    static const char* extras[] = {"SwgRestoration", "SWGRestoration", "SwgRestoration2", "restoration",
+                                   "Restoration",  "SWG",           "swg",            "rc4",
+                                   "StarWarsGalaxies"};
+    for (const char* e : extras)
+        Crypto::appendUniquePassword(keys, std::string(e));
+    if (pathHint.empty())
+        return;
+    Crypto::appendUniquePassword(keys, pathHint);
+    const size_t slash = pathHint.find_last_of('/');
+    if (slash != std::string::npos && slash + 1 < pathHint.size())
+        Crypto::appendUniquePassword(keys, pathHint.substr(slash + 1));
+}
+
+/// After zlibFamily (+RC4+zlibFamily) fail: uniform XOR, ADD, and (≤16 KiB) extended blind transforms.
+static bool zlibBruteAfterZlibFamilyFails(const uint8_t* data, size_t dataSize, int32_t nominalUncompressedLen,
+                                          std::vector<uint8_t>& outputData, const std::string& pathHintForAsciiXor,
+                                          bool runRepeatingXorBrute)
+{
+    constexpr size_t kUniformXorBruteAllKeysMaxPayload = 16u * 1024u;
+    if (dataSize == 0)
+        return false;
+    std::vector<uint8_t> xorBuf(dataSize);
+    constexpr size_t kUniformKeyZlibScanDepth = 128;
+    if (dataSize <= kUniformXorBruteAllKeysMaxPayload)
+    {
+        for (unsigned k = 0; k < 256; ++k)
+        {
+            const uint8_t kb = static_cast<uint8_t>(k);
+            if (!uniformTransformMayYieldZlibPrefix(data, dataSize, kUniformKeyZlibScanDepth, false, kb))
+                continue;
+            for (size_t i = 0; i < dataSize; ++i)
+                xorBuf[i] = data[i] ^ kb;
+            if (zlibFamilyDecompressFromBytes(xorBuf.data(), dataSize, nominalUncompressedLen, outputData))
+                return true;
+        }
+    }
+    else
+    {
+        for (unsigned k = 0; k < 256; ++k)
+        {
+            const uint8_t kb = static_cast<uint8_t>(k);
+            if (!uniformTransformMayYieldZlibPrefix(data, dataSize, kUniformKeyZlibScanDepth, false, kb))
+                continue;
+            for (size_t i = 0; i < dataSize; ++i)
+                xorBuf[i] = data[i] ^ kb;
+            if (zlibFamilyDecompressFromBytes(xorBuf.data(), dataSize, nominalUncompressedLen, outputData))
+                return true;
+        }
+    }
+
+    constexpr size_t kExtBruteMaxPayload = 16u * 1024u;
+    if (dataSize > kExtBruteMaxPayload)
+        return false;
+
+    const auto tryDecoded = [&](const uint8_t* p) -> bool {
+        return zlibFamilyDecompressFromBytes(p, dataSize, nominalUncompressedLen, outputData);
+    };
+
+    std::vector<uint8_t> work(dataSize);
+
+    for (size_t i = 0; i < dataSize; ++i)
+        work[i] = static_cast<uint8_t>(data[i] ^ 0xFFu);
+    if (tryDecoded(work.data()))
+        return true;
+
+    for (size_t i = 0; i < dataSize; ++i)
+        work[i] = static_cast<uint8_t>((data[i] >> 4) | (data[i] << 4));
+    if (tryDecoded(work.data()))
+        return true;
+
+    if (dataSize > 1u)
+    {
+        for (size_t i = 0; i < dataSize; ++i)
+            work[i] = data[dataSize - 1u - i];
+        if (tryDecoded(work.data()))
+            return true;
+    }
+
+    if (dataSize > 1u)
+    {
+        for (size_t i = 0; i + 1 < dataSize; i += 2)
+        {
+            work[i] = data[i + 1];
+            work[i + 1] = data[i];
+        }
+        if ((dataSize & 1u) != 0u)
+            work[dataSize - 1u] = data[dataSize - 1u];
+        if (tryDecoded(work.data()))
+            return true;
+    }
+
+    if (dataSize > 3u)
+    {
+        size_t i = 0;
+        for (; i + 3 < dataSize; i += 4)
+        {
+            work[i] = data[i + 3];
+            work[i + 1] = data[i + 2];
+            work[i + 2] = data[i + 1];
+            work[i + 3] = data[i];
+        }
+        for (; i < dataSize; ++i)
+            work[i] = data[i];
+        if (tryDecoded(work.data()))
+            return true;
+    }
+
+    for (size_t i = 0; i < dataSize; ++i)
+    {
+        uint8_t b = data[i];
+        b = static_cast<uint8_t>(((b & 0xF0u) >> 4) | ((b & 0x0Fu) << 4));
+        b = static_cast<uint8_t>(((b & 0xCCu) >> 2) | ((b & 0x33u) << 2));
+        b = static_cast<uint8_t>(((b & 0xAAu) >> 1) | ((b & 0x55u) << 1));
+        work[i] = b;
+    }
+    if (tryDecoded(work.data()))
+        return true;
+
+    for (unsigned r = 1u; r <= 7u; ++r)
+    {
+        for (size_t i = 0; i < dataSize; ++i)
+            work[i] = static_cast<uint8_t>((static_cast<unsigned>(data[i]) << r) | (static_cast<unsigned>(data[i]) >> (8u - r)));
+        if (tryDecoded(work.data()))
+            return true;
+    }
+
+    for (size_t i = 0; i < dataSize; ++i)
+        work[i] = data[i] ^ static_cast<uint8_t>(i);
+    if (tryDecoded(work.data()))
+        return true;
+    for (size_t i = 0; i < dataSize; ++i)
+        work[i] = data[i] ^ static_cast<uint8_t>(~static_cast<uint8_t>(i));
+    if (tryDecoded(work.data()))
+        return true;
+
+    for (unsigned k = 0; k < 256; ++k)
+    {
+        const uint8_t kb = static_cast<uint8_t>(k);
+        if (!uniformTransformMayYieldZlibPrefix(data, dataSize, kUniformKeyZlibScanDepth, true, kb))
+            continue;
+        for (size_t i = 0; i < dataSize; ++i)
+            work[i] = static_cast<uint8_t>(data[i] + kb);
+        if (tryDecoded(work.data()))
+            return true;
+    }
+
+    work[0] = data[0];
+    for (size_t i = 1; i < dataSize; ++i)
+        work[i] = data[i] ^ data[i - 1];
+    if (tryDecoded(work.data()))
+        return true;
+
+    work[0] = data[0];
+    for (size_t i = 1; i < dataSize; ++i)
+        work[i] = static_cast<uint8_t>(work[i - 1] ^ data[i]);
+    if (tryDecoded(work.data()))
+        return true;
+
+    constexpr size_t kRepXor2Max = 8192u;
+    if (runRepeatingXorBrute && dataSize <= kRepXor2Max)
+    {
+        for (unsigned k0 = 0; k0 < 256; ++k0)
+            for (unsigned k1 = 0; k1 < 256; ++k1)
+            {
+                const uint8_t b0 = static_cast<uint8_t>(data[0] ^ k0);
+                const uint8_t b1 = static_cast<uint8_t>(data[1] ^ k1);
+                if (!zlibCmfFlgPlausible(b0, b1))
+                    continue;
+                const uint8_t kk0 = static_cast<uint8_t>(k0);
+                const uint8_t kk1 = static_cast<uint8_t>(k1);
+                for (size_t i = 0; i < dataSize; ++i)
+                    work[i] = data[i] ^ ((i & 1u) ? kk1 : kk0);
+                if (tryDecoded(work.data()))
+                    return true;
+            }
+    }
+
+    constexpr size_t kRepXor3Max = 384u;
+    if (runRepeatingXorBrute && dataSize <= kRepXor3Max)
+    {
+        for (unsigned k0 = 0; k0 < 256; ++k0)
+            for (unsigned k1 = 0; k1 < 256; ++k1)
+            {
+                const uint8_t b0 = static_cast<uint8_t>(data[0] ^ k0);
+                const uint8_t b1 = static_cast<uint8_t>(data[1] ^ k1);
+                if (!zlibCmfFlgPlausible(b0, b1))
+                    continue;
+                const uint8_t kk0 = static_cast<uint8_t>(k0);
+                const uint8_t kk1 = static_cast<uint8_t>(k1);
+                for (unsigned k2 = 0; k2 < 256; ++k2)
+                {
+                    const uint8_t kk2 = static_cast<uint8_t>(k2);
+                    for (size_t i = 0; i < dataSize; ++i)
+                    {
+                        const unsigned m = static_cast<unsigned>(i % 3u);
+                        const uint8_t kv = (m == 0) ? kk0 : (m == 1u ? kk1 : kk2);
+                        work[i] = data[i] ^ kv;
+                    }
+                    if (tryDecoded(work.data()))
+                        return true;
+                }
+            }
+    }
+
+    static const char* kAsciiXorPatterns[] = {
+        "TREE",   "EERT",     "SWGR",     "SWG",     "Restoration", "6000",  "0006", "patch", "zlib",
+        "NUNA",   "LEGE",     "NDS3",     ".iff",    "stf",         "trn",   "tbw",  "TBW",   "dds",
+        "DDS",    "texture",  "Texture",
+    };
+    for (const char* pat : kAsciiXorPatterns)
+    {
+        const size_t pl = std::strlen(pat);
+        if (pl == 0)
+            continue;
+        for (size_t i = 0; i < dataSize; ++i)
+            work[i] = data[i] ^ static_cast<uint8_t>(static_cast<unsigned char>(pat[i % pl]));
+        if (tryDecoded(work.data()))
+            return true;
+    }
+
+    if (!pathHintForAsciiXor.empty() && dataSize <= 256u * 1024u)
+    {
+        const auto tryXorString = [&](const std::string& s) -> bool {
+            if (s.empty() || s.size() > 512u)
+                return false;
+            for (size_t i = 0; i < dataSize; ++i)
+                work[i] = data[i] ^ static_cast<uint8_t>(static_cast<unsigned char>(s[i % s.size()]));
+            return tryDecoded(work.data());
+        };
+        if (tryXorString(pathHintForAsciiXor))
+            return true;
+        for (size_t i = 0; i < pathHintForAsciiXor.size();)
+        {
+            const size_t slash = pathHintForAsciiXor.find_first_of("/\\", i);
+            const std::string part = pathHintForAsciiXor.substr(i, slash == std::string::npos ? std::string::npos : slash - i);
+            if (!part.empty() && tryXorString(part))
+                return true;
+            if (slash == std::string::npos)
+                break;
+            i = slash + 1;
+        }
+
+        const size_t lastSlash = pathHintForAsciiXor.find_last_of("/\\");
+        const std::string base = (lastSlash == std::string::npos) ? pathHintForAsciiXor
+                                                                  : pathHintForAsciiXor.substr(lastSlash + 1);
+        if (!base.empty())
+        {
+            if (tryXorString(base))
+                return true;
+            const size_t dot = base.find_last_of('.');
+            if (dot != std::string::npos && dot > 0)
+            {
+                if (tryXorString(base.substr(0, dot)))
+                    return true;
+                std::string ext = base.substr(dot + 1);
+                for (char& c : ext)
+                    c = static_cast<char>(::tolower(static_cast<unsigned char>(c)));
+                if (ext.size() >= 2 && ext.size() <= 16u)
+                {
+                    bool alnumExt = true;
+                    for (char c : ext)
+                    {
+                        if (!std::isalnum(static_cast<unsigned char>(c)))
+                        {
+                            alnumExt = false;
+                            break;
+                        }
+                    }
+                    if (alnumExt && tryXorString(ext))
+                        return true;
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
+/// Try zlib/raw (+offset scan), then RC4 (+same brute stack on each RC4 output), then blind transforms on plaintext.
+static bool zlibPayloadToOutput(const uint8_t* data, size_t dataSize, int32_t nominalUncompressedLen,
+                                std::vector<uint8_t>& outputData, const std::string& pathHintForRc4Keys,
+                                const std::string& explicitTrePasswordForRc4Candidates)
+{
+    if (zlibFamilyDecompressFromBytes(data, dataSize, nominalUncompressedLen, outputData))
+        return true;
+
+    std::vector<std::string> keys = Crypto::trePasswordCandidates(explicitTrePasswordForRc4Candidates);
+    appendRc4KeyGuesses(keys, pathHintForRc4Keys);
+
+    std::vector<uint8_t> rc4Out(dataSize);
+    const auto tryRc4Decrypted = [&]() -> bool {
+        if (zlibFamilyDecompressFromBytes(rc4Out.data(), dataSize, nominalUncompressedLen, outputData))
+            return true;
+        return zlibBruteAfterZlibFamilyFails(rc4Out.data(), dataSize, nominalUncompressedLen, outputData, pathHintForRc4Keys,
+                                             false);
+    };
+    const auto tryRc4ZlibOnly = [&]() -> bool {
+        return zlibFamilyDecompressFromBytes(rc4Out.data(), dataSize, nominalUncompressedLen, outputData);
+    };
+
+    constexpr size_t kRc4ExtraVariantsMaxPayload = 8192u;
+    static const size_t kRc4DropSizes[] = {256, 512, 1024, 2048, 4096};
+
+    for (const std::string& key : keys)
+    {
+        if (key.empty())
+            continue;
+        const uint8_t* kd = reinterpret_cast<const uint8_t*>(key.data());
+        const size_t kl = key.size();
+
+        Crypto::rc4Crypt(kd, kl, data, dataSize, rc4Out.data());
+        if (tryRc4Decrypted())
+            return true;
+
+        if (dataSize <= kRc4ExtraVariantsMaxPayload)
+        {
+            for (size_t drop : kRc4DropSizes)
+            {
+                Crypto::rc4CryptDropKeystream(kd, kl, drop, data, dataSize, rc4Out.data());
+                if (tryRc4ZlibOnly())
+                    return true;
+            }
+
+            std::string rev = key;
+            std::reverse(rev.begin(), rev.end());
+            Crypto::rc4Crypt(reinterpret_cast<const uint8_t*>(rev.data()), rev.size(), data, dataSize, rc4Out.data());
+            if (tryRc4ZlibOnly())
+                return true;
+
+            if (key.size() <= 64u)
+            {
+                std::string dbl = key + key;
+                Crypto::rc4Crypt(reinterpret_cast<const uint8_t*>(dbl.data()), dbl.size(), data, dataSize, rc4Out.data());
+                if (tryRc4ZlibOnly())
+                    return true;
+            }
+
+            static const char z4[4] = {0, 0, 0, 0};
+            std::string kz4;
+            kz4.assign(z4, 4);
+            kz4 += key;
+            Crypto::rc4Crypt(reinterpret_cast<const uint8_t*>(kz4.data()), kz4.size(), data, dataSize, rc4Out.data());
+            if (tryRc4ZlibOnly())
+                return true;
+
+            std::string kzs = key;
+            kzs.append(z4, 4);
+            Crypto::rc4Crypt(reinterpret_cast<const uint8_t*>(kzs.data()), kzs.size(), data, dataSize, rc4Out.data());
+            if (tryRc4ZlibOnly())
+                return true;
+        }
+    }
+
+    return zlibBruteAfterZlibFamilyFails(data, dataSize, nominalUncompressedLen, outputData, pathHintForRc4Keys, true);
+}
+
 Result writeEntryDataToFile(std::ifstream& inFile, bool isEncrypted, EncryptionContext& encCtx,
                             const TocEntry& entry, const std::string& outPath, bool overwrite,
-                            const std::string& displayNameForErrors)
+                            const std::string& displayNameForErrors, uint64_t contiguousCapBytes,
+                            const std::string& explicitTrePasswordForRc4Candidates)
 {
     Result result;
     if (entry.length == 0)
@@ -617,28 +1314,153 @@ Result writeEntryDataToFile(std::ifstream& inFile, bool isEncrypted, EncryptionC
         return result;
     }
 
-    const size_t readSize = (entry.compressedLength > 0) ? static_cast<size_t>(entry.compressedLength)
-                                                           : static_cast<size_t>(entry.length);
-
-    std::vector<uint8_t> fileData(readSize);
-    inFile.seekg(entry.offset);
-    inFile.read(reinterpret_cast<char*>(fileData.data()), readSize);
-
-    if (isEncrypted)
-        encCtx.decryptAt(fileData.data(), fileData.size(), entry.offset);
-
+    std::vector<uint8_t> fileData;
     std::vector<uint8_t> outputData;
-    if (entry.compressor == static_cast<int32_t>(CompressionType::Zlib))
+
+    if (treFieldImpliesZlibPayload(static_cast<uint32_t>(entry.compressor)))
     {
-        if (!Compression::decompress(fileData.data(), fileData.size(), outputData, entry.length))
+        const size_t declaredZ = (entry.compressedLength > 0)
+                                     ? static_cast<size_t>(entry.compressedLength)
+                                     : static_cast<size_t>(entry.length);
+
+        std::vector<size_t> readAttempts;
+        if (contiguousCapBytes == UINT64_MAX)
+            readAttempts.push_back(declaredZ);
+        else
         {
+            const size_t capped = static_cast<size_t>(std::min<uint64_t>(declaredZ, contiguousCapBytes));
+            readAttempts.push_back(capped);
+            if (capped < contiguousCapBytes)
+                readAttempts.push_back(static_cast<size_t>(contiguousCapBytes));
+        }
+
+        bool decoded = false;
+        for (size_t readSize : readAttempts)
+        {
+            if (readSize == 0)
+                continue;
+            fileData.resize(readSize);
+            inFile.clear();
+            inFile.seekg(entry.offset);
+            inFile.read(reinterpret_cast<char*>(fileData.data()), static_cast<std::streamsize>(readSize));
+            if (static_cast<size_t>(inFile.gcount()) != readSize)
+                continue;
+
+            if (isEncrypted)
+                encCtx.decryptAt(fileData.data(), fileData.size(), entry.offset);
+
+            if (zlibPayloadToOutput(fileData.data(), fileData.size(), entry.length, outputData,
+                                    displayNameForErrors, explicitTrePasswordForRc4Candidates))
+            {
+                decoded = true;
+                break;
+            }
+        }
+        if (!decoded)
+        {
+            // TOC says zlib but payload may be stored (mis-flagged) or sizes may not match TreeFile's layout.
+            std::vector<size_t> storeTry;
+            storeTry.push_back(static_cast<size_t>(entry.length));
+            if (entry.compressedLength > 0)
+                storeTry.push_back(static_cast<size_t>(entry.compressedLength));
+            std::sort(storeTry.begin(), storeTry.end());
+            storeTry.erase(std::unique(storeTry.begin(), storeTry.end()), storeTry.end());
+            for (size_t trySz : storeTry)
+            {
+                size_t rs = trySz;
+                if (contiguousCapBytes != UINT64_MAX)
+                    rs = static_cast<size_t>(std::min<uint64_t>(rs, contiguousCapBytes));
+                if (rs == 0)
+                    continue;
+                fileData.resize(rs);
+                inFile.clear();
+                inFile.seekg(entry.offset);
+                inFile.read(reinterpret_cast<char*>(fileData.data()), static_cast<std::streamsize>(rs));
+                if (static_cast<size_t>(inFile.gcount()) != rs)
+                    continue;
+                if (isEncrypted)
+                    encCtx.decryptAt(fileData.data(), fileData.size(), entry.offset);
+                if (payloadLooksLikeUncompressedAsset(fileData.data(), fileData.size()))
+                {
+                    outputData = std::move(fileData);
+                    decoded = true;
+                    break;
+                }
+            }
+        }
+        if (!decoded)
+        {
+            std::ostringstream d;
+            d << "Failed to decompress: " << displayNameForErrors;
+            d << "\n  toc: offset=" << entry.offset << " length=" << entry.length
+              << " compressedLength=" << entry.compressedLength << " compressor=" << entry.compressor;
+            d << "\n  contiguous_slot_bytes=";
+            if (contiguousCapBytes == UINT64_MAX)
+                d << "(unbounded)";
+            else
+                d << contiguousCapBytes;
+            if (!fileData.empty())
+            {
+                const size_t n = std::min(fileData.size(), size_t(64));
+                d << "\n  last_attempt_decrypted_head_hex(" << n << "):\n    ";
+                d << analyzeHexBytes(fileData.data(), n);
+                if (fileData[0] != 0x78u)
+                    d << "\n  note: first byte is not zlib CMF 0x78 — payload may be non-zlib despite TOC compressor flag "
+                         "(common with some third-party patch .tre files).";
+            }
+            else
+                d << "\n  last_attempt_decrypted_head_hex: (no complete read at this offset / size)";
+            d << "\n  diagnose: nuna inspect-entry <this.tre> \"" << displayNameForErrors << "\"";
+            d << "\n  rc4_attempt: RC4 + light brute; for size<=8KiB also RC4-drop (256..4k, zlib-only), reversed/doubled/"
+                 "zero-padded key material (zlib-only).";
+            d << "\n  uniform_xor: zlib CMF-gated XOR 0..255 on payloads >16KiB; full XOR on smaller.";
+            d << "\n  brute_extended: on compressed size <=16KiB also tried NOT, nibble-swap, full reverse, 16/32-bit "
+                 "endian chunk swap, per-byte bit-reverse, ROTL, index-XOR, ADD k (zlib-prefix scan), delta / "
+                 "cumulative-XOR, ASCII + path repeating XOR + basename/filename-stem/extension XOR; after RC4, same "
+                 "except no repeating-key XOR. Plaintext-only: 2-byte repeating XOR (zlib CMF@0 filter), 3-byte (<=384 B "
+                 "only). Skip-offset cap inside zlib attempt: 128 bytes.";
+            d << "\n  hint: SWG Restoration / third-party patch trees sometimes mark compressor=zlib but store a non-zlib "
+                 "payload; verify against a stock SOE .tre for the same path, or use that project's pack/unpack tooling.";
+            if (displayNameForErrors.size() >= 4u)
+            {
+                std::string t4 = displayNameForErrors.substr(displayNameForErrors.size() - 4);
+                for (char& c : t4)
+                    c = static_cast<char>(::tolower(static_cast<unsigned char>(c)));
+                if (t4 == ".tbw")
+                    d << "\n  extension_note: .tbw is client texture-render payload; in stock TREs it is usually zlib-wrapped. "
+                           "An opaque header here matches other Restoration ciphertext, not a TBW parsing issue in Nuna.";
+            }
             result.code = ResultCode::DecompressionError;
-            result.message = "Failed to decompress: " + displayNameForErrors;
+            result.message = d.str();
             return result;
         }
     }
     else
+    {
+        const size_t declaredPlain = static_cast<size_t>(entry.length);
+        size_t readSize = declaredPlain;
+        if (contiguousCapBytes != UINT64_MAX)
+            readSize = static_cast<size_t>(std::min<uint64_t>(declaredPlain, contiguousCapBytes));
+        if (readSize == 0)
+        {
+            result.code = ResultCode::InvalidArchive;
+            result.message = "Zero read size (TOC/layout): " + displayNameForErrors;
+            return result;
+        }
+        fileData.resize(readSize);
+        inFile.clear();
+        inFile.seekg(entry.offset);
+        inFile.read(reinterpret_cast<char*>(fileData.data()), static_cast<std::streamsize>(readSize));
+        if (static_cast<size_t>(inFile.gcount()) != readSize)
+        {
+            result.code = ResultCode::IOError;
+            result.message = "Short read extracting: " + displayNameForErrors;
+            return result;
+        }
+        if (isEncrypted)
+            encCtx.decryptAt(fileData.data(), fileData.size(), entry.offset);
         outputData = std::move(fileData);
+    }
 
     if (!writeFile(outPath, outputData.data(), outputData.size()))
     {
@@ -670,9 +1492,12 @@ Result detailExtractOne(const std::string& inputTre, const std::string& archiveI
     bool isEncrypted = false;
     EncryptionContext encCtx;
 
-    const Result loadRes = loadTreDirectoryFromOpenFile(inFile, options, header, toc, nameBlock, isEncrypted, encCtx);
+    const Result loadRes = loadTreDirectoryFromOpenFile(inFile, options.encryption, header, toc, nameBlock,
+                                                         isEncrypted, encCtx);
     if (!loadRes.ok())
         return loadRes;
+
+    const uint64_t treFileSize = streamFileSize(inFile);
 
     const std::string want = normalizePath(archiveInternalPath);
 
@@ -689,11 +1514,119 @@ Result detailExtractOne(const std::string& inputTre, const std::string& archiveI
         if (normalizePath(fileName) != want)
             continue;
 
-        const Result wr = writeEntryDataToFile(inFile, isEncrypted, encCtx, entry, outputFilePath, options.overwrite,
-                                                 fileName);
+        const uint64_t cap = contiguousPayloadBytes(toc, entry.offset, treFileSize);
+        const Result wr =
+            writeEntryDataToFile(inFile, isEncrypted, encCtx, entry, outputFilePath, options.overwrite, fileName, cap,
+                                  options.encryption.password);
         if (!wr.ok())
             return wr;
         result.message = "Extracted: " + fileName;
+        return result;
+    }
+
+    result.code = ResultCode::InvalidArchive;
+    result.message = "Path not found in archive: " + archiveInternalPath;
+    return result;
+}
+
+Result detailInspectTreEntry(const std::string& inputTre, const std::string& archiveInternalPath,
+                             const EncryptionOptions& encryption)
+{
+    Result result;
+
+    std::ifstream inFile(inputTre, std::ios::binary);
+    if (!inFile)
+    {
+        result.code = ResultCode::FileNotFound;
+        result.message = "Cannot open file: " + inputTre;
+        return result;
+    }
+
+    TreHeader header{};
+    std::vector<TocEntry> toc;
+    std::vector<char> nameBlock;
+    bool isEncrypted = false;
+    EncryptionContext encCtx;
+
+    const Result loadRes = loadTreDirectoryFromOpenFile(inFile, encryption, header, toc, nameBlock, isEncrypted, encCtx);
+    if (!loadRes.ok())
+        return loadRes;
+
+    const uint64_t treFileSize = streamFileSize(inFile);
+    const std::string want = normalizePath(archiveInternalPath);
+
+    for (uint32_t i = 0; i < header.numberOfFiles; ++i)
+    {
+        const TocEntry& entry = toc[i];
+        std::string fileName;
+        if (!tocEntryFileName(&fileName, entry, nameBlock))
+        {
+            result.code = ResultCode::InvalidPassword;
+            result.message = "Name block does not decode (wrong password or corrupt archive)";
+            return result;
+        }
+        if (normalizePath(fileName) != want)
+            continue;
+
+        const uint64_t cap = contiguousPayloadBytes(toc, entry.offset, treFileSize);
+        int64_t nextHigher = -1;
+        for (const TocEntry& e : toc)
+        {
+            if (e.offset > entry.offset && (nextHigher < 0 || e.offset < nextHigher))
+                nextHigher = e.offset;
+        }
+
+        std::cout << "inspect-entry: " << inputTre << "\n";
+        std::cout << "  internal_path: " << fileName << "\n";
+        std::cout << "  toc_index: " << i << " / " << header.numberOfFiles << "\n";
+        std::cout << "  encrypted: " << (isEncrypted ? "yes" : "no") << "\n";
+        std::cout << "  crc: 0x" << std::hex << std::uppercase << entry.crc << std::dec << "\n";
+        std::cout << "  offset: " << entry.offset << "\n";
+        std::cout << "  length (TOC uncompressed): " << entry.length << "\n";
+        std::cout << "  compressedLength: " << entry.compressedLength << "\n";
+        std::cout << "  compressor: " << entry.compressor << " ("
+                  << analyzeCompressionLabel(static_cast<uint32_t>(entry.compressor)) << ")\n";
+        std::cout << "  compressor_nonzero_implies_zlib: "
+                  << (treFieldImpliesZlibPayload(static_cast<uint32_t>(entry.compressor)) ? "yes" : "no") << "\n";
+        std::cout << "  contiguous_slot_bytes: " << cap << "\n";
+        std::cout << "  file_size_bytes: " << treFileSize << "\n";
+        std::cout << "  slot_end_offset: " << (static_cast<uint64_t>(entry.offset) + cap) << "\n";
+        if (nextHigher >= 0)
+        {
+            std::cout << "  next_higher_entry_offset: " << nextHigher;
+            std::cout << " (byte_span " << (nextHigher - entry.offset) << ")\n";
+        }
+        else
+            std::cout << "  next_higher_entry_offset: (none — this row is last / highest offset)\n";
+
+        const size_t headBytes = static_cast<size_t>(std::min<uint64_t>(cap, 512));
+        if (headBytes == 0)
+        {
+            std::cout << "  head: (empty slot)\n";
+        }
+        else
+        {
+            std::vector<uint8_t> head(headBytes);
+            inFile.clear();
+            inFile.seekg(entry.offset);
+            inFile.read(reinterpret_cast<char*>(head.data()), static_cast<std::streamsize>(headBytes));
+            if (static_cast<size_t>(inFile.gcount()) != headBytes)
+            {
+                result.code = ResultCode::IOError;
+                result.message = "Short read on slot head (got " + std::to_string(inFile.gcount()) + ", expected " +
+                                 std::to_string(headBytes) + ")";
+                return result;
+            }
+            if (isEncrypted)
+                encCtx.decryptAt(head.data(), head.size(), entry.offset);
+            std::cout << "  head_" << headBytes << "_after_decrypt_hex:\n    " << analyzeHexBytes(head.data(), head.size())
+                      << "\n";
+        }
+
+        std::cout << "\nNext steps:\n";
+        std::cout << "  nuna dump-cipher \"" << inputTre << "\" <output_dir>   # raw ciphertext slices (no password)\n";
+        std::cout << "  nuna carve-zlib <.bin> <dir>                # zlib scan on plaintext / decrypted blobs\n";
+        result.message = "inspect-entry OK";
         return result;
     }
 
@@ -721,9 +1654,12 @@ Result detailExtractPathPrefix(const std::string& inputTre, const std::string& a
     bool isEncrypted = false;
     EncryptionContext encCtx;
 
-    const Result loadRes = loadTreDirectoryFromOpenFile(inFile, options, header, toc, nameBlock, isEncrypted, encCtx);
+    const Result loadRes = loadTreDirectoryFromOpenFile(inFile, options.encryption, header, toc, nameBlock,
+                                                         isEncrypted, encCtx);
     if (!loadRes.ok())
         return loadRes;
+
+    const uint64_t treFileSize = streamFileSize(inFile);
 
     if (!createDirectories(outputRootDir))
     {
@@ -754,8 +1690,10 @@ Result detailExtractPathPrefix(const std::string& inputTre, const std::string& a
 
         const std::string outPath = outputRootDir + "/" + fileName;
 
+        const uint64_t cap = contiguousPayloadBytes(toc, entry.offset, treFileSize);
         const Result wr =
-            writeEntryDataToFile(inFile, isEncrypted, encCtx, entry, outPath, options.overwrite, fileName);
+            writeEntryDataToFile(inFile, isEncrypted, encCtx, entry, outPath, options.overwrite, fileName, cap,
+                                  options.encryption.password);
         if (!wr.ok())
             return wr;
         if (wr.message == "OK")
@@ -1123,9 +2061,12 @@ Result unpack(const std::string& inputTre,
     bool isEncrypted = false;
     EncryptionContext encCtx;
 
-    const Result loadRes = loadTreDirectoryFromOpenFile(inFile, options, header, toc, nameBlock, isEncrypted, encCtx);
+    const Result loadRes = loadTreDirectoryFromOpenFile(inFile, options.encryption, header, toc, nameBlock,
+                                                         isEncrypted, encCtx);
     if (!loadRes.ok())
         return loadRes;
+
+    const uint64_t treFileSize = streamFileSize(inFile);
 
     // Create output directory
     if (!createDirectories(outputDir))
@@ -1168,8 +2109,10 @@ Result unpack(const std::string& inputTre,
         
         std::string outPath = outputDir + "/" + fileName;
 
+        const uint64_t cap = contiguousPayloadBytes(toc, entry.offset, treFileSize);
         const Result wr =
-            writeEntryDataToFile(inFile, isEncrypted, encCtx, entry, outPath, options.overwrite, fileName);
+            writeEntryDataToFile(inFile, isEncrypted, encCtx, entry, outPath, options.overwrite, fileName, cap,
+                                  options.encryption.password);
         if (!wr.ok())
             return wr;
         if (!options.overwrite && wr.message == "Skipped (exists)")
@@ -1202,6 +2145,12 @@ Result extractPathPrefix(const std::string& inputTre, const std::string& archive
     return detailExtractPathPrefix(inputTre, archiveDirPrefix, outputRootDir, options);
 }
 
+Result inspectEntry(const std::string& inputTre, const std::string& archiveInternalPath,
+                    const EncryptionOptions& encryption)
+{
+    return detailInspectTreEntry(inputTre, archiveInternalPath, encryption);
+}
+
 // ======================================================================
 // List Implementation
 // ======================================================================
@@ -1221,122 +2170,17 @@ Result list(const std::string& inputTre,
         return result;
     }
     
-    // Read header
+    inFile.seekg(0);
     TreHeader header;
-    inFile.read(reinterpret_cast<char*>(&header), sizeof(header));
-    
-    if (!treMagicKnown(header.token))
-    {
-        result.code = ResultCode::InvalidArchive;
-        result.message = "Not a valid TRE archive";
-        return result;
-    }
-
-    if (!isTreHeaderSupported(header.token, header.version))
-    {
-        result.code = ResultCode::InvalidArchive;
-        result.message = "Unsupported TRE token/version";
-        return result;
-    }
-
-    bool isEncrypted = treUsesEncryptionHeader(header.token);
-
-    // Setup decryption if needed
-    EncryptionContext encCtx;
-    EncryptionHeader encHeader = {};
-
-    if (isEncrypted)
-    {
-        inFile.read(reinterpret_cast<char*>(&encHeader), sizeof(encHeader));
-
-        const std::string password = Crypto::resolveTrePassword(options.encryption.password);
-
-        encCtx.initDecrypt(password, encHeader.salt, encHeader.iv);
-    }
-
-    // Read TOC
-    inFile.seekg(header.tocOffset);
-
-    std::vector<uint8_t> tocData(header.sizeOfTOC);
-    inFile.read(reinterpret_cast<char*>(tocData.data()), header.sizeOfTOC);
-    if (static_cast<size_t>(inFile.gcount()) != header.sizeOfTOC)
-    {
-        result.code = ResultCode::InvalidArchive;
-        result.message = "Short read on TOC (got " + std::to_string(inFile.gcount()) + ", expected " +
-                         std::to_string(header.sizeOfTOC) + ")";
-        return result;
-    }
-
-    if (isEncrypted)
-    {
-        encCtx.decryptAt(tocData.data(), tocData.size(), header.tocOffset);
-    }
-
     std::vector<TocEntry> toc;
+    std::vector<char> nameBlock;
+    bool isEncrypted = false;
+    EncryptionContext encCtx;
 
-    if (header.tocCompressor == static_cast<uint32_t>(CompressionType::Zlib))
-    {
-        std::vector<uint8_t> decompressed;
-        if (!Compression::decompress(tocData.data(), tocData.size(), decompressed, 0))
-        {
-            result.code = ResultCode::DecompressionError;
-            result.message = "Failed to decompress TOC";
-            return result;
-        }
-        if (!layoutTocEntriesFromBlob(decompressed.data(), decompressed.size(), header.numberOfFiles, toc))
-        {
-            result.code = ResultCode::InvalidArchive;
-            result.message = "TOC size does not match file count (unsupported TOC row layout)";
-            return result;
-        }
-    }
-    else
-    {
-        if (!layoutTocEntriesFromBlob(tocData.data(), tocData.size(), header.numberOfFiles, toc))
-        {
-            result.code = ResultCode::InvalidArchive;
-            result.message = "TOC size does not match file count (expected uncompressed TOC blob)";
-            return result;
-        }
-    }
-
-    // Read name block
-    const uint64_t nameBlockOffset = static_cast<uint64_t>(header.tocOffset) + header.sizeOfTOC;
-    inFile.seekg(nameBlockOffset);
-
-    std::vector<uint8_t> nameBlockData(header.sizeOfNameBlock);
-    inFile.read(reinterpret_cast<char*>(nameBlockData.data()), header.sizeOfNameBlock);
-    if (static_cast<size_t>(inFile.gcount()) != header.sizeOfNameBlock)
-    {
-        result.code = ResultCode::InvalidArchive;
-        result.message = "Short read on name block (got " + std::to_string(inFile.gcount()) + ", expected " +
-                         std::to_string(header.sizeOfNameBlock) + ")";
-        return result;
-    }
-
-    if (isEncrypted)
-    {
-        encCtx.decryptAt(nameBlockData.data(), nameBlockData.size(), nameBlockOffset);
-    }
-
-    std::vector<char> nameBlock(header.uncompSizeOfNameBlock);
-
-    if (header.blockCompressor == static_cast<uint32_t>(CompressionType::Zlib))
-    {
-        std::vector<uint8_t> decompressed;
-        if (!Compression::decompress(nameBlockData.data(), nameBlockData.size(),
-                                       decompressed, header.uncompSizeOfNameBlock))
-        {
-            result.code = ResultCode::DecompressionError;
-            result.message = "Failed to decompress name block";
-            return result;
-        }
-        std::memcpy(nameBlock.data(), decompressed.data(), header.uncompSizeOfNameBlock);
-    }
-    else
-    {
-        std::memcpy(nameBlock.data(), nameBlockData.data(), header.uncompSizeOfNameBlock);
-    }
+    const Result loadRes =
+        loadTreDirectoryFromOpenFile(inFile, options.encryption, header, toc, nameBlock, isEncrypted, encCtx);
+    if (!loadRes.ok())
+        return loadRes;
 
     // Print header info
     std::cout << "TRE Archive: " << inputTre << std::endl;
@@ -1412,7 +2256,7 @@ Result validate(const std::string& inputTre,
                 const EncryptionOptions& encryption)
 {
     Result result;
-    
+
     std::ifstream inFile(inputTre, std::ios::binary);
     if (!inFile)
     {
@@ -1420,106 +2264,19 @@ Result validate(const std::string& inputTre,
         result.message = "Cannot open file: " + inputTre;
         return result;
     }
-    
+
+    inFile.seekg(0);
     TreHeader header;
-    inFile.read(reinterpret_cast<char*>(&header), sizeof(header));
-    
-    if (!treMagicKnown(header.token))
-    {
-        result.code = ResultCode::InvalidArchive;
-        result.message = "Not a valid TRE archive (invalid magic)";
+    std::vector<TocEntry> toc;
+    std::vector<char> nameBlock;
+    bool isEncrypted = false;
+    EncryptionContext encCtx;
+
+    result = loadTreDirectoryFromOpenFile(inFile, encryption, header, toc, nameBlock, isEncrypted, encCtx);
+    if (!result.ok())
         return result;
-    }
 
-    if (!isTreHeaderSupported(header.token, header.version))
-    {
-        result.code = ResultCode::InvalidArchive;
-        result.message = "Unsupported TRE token/version";
-        return result;
-    }
-
-    bool isEncrypted = treUsesEncryptionHeader(header.token);
-    
-    // For encrypted archives, verify we can decrypt the TOC
-    if (isEncrypted)
-    {
-        // Read encryption header
-        EncryptionHeader encHeader;
-        inFile.read(reinterpret_cast<char*>(&encHeader), sizeof(encHeader));
-        
-        const std::string password = Crypto::resolveTrePassword(encryption.password);
-
-        // Initialize decryption context
-        EncryptionContext encCtx;
-        encCtx.initDecrypt(password, encHeader.salt, encHeader.iv);
-        
-        // Try to read and decrypt TOC to verify password
-        inFile.seekg(header.tocOffset);
-        
-        if (header.tocCompressor == static_cast<uint32_t>(CompressionType::Zlib))
-        {
-            std::vector<uint8_t> compressed(header.sizeOfTOC);
-            inFile.read(reinterpret_cast<char*>(compressed.data()), header.sizeOfTOC);
-            if (static_cast<size_t>(inFile.gcount()) != header.sizeOfTOC)
-            {
-                result.code = ResultCode::InvalidArchive;
-                result.message = "Short read on TOC during validate";
-                return result;
-            }
-
-            encCtx.decryptAt(compressed.data(), header.sizeOfTOC, header.tocOffset);
-
-            std::vector<uint8_t> tocData;
-            if (!Compression::decompress(compressed.data(), compressed.size(), tocData, 0))
-            {
-                result.code = ResultCode::InvalidPassword;
-                result.message = "Failed to decrypt/decompress TOC - invalid password or corrupted archive";
-                return result;
-            }
-            std::vector<TocEntry> tocParsed;
-            if (!layoutTocEntriesFromBlob(tocData.data(), tocData.size(), header.numberOfFiles, tocParsed))
-            {
-                result.code = ResultCode::InvalidPassword;
-                result.message = "TOC layout invalid after decrypt - wrong password or corrupted archive";
-                return result;
-            }
-        }
-        else
-        {
-            std::vector<uint8_t> tocData(header.sizeOfTOC);
-            inFile.read(reinterpret_cast<char*>(tocData.data()), header.sizeOfTOC);
-            if (static_cast<size_t>(inFile.gcount()) != header.sizeOfTOC)
-            {
-                result.code = ResultCode::InvalidArchive;
-                result.message = "Short read on TOC during validate";
-                return result;
-            }
-
-            encCtx.decryptAt(tocData.data(), tocData.size(), header.tocOffset);
-
-            std::vector<TocEntry> tocParsed;
-            if (!layoutTocEntriesFromBlob(tocData.data(), tocData.size(), header.numberOfFiles, tocParsed))
-            {
-                result.code = ResultCode::InvalidPassword;
-                result.message = "TOC layout invalid after decrypt - wrong password or corrupted archive";
-                return result;
-            }
-            if (header.numberOfFiles > 0 &&
-                (tocParsed[0].offset < 0 || tocParsed[0].length < 0))
-            {
-                result.code = ResultCode::InvalidPassword;
-                result.message = "TOC validation failed - invalid password or corrupted archive";
-                return result;
-            }
-        }
-        
-        result.message = "Encrypted archive is valid";
-    }
-    else
-    {
-        result.message = "Archive is valid";
-    }
-    
+    result.message = isEncrypted ? "Encrypted archive is valid" : "Archive is valid";
     return result;
 }
 
@@ -1734,6 +2491,11 @@ Result analyze(const std::string& inputTre, const EncryptionOptions& encryption)
 Result dumpCipher(const std::string& inputTre, const std::string& outputDir)
 {
     return dumpCipherRegions(inputTre, outputDir);
+}
+
+Result carveZlibStreams(const std::string& inputPath, const std::string& outputDir, const CarveZlibOptions& opts)
+{
+    return carveZlibStreamsInternal(inputPath, outputDir, opts);
 }
 
 Result tryPasswordWordlist(const std::string& inputTre, const std::string& wordlistPath,

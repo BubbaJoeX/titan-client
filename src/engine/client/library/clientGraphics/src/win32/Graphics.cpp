@@ -286,6 +286,11 @@ bool Graphics::install()
 	ms_currentRenderTargetMaxWidth  = gl_install.width;
 	ms_currentRenderTargetMaxHeight = gl_install.height;
 
+	// Keep cached viewport (see getViewport/setViewport) in sync with the real framebuffer.
+	// Otherwise UI that save/restores Graphics::getViewport() around embedded 3D can restore 0x0
+	// and the 2D layer stops drawing (e.g. avatar selection with only the 3D viewer visible).
+	setViewport(0, 0, ms_currentRenderTargetWidth, ms_currentRenderTargetHeight, 0.0f, 1.0f);
+
 	ms_windowed = gl_install.windowed;
 
 #if PRODUCTION == 0
@@ -514,9 +519,10 @@ void Graphics::toggleWindowedMode()
 void Graphics::resize(int newWidth, int newHeight)
 {
 	NOT_NULL(ms_api->resize);
-	ms_viewportWidth = ms_currentRenderTargetWidth = ms_currentRenderTargetMaxWidth = ms_frameBufferMaxWidth = newWidth;
-	ms_viewportHeight = ms_currentRenderTargetHeight = ms_currentRenderTargetMaxHeight = ms_frameBufferMaxHeight = newHeight;
+	ms_currentRenderTargetWidth = ms_currentRenderTargetMaxWidth = ms_frameBufferMaxWidth = newWidth;
+	ms_currentRenderTargetHeight = ms_currentRenderTargetMaxHeight = ms_frameBufferMaxHeight = newHeight;
 	ms_api->resize(newWidth, newHeight);
+	setViewport(0, 0, newWidth, newHeight, 0.0f, 1.0f);
 
 	bool const mouseWasContrained = ms_mouseCursorConstrained;
 
@@ -1411,6 +1417,16 @@ void Graphics::setViewport(int x, int y, int width, int height, float minZ, floa
 	ms_viewportY0     = y;
 	ms_viewportWidth  = width;
 	ms_viewportHeight = height;
+}
+
+// ----------------------------------------------------------------------
+
+void Graphics::getViewport(int &x, int &y, int &width, int &height)
+{
+	x      = ms_viewportX0;
+	y      = ms_viewportY0;
+	width  = ms_viewportWidth;
+	height = ms_viewportHeight;
 }
 
 // ----------------------------------------------------------------------

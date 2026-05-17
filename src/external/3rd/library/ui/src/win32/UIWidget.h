@@ -406,6 +406,10 @@ public:
 	virtual void            Render                    (UICanvas & ) const = 0;
     virtual void			RenderText				  (UICanvas &) const;
 
+	// Embedded 3D / world rendering may alter the GPU viewport; restore full render target
+	// before siblings continue (see UIRenderHelper, UITable cell render). Default: no-op.
+	virtual void            RestoreRenderTargetViewportAfterRender () const {}
+
 	        bool            PackSelfSize              ();
 	        bool            PackSelfLocation          ();
 
