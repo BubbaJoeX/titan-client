@@ -87,7 +87,7 @@ You do **not** need to install every SDK manually if your tree already contains 
 
 ### Optional: x64
 
-This repository has ongoing **x64** work (see `docs/X64_MIGRATION.md` and `docs/Planning.md`). The **`swg.sln`** checked into this tree exposes **Debug | Win32**, **Optimized | Win32**, and **Release | Win32** only. Treat **Win32** as the supported path unless your branch adds **x64** solution platforms.
+This repository has ongoing **x64** work (see [x64-migration.md](https://github.com/BubbaJoeX/titan-docs/blob/main/client/x64-migration.md) and [planning.md](https://github.com/BubbaJoeX/titan-docs/blob/main/client/planning.md)). The **`swg.sln`** checked into this tree exposes **Debug | Win32**, **Optimized | Win32**, and **Release | Win32** only. Treat **Win32** as the supported path unless your branch adds **x64** solution platforms.
 
 ---
 
@@ -185,7 +185,7 @@ If post-build is configured: copies under `D:\titan\exe\win32_rel\` (or your ove
 
 ## Related documentation
 
-- [docs/X64_MIGRATION.md](docs/X64_MIGRATION.md) — x64 migration (repo-wide; additive).
-- [docs/Planning.md](docs/Planning.md) — toolchain and client/server planning.
+- [client/x64-migration.md](https://github.com/BubbaJoeX/titan-docs/blob/main/client/x64-migration.md) — x64 migration (repo-wide; additive).
+- [client/planning.md](https://github.com/BubbaJoeX/titan-docs/blob/main/client/planning.md) — toolchain and client/server planning.
 - [SwgCameraClient README](src/game/client/application/SwgCameraClient/README.md) — config / runtime layout next to `exe/win32_rel` (cwd and includes).
 - [VLC.md](VLC.md) — libVLC 3.0.22 and `plugins/` layout next to the game exe.

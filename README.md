@@ -12,64 +12,78 @@ Code is provided as/is and may be updated at any moment. Many features from thes
 
 ---
 
-## Guides and Documentation
+## Guides and documentation
 
-Technical references under **`docs/`** are a copy of **`support/docs/`** at the repository root—edit whichever tree your workflow uses, and keep them in sync if both matter.
+**Canonical docs:** [github.com/BubbaJoeX/titan-docs](https://github.com/BubbaJoeX/titan-docs)  
+**Index:** [README.md](https://github.com/BubbaJoeX/titan-docs/blob/main/README.md)
 
-### Client root guides
+Monorepo feature index: [FEATURES.md](../FEATURES.md) (when using the full `titan` tree).
 
-- [COMPILE_GUIDE_CLIENT.md](COMPILE_GUIDE_CLIENT.md) — Build **SwgTitan** and **SwgGodClient** (Visual Studio 2013 / `v120`, MSBuild, staging under `exe/win32_rel`).
-- [MODELING.md](MODELING.md) — Maya 8 and the SWG export pipeline (static/skeletal meshes, appearance templates, naming).
-- [VLC.md](VLC.md) — Deploy **libVLC 3.0.22** (Win32), `plugins/`, and optional `yt-dlp.exe` next to the game exe (`exe/win32_rel`).
-- [STREAMING-GIF-ETC.md](STREAMING-GIF-ETC.md) — Magic painting, magic video player, speaker emitters (architecture and checklist).
-- [FEATURES.md](../FEATURES.md) — Titan-only and customized systems (monorepo index).
+### Build and tooling (this repo)
 
-### Planning and platform
+| Guide | Link |
+|-------|------|
+| Compile **SwgTitan** / **SwgGodClient** | [COMPILE_GUIDE_CLIENT.md](COMPILE_GUIDE_CLIENT.md) |
+| Maya export pipeline | [MODELING.md](MODELING.md) |
+| libVLC / streaming stack | [VLC.md](VLC.md) |
+| Magic painting / video / speakers | [STREAMING-GIF-ETC.md](STREAMING-GIF-ETC.md) |
 
-- [docs/Planning.md](docs/Planning.md) — Running notes (Magic Painting, God Client, x64 inventory, fixes).
-- [docs/X64_MIGRATION.md](docs/X64_MIGRATION.md) — Client x64 migration, **SwgTitan** checklist, bundle script.
+### Platform and migration
+
+| Doc | Link |
+|-----|------|
+| Planning notes | [client/planning.md](https://github.com/BubbaJoeX/titan-docs/blob/main/client/planning.md) |
+| x64 migration | [client/x64-migration.md](https://github.com/BubbaJoeX/titan-docs/blob/main/client/x64-migration.md) |
+| Engine improvements (D3D9) | [client/engine-improvements.md](https://github.com/BubbaJoeX/titan-docs/blob/main/client/engine-improvements.md) |
 
 ### Gameplay and systems
 
-- [docs/BOUNTY_HUNTER_OVERHAUL.md](docs/BOUNTY_HUNTER_OVERHAUL.md) — Bounty hunter feature plan and touchpoints.
-- [docs/CRAFTING_OVERHAUL.md](docs/CRAFTING_OVERHAUL.md) — Crafting QoL / schematic library / BOM scope.
-- [docs/CITY_GAMEPLAY_LANDSCAPING_UPDATE.md](docs/CITY_GAMEPLAY_LANDSCAPING_UPDATE.md) — City terrain painting, taxation, courts, starport, expulsion (design plan).
-- [docs/CITY_IMPLEMENTATION_SUMMARY.md](docs/CITY_IMPLEMENTATION_SUMMARY.md) — City implementation summary.
-- [docs/adding_story_companions.md](docs/adding_story_companions.md) — Story companion datatable pipeline.
-- [docs/ATMO_LANDING_POINTS.md](docs/ATMO_LANDING_POINTS.md) — Atmospheric flight landing points and docking.
+| Doc | Link |
+|-----|------|
+| Bounty Hunter overhaul | [client/bounty-hunter-overhaul.md](https://github.com/BubbaJoeX/titan-docs/blob/main/client/bounty-hunter-overhaul.md) |
+| Crafting overhaul | [client/crafting-overhaul.md](https://github.com/BubbaJoeX/titan-docs/blob/main/client/crafting-overhaul.md) |
+| City gameplay & landscaping | [client/city-gameplay-landscaping.md](https://github.com/BubbaJoeX/titan-docs/blob/main/client/city-gameplay-landscaping.md) |
+| City implementation summary | [client/city-implementation-summary.md](https://github.com/BubbaJoeX/titan-docs/blob/main/client/city-implementation-summary.md) |
+| Story companions | [client/story-companions.md](https://github.com/BubbaJoeX/titan-docs/blob/main/client/story-companions.md) |
+| Atmo landing points | [client/atmo-landing-points.md](https://github.com/BubbaJoeX/titan-docs/blob/main/client/atmo-landing-points.md) |
 
-### TangibleDynamics (physics on objects)
+### Media and client engine
 
-- [docs/INDEX.md](docs/INDEX.md) — Package index (start here).
-- [docs/TANGIBLE_DYNAMICS_SUMMARY.md](docs/TANGIBLE_DYNAMICS_SUMMARY.md) — Executive summary.
-- [docs/TANGIBLE_DYNAMICS.md](docs/TANGIBLE_DYNAMICS.md) — Full architecture.
-- [docs/TANGIBLE_DYNAMICS_QUICK_REFERENCE.md](docs/TANGIBLE_DYNAMICS_QUICK_REFERENCE.md) — API quick reference.
-- [docs/TANGIBLE_DYNAMICS_IMPLEMENTATION.md](docs/TANGIBLE_DYNAMICS_IMPLEMENTATION.md) — Implementation details.
-- [docs/BUILD_AND_INTEGRATION.md](docs/BUILD_AND_INTEGRATION.md) — Build and integration.
-- [docs/IMPLEMENTATION_FILES.md](docs/IMPLEMENTATION_FILES.md) — File list and dependency map.
+| Doc | Link |
+|-----|------|
+| Magic painting (URL textures) | [client/texture-url-resolving.md](https://github.com/BubbaJoeX/titan-docs/blob/main/client/texture-url-resolving.md) |
+| RT camera / screen | [client/rt-camera-system.md](https://github.com/BubbaJoeX/titan-docs/blob/main/client/rt-camera-system.md) |
 
-### Client engine and media
+### TangibleDynamics
 
-- [docs/ENGINE_IMPROVEMENTS.md](docs/ENGINE_IMPROVEMENTS.md) — D3D9 instancing, occlusion queries, related optimizations.
-- [docs/TEXTURE_URL_RESOLVING.md](docs/TEXTURE_URL_RESOLVING.md) — Magic painting (remote URL textures) pipeline.
-- [docs/RT_CAMERA_SYSTEM.md](docs/RT_CAMERA_SYSTEM.md) — Real-time security cameras and screens.
+| Doc | Link |
+|-----|------|
+| Package index | [packages/tangible-dynamics/README.md](https://github.com/BubbaJoeX/titan-docs/blob/main/packages/tangible-dynamics/README.md) |
+| Overview | [packages/tangible-dynamics/overview.md](https://github.com/BubbaJoeX/titan-docs/blob/main/packages/tangible-dynamics/overview.md) |
+| Quick reference | [packages/tangible-dynamics/quick-reference.md](https://github.com/BubbaJoeX/titan-docs/blob/main/packages/tangible-dynamics/quick-reference.md) |
 
 ### Data, calendar, commands
 
-- [docs/CALENDAR_DATABASE_IMPLEMENTATION.md](docs/CALENDAR_DATABASE_IMPLEMENTATION.md) — Oracle calendar persistence.
-- [docs/commands.md](docs/commands.md) — Command reference (if maintained).
+| Doc | Link |
+|-----|------|
+| Calendar database | [client/calendar-database.md](https://github.com/BubbaJoeX/titan-docs/blob/main/client/calendar-database.md) |
+| In-game calendar plan | [client/in-game-calendar-plan.md](https://github.com/BubbaJoeX/titan-docs/blob/main/client/in-game-calendar-plan.md) |
+| Developer commands | [client/developer-commands.md](https://github.com/BubbaJoeX/titan-docs/blob/main/client/developer-commands.md) |
 
-### Art and interiors (Maya / buildouts)
+### Art and interiors (Maya)
 
-- [docs/MAYA_POB_FROM_SCRATCH.md](docs/MAYA_POB_FROM_SCRATCH.md) — POI from scratch.
-- [docs/MAYA_KITBASH_IMPORT_COMBINE.md](docs/MAYA_KITBASH_IMPORT_COMBINE.md) — Kitbash import/combine.
-- [docs/INTERIOR_STRUCTURE_CREATION.md](docs/INTERIOR_STRUCTURE_CREATION.md) — Interior structure workflow.
+| Doc | Link |
+|-----|------|
+| Interior structures | [client/interior-structure-creation.md](https://github.com/BubbaJoeX/titan-docs/blob/main/client/interior-structure-creation.md) |
+| POB from scratch | [client/maya-pob-from-scratch.md](https://github.com/BubbaJoeX/titan-docs/blob/main/client/maya-pob-from-scratch.md) |
+| Kitbash import/combine | [client/maya-kitbash-import-combine.md](https://github.com/BubbaJoeX/titan-docs/blob/main/client/maya-kitbash-import-combine.md) |
 
-### Project prompts and checklists
+### Shared engine (also touches `src`)
 
-- [docs/plan-inGameCalendar.prompt.md](docs/plan-inGameCalendar.prompt.md) — In-game calendar design prompt.
-- [docs/MASTER_CHECKLIST.md](docs/MASTER_CHECKLIST.md) — Master checklist.
-- [docs/COMPLETION_REPORT.md](docs/COMPLETION_REPORT.md) — TangibleDynamics completion report.
+| Doc | Link |
+|-----|------|
+| Dynamic mounts | [engine/dynamic-mounts.md](https://github.com/BubbaJoeX/titan-docs/blob/main/engine/dynamic-mounts.md) |
+| God Client terrain editor | [engine/god-client-terrain-editor.md](https://github.com/BubbaJoeX/titan-docs/blob/main/engine/god-client-terrain-editor.md) |
 
 ---
 
