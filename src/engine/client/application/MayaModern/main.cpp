@@ -57,6 +57,7 @@
 #include <maya/MFileObject.h>
 #include <maya/MFnPlugin.h>
 #include <maya/MGlobal.h>
+#include <maya/MTypes.h>
 
 #include <iostream>
 #include <string>
@@ -167,7 +168,7 @@ static Translator* TRANSLATORS[] =
             new Translator(swg_translator::kTypeSwbfMsh, "", &SwbfMshTranslator::creator, nullptr, "", false)
         };
 
-MStatus initializePlugin(MObject obj)
+PLUGIN_EXPORT MStatus initializePlugin(MObject obj)
 {
     MFnPlugin plugin(obj, "SWGMayaEditor", "1.0", "Any");
 
@@ -315,7 +316,7 @@ MStatus initializePlugin(MObject obj)
     return MS::kSuccess;
 }
 
-MStatus uninitializePlugin(MObject obj)
+PLUGIN_EXPORT MStatus uninitializePlugin(MObject obj)
 {
     MFnPlugin plugin(obj);
     MStatus status;

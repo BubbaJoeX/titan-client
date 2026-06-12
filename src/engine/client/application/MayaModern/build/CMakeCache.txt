@@ -15,7 +15,7 @@
 ########################
 
 //Path to a program.
-CMAKE_AR:FILEPATH=C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/lib.exe
+CMAKE_AR:FILEPATH=C:/Program Files/Microsoft Visual Studio/18/Insiders/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/lib.exe
 
 //Choose the type of build.
 CMAKE_BUILD_TYPE:STRING=Release
@@ -83,7 +83,7 @@ CMAKE_FIND_PACKAGE_REDIRECTS_DIR:STATIC=D:/titan/client/src/engine/client/applic
 CMAKE_INSTALL_PREFIX:PATH=C:/Program Files/unicode
 
 //Path to a program.
-CMAKE_LINKER:FILEPATH=C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/link.exe
+CMAKE_LINKER:FILEPATH=C:/Program Files/Microsoft Visual Studio/18/Insiders/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/link.exe
 
 //Flags used by the linker during the creation of modules during
 // all build types.
@@ -189,7 +189,7 @@ CMAKE_STATIC_LINKER_FLAGS_RELEASE:STRING=
 CMAKE_STATIC_LINKER_FLAGS_RELWITHDEBINFO:STRING=
 
 //No help, variable specified on the command line.
-CMAKE_SYSTEM_VERSION:UNINITIALIZED=10.0
+CMAKE_SYSTEM_VERSION:UNINITIALIZED=10
 
 //If this value is on, makefiles will be generated without the
 // .SILENT directive, and all commands will be echoed to the console
@@ -198,13 +198,16 @@ CMAKE_SYSTEM_VERSION:UNINITIALIZED=10.0
 CMAKE_VERBOSE_MAKEFILE:BOOL=FALSE
 
 //Devkit include path
-DEVKIT_INCLUDE_DIR:PATH=D:/titan/client/src/external/3rd/library/devkitBase/include
+DEVKIT_INCLUDE_DIR:PATH=D:/titan/lib/Maya2027/devkitBase/include
 
 //Devkit library path
-DEVKIT_LIBRARY_DIR:PATH=D:/titan/client/src/external/3rd/library/devkitBase/lib
+DEVKIT_LIBRARY_DIR:PATH=D:/titan/lib/Maya2027/devkitBase/lib
+
+//Path to Maya devkitBase (default: D:/titan/lib/Maya2027/devkitBase)
+DEVKIT_LOCATION:PATH=D:/titan/lib/Maya2027/devkitBase
 
 //Path to a library.
-Foundation_PATH:FILEPATH=D:/titan/client/src/external/3rd/library/devkitBase/lib/Foundation.lib
+Foundation_PATH:FILEPATH=D:/titan/lib/Maya2027/devkitBase/lib/Foundation.lib
 
 //is Application not plugin
 IS_APPLICATION:BOOL=OFF
@@ -212,20 +215,23 @@ IS_APPLICATION:BOOL=OFF
 //Target the Python 3 devkit files
 IS_PYTHON_3_BUILD:BOOL=ON
 
-//Path to a library.
-OpenMayaAnim_PATH:FILEPATH=D:/titan/client/src/external/3rd/library/devkitBase/lib/OpenMayaAnim.lib
+//Path to Maya install root (e.g. C:/Program Files/Autodesk/Maya2027)
+MAYA_LOCATION:PATH=C:/Program Files/Autodesk/Maya2027
 
 //Path to a library.
-OpenMayaFX_PATH:FILEPATH=D:/titan/client/src/external/3rd/library/devkitBase/lib/OpenMayaFX.lib
+OpenMayaAnim_PATH:FILEPATH=D:/titan/lib/Maya2027/devkitBase/lib/OpenMayaAnim.lib
 
 //Path to a library.
-OpenMayaRender_PATH:FILEPATH=D:/titan/client/src/external/3rd/library/devkitBase/lib/OpenMayaRender.lib
+OpenMayaFX_PATH:FILEPATH=D:/titan/lib/Maya2027/devkitBase/lib/OpenMayaFX.lib
 
 //Path to a library.
-OpenMayaUI_PATH:FILEPATH=D:/titan/client/src/external/3rd/library/devkitBase/lib/OpenMayaUI.lib
+OpenMayaRender_PATH:FILEPATH=D:/titan/lib/Maya2027/devkitBase/lib/OpenMayaRender.lib
 
 //Path to a library.
-OpenMaya_PATH:FILEPATH=D:/titan/client/src/external/3rd/library/devkitBase/lib/OpenMaya.lib
+OpenMayaUI_PATH:FILEPATH=D:/titan/lib/Maya2027/devkitBase/lib/OpenMayaUI.lib
+
+//Path to a library.
+OpenMaya_PATH:FILEPATH=D:/titan/lib/Maya2027/devkitBase/lib/OpenMaya.lib
 
 //If non-empty, target swgDeployMayaPlugins copies SwgMayaEditor.mll
 // and companion .mel files here.
@@ -263,7 +269,7 @@ CMAKE_CACHE_MAJOR_VERSION:INTERNAL=4
 //Minor version of cmake used to create the current loaded cache
 CMAKE_CACHE_MINOR_VERSION:INTERNAL=3
 //Patch version of cmake used to create the current loaded cache
-CMAKE_CACHE_PATCH_VERSION:INTERNAL=0
+CMAKE_CACHE_PATCH_VERSION:INTERNAL=3
 //Path to CMake executable.
 CMAKE_COMMAND:INTERNAL=C:/Program Files/CMake/bin/cmake.exe
 //Path to cpack program executable.
@@ -309,9 +315,9 @@ CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL=1
 //Name of external makefile project generator.
 CMAKE_EXTRA_GENERATOR:INTERNAL=
 //Name of generator.
-CMAKE_GENERATOR:INTERNAL=Visual Studio 17 2022
+CMAKE_GENERATOR:INTERNAL=Visual Studio 18 2026
 //Generator instance identifier.
-CMAKE_GENERATOR_INSTANCE:INTERNAL=C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools
+CMAKE_GENERATOR_INSTANCE:INTERNAL=C:/Program Files/Microsoft Visual Studio/18/Insiders
 //Name of generator platform.
 CMAKE_GENERATOR_PLATFORM:INTERNAL=x64
 //Name of generator toolset.

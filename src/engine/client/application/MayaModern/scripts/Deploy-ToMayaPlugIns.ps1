@@ -2,13 +2,30 @@
 # Usage (elevated CMD if Program Files is locked):
 #   powershell -NoProfile -ExecutionPolicy Bypass -File Deploy-ToMayaPlugIns.ps1
 # Optional:
-#   powershell -File ... -MayaPlugInsDir "D:\path\to\Maya2026\bin\plug-ins"
+#   powershell -File ... -MayaPlugInsDir "$env:USERPROFILE\Documents\maya\2027\plugins"
 #   powershell -File ... -BuildRoot "D:\titan\...\MayaModern\build"
 
 param(
     [string] $BuildRoot = "",
-    [string] $MayaPlugInsDir = "D:\Program Files\Autodesk\Maya2026\bin\plug-ins"
+    [string] $MayaPlugInsDir = ""
 )
+
+if (-not $MayaPlugInsDir) {
+    $candidates = @(
+        (Join-Path $env:USERPROFILE "Documents\maya\2027\plugins"),
+        "C:\Program Files\Autodesk\Maya2027\bin\plug-ins",
+        "D:\Program Files\Autodesk\Maya2027\bin\plug-ins"
+    )
+    foreach ($dir in $candidates) {
+        if (Test-Path (Split-Path $dir -Parent)) {
+            $MayaPlugInsDir = $dir
+            break
+        }
+    }
+    if (-not $MayaPlugInsDir) {
+        $MayaPlugInsDir = (Join-Path $env:USERPROFILE "Documents\maya\2027\plugins")
+    }
+}
 
 $ErrorActionPreference = "Stop"
 if (-not $BuildRoot) {

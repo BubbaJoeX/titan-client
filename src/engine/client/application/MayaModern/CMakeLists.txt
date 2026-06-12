@@ -1,25 +1,58 @@
-# Maya 2026 Plugin - SwgMayaEditor
-# Uses devkitBase from project, targets Maya 2026 (64-bit)
-# For VS 2022 Insiders: cmake -B build -G "Visual Studio 17 2022" -A x64
+# Maya 2027 Plugin - SwgMayaEditor
+# Default devkit: D:/titan/lib/Maya2027/devkitBase (override with -DDEVKIT_LOCATION= or env)
+# VS Insiders: pass -DCMAKE_GENERATOR_INSTANCE="D:/Program Files/Microsoft Visual Studio/18/Insiders"
 cmake_minimum_required(VERSION 3.13)
 
-# Use project's devkitBase if DEVKIT_LOCATION not set
-# Path from MayaModern to devkitBase (client/src/external/3rd/library/devkitBase)
-# MayaModern->application->client->engine->client (5 levels) = client; need client/src
+set(DEVKIT_LOCATION "" CACHE PATH "Path to Maya devkitBase (default: D:/titan/lib/Maya2027/devkitBase)")
+set(MAYA_LOCATION "" CACHE PATH "Path to Maya install root (e.g. C:/Program Files/Autodesk/Maya2027)")
+
+get_filename_component(TITAN_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../../../../" ABSOLUTE)
 get_filename_component(CLIENT_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../../.." ABSOLUTE)
-set(DEVKIT_BASE_PATH "${CLIENT_ROOT}/src/external/3rd/library/devkitBase")
 set(CLIENT_SRC "${CLIENT_ROOT}/src")
-if(NOT DEFINED ENV{DEVKIT_LOCATION})
-    set(ENV{DEVKIT_LOCATION} "${DEVKIT_BASE_PATH}")
+
+set(DEVKIT_BASE_PATH_DEFAULT "${TITAN_ROOT}/lib/Maya2027/devkitBase")
+set(DEVKIT_BASE_PATH_LEGACY "${CLIENT_ROOT}/src/external/3rd/library/devkitBase")
+
+if(DEVKIT_LOCATION AND NOT "${DEVKIT_LOCATION}" STREQUAL "")
+    set(DEVKIT_BASE_PATH "${DEVKIT_LOCATION}")
+elseif(DEFINED ENV{DEVKIT_LOCATION} AND NOT "$ENV{DEVKIT_LOCATION}" STREQUAL "")
+    set(DEVKIT_BASE_PATH "$ENV{DEVKIT_LOCATION}")
+elseif(EXISTS "${DEVKIT_BASE_PATH_DEFAULT}/cmake/pluginEntry.cmake")
+    set(DEVKIT_BASE_PATH "${DEVKIT_BASE_PATH_DEFAULT}")
+else()
+    set(DEVKIT_BASE_PATH "${DEVKIT_BASE_PATH_LEGACY}")
+    message(WARNING "Maya 2027 devkit not found at ${DEVKIT_BASE_PATH_DEFAULT}; using bundled devkitBase")
 endif()
 
-# Include devkitBase plugin build system (Maya 2026)
+set(ENV{DEVKIT_LOCATION} "${DEVKIT_BASE_PATH}")
+message(STATUS "DEVKIT_LOCATION: ${DEVKIT_BASE_PATH}")
+
+# Runtime Maya install (used when devkit lib/ is incomplete). Override with -DMAYA_LOCATION= or env.
+if(MAYA_LOCATION AND NOT "${MAYA_LOCATION}" STREQUAL "")
+    set(ENV{MAYA_LOCATION} "${MAYA_LOCATION}")
+endif()
+if(NOT DEFINED ENV{MAYA_LOCATION} OR "$ENV{MAYA_LOCATION}" STREQUAL "")
+    foreach(_maya_dir
+        "C:/Program Files/Autodesk/Maya2027"
+        "D:/Program Files/Autodesk/Maya2027")
+        if(EXISTS "${_maya_dir}/lib/Foundation.lib")
+            set(ENV{MAYA_LOCATION} "${_maya_dir}")
+            break()
+        endif()
+    endforeach()
+endif()
+if(DEFINED ENV{MAYA_LOCATION} AND NOT "$ENV{MAYA_LOCATION}" STREQUAL "")
+    message(STATUS "MAYA_LOCATION: $ENV{MAYA_LOCATION}")
+endif()
+
 include(${DEVKIT_BASE_PATH}/cmake/pluginEntry.cmake)
 
-# Maya 2026 is 64-bit only - ensure we build for x64 on Windows
+# Maya 2027 devkit ships Python 3.13 headers; pluginEntry.cmake still sets PY_VER_AB to 39.
+set(PY_VER_AB 313)
+
 if(WIN32)
     if(CMAKE_SIZEOF_VOID_P EQUAL 4)
-        message(FATAL_ERROR "Maya 2026 requires 64-bit build. Configure with -A x64")
+        message(FATAL_ERROR "Maya 2027 requires 64-bit build. Configure with -A x64")
     endif()
 endif()
 

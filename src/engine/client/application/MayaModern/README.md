@@ -1,6 +1,6 @@
-# SwgMayaEditor — Maya 2026 plugin
+# SwgMayaEditor — Maya 2027 plugin
 
-64-bit Maya 2026 plugin for SWG asset authoring. Migrated from MayaExporter (32-bit Maya 8).
+64-bit Maya 2027 plugin for SWG asset authoring. Migrated from MayaExporter (32-bit Maya 8).
 
 **Documentation (unified):** all guides are under **[docs/](docs/README.md)**. Start with **[docs/guide.md](docs/guide.md)** for commands, data paths, and workflows, then **[docs/manual.md](docs/manual.md)** for depth.
 
@@ -8,47 +8,57 @@
 
 ## Requirements
 
-- **Maya 2026** (64-bit) — [Download](https://www.autodesk.com/developer-network/platform-technologies/maya)
-- **Maya 2026 Devkit** — separate download from Autodesk; `include/` and `lib/` must be visible to CMake (`MAYA_LOCATION` or install layout).
-- **Visual Studio 2022** (17.8.3+)
+- **Maya 2027** (64-bit)
+- **Maya 2027 Devkit** at `D:\titan\lib\Maya2027\devkitBase` (`include/` + `lib/`)
+- **Visual Studio Insiders** at `D:\Program Files\Microsoft Visual Studio\18\Insiders` (or VS 2022+)
 - **CMake** 3.13+
 
 ---
 
 ## Build
 
-### Windows (x64)
+### Windows (x64) — recommended
 
-```batch
+```powershell
 cd D:\titan\client\src\engine\client\application\MayaModern
-cmake -B build -G "Visual Studio 17 2022" -A x64
+.\build-mayamodern.ps1
+```
+
+Output: `build/Release/SwgMayaEditor.mll` and companion `.mel` scripts in the same folder.
+
+### Manual CMake
+
+```powershell
+$env:DEVKIT_LOCATION = "D:\titan\lib\Maya2027\devkitBase"
+$env:MAYA_LOCATION = "C:\Program Files\Autodesk\Maya2027"
+cmake -B build -G "Visual Studio 18 2026" -A x64 `
+  -DCMAKE_GENERATOR_INSTANCE="D:\Program Files\Microsoft Visual Studio\18\Insiders" `
+  -DDEVKIT_LOCATION=$env:DEVKIT_LOCATION `
+  -DMAYA_LOCATION=$env:MAYA_LOCATION
 cmake --build build --config Release
 ```
 
-Output: `build/Release/SwgMayaEditor.mll` and copied `.mel` scripts in the same folder.
+If `Visual Studio 18 2026` is unavailable in your CMake version, use `-G "Visual Studio 17 2022"` with the same `CMAKE_GENERATOR_INSTANCE`.
 
-### Maya location
+### Paths
 
-FindMaya checks `MAYA_LOCATION`, then `C:\Program Files\Autodesk\Maya2026`, then `D:\Program Files\Autodesk\Maya2026`. Override:
-
-```batch
-set MAYA_LOCATION=D:\Path\To\Maya2026
-cmake -B build -A x64
-```
-
-The devkit must be present where `MAYA_LOCATION` points. **VS 2022 Insiders:** set `CMAKE_GENERATOR_INSTANCE` if you need a non-default VS install.
+| Variable | Default |
+|----------|---------|
+| `DEVKIT_LOCATION` | `D:\titan\lib\Maya2027\devkitBase` |
+| `MAYA_LOCATION` | `C:\Program Files\Autodesk\Maya2027` |
+| `CMAKE_GENERATOR_INSTANCE` | `D:\Program Files\Microsoft Visual Studio\18\Insiders` |
 
 ---
 
 ## Install
 
-Copy `SwgMayaEditor.mll` (and keep the `.mel` files beside it) to:
-
-```
-C:\Users\<user>\Documents\maya\2026\plugins\
+```powershell
+.\scripts\Deploy-ToMayaPlugIns.ps1
 ```
 
-Or add the `build/Release` folder to `MAYA_PLUG_IN_PATH`. **Unload the plugin** before overwriting the `.mll` on Windows.
+Defaults to `%USERPROFILE%\Documents\maya\2027\plugins\` (or `Maya2027\bin\plug-ins` if that tree exists).
+
+**Unload the plugin** before overwriting the `.mll` on Windows.
 
 ```mel
 loadPlugin SwgMayaEditor;
