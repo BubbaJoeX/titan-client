@@ -1,6 +1,8 @@
 #include "msh.h"
 #include "SwgTranslatorNames.h"
 #include "ExportStaticMesh.h"
+#include "StaticMeshExportPipeline.h"
+#include "StaticMeshTransferOptions.h"
 #include "ImportLodMesh.h"
 #include "SwgIffFormatVersions.h"
 
@@ -13,6 +15,7 @@
 #include "VertexBufferFormat.h"
 #include "VertexBufferIterator.h"
 #include "MayaUtility.h"
+#include "StaticMeshViewportSpace.h"
 
 #include <maya/MDagPath.h>
 #include <maya/MStatus.h>
@@ -25,6 +28,7 @@
 #include <maya/MPlug.h>
 #include <maya/MFileIO.h>
 #include <maya/MFileObject.h>
+#include <maya/MFnDagNode.h>
 #include <maya/MFnTransform.h>
 #include <maya/MItDag.h>
 #include <maya/MNamespace.h>
@@ -67,113 +71,6 @@ namespace
         const size_t n = std::fread(buf, 1, 4, f);
         std::fclose(f);
         return n == 4 && std::memcmp(buf, "FORM", 4) == 0;
-    }
-
-    /// Parse semicolon-separated SwgMsh export options (see scripts/swgMshExportOptions.mel).
-    bool parseMshExportOptionBool(const MString& options, const char* keyEq)
-    {
-        const char* cs = options.asChar();
-        if (!cs || !cs[0]) return false;
-        std::string str(cs);
-        const std::string key(keyEq);
-        size_t scan = 0;
-        bool found = false;
-        bool value = false;
-        size_t pos = 0;
-        while ((pos = str.find(key, scan)) != std::string::npos)
-        {
-            size_t vpos = pos + key.size();
-            while (vpos < str.size() && (str[vpos] == ' ' || str[vpos] == '\t'))
-                ++vpos;
-            if (vpos < str.size())
-            {
-                const char c = static_cast<char>(std::tolower(static_cast<unsigned char>(str[vpos])));
-                value = (c == '1' || c == 't' || c == 'y');
-                found = true;
-            }
-            scan = pos + key.size();
-        }
-        return found ? value : false;
-    }
-
-    /// Import-only: must not match `visualHardpoints=` inside unrelated option values (substring false positives).
-    /// Semicolon-separated tokens; `visualHardpoints` must be the key at the start of a token. Last token wins.
-    /// Missing key => false (attribute-only hardpoints). Explicit `visualHardpoints=0` => false.
-    bool mshImportVisualHardpointsOptInFromOptions(const MString& options)
-    {
-        const char* cs = options.asChar();
-        if (!cs || !cs[0])
-            return false;
-
-        const std::string keyEq = "visualHardpoints=";
-        std::string str(cs);
-        for (char& ch : str)
-        {
-            if (ch == '\n' || ch == '\r')
-                ch = ';';
-        }
-        bool foundKey = false;
-        bool enabled = false;
-
-        size_t start = 0;
-        for (;;)
-        {
-            const size_t semi = str.find(';', start);
-            std::string token = (semi == std::string::npos) ? str.substr(start) : str.substr(start, semi - start);
-
-            size_t a = 0;
-            size_t b = token.size();
-            while (a < b && (token[a] == ' ' || token[a] == '\t'))
-                ++a;
-            while (b > a && (token[b - 1] == ' ' || token[b - 1] == '\t'))
-                --b;
-            if (a < b)
-            {
-                token = token.substr(a, b - a);
-                if (token.size() >= keyEq.size() && token.compare(0, keyEq.size(), keyEq) == 0)
-                {
-                    size_t v = keyEq.size();
-                    while (v < token.size() && (token[v] == ' ' || token[v] == '\t'))
-                        ++v;
-                    if (v < token.size())
-                    {
-                        const char c = static_cast<char>(std::tolower(static_cast<unsigned char>(token[v])));
-                        enabled = (c == '1' || c == 't' || c == 'y');
-                        foundKey = true;
-                    }
-                }
-            }
-            if (semi == std::string::npos)
-                break;
-            start = semi + 1;
-        }
-        return foundKey ? enabled : false;
-    }
-
-    bool legacyTriangleFlipFromMshExportOptions(const MString& options)
-    {
-        return parseMshExportOptionBool(options, "legacyTriangleFlip=");
-    }
-
-    bool objExportDirectUvFromMshExportOptions(const MString& options)
-    {
-        return parseMshExportOptionBool(options, "objExportDirectUv=");
-    }
-
-    bool mshOptionKeySpecified(const MString& opt, const char* keyEq)
-    {
-        const char* cs = opt.asChar();
-        if (!cs || !cs[0])
-            return false;
-        return std::string(cs).find(keyEq) != std::string::npos;
-    }
-
-    /// Matches SwgMsh defaultOptionsString (main.cpp): objExportDirectUv=1 when key omitted — SWG→SWG round-trip with default export.
-    bool mshImportUsesDirectUvFromOptions(const MString& options)
-    {
-        if (!mshOptionKeySpecified(options, "objExportDirectUv="))
-            return true;
-        return parseMshExportOptionBool(options, "objExportDirectUv=");
     }
 }
 
@@ -348,6 +245,27 @@ namespace
     static const Tag TAG_CNTR = TAG(C,N,T,R);
     static const Tag TAG_RADI = TAG(R,A,D,I);
     static const Tag TAG_SPS_NS = TAG3(S,P,S);
+
+    static bool isPobCellMeshImportRoot(const MObject& meshRootObj)
+    {
+        MDagPath path;
+        if (MDagPath::getAPathTo(meshRootObj, path) != MS::kSuccess)
+            return false;
+        MFnDagNode meshRootFn(path);
+        if (meshRootFn.name() != MString("mesh"))
+            return false;
+        MDagPath cellPath = path;
+        if (cellPath.pop() != MS::kSuccess)
+            return false;
+        const unsigned childCount = cellPath.childCount();
+        for (unsigned i = 0; i < childCount; ++i)
+        {
+            MFnDagNode childFn(cellPath.child(i));
+            if (childFn.name() == MString("collision"))
+                return true;
+        }
+        return false;
+    }
 }
 
 MStatus MshTranslator::createMeshFromMsh(const char* mshPath, MString& outRootPath, const MString& parentPath, bool visualHardpoints)
@@ -416,9 +334,13 @@ MStatus MshTranslator::reader (const MFileObject& file, const MString& options, 
     mshLog("reader: %s", fileName);
     mshLog("reader options string: [%s]", options.asChar() ? options.asChar() : "");
 
-    s_mshImportVisualHardpoints = mshImportVisualHardpointsOptInFromOptions(options);
-    s_mshImportUvDirectEngineToMaya = mshImportUsesDirectUvFromOptions(options);
-    mshLog("  UV import mode: %s", s_mshImportUvDirectEngineToMaya ? "direct (matches default SwgMsh export / OBJ path)" : "1-V flip (legacy; pair with export objExportDirectUv OFF for round-trip)");
+    s_mshImportVisualHardpoints = false;
+    {
+        const StaticMeshTransferOptions importOpts = StaticMeshTransferOptions::fromSwgMshOptionsString(options);
+        s_mshImportUvDirectEngineToMaya = importOpts.usesViewportDirectUv();
+        s_mshImportVisualHardpoints = importOpts.visualHardpoints;
+    }
+    mshLog("  UV import mode: %s", s_mshImportUvDirectEngineToMaya ? "viewport direct (StaticMeshViewportSpace)" : "legacy 1-V (round-trip old .msh shells)");
 
     // APT redirect + DTLA/MLOD unwrapping (parity with legacy ImportStaticMesh / importLodMesh).
     const std::string pathRaw(fileName);
@@ -641,7 +563,8 @@ MStatus MshTranslator::reader (const MFileObject& file, const MString& options, 
                                         if(vbf.hasPosition())
                                         {
                                             Vector pos = iff.read_floatVector();
-                                            vertexArray.append(-pos.x, pos.y, pos.z);
+                                            const MVector mayaPos = StaticMeshViewportSpace::positionEngineToMaya(pos);
+                                            vertexArray.append(mayaPos.x, mayaPos.y, mayaPos.z);
                                         }
                                         if(vbf.isTransformed())
                                         {
@@ -674,8 +597,14 @@ MStatus MshTranslator::reader (const MFileObject& file, const MString& options, 
                                                 IGNORE_RETURN(iff.read_float());
                                             if (j == 0)
                                             {
-                                                uArray.append(u);
-                                                vArray.append(s_mshImportUvDirectEngineToMaya ? v : (1.0f - v));
+                                                const StaticMeshViewportSpace::UvStorage uvStorage =
+                                                    s_mshImportUvDirectEngineToMaya
+                                                        ? StaticMeshViewportSpace::UvStorage::ViewportDirect
+                                                        : StaticMeshViewportSpace::UvStorage::LegacyOneMinusV;
+                                                float mayaU = 0.f, mayaV = 0.f;
+                                                StaticMeshViewportSpace::uvEngineToMaya(u, v, uvStorage, mayaU, mayaV);
+                                                uArray.append(mayaU);
+                                                vArray.append(mayaV);
                                             }
                                         }
                                         if(skipDot3)
@@ -777,14 +706,16 @@ MStatus MshTranslator::reader (const MFileObject& file, const MString& options, 
                     {
                         if (uArray.length() == static_cast<unsigned>(totalVerticesInMesh) && uArray.length() > 0)
                         {
-                            mesh.setUVs(uArray, vArray);
+                            MIntArray uvCounts, uvIds;
                             const int numFaces = totalPolygonsInMesh / 3;
                             for (int faceId = 0; faceId < numFaces; ++faceId)
                             {
-                                mesh.assignUV(faceId, 0, polygonConnects[faceId * 3 + 0]);
-                                mesh.assignUV(faceId, 1, polygonConnects[faceId * 3 + 1]);
-                                mesh.assignUV(faceId, 2, polygonConnects[faceId * 3 + 2]);
+                                uvCounts.append(3);
+                                uvIds.append(polygonConnects[faceId * 3 + 0]);
+                                uvIds.append(polygonConnects[faceId * 3 + 1]);
+                                uvIds.append(polygonConnects[faceId * 3 + 2]);
                             }
+                            MayaSceneBuilder::applyMap1Uvs(mesh, uArray, vArray, uvCounts, uvIds);
                             mshLog("    UVs applied: %d vertices", totalVerticesInMesh);
                         }
                         MDagPath meshPath;
@@ -917,7 +848,7 @@ MStatus MshTranslator::reader (const MFileObject& file, const MString& options, 
                 if (floorStatus)
                 {
                     floorFn.setName("floor_component");
-                    MGlobal::executeCommand(MString("addAttr -ln \"floorPath\" -dt \"string\" ") + floorFn.name());
+                    MGlobal::executeCommand(MString("addAttr -ln \"floorPath\" -dt \"string\" \"") + floorFn.fullPathName() + "\"");
                     MPlug pathPlug = floorFn.findPlug("floorPath", false);
                     if (!pathPlug.isNull())
                         pathPlug.setValue(MString(floorReferencePath.c_str()));
@@ -925,8 +856,8 @@ MStatus MshTranslator::reader (const MFileObject& file, const MString& options, 
                 }
             }
             
-            // Create collision group for user to add collision geometry
-            // User can middle-mouse drag geometry into this group for export
+            // Standalone mesh import only — POB cells already have rN|collision for floor/collision export.
+            if (!isPobCellMeshImportRoot(meshImportRootObj))
             {
                 MStatus collStatus;
                 MFnTransform collFn;
@@ -934,13 +865,12 @@ MStatus MshTranslator::reader (const MFileObject& file, const MString& options, 
                 if (collStatus)
                 {
                     collFn.setName("collision");
-                    // Add attribute to mark this as a collision container
-                    MGlobal::executeCommand(MString("addAttr -ln \"swgCollisionGroup\" -at bool -dv 1 ") + collFn.name());
-                    // Add attribute for collision type (box, sphere, mesh, composite)
-                    MGlobal::executeCommand(MString("addAttr -ln \"swgCollisionType\" -dt \"string\" ") + collFn.name());
+                    const MString collPath = collFn.fullPathName();
+                    MGlobal::executeCommand(MString("addAttr -ln \"swgCollisionGroup\" -at bool -dv 1 \"") + collPath + "\"");
+                    MGlobal::executeCommand(MString("addAttr -ln \"swgCollisionType\" -dt \"string\" \"") + collPath + "\"");
                     MPlug typePlug = collFn.findPlug("swgCollisionType", false);
                     if (!typePlug.isNull())
-                        typePlug.setValue(MString("box")); // Default to box collision
+                        typePlug.setValue(MString("box"));
                     mshLog("  Created collision group (drag collision geometry here for export)");
                 }
             }
@@ -1015,12 +945,9 @@ MStatus MshTranslator::writer (const MFileObject& file, const MString& options, 
     }
 
     const char* filePath = file.expandedFullName().asChar();
-    const bool legacyTriFromExportDialog = legacyTriangleFlipFromMshExportOptions(options);
-    const bool objUvFromExportDialog = objExportDirectUvFromMshExportOptions(options);
+    const StaticMeshTransferOptions exportOpts = StaticMeshTransferOptions::fromSwgMshOptionsString(options);
     std::string outMeshPath, outAptPath;
-    ExportStaticMesh cmd;
-    if (!cmd.performExport(dagPath, filePath, outMeshPath, outAptPath, false, legacyTriFromExportDialog, false,
-            objUvFromExportDialog, options))
+    if (!StaticMeshExportPipeline::exportMesh(dagPath, filePath, exportOpts, outMeshPath, outAptPath))
     {
         std::cerr << "[MshTranslator] Export: performExport failed" << std::endl;
         MGlobal::displayError(

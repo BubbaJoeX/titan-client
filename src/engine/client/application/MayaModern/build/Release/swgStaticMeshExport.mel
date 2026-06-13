@@ -1,0 +1,341 @@
+// SwgMayaEditor — static mesh export (unified pipeline).
+// Requires: loadPlugin SwgMayaEditor; setBaseDir <export root>
+//
+// All export paths use StaticMeshExportPipeline + StaticMeshTransferOptions:
+//   • File > Export SwgMsh (dialog options string)
+//   • exportStaticMesh MEL command (-path, optional -objExportDirectUv)
+// Winding: automatic (StaticMeshViewportSpace). UV: viewport-direct by default (objExportDirectUv=1).
+// Legacy 1-V round-trip: set objExportDirectUv=0 in export dialog only when re-importing old .msh shells.
+//
+// Combined SWG .msh + OBJ: use two materials (one per source). Per-SG overrides: swgExportUvDirect, swgExportTriangleSwap.
+//
+// One-shot: select two+ meshes (or transforms), then:
+//   swgStaticMeshCombineValidateExport;
+// That runs swgPrepareStaticMeshExport -combine -fixUvSet, then exportStaticMesh.
+//
+// Animated diffuse (SWTS): swgMeshAnimate.mel — swgSetupMeshAnimatedTextureExport;
+//
+// Validate only (any selection count):
+//   swgStaticMeshValidateSelection;
+//
+// Rename duplicated/imported asset (mesh, materials, swgShaderPath, file textures):
+//   swgMassRenameAsset -from edb_taanabtonic -to bubbajuice;
+//   swgMassRenameSelectedAsset "edb_taanabtonic" "bubbajuice" 1;  // third arg: rename textureWriteDir drop-ins
+//
+// Shader effect + transparency (SwgMsh export):
+//   swgSetEffectOnSelection "effect/a_alpha.eft";   — writes soe_effectName on surface shader; static mesh export rewrites prototype .sht NAME chunks that end in .eft
+//   swgSetTransparentOnSelection 1;                — bool swgTransparent on shadingEngine (forces transparent / alpha-blend clone path; use with glass .eft or shaderPrototypeTransparentSht)
+// Selecting polygon faces is OK — resolves the face’s shadingEngine via sets -q -fe.
+// Legacy ImportShader string on surface shader (also read on export if soe_effectName unset):
+//   swgSetLegacySoeEffectOnSelection "effect/a_alpha.eft";
+
+/// Membership sets for a face component (`sets -q -fe`). Must use a global inside catch() or Maya drops the array.
+global proc string[] swg__setsQueryFaceExtended(string $fc)
+{
+    string $empty[];
+    global string $gSwgSetsFeTmp[];
+    string $cmd = "global string $gSwgSetsFeTmp[]; $gSwgSetsFeTmp = `sets -q -fe \"" + $fc + "\"`";
+    if (catch($cmd))
+        return $empty;
+    return $gSwgSetsFeTmp;
+}
+
+/// shadingEngines assigned to selected faces only (not every material on the mesh).
+global proc string[] swgResolveShadingEnginesFromFaceComponents()
+{
+    string $result[];
+    string $selFlat[] = `ls -sl -flatten`;
+    string $faceLike[];
+    string $x;
+    for ($x in $selFlat)
+    {
+        if (`gmatch $x "*.f[*]"`)
+            $faceLike[size($faceLike)] = $x;
+    }
+    if (size($faceLike) < 1)
+        return $result;
+
+    string $fc;
+    for ($fc in $faceLike)
+    {
+        string $memberSets[] = swg__setsQueryFaceExtended($fc);
+        string $st;
+        for ($st in $memberSets)
+        {
+            if (`nodeType $st` != "shadingEngine")
+                continue;
+            int $already = 0;
+            string $y;
+            for ($y in $result)
+            {
+                if ($y == $st)
+                {
+                    $already = 1;
+                    break;
+                }
+            }
+            if (!$already)
+                $result[size($result)] = $st;
+        }
+    }
+    return $result;
+}
+
+/// Collect shadingEngine nodes from selection: SG itself, surface shader from Hypershade, mesh shape, or transform (first mesh).
+global proc string[] swgResolveShadingEnginesFromSelection()
+{
+    string $result[];
+    // Polygon faces: only those shading groups (fixes “selected window faces” tagging the wrong SG or none).
+    $result = `swgResolveShadingEnginesFromFaceComponents`;
+    if (size($result) > 0)
+        return $result;
+
+    string $sel[] = `ls -sl`;
+    if (size($sel) < 1)
+        return $result;
+
+    string $n;
+    for ($n in $sel)
+    {
+        string $t = `nodeType $n`;
+        if ($t == "shadingEngine")
+        {
+            $result[size($result)] = $n;
+            continue;
+        }
+
+        // Hypershade selects Lambert / Standard Surface / etc. — SG connects as destination of shader outputs.
+        string $fromShader[] = `listConnections -destination true -type "shadingEngine" $n`;
+        if (size($fromShader) < 1)
+        {
+            string $hist[] = `listHistory -future true -levels 8 $n`;
+            string $h;
+            for ($h in $hist)
+            {
+                if (`nodeType $h` == "shadingEngine")
+                    $fromShader[size($fromShader)] = $h;
+            }
+        }
+        string $sg;
+        for ($sg in $fromShader)
+        {
+            int $already = 0;
+            string $x;
+            for ($x in $result)
+            {
+                if ($x == $sg)
+                {
+                    $already = 1;
+                    break;
+                }
+            }
+            if (!$already)
+                $result[size($result)] = $sg;
+        }
+        if (size($fromShader) > 0)
+            continue;
+
+        // Mesh selected (or parent transform)
+        if ($t == "mesh")
+        {
+            string $meshSgs[] = `listConnections -type "shadingEngine" $n`;
+            for ($sg in $meshSgs)
+            {
+                int $already = 0;
+                string $x;
+                for ($x in $result)
+                {
+                    if ($x == $sg)
+                    {
+                        $already = 1;
+                        break;
+                    }
+                }
+                if (!$already)
+                    $result[size($result)] = $sg;
+            }
+            continue;
+        }
+
+        // Transforms / groups / joints: mesh shape(s) under selection
+        string $shapes[] = `listRelatives -f -path -s $n`;
+        string $sh;
+        for ($sh in $shapes)
+        {
+            if (`nodeType $sh` != "mesh")
+                continue;
+            string $meshSgs[] = `listConnections -type "shadingEngine" $sh`;
+            for ($sg in $meshSgs)
+            {
+                int $already = 0;
+                string $x;
+                for ($x in $result)
+                {
+                    if ($x == $sg)
+                    {
+                        $already = 1;
+                        break;
+                    }
+                }
+                if (!$already)
+                    $result[size($result)] = $sg;
+            }
+        }
+    }
+    return $result;
+}
+
+/// Set swgExportUvDirect / swgExportTriangleSwap on shadingEngine nodes resolved from selection (bool 0|1 each).
+global proc swgTagExportOptionsOnSelectedShaders(int $uvDirect, int $triangleSwap)
+{
+    string $engines[] = `swgResolveShadingEnginesFromSelection`;
+    if (size($engines) < 1)
+    {
+        warning "Select a material/shader from Hypershade, a shadingEngine (*SG), or mesh/geo — nothing mapped to a shadingEngine.";
+        return;
+    }
+    string $s;
+    for ($s in $engines)
+    {
+        if (!`attributeExists "swgExportUvDirect" $s`)
+            addAttr -ln "swgExportUvDirect" -at bool -dv $uvDirect $s;
+        else
+            setAttr ($s + ".swgExportUvDirect") $uvDirect;
+
+        if (!`attributeExists "swgExportTriangleSwap" $s`)
+            addAttr -ln "swgExportTriangleSwap" -at bool -dv $triangleSwap $s;
+        else
+            setAttr ($s + ".swgExportTriangleSwap") $triangleSwap;
+    }
+}
+
+/// Tag shadingEngine(s) resolved from selection: export UV with 1-V for SWG .msh re-import shells (when dialog uses direct-V defaults).
+global proc swgTagShaderSwgRoundTripUvOnSelected()
+{
+    string $engines[] = `swgResolveShadingEnginesFromSelection`;
+    if (size($engines) < 1)
+    {
+        warning "Select the material in Hypershade, or the shadingEngine (*SG), or mesh — could not find a shadingEngine.";
+        return;
+    }
+    string $s;
+    for ($s in $engines)
+    {
+        if (!`attributeExists "swgExportUvDirect" $s`)
+            addAttr -ln "swgExportUvDirect" -at bool -dv 0 $s;
+        else
+            setAttr ($s + ".swgExportUvDirect") 0;
+    }
+}
+
+global proc swgStaticMeshCombineValidateExport()
+{
+    swgPrepareStaticMeshExport -combine -fixUvSet;
+    exportStaticMesh;
+}
+
+global proc swgStaticMeshValidateSelection()
+{
+    swgPrepareStaticMeshExport -validateOnly;
+}
+
+/// Surface shader node(s) driving the shadingEngine(s) resolved from the current selection (unique, order arbitrary).
+global proc string[] swgResolveSurfaceShadersFromSelection()
+{
+    string $result[];
+    string $engines[] = `swgResolveShadingEnginesFromSelection`;
+    string $sg;
+    for ($sg in $engines)
+    {
+        string $shaders[] = `listConnections ($sg + ".surfaceShader")`;
+        string $shader;
+        for ($shader in $shaders)
+        {
+            int $already = 0;
+            string $x;
+            for ($x in $result)
+            {
+                if ($x == $shader)
+                {
+                    $already = 1;
+                    break;
+                }
+            }
+            if (!$already)
+                $result[size($result)] = $shader;
+        }
+    }
+    return $result;
+}
+
+/// Set effect path on surface shader (soe_effectName). SwgMsh export: rewrites prototype .sht effect NAME chunks ending in .eft; legacy Maya exporter reads the same via MayaStaticShaderTemplateWriter.
+global proc swgSetEffectOnSelection(string $effectPath)
+{
+    string $nodes[] = `swgResolveSurfaceShadersFromSelection`;
+    if (size($nodes) < 1)
+    {
+        warning "Select a material/shader from Hypershade, a shadingEngine (*SG), or mesh/geo — could not resolve a surface shader.";
+        return;
+    }
+    string $n;
+    for ($n in $nodes)
+    {
+        if (!`attributeExists "soe_effectName" $n`)
+            addAttr -ln "soe_effectName" -dt "string" $n;
+        setAttr -type "string" ($n + ".soe_effectName") $effectPath;
+    }
+    print ("[swgStaticMeshExport] swgSetEffectOnSelection: soe_effectName set on " + size($nodes) + " surface shader(s) -> " + $effectPath + "\n");
+}
+
+/// Force transparent shader clone (PASS alpha blend + optional transparent prototype). Attr lives on shadingEngine (*SG), not the surface shader.
+global proc swgSetTransparentOnSelection(int $on)
+{
+    string $engines[] = `swgResolveShadingEnginesFromSelection`;
+    if (size($engines) < 1)
+    {
+        warning "Select a material/shader from Hypershade, a shadingEngine (*SG), or mesh/geo — could not find a shadingEngine.";
+        return;
+    }
+    string $s;
+    for ($s in $engines)
+    {
+        if (!`attributeExists "swgTransparent" $s`)
+            addAttr -ln "swgTransparent" -at bool -dv $on $s;
+        setAttr ($s + ".swgTransparent") $on;
+    }
+    string $valStr;
+    if ($on)
+        $valStr = "1";
+    else
+        $valStr = "0";
+    print ("[swgStaticMeshExport] swgSetTransparentOnSelection: swgTransparent=" + $valStr + " on " + size($engines) + " shadingEngine(s)\n");
+}
+
+/// Set legacy ImportShader-style effect string (soe_effect) on each surface shader.
+global proc swgSetLegacySoeEffectOnSelection(string $effectPath)
+{
+    string $nodes[] = `swgResolveSurfaceShadersFromSelection`;
+    if (size($nodes) < 1)
+    {
+        warning "Select a material/shader from Hypershade, a shadingEngine (*SG), or mesh/geo — could not resolve a surface shader.";
+        return;
+    }
+    string $n;
+    for ($n in $nodes)
+    {
+        if (!`attributeExists "soe_effect" $n`)
+            addAttr -ln "soe_effect" -dt "string" $n;
+        setAttr -type "string" ($n + ".soe_effect") $effectPath;
+    }
+    print ("[swgStaticMeshExport] swgSetLegacySoeEffectOnSelection: soe_effect set on " + size($nodes) + " surface shader(s) -> " + $effectPath + "\n");
+}
+
+/// Mass-rename imported asset tokens (mesh, materials, swgShaderPath, file textures).
+/// Example: select mesh root, then swgMassRenameSelectedAsset "edb_taanabtonic" "bubbajuice";
+global proc swgMassRenameSelectedAsset(string $from, string $to, int $renameDiskTextures)
+{
+    string $flags = "-from \"" + $from + "\" -to \"" + $to + "\"";
+    if ($renameDiskTextures)
+        $flags += " -renameDiskTextures";
+    eval ("swgMassRenameAsset " + $flags);
+}

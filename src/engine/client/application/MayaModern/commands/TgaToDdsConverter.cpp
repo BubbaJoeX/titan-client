@@ -62,7 +62,16 @@ std::string TgaToDdsConverter::getNvttExporterPath()
     if (cfg && cfg[0])
         return cfg;
 #ifdef _WIN32
-    return "D:\\Program Files\\NVIDIA Corporation\\NVIDIA Texture Tools\\nvtt_export.exe";
+    static const char* kCandidates[] = {
+        "C:\\Program Files\\NVIDIA Corporation\\NVIDIA Texture Tools\\nvtt_export.exe",
+        "D:\\Program Files\\NVIDIA Corporation\\NVIDIA Texture Tools\\nvtt_export.exe",
+    };
+    for (const char* path : kCandidates)
+    {
+        if (MayaUtility::fileExists(path))
+            return path;
+    }
+    return kCandidates[0];
 #else
     return "nvtt_export";
 #endif

@@ -1,10 +1,14 @@
 #include "ExportStaticMesh.h"
+#include "StaticMeshExportPipeline.h"
 #include "StaticMeshWriter.h"
 #include "ImportPathResolver.h"
+#include "ExportDirectoryBootstrap.h"
 #include "SetDirectoryCommand.h"
 #include "ShaderExporter.h"
 #include "MayaUtility.h"
 #include "MayaConversions.h"
+#include "StaticMeshViewportSpace.h"
+#include "StaticMeshTransferOptions.h"
 #include "MayaCompoundString.h"
 #include "Iff.h"
 #include "Quaternion.h"
@@ -20,6 +24,7 @@
 #include <maya/MFnTransform.h>
 #include <maya/MGlobal.h>
 #include <maya/MItDependencyGraph.h>
+#include <maya/MObjectHandle.h>
 #include <maya/MItMeshPolygon.h>
 #include <maya/MObject.h>
 #include <maya/MFloatPointArray.h>
@@ -54,14 +59,6 @@ namespace fs = std::filesystem;
 
 namespace
 {
-    /// True when the SwgMsh export options string contains a given key (e.g. legacyTriangleFlip=).
-    /// Used so explicit dialog values override SwgMayaEditor.cfg / mesh attrs when Maya passes the full options line.
-    bool mshExportOptionsKeySpecified(const MString& opt, const char* keyEq)
-    {
-        const char* cs = opt.asChar();
-        return cs != nullptr && std::strstr(cs, keyEq) != nullptr;
-    }
-
     constexpr int DEFAULT_IFF_SIZE = 65536;
 
     const Tag TAG_APT = TAG3(A,P,T);
@@ -93,17 +90,17 @@ namespace
         return v;
     }
 
-    /// Same override family: when absent, use global reverseTriangleIndices from dialog/cfg.
-    static bool shadingGroupExportTriangleSwap(MObject shadingGroupObj, bool globalDefault)
+    /// When present, swgExportTriangleSwap overrides viewport winding (odd OBJ shells in combined meshes).
+    static bool shadingGroupExportTriangleSwap(MObject shadingGroupObj, bool computedDefault)
     {
         MStatus st;
         MFnDependencyNode dep(shadingGroupObj, &st);
-        if (!st) return globalDefault;
-        if (!dep.hasAttribute("swgExportTriangleSwap")) return globalDefault;
+        if (!st) return computedDefault;
+        if (!dep.hasAttribute("swgExportTriangleSwap")) return computedDefault;
         MPlug p = dep.findPlug("swgExportTriangleSwap", true, &st);
-        if (!st || p.isNull()) return globalDefault;
-        bool v = globalDefault;
-        if (p.getValue(v) != MS::kSuccess) return globalDefault;
+        if (!st || p.isNull()) return computedDefault;
+        bool v = computedDefault;
+        if (p.getValue(v) != MS::kSuccess) return computedDefault;
         return v;
     }
 
@@ -342,6 +339,11 @@ namespace
         for (char& c : e)
             if (c == '\\')
                 c = '/';
+        if (!e.empty() && e.compare(0, 7, "effect/") != 0)
+        {
+            if (e.find('/') == std::string::npos)
+                e = std::string("effect/") + e;
+        }
         return e;
     }
 
@@ -386,15 +388,8 @@ namespace
         return s;
     }
 
-    /// First existing image in textureWriteDir named <baseName>.<ext> (artist drop-in for export).
-    static std::string tryFindImageInTextureWriteDir(const std::string& baseNameNoExt)
+    static std::string tryFindImageInTextureWriteDirImpl(const std::string& dir, const std::string& baseNameNoExt)
     {
-        if (baseNameNoExt.empty()) return std::string();
-        const char* tw = SetDirectoryCommand::getDirectoryString(SetDirectoryCommand::TEXTURE_WRITE_DIR_INDEX);
-        if (!tw || !tw[0]) return std::string();
-        std::string dir(tw);
-        if (!dir.empty() && dir.back() != '\\' && dir.back() != '/')
-            dir += '\\';
         static const char* exts[] = { ".tga", ".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp" };
         for (const char* ext : exts)
         {
@@ -404,6 +399,54 @@ namespace
             {
                 fclose(f);
                 return p;
+            }
+        }
+        return std::string();
+    }
+
+    /// First existing image in textureWriteDir named <baseName>.<ext> (artist drop-in for export).
+    static std::string tryFindImageInTextureWriteDir(const std::string& baseNameNoExt)
+    {
+        if (baseNameNoExt.empty()) return std::string();
+        const char* tw = SetDirectoryCommand::getDirectoryString(SetDirectoryCommand::TEXTURE_WRITE_DIR_INDEX);
+        if (!tw || !tw[0]) return std::string();
+        std::string dir(tw);
+        if (!dir.empty() && dir.back() != '\\' && dir.back() != '/')
+            dir += '\\';
+        std::string found = tryFindImageInTextureWriteDirImpl(dir, baseNameNoExt);
+        if (!found.empty())
+            return found;
+        // Artists often drop <mesh>.tga while export publishes <mesh>_d.dds.
+        if (baseNameNoExt.size() > 2 && baseNameNoExt.compare(baseNameNoExt.size() - 2, 2, "_d") == 0)
+            return tryFindImageInTextureWriteDirImpl(dir, baseNameNoExt.substr(0, baseNameNoExt.size() - 2));
+        return std::string();
+    }
+
+    /// First existing image in textureWriteDir for a material slot (multi-mesh / multi-SG export).
+    /// Slot 0 also tries <mesh>_d and bare <mesh> so a single artist drop-in still works.
+    static std::string tryFindImageInTextureWriteDirForMaterialSlot(
+        const std::string& meshName, unsigned slotIndex, unsigned materialCount)
+    {
+        if (meshName.empty())
+            return std::string();
+        if (materialCount <= 1)
+            return tryFindImageInTextureWriteDir(meshName + "_d");
+
+        std::string found = tryFindImageInTextureWriteDir(meshName + "_m" + std::to_string(slotIndex));
+        if (!found.empty())
+            return found;
+        if (slotIndex == 0)
+        {
+            found = tryFindImageInTextureWriteDir(meshName + "_d");
+            if (!found.empty())
+                return found;
+            const char* tw = SetDirectoryCommand::getDirectoryString(SetDirectoryCommand::TEXTURE_WRITE_DIR_INDEX);
+            if (tw && tw[0])
+            {
+                std::string dir(tw);
+                if (!dir.empty() && dir.back() != '\\' && dir.back() != '/')
+                    dir += '\\';
+                return tryFindImageInTextureWriteDirImpl(dir, meshName);
             }
         }
         return std::string();
@@ -781,6 +824,24 @@ namespace
         return true;
     }
 
+    static std::string absolutePathForEffectTreeRel(const std::string& effectTreeRel)
+    {
+        if (effectTreeRel.empty()) return std::string();
+        const char* dr = SetDirectoryCommand::getDirectoryString(SetDirectoryCommand::DATA_ROOT_DIR_INDEX);
+        if (!dr || !dr[0]) return std::string();
+        std::string rel = effectTreeRel;
+        for (char& c : rel)
+            if (c == '/') c = '\\';
+        while (!rel.empty() && (rel[0] == '/' || rel[0] == '\\'))
+            rel.erase(0, 1);
+        std::string root(dr);
+        if (!root.empty() && root.back() != '\\' && root.back() != '/')
+            root += '\\';
+        for (char& c : root)
+            if (c == '/') c = '\\';
+        return root + rel;
+    }
+
     /// Confirms the cloned .sht exists and, when a diffuse tree path was set, the matching DDS is present and valid.
     static bool verifyShaderExportArtifacts(const std::string& absShaderWritten, const std::string& texTree,
         const std::string& outShaderTreeForLog)
@@ -795,6 +856,18 @@ namespace
 
         if (texTree.empty())
         {
+            std::string effectRel = ShaderExporter::effectPathFromWrittenShader(absShaderWritten);
+            if (effectRel.empty())
+                effectRel = "effect/a_simple.eft";
+            ExportDirectoryBootstrap::bootstrapEffectTreeFile(effectRel);
+            const std::string effectAbs = absolutePathForEffectTreeRel(effectRel);
+            if (effectAbs.empty() || getFileSizeBytes(effectAbs) < 32)
+            {
+                std::cerr << "[ExportStaticMesh] Verify failed: effect missing or too small for \"" << effectRel
+                          << "\": " << effectAbs << "\n";
+                MGlobal::displayError(MString("SwgMsh export verify: missing effect file ") + effectRel.c_str());
+                return false;
+            }
             MGlobal::displayWarning(
                 MString("SwgMayaEditor: verify: \"") + outShaderTreeForLog.c_str()
                 + "\" uses prototype TXM paths only (no diffuse published). Connect file/aiImage to base color, "
@@ -820,10 +893,24 @@ namespace
             return false;
         }
 
+        std::string effectRel = ShaderExporter::effectPathFromWrittenShader(absShaderWritten);
+        if (effectRel.empty())
+            effectRel = "effect/a_simple.eft";
+        ExportDirectoryBootstrap::bootstrapEffectTreeFile(effectRel);
+        const std::string effectAbs = absolutePathForEffectTreeRel(effectRel);
+        if (effectAbs.empty() || getFileSizeBytes(effectAbs) < 32)
+        {
+            std::cerr << "[ExportStaticMesh] Verify failed: effect missing or too small for \"" << effectRel
+                      << "\": " << effectAbs << "\n";
+            MGlobal::displayError(MString("SwgMsh export verify: missing effect file ") + effectRel.c_str());
+            return false;
+        }
+
         std::cerr << "[ExportStaticMesh] Verified: " << absShaderWritten << " + " << ddsAbs << " (TXM " << texTree
-                  << ")\n";
+                  << ") + effect " << effectRel << "\n";
         MGlobal::displayInfo(
-            MString("SwgMayaEditor: verified shader and DDS (") + texTree.c_str() + ")");
+            MString("SwgMayaEditor: verified shader, DDS (") + texTree.c_str() + ") and effect (" + effectRel.c_str()
+                + ")");
         return true;
     }
 
@@ -1385,6 +1472,99 @@ namespace
         return tryPickDiffusePathFromUpstreamFileNodes(upstreamFiles, outPath);
     }
 
+    static std::string fileBasenameNoExt(std::string path)
+    {
+        for (char& c : path)
+            if (c == '\\')
+                c = '/';
+        const size_t slash = path.find_last_of('/');
+        if (slash != std::string::npos)
+            path = path.substr(slash + 1);
+        const size_t dot = path.find_last_of('.');
+        if (dot != std::string::npos)
+            path = path.substr(0, dot);
+        return path;
+    }
+
+    static bool resolveAndPublishDiffuseForMaterialSlot(
+        MObject sgObj,
+        MFnDependencyNode& sgFn,
+        const std::string& meshName,
+        const std::string& texBase,
+        unsigned slotIndex,
+        unsigned geomMaterialCount,
+        std::string& outTexTree,
+        std::string& outAbsImage)
+    {
+        outTexTree.clear();
+        outAbsImage.clear();
+
+        auto tryPublish = [&](const std::string& srcAbs, const char* label) -> bool {
+            if (srcAbs.empty() || !fileExistsForBundle(srcAbs))
+                return false;
+            const std::string published = ShaderExporter::publishDiffuseTextureForGame(srcAbs, texBase);
+            if (published.empty())
+                return false;
+            outAbsImage = srcAbs;
+            outTexTree = published;
+            std::cerr << "[ExportStaticMesh] slot " << slotIndex << " SG \"" << sgFn.name().asChar() << "\": " << label
+                      << " " << srcAbs << " -> " << published << " (publish base " << texBase << ")\n";
+            MGlobal::displayInfo(MString("[ExportStaticMesh] slot ") + static_cast<int>(slotIndex) + " texture from "
+                + label + ": " + srcAbs.c_str());
+            return true;
+        };
+
+        std::string hypershadePath;
+        if (tryGetDiffuseImageAbsolutePath(sgObj, hypershadePath))
+        {
+            if (tryPublish(hypershadePath, "hypershade"))
+                return true;
+            if (!hypershadePath.empty())
+            {
+                const std::string dropIn = tryFindImageInTextureWriteDir(fileBasenameNoExt(hypershadePath));
+                if (tryPublish(dropIn, "textureWriteDir (hypershade basename)"))
+                    return true;
+            }
+        }
+
+        {
+            const std::string dropIn = tryFindImageInTextureWriteDirForMaterialSlot(meshName, slotIndex, geomMaterialCount);
+            if (tryPublish(dropIn, "textureWriteDir (export slot name)"))
+                return true;
+        }
+
+        const std::string swgTexturePath = getStringAttr(sgFn, "swgTexturePath");
+        if (!swgTexturePath.empty())
+        {
+            if (looksLikeFilesystemImagePathLocal(swgTexturePath))
+            {
+                if (tryPublish(swgTexturePath, "swgTexturePath (filesystem)"))
+                    return true;
+            }
+            else
+            {
+                const std::string stem = textureStemFromSwgOrTreePath(swgTexturePath);
+                const std::string dropIn = tryFindImageInTextureWriteDir(stem);
+                if (tryPublish(dropIn, "textureWriteDir (swgTexturePath basename)"))
+                    return true;
+
+                const std::string resolvedGame = resolveGameAssetPath(swgTexturePath);
+                if (!resolvedGame.empty() && fileExistsForBundle(resolvedGame))
+                {
+                    if (tryPublish(resolvedGame, "swgTexturePath (game data)"))
+                        return true;
+                }
+
+                std::cerr << "[ExportStaticMesh] slot " << slotIndex << " SG \"" << sgFn.name().asChar()
+                          << "\": stale swgTexturePath \"" << swgTexturePath
+                          << "\" — assign your edited image in Hypershade, or drop " << texBase
+                          << ".tga/.png in textureWriteDir.\n";
+            }
+        }
+
+        return false;
+    }
+
     static bool traceTextureUvSetGraph(const MObject& nodeObj, MString& outUvSet, int depth);
 
     static bool tracePlugIntoUvSetGraph(MPlug& p, MString& outUvSet, int depth)
@@ -1664,6 +1844,190 @@ namespace
             return uvSetNames[0];
         return MString();
     }
+
+    /// Append one Maya mesh shape (one SwgMsh import primitive) into combined export slots keyed by shading group.
+    static bool appendMeshShapeGeometryForExport(
+        const MDagPath& shapePath,
+        std::map<unsigned, int>& sgHashToSlot,
+        std::vector<MObject>& exportShaderSlots,
+        std::map<int, StaticMeshWriterShaderGroup>& shaderGroups)
+    {
+        auto slotForSg = [&](MObject sgObj) -> int {
+            MObjectHandle h(sgObj);
+            const unsigned hc = static_cast<unsigned>(h.hashCode());
+            const auto it = sgHashToSlot.find(hc);
+            if (it != sgHashToSlot.end())
+                return it->second;
+            const int slot = static_cast<int>(exportShaderSlots.size());
+            exportShaderSlots.push_back(sgObj);
+            sgHashToSlot[hc] = slot;
+            return slot;
+        };
+
+        MStatus status;
+        MFnMesh meshFn(shapePath, &status);
+        if (!status)
+            return false;
+
+        MObjectArray shaderObjs;
+        MIntArray faceToShader;
+        if (meshFn.getConnectedShaders(shapePath.instanceNumber(), shaderObjs, faceToShader) != MS::kSuccess
+            || shaderObjs.length() == 0)
+            return false;
+
+        MPointArray mayaPoints;
+        if (meshFn.getPoints(mayaPoints, MSpace::kObject) != MS::kSuccess)
+            return false;
+
+        const MString uvSetName = chooseExportUvSetName(meshFn, shaderObjs, faceToShader);
+
+        MItMeshPolygon polyIt(shapePath, MObject::kNullObj, &status);
+        if (!status)
+            return false;
+
+        for (; !polyIt.isDone(); polyIt.next())
+        {
+            const int faceIdx = polyIt.index();
+            int shaderIdx = (faceIdx < faceToShader.length()) ? faceToShader[faceIdx] : 0;
+            if (shaderIdx < 0 || static_cast<unsigned>(shaderIdx) >= shaderObjs.length())
+                shaderIdx = 0;
+
+            MObject sgObj = shaderObjs[static_cast<unsigned>(shaderIdx)];
+            MFnDependencyNode sgFn(sgObj, &status);
+            std::string shaderTemplateName = "shader/placeholder";
+            if (status)
+            {
+                const std::string swgPath = getStringAttr(sgFn, "swgShaderPath");
+                if (!swgPath.empty())
+                    shaderTemplateName = swgPath;
+            }
+
+            const bool uvDirectThisSg = shadingGroupExportUvDirect(sgObj, false);
+            const MString uvSetForFace = effectiveUvSetForFace(meshFn, sgObj, uvSetName);
+            const int exportSlot = slotForSg(sgObj);
+
+            StaticMeshWriterShaderGroup& sg = shaderGroups[exportSlot];
+            if (sg.shaderTemplateName.empty())
+                sg.shaderTemplateName = shaderTemplateName;
+
+            MPointArray triPoints;
+            MIntArray triVerts;
+            status = polyIt.getTriangles(triPoints, triVerts, MSpace::kObject);
+            if (!status)
+                continue;
+
+            auto getUV = [&](int meshVert) -> std::pair<float, float> {
+                const MString trySets[2] = {uvSetForFace, uvSetName};
+                for (int si = 0; si < 2; ++si)
+                {
+                    if (trySets[si].length() == 0)
+                        continue;
+                    if (si > 0 && trySets[si] == trySets[0])
+                        continue;
+                    for (unsigned i = 0; i < polyIt.polygonVertexCount(&status); ++i)
+                    {
+                        if (polyIt.vertexIndex(static_cast<int>(i), &status) == meshVert)
+                        {
+                            float2 uv;
+                            if (polyIt.getUV(i, uv, &trySets[si]) == MS::kSuccess)
+                                return {uv[0], uv[1]};
+                        }
+                    }
+                }
+                return {0.0f, 0.0f};
+            };
+
+            for (unsigned t = 0; t + 2 < triVerts.length(); t += 3)
+            {
+                const int v0 = triVerts[t];
+                const int v1 = triVerts[t + 1];
+                const int v2 = triVerts[t + 2];
+
+                MVector nFace;
+                meshFn.getPolygonNormal(faceIdx, nFace, MSpace::kObject);
+                const MVector n0 = nFace;
+                const MVector n1 = nFace;
+                const MVector n2 = nFace;
+
+                const float u0 = getUV(v0).first, v0_ = getUV(v0).second;
+                const float u1 = getUV(v1).first, v1_ = getUV(v1).second;
+                const float u2 = getUV(v2).first, v2_ = getUV(v2).second;
+
+                auto addVert = [&](int vi, float u, float v, const MVector& n) {
+                    const MPoint& pt = mayaPoints[static_cast<unsigned>(vi)];
+                    const Vector enginePos = StaticMeshViewportSpace::positionMayaToEngine(MVector(pt.x, pt.y, pt.z));
+                    const Vector engineNorm = StaticMeshViewportSpace::normalMayaToEngine(n);
+
+                    const size_t base = sg.positions.size() / 3;
+                    sg.positions.push_back(enginePos.x);
+                    sg.positions.push_back(enginePos.y);
+                    sg.positions.push_back(enginePos.z);
+                    sg.normals.push_back(engineNorm.x);
+                    sg.normals.push_back(engineNorm.y);
+                    sg.normals.push_back(engineNorm.z);
+                    float outU = 0.f, outV = 0.f;
+                    const StaticMeshViewportSpace::UvStorage sgUvStorage = uvDirectThisSg
+                        ? StaticMeshViewportSpace::UvStorage::ViewportDirect
+                        : StaticMeshViewportSpace::UvStorage::LegacyOneMinusV;
+                    StaticMeshViewportSpace::uvMayaToEngine(
+                        static_cast<float>(u), static_cast<float>(v), sgUvStorage, outU, outV);
+                    sg.uvs.push_back(outU);
+                    sg.uvs.push_back(outV);
+
+                    return static_cast<uint16_t>(base);
+                };
+
+                const uint16_t i0 = addVert(v0, static_cast<float>(u0), static_cast<float>(v0_), n0);
+                const uint16_t i1 = addVert(v1, static_cast<float>(u1), static_cast<float>(v1_), n1);
+                const uint16_t i2 = addVert(v2, static_cast<float>(u2), static_cast<float>(v2_), n2);
+
+                const MPoint& p0m = mayaPoints[static_cast<unsigned>(v0)];
+                const MPoint& p1m = mayaPoints[static_cast<unsigned>(v1)];
+                const MPoint& p2m = mayaPoints[static_cast<unsigned>(v2)];
+                const bool baseSwap =
+                    StaticMeshViewportSpace::swapTriangleCornersForViewport(p0m, p1m, p2m, nFace);
+                const bool reverseTrianglesThisSg = shadingGroupExportTriangleSwap(sgObj, baseSwap);
+
+                if (reverseTrianglesThisSg)
+                {
+                    sg.indices.push_back(i0);
+                    sg.indices.push_back(i2);
+                    sg.indices.push_back(i1);
+                }
+                else
+                {
+                    sg.indices.push_back(i0);
+                    sg.indices.push_back(i1);
+                    sg.indices.push_back(i2);
+                }
+
+                uint16_t ord[3] = {i0, i1, i2};
+                if (reverseTrianglesThisSg)
+                {
+                    ord[1] = i2;
+                    ord[2] = i1;
+                }
+                Vector Q0(sg.positions[static_cast<size_t>(ord[0]) * 3], sg.positions[static_cast<size_t>(ord[0]) * 3 + 1],
+                    sg.positions[static_cast<size_t>(ord[0]) * 3 + 2]);
+                Vector Q1(sg.positions[static_cast<size_t>(ord[1]) * 3], sg.positions[static_cast<size_t>(ord[1]) * 3 + 1],
+                    sg.positions[static_cast<size_t>(ord[1]) * 3 + 2]);
+                Vector Q2(sg.positions[static_cast<size_t>(ord[2]) * 3], sg.positions[static_cast<size_t>(ord[2]) * 3 + 1],
+                    sg.positions[static_cast<size_t>(ord[2]) * 3 + 2]);
+                Vector geo = (Q1 - Q0).cross(Q2 - Q0);
+                if (geo.normalize())
+                {
+                    for (uint16_t idx : ord)
+                    {
+                        const size_t o = static_cast<size_t>(idx) * 3;
+                        sg.normals[o] = static_cast<float>(geo.x);
+                        sg.normals[o + 1] = static_cast<float>(geo.y);
+                        sg.normals[o + 2] = static_cast<float>(geo.z);
+                    }
+                }
+            }
+        }
+        return true;
+    }
 }
 
 void* ExportStaticMesh::creator()
@@ -1675,8 +2039,6 @@ MStatus ExportStaticMesh::doIt(const MArgList& args)
 {
     MStatus status;
     std::string outputPath;
-    std::string meshName;
-    bool legacyTriangleFlipCmd = false;
     bool objExportDirectUvCmd = false;
 
     for (unsigned i = 0; i < args.length(&status); ++i)
@@ -1692,12 +2054,13 @@ MStatus ExportStaticMesh::doIt(const MArgList& args)
         }
         else if (argName == "-name" && i + 1 < args.length(&status))
         {
-            meshName = args.asString(i + 1, &status).asChar();
+            (void)args.asString(i + 1, &status);
             if (status) ++i;
         }
         else if (argName == "-legacyTriangleFlip" || argName == "-legacyTriFlip")
         {
-            legacyTriangleFlipCmd = true;
+            MGlobal::displayWarning(
+                "exportStaticMesh: -legacyTriangleFlip is deprecated; winding is automatic (StaticMeshViewportSpace).");
         }
         else if (argName == "-objExportDirectUv")
         {
@@ -1705,50 +2068,24 @@ MStatus ExportStaticMesh::doIt(const MArgList& args)
         }
     }
 
-    MSelectionList sel;
-    status = MGlobal::getActiveSelectionList(sel);
-    if (!status || sel.length() == 0)
-    {
-        std::cerr << "ExportStaticMesh: select a mesh" << std::endl;
-        return MS::kFailure;
-    }
-
     MDagPath dagPath;
-    bool foundMesh = false;
     bool meshWithoutShader = false;
-    for (unsigned si = 0; si < sel.length(); ++si)
-    {
-        status = sel.getDagPath(si, dagPath);
-        if (!status) continue;
-        MDagPath meshPath;
-        if (MayaUtility::findFirstMeshShapeWithShadersInHierarchy(dagPath, meshPath))
-        {
-            dagPath = meshPath;
-            foundMesh = true;
-            break;
-        }
-        if (MayaUtility::findFirstMeshShapeInHierarchy(dagPath, meshPath))
-            meshWithoutShader = true;
-    }
-    if (!foundMesh)
+    if (StaticMeshExportPipeline::findExportMeshFromActiveSelection(dagPath, meshWithoutShader) != MS::kSuccess)
     {
         if (meshWithoutShader)
         {
-            std::cerr << "ExportStaticMesh: mesh under selection has no shading group (or only meshes "
-                         "without materials were found first)" << std::endl;
+            std::cerr << "ExportStaticMesh: mesh under selection has no shading group" << std::endl;
             MGlobal::displayError(
-                "SwgMsh export: mesh has no shader assignment. Found geometry but no material on the mesh "
-                "that would be exported. After combining, assign a material to the combined mesh, delete "
-                "hidden leftover shapes, or select the combined mesh shape directly.");
+                "SwgMsh export: mesh has no shader assignment. Assign a material to the combined mesh, then export again.");
             return MS::kFailure;
         }
         std::cerr << "ExportStaticMesh: no mesh under selection" << std::endl;
         return MS::kFailure;
     }
 
+    const StaticMeshTransferOptions options = StaticMeshTransferOptions::fromExportCommandFlags(objExportDirectUvCmd);
     std::string outMeshPath, outAptPath;
-    if (!performExport(dagPath, outputPath, outMeshPath, outAptPath, legacyTriangleFlipCmd, false, objExportDirectUvCmd,
-            false, MString()))
+    if (!StaticMeshExportPipeline::exportMesh(dagPath, outputPath, options, outMeshPath, outAptPath))
         return MS::kFailure;
 
     MGlobal::displayInfo(MString("Exported mesh: ") + outMeshPath.c_str());
@@ -1758,9 +2095,7 @@ MStatus ExportStaticMesh::doIt(const MArgList& args)
 }
 
 bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::string& outputPathOverride,
-    std::string& outMeshPath, std::string& outAptPath, bool legacyTriangleFlipFromCmd,
-    bool legacyTriangleFlipFromFileDialog, bool objExportDirectUvFromCmd, bool objExportDirectUvFromExportDialog,
-    const MString& rawMshExportOptions)
+    std::string& outMeshPath, std::string& outAptPath, const StaticMeshTransferOptions& options)
 {
     MStatus status;
     outMeshPath.clear();
@@ -1779,25 +2114,14 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
         return false;
     }
 
-    // When the file translator passes a full options line, honor dialog 0/1 — do not let cfg or mesh attrs override.
-    const bool legacyKeyInOptions = mshExportOptionsKeySpecified(rawMshExportOptions, "legacyTriangleFlip=");
-    const bool objUvKeyInOptions = mshExportOptionsKeySpecified(rawMshExportOptions, "objExportDirectUv=");
-
-    const bool legacyTriangleOrder =
-        legacyTriangleFlipFromCmd
-        || (legacyKeyInOptions
-                ? legacyTriangleFlipFromFileDialog
-                : (legacyTriangleFlipFromFileDialog || legacyTriangleFlipFromMeshShape(meshFn)
-                      || ConfigFile::getKeyBool("SwgMayaEditor", "staticMeshLegacyTriangleFlip", false)));
-
-    const bool objExportDirectUv =
-        objExportDirectUvFromCmd
-        || (objUvKeyInOptions ? objExportDirectUvFromExportDialog
-                              : (objExportDirectUvFromExportDialog
-                                    || ConfigFile::getKeyBool("SwgMayaEditor", "staticMeshObjExportDirectUv", false)));
-
-    // Legacy / cfg-only fallback when a triangle is degenerate in engine space (zero-area cross).
-    const bool legacyTriangleFallback = legacyTriangleOrder || objExportDirectUv;
+    // SWG client / Viewer expect legacy 1-V in .msh (original MayaExporter wrote 1-mayaV to file).
+    // objExportDirectUv in options only controls Maya re-import interpretation, not file encoding.
+    (void)options.uvStorage;
+    if (options.usesViewportDirectUv())
+    {
+        MGlobal::displayInfo(
+            "SwgMsh export: writing legacy 1-V UVs for SWG Viewer (objExportDirectUv=1 affects Maya re-import only).");
+    }
 
     MDagPath transformPath = shapePath;
     if (transformPath.hasFn(MFn::kMesh))
@@ -1856,6 +2180,11 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
 
     meshWriteDir = ensureTrailingSlash(meshWriteDir);
     appearanceRootDir = ensureTrailingSlash(appearanceRootDir);
+
+    // Mesh/apt follow the File > Export path (often D:). Shader/texture must use the same root — not the
+    // plugin default \exported\ on the current drive (typically C:).
+    ExportDirectoryBootstrap::syncFromAppearanceRoot(appearanceRootDir);
+
     MayaUtility::createDirectory(winPathForMkdir(appearanceRootDir).c_str());
     MayaUtility::createDirectory(winPathForMkdir(meshWriteDir).c_str());
     {
@@ -1867,188 +2196,39 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
             MayaUtility::createDirectory(winPathForMkdir(ensureTrailingSlash(std::string(tw))).c_str());
     }
 
-    MObjectArray shaderObjs;
-    MIntArray faceToShader;
-    status = meshFn.getConnectedShaders(shapePath.instanceNumber(), shaderObjs, faceToShader);
-    if (!status)
+    std::vector<MDagPath> meshShapes;
+    MayaUtility::collectMeshShapesForStaticMeshExport(transformPath, meshShapes);
+    if (meshShapes.empty())
     {
-        std::cerr << "ExportStaticMesh: getConnectedShaders failed" << std::endl;
-        return false;
-    }
-    if (shaderObjs.length() == 0)
-    {
-        std::cerr << "ExportStaticMesh: No shading group assigned to this mesh. Assign a material (Lambert/aiStandardSurface/etc.).\n";
-        MGlobal::displayError(
-            "SwgMsh export: mesh has no shader assignment. Assign a material to the mesh, then export again.");
+        std::cerr << "ExportStaticMesh: no exportable mesh shapes under selection" << std::endl;
+        MGlobal::displayError("SwgMsh export: no mesh shapes found under selection.");
         return false;
     }
 
-    MPointArray mayaPoints;
-    status = meshFn.getPoints(mayaPoints, MSpace::kObject);
-    if (!status)
-    {
-        std::cerr << "ExportStaticMesh: getPoints failed" << std::endl;
-        return false;
-    }
-
-    const MString uvSetName = chooseExportUvSetName(meshFn, shaderObjs, faceToShader);
-
+    std::map<unsigned, int> sgHashToSlot;
+    std::vector<MObject> exportShaderSlots;
     std::map<int, StaticMeshWriterShaderGroup> shaderGroups;
 
-    MItMeshPolygon polyIt(shapePath, MObject::kNullObj, &status);
-    if (!status)
+    unsigned shapesWithGeometry = 0;
+    for (const MDagPath& exportShapePath : meshShapes)
     {
-        std::cerr << "ExportStaticMesh: MItMeshPolygon failed" << std::endl;
+        if (appendMeshShapeGeometryForExport(exportShapePath, sgHashToSlot, exportShaderSlots, shaderGroups))
+            ++shapesWithGeometry;
+    }
+
+    if (exportShaderSlots.empty() || shapesWithGeometry == 0)
+    {
+        std::cerr << "ExportStaticMesh: No shading group assigned to mesh shape(s). Assign materials, then export again.\n";
+        MGlobal::displayError(
+            "SwgMsh export: mesh has no shader assignment. Assign a material to each mesh shape, then export again.");
         return false;
     }
 
-    for (; !polyIt.isDone(); polyIt.next())
+    if (meshShapes.size() > 1)
     {
-        int faceIdx = polyIt.index();
-        int shaderIdx = (faceIdx < faceToShader.length()) ? faceToShader[faceIdx] : 0;
-        if (shaderIdx < 0 || static_cast<unsigned>(shaderIdx) >= shaderObjs.length())
-            shaderIdx = 0;
-
-        MObject sgObj = shaderObjs[static_cast<unsigned>(shaderIdx)];
-        MFnDependencyNode sgFn(sgObj, &status);
-        std::string shaderTemplateName = "shader/placeholder";
-        if (status)
-        {
-            std::string swgPath = getStringAttr(sgFn, "swgShaderPath");
-            if (!swgPath.empty())
-                shaderTemplateName = swgPath;
-        }
-
-        const bool uvDirectThisSg = shadingGroupExportUvDirect(sgObj, objExportDirectUv);
-
-        const MString uvSetForFace = effectiveUvSetForFace(meshFn, sgObj, uvSetName);
-
-        StaticMeshWriterShaderGroup& sg = shaderGroups[shaderIdx];
-        if (sg.shaderTemplateName.empty())
-            sg.shaderTemplateName = shaderTemplateName;
-
-        MPointArray triPoints;
-        MIntArray triVerts;
-        status = polyIt.getTriangles(triPoints, triVerts, MSpace::kObject);
-        if (!status) continue;
-
-        auto getUV = [&](int meshVert) -> std::pair<float, float> {
-            const MString trySets[2] = {uvSetForFace, uvSetName};
-            for (int si = 0; si < 2; ++si)
-            {
-                if (trySets[si].length() == 0) continue;
-                if (si > 0 && trySets[si] == trySets[0]) continue;
-                for (unsigned i = 0; i < polyIt.polygonVertexCount(&status); ++i)
-                {
-                    if (polyIt.vertexIndex(static_cast<int>(i), &status) == meshVert)
-                    {
-                        float2 uv;
-                        if (polyIt.getUV(i, uv, &trySets[si]) == MS::kSuccess)
-                            return {uv[0], uv[1]};
-                    }
-                }
-            }
-            return {0.0f, 0.0f};
-        };
-
-        for (unsigned t = 0; t + 2 < triVerts.length(); t += 3)
-        {
-            int v0 = triVerts[t];
-            int v1 = triVerts[t + 1];
-            int v2 = triVerts[t + 2];
-
-            MVector nFace;
-            meshFn.getPolygonNormal(faceIdx, nFace, MSpace::kObject);
-            const MVector n0 = nFace;
-            const MVector n1 = nFace;
-            const MVector n2 = nFace;
-
-            float u0 = getUV(v0).first, v0_ = getUV(v0).second;
-            float u1 = getUV(v1).first, v1_ = getUV(v1).second;
-            float u2 = getUV(v2).first, v2_ = getUV(v2).second;
-
-            auto addVert = [&](int vi, float u, float v, const MVector& n) {
-                const MPoint& pt = mayaPoints[static_cast<unsigned>(vi)];
-                Vector enginePos = MayaConversions::convertVector(MVector(pt.x, pt.y, pt.z));
-                Vector engineNorm = MayaConversions::convertVector(n);
-
-                size_t base = sg.positions.size() / 3;
-                sg.positions.push_back(enginePos.x);
-                sg.positions.push_back(enginePos.y);
-                sg.positions.push_back(enginePos.z);
-                sg.normals.push_back(engineNorm.x);
-                sg.normals.push_back(engineNorm.y);
-                sg.normals.push_back(engineNorm.z);
-                sg.uvs.push_back(u);
-                {
-                    const float mv = static_cast<float>(v);
-                    // Global or per-shading-group: direct Maya V vs 1-V for game (see shadingGroupExportUvDirect).
-                    sg.uvs.push_back(uvDirectThisSg ? mv : (1.0f - mv));
-                }
-
-                return static_cast<uint16_t>(base);
-            };
-
-            uint16_t i0 = addVert(v0, static_cast<float>(u0), static_cast<float>(v0_), n0);
-            uint16_t i1 = addVert(v1, static_cast<float>(u1), static_cast<float>(v1_), n1);
-            uint16_t i2 = addVert(v2, static_cast<float>(u2), static_cast<float>(v2_), n2);
-
-            // Winding: Maya viewport uses object-space normals; engine applies -X on positions/normals. Pick a swap
-            // so the triangle cross product in engine space agrees with the converted face normal (viewport parity).
-            // Degenerate triangles fall back to legacyTriangleFallback / swgExportTriangleSwap on the SG.
-            const MPoint& p0m = mayaPoints[static_cast<unsigned>(v0)];
-            const MPoint& p1m = mayaPoints[static_cast<unsigned>(v1)];
-            const MPoint& p2m = mayaPoints[static_cast<unsigned>(v2)];
-            Vector P0 = MayaConversions::convertVector(MVector(p0m.x, p0m.y, p0m.z));
-            Vector P1 = MayaConversions::convertVector(MVector(p1m.x, p1m.y, p1m.z));
-            Vector P2 = MayaConversions::convertVector(MVector(p2m.x, p2m.y, p2m.z));
-            Vector e1 = P1 - P0;
-            Vector e2 = P2 - P0;
-            Vector G = e1.cross(e2);
-            Vector Nref = MayaConversions::convertVector(nFace);
-            constexpr real kDegenerateAreaSq = static_cast<real>(1e-18);
-            const bool degenerate = G.magnitudeSquared() < kDegenerateAreaSq;
-            const bool autoNeedSwap = !degenerate && (G.dot(Nref) < static_cast<real>(0));
-            const bool baseSwap = degenerate ? legacyTriangleFallback : autoNeedSwap;
-            const bool reverseTrianglesThisSg = shadingGroupExportTriangleSwap(sgObj, baseSwap);
-
-            if (reverseTrianglesThisSg)
-            {
-                sg.indices.push_back(i0);
-                sg.indices.push_back(i2);
-                sg.indices.push_back(i1);
-            }
-            else
-            {
-                sg.indices.push_back(i0);
-                sg.indices.push_back(i1);
-                sg.indices.push_back(i2);
-            }
-
-            uint16_t ord[3] = {i0, i1, i2};
-            if (reverseTrianglesThisSg)
-            {
-                ord[1] = i2;
-                ord[2] = i1;
-            }
-            Vector Q0(sg.positions[static_cast<size_t>(ord[0]) * 3], sg.positions[static_cast<size_t>(ord[0]) * 3 + 1],
-                sg.positions[static_cast<size_t>(ord[0]) * 3 + 2]);
-            Vector Q1(sg.positions[static_cast<size_t>(ord[1]) * 3], sg.positions[static_cast<size_t>(ord[1]) * 3 + 1],
-                sg.positions[static_cast<size_t>(ord[1]) * 3 + 2]);
-            Vector Q2(sg.positions[static_cast<size_t>(ord[2]) * 3], sg.positions[static_cast<size_t>(ord[2]) * 3 + 1],
-                sg.positions[static_cast<size_t>(ord[2]) * 3 + 2]);
-            Vector geo = (Q1 - Q0).cross(Q2 - Q0);
-            if (geo.normalize())
-            {
-                for (uint16_t idx : ord)
-                {
-                    const size_t o = static_cast<size_t>(idx) * 3;
-                    sg.normals[o] = static_cast<float>(geo.x);
-                    sg.normals[o + 1] = static_cast<float>(geo.y);
-                    sg.normals[o + 2] = static_cast<float>(geo.z);
-                }
-            }
-        }
+        MGlobal::displayInfo(MString("[ExportStaticMesh] Combining ") + static_cast<int>(meshShapes.size())
+            + " mesh shape(s) under \"" + transformFn.name().asChar() + "\" -> "
+            + static_cast<int>(exportShaderSlots.size()) + " material slot(s) (SwgMsh import uses one shape per shader primitive).");
     }
 
     {
@@ -2056,7 +2236,7 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
         // not a second-hand clone from DATA_ROOT. swgShaderPath (when set) is only the clone *prototype* (effect layout).
         bool anyShaderRebuildFailed = false;
         unsigned geomMaterialCount = 0;
-        for (unsigned si = 0; si < shaderObjs.length(); ++si)
+        for (unsigned si = 0; si < exportShaderSlots.size(); ++si)
         {
             auto it = shaderGroups.find(static_cast<int>(si));
             if (it == shaderGroups.end()) continue;
@@ -2064,7 +2244,7 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
                 ++geomMaterialCount;
         }
 
-        for (unsigned si = 0; si < shaderObjs.length(); ++si)
+        for (unsigned si = 0; si < exportShaderSlots.size(); ++si)
         {
             auto it = shaderGroups.find(static_cast<int>(si));
             if (it == shaderGroups.end()) continue;
@@ -2072,7 +2252,7 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
             if (g.positions.empty() || g.indices.empty()) continue;
 
             MStatus stSG;
-            MFnDependencyNode sgFn(shaderObjs[si], &stSG);
+            MFnDependencyNode sgFn(exportShaderSlots[si], &stSG);
             if (!stSG) continue;
 
             const std::string swgShaderPrototype = getStringAttr(sgFn, "swgShaderPath");
@@ -2092,7 +2272,7 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
             float animFpsMax = 8.f;
             Tag animSwitcherTag = TAG_DRTS;
             MObject animFileObj;
-            if (primaryFileTextureFromShadingGroup(shaderObjs[si], animFileObj))
+            if (primaryFileTextureFromShadingGroup(exportShaderSlots[si], animFileObj))
             {
                 MFnDependencyNode animFileFn(animFileObj);
                 bool useFrameExt = false;
@@ -2163,60 +2343,8 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
 
             if (!doAnimSwts)
             {
-                // 1) Drop-in under textureWriteDir (<mesh>_d / <mesh>_mN.*) wins over the file node path so swapping a
-                //    .tga/.png beside the published DDS actually exports (viewport may still point at an older path).
-                absImage = tryFindImageInTextureWriteDir(texBase);
-                if (!absImage.empty())
-                {
-                    texTree = ShaderExporter::publishDiffuseTextureForGame(absImage, texBase);
-                    if (texTree.empty())
-                        std::cerr << "[ExportStaticMesh] Could not publish texture from textureWriteDir drop-in: " << absImage
-                                  << "\n";
-                    else
-                        std::cerr << "[ExportStaticMesh] Published diffuse from textureWriteDir (" << texBase << "): " << absImage
-                                  << " -> " << texTree << "\n";
-                }
-
-                // 2) Maya shading network (file/aiImage) — viewport / source images when no drop-in.
-                if (texTree.empty() && tryGetDiffuseImageAbsolutePath(shaderObjs[si], absImage))
-                {
-                    texTree = ShaderExporter::publishDiffuseTextureForGame(absImage, texBase);
-                    if (texTree.empty())
-                        std::cerr << "[ExportStaticMesh] Could not publish texture (textureWriteDir / nvtt). Image: " << absImage
-                                  << "\n";
-                }
-
-                // 3) swgTexturePath (often set on import): bake from disk when possible, not only a tree string.
-                if (texTree.empty())
-                {
-                    std::string swgTex = getStringAttr(sgFn, "swgTexturePath");
-                    if (!swgTex.empty())
-                    {
-                        if (looksLikeFilesystemImagePathLocal(swgTex))
-                        {
-                            texTree = ShaderExporter::publishDiffuseTextureForGame(swgTex, texBase);
-                            if (texTree.empty())
-                                std::cerr << "[ExportStaticMesh] Could not publish swgTexturePath image: " << swgTex << "\n";
-                        }
-                        else
-                        {
-                            const std::string stem = textureStemFromSwgOrTreePath(swgTex);
-                            absImage = tryFindImageInTextureWriteDir(stem);
-                            if (!absImage.empty())
-                            {
-                                texTree = ShaderExporter::publishDiffuseTextureForGame(absImage, texBase);
-                                if (texTree.empty())
-                                    std::cerr << "[ExportStaticMesh] Could not publish swgTexturePath disk file: " << absImage
-                                              << "\n";
-                                else
-                                    std::cerr << "[ExportStaticMesh] Published diffuse from swgTexturePath basename in textureWriteDir: "
-                                              << absImage << " -> " << texTree << "\n";
-                            }
-                            else
-                                texTree = normalizeTextureTreeForShader(swgTex);
-                        }
-                    }
-                }
+                (void)resolveAndPublishDiffuseForMaterialSlot(
+                    exportShaderSlots[si], sgFn, meshName, texBase, si, geomMaterialCount, texTree, absImage);
             }
 
             if (texTree.empty())
@@ -2260,9 +2388,9 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
             const bool fileAlphaHint =
                 !diffuseAbsForAlpha.empty() && diffuseImagePathOftenHasAlphaFile(diffuseAbsForAlpha);
             const bool transparent =
-                shadingGroupIndicatesTransparency(shaderObjs[si]) || fileAlphaHint;
+                shadingGroupIndicatesTransparency(exportShaderSlots[si]) || fileAlphaHint;
 
-            std::string effectOverrideStr = normalizedEffectPathFromSurfaceShader(shaderObjs[si]);
+            std::string effectOverrideStr = normalizedEffectPathFromSurfaceShader(exportShaderSlots[si]);
             const std::string* effectOverridePtr = effectOverrideStr.empty() ? nullptr : &effectOverrideStr;
 
             std::string cloned;
@@ -2271,7 +2399,7 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
             {
                 const std::string baseTree = outShaderTree + "_base";
                 const std::string baseCloned = ShaderExporter::exportShaderClonedFromPrototype(
-                    baseTree, swgShaderPrototype, animFrameTreePaths[0], hue, true, transparent, effectOverridePtr);
+                    baseTree, swgShaderPrototype, animFrameTreePaths[0], hue, false, transparent, effectOverridePtr);
                 if (baseCloned.empty())
                 {
                     anyShaderRebuildFailed = true;
@@ -2294,8 +2422,10 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
             }
             else
             {
+                // Only replace the prototype's primary diffuse TXM (first non-ENVM slot). Do not bind the published
+                // diffuse into env/spec/normal slots — that makes the Viewer look inside-out / translucent.
                 cloned = ShaderExporter::exportShaderClonedFromPrototype(
-                    outShaderTree, swgShaderPrototype, texTree, hue, !texTree.empty(), transparent, effectOverridePtr);
+                    outShaderTree, swgShaderPrototype, texTree, hue, false, transparent, effectOverridePtr);
             }
             if (!cloned.empty())
             {
@@ -2363,7 +2493,7 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
 
     StaticMeshWriter writer;
 
-    for (unsigned i = 0; i < shaderObjs.length(); ++i)
+    for (unsigned i = 0; i < exportShaderSlots.size(); ++i)
     {
         auto it = shaderGroups.find(static_cast<int>(i));
         if (it != shaderGroups.end() && !it->second.positions.empty() && !it->second.indices.empty())

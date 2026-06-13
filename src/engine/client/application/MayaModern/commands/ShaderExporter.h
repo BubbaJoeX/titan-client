@@ -31,7 +31,8 @@ public:
     /// Transparent (alpha blend): optional TITAN_SHADER_PROTOTYPE_TRANSPARENT_SHT / shaderPrototypeTransparentSht (clone that .sht as-is).
     /// If unset, clones the normal opaque prototype and enables alpha blending on PASS/DATA so the viewer sorts/blends like Maya.
     /// If diffuseTextureTreePathNoExt is non-empty (e.g. "texture/myasset_d.dds"), replaces TXM NAME chunk(s); if empty, copies prototype textures unchanged.
-    /// When bindPublishedDiffuseToAllTxmSlots is true (static mesh bake), every TXM NAME gets the published path so the viewer does not keep a default slot.
+    /// When bindPublishedDiffuseToAllTxmSlots is true, every TXM NAME gets the published diffuse (animated SWTS base only).
+    /// Static mesh export should leave this false so env/spec/normal prototype slots are preserved.
     /// When effectPathOverride is non-null and non-empty, any non-TXM NAME chunk in the prototype whose string ends in ".eft" is rewritten to this path
     /// (e.g. Maya "soe_effectName" / "soe_effect" on the surface shader — normalized to effect/foo.eft).
     static std::string exportShaderClonedFromPrototype(
@@ -56,6 +57,12 @@ public:
         float fpsMin,
         float fpsMax,
         const std::vector<std::string>& frameTextureTreePathsDds);
+
+    /// Reads the top-level effect NAME from a written .sht (e.g. effect/a_simple.eft).
+    static std::string effectPathFromWrittenShader(const std::string& absShaderPath);
+
+    /// Copies referenced effect/ and prototype texture/ files from game data into the export tree.
+    static void bootstrapDependenciesForWrittenShader(const std::string& absShaderPath);
 };
 
 #endif

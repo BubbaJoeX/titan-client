@@ -1,5 +1,7 @@
 # ANS (KFAT/CKAT) format reference
 
+SwgMayaEditor (Maya 2027) imports and exports KFAT via `SwgAns` translator and `importAnimation` / File > Export Selection.
+
 Documentation map: [README.md](README.md) · Operational guide: [guide.md](guide.md)
 
 ## Overview

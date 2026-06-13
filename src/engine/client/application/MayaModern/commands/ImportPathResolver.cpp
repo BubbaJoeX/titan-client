@@ -1,11 +1,13 @@
 #include "ImportPathResolver.h"
 #include "SetDirectoryCommand.h"
 #include "MayaUtility.h"
+#include "ConfigFile.h"
 
 #include <maya/MGlobal.h>
 
 #include <cstdlib>
 #include <string>
+#include <vector>
 
 #ifdef _WIN32
 #include <string.h>
@@ -126,6 +128,116 @@ std::string resolveImportPath(const std::string& path)
         treePath = "appearance/" + treePath;
 
     return baseDir + treePath;
+}
+
+namespace
+{
+    std::string normalizeTreeRelForward(std::string rel)
+    {
+        for (char& c : rel)
+            if (c == '\\')
+                c = '/';
+        while (!rel.empty() && (rel[0] == '/' || rel[0] == '\\'))
+            rel.erase(0, 1);
+        return rel;
+    }
+
+    std::string ensureTrailingSlashForward(std::string base)
+    {
+        if (base.empty())
+            return base;
+        for (char& c : base)
+            if (c == '\\')
+                c = '/';
+        if (base.back() != '/')
+            base += '/';
+        return base;
+    }
+
+    void appendGameRootCandidate(std::vector<std::string>& out, std::string base)
+    {
+        if (base.empty())
+            return;
+        base = ensureTrailingSlashForward(std::move(base));
+        stripTrailingAppearance(base);
+
+        auto pushUnique = [&](const std::string& candidate) {
+            if (candidate.empty())
+                return;
+            for (const std::string& existing : out)
+            {
+                if (existing == candidate)
+                    return;
+            }
+            out.push_back(candidate);
+        };
+
+        pushUnique(base);
+
+        if (base.find("compiled/game/") == std::string::npos)
+            pushUnique(base + "sys.client/compiled/game/");
+
+        if (base.find("compiled/game/") == std::string::npos && base.find("sys.client/compiled/game/") == std::string::npos)
+            pushUnique(base + "compiled/game/");
+    }
+
+    std::vector<std::string> gameAssetRootCandidates()
+    {
+        std::vector<std::string> roots;
+
+        const char* envNames[] = { "TITAN_DATA_ROOT", "DATA_ROOT", "TITAN_EXPORT_ROOT", nullptr };
+        for (const char** p = envNames; *p; ++p)
+        {
+            const char* env = getenv(*p);
+            if (env && env[0])
+                appendGameRootCandidate(roots, env);
+        }
+
+        const char* cfg = ConfigFile::getKeyString("SwgMayaEditor", "gameDataRoot", "");
+        if (cfg && cfg[0])
+            appendGameRootCandidate(roots, cfg);
+
+        static const char* kDefaultProbeRoots[] = {
+            "D:/titan/data/sku.0/sys.client/compiled/game/",
+            "D:/titan/data/sku.0/",
+            "D:/swg/data/sku.0/sys.client/compiled/game/",
+        };
+        for (const char* probe : kDefaultProbeRoots)
+        {
+            std::string test = probe;
+            test += "effect/a_simple.eft";
+            if (MayaUtility::fileExists(test))
+                appendGameRootCandidate(roots, probe);
+        }
+
+        return roots;
+    }
+}
+
+std::string resolveGameAssetPath(const std::string& treeRel)
+{
+    const std::string rel = normalizeTreeRelForward(treeRel);
+    if (rel.empty())
+        return std::string();
+
+    for (const std::string& root : gameAssetRootCandidates())
+    {
+        const std::string candidate = root + rel;
+        if (MayaUtility::fileExists(candidate))
+            return candidate;
+        std::string candidateBs = candidate;
+        for (char& c : candidateBs)
+            if (c == '/')
+                c = '\\';
+        if (candidateBs != candidate && MayaUtility::fileExists(candidateBs))
+            return candidateBs;
+    }
+
+    const std::string importResolved = resolveImportPath(rel);
+    if (!importResolved.empty() && MayaUtility::fileExists(importResolved))
+        return importResolved;
+
+    return std::string();
 }
 
 std::string resolveWindowsMayaAbsolutePath(const std::string& path)

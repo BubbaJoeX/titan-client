@@ -1509,13 +1509,15 @@ MStatus MgnTranslator::reader (const MFileObject& file, const MString& options, 
                                             vArr.set(1.0f - vv, static_cast<unsigned>(pi));
                                         }
                                     }
-                                    mesh.setUVs(uArr, vArr);
+                                    MIntArray uvCounts, uvIds;
                                     for (int faceId = 0; faceId < totalPolygonsInMesh; ++faceId)
                                     {
-                                        mesh.assignUV(faceId, 0, polygonConnects[faceId * 3 + 0]);
-                                        mesh.assignUV(faceId, 1, polygonConnects[faceId * 3 + 1]);
-                                        mesh.assignUV(faceId, 2, polygonConnects[faceId * 3 + 2]);
+                                        uvCounts.append(3);
+                                        uvIds.append(polygonConnects[faceId * 3 + 0]);
+                                        uvIds.append(polygonConnects[faceId * 3 + 1]);
+                                        uvIds.append(polygonConnects[faceId * 3 + 2]);
                                     }
+                                    MayaSceneBuilder::applyMap1Uvs(mesh, uArr, vArr, uvCounts, uvIds);
                                 }
                             }
 

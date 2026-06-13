@@ -17,6 +17,38 @@
 #include "translators/lsb.h"
 #include "translators/SwgTranslatorNames.h"
 
+#include "ConfigFile.h"
+
+#include <maya/MFnPlugin.h>
+#include <maya/MGlobal.h>
+
+#include <string>
+
+namespace
+{
+    void loadSwgMayaEditorConfig(MFnPlugin& plugin)
+    {
+        if (ConfigFile::loadFile("SwgMayaEditor.cfg"))
+            return;
+
+        MStatus st;
+        const MString loadPath = plugin.loadPath(&st);
+        if (!st || loadPath.length() == 0)
+            return;
+
+        std::string dir(loadPath.asChar());
+        for (char& c : dir)
+            if (c == '\\')
+                c = '/';
+        const size_t slash = dir.find_last_of('/');
+        if (slash == std::string::npos)
+            return;
+
+        const std::string cfgPath = dir.substr(0, slash + 1) + "SwgMayaEditor.cfg";
+        if (ConfigFile::loadFile(cfgPath.c_str()))
+            MGlobal::displayInfo(MString("SwgMayaEditor: loaded config ") + cfgPath.c_str());
+    }
+}
 #include "commands/SetDirectoryCommand.h"
 #include "commands/SetBaseDirectory.h"
 #include "commands/GetDataRootDirCommand.h"
@@ -42,6 +74,7 @@
 #include "commands/PrepareStaticMeshExport.h"
 #include "commands/SwgAddStaticMeshHardpoint.h"
 #include "commands/SwgApplyWavefrontMtl.h"
+#include "commands/SwgMassRenameAsset.h"
 #include "commands/SwgReformatMesh.h"
 #include "commands/SwgAssetDissector.h"
 #include "commands/SwgAnimationBrowser.h"
@@ -153,7 +186,7 @@ static Translator* TRANSLATORS[] =
         {
             new Translator(swg_translator::kTypeMgn, "", &MgnTranslator::creator, nullptr, "showPositions=1", false),
             new Translator(swg_translator::kTypeMsh, "", &MshTranslator::creator, "swgMshExportOptions",
-                "legacyTriangleFlip=1;objExportDirectUv=1;visualHardpoints=0", false),
+                "legacyTriangleFlip=1;objExportDirectUv=1;visualHardpoints=0", false), // winding auto; UV viewport-direct
             new Translator(swg_translator::kTypeSkt, "", &SktTranslator::creator, nullptr, "showPositions=1", false),
             new Translator(swg_translator::kTypeAns, "", &AnsTranslator::creator, nullptr, "showPositions=1", false),
             new Translator(swg_translator::kTypeFlr, "", &FlrTranslator::creator, nullptr, "showPositions=1", false),
@@ -176,9 +209,9 @@ PLUGIN_EXPORT MStatus initializePlugin(MObject obj)
     MGlobal::startErrorLogging();
     MGlobal::setErrorLogPathName("SwgMayaEditorMayaLog");
 
-    //---- Load our Configuration File
+    //---- Load our Configuration File (cwd, then plug-in directory)
     ConfigFile::install();
-    ConfigFile::loadFile("SwgMayaEditor.cfg");
+    loadSwgMayaEditorConfig(plugin);
 
     //---- Setup directory configuration (for setBaseDir, getDataRootDir, import path resolution)
     SetDirectoryCommand::install();
@@ -289,6 +322,9 @@ PLUGIN_EXPORT MStatus initializePlugin(MObject obj)
     status = plugin.registerCommand("swgApplyWavefrontMtl", SwgApplyWavefrontMtl::creator);
     if (!status) { std::cerr << "ERROR: Unable to register swgApplyWavefrontMtl" << std::endl; return status; }
 
+    status = plugin.registerCommand("swgMassRenameAsset", SwgMassRenameAsset::creator);
+    if (!status) { std::cerr << "ERROR: Unable to register swgMassRenameAsset" << std::endl; return status; }
+
     status = plugin.registerCommand("swgReformatMesh", SwgReformatMesh::creator);
     if (!status) { std::cerr << "ERROR: Unable to register swgReformatMesh" << std::endl; return status; }
 
@@ -340,6 +376,7 @@ PLUGIN_EXPORT MStatus uninitializePlugin(MObject obj)
     plugin.deregisterCommand("swgAnimationBrowser");
     plugin.deregisterCommand("swgAssetDissector");
     plugin.deregisterCommand("swgReformatMesh");
+    plugin.deregisterCommand("swgMassRenameAsset");
     plugin.deregisterCommand("swgApplyWavefrontMtl");
     plugin.deregisterCommand("swgAddStaticMeshHardpoint");
     plugin.deregisterCommand("swgPrepareStaticMeshExport");

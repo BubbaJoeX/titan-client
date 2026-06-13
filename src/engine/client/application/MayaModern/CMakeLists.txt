@@ -180,11 +180,17 @@ set(SOURCE_FILES
         utility/MayaConversions.h
         utility/MayaCompoundString.cpp
         utility/MayaCompoundString.h
+        utility/StaticMeshViewportSpace.cpp
+        utility/StaticMeshViewportSpace.h
+        utility/StaticMeshTransferOptions.cpp
+        utility/StaticMeshTransferOptions.h
 
         commands/SetDirectoryCommand.cpp
         commands/SetDirectoryCommand.h
         commands/SetBaseDirectory.cpp
         commands/SetBaseDirectory.h
+        commands/ExportDirectoryBootstrap.cpp
+        commands/ExportDirectoryBootstrap.h
         commands/GetDataRootDirCommand.cpp
         commands/GetDataRootDirCommand.h
         commands/ImportPathResolver.cpp
@@ -247,12 +253,16 @@ set(SOURCE_FILES
         commands/StaticMeshWriter.h
         commands/ExportStaticMesh.cpp
         commands/ExportStaticMesh.h
+        commands/StaticMeshExportPipeline.cpp
+        commands/StaticMeshExportPipeline.h
         commands/PrepareStaticMeshExport.cpp
         commands/PrepareStaticMeshExport.h
         commands/SwgAddStaticMeshHardpoint.cpp
         commands/SwgAddStaticMeshHardpoint.h
         commands/SwgApplyWavefrontMtl.cpp
         commands/SwgApplyWavefrontMtl.h
+        commands/SwgMassRenameAsset.cpp
+        commands/SwgMassRenameAsset.h
         commands/SwgReformatMesh.cpp
         commands/SwgReformatMesh.h
         commands/SwgMakeLightsaber.cpp

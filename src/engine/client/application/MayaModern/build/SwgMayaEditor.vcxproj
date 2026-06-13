@@ -159,7 +159,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <Link>
       <AdditionalDependencies>D:\titan\lib\Maya2027\devkitBase\lib\OpenMaya.lib;D:\titan\lib\Maya2027\devkitBase\lib\Foundation.lib;D:\titan\lib\Maya2027\devkitBase\lib\OpenMayaUI.lib;D:\titan\lib\Maya2027\devkitBase\lib\OpenMayaAnim.lib;D:\titan\lib\Maya2027\devkitBase\lib\OpenMayaFX.lib;D:\titan\lib\Maya2027\devkitBase\lib\OpenMayaRender.lib;ws2_32.lib;Debug\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalOptions>%(AdditionalOptions) /IGNORE:4099</AdditionalOptions>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64 /IGNORE:4099</AdditionalOptions>
       <DataExecutionPrevention></DataExecutionPrevention>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
@@ -249,7 +249,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <Link>
       <AdditionalDependencies>D:\titan\lib\Maya2027\devkitBase\lib\OpenMaya.lib;D:\titan\lib\Maya2027\devkitBase\lib\Foundation.lib;D:\titan\lib\Maya2027\devkitBase\lib\OpenMayaUI.lib;D:\titan\lib\Maya2027\devkitBase\lib\OpenMayaAnim.lib;D:\titan\lib\Maya2027\devkitBase\lib\OpenMayaFX.lib;D:\titan\lib\Maya2027\devkitBase\lib\OpenMayaRender.lib;ws2_32.lib;Release\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalOptions>%(AdditionalOptions) /IGNORE:4099</AdditionalOptions>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64 /IGNORE:4099</AdditionalOptions>
       <DataExecutionPrevention></DataExecutionPrevention>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
@@ -339,7 +339,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <Link>
       <AdditionalDependencies>D:\titan\lib\Maya2027\devkitBase\lib\OpenMaya.lib;D:\titan\lib\Maya2027\devkitBase\lib\Foundation.lib;D:\titan\lib\Maya2027\devkitBase\lib\OpenMayaUI.lib;D:\titan\lib\Maya2027\devkitBase\lib\OpenMayaAnim.lib;D:\titan\lib\Maya2027\devkitBase\lib\OpenMayaFX.lib;D:\titan\lib\Maya2027\devkitBase\lib\OpenMayaRender.lib;ws2_32.lib;MinSizeRel\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalOptions>%(AdditionalOptions) /IGNORE:4099</AdditionalOptions>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64 /IGNORE:4099</AdditionalOptions>
       <DataExecutionPrevention></DataExecutionPrevention>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
@@ -428,7 +428,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <Link>
       <AdditionalDependencies>D:\titan\lib\Maya2027\devkitBase\lib\OpenMaya.lib;D:\titan\lib\Maya2027\devkitBase\lib\Foundation.lib;D:\titan\lib\Maya2027\devkitBase\lib\OpenMayaUI.lib;D:\titan\lib\Maya2027\devkitBase\lib\OpenMayaAnim.lib;D:\titan\lib\Maya2027\devkitBase\lib\OpenMayaFX.lib;D:\titan\lib\Maya2027\devkitBase\lib\OpenMayaRender.lib;ws2_32.lib;RelWithDebInfo\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalOptions>%(AdditionalOptions) /IGNORE:4099</AdditionalOptions>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64 /IGNORE:4099</AdditionalOptions>
       <DataExecutionPrevention></DataExecutionPrevention>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
@@ -588,10 +588,16 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\utility\MayaConversions.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\utility\MayaCompoundString.cpp" />
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\utility\MayaCompoundString.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\utility\StaticMeshViewportSpace.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\utility\StaticMeshViewportSpace.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\utility\StaticMeshTransferOptions.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\utility\StaticMeshTransferOptions.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SetDirectoryCommand.cpp" />
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SetDirectoryCommand.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SetBaseDirectory.cpp" />
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SetBaseDirectory.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ExportDirectoryBootstrap.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ExportDirectoryBootstrap.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\GetDataRootDirCommand.cpp" />
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\GetDataRootDirCommand.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ImportPathResolver.cpp" />
@@ -654,12 +660,16 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\StaticMeshWriter.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ExportStaticMesh.cpp" />
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ExportStaticMesh.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\StaticMeshExportPipeline.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\StaticMeshExportPipeline.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\PrepareStaticMeshExport.cpp" />
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\PrepareStaticMeshExport.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgAddStaticMeshHardpoint.cpp" />
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgAddStaticMeshHardpoint.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgApplyWavefrontMtl.cpp" />
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgApplyWavefrontMtl.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgMassRenameAsset.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgMassRenameAsset.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgReformatMesh.cpp" />
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgReformatMesh.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgMakeLightsaber.cpp" />

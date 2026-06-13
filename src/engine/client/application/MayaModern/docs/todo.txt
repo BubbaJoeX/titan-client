@@ -1,5 +1,5 @@
-# SwgMayaEditor (MayaModern) - Maya 2026
-# Full feature parity with MayaExporter (32-bit legacy) - migrated to 64-bit Maya 2026 with an Importer option.
+# SwgMayaEditor (MayaModern) - Maya 2027
+# Full feature parity with MayaExporter (32-bit legacy) - migrated to 64-bit Maya 2027 with an Importer option.
 
 ## Documentation (unified Markdown)
 - All docs live under MayaModern/docs/ — start at docs/README.md
@@ -9,12 +9,13 @@
 - Root README.md — build, install, POB command quick table, file-type matrix
 
 ## Build Requirements
-- Maya 2026 (64-bit) - https://www.autodesk.com/developer-network/platform-technologies/maya
-- Maya 2026 Devkit - **Separate download** from Autodesk Feedback Forum (Downloads section). Extract include/ and lib/ into Maya dir or set MAYA_LOCATION to devkit root.
-- Visual Studio 2022 (17.8.3+)
+- Maya 2027 (64-bit) - https://www.autodesk.com/developer-network/platform-technologies/maya
+- Maya 2027 Devkit - at D:\titan\lib\Maya2027\devkitBase (include/ + lib/) or set MAYA_LOCATION
+- Visual Studio 2022 (17.8.3+) or VS Insiders (see build-mayamodern.ps1)
 - CMake 3.13+
-- Configure: cmake -B build -A x64 (Windows 64-bit required for Maya 2026)
-- FindMaya checks: MAYA_LOCATION, C:\Program Files\Autodesk\Maya2026, D:\Program Files\Autodesk\Maya2026
+- Configure: .\build-mayamodern.ps1 or cmake -B build -A x64
+- FindMaya checks: MAYA_LOCATION, C:\Program Files\Autodesk\Maya2027, D:\Program Files\Autodesk\Maya2027
+- NVIDIA Texture Tools (nvtt_export.exe) for static mesh / shader DDS publish
 
 ## Supported Use Cases (from original todo.txt)
 - Modifying hard points/collision on existing objects
@@ -42,9 +43,18 @@
 ### MSH Import (full)
 - [x] SPS geometry (vertices, normals, UVs, indices)
 - [x] APPR form: hardpoints (HPTS/HPNT), floor reference (FLOR)
-- [x] Multi-shader per mesh, material assignment
+- [x] Multi-shader per mesh — one Maya mesh shape per shader primitive under root transform
 - [x] createHardpoints() for static mesh (parent to mesh when no joint map)
 - [x] floor_component placeholder when floor reference exists
+
+### MSH Export (static mesh — recent parity fixes)
+- [x] Combines all mesh shapes under selected root into one .msh (multi-material / multi-face signs)
+- [x] Per-slot shader clone: shader/<name>.sht or shader/<name>_sgN.sht
+- [x] Per-slot texture publish: texture/<name>_d.dds or texture/<name>_mN.dds via nvtt
+- [x] Texture resolution priority: Hypershade file node > drop-in in textureWriteDir > swgTexturePath (publish only, no stale path pass-through)
+- [x] Export UV encoding: always legacy 1-V in file for SWG Viewer; objExportDirectUv affects Maya re-import only
+- [x] swgMassRenameAsset — mass token replace on hierarchy + material attrs + optional disk texture rename
+- [x] Export dirs synced via ExportDirectoryBootstrap under setBaseDir
 
 ### MGN Import (SKMG via ImportSkeletalMesh / translator)
 - [x] Skin weighting (TWHD/TWDT, createSkinCluster; case-insensitive joint name matching for XFNM)
@@ -78,7 +88,7 @@
 
 ### Export (round-trip status)
 - [x] exportPob
-- [x] exportStaticMesh (msh/apt + shader TGA→DDS)
+- [x] exportStaticMesh (msh/apt + shader TGA→DDS + multi-shape combine)
 - [x] exportSkeleton
 - [x] exportShader (.sht)
 - [x] .mgn / .ans / .sat / .lod / .lmg via File > Export Selection and registered translators (verify per-asset in QA)
@@ -93,10 +103,13 @@
 - [x] swgAssetDissector
 - [x] swgAnimationBrowser (UI; sources swgAnimationBrowser.mel beside .mll)
 - [x] swgPrepareStaticMeshExport
+- [x] swgMassRenameAsset
+- [x] swgAddStaticMeshHardpoint
 
 ### Optional MEL (not registered as MPxCommand)
 - [x] swgStatueize.mel — look-dev materials (source manually; see guide.md)
 - [x] swgAnimationBrowser.mel — used by swgAnimationBrowser command
+- [x] swgStaticMeshExport.mel — validate, rename wrappers, effect helpers
 
 ### ANS / animation behavior (recent)
 - [x] Rotation keyframes: delta quaternion path aligned with legacy exporter expectations

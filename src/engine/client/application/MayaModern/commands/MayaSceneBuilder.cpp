@@ -9,6 +9,7 @@
 #include <maya/MFnTypedAttribute.h>
 #include <maya/MFnIkJoint.h>
 #include <maya/MDagPath.h>
+#include <maya/MFn.h>
 #include <maya/MFnMesh.h>
 #include <maya/MFnSingleIndexedComponent.h>
 #include <maya/MFnSkinCluster.h>
@@ -82,6 +83,51 @@ namespace
         OutputDebugStringA(msg.c_str());
 #endif
     }
+
+    static MString map1UvSetName("map1");
+
+    static void ensureMap1UvSetExists(MFnMesh& meshFn)
+    {
+        MStringArray uvSetNames;
+        meshFn.getUVSetNames(uvSetNames);
+        for (unsigned i = 0; i < uvSetNames.length(); ++i)
+        {
+            if (uvSetNames[i] == map1UvSetName)
+                return;
+        }
+
+        MStatus uvSetStatus = meshFn.createUVSetDataMesh(map1UvSetName);
+        if (!uvSetStatus)
+            meshFn.createUVSet(map1UvSetName, nullptr, nullptr);
+    }
+}
+
+MStatus MayaSceneBuilder::applyMap1Uvs(
+    MFnMesh& meshFn,
+    const MFloatArray& uArray,
+    const MFloatArray& vArray,
+    const MIntArray& uvCounts,
+    const MIntArray& uvIds)
+{
+    if (uArray.length() == 0 || vArray.length() == 0 || uvCounts.length() == 0 || uvIds.length() == 0)
+        return MS::kSuccess;
+
+    ensureMap1UvSetExists(meshFn);
+
+    if (meshFn.numUVs(map1UvSetName) > static_cast<int>(uArray.length()))
+        meshFn.clearUVs(&map1UvSetName);
+
+    MStatus status = meshFn.setUVs(uArray, vArray, &map1UvSetName);
+    if (!status)
+        return status;
+
+    status = meshFn.assignUVs(uvCounts, uvIds, &map1UvSetName);
+    if (!status)
+        return status;
+
+    meshFn.setCurrentUVSetName(map1UvSetName);
+    meshFn.syncObject();
+    return MS::kSuccess;
 }
 
 MStatus MayaSceneBuilder::createMesh(
@@ -149,8 +195,9 @@ MStatus MayaSceneBuilder::createMesh(
     MString doubleSidedCmd = "setAttr \"" + meshFn.fullPathName() + ".doubleSided\" 1";
     MGlobal::executeCommand(doubleSidedCmd);
 
-    // UVs
+    // UVs — explicit map1 (required for Arnold / Maya 2027 UV data meshes)
     MFloatArray uArray, vArray;
+    MIntArray uvCounts, uvIds;
     int totalUVCount = 0;
     for (size_t sg = 0; sg < shaderGroups.size(); ++sg)
         totalUVCount += static_cast<int>(shaderGroups[sg].uvs.size());
@@ -169,8 +216,7 @@ MStatus MayaSceneBuilder::createMesh(
             }
             uvOffset += static_cast<unsigned>(group.uvs.size());
         }
-        meshFn.setUVs(uArray, vArray);
-        int faceOffset = 0;
+
         unsigned uvBaseOffset = 0;
         for (size_t sg = 0; sg < shaderGroups.size(); ++sg)
         {
@@ -179,18 +225,31 @@ MStatus MayaSceneBuilder::createMesh(
             {
                 for (size_t t = 0; t < group.triangles.size(); ++t)
                 {
-                    int faceId = faceOffset + static_cast<int>(t);
+                    uvCounts.append(3);
                     for (int v = 0; v < 3; ++v)
                     {
                         int uvIdx = group.triangles[t].indices[v];
                         if (uvIdx >= 0 && uvIdx < static_cast<int>(group.uvs.size()))
-                            meshFn.assignUV(faceId, v, static_cast<int>(uvBaseOffset) + uvIdx);
+                            uvIds.append(static_cast<int>(uvBaseOffset) + uvIdx);
+                        else
+                            uvIds.append(0);
                     }
                 }
             }
-            faceOffset += static_cast<int>(group.triangles.size());
+            else
+            {
+                for (size_t t = 0; t < group.triangles.size(); ++t)
+                {
+                    uvCounts.append(3);
+                    uvIds.append(0);
+                    uvIds.append(0);
+                    uvIds.append(0);
+                }
+            }
             uvBaseOffset += static_cast<unsigned>(group.uvs.size());
         }
+
+        applyMap1Uvs(meshFn, uArray, vArray, uvCounts, uvIds);
     }
 
     status = meshFn.getPath(outMeshPath);
@@ -364,6 +423,20 @@ MStatus MayaSceneBuilder::createMaterial(
             cmd += texNodeName;
             cmd += ".ignoreColorSpaceFileRules 1";
             MGlobal::executeCommand(cmd);
+            {
+                MSelectionList texSel;
+                if (texSel.add(texNodeName) == MS::kSuccess)
+                {
+                    MObject texObj;
+                    if (texSel.getDependNode(0, texObj) == MS::kSuccess)
+                    {
+                        MFnDependencyNode texFn(texObj);
+                        MPlug uvPlug = texFn.findPlug("uvSetName", false);
+                        if (!uvPlug.isNull())
+                            uvPlug.setValue(MString("map1"));
+                    }
+                }
+            }
             cmd = "connectAttr -f ";
             cmd += texNodeName;
             cmd += ".outColor ";
@@ -412,10 +485,6 @@ MStatus MayaSceneBuilder::assignPobCollisionPreviewMaterial(const MDagPath& mesh
     if (!meshShapePath.hasFn(MFn::kMesh))
         return MS::kFailure;
 
-    MDagPath assignPath = meshShapePath;
-    if (assignPath.hasFn(MFn::kMesh))
-        assignPath.pop(1);
-
     MString createIfMissing =
         "if (!`objExists \"swgPob_collisionPreviewGreen\"`) {"
         "shadingNode -asShader lambert -n \"swgPob_collisionPreviewGreen\";"
@@ -426,9 +495,24 @@ MStatus MayaSceneBuilder::assignPobCollisionPreviewMaterial(const MDagPath& mesh
     MGlobal::executeCommand(createIfMissing);
 
     MString assignCmd = "hyperShade -assign \"swgPob_collisionPreviewGreenSG\" \"";
-    assignCmd += assignPath.fullPathName();
+    assignCmd += meshShapePath.fullPathName();
     assignCmd += "\"";
-    return MGlobal::executeCommand(assignCmd);
+    MStatus assignStatus = MGlobal::executeCommand(assignCmd, false, false);
+    if (!assignStatus)
+    {
+        MFnMesh meshFn(meshShapePath);
+        const int polyCount = meshFn.numPolygons();
+        if (polyCount > 0)
+        {
+            assignCmd = "sets -e -forceElement \"swgPob_collisionPreviewGreenSG\" \"";
+            assignCmd += meshShapePath.fullPathName();
+            assignCmd += ".f[0:";
+            assignCmd += (polyCount - 1);
+            assignCmd += "]\"";
+            assignStatus = MGlobal::executeCommand(assignCmd, false, false);
+        }
+    }
+    return assignStatus;
 }
 
 MStatus MayaSceneBuilder::assignMaterials(
@@ -1103,10 +1187,21 @@ namespace
         plug.connectedTo(sources, true, false, &st);
         if (!st || sources.length() == 0)
             return;
+
+        std::vector<MObject> curvesToDelete;
+        curvesToDelete.reserve(sources.length());
         MDGModifier modifier;
         for (unsigned i = 0; i < sources.length(); ++i)
+        {
+            MObject srcNode = sources[i].node();
             modifier.disconnect(sources[i], plug);
+            if (srcNode.hasFn(MFn::kAnimCurve))
+                curvesToDelete.push_back(srcNode);
+        }
         modifier.doIt();
+
+        for (MObject curveObj : curvesToDelete)
+            MGlobal::deleteNode(curveObj);
     }
 }
 
@@ -1131,10 +1226,10 @@ MStatus MayaSceneBuilder::setKeyframesFromDeltas(
     if (!status)
         return status;
 
-    MTime::Unit timeUnit = MTime::uiUnit();
+    const double fpsVal = (fps > 0.0f) ? static_cast<double>(fps) : 30.0;
 
     // Frame 0 bind-pose keyframe prevents jolt when play starts (Maya holds first key before playback)
-    MTime time0(0.0, timeUnit);
+    MTime time0(0.0, MTime::kSeconds);
     animCurveFn.addKeyframe(time0, bindPoseValue);
 
     for (size_t k = 0; k < deltaKeyframes.size(); ++k)
@@ -1143,7 +1238,8 @@ MStatus MayaSceneBuilder::setKeyframesFromDeltas(
         if (negateDelta)
             deltaVal = -deltaVal;
         double finalVal = bindPoseValue + deltaVal;
-        MTime time(static_cast<double>(deltaKeyframes[k].frame), timeUnit);
+        const double timeVal = static_cast<double>(deltaKeyframes[k].frame) / fpsVal;
+        MTime time(timeVal, MTime::kSeconds);
         animCurveFn.addKeyframe(time, finalVal);
     }
     // Clamped tangents prevent spline overshoot (avoids twitching)
@@ -1185,12 +1281,12 @@ MStatus MayaSceneBuilder::setRotationKeyframesFromDeltas(
         return status;
 
     MEulerRotation::RotationOrder rotOrder = static_cast<MEulerRotation::RotationOrder>(jointFn.rotationOrder());
-    MTime::Unit timeUnit = MTime::uiUnit();
+    const double fpsVal = (fps > 0.0f) ? static_cast<double>(fps) : 30.0;
 
     // Frame 0 bind-pose keyframe (Maya bind pose, no conversion needed)
     MEulerRotation bindEuler = bindQuat.asEulerRotation();
     bindEuler.reorderIt(rotOrder);
-    MTime time0(0.0, timeUnit);
+    MTime time0(0.0, MTime::kSeconds);
     rxCurve.addKeyframe(time0, bindEuler.x);
     ryCurve.addKeyframe(time0, bindEuler.y);
     rzCurve.addKeyframe(time0, bindEuler.z);
@@ -1203,7 +1299,8 @@ MStatus MayaSceneBuilder::setRotationKeyframesFromDeltas(
     for (size_t k = 0; k < deltaKeyframes.size(); ++k)
     {
         const QuatKeyframe& qk = deltaKeyframes[k];
-        MTime time(static_cast<double>(qk.frame), timeUnit);
+        const double timeVal = static_cast<double>(qk.frame) / fpsVal;
+        MTime time(timeVal, MTime::kSeconds);
 
         // Delta quaternion from .ans file: stored as [x, y, z, w] in our struct
         MQuaternion deltaQ(qk.rotation[0], qk.rotation[1], qk.rotation[2], qk.rotation[3]);

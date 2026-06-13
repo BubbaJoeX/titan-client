@@ -10,6 +10,7 @@
 
 #include "swbf_msh.h"
 
+#include "MayaSceneBuilder.h"
 #include "MayaUtility.h"
 #include "SwgTranslatorNames.h"
 
@@ -1016,19 +1017,20 @@ static MStatus buildMeshesForModels(std::vector<ModelBf>& models, MString const&
 
 			if (uArray.length() == points.length() && vArray.length() == points.length())
 			{
-				meshFn.setUVs(uArray, vArray);
+				MIntArray uvCounts, uvIds;
 				const int numPolygons = meshFn.numPolygons();
 				for (int pi = 0; pi < numPolygons; ++pi)
 				{
 					MIntArray vtx;
 					meshFn.getPolygonVertices(pi, vtx);
+					uvCounts.append(static_cast<int>(vtx.length()));
 					for (unsigned j = 0; j < vtx.length(); ++j)
 					{
 						const int vid = vtx[j];
-						if (vid >= 0 && vid < uArray.length())
-							meshFn.assignUV(pi, static_cast<int>(j), vid);
+						uvIds.append((vid >= 0 && vid < static_cast<int>(uArray.length())) ? vid : 0);
 					}
 				}
+				MayaSceneBuilder::applyMap1Uvs(meshFn, uArray, vArray, uvCounts, uvIds);
 			}
 
 			if (static_cast<int>(seg.texcoords1.size()) == nv && nv > 0)

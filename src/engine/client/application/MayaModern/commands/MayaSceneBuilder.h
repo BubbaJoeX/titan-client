@@ -100,6 +100,14 @@ public:
         const std::string& meshName,
         MDagPath& outMeshPath);
 
+    /// Maya 2027 / Arnold expect UVs on map1 with explicit set + assignUVs + syncObject.
+    static MStatus applyMap1Uvs(
+        MFnMesh& meshFn,
+        const MFloatArray& uArray,
+        const MFloatArray& vArray,
+        const MIntArray& uvCounts,
+        const MIntArray& uvIds);
+
     static MStatus createJointHierarchy(
         const std::vector<JointData>& joints,
         const std::string& rootName,

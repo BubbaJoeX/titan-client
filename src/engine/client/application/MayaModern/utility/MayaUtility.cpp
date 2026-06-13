@@ -270,6 +270,50 @@ bool MayaUtility::findFirstMeshShapeWithShadersInHierarchy(const MDagPath& root,
     return findFirstMeshShapeWithShadersInHierarchyRecursive(root, outMeshPath);
 }
 
+namespace
+{
+    static void collectMeshShapesForStaticMeshExportRecursive(const MDagPath& curr, std::vector<MDagPath>& out)
+    {
+        MStatus st;
+        if (curr.hasFn(MFn::kMesh))
+        {
+            if (!MayaUtility::meshShapeExcludedFromStaticMeshExport(curr))
+                out.push_back(curr);
+            return;
+        }
+
+        MFnDagNode fn(curr, &st);
+        if (!st)
+            return;
+        const unsigned n = fn.childCount(&st);
+        if (!st)
+            return;
+        for (unsigned i = 0; i < n; ++i)
+        {
+            MObject childObj = fn.child(i, &st);
+            if (!st)
+                continue;
+            MDagPath childPath = curr;
+            if (childPath.push(childObj) != MS::kSuccess)
+                continue;
+            collectMeshShapesForStaticMeshExportRecursive(childPath, out);
+        }
+    }
+}
+
+void MayaUtility::collectMeshShapesForStaticMeshExport(const MDagPath& root, std::vector<MDagPath>& outMeshPaths)
+{
+    outMeshPaths.clear();
+    MDagPath start = root;
+    if (start.hasFn(MFn::kMesh))
+    {
+        if (!meshShapeExcludedFromStaticMeshExport(start))
+            outMeshPaths.push_back(start);
+        return;
+    }
+    collectMeshShapesForStaticMeshExportRecursive(start, outMeshPaths);
+}
+
 bool MayaUtility::createDirectory(const char* directory)
 {
 #ifdef _WIN32

@@ -4,6 +4,7 @@
 #include <maya/MDagPath.h>
 #include <maya/MFileObject.h>
 #include <string>
+#include <vector>
 
 class MayaUtility
 {
@@ -32,6 +33,10 @@ public:
     /// Mesh shapes tagged for viewport-only (e.g. hardpoint 0.5m cubes) are skipped when resolving the
     /// mesh to export for static mesh (.msh).
     static bool meshShapeExcludedFromStaticMeshExport(const MDagPath& meshPath);
+
+    /// Every exportable mesh shape under a transform (depth-first). SwgMsh import creates one shape per
+    /// shader primitive; export must combine them back into one .msh with multiple SPS slots.
+    static void collectMeshShapesForStaticMeshExport(const MDagPath& root, std::vector<MDagPath>& outMeshPaths);
 
     /// True if a regular file exists at path (Windows: GetFileAttributes).
     static bool fileExists(const std::string& path);

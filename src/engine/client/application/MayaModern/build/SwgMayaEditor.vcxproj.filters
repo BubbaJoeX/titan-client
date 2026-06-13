@@ -118,10 +118,19 @@
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\utility\MayaCompoundString.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\utility\StaticMeshViewportSpace.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\utility\StaticMeshTransferOptions.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SetDirectoryCommand.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SetBaseDirectory.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ExportDirectoryBootstrap.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\GetDataRootDirCommand.cpp">
@@ -217,6 +226,9 @@
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ExportStaticMesh.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\StaticMeshExportPipeline.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\PrepareStaticMeshExport.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -224,6 +236,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgApplyWavefrontMtl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgMassRenameAsset.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgReformatMesh.cpp">
@@ -393,10 +408,19 @@
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\utility\MayaCompoundString.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\utility\StaticMeshViewportSpace.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\utility\StaticMeshTransferOptions.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SetDirectoryCommand.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SetBaseDirectory.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ExportDirectoryBootstrap.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\GetDataRootDirCommand.h">
@@ -492,6 +516,9 @@
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ExportStaticMesh.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\StaticMeshExportPipeline.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\PrepareStaticMeshExport.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -499,6 +526,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgApplyWavefrontMtl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgMassRenameAsset.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgReformatMesh.h">

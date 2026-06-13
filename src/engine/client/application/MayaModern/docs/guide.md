@@ -1,28 +1,22 @@
 # SwgMayaEditor — Guide (commands and workflows)
 
-This is the **main operational guide** for the SwgMayaEditor Maya 2026 plugin: MEL commands, translators, deploy notes, and workflows.
+Main operational guide for the **SwgMayaEditor** Maya **2027** plugin: MEL commands, translators, deploy, and workflows (especially static mesh export).
 
 **Other docs in this folder**
 
-- [README.md](README.md) — Documentation home and table of contents  
-- [manual.md](manual.md) — Full editor manual (features, import/export detail, coordinate system)  
-- [ans-format.md](ans-format.md) — ANS (KFAT/CKAT) IFF layout reference
+- [README.md](README.md) — Documentation index and learning paths  
+- [manual.md](manual.md) — Long-form manual (coordinates, scene prep, limitations)  
+- [ans-format.md](ans-format.md) — ANS (KFAT/CKAT) IFF layout
 
 ---
 
 ## Quick usage
 
-1. Build `SwgMayaEditor.mll` (see root [README.md](../README.md)), install next to bundled `.mel` scripts, then `loadPlugin SwgMayaEditor`.
-2. Point Maya at game data (pick one):
-  - Set `TITAN_DATA_ROOT` to your `…/compiled/game` tree **before** launch, or  
-  - In Maya: `setBaseDir "D:/path/to/compiled/game/";` then `getDataRootDir;` to verify.
-3. Import via **File → Import** using types `SwgSat`, `SwgAns`, etc., or use the MEL commands below.
-
-**Example SAT import**
-
-```mel
-file -import -type "SwgSat" -ignoreVersion -ra true -mergeNamespacesOnClash false -namespace "my_creature" -pr -importFrameRate true -importTimeRange "override" "D:/data/.../appearance/creature.sat";
-```
+1. Build `SwgMayaEditor.mll` ([../README.md](../README.md)), copy `.mll` + `.mel` + `SwgMayaEditor.cfg` to your Maya plug-ins folder, then `loadPlugin SwgMayaEditor`.
+2. Set **game data** via `TITAN_DATA_ROOT` in `Maya.env` (stock assets for import).
+3. Set **export root** in Maya: `setBaseDir "D:/exported";` then `getDataRootDir;` to verify.
+4. Import with **File → Import** (`SwgMsh`, `SwgSat`, …) or MEL import commands below.
+5. For static meshes: select the **root transform**, export to `.apt` under `setBaseDir`, open `.apt` in the Viewer.
 
 Unload the plugin before overwriting the `.mll` on Windows (file lock).
 
@@ -31,23 +25,147 @@ Unload the plugin before overwriting the `.mll` on Windows (file lock).
 ## Prerequisites
 
 1. **Load the plugin**: `loadPlugin SwgMayaEditor`
-2. **Set base directory** (required for most operations):
-  ```mel
-   setBaseDir "D:\\exported";
-  ```
-   This configures output directories under the given path (appearance, shader, texture, animation, skeleton, mesh, log).
-3. **Path resolution**: Import commands resolve relative paths using:
-  - `TITAN_DATA_ROOT`, `TITAN_EXPORT_ROOT`, or `DATA_ROOT` environment variables, or
-  - The directory set by `setBaseDir` (stored as `dataRootDir`)
-   Paths like `appearance/foo/bar` are resolved relative to the base. Absolute paths are used as-is.
+2. **Game data root** (imports): set in `Maya.env` before launching Maya:
+   ```
+   TITAN_DATA_ROOT=D:/titan/data/sku.0/sys.client/compiled/game
+   ```
+3. **Export root** (writes): in Maya after load:
+   ```mel
+   setBaseDir "D:/exported";
+   ```
+   This creates/syncs `D:/exported/appearance/`, `shader/`, `texture/`, `appearance/mesh/`, etc. All published DDS and cloned `.sht` files go here during export.
+4. **nvtt**: configure `nvttExporterPath` in `SwgMayaEditor.cfg` (next to the `.mll`). Without nvtt, texture publish fails and the Viewer shows placeholders or old art.
+5. **Path resolution on import**: tree paths like `appearance/mesh/foo` resolve under `TITAN_DATA_ROOT`, then `TITAN_EXPORT_ROOT`, then `setBaseDir` / cfg. Absolute paths are used as-is.
+
+---
+
+## Static mesh export (SwgMsh)
+
+This is the workflow for props, signs, furniture, and any **non-skinned** mesh.
+
+### How import lays out the scene (important)
+
+SwgMsh **import** does **not** give you one combined mesh for multi-material assets. Each **shader primitive** in the `.msh` becomes its own **mesh shape** under one **root transform** (siblings under the asset name).
+
+Example after importing a sign:
+
+```
+thm_sign_evolve          ← select THIS for export
+├── npe_sign_frame       ← mesh shape (metal frame)
+├── npe_sign_panel       ← mesh shape (sign face)
+└── …                    ← more shapes if more materials
+```
+
+**Export combines all mesh shapes under the selected root** back into one `.msh` with multiple shader slots. If you only export a single child shape, you get one material.
+
+### Step-by-step: import → edit texture → export → Viewer
+
+```mel
+unloadPlugin "SwgMayaEditor";
+loadPlugin "SwgMayaEditor";
+
+// 1) Export root (writes) — not the same as TITAN_DATA_ROOT
+setBaseDir "D:/exported";
+
+// 2) Import from game data (TITAN_DATA_ROOT) or from your export tree
+file -import -type "SwgMsh" -ignoreVersion -ra true -pr \
+  "D:/titan/data/sku.0/sys.client/compiled/game/appearance/thm_sign_medcenter.apt";
+
+// 3) Optional: rename asset tokens on mesh + materials + paths
+select -r thm_sign_medcenter;
+swgMassRenameAsset -from "npe_sign_medcenter,sign_medcenter,thm_sign_medcenter" -to "thm_sign_evolve" -renameDiskTextures;
+
+// 4) Edit texture in GIMP, assign in Hypershade on the SIGN FACE shading group (file → Lambert.color)
+// 5) Export — select ROOT transform
+select -r thm_sign_evolve;
+file -force -options "objExportDirectUv=0;visualHardpoints=0" -typ "SwgMsh" -pr \
+  -es "D:/exported/appearance/thm_sign_evolve.apt";
+```
+
+**Viewer:** open `D:/exported/appearance/thm_sign_evolve.apt`. Keep `shader/`, `texture/`, and `appearance/` together under `setBaseDir`.
+
+### What gets written on disk
+
+| Materials | Shader files | Texture files (published DDS) |
+|-----------|--------------|-------------------------------|
+| 1 slot | `shader/<name>.sht` | `texture/<name>_d.dds` |
+| 2+ slots | `shader/<name>_sg0.sht`, `_sg1.sht`, … | `texture/<name>_m0.dds`, `_m1.dds`, … |
+
+`<name>` is the **export filename** (e.g. `thm_sign_evolve`), not the old medcenter material names.
+
+Script Editor should show **one line per material slot**, for example:
+
+```
+[ExportStaticMesh] Combining 3 mesh shape(s) under "thm_sign_evolve" -> 3 material slot(s)
+[ExportStaticMesh] slot 2 SG "…SG": hypershade D:/…/evolve.tga -> texture/thm_sign_evolve_m2.dds
+[ShaderExporter] Published texture/thm_sign_evolve_m2.dds from …
+```
+
+If you only see **one** published texture, you exported a single shape or only one material has geometry.
+
+### Where each material slot gets its image (priority)
+
+For each shading group, export resolves the diffuse **in this order**:
+
+1. **Hypershade** — connected `file` / `aiImage` on the surface shader (matches Maya viewport). **This wins.**
+2. **Drop-in** in `textureWriteDir` (`setBaseDir`/texture/) — `<name>_m0.tga`, `_m1.tga`, or for slot 0 also `_d.tga` / bare `<name>.tga`.
+3. **`swgTexturePath`** on the shadingEngine — only if a source file can be **published** to DDS. Stale tree strings like `texture/npe_sign_medcenter_d.dds` are **not** passed through without baking.
+
+**Common mistake:** an old `.tga` left in `D:/exported/texture/thm_sign_evolve.tga` from before your GIMP edit. Previously drop-ins beat Hypershade; **now Hypershade wins** — but clear stale files if you are unsure.
+
+### UV and winding (Viewer parity)
+
+- **Winding:** automatic (`StaticMeshViewportSpace`); do not use legacy triangle-flip flags.
+- **UV in the `.msh` file:** always **legacy 1−V** for the SWG Viewer (same as stock game assets).
+- **`objExportDirectUv=0`** in the export dialog: recommended default; affects Maya **re-import** interpretation, not Viewer encoding.
+- **`objExportDirectUv=1`:** only when round-tripping old shells in Maya; export still writes legacy 1−V for the Viewer.
+
+### Renaming imported assets (`swgMassRenameAsset`)
+
+Renames tokens in node names, `swgShaderPath`, `swgTexturePath`, `fileTextureName`, and other string attrs on the selection hierarchy + shading networks.
+
+```mel
+select -r myAssetRoot;
+swgMassRenameAsset -from "npe_sign_medcenter,sign_medcenter" -to "thm_sign_evolve" -renameDiskTextures;
+```
+
+| Flag | Meaning |
+|------|---------|
+| `-from` | One token or comma-separated list (`npe_sign_medcenter,sign_medcenter`) |
+| `-to` | New token |
+| `-renameDiskTextures` | Rename files in `textureWriteDir` that contain any `-from` token |
+| `-keepSwgTexturePath` | Do not auto-clear `swgTexturePath` that still references an old token after replace |
+| `-dryRun` | Log only |
+
+MEL wrapper (does not shadow the command name): `swgMassRenameSelectedAsset "from" "to" 1` — third argument `1` = rename disk textures.
+
+Namespaces on materials (`thm_sign_medcenter:fooSG`) do not change export naming; export uses the **output file basename**. Rename still updates string paths inside attrs.
+
+### Validate before export
+
+```mel
+select -r myAssetRoot;
+swgPrepareStaticMeshExport;   // lists shading groups, swgShaderPath, UV warnings
+```
+
+Source `swgStaticMeshExport.mel` for `swgStaticMeshValidateSelection`, effect/transparency helpers, and combine-export shortcuts.
+
+### Shader clone behavior (brief)
+
+On export, each slot gets a **new** `.sht` cloned from:
+
+- `swgShaderPath` on the shadingEngine (prototype layout / effect), if the file exists under game data or export tree, else
+- `shader/defaultshader.sht` or `shaderPrototypeSht` in cfg.
+
+The published diffuse DDS is bound to the prototype’s **primary diffuse TXM slot** (MRNC on multi-slot env/spec shaders). Effect overrides: `soe_effectName` on the surface shader; transparency: TGA/PNG triggers alpha-blend clone path.
 
 ---
 
 ## Build output and deploying (Windows)
 
 - **Release output**: `MayaModern/build/Release/SwgMayaEditor.mll` plus `.mel` scripts copied next to it by the build.
-- **Install into Maya** (`…/Maya2026/bin/plug-ins`): configure CMake with `SWG_MAYA_PLUGIN_INSTALL_DIR` pointing at that folder, then build target `**swgDeployMayaPlugins`** (elevated if under Program Files).
-- **Important**: **Quit Maya** (or run `unloadPlugin SwgMayaEditor`) before deploying. While the plugin is loaded, Windows **locks** `SwgMayaEditor.mll`, so the copy may fail or appear to update nothing (e.g. **0** files / old build still running). After deploy, restart Maya and `loadPlugin SwgMayaEditor` again.
+- **Install into Maya** (`…/maya/2027/plugins/`): `scripts/Deploy-ToMayaPlugIns.ps1` or CMake target `swgDeployMayaPlugins` with `SWG_MAYA_PLUGIN_INSTALL_DIR`.
+- **Quit Maya** (or `unloadPlugin SwgMayaEditor`) before copying the `.mll`. Reload after deploy.
 
 ---
 
@@ -264,43 +382,39 @@ exportSkeleton -path "D:\\exported\\appearance\\skeleton\\custom.skt";
 
 ### exportStaticMesh
 
-Exports the selected mesh to .msh and optionally .apt. Also exports shaders (TGA→DDS) and creates an APT redirect.
+Exports the selected mesh hierarchy to `.msh` + `.apt`. Publishes textures (nvtt → DDS) and clones `.sht` per material slot.
 
 ```mel
-select -r mesh1;
+select -r myAssetRoot;   // root transform — combines all child mesh shapes
 exportStaticMesh;
-
-exportStaticMesh -path "D:\\exported\\appearance\\mesh\\object.msh";
-exportStaticMesh -name "custom_name";
+exportStaticMesh -path "D:/exported/appearance/myAsset.apt";
 ```
 
+| Flag | Description |
+| ---- | ----------- |
+| `-path` | Output path; `.apt` basename sets export `<name>` for shaders/textures |
+| `-objExportDirectUv` | Maya re-import UV semantics only (Viewer always gets legacy 1−V in file) |
 
-| Flag    | Description                                                          |
-| ------- | -------------------------------------------------------------------- |
-| `-path` | Optional. Output path. Default: `appearanceWriteDir/mesh/<name>.msh` |
-| `-name` | Optional. Override mesh name.                                        |
+**Selection:** Root **transform** of the asset (recommended), or a single mesh shape (single material only).
 
+**Hardpoints:** Child transforms under the mesh root, or `swgAddStaticMeshHardpoint -n gun`. Preview cubes: tag shape with `swgExcludeFromStaticMeshExport=1`.
 
-**Selection**: Select a mesh (or its transform).
+**Output (under `setBaseDir`):**
 
-**Hardpoints**: Add child transforms under the **mesh parent** (same level as the mesh shape’s transform). Each transform except `floor_component` and the vehicle authoring group `hardpoints` is written as HPNT (name, position, rotation only—no extra mesh geometry). To place a hardpoint with a **0.5 m viewport cube** that is **not** baked into the `.msh`, select the static mesh and run `swgAddStaticMeshHardpoint -n my_hp` (creates `hp_my_hp` and a cube shape tagged `swgExcludeFromStaticMeshExport`). You can tag any preview-only mesh shape with that attribute so `exportStaticMesh` / `swgPrepareStaticMeshExport` / `swgReformatMesh` ignore it when resolving export geometry. Imported `.msh` hardpoints get the same preview cube when rebuilt in the scene.
+- `appearance/mesh/<name>.msh` — combined geometry, one SPS slot per material  
+- `appearance/<name>.apt` — redirect for Viewer  
+- `shader/<name>.sht` or `shader/<name>_sgN.sht`  
+- `texture/<name>_d.dds` or `texture/<name>_mN.dds`
 
-**Output**:
+See [Static mesh export (SwgMsh)](guide.md#static-mesh-export-swgmsh) for textures, renaming, and Viewer checks.
 
-- `.msh` – MESH/0005 with geometry, hardpoints, shader groups
-- APPR/FLOR – If the mesh transform has a child `floor_component` with string attribute `floorPath` (from `.msh` import), that path is written into the floor reference chunk on export.
-- `.apt` – Redirect to mesh (in `appearanceWriteDir`)
-- `.sht` – Shaders with image→DDS conversion via **nvtt** (in `shaderTemplateWriteDir`)
+### OBJ / Wavefront `.mtl`
 
-### OBJ / Wavefront `.mtl` (auto → DDS + `.sht`)
+Maya’s OBJ importer wires `.mtl` into file textures. `exportStaticMesh` walks those networks and publishes DDS + `.sht` like any other static mesh.
 
-Maya’s OBJ importer loads the companion `**.mtl`** and builds shading networks **file texture → surface shader → shading group**. You do **not** need a separate step for that. `**exportStaticMesh`** walks those networks (including common intermediate nodes like `**bump2d**`) to find the diffuse image, **writes `texture/<mesh>_d.dds`** (and per-slot names when multimaterial), **clones the prototype `.sht`**, etc.
+Diffuse images go **straight to DDS** via nvtt (no `.tga` on disk unless `textureMirrorSourceBesideDds=1` in cfg).
 
-**Important — no intermediate `.tga` on disk:** The plug-in converts **PNG / JPG / TGA / …** straight to `**.dds`** using `**nvtt_export.exe**` (NVIDIA Texture Tools). Nothing creates a sibling `.tga` unless you enable `**textureMirrorSourceBesideDds=1**` in **SwgMayaEditor.cfg**, which copies the **original** diffuse file beside the `.dds` as `**texture/<name>_src.png`** (or `.jpg`, etc.) for debugging. Configure `**nvttExporterPath**` to your installed `nvtt_export.exe`; if it is missing or fails, Script Editor lines `**[TgaToDds]**` / `**[ShaderExporter]**` explain the failure (the viewer then falls back to placeholder art). If the diffuse on disk is already `**.dds**`, it is **copied** to the published name.
-
-Configure `**setBaseDir`** so `**textureWriteDir**` / `**shaderTemplateWriteDir**` are set; keep **shader/defaultshader.sht** (or `**shaderPrototypeSht`**) available as elsewhere in this guide.
-
-**Optional** `**swgApplyWavefrontMtl`** — only if you need to **force** `**swgShaderPath`** / `**swgTexturePath**` from a `.mtl` on disk (e.g. broken file paths after moving files). Normal OBJ→export flow uses Maya’s networks only.
+**Optional** `swgApplyWavefrontMtl` — force `swgShaderPath` / `swgTexturePath` from a `.mtl` on disk when Maya’s paths are broken after moving files.
 
 ### exportPob
 
@@ -409,11 +523,40 @@ file -import -type "SwgSat" -ignoreVersion -ra true -mergeNamespacesOnClash fals
 
 ### swgRevertToBindPose
 
-Reverts the scene to bind pose. Useful before exporting skeletons or when animations are applied.
+Reverts skeleton to bind pose; clears animation keys (skips hardpoint locators).
 
 ```mel
 swgRevertToBindPose;
 ```
+
+### swgMassRenameAsset
+
+Mass-replace tokens on the selected hierarchy: node names, `swgShaderPath`, `swgTexturePath`, `fileTextureName`, etc. See [Static mesh export — Renaming](guide.md#static-mesh-export-swgmsh).
+
+```mel
+swgMassRenameAsset -from "npe_sign_medcenter,sign_medcenter" -to "thm_sign_evolve" -renameDiskTextures;
+```
+
+### swgPrepareStaticMeshExport
+
+Validates selection for static mesh export (shading groups, `swgShaderPath`, UVs). Optional `-fixUvSet`, `-combine`.
+
+```mel
+swgPrepareStaticMeshExport;
+```
+
+### swgAddStaticMeshHardpoint
+
+Adds a hardpoint locator (+ optional preview cube excluded from export).
+
+```mel
+select -r myMeshRoot;
+swgAddStaticMeshHardpoint -n gun;
+```
+
+### swgApplyWavefrontMtl
+
+Optional: parse a `.mtl` and set `swgShaderPath` / `swgTexturePath` on matching shading groups.
 
 ### swgReformatMesh
 
@@ -470,22 +613,20 @@ Textures resolve under `getDataRootDir` / `TITAN_DATA_ROOT` in `texture/`, `text
 
 ## Configuration
 
-Create `SwgMayaEditor.cfg` in the plugin directory or Maya config path. Example:
+Create `SwgMayaEditor.cfg` in the **plugin directory** (next to `.mll`) or Maya cwd. Loaded at plugin init (plugin dir if cwd file missing).
 
 ```ini
 [SwgMayaEditor]
-; Path to nvtt_export.exe for TGA→DDS conversion on shader export
-nvttExporterPath = "D:\\Program Files\\NVIDIA Corporation\\NVIDIA Texture Tools\\nvtt_export.exe"
-
-; Override directories (optional; setBaseDir sets these by default)
-; appearanceWriteDir = "D:\\exported\\appearance\\"
-; shaderTemplateWriteDir = "D:\\exported\\shader\\"
-; textureWriteDir = "D:\\exported\\texture\\"
-; skeletonTemplateWriteDir = "D:\\exported\\appearance\\skeleton\\"
-
-; Enable verbose logging
+nvttExporterPath = "C:/Program Files/NVIDIA Corporation/NVIDIA Texture Tools/nvtt_export.exe"
+gameDataRoot = "D:/titan/data/sku.0/sys.client/compiled/game"
+shaderPrototypeSht = "shader/defaultshader.sht"
+shaderPrototypeHueableSht = "shader/defaultshader_hueable.sht"
+shaderPrototypeTransparentSht = ""
+textureMirrorSourceBesideDds = 0
 verboseLogging = false
 ```
+
+`setBaseDir` overrides write dirs (`appearanceWriteDir`, `shaderTemplateWriteDir`, `textureWriteDir`, …) at runtime.
 
 ---
 
@@ -555,6 +696,24 @@ The `**.msh`** translator (`MshTranslator`) follows `**MeshAppearanceTemplate`**
 ---
 
 ## Troubleshooting
+
+### Viewer shows wrong texture or old medcenter art
+
+1. Confirm you opened the **`.apt`** from `setBaseDir`, not an old copy elsewhere.
+2. Script Editor: count **`[ExportStaticMesh] slot N`** lines — must match material count. Each should say **`hypershade`** with your GIMP file path if you assigned in Hypershade.
+3. Check `getAttr <faceSG>.swgTexturePath` — if it still says `texture/npe_sign_medcenter…`, run `swgMassRenameAsset` or clear it; export no longer passes stale paths without publishing.
+4. Delete stale drop-ins in `D:/exported/texture/` (`thm_sign_evolve.tga` from an old export) if you rely on drop-in workflow.
+5. Verify `shader/<name>_sgN.sht` and `texture/<name>_mN.dds` exist for multi-material assets.
+
+### Viewer missing sign face / only frame exports
+
+Import creates **multiple mesh shapes**. Select the **root transform** before export. Log should say `Combining N mesh shape(s)`.
+
+### "Shader rebuild failed" / export aborted
+
+- Run `setBaseDir` before export.  
+- Ensure `shader/defaultshader.sht` exists under game data or export `shader/`.  
+- Read `[ShaderExporter]` lines in Script Editor (nvtt path, prototype `.sht` missing).
 
 ### "No SPS form - importing APPR only"
 

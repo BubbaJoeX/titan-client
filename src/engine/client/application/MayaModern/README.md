@@ -1,8 +1,8 @@
 # SwgMayaEditor — Maya 2027 plugin
 
-64-bit Maya 2027 plugin for SWG asset authoring. Migrated from MayaExporter (32-bit Maya 8).
+64-bit Maya 2027 plugin for SWG asset authoring. Migrated from legacy MayaExporter (32-bit Maya 8).
 
-**Documentation (unified):** all guides are under **[docs/](docs/README.md)**. Start with **[docs/guide.md](docs/guide.md)** for commands, data paths, and workflows, then **[docs/manual.md](docs/manual.md)** for depth.
+**Documentation:** [docs/README.md](docs/README.md) — start with [docs/guide.md](docs/guide.md) for commands and static mesh export.
 
 ---
 
@@ -10,14 +10,13 @@
 
 - **Maya 2027** (64-bit)
 - **Maya 2027 Devkit** at `D:\titan\lib\Maya2027\devkitBase` (`include/` + `lib/`)
-- **Visual Studio Insiders** at `D:\Program Files\Microsoft Visual Studio\18\Insiders` (or VS 2022+)
+- **Visual Studio 2022+** or **VS Insiders** (see `build-mayamodern.ps1`)
 - **CMake** 3.13+
+- **NVIDIA Texture Tools** (`nvtt_export.exe`) for static mesh / shader DDS publish
 
 ---
 
 ## Build
-
-### Windows (x64) — recommended
 
 ```powershell
 cd D:\titan\client\src\engine\client\application\MayaModern
@@ -26,27 +25,7 @@ cd D:\titan\client\src\engine\client\application\MayaModern
 
 Output: `build/Release/SwgMayaEditor.mll` and companion `.mel` scripts in the same folder.
 
-### Manual CMake
-
-```powershell
-$env:DEVKIT_LOCATION = "D:\titan\lib\Maya2027\devkitBase"
-$env:MAYA_LOCATION = "C:\Program Files\Autodesk\Maya2027"
-cmake -B build -G "Visual Studio 18 2026" -A x64 `
-  -DCMAKE_GENERATOR_INSTANCE="D:\Program Files\Microsoft Visual Studio\18\Insiders" `
-  -DDEVKIT_LOCATION=$env:DEVKIT_LOCATION `
-  -DMAYA_LOCATION=$env:MAYA_LOCATION
-cmake --build build --config Release
-```
-
-If `Visual Studio 18 2026` is unavailable in your CMake version, use `-G "Visual Studio 17 2022"` with the same `CMAKE_GENERATOR_INSTANCE`.
-
-### Paths
-
-| Variable | Default |
-|----------|---------|
-| `DEVKIT_LOCATION` | `D:\titan\lib\Maya2027\devkitBase` |
-| `MAYA_LOCATION` | `C:\Program Files\Autodesk\Maya2027` |
-| `CMAKE_GENERATOR_INSTANCE` | `D:\Program Files\Microsoft Visual Studio\18\Insiders` |
+Unload the plugin in Maya before overwriting the `.mll` on Windows.
 
 ---
 
@@ -56,52 +35,44 @@ If `Visual Studio 18 2026` is unavailable in your CMake version, use `-G "Visual
 .\scripts\Deploy-ToMayaPlugIns.ps1
 ```
 
-Defaults to `%USERPROFILE%\Documents\maya\2027\plugins\` (or `Maya2027\bin\plug-ins` if that tree exists).
+Defaults to `%USERPROFILE%\Documents\maya\2027\plugins\`.
 
-**Unload the plugin** before overwriting the `.mll` on Windows.
+Place **`SwgMayaEditor.cfg`** next to the `.mll` (nvtt path, optional `gameDataRoot`, shader prototypes). The plugin also loads `SwgMayaEditor.cfg` from the Maya working directory if present.
 
 ```mel
-loadPlugin SwgMayaEditor;
+loadPlugin "SwgMayaEditor";
+```
+
+### Recommended `Maya.env` (example)
+
+```
+TITAN_DATA_ROOT=D:/titan/data/sku.0/sys.client/compiled/game
+TITAN_EXPORT_ROOT=D:/exported
+MAYA_PLUG_IN_PATH=C:/Users/you/Documents/maya/2027/plugins
+PATH=%PATH%;C:/Program Files/NVIDIA Corporation/NVIDIA Texture Tools
 ```
 
 ---
 
-## POB authoring (buildings / apartments)
+## POB authoring (buildings)
 
-After `loadPlugin SwgMayaEditor`, use these for large portal graphs. Full flag details: **[docs/guide.md](docs/guide.md)**.
-
-| Command | Purpose |
-| ------- | ------- |
-| `createPobTemplate` | `-n NAME -cells N [-layoutSpacing F]` — empty `r*` hierarchy; spacing on +X |
-| `layoutPobCells` | `[-cols C] [-dx F] [-dz F] [-root …]` — grid cells (+X then +Z) |
-| `addPobPortal` | Selection: cell or `portals`. Presets 0–4, optional `-doorHardpoint` |
-| `connectPobCells` | Paired doorway: `-from rA -to rB` or select two cells |
-| `duplicatePobCell` | Select `rN`; optional `-stripPortals`, `-remapPortalIndices N` |
-| `reportPobPortals` | List portal indices; flag non-paired indices |
-| `validatePob` | Cells, mesh/portals/collision/floor0, external refs |
-
-**Flow:** `createPobTemplate` → optional `layoutPobCells` → mesh/floor refs → `connectPobCells` / `addPobPortal` → `validatePob` → `exportPob`.
-
-**MEL:** `source "…/build/Release/pobAuthoring.mel"` for `swg_pob_*` helpers (placeholders, validation, export dialog). New files often need a light: `swg_pob_defaultLight` after sourcing.
+See [docs/guide.md](docs/guide.md) and the quick table in [docs/README.md](docs/README.md). Commands: `createPobTemplate`, `layoutPobCells`, `connectPobCells`, `addPobPortal`, `validatePob`, `exportPob`. MEL helpers: `pobAuthoring.mel`.
 
 ---
 
-## File type support (summary)
+## File types (summary)
 
-See [docs/manual.md](docs/manual.md) for full behavior. Quick matrix:
+| Extension | Import | Export | Notes |
+|-----------|--------|--------|-------|
+| `.msh` / `.apt` | Yes | Yes | Static mesh; import creates **one mesh shape per shader primitive** |
+| `.mgn` | Yes | Yes | Skeletal mesh |
+| `.skt` | Yes | Yes | Skeleton |
+| `.ans` | Yes | Yes | Animation |
+| `.sat` | Yes | Yes | Skeletal appearance |
+| `.pob` | Yes | Yes | Portal object |
+| `.lod` / `.lmg` | Yes | Yes | LOD containers |
+| `.sht` | Yes | Yes | Shader template |
+| `.flr` | Yes | No | Floor |
+| `.dds` | Yes | No | Texture (export via nvtt from TGA/PNG) |
 
-| Extension | Type | Import | Export |
-| --------- | ---- | ------ | ------ |
-| `.msh` | Static mesh | Yes | Yes |
-| `.apt` | Appearance redirect | Yes | Yes |
-| `.mgn` | Skeletal mesh | Yes | Yes |
-| `.skt` | Skeleton | Yes | Yes |
-| `.ans` | Animation | Yes | Yes |
-| `.sat` | Skeletal appearance | Yes | Yes |
-| `.pob` | Portal object | Yes | Yes |
-| `.flr` | Floor | Yes | No |
-| `.lod` / `.lmg` | LOD containers | Yes | Yes |
-| `.sht` | Shader | Yes | Yes |
-| `.dds` | Texture | Yes | No |
-
-Roadmap / parity checklist: [todo.txt](todo.txt).
+Full matrix: [docs/manual.md](docs/manual.md). Roadmap: [docs/todo.txt](docs/todo.txt).

@@ -1,6 +1,6 @@
 # SwgMayaEditor — Manual
 
-**Maya 2026 Plugin for Star Wars Galaxies Asset Authoring**
+**Maya 2027 Plugin for Star Wars Galaxies Asset Authoring**
 
 Version 1.0 — Full round-trip support.
 
@@ -27,7 +27,7 @@ Documentation map: [README.md](README.md) · Command-focused guide: [guide.md](g
 
 ## Overview
 
-SwgMayaEditor is a Maya 2026 plugin that enables complete round-trip editing of Star Wars Galaxies game assets. It supports importing, editing, and exporting all major SWG file formats including meshes, skeletons, animations, skeletal appearances, portal objects (buildings), and shaders.
+SwgMayaEditor is a Maya 2027 plugin that enables complete round-trip editing of Star Wars Galaxies game assets. It supports importing, editing, and exporting all major SWG file formats including meshes, skeletons, animations, skeletal appearances, portal objects (buildings), and shaders.
 
 ### What It Does
 
@@ -52,21 +52,23 @@ SwgMayaEditor is a Maya 2026 plugin that enables complete round-trip editing of 
 
 ### Requirements
 
-- **Maya 2026** (64-bit)
-- **Maya 2026 Devkit** (separate download from Autodesk)
+- **Maya 2027** (64-bit)
+- **Maya 2027 Devkit** (separate download from Autodesk)
 - **Visual Studio 2022** (17.8.3+) for building
 - **CMake** 3.13+
 - **NVIDIA Texture Tools** (optional, for shader texture export)
 
 ### Building from Source
 
-```batch
+```powershell
 cd D:\titan\client\src\engine\client\application\MayaModern
+.\build-mayamodern.ps1
+```
 
-# Configure with Visual Studio 2022
+Or manually:
+
+```batch
 cmake -B build -G "Visual Studio 17 2022" -A x64
-
-# Build Release
 cmake --build build --config Release
 ```
 
@@ -77,14 +79,14 @@ Output: `build/Release/SwgMayaEditor.mll` plus MEL scripts.
 **Option A: User plugins folder**
 
 ```
-Copy SwgMayaEditor.mll and *.mel to:
-C:\Users\<username>\Documents\maya\2026\plug-ins\
+Copy `SwgMayaEditor.mll`, companion `.mel` scripts, and **`SwgMayaEditor.cfg`** (nvtt path, optional `gameDataRoot`) to:
+C:\Users\<username>\Documents\maya\2027\plug-ins\
 ```
 
 **Option B: System plugins folder**
 
 ```
-Copy to: C:\Program Files\Autodesk\Maya2026\bin\plug-ins\
+Copy to: C:\Program Files\Autodesk\Maya2027\bin\plug-ins\
 (Requires admin rights)
 ```
 
@@ -112,12 +114,11 @@ Or use Window > Settings/Preferences > Plug-in Manager and check "Loaded" for Sw
 // Load the plugin
 loadPlugin "SwgMayaEditor";
 
-// Set your data root (where extracted game files live)
-// This is required for path resolution
-setBaseDir "D:/swg_data";
+// Set export root (writes appearance/, shader/, texture/ under this path)
+setBaseDir "D:/exported";
 
-// Or set environment variable before launching Maya:
-// set TITAN_DATA_ROOT=D:/swg_data
+// Or set game data in Maya.env before launch:
+// TITAN_DATA_ROOT=D:/titan/data/sku.0/sys.client/compiled/game
 ```
 
 ### Import a Character
@@ -142,11 +143,10 @@ importLodMesh -i "appearance/mesh/thm_all_furn_chair_s01";
 ### Export After Editing
 
 ```mel
-// Select the mesh and export
-select -r myMesh;
+setBaseDir "D:/exported";
+select -r myAssetRoot;   // root transform for multi-material assets
 exportStaticMesh;
-
-// Or use File > Export Selection with appropriate file type
+// or File > Export Selection, type SwgMsh, path ending in .apt
 ```
 
 ---
@@ -178,8 +178,8 @@ exportStaticMesh;
 
 - **Format**: MESH/0005 IFF
 - **Contains**: Vertex positions, normals, UVs, shader groups, hardpoints, floor reference
-- **Import creates**: Maya mesh with materials, locators for hardpoints
-- **Export requires**: Selected mesh with proper UV mapping
+- **Import creates**: Root transform + **one mesh shape per shader primitive** (multi-material = sibling shapes); materials, hardpoint locators
+- **Export requires**: Select **root transform** (combines all child shapes); materials and UVs on each shape
 
 #### Skeletal Mesh (.mgn)
 
@@ -230,17 +230,22 @@ exportStaticMesh;
 
 ### Preparing Static Meshes for Export
 
-#### Mesh Requirements
+#### Import layout (multi-material)
+
+SwgMsh import creates **one mesh shape per shader primitive**, all parented under one **root transform**. Export **combines** every mesh shape under the selected root into a single `.msh` with multiple SPS slots.
+
+**Always select the root transform** (e.g. `thm_sign_evolve`), not an individual child shape, unless you intentionally want a single-material export.
+
+#### Mesh requirements (per shape)
 
 ```
-✓ Single mesh object (combine if multiple)
-✓ Triangulated faces (quads will be triangulated on export)
-✓ UV coordinates on UV set "map1"
-✓ Normals (hard/soft edges as needed)
-✓ No n-gons (faces with more than 4 vertices)
-✓ No non-manifold geometry
-✓ Materials assigned (Lambert or Phong)
+✓ Triangulated faces (quads triangulated on export)
+✓ UV coordinates — prefer UV set "map1" (Arnold / viewport expect map1)
+✓ Materials assigned (Lambert, Phong, aiStandardSurface, etc.)
+✓ Shading group per material slot
 ```
+
+You do **not** need to manually combine mesh shapes in Maya before export.
 
 #### Hardpoints
 
@@ -594,26 +599,31 @@ Features:
 ### Exporting Static Meshes
 
 ```mel
-// Select mesh
-select -r myMesh;
-
-// Export with automatic naming
+setBaseDir "D:/exported";
+select -r myAssetRoot;   // root transform
 exportStaticMesh;
-
-// Export to specific path
-exportStaticMesh -path "D:/output/appearance/mesh/myMesh.msh";
-
-// Export with custom name
-exportStaticMesh -name "custom_name";
+// or File > Export Selection, type SwgMsh, path ending in .apt
+file -force -options "objExportDirectUv=0;visualHardpoints=0" -typ "SwgMsh" -pr -es "D:/exported/appearance/myAsset.apt";
 ```
 
-**What gets exported**:
+**What gets exported**
 
-- Mesh geometry (vertices, normals, UVs)
-- Shader assignments (creates .sht files)
-- Hardpoints (child locators)
-- Floor reference (if attribute exists)
-- APT redirect file
+- **Geometry:** All mesh shapes under the selected root, merged into one `.msh` (`appearance/mesh/<name>.msh`).
+- **Materials:** One shader primitive per shading group; textures published via nvtt to `texture/<name>_d.dds` or `texture/<name>_mN.dds`.
+- **Shaders:** Cloned `.sht` per slot (`shader/<name>.sht` or `shader/<name>_sgN.sht`).
+- **APT:** `appearance/<name>.apt` pointing at the mesh — **open this in the Viewer**.
+- **Hardpoints:** Child transforms under the root (excluding preview-only shapes).
+- **Floor reference:** From `floor_component` child if present.
+
+**Texture source per slot (order)**
+
+1. Hypershade file/aiImage path (matches viewport).
+2. Image drop-in under `textureWriteDir` (`<name>_mN`, `_d`, or bare `<name>` for slot 0).
+3. `swgTexturePath` on shadingEngine — only if a file can be published; stale game DDS paths are not copied as strings without baking.
+
+**UV:** The `.msh` file always stores **legacy 1−V** for the game Viewer. `objExportDirectUv` in export options affects Maya re-import only.
+
+**Renaming:** Use `swgMassRenameAsset` after duplicating stock assets so `swgShaderPath`, `swgTexturePath`, and `fileTextureName` match your new basename. See [guide.md](guide.md#static-mesh-export-swgmsh).
 
 ### Exporting Skeletal Meshes
 
@@ -709,10 +719,10 @@ This:
 ### Setup Commands
 
 
-| Command             | Description                                |
-| ------------------- | ------------------------------------------ |
-| `setBaseDir "path"` | Set base directory for all imports/exports |
-| `getDataRootDir`    | Returns current data root path             |
+| Command             | Description                                        |
+| ------------------- | -------------------------------------------------- |
+| `setBaseDir "path"` | Set **export write root** (`appearance/`, `shader/`, `texture/`) |
+| `getDataRootDir`    | Returns current export root path                   |
 
 
 ### Import Commands
@@ -737,7 +747,7 @@ This:
 | Command            | Flags                       | Description                 |
 | ------------------ | --------------------------- | --------------------------- |
 | `exportSkeleton`   | `[-bp frame] [-path path]`  | Export selected skeleton    |
-| `exportStaticMesh` | `[-path path] [-name name]` | Export selected mesh        |
+| `exportStaticMesh` | `[-path path] [-objExportDirectUv]` | Export selected root (combines child mesh shapes) |
 | `exportPob`        | `-i path`                   | Export selected POB         |
 | `exportShader`     | `-i path`                   | Export shader with textures |
 | `ExportSat`        | `-path path`                | Export skeletal appearance  |
@@ -748,9 +758,12 @@ This:
 
 | Command               | Description                                  |
 | --------------------- | -------------------------------------------- |
-| `swgRevertToBindPose` | Reset skeleton to bind pose, clear animation |
-| `swgAnimationBrowser` | Open animation browser UI                    |
-| `swgAssetDissector`   | Open asset dissector UI                      |
+| `swgRevertToBindPose` | Reset skeleton to bind pose |
+| `swgMassRenameAsset` | `[-from tokens] [-to token] [-renameDiskTextures] [-keepSwgTexturePath] [-dryRun]` |
+| `swgPrepareStaticMeshExport` | Validate static mesh export selection (`-fixUvSet`, `-combine`) |
+| `swgAddStaticMeshHardpoint` | `-n name` — hardpoint locator on static mesh root |
+| `swgAnimationBrowser` | Animation browser UI |
+| `swgAssetDissector` | Asset dissector UI |
 
 
 ### POB Authoring Commands
@@ -875,8 +888,10 @@ When working in Maya:
 
 ### Static Mesh Export
 
-- **LOD**: Exports single LOD only (no automatic LOD generation)
-- **Collision**: Collision group created on import - drag geometry into it for export
+- **Multi-material:** Import = multiple mesh shapes; export combines them when the **root transform** is selected.
+- **Textures:** Requires nvtt (`nvttExporterPath` in cfg). Hypershade assignment is the authoritative diffuse source.
+- **LOD:** Exports single combined mesh only (no automatic LOD generation).
+- **Collision:** `collision` group from import — place collision geometry there for round-trip if your pipeline uses it.
 
 ### Portal Objects
 
@@ -900,7 +915,7 @@ When working in Maya:
 
 **Solutions**:
 
-1. Ensure Maya 2026 64-bit is installed
+1. Ensure Maya 2027 64-bit is installed
 2. Check Visual C++ Redistributable is installed
 3. Verify plugin was built for correct Maya version
 4. Check MAYA_PLUG_IN_PATH if using custom location
@@ -942,10 +957,23 @@ When working in Maya:
 
 **Solutions**:
 
-1. Ensure correct object is selected
-2. Check mesh has valid geometry (no n-gons, proper UVs)
+1. For static meshes, select the **root transform** (not a single child shape unless single-material is intended)
+2. Check mesh has valid geometry and materials on every shape
 3. For skinned meshes, verify skin cluster exists
-4. Check Script Editor for detailed error messages
+4. Run `setBaseDir` before export; read Script Editor for `[ExportStaticMesh]` / `[ShaderExporter]` lines
+
+### Viewer Shows Wrong Texture or Missing Sign Face
+
+**Cause**: Stale `swgTexturePath`, wrong selection, or drop-in overriding Hypershade
+
+**Solutions**:
+
+1. Open the **`.apt`** from `setBaseDir`, not an old copy elsewhere
+2. Select **root transform** — log should say `Combining N mesh shape(s)`
+3. Assign edited diffuse in **Hypershade** on the correct shading group (priority over drop-ins)
+4. Run `swgMassRenameAsset` to clear old path tokens, or `getAttr <SG>.swgTexturePath` and fix manually
+5. Remove stale drop-ins in `textureWriteDir` if you rely on file-based workflow
+6. Confirm `shader/<name>_sgN.sht` and `texture/<name>_mN.dds` exist for multi-material assets
 
 ### Skin Weights Export Incorrectly
 

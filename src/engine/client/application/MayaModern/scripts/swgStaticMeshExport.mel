@@ -1,12 +1,14 @@
-// SwgMayaEditor — programmatic prep for static mesh export (merged props, multi-shader, UVs).
-// Requires: loadPlugin SwgMayaEditor; setBaseDir ...
-// File > Export (SwgMsh): default is viewer + viewport UV; turn both options OFF in the dialog for .msh re-import round-trip.
-// Scripted: exportStaticMesh -legacyTriangleFlip | -objExportDirectUv (or set staticMesh* in SwgMayaEditor.cfg)
+// SwgMayaEditor — static mesh export (unified pipeline).
+// Requires: loadPlugin SwgMayaEditor; setBaseDir <export root>
 //
-// Combined SWG .msh + OBJ: use two materials (one per source). Export samples each material's file texture uvSetName when set.
-//   .msh-reimport shell: select its shadingEngine, then  swgTagShaderSwgRoundTripUvOnSelected;  (1-V on write; uses dialog for tri)
-//   Or set both per-SG:  swgTagExportOptionsOnSelectedShaders 0 1;  = direct-V off, triangle swap on (tune 0/1 per shell in viewer)
-//   OBJ shell: no extra attrs (inherit export dialog defaults).
+// All export paths use StaticMeshExportPipeline + StaticMeshTransferOptions:
+//   • File > Export SwgMsh (dialog options string)
+//   • exportStaticMesh MEL command (-path, optional -objExportDirectUv)
+// Winding: automatic (StaticMeshViewportSpace).
+// UV in .msh file: always legacy 1-V for SWG Viewer. objExportDirectUv=0 (default) in export dialog;
+//   objExportDirectUv=1 only affects Maya re-import of those files, not Viewer encoding.
+//
+// Combined SWG .msh + OBJ: use two materials (one per source). Per-SG overrides: swgExportUvDirect, swgExportTriangleSwap.
 //
 // One-shot: select two+ meshes (or transforms), then:
 //   swgStaticMeshCombineValidateExport;
@@ -16,6 +18,10 @@
 //
 // Validate only (any selection count):
 //   swgStaticMeshValidateSelection;
+//
+// Rename duplicated/imported asset (mesh, materials, swgShaderPath, file textures):
+//   swgMassRenameAsset -from edb_taanabtonic -to bubbajuice;
+//   swgMassRenameSelectedAsset "edb_taanabtonic" "bubbajuice" 1;  // third arg: rename textureWriteDir drop-ins
 //
 // Shader effect + transparency (SwgMsh export):
 //   swgSetEffectOnSelection "effect/a_alpha.eft";   — writes soe_effectName on surface shader; static mesh export rewrites prototype .sht NAME chunks that end in .eft
@@ -323,4 +329,14 @@ global proc swgSetLegacySoeEffectOnSelection(string $effectPath)
         setAttr -type "string" ($n + ".soe_effect") $effectPath;
     }
     print ("[swgStaticMeshExport] swgSetLegacySoeEffectOnSelection: soe_effect set on " + size($nodes) + " surface shader(s) -> " + $effectPath + "\n");
+}
+
+/// Mass-rename imported asset tokens (mesh, materials, swgShaderPath, file textures).
+/// Example: select mesh root, then swgMassRenameSelectedAsset "edb_taanabtonic" "bubbajuice";
+global proc swgMassRenameSelectedAsset(string $from, string $to, int $renameDiskTextures)
+{
+    string $flags = "-from \"" + $from + "\" -to \"" + $to + "\"";
+    if ($renameDiskTextures)
+        $flags += " -renameDiskTextures";
+    eval ("swgMassRenameAsset " + $flags);
 }

@@ -245,8 +245,8 @@ bool StaticMeshWriter::write(Iff& iff) const
         {
             iff.insertChunkFloatVector(Vector(sg.positions[v*3], sg.positions[v*3+1], sg.positions[v*3+2]));
             iff.insertChunkFloatVector(Vector(sg.normals[v*3], sg.normals[v*3+1], sg.normals[v*3+2]));
-            // V must match client / msh import: translators/msh.cpp applies Maya V = 1 - fileV, so file V = 1 - Maya V.
-            // ExportStaticMesh already stores (u, 1-v_maya) in sg.uvs; do not flip again here.
+            // Client .msh stores V as (1 - Maya viewport V) — matches legacy MayaExporter / stock assets.
+            // ExportStaticMesh applies LegacyOneMinusV unless swgExportUvDirect on the shading group.
             if (sg.uvs.size() >= static_cast<size_t>(v * 2 + 1))
             {
                 iff.insertChunkData(static_cast<float>(sg.uvs[v*2]));

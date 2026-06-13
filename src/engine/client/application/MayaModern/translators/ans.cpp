@@ -120,6 +120,60 @@ static bool ansIsHardpointJoint(const MDagPath& path)
     return false;
 }
 
+static void collectSceneJoints(MSelectionList& allJointSel, MSelectionList& bindRestoreSel)
+{
+    MStatus st;
+    MItDag dagIt(MItDag::kDepthFirst, MFn::kJoint, &st);
+    for (; !dagIt.isDone(); dagIt.next())
+    {
+        MDagPath path;
+        if (!dagIt.getPath(path))
+            continue;
+        allJointSel.add(path);
+        if (!ansIsHardpointJoint(path))
+            bindRestoreSel.add(path);
+    }
+}
+
+static void restoreBindPoseOnJoints(const MSelectionList& bindRestoreSel)
+{
+    if (bindRestoreSel.length() == 0)
+        return;
+    MGlobal::setActiveSelectionList(bindRestoreSel);
+    MStatus st = MGlobal::executeCommand("dagPose -restore -global -bindPose");
+    if (!st)
+        ANS_WARN("dagPose failed - bind pose may not be restored correctly");
+    MGlobal::clearSelectionList();
+}
+
+static void resetAnimationTrackAndBindPose()
+{
+    ANS_LOG("resetting animation track and bind pose...");
+
+    MGlobal::executeCommand("playback -state 0");
+
+    const MTime zero(0.0, MTime::kSeconds);
+    MAnimControl::setCurrentTime(zero);
+    MAnimControl::setMinMaxTime(zero, zero);
+    MAnimControl::setAnimationStartEndTime(zero, zero);
+    MGlobal::executeCommand("playbackOptions -minTime 0 -maxTime 1 -animationStartTime 0 -animationEndTime 1");
+
+    MSelectionList allJointSel;
+    MSelectionList bindRestoreSel;
+    collectSceneJoints(allJointSel, bindRestoreSel);
+
+    if (allJointSel.length() > 0)
+    {
+        MGlobal::setActiveSelectionList(allJointSel);
+        MGlobal::executeCommand("delete -animation");
+        MGlobal::executeCommand("cutKey -clear");
+        MGlobal::clearSelectionList();
+    }
+
+    restoreBindPoseOnJoints(bindRestoreSel);
+    MAnimControl::setCurrentTime(zero);
+}
+
 } // namespace
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -205,45 +259,8 @@ MStatus AnsTranslator::reader (const MFileObject& file, const MString& options, 
 {
     CompressedQuaternion::install();
 
-    // Clear existing animation and restore bind pose BEFORE reading new animation.
-    // This ensures bindQuat/bindTranslation are the original values, not from a previous animation.
-    // Hardpoints must keep authored offset from parent; they must NOT keep old anim curves (that causes
-    // hold_* to drift during playback). Clear keys on ALL joints, then restore bind pose on non-hardpoints only.
-    ANS_LOG("clearing existing animation and restoring bind pose...");
-    {
-        MStatus clearStatus;
-
-        MSelectionList allJointSel;
-        MSelectionList bindRestoreSel;
-        MItDag dagIt(MItDag::kDepthFirst, MFn::kJoint, &clearStatus);
-        for (; !dagIt.isDone(); dagIt.next())
-        {
-            MDagPath path;
-            if (!dagIt.getPath(path))
-                continue;
-            allJointSel.add(path);
-            if (!ansIsHardpointJoint(path))
-                bindRestoreSel.add(path);
-        }
-        if (allJointSel.length() > 0)
-        {
-            MGlobal::setActiveSelectionList(allJointSel);
-            // Delete animation curves on rotation and translation (including hold_* — removes stale curves)
-            MGlobal::executeCommand("cutKey -clear -at translateX -at translateY -at translateZ "
-                                    "-at rotateX -at rotateY -at rotateZ");
-            MGlobal::clearSelectionList();
-        }
-        if (bindRestoreSel.length() > 0)
-        {
-            MGlobal::setActiveSelectionList(bindRestoreSel);
-            clearStatus = MGlobal::executeCommand("dagPose -restore -bindPose");
-            if (!clearStatus)
-                ANS_WARN("dagPose failed - bind pose may not be restored correctly");
-            MGlobal::clearSelectionList();
-        }
-        // Go to frame 0
-        MAnimControl::setCurrentTime(MTime(0.0, MTime::uiUnit()));
-    }
+    // Clear previous animation, reset timeline, and restore bind pose before reading the new file.
+    resetAnimationTrackAndBindPose();
 
     MString mpath = file.expandedFullName();
     const char *fileName = mpath.asChar();
@@ -845,6 +862,15 @@ MStatus AnsTranslator::reader (const MFileObject& file, const MString& options, 
         else if (framesPerSecond >= 23.0f && framesPerSecond <= 25.0f)
             MGlobal::executeCommand("currentUnit -t film");
 
+        // Re-apply bind pose at frame 0 after time-unit change and before sampling bind values.
+        {
+            MSelectionList bindRestoreSel;
+            MSelectionList unused;
+            collectSceneJoints(unused, bindRestoreSel);
+            restoreBindPoseOnJoints(bindRestoreSel);
+            MAnimControl::setCurrentTime(MTime(0.0, MTime::kSeconds));
+        }
+
         const uint8 MASK_X = 0x08;
                 const uint8 MASK_Y = 0x10;
                 const uint8 MASK_Z = 0x20;
@@ -1077,9 +1103,9 @@ MStatus AnsTranslator::reader (const MFileObject& file, const MString& options, 
                         static_cast<unsigned>(animTransformData.size()), static_cast<unsigned>(sceneJointsOrdered.size()));
                 }
 
-                MTime::Unit uiUnit = MTime::uiUnit();
-                MTime startTime(0.0, uiUnit);
-                MTime endTime(static_cast<double>(frameCount), uiUnit);
+                const float fpsForTime = (framesPerSecond > 0.0f) ? framesPerSecond : 30.0f;
+                MTime startTime(0.0, MTime::kSeconds);
+                MTime endTime(static_cast<double>(frameCount) / static_cast<double>(fpsForTime), MTime::kSeconds);
                 MAnimControl::setAnimationStartEndTime(startTime, endTime);
                 MAnimControl::setMinMaxTime(startTime, endTime);
                 MAnimControl::setCurrentTime(startTime);

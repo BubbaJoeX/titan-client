@@ -1,4 +1,5 @@
 #include "ShaderExporter.h"
+#include "ExportDirectoryBootstrap.h"
 #include "TgaToDdsConverter.h"
 #include "SetDirectoryCommand.h"
 #include "ImportPathResolver.h"
@@ -37,12 +38,13 @@ namespace
     {
         /// Game tree path from publishDiffuseTextureForGame, e.g. texture/foo_d.dds
         std::string publishedDiffuseTreePath;
-        /// If true, every TXM NAME is set to publishedDiffuseTreePath (static mesh export).
+        /// If true, every TXM NAME is set to publishedDiffuseTreePath (legacy; static mesh export leaves false).
         bool replaceEveryTxmSlot = false;
         int txmPublishedApplyCount = 0;
-        bool didFirstTxmReplace = false;
-        /// When not replaceEveryTxmSlot, clear placeholder only on first non-ENVM DATA chunk (pairs with didFirstTxmReplace).
-        bool didPatchFirstDiffusePlaceholder = false;
+        /// Slot tag from the current TXM DATA chunk (MRNC, NIAM, MVNE, …).
+        Tag currentTxmSlotTag = 0;
+        /// When true, only MRNC gets the published diffuse (multi-slot env/spec prototypes). When false, NIAM only (defaultshader).
+        bool prototypeHasMrncSlot = false;
     };
 
     static uint32 readUint32BE(const unsigned char* p)
@@ -51,37 +53,70 @@ namespace
                (static_cast<uint32>(p[2]) << 8) | static_cast<uint32>(p[3]);
     }
 
+    static Tag readTxmDataSlotTag(const unsigned char* buf, int len, Tag txmVersion)
+    {
+        if (txmVersion == TAG_0001 || txmVersion == TAG_0002)
+        {
+            if (len < 4) return 0;
+            return static_cast<Tag>(readUint32BE(buf));
+        }
+        if (txmVersion == TAG_0000)
+        {
+            if (len < 5) return 0;
+            return static_cast<Tag>(readUint32BE(buf + 1));
+        }
+        return 0;
+    }
+
+    static bool shouldPublishDiffuseToCurrentTxm(const CopyTxmOpts& o)
+    {
+        if (o.replaceEveryTxmSlot) return true;
+        if (o.publishedDiffuseTreePath.empty()) return false;
+        const Tag TAG_MRNC = TAG(M,R,N,C);
+        const Tag TAG_NIAM = TAG(N,I,A,M);
+        if (o.prototypeHasMrncSlot)
+            return o.currentTxmSlotTag == TAG_MRNC;
+        if (o.currentTxmSlotTag == TAG_NIAM)
+            return true;
+        if (o.currentTxmSlotTag == 0)
+            return o.txmPublishedApplyCount == 0;
+        return false;
+    }
+
+    static bool shouldPatchTxmDataPlaceholderForSlot(Tag slotTag, const CopyTxmOpts& o)
+    {
+        if (o.publishedDiffuseTreePath.empty()) return false;
+        const Tag TAG_ENVM = TAG(E,N,V,M);
+        const Tag TAG_MRNC = TAG(M,R,N,C);
+        const Tag TAG_NIAM = TAG(N,I,A,M);
+        if (o.replaceEveryTxmSlot)
+            return slotTag != TAG_ENVM;
+        if (o.prototypeHasMrncSlot)
+            return slotTag == TAG_MRNC;
+        if (slotTag == TAG_NIAM)
+            return true;
+        if (slotTag == 0)
+            return o.txmPublishedApplyCount == 0;
+        return false;
+    }
+
     /// Client StaticShaderTemplate skips TextureList::fetch when DATA.placeholder is true — prototype .sht often
     /// leaves diffuse as placeholder; clear it when we publish a real diffuse path.
     static void patchTxmDataPlaceholderForPublish(unsigned char* buf, int len, Tag txmVersion, CopyTxmOpts* txmOpts)
     {
         if (!txmOpts || txmOpts->publishedDiffuseTreePath.empty()) return;
-        const Tag TAG_ENVM = TAG(E,N,V,M);
-        const bool patchAll = txmOpts->replaceEveryTxmSlot;
+        const Tag slotTag = readTxmDataSlotTag(buf, len, txmVersion);
+        if (!shouldPatchTxmDataPlaceholderForSlot(slotTag, *txmOpts)) return;
 
         if (txmVersion == TAG_0001 || txmVersion == TAG_0002)
         {
             if (len < 5) return;
-            const uint32 tag = readUint32BE(buf);
-            if (tag == TAG_ENVM) return;
-            bool shouldPatch = patchAll || !txmOpts->didPatchFirstDiffusePlaceholder;
-            if (shouldPatch && buf[4] != 0)
-            {
-                buf[4] = 0;
-                if (!patchAll) txmOpts->didPatchFirstDiffusePlaceholder = true;
-            }
+            if (buf[4] != 0) buf[4] = 0;
         }
         else if (txmVersion == TAG_0000)
         {
             if (len < 5) return;
-            const uint32 tag = readUint32BE(buf + 1);
-            if (tag == TAG_ENVM) return;
-            const bool shouldPatch = patchAll || !txmOpts->didPatchFirstDiffusePlaceholder;
-            if (shouldPatch && buf[0] != 0)
-            {
-                buf[0] = 0;
-                if (!patchAll) txmOpts->didPatchFirstDiffusePlaceholder = true;
-            }
+            if (buf[0] != 0) buf[0] = 0;
         }
     }
 
@@ -272,6 +307,8 @@ namespace
 
                 const bool newInsideTxm = insideTxm || (formTag == TAG_TXM);
                 Tag childTxmVer = txmInnerVersion;
+                if (formTag == TAG_TXM && txmOpts)
+                    txmOpts->currentTxmSlotTag = 0;
                 if (insideTxm && (formTag == TAG_0000 || formTag == TAG_0001 || formTag == TAG_0002))
                     childTxmVer = formTag;
 
@@ -322,16 +359,9 @@ namespace
                     bool fromMayaPublish = false;
                     if (txmOpts && !txmOpts->publishedDiffuseTreePath.empty())
                     {
-                        if (txmOpts->replaceEveryTxmSlot)
+                        if (shouldPublishDiffuseToCurrentTxm(*txmOpts))
                         {
                             path = txmOpts->publishedDiffuseTreePath;
-                            fromMayaPublish = true;
-                            ++txmOpts->txmPublishedApplyCount;
-                        }
-                        else if (!txmOpts->didFirstTxmReplace)
-                        {
-                            path = txmOpts->publishedDiffuseTreePath;
-                            txmOpts->didFirstTxmReplace = true;
                             fromMayaPublish = true;
                             ++txmOpts->txmPublishedApplyCount;
                         }
@@ -346,8 +376,7 @@ namespace
                     dest.insertChunkString(path.c_str());
                     dest.exitChunk(TAG_NAME);
                 }
-                else if (chunkTag == TAG_DATA && insideTxm && txmInnerVersion != 0 && txmOpts
-                    && !txmOpts->publishedDiffuseTreePath.empty())
+                else if (chunkTag == TAG_DATA && insideTxm && txmInnerVersion != 0)
                 {
                     const int len = src.getChunkLengthTotal(1);
                     dest.insertChunk(chunkTag);
@@ -355,7 +384,12 @@ namespace
                     {
                         std::vector<unsigned char> buf(static_cast<size_t>(len));
                         src.read_char(len, reinterpret_cast<char*>(buf.data()));
-                        patchTxmDataPlaceholderForPublish(buf.data(), len, txmInnerVersion, txmOpts);
+                        if (txmOpts)
+                        {
+                            txmOpts->currentTxmSlotTag = readTxmDataSlotTag(buf.data(), len, txmInnerVersion);
+                            if (!txmOpts->publishedDiffuseTreePath.empty())
+                                patchTxmDataPlaceholderForPublish(buf.data(), len, txmInnerVersion, txmOpts);
+                        }
                         dest.insertChunkData(reinterpret_cast<const char*>(buf.data()), len);
                     }
                     dest.exitChunk(chunkTag);
@@ -398,38 +432,64 @@ namespace
         return relPath;
     }
 
-    /// Open a shader .sht for reading: tries resolveImportPath (DATA_ROOT / export root), then
-    /// shaderTemplateWriteDir + basename so prototypes can live next to exports when trees differ.
+    /// Open a shader .sht for reading: game data (TITAN_DATA_ROOT), import root, then shaderTemplateWriteDir.
     static bool openShaderSourceIff(Iff& iff, const std::string& shaderTreeRelOrAbs, std::string& outTriedPrimary)
     {
-        outTriedPrimary = resolveImportPath(shaderTreeRelOrAbs);
-        for (size_t i = 0; i < outTriedPrimary.size(); ++i)
-            if (outTriedPrimary[i] == '\\') outTriedPrimary[i] = '/';
-        if (outTriedPrimary.size() < 4 || outTriedPrimary.substr(outTriedPrimary.size() - 4) != ".sht")
-            outTriedPrimary += ".sht";
-
-        if (iff.open(outTriedPrimary.c_str(), true))
-            return true;
+        auto tryOpen = [&](const std::string& absPath) -> bool {
+            if (absPath.empty())
+                return false;
+            if (iff.open(absPath.c_str(), true))
+            {
+                outTriedPrimary = absPath;
+                std::cerr << "[ShaderExporter] Opened shader: " << absPath << "\n";
+                return true;
+            }
+            return false;
+        };
 
         if (isAbsoluteFilesystemPath(shaderTreeRelOrAbs))
-            return false;
+            return tryOpen(shaderTreeRelOrAbs);
 
-        const char* shaderWriteDir =
-            SetDirectoryCommand::getDirectoryString(SetDirectoryCommand::SHADER_TEMPLATE_WRITE_DIR_INDEX);
-        if (!shaderWriteDir || !shaderWriteDir[0])
-            return false;
+        std::string rel = shaderTreeRelOrAbs;
+        for (char& c : rel)
+            if (c == '\\')
+                c = '/';
+        while (!rel.empty() && (rel[0] == '/' || rel[0] == '\\'))
+            rel.erase(0, 1);
 
-        const std::string base = normalizeShaderRelPath(shaderTreeRelOrAbs);
+        const std::string base = normalizeShaderRelPath(rel);
         if (base.empty())
             return false;
 
-        const std::string alt = ensureTrailingSlash(shaderWriteDir) + base + ".sht";
-        if (iff.open(alt.c_str(), true))
+        const std::string treeRel = std::string("shader/") + base + ".sht";
+
+        std::vector<std::string> candidates;
+        auto pushUnique = [&](const std::string& p) {
+            if (p.empty())
+                return;
+            for (const std::string& existing : candidates)
+                if (existing == p)
+                    return;
+            candidates.push_back(p);
+        };
+
+        pushUnique(resolveGameAssetPath(treeRel));
+        pushUnique(resolveImportPath(treeRel));
+
+        const char* shaderWriteDir =
+            SetDirectoryCommand::getDirectoryString(SetDirectoryCommand::SHADER_TEMPLATE_WRITE_DIR_INDEX);
+        if (shaderWriteDir && shaderWriteDir[0])
+            pushUnique(ensureTrailingSlash(shaderWriteDir) + base + ".sht");
+
+        for (const std::string& candidate : candidates)
         {
-            std::cerr << "[ShaderExporter] Opened shader from shaderTemplateWriteDir: " << alt << "\n";
-            return true;
+            if (tryOpen(candidate))
+                return true;
         }
 
+        outTriedPrimary = candidates.empty() ? treeRel : candidates.back();
+        std::cerr << "[ShaderExporter] Failed to open shader (tried " << candidates.size() << " paths), last: "
+                  << outTriedPrimary << "\n";
         return false;
     }
 
@@ -466,6 +526,68 @@ namespace
         return std::string("shader/defaultshader.sht");
     }
 
+    static void bootstrapDependenciesForWrittenShader(const std::string& absShaderPath);
+
+    static bool scanIffForTxmDataSlotTag(
+        Iff& iff, bool insideTxm, Tag txmInnerVersion, Tag searchTag)
+    {
+        while (iff.getNumberOfBlocksLeft() > 0)
+        {
+            if (iff.isCurrentForm())
+            {
+                const Tag formTag = iff.getCurrentName();
+                iff.enterForm(formTag);
+                Tag childTxmVer = txmInnerVersion;
+                if (insideTxm && (formTag == TAG_0000 || formTag == TAG_0001 || formTag == TAG_0002))
+                    childTxmVer = formTag;
+                const bool found = scanIffForTxmDataSlotTag(
+                    iff, insideTxm || formTag == TAG_TXM, childTxmVer, searchTag);
+                iff.exitForm(formTag);
+                if (found)
+                    return true;
+            }
+            else
+            {
+                const Tag chunkTag = iff.getCurrentName();
+                iff.enterChunk(chunkTag);
+                const int len = iff.getChunkLengthTotal(1);
+                if (chunkTag == TAG_DATA && insideTxm && txmInnerVersion != 0 && len > 0)
+                {
+                    std::vector<unsigned char> buf(static_cast<size_t>(len));
+                    iff.read_char(len, reinterpret_cast<char*>(buf.data()));
+                    if (readTxmDataSlotTag(buf.data(), len, txmInnerVersion) == searchTag)
+                    {
+                        iff.exitChunk(chunkTag);
+                        return true;
+                    }
+                }
+                else if (chunkTag == TAG_NAME)
+                    (void)iff.read_stdstring();
+                else if (len > 0)
+                {
+                    std::vector<unsigned char> skip(static_cast<size_t>(len));
+                    iff.read_char(len, reinterpret_cast<char*>(skip.data()));
+                }
+                iff.exitChunk(chunkTag);
+            }
+        }
+        return false;
+    }
+
+    static bool prototypeShaderHasMrncSlot(Iff& src)
+    {
+        const Tag topTag = src.getCurrentName();
+        if (topTag != TAG_SSHT && topTag != TAG_CSHD)
+            return false;
+        src.enterForm(topTag);
+        const Tag verTag = src.getCurrentName();
+        src.enterForm(verTag);
+        const bool hasMrnc = scanIffForTxmDataSlotTag(src, false, 0, TAG(M,R,N,C));
+        src.exitForm(verTag);
+        src.exitForm(topTag);
+        return hasMrnc;
+    }
+
     static std::string writeClonedShaderIff(
         Iff& src,
         const std::string& outputShaderTreeRel,
@@ -477,6 +599,7 @@ namespace
         if (!shaderWriteDir || !shaderWriteDir[0])
         {
             std::cerr << "[ShaderExporter] shaderTemplateWriteDir not configured\n";
+            MGlobal::displayError("[ShaderExporter] shaderTemplateWriteDir not set — run setBaseDir before export.");
             return std::string();
         }
 
@@ -524,16 +647,117 @@ namespace
         else
         {
             std::cerr << "[ShaderExporter] Unknown shader format: " << topTag << "\n";
+            MGlobal::displayError("[ShaderExporter] Unknown shader IFF format in prototype (expected SSHT or CSHD).");
             return std::string();
         }
 
-        if (!dest.write(outputPath.c_str(), true))
-        {
-            std::cerr << "[ShaderExporter] Failed to write: " << outputPath << "\n";
-            return std::string();
-        }
+    if (!dest.write(outputPath.c_str(), true))
+    {
+        std::cerr << "[ShaderExporter] Failed to write: " << outputPath << "\n";
+        MGlobal::displayError(MString("[ShaderExporter] Failed to write shader file: ") + outputPath.c_str());
+        return std::string();
+    }
 
+        std::cerr << "[ShaderExporter] Wrote shader: " << outputPath << "\n";
+        bootstrapDependenciesForWrittenShader(outputPath);
         return outputPath;
+    }
+
+    static bool pathLooksLikeTextureTreeReference(const std::string& path)
+    {
+        if (path.size() < 5) return false;
+        std::string s = path;
+        for (char& c : s)
+            c = static_cast<char>(tolower(static_cast<unsigned char>(c)));
+        return s.find("texture/") == 0 || s.find("texture\\") == 0;
+    }
+
+    static void collectShaderTreeReferencesRecursive(
+        Iff& iff, bool insideTxm, std::vector<std::string>& effects, std::vector<std::string>& textures)
+    {
+        while (iff.getNumberOfBlocksLeft() > 0)
+        {
+            if (iff.isCurrentForm())
+            {
+                const Tag formTag = iff.getCurrentName();
+                iff.enterForm(formTag);
+                collectShaderTreeReferencesRecursive(
+                    iff, insideTxm || formTag == TAG_TXM, effects, textures);
+                iff.exitForm(formTag);
+            }
+            else
+            {
+                const Tag chunkTag = iff.getCurrentName();
+                iff.enterChunk(chunkTag);
+                const int len = iff.getChunkLengthTotal(1);
+                if (chunkTag == TAG_NAME)
+                {
+                    std::string path = iff.read_stdstring();
+                    for (char& c : path)
+                        if (c == '\\')
+                            c = '/';
+                    if (!insideTxm && pathLooksLikeEffectReference(path))
+                        effects.push_back(path);
+                    else if (pathLooksLikeTextureTreeReference(path))
+                        textures.push_back(path);
+                }
+                else if (len > 0)
+                {
+                    std::vector<unsigned char> skip(static_cast<size_t>(len));
+                    iff.read_char(len, reinterpret_cast<char*>(skip.data()));
+                }
+                iff.exitChunk(chunkTag);
+            }
+        }
+    }
+
+    static void bootstrapDependenciesForWrittenShader(const std::string& absShaderPath)
+    {
+        Iff iff;
+        if (!iff.open(absShaderPath.c_str(), true))
+            return;
+
+        std::vector<std::string> effects;
+        std::vector<std::string> textures;
+        const Tag topTag = iff.getCurrentName();
+        if (topTag == TAG_SSHT || topTag == TAG_CSHD)
+        {
+            iff.enterForm(topTag);
+            const Tag verTag = iff.getCurrentName();
+            iff.enterForm(verTag);
+            collectShaderTreeReferencesRecursive(iff, false, effects, textures);
+            iff.exitForm(verTag);
+            iff.exitForm(topTag);
+        }
+        iff.close();
+
+        for (const std::string& e : effects)
+            ExportDirectoryBootstrap::bootstrapEffectTreeFile(e);
+        for (const std::string& t : textures)
+            ExportDirectoryBootstrap::bootstrapTextureTreeFile(t);
+    }
+
+    static std::string readEffectPathFromShaderFileImpl(const std::string& absShaderPath)
+    {
+        Iff iff;
+        if (!iff.open(absShaderPath.c_str(), true))
+            return std::string();
+
+        std::vector<std::string> effects;
+        std::vector<std::string> texturesUnused;
+        const Tag topTag = iff.getCurrentName();
+        if (topTag == TAG_SSHT || topTag == TAG_CSHD)
+        {
+            iff.enterForm(topTag);
+            const Tag verTag = iff.getCurrentName();
+            iff.enterForm(verTag);
+            collectShaderTreeReferencesRecursive(iff, false, effects, texturesUnused);
+            iff.exitForm(verTag);
+            iff.exitForm(topTag);
+        }
+        iff.close();
+
+        return effects.empty() ? std::string() : effects.front();
     }
 }
 
@@ -627,17 +851,48 @@ std::string ShaderExporter::exportShaderClonedFromPrototype(
     if (outputShaderTreeRel.empty())
         return std::string();
 
-    const std::string proto = resolvePrototypeShtPath(prototypeShtPathOverride, hueable, transparent);
+    const std::string protoRequested = resolvePrototypeShtPath(prototypeShtPathOverride, hueable, transparent);
+    std::string protoUsed = protoRequested;
 
     Iff src;
     std::string triedPath;
-    if (!openShaderSourceIff(src, proto, triedPath))
+    if (!openShaderSourceIff(src, protoRequested, triedPath))
     {
-        std::cerr << "[ShaderExporter] Failed to open prototype shader (tried " << triedPath
-                  << " then shaderTemplateWriteDir): prototype=" << proto << "\n";
-        std::cerr << "[ShaderExporter] Place shader/defaultshader.sht under DATA_ROOT, set shaderPrototypeSht in SwgMayaEditor.cfg, "
-                     "or copy a prototype .sht into shaderTemplateWriteDir as <basename>.sht\n";
-        return std::string();
+        if (!prototypeShtPathOverride.empty())
+        {
+            MGlobal::displayWarning(MString("[ShaderExporter] Cannot open swgShaderPath prototype \"")
+                + prototypeShtPathOverride.c_str() + "\" (tried " + triedPath.c_str()
+                + "). Falling back to shader/defaultshader.sht.");
+            protoUsed = "shader/defaultshader.sht";
+            if (!openShaderSourceIff(src, protoUsed, triedPath))
+            {
+                MGlobal::displayError(MString("[ShaderExporter] Failed to open fallback shader/defaultshader.sht (tried ")
+                    + triedPath.c_str() + "). Run setBaseDir and ensure TITAN_DATA_ROOT is set.");
+                std::cerr << "[ShaderExporter] Failed to open prototype or fallback shader. Requested=" << protoRequested
+                          << " tried=" << triedPath << "\n";
+                return std::string();
+            }
+        }
+        else
+        {
+            MGlobal::displayError(MString("[ShaderExporter] Failed to open prototype shader (tried ") + triedPath.c_str()
+                + "). Set TITAN_DATA_ROOT, run setBaseDir, or set shaderPrototypeSht in SwgMayaEditor.cfg.");
+            std::cerr << "[ShaderExporter] Failed to open prototype shader: " << protoRequested << " tried " << triedPath
+                      << "\n";
+            return std::string();
+        }
+    }
+
+    if (effectPathOverride && !effectPathOverride->empty())
+        ExportDirectoryBootstrap::bootstrapEffectTreeFile(*effectPathOverride);
+
+    bool prototypeHasMrnc = false;
+    {
+        Iff scanIff;
+        std::string scanPath;
+        if (openShaderSourceIff(scanIff, protoUsed, scanPath))
+            prototypeHasMrnc = prototypeShaderHasMrncSlot(scanIff);
+        scanIff.close();
     }
 
     CopyTxmOpts opts;
@@ -646,13 +901,19 @@ std::string ShaderExporter::exportShaderClonedFromPrototype(
     {
         opts.publishedDiffuseTreePath = diffuseTextureTreePathNoExt;
         opts.replaceEveryTxmSlot = bindPublishedDiffuseToAllTxmSlots;
+        opts.prototypeHasMrncSlot = prototypeHasMrnc;
         optsPtr = &opts;
     }
 
     std::string out = writeClonedShaderIff(src, outputShaderTreeRel, optsPtr, transparent, effectPathOverride);
     src.close();
 
-    if (!out.empty() && optsPtr && optsPtr->txmPublishedApplyCount == 0)
+    if (out.empty())
+    {
+        MGlobal::displayError(MString("[ShaderExporter] Failed to clone prototype shader to ") + outputShaderTreeRel.c_str()
+            + " — see Script Editor for [ShaderExporter] lines (prototype: " + protoUsed.c_str() + ")");
+    }
+    else if (optsPtr && optsPtr->txmPublishedApplyCount == 0)
         std::cerr << "[ShaderExporter] Warning: prototype had no TXM NAME to replace; output may reference prototype textures\n";
 
     return out;
@@ -757,5 +1018,16 @@ std::string ShaderExporter::exportSwitchTextureAnimatedShader(
     std::cerr << "[ShaderExporter] wrote SwitchTexture (animated) " << outputPath << " -> base " << nameRefToBase << " frames=" << frameCount
               << " fps=" << fpsMin << ".." << fpsMax << "\n";
     MGlobal::displayInfo(MString("[ShaderExporter] Animated .sht (SWTS): ") + outputPath.c_str());
+    ShaderExporter::bootstrapDependenciesForWrittenShader(outputPath);
     return outputPath;
+}
+
+std::string ShaderExporter::effectPathFromWrittenShader(const std::string& absShaderPath)
+{
+    return readEffectPathFromShaderFileImpl(absShaderPath);
+}
+
+void ShaderExporter::bootstrapDependenciesForWrittenShader(const std::string& absShaderPath)
+{
+    ::bootstrapDependenciesForWrittenShader(absShaderPath);
 }

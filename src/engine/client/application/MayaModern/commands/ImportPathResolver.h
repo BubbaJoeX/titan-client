@@ -8,6 +8,11 @@ std::string getImportDataRoot();
 
 std::string resolveImportPath(const std::string& path);
 
+/// Resolves effect/, texture/, shader/ paths against the original game asset tree (TITAN_DATA_ROOT,
+/// sys.client/compiled/game/, etc.) even when setBaseDir points at an export folder. Returns an absolute
+/// path when the file exists, otherwise empty.
+std::string resolveGameAssetPath(const std::string& treeRel);
+
 /// On Windows, Maya may resolve file textures to POSIX paths such as /exported/texture/foo.tga with no drive
 /// letter, which breaks ``fopen`` / ``nvtt_export``. If the path does not exist but ``D:/exported/...`` style does
 /// (drive taken from textureWriteDir / data root), returns that path.
