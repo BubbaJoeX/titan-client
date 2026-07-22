@@ -9,8 +9,8 @@
 #include "clientGame/FirstClientGame.h"
 #include "clientGame/Bloom.h"
 
-#include "clientGraphics/ClientPresentation.h"
 #include "clientGraphics/DynamicVertexBuffer.h"
+#include "clientGraphics/Graphics.h"
 #include "clientGraphics/Graphics.h"
 #include "clientGraphics/GraphicsOptionTags.h"
 #include "clientGraphics/PostProcessingEffectsManager.h"
@@ -37,6 +37,7 @@ namespace BloomNamespace
 
 	bool ms_enable = true;
 	bool ms_enabled;
+	bool ms_disableViaConfig = false;
 #ifdef _DEBUG
 	bool ms_viewOriginalAlpha;
 	bool ms_viewBlurredAlpha;
@@ -57,12 +58,6 @@ namespace BloomNamespace
 
 	float ms_standardDeviation;
 	float ms_weightMultiplier;
-
-	bool bloomResourcesComplete()
-	{
-		return ms_downSampleShader && ms_smallBackBuffer && ms_blurShader
-			&& ms_blurHorizontalTexture && ms_blurVerticalTexture && ms_bloomShader;
-	}
 }
 using namespace BloomNamespace;
 
@@ -75,11 +70,6 @@ void Bloom::install()
 	ExitChain::add(Bloom::remove, "Bloom::remove");
 
 	LocalMachineOptionManager::registerOption(ms_enable, "ClientGame/Bloom", "enable");
-	{
-		ConfigFile::Section * const configSection = ConfigFile::getSection("ClientGame/Bloom");
-		if (configSection && configSection->getKeyExists("enable"))
-			ms_enable = ConfigFile::getKeyBool("ClientGame/Bloom", "enable", false);
-	}
 
 #ifdef _DEBUG
 	DebugFlags::registerFlag (ms_enable, "ClientGame/Bloom", "enabled");
@@ -87,15 +77,17 @@ void Bloom::install()
 	DebugFlags::registerFlag (ms_viewBlurredAlpha,  "ClientGame/Bloom", "viewBlurredAlpha");
 #endif
 
-	ms_standardDeviation = ConfigFile::getKeyFloat ("ClientGame/Bloom", "standardDeviation", 5.5f);
-	ms_weightMultiplier = ConfigFile::getKeyFloat ("ClientGame/Bloom",  "weightMultiplier", 2.1f);
+	ms_standardDeviation = ConfigFile::getKeyFloat ("ClientGame/Bloom", "standardDeviation", 6.0f);
+	ms_weightMultiplier = ConfigFile::getKeyFloat ("ClientGame/Bloom",  "weightMultiplier", 1.75f);
+
+	// client.cfg override: [ClientGame/Bloom] disable=true forces bloom off
+	// regardless of the saved preference / options-menu state.
+	ms_disableViaConfig = ConfigFile::getKeyBool ("ClientGame/Bloom", "disable", false);
+	if (ms_disableViaConfig)
+		ms_enable = false;
 
 	if (ms_enable)
 		enable();
-
-	DEBUG_REPORT_LOG(
-		true,
-		("Bloom::install: enable=%s enabled=%s\n", ms_enable ? "true" : "false", ms_enabled ? "true" : "false"));
 }
 
 // ----------------------------------------------------------------------
@@ -123,6 +115,11 @@ bool Bloom::isEnabled()
 
 void Bloom::setEnabled(bool const enable)
 {
+	if (ms_disableViaConfig)
+	{
+		ms_enable = false;
+		return;
+	}
 	ms_enable = enable;
 }
 
@@ -130,24 +127,22 @@ void Bloom::setEnabled(bool const enable)
 
 void Bloom::enable()
 {
+	if (ms_disableViaConfig)
+	{
+		ms_enable = false;
+		ms_enabled = false;
+		return;
+	}
+
 	if (!ms_enabled)
 	{
 		if (Bloom::isSupported())
 		{
 			Graphics::addDeviceLostCallback(BloomNamespace::deviceLost);
 			Graphics::addDeviceRestoredCallback(BloomNamespace::deviceRestored);
+			Graphics::setBloomEnabled(true);
 			deviceRestored();
-			if (bloomResourcesComplete())
-			{
-				Graphics::setBloomEnabled(true);
-				ms_enabled = true;
-			}
-			else
-			{
-				// deviceRestored failure path clears callbacks and disables bloom
-				ms_enabled = false;
-				ms_enable = false;
-			}
+			ms_enabled = true;
 		}
 		else
 		{
@@ -190,26 +185,12 @@ void BloomNamespace::deviceRestored()
 	ms_blurVerticalTexture = TextureList::fetch(TCF_renderTarget, smallWidth, smallHeight, 1, formats, sizeof(formats) / sizeof(formats[0]));
 
 	ms_bloomShader = dynamic_cast<StaticShader *>(ShaderTemplateList::fetchModifiableShader("shader/2d_bloom.sht"));
-	if (ms_bloomShader && ms_smallBackBuffer)
-		ms_bloomShader->setTexture(TAG(S,M,A,L), *ms_smallBackBuffer);
+	ms_bloomShader->setTexture(TAG(S,M,A,L), *ms_smallBackBuffer);
 
 #ifdef _DEBUG
 	ms_copyShader = dynamic_cast<StaticShader *>(ShaderTemplateList::fetchModifiableShader("shader/2d_texture.sht"));
 	ms_viewAlphaShader = dynamic_cast<StaticShader *>(ShaderTemplateList::fetchModifiableShader("shader/2d_view_alpha.sht"));
 #endif
-
-	if (!bloomResourcesComplete())
-	{
-		DEBUG_REPORT_LOG(
-			true,
-			("Bloom::deviceRestored: missing shader or RT (requires shader/2d_downsample_4x4.sht, 2d_blur.sht, 2d_bloom.sht + quarter-res targets).\n"));
-		deviceLost();
-		Graphics::setBloomEnabled(false);
-		Graphics::removeDeviceLostCallback(deviceLost);
-		Graphics::removeDeviceRestoredCallback(deviceRestored);
-		ms_enable = false;
-		ms_enabled = false;
-	}
 }
 
 // ----------------------------------------------------------------------
@@ -276,18 +257,10 @@ void BloomNamespace::setBlurPixelShaderUserConstants(float xStep, float yStep)
 	weights[16].r = xStep;
 	weights[16].g = yStep;
 
-	float sigma = ms_standardDeviation;
-	float weightMul = ms_weightMultiplier;
-	if (ClientPresentation::isEnabled())
-	{
-		sigma *= ClientPresentation::getBloomStandardDeviationScale();
-		weightMul *= ClientPresentation::getBloomWeightMultiplierScale();
-	}
-
 	int x;
 	for (x = 0; x < 16; ++x)
 	{
-		float result = static_cast<float>(GaussianDistribution(static_cast<float>(x), sigma, 0.0f));
+		float result = static_cast<float>(GaussianDistribution(static_cast<float>(x), ms_standardDeviation, 0.0f));
 
 		// texel 0 will be sampled twice, so weight it half as much
 		if (x == 0)
@@ -308,7 +281,7 @@ void BloomNamespace::setBlurPixelShaderUserConstants(float xStep, float yStep)
 
 		for (x = 0; x < 16; ++x)
 		{
-			float const result = (weights[x].r / static_cast<float>(sum)) * weightMul;
+			float const result = (weights[x].r / static_cast<float>(sum)) * ms_weightMultiplier;
 			weights[x].r = result;
 			weights[x].g = result;
 			weights[x].b = result;
@@ -340,10 +313,6 @@ void Bloom::postSceneRender()
 		Texture * const secondaryBuffer = PostProcessingEffectsManager::getSecondaryBuffer();
 
 		if (!primaryBuffer || !secondaryBuffer)
-			return;
-
-		if (!ms_smallBackBuffer || !ms_blurHorizontalTexture || !ms_blurVerticalTexture
-			|| !ms_downSampleShader || !ms_blurShader || !ms_bloomShader)
 			return;
 
 		GlFillMode const fillMode = Graphics::getFillMode();

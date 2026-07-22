@@ -292,7 +292,7 @@ inline UIPoint UICanvas::Transform( UIScalar x, UIScalar y ) const
 
 	Transform (fx, fy);
 
-	return UIPoint (static_cast<long>(fx), static_cast<long>(fx));
+	return UIPoint (static_cast<long>(fx), static_cast<long>(fy));
 }
 
 //----------------------------------------------------------------------

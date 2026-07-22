@@ -298,9 +298,6 @@ DPVS::Object * SkyBox6SidedAppearance::getDpvsObject() const
 
 void SkyBox6SidedAppearance::render() const
 {
-	if (ShaderPrimitiveSorter::getCurrentCamera().isUnderWater())
-		return;
-
 	for (LocalShaderPrimitiveList::iterator iter = m_localShaderPrimitiveList->begin(); iter != m_localShaderPrimitiveList->end(); ++iter)
 		ShaderPrimitiveSorter::add(**iter);
 }

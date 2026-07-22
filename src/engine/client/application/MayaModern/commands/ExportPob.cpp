@@ -236,12 +236,10 @@ namespace
         iff.insertForm(TAG_IDTL);
         iff.insertForm(TAG_0000);
         iff.insertChunk(TAG_VERT);
-        iff.insertChunkData(static_cast<int32>(geom.vertices.size()));
         for (const auto& v : geom.vertices)
             iff.insertChunkFloatVector(v);
         iff.exitChunk(TAG_VERT);
         iff.insertChunk(TAG_INDX);
-        iff.insertChunkData(static_cast<int32>(geom.indices.size()));
         for (int idx : geom.indices)
             iff.insertChunkData(static_cast<int32>(idx));
         iff.exitChunk(TAG_INDX);

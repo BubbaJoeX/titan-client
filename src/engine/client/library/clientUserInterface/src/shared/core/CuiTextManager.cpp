@@ -24,7 +24,6 @@
 #include "clientGame/Game.h"
 #include "clientGame/PlayerObject.h"
 #include "clientGraphics/Graphics.h"
-#include "clientUserInterface/CuiConversationManager.h"
 #include "clientUserInterface/CuiLayer.h"
 #include "clientUserInterface/CuiObjectTextManager.h"
 #include "clientUserInterface/CuiPreferences.h"
@@ -55,16 +54,7 @@ namespace
 	static const float TEXT_DISTANCE_LIMIT_HARD           = 256.0f;
 	static const float TEXT_DISTANCE_LIMIT_RANGE          = TEXT_DISTANCE_LIMIT_HARD - TEXT_DISTANCE_LIMIT_SOFT;
 	static const float TEXT_DISTANCE_LIMIT_RANGE_RECIP    = RECIP (TEXT_DISTANCE_LIMIT_RANGE);
-}
 
-//-----------------------------------------------------------------
-
-bool                                      CuiTextManager::ms_installed;
-
-//-----------------------------------------------------------------
-
-namespace
-{
 	void rebuildWorldTextFontMaps ()
 	{
 		const Unicode::String fontPrefixes [CuiTextManagerTextEnqueueInfo::TW_count] =
@@ -88,30 +78,55 @@ namespace
 
 				const Unicode::String suffix (Unicode::narrowToWide (buf));
 
-				UITextStyle * const textStyle = UITextStyleManager::GetInstance ()->GetFontForLogicalFont (fontPrefixes [weight] + suffix);
+				UITextStyle * const textStyle = UITextStyleManager::GetInstance()->GetFontForLogicalFont (fontPrefixes [weight] + suffix);
 
 				if (textStyle)
 					fontMap->insert (std::make_pair (i, textStyle));
 			}
-
-			DEBUG_FATAL (fontMap->empty (), ("No fonts found for weight %d: %s.", weight, Unicode::wideToNarrow (fontPrefixes [weight]).c_str ()));
 		}
 	}
 }
 
 //-----------------------------------------------------------------
 
+bool                                      CuiTextManager::ms_installed;
+
+//-----------------------------------------------------------------
+
 void CuiTextManager::install (const UIBaseObject & rootPage)
 {
-	UNREF (rootPage);
+	UNREF(rootPage);
 	DEBUG_FATAL (ms_installed, ("already installed.\n"));
 
 	s_textMap = new TextMap_t;
 
-	for (int weight = 0; weight < CuiTextManagerTextEnqueueInfo::TW_count; ++weight)
-		s_fontMaps [weight] = new FontMap_t;
+	const Unicode::String fontPrefixes [CuiTextManagerTextEnqueueInfo::TW_count] = 
+	{
+		Unicode::narrowToWide ("default_"),
+		Unicode::narrowToWide ("bold_"),
+		Unicode::narrowToWide ("starwars_")
+	};
 
-	rebuildWorldTextFontMaps ();
+	for (int weight = 0; weight < CuiTextManagerTextEnqueueInfo::TW_count; ++weight)
+	{		
+		FontMap_t * const fontMap = s_fontMaps [weight] = new FontMap_t;
+
+		for (int i = 12; i < 35; ++i)
+		{
+			char buf [32];
+			IGNORE_RETURN (_itoa (i, buf, 10));
+			
+			const Unicode::String suffix (Unicode::narrowToWide (buf));
+
+			UITextStyle * const textStyle = UITextStyleManager::GetInstance()->GetFontForLogicalFont (fontPrefixes [weight] + suffix);
+			
+			if (textStyle)
+				fontMap->insert (std::make_pair (i, textStyle));
+		}
+
+		DEBUG_FATAL (fontMap->empty (), ("No fonts found for weight %d: %s.", weight, Unicode::wideToNarrow(fontPrefixes [weight]).c_str()));
+	}
+	
 
 	s_text = new UIText;
 	s_text->SetTextAlignment (UITextStyle::Center);
@@ -202,17 +217,12 @@ void CuiTextManager::showSystemStatusString (const Unicode::String & str)
 
 //-----------------------------------------------------------------
 
-void CuiTextManager::renderPlainText (UICanvas & canvas, const TextInfo & ti, UITextStyle & style, const UISize & maxBubbleSize, float logicalFromScreenScaleInv)
+void CuiTextManager::renderPlainText (UICanvas & canvas, const TextInfo & ti, UITextStyle & style, const UISize & maxBubbleSize)
 {
 	UNREF (canvas);
 	UNREF (ti);
 	UNREF (maxBubbleSize);
 	UNREF (style); 
-
-	float const inv = (logicalFromScreenScaleInv > 1.0e-6f) ? logicalFromScreenScaleInv : 1.0f;
-	long const lx = static_cast<long>(ti.m_pt.x * inv + 0.5f);
-	long const ly = static_cast<long>(ti.m_pt.y * inv + 0.5f);
-	long const headOffset = static_cast<long>(CuiObjectTextManager::getObjectHeadPointOffset (ti.m_info.id, 0) * inv + 0.5f);
 
 	s_text->SetTextColor (ti.m_info.textColor);
 	s_text->SetBackgroundOpacity (ti.m_info.backgroundOpacity);
@@ -237,14 +247,16 @@ void CuiTextManager::renderPlainText (UICanvas & canvas, const TextInfo & ti, UI
 	else
 		s_image2->SetStyle (0);
 
+	const int headOffset = CuiObjectTextManager::getObjectHeadPointOffset (ti.m_info.id, 0);
+
 	const UISize & newSize = s_text->GetSize();
 	const UISize & imgSize = s_image->GetSize();
-	const UIPoint upperLeft       (lx   - (newSize.x + imgSize.x) / 2L, ly - newSize.y + headOffset);
+	const UIPoint upperLeft       (ti.m_pt.x   - (newSize.x + imgSize.x) / 2L, ti.m_pt.y - newSize.y + headOffset);
 	const UIPoint actualTextPoint (upperLeft.x + imgSize.x, upperLeft.y);
 	const UIPoint upperRight      (actualTextPoint + UIPoint (newSize.x, 0L));
 
 	if (ti.m_info.updateOffset)
-		CuiObjectTextManager::setObjectHeadPointOffset (ti.m_info.id, actualTextPoint.y - ly);
+		CuiObjectTextManager::setObjectHeadPointOffset (ti.m_info.id, actualTextPoint.y - static_cast<int>(ti.m_pt.y));
 		
 	//-----------------------------------------------------------------
 	//- coordinates are relative to bubble origin  (actualTextPoint)
@@ -297,13 +309,8 @@ void  CuiTextManager::render (UICanvas & canvas)
 	s_screenSize.x = Graphics::getCurrentRenderTargetWidth  ();
 	s_screenSize.y = Graphics::getCurrentRenderTargetHeight ();
 
-	float const uiScale = CuiPreferences::getUiScaleFactor ();
-	float const inv = (uiScale > 1.0e-6f) ? (1.0f / uiScale) : 1.0f;
-	int const logicalW = static_cast<int>(s_screenSize.x * inv + 0.5f);
-	int const logicalH = static_cast<int>(s_screenSize.y * inv + 0.5f);
-
-	//-- display "GAME MASTER" banner if necessary (cinematic conversation uses a compact *GM* label instead)
-	if (PlayerObject::isAdmin () && !CuiConversationManager::isCinematicConversationUiActive ())
+	//-- display "GOD MODE" text if necessary
+	if (PlayerObject::isAdmin ())
 	{
 		TextEnqueueInfo godinfo_tq;
 		static bool init = false;
@@ -311,19 +318,19 @@ void  CuiTextManager::render (UICanvas & canvas)
 		{
 			init = true;			
 			godinfo_tq.worldDistance     = 0.0f;
-			godinfo_tq.opacity           = 0.7f;
+			godinfo_tq.opacity           = 1.0f;
 			godinfo_tq.backgroundOpacity = 0.0f;
-			godinfo_tq.textColor         = UIColor::maroon;
-			godinfo_tq.textWeight        = CuiTextManagerTextEnqueueInfo::TW_heavy;
-			godinfo_tq.textSize          = 0.6f;
+			godinfo_tq.textColor         = UIColor::red;
+			godinfo_tq.textWeight        = CuiTextManagerTextEnqueueInfo::TW_starwars;
+			godinfo_tq.textSize          = 3.0f;
 		}
 			
-		static TextInfo godinfo (Unicode::narrowToWide ("GAME MASTER"), 0.6f, TextChatInfo (), godinfo_tq);
+		static TextInfo godinfo (Unicode::narrowToWide ("GM"), 1.0f, TextChatInfo (), godinfo_tq);
 
-		godinfo.m_pt.x = logicalW / 2;
+		godinfo.m_pt.x = s_screenSize.x / 2;
 		godinfo.m_info.screenVect.x = static_cast<float>(godinfo.m_pt.x);
 
-		godinfo.m_pt.y = static_cast<long>((Game::isSpace() ? 200 : 222) * inv + 0.5f);
+		godinfo.m_pt.y = Game::isSpace() ? 200 : 222;
 		godinfo.m_info.screenVect.y = static_cast<float>(godinfo.m_pt.y);
 
 		UITextStyle * const style = getTextStyle (20, godinfo.m_info);
@@ -331,7 +338,7 @@ void  CuiTextManager::render (UICanvas & canvas)
 		if (style)
 		{
 			canvas.SetOpacity (1.0f);
-			renderPlainText (canvas, godinfo, *style, UISize (1000, 1000), inv);
+			renderPlainText (canvas, godinfo, *style, UISize (1000, 1000));
 		}
 	}
 
@@ -339,9 +346,9 @@ void  CuiTextManager::render (UICanvas & canvas)
 
 	if (s_textMap->size ())
 	{
-		canvas.SetClip(UIRect (0, (logicalH / 10), logicalW, logicalH));
+		canvas.SetClip(UIRect (0, (s_screenSize.y / 10), s_screenSize.x, s_screenSize.y));
 
-		const UISize maxBubbleSize (logicalW / 2, logicalH / 4);
+		const UISize maxBubbleSize (s_screenSize.x / 2, s_screenSize.y / 4);
 
 		const float preferenceFontSizeFactor = CuiPreferences::getObjectNameFontSizeFactor ();
 		
@@ -372,10 +379,10 @@ void  CuiTextManager::render (UICanvas & canvas)
 			if (ti.m_chatInfo.isChatBubble)
 				renderBubble (canvas, ti, *style, maxBubbleSize);
 			else
-				renderPlainText (canvas, ti, *style, maxBubbleSize, inv);
+				renderPlainText (canvas, ti, *style, maxBubbleSize);
 		}
 
-		canvas.SetClip(UIRect (0, 0, logicalW, logicalH));
+		canvas.SetClip(UIRect (0, 0, s_screenSize.x, s_screenSize.y));
 	}
 
 	canvas.SetOpacity (oldOpacity); 

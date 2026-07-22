@@ -6,7 +6,7 @@
 #include "sharedNetwork/FirstSharedNetwork.h"
 #include "sharedNetwork/UdpSock.h"
 
-#include <winsock.h>
+#include <winsock2.h>
 
 //---------------------------------------------------------------------
 /**

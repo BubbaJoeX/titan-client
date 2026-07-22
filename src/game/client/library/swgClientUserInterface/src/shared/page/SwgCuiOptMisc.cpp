@@ -144,66 +144,66 @@ SwgCuiOptBase ("SwgCuiOptMisc", page)
 	UIComboBox * combobox = 0;
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkAutoInviteReject");
-	registerCheckbox (*checkbox, CuiPreferences::setAutoInviteReject, CuiPreferences::getAutoInviteReject, ConfigClientGame::getAutoInviteReject);
+	registerCheckbox (checkbox, CuiPreferences::setAutoInviteReject, CuiPreferences::getAutoInviteReject, ConfigClientGame::getAutoInviteReject);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkNetStatus");
-	registerCheckbox (*checkbox, CuiPreferences::setNetStatusEnabled, CuiPreferences::getNetStatusEnabled, ConfigClientUserInterface::getNetStatusEnabled);
+	registerCheckbox (checkbox, CuiPreferences::setNetStatusEnabled, CuiPreferences::getNetStatusEnabled, ConfigClientUserInterface::getNetStatusEnabled);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkConfirmObjDelete");
-	registerCheckbox (*checkbox, CuiPreferences::setConfirmObjDelete, CuiPreferences::getConfirmObjDelete, ConfigClientUserInterface::getConfirmObjDelete);
+	registerCheckbox (checkbox, CuiPreferences::setConfirmObjDelete, CuiPreferences::getConfirmObjDelete, ConfigClientUserInterface::getConfirmObjDelete);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkConfirmCrafting");
-	registerCheckbox (*checkbox, CuiPreferences::setConfirmCrafting, CuiPreferences::getConfirmCrafting, SwgCuiOptBase::getTrue);
+	registerCheckbox (checkbox, CuiPreferences::setConfirmCrafting, CuiPreferences::getConfirmCrafting, SwgCuiOptBase::getTrue);
 
 	getCodeDataObject (TUISliderbar, slider, "sliderObjectNameFontSize");
-	registerSlider (*slider, CuiPreferences::setObjectNameFontSizeFactor, CuiPreferences::getObjectNameFontSizeFactor, ConfigClientUserInterface::getObjectNameFontSizeFactor, 0.25f, 4.0f);
+	registerSlider (slider, CuiPreferences::setObjectNameFontSizeFactor, CuiPreferences::getObjectNameFontSizeFactor, ConfigClientUserInterface::getObjectNameFontSizeFactor, 0.25f, 4.0f);
 
 	getCodeDataObject (TUISliderbar, slider, "sliderObjectNameRange");
-	registerSlider (*slider, CuiPreferences::setObjectNameRange, CuiPreferences::getObjectNameRange, ConfigClientUserInterface::getObjectNameRange, 8.0f, 128.0f);
+	registerSlider (slider, CuiPreferences::setObjectNameRange, CuiPreferences::getObjectNameRange, ConfigClientUserInterface::getObjectNameRange, 8.0f, 128.0f);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkObjectNameShowAll");
-	registerCheckbox (*checkbox, CuiPreferences::setDrawObjectNames, CuiPreferences::getDrawObjectNames, ConfigClientUserInterface::getDrawObjectNames);
+	registerCheckbox (checkbox, CuiPreferences::setDrawObjectNames, CuiPreferences::getDrawObjectNames, ConfigClientUserInterface::getDrawObjectNames);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkObjectNameShowPlayers");
-	registerCheckbox (*checkbox, CuiPreferences::setDrawObjectNamesPlayers, CuiPreferences::getDrawObjectNamesPlayers, ConfigClientUserInterface::getDrawObjectNamesPlayers);
+	registerCheckbox (checkbox, CuiPreferences::setDrawObjectNamesPlayers, CuiPreferences::getDrawObjectNamesPlayers, ConfigClientUserInterface::getDrawObjectNamesPlayers);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkObjectNameShowGroup");
-	registerCheckbox (*checkbox, CuiPreferences::setDrawObjectNamesGroup, CuiPreferences::getDrawObjectNamesGroup, ConfigClientUserInterface::getDrawObjectNamesGroup);
+	registerCheckbox (checkbox, CuiPreferences::setDrawObjectNamesGroup, CuiPreferences::getDrawObjectNamesGroup, ConfigClientUserInterface::getDrawObjectNamesGroup);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkObjectNameShowGuild");
-	registerCheckbox (*checkbox, CuiPreferences::setDrawObjectNamesGuild, CuiPreferences::getDrawObjectNamesGuild, ConfigClientUserInterface::getDrawObjectNamesGuild);
+	registerCheckbox (checkbox, CuiPreferences::setDrawObjectNamesGuild, CuiPreferences::getDrawObjectNamesGuild, ConfigClientUserInterface::getDrawObjectNamesGuild);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkObjectNameShowNpcs");
-	registerCheckbox (*checkbox, CuiPreferences::setDrawObjectNamesNpcs, CuiPreferences::getDrawObjectNamesNpcs, ConfigClientUserInterface::getDrawObjectNamesNpcs);
+	registerCheckbox (checkbox, CuiPreferences::setDrawObjectNamesNpcs, CuiPreferences::getDrawObjectNamesNpcs, ConfigClientUserInterface::getDrawObjectNamesNpcs);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkObjectNameShowSigns");
-	registerCheckbox (*checkbox, CuiPreferences::setDrawObjectNamesSigns, CuiPreferences::getDrawObjectNamesSigns, ConfigClientUserInterface::getDrawObjectNamesSigns);
+	registerCheckbox (checkbox, CuiPreferences::setDrawObjectNamesSigns, CuiPreferences::getDrawObjectNamesSigns, ConfigClientUserInterface::getDrawObjectNamesSigns);
 	
 	getCodeDataObject (TUICheckbox, checkbox, "checkObjectNameShowMyName");
-	registerCheckbox (*checkbox, CuiPreferences::setDrawObjectNamesMyName, CuiPreferences::getDrawObjectNamesMyName, ConfigClientUserInterface::getDrawObjectNamesMyName);
+	registerCheckbox (checkbox, CuiPreferences::setDrawObjectNamesMyName, CuiPreferences::getDrawObjectNamesMyName, ConfigClientUserInterface::getDrawObjectNamesMyName);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkObjectNameShowBeasts");
-	registerCheckbox (*checkbox, CuiPreferences::setDrawObjectNamesBeasts, CuiPreferences::getDrawObjectNamesBeasts, ConfigClientUserInterface::getDrawObjectNamesBeasts);
+	registerCheckbox (checkbox, CuiPreferences::setDrawObjectNamesBeasts, CuiPreferences::getDrawObjectNamesBeasts, ConfigClientUserInterface::getDrawObjectNamesBeasts);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkShowSystemMessages");
-	registerCheckbox (*checkbox, CuiPreferences::setShowSystemMessages, CuiPreferences::getShowSystemMessages, SwgCuiOptBase::getTrue);
+	registerCheckbox (checkbox, CuiPreferences::setShowSystemMessages, CuiPreferences::getShowSystemMessages, SwgCuiOptBase::getTrue);
 
 	getCodeDataObject (TUISliderbar, slider, "sliderSystemMessageTimeout");
-	registerSlider (*slider, CuiPreferences::setSystemMessageDuration, CuiPreferences::getSystemMessageDuration, SwgCuiOptBase::getOne, 0.10f, 2.0f);
+	registerSlider (slider, CuiPreferences::setSystemMessageDuration, CuiPreferences::getSystemMessageDuration, SwgCuiOptBase::getOne, 0.10f, 2.0f);
 
 #if 0
 	getCodeDataObject (TUICheckbox, checkbox, "checkShowGroupWaypoints");
-	registerCheckbox (*checkbox, CuiPreferences::setShowGroupWaypoints, CuiPreferences::getShowGroupWaypoints, SwgCuiOptBase::getTrue);
+	registerCheckbox (checkbox, CuiPreferences::setShowGroupWaypoints, CuiPreferences::getShowGroupWaypoints, SwgCuiOptBase::getTrue);
 #endif
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkScreenShake");
-	registerCheckbox (*checkbox, CuiPreferences::setScreenShake, CuiPreferences::getScreenShake, SwgCuiOptBase::getTrue);
+	registerCheckbox (checkbox, CuiPreferences::setScreenShake, CuiPreferences::getScreenShake, SwgCuiOptBase::getTrue);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkShowCockpit");
-	registerCheckbox (*checkbox, CockpitCamera::setShowCockpit, CockpitCamera::getShowCockpit, SwgCuiOptBase::getTrue);
+	registerCheckbox (checkbox, CockpitCamera::setShowCockpit, CockpitCamera::getShowCockpit, SwgCuiOptBase::getTrue);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkCollectionShowServerFirst");
-	registerCheckbox (*checkbox, CuiPreferences::setCollectionShowServerFirst, CuiPreferences::getCollectionShowServerFirst, SwgCuiOptBase::getFalse);
+	registerCheckbox (checkbox, CuiPreferences::setCollectionShowServerFirst, CuiPreferences::getCollectionShowServerFirst, SwgCuiOptBase::getFalse);
 
 	getCodeDataObject (TUISliderbar, slider, "sliderFurnitureRotationDegree");
 	registerSlider    (*slider, setFurnitureRotationDegree, CuiPreferences::getFurnitureRotationDegree, CuiPreferences::getFurnitureRotationDegreeDefault, 1, 180);
@@ -212,40 +212,40 @@ SwgCuiOptBase ("SwgCuiOptMisc", page)
 	registerComboBox  (*combobox, onComboCurrencyFormatSet, onComboCurrencyFormatGet, getDefaultCurrencyFormat);
 
 	getCodeDataObject(TUIComboBox, combobox, "nameplateNeutralColor");
-	registerComboBox(*combobox, onComboNameplateNeutralSet, onComboNameplateNeutralGet, getDefaultNameplateNeutral);
+	registerComboBox(combobox, onComboNameplateNeutralSet, onComboNameplateNeutralGet, getDefaultNameplateNeutral);
 
 	getCodeDataObject(TUIComboBox, combobox, "nameplateFriendlyColor");
-	registerComboBox(*combobox, onComboNameplateFriendlySet, onComboNameplateFriendlyGet, getDefaultNameplateFriendly);
+	registerComboBox(combobox, onComboNameplateFriendlySet, onComboNameplateFriendlyGet, getDefaultNameplateFriendly);
 
 	getCodeDataObject(TUIComboBox, combobox, "nameplateHostileColor");
-	registerComboBox(*combobox, onComboNameplateHostileSet, onComboNameplateHostileGet, getDefaultNameplateHostile);
+	registerComboBox(combobox, onComboNameplateHostileSet, onComboNameplateHostileGet, getDefaultNameplateHostile);
 
 	getCodeDataObject(TUIComboBox, combobox, "nameplateDangerColor");
-	registerComboBox(*combobox, onComboNameplateDangerSet, onComboNameplateDangerGet, getDefaultNameplateDanger);
+	registerComboBox(combobox, onComboNameplateDangerSet, onComboNameplateDangerGet, getDefaultNameplateDanger);
 
 	getCodeDataObject(TUICheckbox, checkbox, "checkAutoLootCorpses");
-	registerCheckbox (*checkbox, CuiPreferences::setAutoLootCorpses, CuiPreferences::getAutoLootCorpses, SwgCuiOptBase::getFalse);
+	registerCheckbox (checkbox, CuiPreferences::setAutoLootCorpses, CuiPreferences::getAutoLootCorpses, SwgCuiOptBase::getFalse);
 
 	getCodeDataObject(TUICheckbox, checkbox, "checkShowCorpseLootIcon");
-	registerCheckbox (*checkbox, CuiPreferences::setShowCorpseLootIcon, CuiPreferences::getShowCorpseLootIcon, SwgCuiOptBase::getTrue);
+	registerCheckbox (checkbox, CuiPreferences::setShowCorpseLootIcon, CuiPreferences::getShowCorpseLootIcon, SwgCuiOptBase::getTrue);
 
 	getCodeDataObject(TUICheckbox, checkbox, "checkShowBackpack");
-	registerCheckbox (*checkbox, CuiPreferences::setShowBackpack, CuiPreferences::getShowBackpack, SwgCuiOptBase::getTrue);
+	registerCheckbox (checkbox, CuiPreferences::setShowBackpack, CuiPreferences::getShowBackpack, SwgCuiOptBase::getTrue);
 
 	getCodeDataObject(TUICheckbox, checkbox, "checkShowHelmet");
-	registerCheckbox (*checkbox, CuiPreferences::setShowHelmet, CuiPreferences::getShowHelmet, SwgCuiOptBase::getTrue);
+	registerCheckbox (checkbox, CuiPreferences::setShowHelmet, CuiPreferences::getShowHelmet, SwgCuiOptBase::getTrue);
 
 	getCodeDataObject(TUICheckbox, checkbox, "checkHideAppearanceItems");
-	registerCheckbox(*checkbox, CuiPreferences::setDefaultExamineHideAppearance, CuiPreferences::getDefaultExamineHideAppearance, SwgCuiOptBase::getFalse);
+	registerCheckbox(checkbox, CuiPreferences::setDefaultExamineHideAppearance, CuiPreferences::getDefaultExamineHideAppearance, SwgCuiOptBase::getFalse);
 
 	getCodeDataObject(TUICheckbox, checkbox, "checkDoubleClickAppearance");
-	registerCheckbox(*checkbox, CuiPreferences::setDoubleClickUnequipAppearance, CuiPreferences::getDoubleClickUnequipAppearance, SwgCuiOptBase::getTrue);
+	registerCheckbox(checkbox, CuiPreferences::setDoubleClickUnequipAppearance, CuiPreferences::getDoubleClickUnequipAppearance, SwgCuiOptBase::getTrue);
 
 	getCodeDataObject(TUICheckbox, checkbox, "checkShowAppearanceInventory");
-	registerCheckbox(*checkbox, CuiPreferences::setShowAppearanceInventory, CuiPreferences::getShowAppearanceInventory, SwgCuiOptBase::getTrue);
+	registerCheckbox(checkbox, CuiPreferences::setShowAppearanceInventory, CuiPreferences::getShowAppearanceInventory, SwgCuiOptBase::getTrue);
 
 	getCodeDataObject(TUICheckbox, checkbox, "checkCinematicConversation");
-	registerCheckbox(*checkbox, CuiPreferences::setCinematicConversationEnabled, CuiPreferences::getCinematicConversationEnabled, SwgCuiOptBase::getFalse);
+	registerCheckbox(checkbox, CuiPreferences::setCinematicConversationEnabled, CuiPreferences::getCinematicConversationEnabled, SwgCuiOptBase::getFalse);
 }
 
 //----------------------------------------------------------------------

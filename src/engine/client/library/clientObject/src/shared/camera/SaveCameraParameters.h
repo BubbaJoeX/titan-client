@@ -65,13 +65,8 @@ inline void SaveCameraParameters::setUnderWater (GameCamera* camera, PackedRgb& 
 	backgroundColor.g = 115;
 	backgroundColor.b = 113;
 
-	// Keep enough distance underwater so world geometry is still rendered and can be fogged
-	// instead of being hard-culled before fog blends it out.
-	float const underWaterFarPlane = 160.f;
-	float const clampedFarPlane = farDistance < underWaterFarPlane ? farDistance : underWaterFarPlane;
-
 	camera->setNearPlane (0.1f);
-	camera->setFarPlane  (clampedFarPlane);
+	camera->setFarPlane  (500.f);
 	camera->setHorizontalFieldOfView (fov);
 	camera->setUnderWaterThisFrame (true);
 }

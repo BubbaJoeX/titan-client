@@ -1,7 +1,6 @@
 #include "_precompile.h"
 #include "UIPage.h"
 
-#include "UIComposite.h"
 #include "UIButton.h"
 #include "UICanvas.h"
 #include "UIData.h"
@@ -744,30 +743,27 @@ UIWidget *UIPage::GetWidgetFromPoint( const UIPoint &PointToTest, bool mustGetIn
 
 	const UIPoint & ScrollLocation = GetScrollLocation();
 
-	// Match paint order: UIRenderHelper::RenderObjects walks mWidgets in reverse; element [0] is
-	// topmost. Hit-test topmost first.
-	if (HasPageAttribute(PA_WidgetVectorDirty))
-		BuildWidgetVector ();
-
-	for (UIWidgetVector::const_iterator i = mWidgets->begin (); i != mWidgets->end (); ++i)
+	for( UIObjectList::const_iterator i = mObjects->begin(); i != mObjects->end(); ++i )
 	{
-		UIWidget * const w = *i;
-		if (!w)
-			continue;
+		UIBaseObject * const o = *i;
 
-		const UIPoint p ((PointToTest - w->GetLocation()) + ScrollLocation);
-
-		if (w->WillDraw () && w->HitTest (p))
+		if( o->IsA( TUIWidget ) )
 		{
-			if (!mustGetInput || (w->GetsInput () && w->IsEnabled ()))
+			UIWidget * const w = static_cast<UIWidget *>( o );
+			const UIPoint p ((PointToTest - w->GetLocation()) + ScrollLocation);
+
+			if( w->WillDraw() && w->HitTest( p ) )
 			{
-				UIWidget * const leaf = w->GetWidgetFromPoint (p, mustGetInput);
+				if (!mustGetInput || (w->GetsInput () && w->IsEnabled ()))
+				{
+					UIWidget * const leaf = w->GetWidgetFromPoint( p, mustGetInput );
 
-				if (leaf && leaf->IsAbsorbsInput ())
-					return leaf;
+					if (leaf && leaf->IsAbsorbsInput ())
+						return leaf;
 
-				if (w->IsAbsorbsInput ())
-					return w;
+					if (w->IsAbsorbsInput ())
+						return w;
+				}
 			}
 		}
 	}
@@ -1062,11 +1058,11 @@ void UIPage::Render( UICanvas &DestinationCanvas ) const
 		DestinationCanvas.Translate( -GetScrollLocation() );
 		DestinationCanvas.ModifyOpacity( GetOpacity() );
 	}
-
+ 
 	UIWidget::Render (DestinationCanvas);
 
 	if (HasPageAttribute(PA_WidgetVectorDirty))
-		BuildWidgetVector ();
+		BuildWidgetVector();
 
 	if (GetDepthOverride()) 
 	{
@@ -1507,14 +1503,14 @@ void UIPage::Link ()
 
 void UIPage::BuildWidgetVector () const
 {
-	mWidgets->clear ();
+	UI_IGNORE_RETURN(mWidgets->erase(mWidgets->begin(), mWidgets->end()));
 
-	for (UIObjectList::const_iterator i = mObjects->begin(); i != mObjects->end(); ++i)
+	for( UIObjectList::const_iterator i = mObjects->begin(); i != mObjects->end(); ++i )
 	{
-		UIBaseObject * const object = *i;
+		UIBaseObject *o = *i;
 
-		if (object->IsA (TUIWidget))
-			mWidgets->push_back (static_cast<UIWidget *>(object));
+		if( o->IsA( TUIWidget ) )
+			mWidgets->push_back( static_cast<UIWidget *>( o ) );
 	}
 
 	UI_IGNORE_RETURN(SetPageAttribute(PA_WidgetVectorDirty, false));
@@ -1640,15 +1636,9 @@ UIButton *UIPage::FindCancelButton (bool useFocusedChild)
 
 void	UIPage::ResetLocalizedStrings (void)
 {
-	// Snapshot children: nested ResetLocalizedStrings / SetProperty can add or remove siblings
-	// and invalidate iterators over mObjects.
-	if (!mObjects)
-		return;
-	UIObjectList const childrenSnapshot (*mObjects);
-	for (UIObjectList::const_iterator i = childrenSnapshot.begin (); i != childrenSnapshot.end (); ++i)
+	for( UIObjectList::iterator i = mObjects->begin(); i != mObjects->end(); ++i )
 	{
-		if (*i)
-			(*i)->ResetLocalizedStrings ();
+		(*i)->ResetLocalizedStrings ();
 	}
 }
 

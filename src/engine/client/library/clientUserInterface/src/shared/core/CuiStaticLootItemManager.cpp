@@ -12,7 +12,6 @@
 
 #include "clientGame/ObjectAttributeManager.h"
 #include "sharedFoundation/ConstCharCrcString.h"
-#include "sharedGame/SharedObjectAttributes.h"
 #include "sharedFoundation/PointerDeleter.h"
 #include "sharedMessageDispatch/Transceiver.h"
 #include "sharedObject/ObjectTemplateList.h"
@@ -135,31 +134,9 @@ Unicode::String CuiStaticLootItemManager::getTooltipAttributeString(std::string 
 {
 	ObjectAttributeManager::AttributeVector attribs;
 	ObjectAttributeManager::getAttributes(lootItem, attribs);
-
-	Unicode::String displayName;
-	Unicode::String displayDescription;
-	ObjectAttributeManager::AttributeVector filteredAttribs;
-	for (ObjectAttributeManager::AttributeVector::const_iterator it = attribs.begin(); it != attribs.end(); ++it)
-	{
-		if (it->first == SharedObjectAttributes::display_name)
-			displayName = it->second;
-		else if (it->first == SharedObjectAttributes::display_description)
-			displayDescription = it->second;
-		else
-			filteredAttribs.push_back(*it);
-	}
-
-	Unicode::String result;
-	if (!displayName.empty())
-		result = displayName;
-	else
-		result = StringId("static_item_n", lootItem).localize();
-	result += Unicode::narrowToWide("\n");
-	if (!displayDescription.empty())
-		result += displayDescription + Unicode::narrowToWide("\n");
-
+	Unicode::String result = StringId("static_item_n", lootItem).localize() + Unicode::narrowToWide("\n");
 	Unicode::String result2;
-	ObjectAttributeManager::formatAttributes(filteredAttribs, result2, NULL, NULL, false, true);
+	ObjectAttributeManager::formatAttributes(attribs, result2, NULL, NULL, false, true);
 	return result + result2;
 }
 

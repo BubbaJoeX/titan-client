@@ -128,7 +128,8 @@ void Direct3d9_StaticVertexBufferData::unlock()
 
 int Direct3d9_StaticVertexBufferData::getSortKey()
 {
-	return reinterpret_cast<int>(m_d3dVertexBuffer);
+	uintptr_t const value = reinterpret_cast<uintptr_t>(m_d3dVertexBuffer);
+	return static_cast<int>(value ^ (value >> 32));
 }
 
 // ----------------------------------------------------------------------

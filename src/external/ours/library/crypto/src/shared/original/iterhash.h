@@ -54,7 +54,7 @@ public:
 
 	void Final(byte *hash)
 	{
-		PadLastBlock(BLOCKSIZE - 2*sizeof(HashWordType));
+		this->PadLastBlock(BLOCKSIZE - 2*sizeof(HashWordType));
 		CorrectEndianess(this->data, this->data, BLOCKSIZE - 2*sizeof(HashWordType));
 
 		this->data[this->data.size-2] = HIGHFIRST ? this->countHi : this->countLo;

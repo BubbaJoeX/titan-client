@@ -43,8 +43,17 @@ class DynamicVertexBuffer : public HardwareVertexBuffer
 	friend class  Direct3d8_DynamicVertexBufferData;
 	friend class  Direct3d9;
 	friend class  Direct3d9_DynamicVertexBufferData;
+	friend class  Direct3d11;
 
 public:
+
+	enum DynamicRing
+	{
+		DR_world,
+		DR_ui,
+		DR_skeletal,
+		DR_count
+	};
 
 	static void install();
 	static void *operator new(size_t);
@@ -58,8 +67,12 @@ public:
 
 public:
 
-	DynamicVertexBuffer(const VertexBufferFormat &format);
+	DynamicVertexBuffer(const VertexBufferFormat &format, DynamicRing ring = DR_world);
 	virtual ~DynamicVertexBuffer();
+
+	DynamicRing           getDynamicRing() const;
+	bool                  usesUiDynamicRing() const;
+	bool                  usesSkeletalDynamicRing() const;
 
 	virtual int           getSortKey() const;
 #ifdef _DEBUG
@@ -92,16 +105,17 @@ private:
 private:
 	
 	static MemoryBlockManager  *ms_memoryBlockManager;
+	static bool                 ms_ringLocked[DR_count];
 
 #ifdef _DEBUG
 	static int                               ms_dynamicGlobalId;
-	static bool                              ms_dynamicGlobalLocked;
 #endif
 
 private:
 
 	DynamicVertexBufferGraphicsData * m_graphicsData;
 	int                               m_sortKey;
+	DynamicRing                       m_ringIndex;
 
 	byte *                            m_data;
 	int                               m_numberOfVertices;
@@ -132,6 +146,27 @@ inline int DynamicVertexBuffer::getDynamicGlobalId()
 inline int DynamicVertexBuffer::getSortKey() const
 {
 	return m_sortKey;
+}
+
+// ----------------------------------------------------------------------
+
+inline DynamicVertexBuffer::DynamicRing DynamicVertexBuffer::getDynamicRing() const
+{
+	return m_ringIndex;
+}
+
+// ----------------------------------------------------------------------
+
+inline bool DynamicVertexBuffer::usesUiDynamicRing() const
+{
+	return m_ringIndex == DR_ui;
+}
+
+// ----------------------------------------------------------------------
+
+inline bool DynamicVertexBuffer::usesSkeletalDynamicRing() const
+{
+	return m_ringIndex == DR_skeletal;
 }
 
 // ----------------------------------------------------------------------
@@ -183,15 +218,16 @@ inline void DynamicVertexBuffer::lock(int numberOfVertices, bool forceDiscard)
 {
 	NOT_NULL(m_graphicsData);
 	DEBUG_FATAL(m_data, ("VB already locked"));
-	DEBUG_FATAL(ms_dynamicGlobalLocked, ("Locking two dynamic VBs at the same time"));
+	DEBUG_FATAL(ms_ringLocked[m_ringIndex], ("Locking two dynamic VBs on the same ring at the same time"));
 
 #ifdef _DEBUG
 	++m_debugIteratorLockCount;
-	ms_dynamicGlobalLocked = true;
+	ms_ringLocked[m_ringIndex] = true;
 	m_dynamicId = ++ms_dynamicGlobalId;
 #endif
 	m_numberOfVertices = numberOfVertices;
 	m_data = reinterpret_cast<byte *>(m_graphicsData->lock(numberOfVertices, forceDiscard));
+	m_sortKey = m_graphicsData->getSortKey();
 }
 
 // ----------------------------------------------------------------------
@@ -205,7 +241,7 @@ inline void DynamicVertexBuffer::unlock()
 	DEBUG_FATAL(!m_data, ("VB not locked"));
 #ifdef _DEBUG
 	++m_debugIteratorLockCount;
-	ms_dynamicGlobalLocked = false;
+	ms_ringLocked[m_ringIndex] = false;
 #endif
 	m_graphicsData->unlock();
 	m_data = NULL;
@@ -222,7 +258,7 @@ inline void DynamicVertexBuffer::unlock(int numberOfVertices)
 	DEBUG_FATAL(!m_data, ("VB not locked"));
 #ifdef _DEBUG
 	++m_debugIteratorLockCount;
-	ms_dynamicGlobalLocked = false;
+	ms_ringLocked[m_ringIndex] = false;
 #endif
 	m_graphicsData->unlock(numberOfVertices);
 	m_data = NULL;

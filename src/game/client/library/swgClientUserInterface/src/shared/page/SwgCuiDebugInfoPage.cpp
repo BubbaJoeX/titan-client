@@ -53,6 +53,11 @@
 
 #include <cstdio>
 
+// Process working-set readout for the debug overlay (not in SwgClient link line).
+#include <windows.h>
+#include <psapi.h>
+#pragma comment(lib, "psapi.lib")
+
 //----------------------------------------------------------------------
 namespace PlayerCreatureControllerNamespace
 {
@@ -457,11 +462,24 @@ void SwgCuiDebugInfoPage::updateFps ()
 			const int numberOfMegabytesAllocated = MemoryManager::getCurrentNumberOfBytesAllocated () / (1024 * 1024);
 			const int limit = MemoryManager::getLimit ();
 
+			// MemoryManager only tracks MM heap; D3D/driver/CRT allocations are untracked.
+			int workingSetMB = 0;
+			{
+				PROCESS_MEMORY_COUNTERS pmc;
+				memset (&pmc, 0, sizeof (pmc));
+				pmc.cb = sizeof (pmc);
+				if (GetProcessMemoryInfo (GetCurrentProcess (), &pmc, sizeof (pmc)))
+					workingSetMB = static_cast<int> (pmc.WorkingSetSize / (1024 * 1024));
+			}
+
+			const int displayUsedMB = (workingSetMB > 0) ? workingSetMB : numberOfMegabytesAllocated;
+
 			char buf[128];
-			sprintf (buf, "%5.2f     %iMB/%iMB", fps, numberOfMegabytesAllocated, limit);
+			sprintf (buf, "%5.2f     %iMB/%iMB", fps, displayUsedMB, limit);
 			UINarrowString str (buf);
 
-			m_fpsText->SetLocalText (Unicode::narrowToWide (str));
+			if (m_fpsText)
+				m_fpsText->SetLocalText (Unicode::narrowToWide (str));
 		}
 	}
 }

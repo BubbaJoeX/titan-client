@@ -119,6 +119,8 @@ m_templatesLoaded(false)
 	getCodeDataObject(TUIButton, m_buttonPreview, "buttonPreview");
 	getCodeDataObject(TUIButton, m_buttonSpawn, "buttonSpawn");
 	getCodeDataObject(TUIButton, m_buttonClose, "buttonClose");
+	getCodeDataObject(TUIButton, m_buttonNextPage, "buttonNextPage", true);
+	getCodeDataObject(TUIButton, m_buttonPrevPage, "buttonPrevPage", true);
 	getCodeDataObject(TUIButton, m_buttonSearch, "buttonSearch", true);
 	getCodeDataObject(TUIText, m_filterTextbox, "filterTextbox");
 	getCodeDataObject(TUIText, m_selectedText, "selectedText");

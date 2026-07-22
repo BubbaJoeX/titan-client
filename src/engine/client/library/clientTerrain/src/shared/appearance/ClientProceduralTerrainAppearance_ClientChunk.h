@@ -101,7 +101,7 @@ public:
 	void                  create (const ClientCreateChunkData& newCreateChunkData);
 
 	/// Swap mesh/maps from a freshly built chunk onto this leaf (same x/z/size), then delete the donor.
-	/// Keeps DPVS registration and chunk pointer stable so terrain edits do not "phase" through remove/re-add.
+	/// Keeps DPVS registration and chunk pointer stable so terrain edits do not phase through remove/re-add.
 	void                  applyInPlaceRegenerationFromBuiltChunk (ClientChunk * disposableBuiltChunk);
 	
 	bool                  findStaticNonCollidableFlora (float positionX, float positionZ, ClientProceduralTerrainAppearance::StaticFloraData& data, bool& floraAllowed) const;
@@ -111,7 +111,6 @@ public:
 	
 	void                  resetIndices(unsigned newHasLargerNeighborFlags);
 
-	/// Used when replacing ShaderCache without purging chunks (God Client): detect if this chunk still samples old cache rows.
 	bool                  referencesShaderCache (ShaderCache const* cache) const;
 
 	void                  addObjectToWorld ();

@@ -267,6 +267,15 @@ void CuiChatManager::setChatWindowFontSizeDefaultIndex (int index)
 
 //----------------------------------------------------------------------
 
+void CuiChatManager::refreshChatWindowStylesIfInstalled ()
+{
+	if (!s_installed)
+		return;
+	ms_chatFontSizeCallback->performCallback ();
+}
+
+//----------------------------------------------------------------------
+
 bool CuiChatManager::getChatBoxKeyClick ()
 {
 	DEBUG_FATAL (!s_installed, ("not installed"));
@@ -288,15 +297,6 @@ Callback & CuiChatManager::getChatFontSizeCallback ()
 {
 	DEBUG_FATAL (!s_installed, ("not installed"));
 	return *ms_chatFontSizeCallback;
-}
-
-//----------------------------------------------------------------------
-
-void CuiChatManager::refreshChatWindowStylesIfInstalled ()
-{
-	if (!s_installed)
-		return;
-	ms_chatFontSizeCallback->performCallback ();
 }
 
 //----------------------------------------------------------------------

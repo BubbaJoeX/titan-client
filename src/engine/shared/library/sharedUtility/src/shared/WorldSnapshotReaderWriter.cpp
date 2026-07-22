@@ -19,13 +19,12 @@
 #include "sharedFoundation/MemoryBlockManager.h"
 #include "sharedFoundation/PointerDeleter.h"
 #include "sharedMath/Quaternion.h"
-#include "sharedMath/Vector.h"
 #include "sharedUtility/LocalMachineOptionManager.h"
 
 #include <algorithm>
 #include <map>
 #include <vector>
-#include <hash_map>
+#include <unordered_map>
 
 //===================================================================
 
@@ -102,7 +101,6 @@ WorldSnapshotReaderWriter::Node::Node () :
 	m_objectTemplateNameIndex (0),
 	m_cellIndex (0),
 	m_transform_p (),
-	m_objectScale (Vector::xyz111),
 	m_radius (0.f),
 	m_portalLayoutCrc (0),
 	m_parent (0),
@@ -177,13 +175,6 @@ void WorldSnapshotReaderWriter::Node::setTransform_p (const Transform& transform
 
 //-------------------------------------------------------------------
 
-void WorldSnapshotReaderWriter::Node::setObjectScale (Vector const &objectScale)
-{
-	m_objectScale = objectScale;
-}
-
-//-------------------------------------------------------------------
-
 void WorldSnapshotReaderWriter::Node::setRadius (const float radius)
 {
 	#ifdef _DEBUG
@@ -247,13 +238,6 @@ int WorldSnapshotReaderWriter::Node::getCellIndex () const
 const Transform& WorldSnapshotReaderWriter::Node::getTransform_p () const
 {
 	return m_transform_p;
-}
-
-//-------------------------------------------------------------------
-
-Vector const &WorldSnapshotReaderWriter::Node::getObjectScale () const
-{
-	return m_objectScale;
 }
 
 //-------------------------------------------------------------------
@@ -548,8 +532,63 @@ WorldSnapshotReaderWriter::~WorldSnapshotReaderWriter ()
 
 bool WorldSnapshotReaderWriter::load (const char* sceneName)
 {
-	// .ws files are deprecated. Use buildouts for full server authority. Do not load .ws files.
-	UNREF(sceneName);
+	char filename[256];
+	IGNORE_RETURN(snprintf(filename, sizeof(filename)-1, "snapshot/%s.ws", sceneName));
+	filename[sizeof(filename)-1] = '\0';
+
+	Iff iff;
+	if (iff.open (filename, true))
+	{
+		PerformanceTimer timer;
+		timer.start ();
+
+		//-- clear
+		clear ();
+
+		timer.stop ();
+		//DEBUG_REPORT_LOG (true, ("clear %1.2f\n", timer.getElapsedTime ()));
+		timer.start ();
+
+		//-- load
+		load (iff);
+
+		timer.stop ();
+		//DEBUG_REPORT_LOG (true, ("load %1.2f\n", timer.getElapsedTime ()));
+		timer.start ();
+
+		//-- wander through the nodes adding them to the node map
+		{
+			NodeList nodeStack;
+
+			//-- push all root nodes on the node stack
+			{
+				int i;
+				for (i = 0; i < getNumberOfNodes (); ++i)
+					nodeStack.push_back (const_cast<Node*> (getNode (i)));
+			}
+
+			//--
+			while (!nodeStack.empty ())
+			{
+				Node* const node = nodeStack.back ();
+				nodeStack.pop_back ();
+
+				std::pair<NetworkIdNodeMap::iterator, bool> result = m_networkIdNodeMap->insert (std::make_pair (node->getNetworkIdInt (), node));
+				UNREF(result);
+				DEBUG_FATAL (!result.second, ("WorldSnapshotReaderWriter::load: could not insert %i into networkIdNodeMap", node->getNetworkIdInt ()));
+
+				int i;
+				for (i = 0; i < node->getNumberOfNodes (); ++i)
+					nodeStack.push_back (const_cast<Node*> (node->getNode (i)));
+			}
+		}
+
+		timer.stop ();
+		//DEBUG_REPORT_LOG (true, ("process %1.2f\n", timer.getElapsedTime ()));
+
+		return true;
+	}
+
 	return false;
 }
 
@@ -663,8 +702,7 @@ WorldSnapshotReaderWriter::Node const *WorldSnapshotReaderWriter::addObject (
 	const Transform& transform_p,
 	const float radius,
 	const uint32 portalLayoutCrc,
-	const std::string & eventName,
-	Vector const &objectScale )
+	const std::string & eventName )
 {
 	NOT_NULL (m_objectTemplateNameList);
 	NOT_NULL (m_networkIdNodeMap);
@@ -672,7 +710,7 @@ WorldSnapshotReaderWriter::Node const *WorldSnapshotReaderWriter::addObject (
 	//-- find objectTemplateNameIndex
 	uint objectTemplateNameIndex = 0;
 
-	std::hash_map<uint32, uint>::const_iterator i = m_objectTemplateCrcMap->find(objectTemplateName.getCrc());
+	std::unordered_map<uint32, uint>::const_iterator i = m_objectTemplateCrcMap->find(objectTemplateName.getCrc());
 	if (i != m_objectTemplateCrcMap->end())
 		objectTemplateNameIndex = (*i).second;
 	else
@@ -691,7 +729,6 @@ WorldSnapshotReaderWriter::Node const *WorldSnapshotReaderWriter::addObject (
 	node->setRadius                  (radius);
 	node->setPortalLayoutCrc         (portalLayoutCrc);
 	node->setEventName               (eventName);
-	node->setObjectScale             (objectScale);
 
 	std::pair<NetworkIdNodeMap::iterator, bool> result = m_networkIdNodeMap->insert (std::make_pair (networkIdInt, node));
 

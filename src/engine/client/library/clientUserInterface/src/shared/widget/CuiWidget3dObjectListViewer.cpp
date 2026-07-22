@@ -315,9 +315,7 @@ const UILowerString CuiWidget3dObjectListViewer::PropertyName::CameraLookAtCente
 const UILowerString CuiWidget3dObjectListViewer::PropertyName::CameraPitch            = UILowerString ("CameraPitch");
 const UILowerString CuiWidget3dObjectListViewer::PropertyName::CameraRoll             = UILowerString ("CameraRoll");
 const UILowerString CuiWidget3dObjectListViewer::PropertyName::CameraTransformToObj   = UILowerString ("CameraTransformToObj");
-const UILowerString CuiWidget3dObjectListViewer::PropertyName::CameraOrientationZoomOffset = UILowerString ("CameraOrientationZoomOffset");
 const UILowerString CuiWidget3dObjectListViewer::PropertyName::CameraYaw              = UILowerString ("CameraYaw");
-const UILowerString CuiWidget3dObjectListViewer::PropertyName::CameraZoomMatchOrientation = UILowerString ("CameraZoomMatchOrientation");
 const UILowerString CuiWidget3dObjectListViewer::PropertyName::DragPitchMax           = UILowerString ("DragPitchMax");
 const UILowerString CuiWidget3dObjectListViewer::PropertyName::DragPitchMin           = UILowerString ("DragPitchMin");
 const UILowerString CuiWidget3dObjectListViewer::PropertyName::DragPitchOk            = UILowerString ("DragPitchOk");
@@ -383,10 +381,9 @@ m_viewport                  (),
 m_fitRect                   (0, 0, 100, 100),
 m_cameraLookAtBone          (),
 m_cameraZoomLookAtBone      (),
-	m_zoomBoneInterpFactor      (0.0f),
-	m_cameraDeflectionAngle     (),
-	m_cameraOrientationZoomOffset (),
-	m_cameraLookAtBoneOk        (false),
+m_zoomBoneInterpFactor      (0.0f),
+m_cameraDeflectionAngle     (),
+m_cameraLookAtBoneOk        (false),
 m_rotateSpeed               (0.0f),
 m_lastDragTime              (0),
 m_scaleMaxOverride          (0.0f),
@@ -569,23 +566,12 @@ void CuiWidget3dObjectListViewer::Render( UICanvas & canvas) const
 	ShaderPrimitiveSorter::setUseClipRectangle(false);
 	RenderStart   (canvas);
 	RenderStop    ();
-	// Always restore the full render-target viewport. Graphics::getViewport() only tracks the last
-	// setViewport() call; saving/restoring that cache can leave a 3D sub-rect active and the rest of
-	// the UI pass draws black/off-screen (e.g. switching avatar rows after one preview render).
-	Graphics::setViewport (0, 0, Graphics::getCurrentRenderTargetWidth (), Graphics::getCurrentRenderTargetHeight (), 0.0f, 1.0f);
 	ShaderPrimitiveSorter::setUseClipRectangle(useClip);
 
 	if (boolEqual(m_renderObjectEffects, false))
 	{
 		Appearance::enableRenderEffects(true);
 	}
-}
-
-//----------------------------------------------------------------------
-
-void CuiWidget3dObjectListViewer::RestoreRenderTargetViewportAfterRender () const
-{
-	Graphics::setViewport (0, 0, Graphics::getCurrentRenderTargetWidth (), Graphics::getCurrentRenderTargetHeight (), 0.0f, 1.0f);
 }
 
 //----------------------------------------------------------------------
@@ -651,6 +637,15 @@ void CuiWidget3dObjectListViewer::RenderStart   (UICanvas & canvas) const
 		m_lastViewportSize = viewportSize;
 	}
 
+	// UI scale (2026-05-16): m_viewport above is in LOGICAL canvas coords
+	// (built from widgetSize + canvasTranslation). m_camera->setViewport
+	// expects PHYSICAL render-target pixels because the 3D scene is drawn
+	// to the actual backbuffer. Multiply by uiCanvasScale here so the 3D
+	// model preview lands at the same physical pixel as the widget frame
+	// (which renders through the canvas Scale transform). Without this the
+	// preview/portrait/inventory icons floated at the un-scaled position
+	// in the upper-left at uiScale != 1.0.
+	const float uiScale = Graphics::getUiCanvasScale();
 	if (canvas.IsDeforming())
 	{
 		UIScalar const viewportWidth = m_viewport.Width();
@@ -659,11 +654,19 @@ void CuiWidget3dObjectListViewer::RenderStart   (UICanvas & canvas) const
 		UIScalar const diffx = clamp(static_cast<UIScalar>(1), static_cast<UIScalar>(widgetCenter.x * (1.0f - m_fitScale.x)), static_cast<UIScalar>(viewportWidth - 1));
 		UIScalar const diffy = clamp(static_cast<UIScalar>(1), static_cast<UIScalar>(widgetCenter.y * (1.0f - m_fitScale.y)), static_cast<UIScalar>(viewportHeight - 1));
 
-		m_camera->setViewport(m_viewport.left + diffx, m_viewport.top + diffy, viewportWidth - diffx, viewportHeight - diffy);
+		m_camera->setViewport(
+			static_cast<int>((m_viewport.left + diffx) * uiScale),
+			static_cast<int>((m_viewport.top  + diffy) * uiScale),
+			static_cast<int>((viewportWidth  - diffx) * uiScale),
+			static_cast<int>((viewportHeight - diffy) * uiScale));
 	}
 	else
 	{
-		m_camera->setViewport(m_viewport.left, m_viewport.top, m_viewport.Width(), m_viewport.Height());
+		m_camera->setViewport(
+			static_cast<int>(m_viewport.left * uiScale),
+			static_cast<int>(m_viewport.top  * uiScale),
+			static_cast<int>(m_viewport.Width()  * uiScale),
+			static_cast<int>(m_viewport.Height() * uiScale));
 	}
 
 	UISize visibleSize(m_viewport.Size());
@@ -800,6 +803,11 @@ void CuiWidget3dObjectListViewer::RenderStart   (UICanvas & canvas) const
 	//-- Perform any override shader special rendering first
 	//--
 
+	// Heat compositing changes render targets and scissor state.  It is a
+	// world post-process and must not run inside an embedded UI camera.
+	bool const heatShadersEnabled = ShaderPrimitiveSorter::getHeatShadersEnabled();
+	ShaderPrimitiveSorter::setHeatShadersEnabled(false);
+
 	if (m_overrideShaderTemplate)
 	{
 		if (!hasFlags(F_useOverrideShaderTexture) && renderCameraScene)
@@ -819,7 +827,12 @@ void CuiWidget3dObjectListViewer::RenderStart   (UICanvas & canvas) const
 	if (renderCameraScene)
 	{
 		m_camera->renderScene ();
+		// Remove preview depth before subsequent 2D quads are submitted.
+		// Leaving it behind can reject one triangle of a UI quad.
+		Graphics::clearViewport(false, 0, true, 1.0f, true, 0);
 	}
+
+	ShaderPrimitiveSorter::setHeatShadersEnabled(heatShadersEnabled);
 
 	//--
 	//-- Rendering complete, now restore the pre-render states
@@ -1111,7 +1124,7 @@ void CuiWidget3dObjectListViewer::debugRender () const
 
 void  CuiWidget3dObjectListViewer::RenderStop    () const
 {
-	// Render() restores the full render-target viewport after RenderStart (embedded 3D narrows it).
+	Graphics::setViewport (0, 0, Graphics::getCurrentRenderTargetWidth (), Graphics::getCurrentRenderTargetHeight ());
 }
 
 //----------------------------------------------------------------------
@@ -1304,13 +1317,13 @@ void  CuiWidget3dObjectListViewer::Notify( UINotificationServer *, UIBaseObject 
 			const Object * const obj = op.second.getPointer ();
 			if (!obj)
 			{
-			 it = m_objectVector->erase (it);
+				it = m_objectVector->erase (it);
 			}
 			else
 			{
 				const Appearance * const app = obj->getAppearance ();
 				if (app)
-				 app->setRenderedThisFrame ();
+					app->setRenderedThisFrame ();
 
 				++it;
 			}
@@ -1598,26 +1611,6 @@ bool  CuiWidget3dObjectListViewer::SetProperty( const UILowerString & Name, cons
 		if (UIUtils::ParseFloat (Value, f))
 		{
 			setCameraRoll (f);
-			return true;
-		}
-		return false;
-	}
-	else if (Name == PropertyName::CameraZoomMatchOrientation)
-	{
-		bool b = false;
-		if (UIUtils::ParseBoolean (Value, b))
-		{
-			setCameraZoomMatchOrientation (b);
-			return true;
-		}
-		return false;
-	}
-	else if (Name == PropertyName::CameraOrientationZoomOffset)
-	{
-		Vector v;
-		if (CuiUtils::ParseVector (Value, v))
-		{
-			setCameraOrientationZoomOffset (v);
 			return true;
 		}
 		return false;
@@ -1914,14 +1907,6 @@ bool  CuiWidget3dObjectListViewer::GetProperty( const UILowerString & Name, UISt
 	{
 		return UIUtils::FormatBoolean (Value, hasFlags (F_cameraTransformToObj));
 	}
-	else if (Name == PropertyName::CameraZoomMatchOrientation)
-	{
-		return UIUtils::FormatBoolean (Value, hasFlags (F_cameraZoomMatchOrientation));
-	}
-	else if (Name == PropertyName::CameraOrientationZoomOffset)
-	{
-		return CuiUtils::FormatVector (Value, m_cameraOrientationZoomOffset);
-	}
 	else if (Name == PropertyName::CameraLookAt)
 	{
 		return CuiUtils::FormatVector (Value, m_cameraLookAt);
@@ -2145,14 +2130,11 @@ void  CuiWidget3dObjectListViewer::GetPropertyNames( UIPropertyNameVector & in, 
 	in.push_back (PropertyName::CameraPitch   );
 	in.push_back (PropertyName::CameraRoll  );
 	in.push_back (PropertyName::CameraTransformToObj);
-	in.push_back (PropertyName::CameraOrientationZoomOffset);
 	in.push_back (PropertyName::CameraYaw   );
-	in.push_back (PropertyName::CameraZoomMatchOrientation);
 	in.push_back (PropertyName::DragPitchMax);
 	in.push_back (PropertyName::DragPitchMin);
 	in.push_back (PropertyName::DragPitchOk);
 	in.push_back (PropertyName::DragYawOk);
-	in.push_back (PropertyName::DrawName);
 	in.push_back (PropertyName::FieldOfView );
 	in.push_back (PropertyName::FitDistanceFactor);
 	in.push_back (PropertyName::FitRect );
@@ -2321,29 +2303,18 @@ void CuiWidget3dObjectListViewer::setUnsetFlags (Flags f, bool set)
 
 //----------------------------------------------------------------------
 
-void CuiWidget3dObjectListViewer::getEffectiveCameraYawPitchRollFromBase (float baseYaw, float basePitch, float baseRoll, float & outYaw, float & outPitch, float & outRoll) const
-{
-	outYaw   = baseYaw;
-	outPitch = basePitch;
-	outRoll  = baseRoll;
-
-	const bool applyOffset =
-		hasFlags (F_cameraZoomMatchOrientation) ||
-		(m_cameraOrientationZoomOffset.magnitudeSquared () > 1.0e-12f);
-
-	if (applyOffset)
-	{
-		outYaw   = angleClamp2Pi (baseYaw   + m_cameraOrientationZoomOffset.x);
-		outPitch = angleClamp2Pi (basePitch + m_cameraOrientationZoomOffset.y);
-		outRoll  = angleClamp2Pi (baseRoll  + m_cameraOrientationZoomOffset.z);
-	}
-}
-
-//----------------------------------------------------------------------
-
-float CuiWidget3dObjectListViewer::computeFitDistanceInternal (float yaw, float pitch, float roll, bool & appearancesReady) const
+const float CuiWidget3dObjectListViewer::computeFitDistance (bool & appearancesReady) const
 {
 	static const float TANGENT_FUDGE_FACTOR = 1.00f;
+
+	//-- determine the effective FOV by comparing the fitRect to the widget's rectangle
+	//-- the effective vertical fov is:
+	//-- f' = 2 * atan ( h * tan (f / 2) / H)
+	//-- where h = the height of the fitRect
+	//--       H = the height of the widget
+	//--       f = the camera's vertical field of view
+
+	//-- m_fitRect is in percentage units
 
 	UIFloatPoint fitRect_size;
 	fitRect_size.x = static_cast<float>((m_fitRect.right - m_fitRect.left) * GetWidth()) * 0.01f * m_fitScale.x;
@@ -2365,9 +2336,8 @@ float CuiWidget3dObjectListViewer::computeFitDistanceInternal (float yaw, float 
 
 	Transform transformDiff = Transform::identity;
 	transformDiff.move_l  (m_cameraLookAtTarget);
-	transformDiff.yaw_l   (yaw);
-	transformDiff.pitch_l (pitch);
-	transformDiff.roll_l  (roll);
+	transformDiff.yaw_l   (m_cameraYawPitchZoom.x);
+	transformDiff.pitch_l (m_cameraYawPitchZoom.y);
 
 	static std::vector<Vector> vv;
 	vv.clear ();
@@ -2376,6 +2346,8 @@ float CuiWidget3dObjectListViewer::computeFitDistanceInternal (float yaw, float 
 	for (std::vector<Vector>::const_iterator it = vv.begin (); it != vv.end (); ++it)
 	{
 		const Vector transformed (transformDiff.rotateTranslate_p2l (*it));
+
+		//----------------------------------------------------------------------
 
 		float dz = 0.0f;
 
@@ -2388,6 +2360,8 @@ float CuiWidget3dObjectListViewer::computeFitDistanceInternal (float yaw, float 
 			max_dz = std::max (max_dz, dz);
 		}
 
+		//----------------------------------------------------------------------
+
 		{
 			if (transformed.x >= 0.0f)
 				dz = transformed.x * recip_halfTan_horizontal - transformed.z;
@@ -2398,18 +2372,9 @@ float CuiWidget3dObjectListViewer::computeFitDistanceInternal (float yaw, float 
 		}
 	}
 
+	
+
 	return max_dz * m_fitDistanceFactor;
-}
-
-//----------------------------------------------------------------------
-
-const float CuiWidget3dObjectListViewer::computeFitDistance (bool & appearancesReady) const
-{
-	float ey = 0.f;
-	float ep = 0.f;
-	float er = 0.f;
-	getEffectiveCameraYawPitchRollFromBase (m_cameraYawPitchZoom.x, m_cameraYawPitchZoom.y, m_cameraRoll, ey, ep, er);
-	return computeFitDistanceInternal (ey, ep, er, appearancesReady);
 }
 
 //----------------------------------------------------------------------
@@ -2438,12 +2403,6 @@ bool CuiWidget3dObjectListViewer::checkAppearancesReady () const
 		if (skelApp)
 		{
 			if (!const_cast<SkeletalAppearance2 *>(skelApp)->rebuildIfDirtyAndAvailable())
-				return false;
-		}
-		else
-		{
-			const DetailAppearance * const detailApp = app->asDetailAppearance ();
-			if (detailApp && !detailApp->isLoaded())
 				return false;
 		}
 	}
@@ -2482,48 +2441,9 @@ void CuiWidget3dObjectListViewer::computeFitPointCloud (stdvector<Vector>::fwd &
 
 		if (appearancesReady)
 		{
-			const SkeletalAppearance2 * const skelApp = app ? app->asSkeletalAppearance2 () : 0;
+			const SkeletalAppearance2 * const skelApp = app->asSkeletalAppearance2 ();
 			if (skelApp)
-			{
-				bool found = false;
-				int index = 0;
-
-				//-- Force the skeleton and mesh processing to occur if it is needed.
-				// @todo fix this, get a non-const Appearance instance.
-				appearancesReady = const_cast<SkeletalAppearance2 *>(skelApp)->rebuildIfDirtyAndAvailable ();
-
-				Skeleton const * const skeleton = skelApp->getDisplayLodSkeleton ();
-				if (skeleton)
-				{
-					skeleton->findTransformIndex(TemporaryCrcString (m_cameraLookAtBone.c_str (), true), &index, &found);
-
-					if (found && index >= 0)
-					{
-						const Transform & transform = skeleton->getJointToRootTransformArray() [index];
-						m_cameraLookAtTarget = transform.getPosition_p ();
-						if(!m_cameraZoomLookAtBone.empty())
-						{
-							skeleton->findTransformIndex(TemporaryCrcString (m_cameraZoomLookAtBone.c_str (), true), &index, &found);
-							if (found && index >= 0)
-							{
-								const Transform & transform = skeleton->getJointToRootTransformArray() [index];
-								float clampedVal = std::max(std::min(m_zoomBoneInterpFactor, 1.0f), 0.0f);
-								m_cameraLookAtTarget = Vector::linearInterpolate(m_cameraLookAtTarget, transform.getPosition_p (), clampedVal);
-							}
-						}
-					}
-				}
-			}
-
-		}
-		else if (hasFlags (F_cameraLookAtCenter))
-		{
-			if (app)
-			{
-				BoxExtent boxExtent;
-				computeTransformedBoxExtent (*obj, boxExtent, false);
-				m_cameraLookAtTarget = boxExtent.getSphere ().getCenter ();
-			}
+				appearancesReady = const_cast<SkeletalAppearance2 *>(skelApp)->rebuildIfDirtyAndAvailable();
 		}
 
 		if (useScale)
@@ -2580,10 +2500,20 @@ bool CuiWidget3dObjectListViewer::findWorldLocation(UIPoint const & pointLocalTo
 
 	UIPoint const globalPoint(pointLocalToControl + m_viewport.Location ());
 
-	m_camera->setViewport(m_viewport.left, m_viewport.top, viewportWidth, viewportHeight);
+	// UI scale: setViewport + reverseProjectInScreenSpace both operate in
+	// PHYSICAL render-target pixels (the actual D3D viewport). m_viewport
+	// and globalPoint are in LOGICAL canvas coords. Scale both up.
+	const float uiScale = Graphics::getUiCanvasScale();
+	m_camera->setViewport(
+		static_cast<int>(m_viewport.left * uiScale),
+		static_cast<int>(m_viewport.top  * uiScale),
+		static_cast<int>(viewportWidth   * uiScale),
+		static_cast<int>(viewportHeight  * uiScale));
 
 	begin_w = m_camera->getPosition_w();
-	end_w = begin_w + (10000.0f * m_camera->rotate_o2w(m_camera->reverseProjectInScreenSpace (globalPoint.x, globalPoint.y)));
+	end_w = begin_w + (10000.0f * m_camera->rotate_o2w(m_camera->reverseProjectInScreenSpace (
+		static_cast<int>(globalPoint.x * uiScale),
+		static_cast<int>(globalPoint.y * uiScale))));
 
 	Graphics::setViewport(0, 0, Graphics::getCurrentRenderTargetWidth (), Graphics::getCurrentRenderTargetHeight ());
 
@@ -2708,7 +2638,16 @@ bool CuiWidget3dObjectListViewer::findScreenLocation (const ClientObject & obj, 
 		if (m_viewport.Width () <= 0 || m_viewport.Height () <= 0)
 			return 0;
 
-		m_camera->setViewport (m_viewport.left, m_viewport.top, m_viewport.Width (), m_viewport.Height ());
+		// UI scale: setViewport + projectInWorldSpace operate in PHYSICAL
+		// pixels. m_viewport is in LOGICAL coords. Scale up for the camera
+		// op, then scale screenVect back to logical when computing
+		// widget-local screenLocation (caller expects logical).
+		const float uiScale = Graphics::getUiCanvasScale();
+		m_camera->setViewport (
+			static_cast<int>(m_viewport.left   * uiScale),
+			static_cast<int>(m_viewport.top    * uiScale),
+			static_cast<int>(m_viewport.Width () * uiScale),
+			static_cast<int>(m_viewport.Height() * uiScale));
 
 		Vector screenVect;
 		const Vector parentLocation (obj.rotateTranslate_o2w (objectLocation));
@@ -2718,9 +2657,13 @@ bool CuiWidget3dObjectListViewer::findScreenLocation (const ClientObject & obj, 
 		if (retval)
 		{
 			const UIPoint gpt = m_viewport.Location ();
-
-			screenLocation.x = static_cast<long>(screenVect.x - gpt.x);
-			screenLocation.y = static_cast<long>(screenVect.y - gpt.y);
+			// screenVect is in PHYSICAL pixels (from projectInWorldSpace),
+			// gpt is in LOGICAL. Convert screenVect to logical so the
+			// resulting widget-local screenLocation matches the rest of
+			// the UI's coordinate system.
+			const float invScale = (uiScale != 0.0f) ? (1.0f / uiScale) : 1.0f;
+			screenLocation.x = static_cast<long>(screenVect.x * invScale - gpt.x);
+			screenLocation.y = static_cast<long>(screenVect.y * invScale - gpt.y);
 			return true;
 		}
 
@@ -2859,7 +2802,7 @@ void CuiWidget3dObjectListViewer::removeObject (Object & obj)
 
 Object * CuiWidget3dObjectListViewer::getLastObject ()
 {
-	if (m_objectVector->empty ())
+	if (!m_objectVector || m_objectVector->empty ())
 		return 0;
 	else
 		return m_objectVector->back ().first;
@@ -3111,14 +3054,9 @@ void CuiWidget3dObjectListViewer::gotoCameraPivotPoint (bool useTarget) const
 	else
 		m_camera->move_o  (m_cameraLookAt);
 
-	float yaw = 0.f;
-	float pitch = 0.f;
-	float roll = 0.f;
-	getEffectiveCameraYawPitchRollFromBase (m_cameraYawPitchZoom.x, m_cameraYawPitchZoom.y, m_cameraRoll, yaw, pitch, roll);
-
-	m_camera->yaw_o   (yaw);
-	m_camera->pitch_o (pitch);
-	m_camera->roll_o  (roll);
+	m_camera->yaw_o   (m_cameraYawPitchZoom.x);
+	m_camera->pitch_o (m_cameraYawPitchZoom.y);
+	m_camera->roll_o  (m_cameraRoll);
 }
 
 //----------------------------------------------------------------------
@@ -3131,38 +3069,6 @@ void CuiWidget3dObjectListViewer::recomputeZoom ()
 
 	if (hasFlags (F_cameraAutoZoom))
 	{
-		//-- Pick roll that minimizes required backing distance for tilted props (e.g. vendor pedestals)
-		//-- when CameraZoomMatchOrientation + CameraTransformToObj; CameraOrientationZoomOffset is applied on top.
-		if (hasFlags (F_cameraZoomMatchOrientation) && hasFlags (F_cameraTransformToObj))
-		{
-			float bestRoll     = m_cameraRoll;
-			float bestDistance = 1.0e30f;
-
-			for (int i = 0; i < 16; ++i)
-			{
-				const float trialRoll = static_cast<float>(i) * (PI_TIMES_2 / 16.0f);
-				float ey = 0.f;
-				float ep = 0.f;
-				float er = 0.f;
-				getEffectiveCameraYawPitchRollFromBase (m_cameraYawPitchZoom.x, m_cameraYawPitchZoom.y, trialRoll, ey, ep, er);
-
-				bool ready        = true;
-				const float trialDist = computeFitDistanceInternal (ey, ep, er, ready);
-
-				if (trialDist < bestDistance)
-				{
-					bestDistance = trialDist;
-					bestRoll     = trialRoll;
-				}
-
-				if (!ready)
-					appearancesReady = false;
-			}
-
-			setCameraRoll (bestRoll);
-			gotoCameraPivotPoint (true);
-		}
-
 		//-- push the distance out 0.2f meters to always leave room for the near plane
 		const float newDistance = computeFitDistance(appearancesReady) + 0.2f;
 
@@ -3286,36 +3192,6 @@ void CuiWidget3dObjectListViewer::setDrawName  (bool b)
 void CuiWidget3dObjectListViewer::setCameraTransformToObj  (bool b)
 {
 	setUnsetFlags (F_cameraTransformToObj, b);
-}
-
-//----------------------------------------------------------------------
-
-void CuiWidget3dObjectListViewer::setCameraZoomMatchOrientation (bool b)
-{
-	setUnsetFlags (F_cameraZoomMatchOrientation, b);
-	setViewDirty (true);
-}
-
-//----------------------------------------------------------------------
-
-bool CuiWidget3dObjectListViewer::getCameraZoomMatchOrientation () const
-{
-	return hasFlags (F_cameraZoomMatchOrientation);
-}
-
-//----------------------------------------------------------------------
-
-void CuiWidget3dObjectListViewer::setCameraOrientationZoomOffset (Vector const & offsetRadians)
-{
-	m_cameraOrientationZoomOffset = offsetRadians;
-	setViewDirty (true);
-}
-
-//----------------------------------------------------------------------
-
-Vector const & CuiWidget3dObjectListViewer::getCameraOrientationZoomOffset () const
-{
-	return m_cameraOrientationZoomOffset;
 }
 
 //----------------------------------------------------------------------
@@ -3551,14 +3427,9 @@ void CuiWidget3dObjectListViewer::recomputeNearAndFarPlanes()
 	if (!totalAxialBox.isEmpty() && !m_forceDefaultClippingPlanes)
 	{
 		float const radius = totalAxialBox.getRadius();
-		float const cameraDistance = m_cameraYawPitchZoom.z;
 
-		// Scale the minimum near plane based on camera distance to maintain depth precision
-		// This prevents grey artifacts from depth buffer precision issues when zoomed out
-		float const scaledNearPlaneMinimum = std::max(s_nearPlaneMinimum, cameraDistance * 0.001f);
-
-		float nearPlane = clamp(scaledNearPlaneMinimum, (cameraDistance - radius) * 0.5f, s_nearPlaneMaximum);
-		float farPlane = clamp(nearPlane + 1.0f, cameraDistance + radius, s_farPlaneMaximum);
+		float nearPlane = clamp(s_nearPlaneMinimum, (m_cameraYawPitchZoom.z - radius) * 0.5f, s_nearPlaneMaximum);
+		float farPlane = clamp(nearPlane + 1.0f, m_cameraYawPitchZoom.z + radius, s_farPlaneMaximum);
 		m_camera->setNearPlane (nearPlane);
 		m_camera->setFarPlane  (farPlane);
 	}

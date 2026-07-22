@@ -1010,6 +1010,15 @@ bool SkeletalAppearance2::getUiContextEnabled()
 	return s_uiContextEnabled;
 }
 
+// ----------------------------------------------------------------------
+
+void SkeletalAppearance2::resetUiRenderGlobals()
+{
+	s_uiContextEnabled = false;
+	s_maximumDesiredDetailLevelEnabled = false;
+	s_maximumDesiredDetailLevelIndex   = 0;
+}
+
 // ======================================================================
 // SkeletalAppearance2: public member functions
 // ======================================================================
@@ -1523,8 +1532,12 @@ void SkeletalAppearance2::render() const
 
 	NP_PROFILER_AUTO_BLOCK_DEFINE("SkeletalAppearance2::render");
 
-	//-- Get the camera and the owner object.
+	// Keep screen-fraction LOD math in sync with the active camera viewport.
 	const Camera *camera = &ShaderPrimitiveSorter::getCurrentCamera();
+	int const vpMin = std::max(1, std::min(camera->getViewportWidth(), camera->getViewportHeight()));
+	s_twoOverScreenLength = 2.0f / static_cast<float>(vpMin);
+
+	//-- Get the camera and the owner object.
 	const Object *object = getOwner();
 	NOT_NULL(object);
 
@@ -1557,12 +1570,16 @@ void SkeletalAppearance2::render() const
 	
 	bool skipRender = (screenDiameterFraction <= ConfigClientSkeletalAnimation::getNoRenderScreenFraction());
 
-	/*if(s_maximumDesiredDetailLevelEnabled)
+	// UI-context only: paperdoll/preview cameras can fail screen projection, so force
+	// the render on with a sane screen fraction. Do NOT apply this to world rendering
+	// (previous Titan build also triggered on s_maximumDesiredDetailLevelEnabled which
+	// disabled distance culling/LOD/batching for every character in the world).
+	if (s_uiContextEnabled)
 	{
 		skipRender = false;
-		screenDiameterFraction = 0.5;
+		screenDiameterFraction = 0.5f;
 		projectionSuccess = true;
-	}*/
+	}
 
 	if(savedDisplayLodIndex > 0)
 	{
@@ -1715,7 +1732,8 @@ void SkeletalAppearance2::render() const
 
 				//-- Determine if we're batch rendering.
 				bool useBatcher = false;
-				if (!s_disableBatcher 
+				if (!s_uiContextEnabled
+					&& !s_disableBatcher 
 					&& (m_fadeState == FS_notFading) 
 					&& (m_hologramType == HT_none)
 					&& !m_isBlueGlowie
@@ -1733,6 +1751,13 @@ void SkeletalAppearance2::render() const
 					}
 				}
 
+#if defined(_WIN64)
+				// The legacy batch format contains position, normal, and color
+				// only.  It drops weapon/wearable UVs, so small attachments
+				// become solid-colored or incorrectly textured on x64.
+				useBatcher = false;
+#endif
+
 				if (!s_uiContextEnabled)
 				{
 					// Only update this value if we're not rendering in the UI context.
@@ -1745,12 +1770,24 @@ void SkeletalAppearance2::render() const
 
 				bool const mustUseSoftSkinning = appearanceTemplate.mustUseSoftSkinning();
 
-				if (screenDiameterFraction <= ConfigClientSkeletalAnimation::getNoSkinningScreenFraction())
+				if (s_uiContextEnabled)
+				{
+					// UI previews (inventory paperdoll, draft icon, examine) must skin every
+					// frame with full soft skinning — never SM_noSkinning skip paths that
+					// leave the shared dynamic VB unwritten while draw still runs.
+					skinningMode = ShaderPrimitive::SM_softSkinning;
+				}
+#if defined(_WIN64)
+				else
+					skinningMode = ShaderPrimitive::SM_softSkinning;
+#else
+				else if (screenDiameterFraction <= ConfigClientSkeletalAnimation::getNoSkinningScreenFraction())
 					skinningMode = ShaderPrimitive::SM_noSkinning;
 				else if (!mustUseSoftSkinning && (m_forceHardSkinningEnabled || (screenDiameterFraction <= ConfigClientSkeletalAnimation::getHardSkinningScreenFraction())))
 					skinningMode = ShaderPrimitive::SM_hardSkinning;
 				else
 					skinningMode = ShaderPrimitive::SM_softSkinning;
+#endif
 
 #if PRODUCTION == 0
 				//-- Track # characters rendered in each skinning mode (separate batched from standard rendering).
@@ -1778,11 +1815,11 @@ void SkeletalAppearance2::render() const
 
 					//-- Set the skinning parameters.
 					sbsShaderPrimitive->setSkinningMode(skinningMode);
-					sbsShaderPrimitive->setEveryOtherFrameSkinningEnabled(m_everyOtherFrameSkinningEnabled);
+					sbsShaderPrimitive->setEveryOtherFrameSkinningEnabled(s_uiContextEnabled ? false : m_everyOtherFrameSkinningEnabled);
 
 					if (!useBatcher)
 					{
-						if (m_fadeState == FS_notFading)
+						if (m_fadeState == FS_notFading || s_uiContextEnabled)
 							ShaderPrimitiveSorter::add(*shaderPrimitive);
 						else
 							ShaderPrimitiveSorter::addWithAlphaFadeOpacity(*shaderPrimitive, true, m_fadeFraction, true, m_fadeFraction);
@@ -2700,7 +2737,7 @@ void SkeletalAppearance2::wear(Object *object)
 		m_wornAppearanceObjects = new WatcherObjectVectorVector;
 
 	// Add appearance to list of worn appearances.
-	m_wornAppearanceObjects->push_back();
+	m_wornAppearanceObjects->push_back(ObjectWatcherVectorPair());
 	ObjectWatcherVectorPair & back = m_wornAppearanceObjects->back();
 	back.first = object;
 
@@ -3902,14 +3939,113 @@ void SkeletalAppearance2::notifyMeshGeneratorModified()
 
 int SkeletalAppearance2::calculateDisplayLodIndex(float diameterScreenFraction, int previousLodIndex) const
 {
-	UNREF(diameterScreenFraction);
-	UNREF(previousLodIndex);
-
-	// ALWAYS return highest detail LOD (0) for best visual quality
+	// Retail/GR LOD selection restored. The previous Titan hardcode ("always
+	// return LOD 0") fed full-detail meshes into the distant-character batch
+	// renderer / no-skinning paths, combinations retail never exercised, and
+	// produced corrupt (solid-colored) distant characters on x64.
 	if (m_maxAvailableDetailLevelIndex < 0)
 		return m_maxAvailableDetailLevelIndex;
 
-	return 0;
+	if (m_userControlledDetailLevel)
+	{
+		// Don't modify the display LOD index when the user is directly controlling detail levels.
+		return m_displayLodIndex;
+	}
+
+	//-- Titan: optionally force skeletal appearances to always render at the
+	//   highest available detail level (LOD 0).  Level 0 always exists when
+	//   m_maxAvailableDetailLevelIndex >= 0 (checked above), and the render
+	//   path's rebuildOrAdjustDisplayLodIndex() still falls back to the nearest
+	//   loaded level while level 0 data is asynchronously loading, so this
+	//   cannot stall or crash on missing data.  Returning here intentionally
+	//   bypasses the CharacterLodManager planned-LOD downgrade below.
+	//   Controlled by [ClientSkeletalAnimation] forceHighestLod (default true on x64).
+	if (ConfigClientSkeletalAnimation::getForceHighestLod())
+		return 0;
+
+	//-- Adjust diameter for LOD bias.
+	if (ms_lodBias > 0.0f)
+		diameterScreenFraction *= ms_lodBias;
+
+	int tryLodIndex = ((previousLodIndex >= 0) && (previousLodIndex <= m_maxAvailableDetailLevelIndex)) ? previousLodIndex : m_maxAvailableDetailLevelIndex;
+
+	if (tryLodIndex < 0)
+		return 0;
+
+	int const maxLodIndex = std::min(cs_maxLodCount - 1, m_maxAvailableDetailLevelIndex);
+	tryLodIndex = std::min (maxLodIndex, tryLodIndex);
+
+	// Hysteresis: stay on the previous LOD until screen fraction clears the band
+	// by a margin, to stop boundary flicker when the camera or character moves slightly.
+	if (previousLodIndex >= 0 && previousLodIndex <= maxLodIndex)
+	{
+		float const bandWidth = s_lodInfoArray[previousLodIndex].maxScreenFraction - s_lodInfoArray[previousLodIndex].minScreenFraction;
+		float const margin    = bandWidth * 0.20f;
+		if (diameterScreenFraction <= s_lodInfoArray[previousLodIndex].maxScreenFraction + margin
+			&& diameterScreenFraction >= s_lodInfoArray[previousLodIndex].minScreenFraction - margin)
+		{
+			return clamp(0, previousLodIndex, maxLodIndex);
+		}
+	}
+
+	//-- Start with try lod index.
+	while ((tryLodIndex >= 0) && (tryLodIndex <= maxLodIndex))
+	{
+		VALIDATE_RANGE_INCLUSIVE_INCLUSIVE(0, tryLodIndex, maxLodIndex);
+
+		// Check screen fraction fits within existing lod.
+		if ((diameterScreenFraction <= s_lodInfoArray[tryLodIndex].maxScreenFraction) && (diameterScreenFraction >= s_lodInfoArray[tryLodIndex].minScreenFraction)) //lint !e676 // possible -1 array subscript // wrong.
+		{
+			// This lod will work.
+			break;
+		}
+		else if (diameterScreenFraction <= s_lodInfoArray[tryLodIndex].minScreenFraction)  //lint !e676 // possible -1 array subscript // wrong.
+		{
+			// try next lower-detail lod index.
+			++tryLodIndex;
+		}
+		else
+		{
+			// try next greater-detail lod index
+			--tryLodIndex;
+		}
+	}
+
+	//-- If global maximum LOD index is enabled, make sure we never _try_ to render at a lower-density (larger numbered) detail level index.
+	if (s_maximumDesiredDetailLevelEnabled && (tryLodIndex > s_maximumDesiredDetailLevelIndex))
+		tryLodIndex = s_maximumDesiredDetailLevelIndex;
+
+	int const sizeBasedLodIndex = clamp(0, tryLodIndex, maxLodIndex);
+
+	if (s_uiContextEnabled || !CharacterLodManager::isEnabled())
+	{
+		//-- Don't adjust the detail level beyond appropriate lod selection for screen size
+		//   if we're in UI context or if the lod manager is disabled.
+		return sizeBasedLodIndex;
+	}
+	else
+	{
+		//-- Add character to list of characters that should be planned for next frame.
+		SkeletalAppearance2 *const nonConstAppearance = const_cast<SkeletalAppearance2*>(this);
+		Object *const owner = nonConstAppearance->getOwner();
+
+		if (owner)
+			CharacterLodManager::addCharacter(owner);
+
+		if (m_plannedLodSetFrameNumber + 2 < Os::getNumberOfUpdates())
+		{
+			//-- This appearance doesn't appear to have a planned lod set in the last frame.
+			//   There's a +2 because the texture rendering can cause another frame to slip in between
+			//   the two frames.
+			return sizeBasedLodIndex;
+		}
+
+		//-- Start trying to render character at the LOD planned by the character LOD planner.
+		//   Use the screen-based Lod index if it is a lower-density detail index.  In other words,
+		//   don't draw something at a higher level just because we would let it happen by plan ---
+		//   only do so if necessary.
+		return std::max(m_plannedLodIndex, sizeBasedLodIndex);
+	}
 }
 
 // ----------------------------------------------------------------------

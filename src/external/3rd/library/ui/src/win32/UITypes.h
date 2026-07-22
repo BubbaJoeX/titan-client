@@ -48,7 +48,6 @@ public:
 	static const UIColor cyan;
 	static const UIColor blue;
 	static const UIColor violet;
-	static const UIColor maroon;
 };
 
 //----------------------------------------------------------------------

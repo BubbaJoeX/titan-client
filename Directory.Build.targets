@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
+    <ClCompile>
+      <!-- Match vendored x64 libs (MT, no iterator debug). Undefine _DEBUG so CRT debug
+           heap (_malloc_dbg/_CrtDbgReport) is not used; game debug stays on DEBUG_LEVEL=2. -->
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <PreprocessorDefinitions>_ITERATOR_DEBUG_LEVEL=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <!-- vcxproj sets /D _DEBUG; append /U _DEBUG so release CRT (MT) does not need _CrtDbgReport. -->
+      <AdditionalOptions>/U _DEBUG %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <!-- SwgClient Debug|x64 uses /MT (hybrid debug); must link libcmt like Release|x64, not ignore LIBCMT. -->
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64' and '$(ConfigurationType)' == 'Application'">
+    <Link>
+      <IgnoreSpecificDefaultLibraries>libcmtd.lib;msvcrtd.lib;libc.lib;msvcrt.lib</IgnoreSpecificDefaultLibraries>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <ItemDefinitionGroup Condition="'$(Platform)' == 'x64'">
+    <ClCompile>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <PrecompiledHeaderOutputFile>$(IntDir)$(MSBuildProjectName).pch</PrecompiledHeaderOutputFile>
+      <ProgramDataBaseFileName>$(IntDir)$(MSBuildProjectName).pdb</ProgramDataBaseFileName>
+      <TreatWarningAsError>false</TreatWarningAsError>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>$(SwgX64DependenciesDir)\lib;$(DXSDK_DIR)Lib\x64;$(WindowsSDK_LibraryPath_x64);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+    <ResourceCompile>
+      <ResourceOutputFileName>$(IntDir)%(Filename).res</ResourceOutputFileName>
+    </ResourceCompile>
+    <Bscmake>
+      <OutputFile>$(IntDir)$(MSBuildProjectName).bsc</OutputFile>
+    </Bscmake>
+  </ItemDefinitionGroup>
+
+  <ItemDefinitionGroup Condition="'$(Platform)' == 'x64' and '$(ConfigurationType)' == 'StaticLibrary'">
+    <Lib>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+    </Lib>
+  </ItemDefinitionGroup>
+
+  <ItemDefinitionGroup Condition="'$(Platform)' == 'x64' and '$(ConfigurationType)' == 'DynamicLibrary'">
+    <Link>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+      <ImportLibrary>$(OutDir)$(TargetName).lib</ImportLibrary>
+      <ProgramDatabaseFile>$(OutDir)$(TargetName).pdb</ProgramDatabaseFile>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <ItemDefinitionGroup Condition="'$(Platform)' == 'x64' and '$(ConfigurationType)' == 'Application'">
+    <Link>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+      <ProgramDatabaseFile>$(OutDir)$(TargetName).pdb</ProgramDatabaseFile>
+    </Link>
+  </ItemDefinitionGroup>
+</Project>

@@ -6,6 +6,7 @@
 //
 //========================================================================
 
+// Rebuild when Unicode::String ABI changes (char16_t vs unsigned short).
 #include "FirstLocalization.h"
 #include "StringId.h"
 
@@ -22,15 +23,6 @@ const StringId StringId::cms_invalid;
 StringId::StringId () :
 m_table     (),
 m_text      (),
-m_textIndex (0)
-{
-}
-
-//----------------------------------------------------------------------
-
-StringId::StringId (char const * const table, char const * const text) :
-m_table     (table ? table : ""),
-m_text      (text ? text : ""),
 m_textIndex (0)
 {
 }

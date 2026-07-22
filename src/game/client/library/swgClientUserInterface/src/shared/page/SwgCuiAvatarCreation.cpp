@@ -214,7 +214,6 @@ void SwgCuiAvatarCreation::performActivate ()
 
 	if (!autoConnectOk ())
 	{
-		loadAllPlayerModels ();
 		updateAvatarSelection ();
 		setIsUpdating (true);
 		m_isLoading = true;

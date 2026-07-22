@@ -139,6 +139,8 @@ private:
 #ifdef _DEBUG
 		static bool                 ms_useDefaultMaterial;
 		static PaddedMaterial       ms_defaultMaterial;
+#endif
+#if DEBUG_LEVEL == DEBUG_LEVEL_DEBUG
 		static PaddedMaterial       ms_debugMaterial;
 #ifdef VSPS
 		static VectorRgba           ms_debugTextureFactorData[2];

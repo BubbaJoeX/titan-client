@@ -424,6 +424,7 @@ void CuiLayer::EngineCanvas::RenderLineStrip(const UICanvas * const src, int poi
 
 	const uint32 num = static_cast<uint32>(pointCount);
 	const float pixOffset = CuiManager::getPixelOffset ();
+	const float uiScale = Graphics::getUiCanvasScale();
 	const UIFloatPoint translate (static_cast<float>(GetTranslation ().x) + pixOffset, static_cast<float>(GetTranslation ().y) + pixOffset);
 	const PackedArgb dwVertexColor( mState.Color.a, mState.Color.r, mState.Color.g, mState.Color.b );
 
@@ -432,14 +433,14 @@ void CuiLayer::EngineCanvas::RenderLineStrip(const UICanvas * const src, int poi
 	format.setPosition();
 	format.setTransformed();
 	format.setColor0();
-	DynamicVertexBuffer vb (format);
+	DynamicVertexBuffer vb (format, DynamicVertexBuffer::DR_ui);
 
 	vb.lock (pointCount);
 	{
 		VertexBufferWriteIterator v = vb.begin();
 		for (uint32 i = 0; i < num; ++i)
 		{
-			UIFloatPoint pt (points [i].x + translate.x, points [i].y + translate.y);
+			UIFloatPoint pt ((points [i].x + translate.x) * uiScale, (points [i].y + translate.y) * uiScale);
 			clipPoint (mState.ClippingRect, pt);
 			v.setPosition (pt.x, pt.y, 1.0f);
 			v.setOoz (1.0f);
@@ -449,6 +450,7 @@ void CuiLayer::EngineCanvas::RenderLineStrip(const UICanvas * const src, int poi
 	}
 	vb.unlock ();
 
+	CuiLayerRenderer::restoreUiDrawState ();
 	Graphics::setStaticShader (*shader);
 	Graphics::setVertexBuffer (vb);
 	Graphics::drawLineStrip ();

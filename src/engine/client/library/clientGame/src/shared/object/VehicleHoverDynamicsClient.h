@@ -216,6 +216,7 @@ private:
 
 	float m_lastHeadTurnPercent;
 
+
 	class LightningEffectData
 	{
 	public:

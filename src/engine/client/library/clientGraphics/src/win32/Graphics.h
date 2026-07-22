@@ -102,6 +102,12 @@ public:
 	static int                           getFrameBufferMaxHeight();
 	static int                           getCurrentRenderTargetWidth();
 	static int                           getCurrentRenderTargetHeight();
+
+	// UI canvas scaling (ultrawide / hi-DPI support).
+	static float                         getUiCanvasScale();
+	static void                          setUiCanvasScale(float scale);
+	static int                           getUiCanvasWidth();
+	static int                           getUiCanvasHeight();
 	static int                           getCurrentRenderTargetMaxWidth();
 	static int                           getCurrentRenderTargetMaxHeight();
 	static int                           getStencilBufferBitDepth();

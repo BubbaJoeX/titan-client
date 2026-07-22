@@ -205,7 +205,7 @@ public:
 
 public:
 
-	bool applyCustomization(const IntVariableFactoryVector &intVariableFactoryVector, const IntVector &intValues, StaticShader &shader, const PackedArgbVector *directColors = 0) const;
+	bool applyCustomization(const IntVariableFactoryVector &intVariableFactoryVector, const IntVector &intValues, StaticShader &shader) const;
 
 private:
 
@@ -450,8 +450,12 @@ CustomizableShaderTemplate::AmbientMaterialIntOperation::AmbientMaterialIntOpera
 
 bool CustomizableShaderTemplate::AmbientMaterialIntOperation::execute(const IntVariableFactoryVector &intVariableFactoryVector, const IntVector &intValues, Material &material) const
 {
-	VALIDATE_RANGE_INCLUSIVE_EXCLUSIVE(0, m_variableIndex, static_cast<int>(intValues.size()));
-	VALIDATE_RANGE_INCLUSIVE_EXCLUSIVE(0, m_variableIndex, static_cast<int>(intVariableFactoryVector.size()));
+	if (m_variableIndex < 0
+		|| m_variableIndex >= static_cast<int>(intValues.size())
+		|| m_variableIndex >= static_cast<int>(intVariableFactoryVector.size()))
+	{
+		return false;
+	}
 
 	//-- fetch the palette
 	const PaletteColorVariableFactory *const pcvFactory = safe_cast<const PaletteColorVariableFactory*>(intVariableFactoryVector[static_cast<size_t>(m_variableIndex)]);
@@ -537,8 +541,12 @@ CustomizableShaderTemplate::DiffuseMaterialIntOperation::DiffuseMaterialIntOpera
 
 bool CustomizableShaderTemplate::DiffuseMaterialIntOperation::execute(const IntVariableFactoryVector &intVariableFactoryVector, const IntVector &intValues, Material &material) const
 {
-	VALIDATE_RANGE_INCLUSIVE_EXCLUSIVE(0, m_variableIndex, static_cast<int>(intValues.size()));
-	VALIDATE_RANGE_INCLUSIVE_EXCLUSIVE(0, m_variableIndex, static_cast<int>(intVariableFactoryVector.size()));
+	if (m_variableIndex < 0
+		|| m_variableIndex >= static_cast<int>(intValues.size())
+		|| m_variableIndex >= static_cast<int>(intVariableFactoryVector.size()))
+	{
+		return false;
+	}
 
 	//-- fetch the palette
 	const PaletteColorVariableFactory *const pcvFactory = safe_cast<const PaletteColorVariableFactory*>(intVariableFactoryVector[static_cast<size_t>(m_variableIndex)]);
@@ -551,6 +559,7 @@ bool CustomizableShaderTemplate::DiffuseMaterialIntOperation::execute(const IntV
 	const int         paletteEntryIndex = intValues[static_cast<size_t>(m_variableIndex)];
 	bool error = false;
 	const VectorArgb  color(palette->getEntry(paletteEntryIndex, error));
+
 	WARNING(error, ("CustomizableShaderTemplate::DiffuseMaterialIntOperation::execute error"));
 
 	DEBUG_REPORT_LOG(ms_debugLogChanges, ("|- setting diffuse (r=%g,g=%g,b=%g,a=%g) [%d]\n", color.r, color.g, color.b, color.a, paletteEntryIndex));
@@ -621,8 +630,12 @@ CustomizableShaderTemplate::EmissiveMaterialIntOperation::EmissiveMaterialIntOpe
 
 bool CustomizableShaderTemplate::EmissiveMaterialIntOperation::execute(const IntVariableFactoryVector &intVariableFactoryVector, const IntVector &intValues, Material &material) const
 {
-	VALIDATE_RANGE_INCLUSIVE_EXCLUSIVE(0, m_variableIndex, static_cast<int>(intValues.size()));
-	VALIDATE_RANGE_INCLUSIVE_EXCLUSIVE(0, m_variableIndex, static_cast<int>(intVariableFactoryVector.size()));
+	if (m_variableIndex < 0
+		|| m_variableIndex >= static_cast<int>(intValues.size())
+		|| m_variableIndex >= static_cast<int>(intVariableFactoryVector.size()))
+	{
+		return false;
+	}
 
 	//-- fetch the palette
 	const PaletteColorVariableFactory *const pcvFactory = safe_cast<const PaletteColorVariableFactory*>(intVariableFactoryVector[static_cast<size_t>(m_variableIndex)]);
@@ -919,8 +932,13 @@ bool CustomizableShaderTemplate::TextureIntOperation::applyCustomization(const C
 		return false;
 	}
 
+	//-- Release-time bounds guard.
+	if (m_variableIndex < 0 || m_variableIndex >= static_cast<int>(intValues.size()))
+	{
+		return false;
+	}
+
 	//-- Get local texture array index.
-	VALIDATE_RANGE_INCLUSIVE_EXCLUSIVE(0, m_variableIndex, static_cast<int>(intValues.size()));
 	int localArrayIndex = intValues[static_cast<IntVector::size_type>(m_variableIndex)];
 
 	//-- Compute template global texture index.
@@ -954,7 +972,6 @@ bool CustomizableShaderTemplate::TextureIntOperation::applyCustomization(const C
 		//-- Release the local texture reference.
 		texture->release();
 	}
-
 	return ok;
 }
 
@@ -973,29 +990,21 @@ CustomizableShaderTemplate::TextureFactorIntOperation *CustomizableShaderTemplat
 
 // ======================================================================
 
-bool CustomizableShaderTemplate::TextureFactorIntOperation::applyCustomization(const IntVariableFactoryVector &intVariableFactoryVector, const IntVector &intValues, StaticShader &shader, const PackedArgbVector *directColors) const
+bool CustomizableShaderTemplate::TextureFactorIntOperation::applyCustomization(const IntVariableFactoryVector &intVariableFactoryVector, const IntVector &intValues, StaticShader &shader) const
 {
-	VALIDATE_RANGE_INCLUSIVE_EXCLUSIVE(0, m_variableIndex, static_cast<int>(intValues.size()));
-	VALIDATE_RANGE_INCLUSIVE_EXCLUSIVE(0, m_variableIndex, static_cast<int>(intVariableFactoryVector.size()));
+	// Release-time bounds guards (debug had VALIDATE_RANGE; release would AV).
+	if (m_variableIndex < 0
+		|| m_variableIndex >= static_cast<int>(intValues.size())
+		|| m_variableIndex >= static_cast<int>(intVariableFactoryVector.size()))
+	{
+		return false;
+	}
 
 	//-- Check whether this shader implementation makes use of this texture factor.
 	if (!shader.hasTextureFactor(m_tfactorTag))
 		return false;
 
-	//-- Check for direct color override first
-	if (directColors && m_variableIndex < static_cast<int>(directColors->size()))
-	{
-		const PackedArgb &directColor = (*directColors)[static_cast<size_t>(m_variableIndex)];
-		// A non-zero alpha means a valid direct color override is set
-		if (directColor.getA() != 0)
-		{
-			DEBUG_REPORT_LOG(ms_debugLogChanges, ("|- setting direct color tfactor (r=%u,g=%u,b=%u,a=%u)\n", directColor.getR(), directColor.getG(), directColor.getB(), directColor.getA()));
-			shader.setTextureFactor(m_tfactorTag, directColor.getArgb());
-			return true;
-		}
-	}
-
-	//-- Fall back to palette lookup
+	//-- fetch the palette
 	const PaletteColorVariableFactory *const pcvFactory = safe_cast<const PaletteColorVariableFactory*>(intVariableFactoryVector[static_cast<size_t>(m_variableIndex)]);
 	NOT_NULL(pcvFactory);
 
@@ -1256,7 +1265,7 @@ bool CustomizableShaderTemplate::isIntVariablePrivate(int index) const
 
 // ----------------------------------------------------------------------
 
-bool CustomizableShaderTemplate::applyShaderSettings(const IntVector &intValues, StaticShader &shader, const PackedArgbVector *directColors) const
+bool CustomizableShaderTemplate::applyShaderSettings(const IntVector &intValues, StaticShader &shader) const
 {
 	NOT_NULL(m_intVariableFactoryVector);
 
@@ -1291,7 +1300,7 @@ bool CustomizableShaderTemplate::applyShaderSettings(const IntVector &intValues,
 		for (TextureFactorIntOperationVector::const_iterator it = m_textureFactorIntOperationVector->begin(); it != endIt; ++it)
 		{
 			NOT_NULL(*it);
-			ok = (*it)->applyCustomization(*m_intVariableFactoryVector, intValues, shader, directColors) && ok;
+			ok = (*it)->applyCustomization(*m_intVariableFactoryVector, intValues, shader) && ok;
 		}
 	}
 

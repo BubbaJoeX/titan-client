@@ -28,10 +28,8 @@ public:
 
 	void setOutputPath (const char * path);
 	void loadFromSpreadsheet (const char * filename);
-	void loadFromIff (const char * filename);
 
 	bool save (const char * outputFileName, bool optional = false) const;
-	bool saveToTab (const char * outputFileName, bool optional = false) const;
 	bool save (bool optional = false) const;
   	void save (Iff & iff) const;
 
@@ -41,7 +39,6 @@ public:
 	void getTableOutputFileName( const char* tableName, std::string& fileName ) const;
 
 	static bool isXmlFile(const char * filename);
-	static bool isIffFile(const char * filename);
 
 private:
 
@@ -49,7 +46,6 @@ private:
 
 	typedef std::list<NamedDataTable *> NamedDataTableList;
 
-	bool _writeTableToTab(NamedDataTable const * ndt, const char * outputFile, bool optional) const;
 	bool _checkIntegrity(const NamedDataTable * ndt) const;
 
 	void _loadFromSpreadsheetTab (const char * filename);

@@ -376,7 +376,7 @@ struct StrEqualsNoCase
 
 	bool                    operator() (const SwgCuiCommandParserDefault::AliasMap_t::value_type & t) const
 	{
-		return !_wcsicmp (str.c_str (), t.first.c_str ());
+		return !UIUnicode::icmp(str.c_str (), t.first.c_str ());
 	}
 
 	                        StrEqualsNoCase (const StrEqualsNoCase & rhs) : str (rhs.str) {}
@@ -400,7 +400,7 @@ struct StrEqualsNoCaseSet
 
 	bool                    operator() (const SwgCuiCommandParserDefault::AliasGuardSet_t::value_type & t) const
 	{
-		return !_wcsicmp (str.c_str (), t.c_str ());
+		return !UIUnicode::icmp(str.c_str (), t.c_str ());
 	}
 
 	                        StrEqualsNoCaseSet (const StrEqualsNoCaseSet & rhs) : str (rhs.str) {}

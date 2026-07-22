@@ -60,8 +60,8 @@ namespace OverheadMapNamespace
 {
 	const int        cms_maximumRadarZoomSetting = 10;
 	const float      cms_ooMaximumRadarZoomSetting = RECIP (10.f);
-	const float      cms_minimumRadarZoom = 10.f;
-	const float      cms_maximumRadarZoom = 1024.f;
+	const float      cms_minimumRadarZoom = 25.f;
+	const float      cms_maximumRadarZoom = 750.f;
 	const VectorArgb cms_radarColorExteriorTangible (0.33f, 0.f, 1.f, 0.f);
 	const VectorArgb cms_radarColorExteriorIntangible (0.33f, 0.5f, 1.f, 0.f);
 	const VectorArgb cms_radarColorInterior (0.25f, 1.f, 1.f, 1.f);

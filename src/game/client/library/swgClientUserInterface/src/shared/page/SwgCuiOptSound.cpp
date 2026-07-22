@@ -58,25 +58,25 @@ SwgCuiOptBase ("SwgCuiOptSound", page)
 	UIComboBox  * combo    = 0;
 
 	getCodeDataObject (TUISliderbar, slider, "sliderVolumeEffects");
-	registerSlider (*slider, Audio::setSoundEffectVolume, Audio::getSoundEffectVolume, Audio::getDefaultSoundEffectVolume, 0.f, 1.f);
+	registerSlider (slider, Audio::setSoundEffectVolume, Audio::getSoundEffectVolume, Audio::getDefaultSoundEffectVolume, 0.f, 1.f);
 
 	getCodeDataObject (TUISliderbar, slider, "sliderVolumeMaster");
-	registerSlider (*slider, Audio::setMasterVolume, Audio::getMasterVolume, Audio::getDefaultMasterVolume, 0.f, 1.f);
+	registerSlider (slider, Audio::setMasterVolume, Audio::getMasterVolume, Audio::getDefaultMasterVolume, 0.f, 1.f);
 
 	getCodeDataObject (TUISliderbar, slider, "sliderVolumeMusicBg");
-	registerSlider (*slider, Audio::setBackGroundMusicVolume, Audio::getBackGroundMusicVolume, Audio::getDefaultBackGroundMusicVolume, 0.f, 1.f);
+	registerSlider (slider, Audio::setBackGroundMusicVolume, Audio::getBackGroundMusicVolume, Audio::getDefaultBackGroundMusicVolume, 0.f, 1.f);
 
 	getCodeDataObject (TUISliderbar, slider, "sliderVolumeAmbient");
-	registerSlider (*slider, Audio::setAmbientEffectVolume, Audio::getAmbientEffectVolume, Audio::getDefaultAmbientEffectVolume, 0.f, 1.f);
+	registerSlider (slider, Audio::setAmbientEffectVolume, Audio::getAmbientEffectVolume, Audio::getDefaultAmbientEffectVolume, 0.f, 1.f);
 
 	getCodeDataObject (TUISliderbar, slider, "sliderVolumeMusicPlayer");
-	registerSlider (*slider, Audio::setPlayerMusicVolume, Audio::getPlayerMusicVolume, Audio::getDefaultPlayerMusicVolume, 0.f, 1.f);
+	registerSlider (slider, Audio::setPlayerMusicVolume, Audio::getPlayerMusicVolume, Audio::getDefaultPlayerMusicVolume, 0.f, 1.f);
 
 	getCodeDataObject (TUISliderbar, slider, "sliderVolumeUi");
-	registerSlider (*slider, Audio::setUserInterfaceVolume, Audio::getUserInterfaceVolume, Audio::getDefaultUserInterfaceVolume, 0.f, 1.f);
+	registerSlider (slider, Audio::setUserInterfaceVolume, Audio::getUserInterfaceVolume, Audio::getDefaultUserInterfaceVolume, 0.f, 1.f);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkListenerFollowsPlayer");
-	registerCheckbox (*checkbox, GroundScene::setListenerFollowsPlayer, GroundScene::getListenerFollowsPlayer, SwgCuiOptBase::getFalse);
+	registerCheckbox (checkbox, GroundScene::setListenerFollowsPlayer, GroundScene::getListenerFollowsPlayer, SwgCuiOptBase::getFalse);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkEnable");
 
@@ -88,7 +88,7 @@ SwgCuiOptBase ("SwgCuiOptSound", page)
 	}
 	else
 	{
-		registerCheckbox (*checkbox, Audio::setEnabled, Audio::isEnabled, Audio::isEnabled);
+		registerCheckbox (checkbox, Audio::setEnabled, Audio::isEnabled, Audio::isEnabled);
 		//-- restore checkbox & enabled states
 		checkbox->SetChecked (!Audio::isEnabled ());
 		checkbox->SetChecked (Audio::isEnabled ());
@@ -109,7 +109,7 @@ SwgCuiOptBase ("SwgCuiOptSound", page)
 			combo->AddItem(Unicode::narrowToWide (buf), buf);
 		}
 	}
-	registerComboBox (*combo, SwgCuiOptSound::onComboSimSet, SwgCuiOptSound::onComboSimGet, getDefaultIndexOne);
+	registerComboBox (combo, SwgCuiOptSound::onComboSimSet, SwgCuiOptSound::onComboSimGet, getDefaultIndexOne);
 }
 
 //----------------------------------------------------------------------

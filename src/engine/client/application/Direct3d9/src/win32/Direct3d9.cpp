@@ -15,10 +15,8 @@
 #include "ConfigDirect3d9.h"
 #include "Direct3d9_DynamicIndexBufferData.h"
 #include "Direct3d9_DynamicVertexBufferData.h"
-#include "Direct3d9_Instancing.h"
 #include "Direct3d9_LightManager.h"
 #include "Direct3d9_Metrics.h"
-#include "Direct3d9_OcclusionQuery.h"
 #include "Direct3d9_PixelShaderConstantRegisters.h"
 #include "Direct3d9_PixelShaderProgramData.h"
 #include "Direct3d9_RenderTarget.h"
@@ -59,7 +57,7 @@
 #include <ddraw.h>
 #include <d3dx9.h>
 
-// Some minimal / legacy D3D9 headers omit newer caps bits; values match the Windows SDK d3d9caps.h.
+// Legacy DirectX SDK headers omit these later D3D9 capability bits.
 #if !defined(D3DPMISCCAPS_FLOATBLEND)
 #define D3DPMISCCAPS_FLOATBLEND (0x00004000L)
 #endif
@@ -68,7 +66,8 @@
 #endif
 
 #include <stdio.h>
-#include <float.h>
+#include <psapi.h>
+#pragma comment(lib, "psapi.lib")
 
 #pragma warning (disable: 4201)
 #include <mmsystem.h>
@@ -105,20 +104,6 @@ WINUSERAPI BOOL WINAPI GetMonitorInfoW(HMONITOR hMonitor, LPMONITORINFO lpmi);
 #if !defined(FFP) && !defined(VSPS)
 #error must define FFP, VSPS, or both
 #endif
-
-// ======================================================================
-
-// Helper function to reset FPU/SSE state and clear any pending exceptions
-static void ResetFloatingPointState()
-{
-	// Clear any pending x87 FPU exceptions by calling fnclex via _clearfp()
-	_clearfp();
-
-	// Mask all x87 FPU exceptions to prevent crashes
-	// This is the key fix - DirectX and SSE operations can trigger FPU exceptions
-	// if they are not masked
-	_controlfp(_MCW_EM, _MCW_EM);
-}
 
 // ======================================================================
 
@@ -294,6 +279,7 @@ namespace Direct3d9Namespace
 
 	void                               setBloomEnabled(bool enabled);
 	void                               setOverrideFullAmbient(bool enabled, float r, float g, float b);
+	bool                               getDevicePresentationCaps(Gl_devicePresentationCaps *outCaps);
 
 	void                               pixSetMarker(WCHAR const * markerName);
 	void                               pixBeginEvent(WCHAR const * eventName);
@@ -975,18 +961,8 @@ const D3DFORMAT *Direct3d9Namespace::getMatchingDepthStencilFormats(int z, int s
 
 // ----------------------------------------------------------------------
 
-namespace
-{
-	bool getDevicePresentationCaps(Gl_devicePresentationCaps * const outCaps);
-}
-
-// ----------------------------------------------------------------------
-
 bool Direct3d9::install(Gl_install *gl_install)
 {
-	// Reset FPU/SSE state and mask all floating-point exceptions
-	ResetFloatingPointState();
-
 	DEBUG_FATAL(sizeof(PaddedVector) != sizeof(float) * 4, ("PaddedVector size bad"));
 	NOT_NULL(gl_install);
 	DEBUG_FATAL(ms_installed, ("already installed"));
@@ -1005,7 +981,6 @@ bool Direct3d9::install(Gl_install *gl_install)
 	ms_alphaFadeOpacity.b = 0.0f;
 	ms_alphaFadeOpacity.a = 0.0f;
 #endif
-
 
 	// store the screen dimensions
 	ms_width               = gl_install->width;
@@ -1374,22 +1349,15 @@ bool Direct3d9::install(Gl_install *gl_install)
 					else
 					{
 						ms_supportsMultiSample = false;
-				}
+					}
 
-				setPresentParameters();
+					setPresentParameters();
 
 					// figure out what type of device to create
 					if (vertexProcessingMode == D3DCREATE_HARDWARE_VERTEXPROCESSING && ConfigDirect3d9::getUsePureDevice())
 						vertexProcessingMode |= D3DCREATE_PUREDEVICE;
 
-					// Preserve FPU state to prevent floating-point exceptions
-					// Without this flag, Direct3D changes the FPU control word on every call
-					vertexProcessingMode |= D3DCREATE_FPU_PRESERVE;
-
 					hresult = ms_direct3d->CreateDevice(ms_adapter, ms_deviceType, ms_window, vertexProcessingMode, &ms_presentParameters, &ms_device);
-					
-					// Reset FPU state after device creation regardless of FPU_PRESERVE flag
-					ResetFloatingPointState();
 
 					if (SUCCEEDED(hresult))
 					{
@@ -1561,8 +1529,6 @@ bool Direct3d9::install(Gl_install *gl_install)
 	Direct3d9_TextureData::install();
 	Direct3d9_RenderTarget::install();
 	Direct3d9_LightManager::install();
-	Direct3d9_Instancing::install();
-	Direct3d9_OcclusionQuery::install();
 #ifdef _DEBUG
 	Direct3d9_Metrics::install();
 #endif
@@ -1650,8 +1616,6 @@ void Direct3d9Namespace::remove()
 #endif
 	Direct3d9_VertexDeclarationMap::remove();
 	Direct3d9_StateCache::remove();
-	Direct3d9_Instancing::remove();
-	Direct3d9_OcclusionQuery::remove();
 #ifdef _DEBUG
 	Direct3d9_Metrics::remove();
 #endif
@@ -1952,27 +1916,6 @@ bool Direct3d9::supportsStreamOffsets()
 
 // ----------------------------------------------------------------------
 
-namespace
-{
-	bool getDevicePresentationCaps(Gl_devicePresentationCaps * const outCaps)
-	{
-		if (!outCaps)
-			return false;
-		Zero(*outCaps);
-		if (!ms_installed)
-			return false;
-		outCaps->floatBlend = (ms_deviceCaps.PrimitiveMiscCaps & D3DPMISCCAPS_FLOATBLEND) != 0;
-		outCaps->vertexTextureFetch = ms_deviceCaps.VertexTextureFilterCaps != 0;
-		outCaps->maxSimultaneousRenderTargets = static_cast<int>(ms_deviceCaps.NumSimultaneousRTs);
-		outCaps->maxUserClipPlanes = static_cast<int>(ms_deviceCaps.MaxUserClipPlanes);
-		outCaps->adaptiveTesselation = (ms_deviceCaps.DevCaps2 & D3DDEVCAPS2_ADAPTIVERTLPATCH) != 0;
-		outCaps->conservativeDepthTextureSampling = false;
-		return true;
-	}
-}
-
-// ----------------------------------------------------------------------
-
 bool Direct3d9::supportsDynamicTextures()
 {
 	return ms_supportsDynamicTextures;
@@ -2032,8 +1975,6 @@ void Direct3d9Namespace::lostDevice()
 	Direct3d9_StateCache::lostDevice();
 	Direct3d9_RenderTarget::lostDevice();
 	Direct3d9_ShaderImplementationData::lostDevice();
-	Direct3d9_Instancing::lostDevice();
-	Direct3d9_OcclusionQuery::lostDevice();
 	ms_transformDirty = true;
 
 	releaseBackBuffer();
@@ -2047,8 +1988,6 @@ void Direct3d9Namespace::restoreDevice()
 	Direct3d9_DynamicVertexBufferData::restoreDevice();
 	Direct3d9_DynamicIndexBufferData::restoreDevice();
 	Direct3d9_StateCache::restoreDevice();
-	Direct3d9_Instancing::restoreDevice();
-	Direct3d9_OcclusionQuery::restoreDevice();
 	setViewport(ms_viewportX, ms_viewportY, ms_viewportWidth, ms_viewportHeight, ms_viewportMinimumZ, ms_viewportMaximumZ);
 
 	CallbackFunctions::const_iterator const iEnd = ms_deviceRestoredCallbacks.end();
@@ -2184,15 +2123,9 @@ void Direct3d9Namespace::setPresentParameters()
 	if(!ms_windowed && ms_supportsMultiSample && ConfigDirect3d9::getAntiAlias() && ms_antialiasEnabled)
 	{
 		ms_presentParameters.MultiSampleType = D3DMULTISAMPLE_NONMASKABLE;
-		ms_presentParameters.MultiSampleQuality = 0;
-		if (ms_multiSampleQualityLevels > 0)
-		{
-			DWORD q = ms_multiSampleQualityLevels - 1;
-			int const cap = ConfigDirect3d9::getMultiSampleQualityCap();
-			if (cap >= 0 && static_cast<int>(q) > cap)
-				q = static_cast<DWORD>(cap);
-			ms_presentParameters.MultiSampleQuality = q;
-		}
+		ms_presentParameters.MultiSampleQuality = ms_multiSampleQualityLevels - 1;
+		if(ms_presentParameters.MultiSampleQuality > 2)
+			ms_presentParameters.MultiSampleQuality = 2;
 		ms_presentParameters.SwapEffect = D3DSWAPEFFECT_DISCARD;
 	}
 
@@ -2420,18 +2353,12 @@ void Direct3d9Namespace::update(float elapsedTime)
 
 void Direct3d9Namespace::beginScene()
 {
-	// Reset FPU/SSE state and clear any pending exceptions
-	ResetFloatingPointState();
-
 	if (ms_displayModeChanged && !checkDisplayMode())
 		setWindowedMode(false);
 
 	// begin the 3d scene
 	const HRESULT hresult = ms_device->BeginScene();
 	FATAL_DX_HR("BeginScene failed %s", hresult);
-
-	// Reset again after D3D call which may have changed FPU state
-	ResetFloatingPointState();
 
 	Direct3d9_StaticShaderData::beginFrame();
 	Direct3d9_DynamicVertexBufferData::beginFrame();
@@ -2444,15 +2371,9 @@ void Direct3d9Namespace::beginScene()
 
 void Direct3d9Namespace::endScene()
 {
-	// Reset FPU state before D3D call
-	ResetFloatingPointState();
-	
 	// end the 3d scene
 	HRESULT hresult = ms_device->EndScene();
 	FATAL_DX_HR("EndScene failed %s", hresult);
-	
-	// Reset again after D3D call
-	ResetFloatingPointState();
 }
 
 // ----------------------------------------------------------------------
@@ -2555,14 +2476,10 @@ void Direct3d9Namespace::releaseBackBuffer()
 	}
 }
 
-
 // ----------------------------------------------------------------------
 
 bool Direct3d9Namespace::present(bool windowed, HWND window, int width, int height)
 {
-	// Reset FPU state before any D3D operations
-	ResetFloatingPointState();
-
 	if (ms_displayModeChanged)
 	{
 		if (!checkDisplayMode())
@@ -2588,15 +2505,11 @@ bool Direct3d9Namespace::present(bool windowed, HWND window, int width, int heig
 		hresult = ms_device->Present(NULL, NULL, NULL, NULL);
 	}
 
-	// Reset FPU state after Present call
-	ResetFloatingPointState();
-
 	// check if the device was lost for any reason
 	if (hresult == D3DERR_DEVICELOST || hresult == D3DERR_DRIVERINTERNALERROR)
 	{
 		char present[16];
 		sprintf(present, "%d", HRESULT_CODE(hresult));
-
 
 		// check if we can restore the device now
 		hresult = ms_device->TestCooperativeLevel();
@@ -2709,8 +2622,8 @@ bool Direct3d9Namespace::applyGammaCorrectionToXRGBSurface( IDirect3DSurface9 *s
 	// color correct the bytes
 	for( unsigned nLine = 0; nLine != desc.Height; nLine++ )
 	{
-		// get the start of the line
-		PackedArgb * pBuffer = (PackedArgb *)((unsigned int)lockedRect.pBits + lockedRect.Pitch * nLine);
+		// get the start of the line (use byte* math — pBits is 64-bit on x64)
+		PackedArgb * pBuffer = reinterpret_cast<PackedArgb *>(reinterpret_cast<byte *>(lockedRect.pBits) + lockedRect.Pitch * nLine);
 
 		// color correct the line
 		PackedArgb * pBufferEol = pBuffer + desc.Width;
@@ -3028,11 +2941,6 @@ void Direct3d9::setStaticShader(const StaticShader &shader, int pass)
 #endif
 
 	const Direct3d9_StaticShaderData *d3dShader = static_cast<const Direct3d9_StaticShaderData *>(shader.m_graphicsData);
-	if (!d3dShader)
-	{
-		WARNING(true, ("Direct3d9::setStaticShader: shader graphics data is NULL"));
-		return;
-	}
 #if defined(FFP) && defined(VSPS)
 	ms_usingVertexShader = d3dShader->apply(pass);
 	Direct3d9_LightManager::setUsingVertexShaderProgram(ms_usingVertexShader);
@@ -3102,8 +3010,6 @@ void Direct3d9::convertTransformToMatrix(const Transform &transform, D3DMATRIX &
 
 void Direct3d9::convertScaleAndTransformToMatrix(const Vector &scale, const Transform &transform, D3DMATRIX & matrix)
 {
-	// Scale must be applied in object space (before rotation): M = Transform * Scale
-	// So scale each column of the rotation by the corresponding scale component
 #ifdef FFP
 	matrix._11 = transform.matrix[0][0] * scale.x;
 	matrix._12 = transform.matrix[1][0] * scale.x;
@@ -3126,17 +3032,17 @@ void Direct3d9::convertScaleAndTransformToMatrix(const Vector &scale, const Tran
 	matrix._44 = 1.0f;
 #else
 	matrix._11 = transform.matrix[0][0] * scale.x;
-	matrix._12 = transform.matrix[0][1] * scale.y;
-	matrix._13 = transform.matrix[0][2] * scale.z;
+	matrix._12 = transform.matrix[0][1] * scale.x;
+	matrix._13 = transform.matrix[0][2] * scale.x;
 	matrix._14 = transform.matrix[0][3];
 
-	matrix._21 = transform.matrix[1][0] * scale.x;
+	matrix._21 = transform.matrix[1][0] * scale.y;
 	matrix._22 = transform.matrix[1][1] * scale.y;
-	matrix._23 = transform.matrix[1][2] * scale.z;
+	matrix._23 = transform.matrix[1][2] * scale.y;
 	matrix._24 = transform.matrix[1][3];
 
-	matrix._31 = transform.matrix[2][0] * scale.x;
-	matrix._32 = transform.matrix[2][1] * scale.y;
+	matrix._31 = transform.matrix[2][0] * scale.z;
+	matrix._32 = transform.matrix[2][1] * scale.z;
 	matrix._33 = transform.matrix[2][2] * scale.z;
 	matrix._34 = transform.matrix[2][3];
 
@@ -3161,7 +3067,17 @@ bool Direct3d9Namespace::setMouseCursor(Texture const & mouseCursorTexture, int 
 		FATAL_DX_HR("Could not get top surface %s", hresult);
 
 		hresult = ms_device->SetCursorProperties(hotSpotX, hotSpotY, surface);
-		FATAL_DX_HR("Could not set cursor properties %s", hresult);
+		if (FAILED(hresult))
+		{
+			static bool s_loggedOnce = false;
+			if (!s_loggedOnce)
+			{
+				s_loggedOnce = true;
+				DEBUG_REPORT_LOG(true, ("setMouseCursor: SetCursorProperties failed %s; falling back to OS cursor.\n", DXGetErrorString9(hresult)));
+			}
+			surface->Release();
+			return false;
+		}
 		surface->Release();
 
 		return true;
@@ -3355,15 +3271,12 @@ void Direct3d9Namespace::setFog(bool enabled, float density, const PackedArgb &c
 		Direct3d9_StateCache::setRenderState(D3DRS_FOGCOLOR, ms_fogColor);
 		Direct3d9_StateCache::setRenderState(D3DRS_FOGVERTEXMODE, D3DFOG_EXP2);
 
-		// Density is finalized in Graphics::setFog (clientGraphics) so this DLL stays independent of AtmosphericEffects.
-		float const scaledDensity = clamp(0.0f, density, 100.0f);
-
 #ifdef FFP
-		Direct3d9_StateCache::setRenderState(D3DRS_FOGDENSITY, scaledDensity);
+		Direct3d9_StateCache::setRenderState(D3DRS_FOGDENSITY, density);
 #endif
 
 #ifdef VSPS
-		const float fog[4] = { 0.0f, 0.0f, scaledDensity, sqr(scaledDensity) };
+		const float fog[4] = { 0.0f, 0.0f, density, sqr(density) };
 		Direct3d9_StateCache::setVertexShaderConstants(VSCR_fog, fog, 1);
 #endif
 	}
@@ -3847,8 +3760,10 @@ void Direct3d9::setVertexBufferVector(const VertexBufferVector & vertexBufferVec
 	}
 
 	Direct3d9_VertexBufferVectorData *data = safe_cast<Direct3d9_VertexBufferVectorData *>(vertexBufferVector.m_graphicsData);
-	HRESULT result = ms_device->SetVertexDeclaration(data->getVertexDeclaration());
-	FATAL_DX_HR("SetVertexDeclaration failed %s", result);
+	// Keep the cached declaration synchronized with the device.  Bypassing
+	// this cache leaves subsequent single-stream world and UI draws using
+	// the multi-stream skeletal declaration.
+	Direct3d9_StateCache::setVertexDeclaration(data->getVertexDeclaration());
 
 	// clear the remaining vertex buffer streams
 	{
@@ -4034,7 +3949,7 @@ inline bool Direct3d9::drawPrimitive()
 		if (ms_alphaBlendEnable)
 			Direct3d9_StateCache::setRenderState(D3DRS_COLORWRITEENABLE, ms_colorWriteEnable);
 		else
-			Direct3d9_StateCache::setRenderState(D3DRS_COLORWRITEENABLE, ms_colorWriteEnable & ~D3DCOLORWRITEENABLE_ALPHA);
+			Direct3d9_StateCache::setRenderState(D3DRS_COLORWRITEENABLE, static_cast<DWORD>(ms_colorWriteEnable) & ~static_cast<DWORD>(D3DCOLORWRITEENABLE_ALPHA));
 		Direct3d9_StateCache::setRenderState(D3DRS_ALPHABLENDENABLE, true);
 		Direct3d9_StateCache::setRenderState(D3DRS_ALPHAREF, static_cast<DWORD>(static_cast<float>(ms_alphaTestReferenceValue) * ms_alphaFadeOpacity.a));
 	}
@@ -4672,6 +4587,23 @@ void Direct3d9Namespace::setBloomEnabled(bool enabled)
 void Direct3d9Namespace::setOverrideFullAmbient(bool enabled, float r, float g, float b)
 {
 	Direct3d9_LightManager::setOverrideFullAmbient(enabled, r, g, b);
+}
+
+// ----------------------------------------------------------------------
+
+bool Direct3d9Namespace::getDevicePresentationCaps(Gl_devicePresentationCaps *outCaps)
+{
+	if (!outCaps || !ms_installed)
+		return false;
+
+	Zero(*outCaps);
+	outCaps->floatBlend = (ms_deviceCaps.PrimitiveMiscCaps & D3DPMISCCAPS_FLOATBLEND) != 0;
+	outCaps->vertexTextureFetch = ms_deviceCaps.VertexTextureFilterCaps != 0;
+	outCaps->maxSimultaneousRenderTargets = static_cast<int>(ms_deviceCaps.NumSimultaneousRTs);
+	outCaps->maxUserClipPlanes = static_cast<int>(ms_deviceCaps.MaxUserClipPlanes);
+	outCaps->adaptiveTesselation = (ms_deviceCaps.DevCaps2 & D3DDEVCAPS2_ADAPTIVERTLPATCH) != 0;
+	outCaps->conservativeDepthTextureSampling = false;
+	return true;
 }
 
 // ----------------------------------------------------------------------

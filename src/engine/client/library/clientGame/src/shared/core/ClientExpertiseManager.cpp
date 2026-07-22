@@ -28,7 +28,7 @@
 #include <vector>
 #include <set>
 
-#include <zlib.h>
+#include "../../../../../../../external/3rd/library/zlib-1.2.3/zlib.h"
 
 //======================================================================
 
@@ -1140,7 +1140,7 @@ std::string ClientExpertiseManager::getExpertiseCommand(std::string const & expe
 {
 	SkillObject const * skill = SkillManager::getInstance().getSkill(expertiseName);
 	if(!skill)
-		return false;
+		return std::string();
 	const std::vector<std::string> & commands = skill->getCommandsProvided();
 	if(!commands.empty())
 	{

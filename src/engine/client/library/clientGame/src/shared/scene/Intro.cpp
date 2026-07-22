@@ -481,12 +481,9 @@ void Intro::draw () const
 
 			vertexBuffer.unlock();
 
-			if (m_longShader)
-			{
-				Graphics::setStaticShader (m_longShader->prepareToView());
-				Graphics::setVertexBuffer (vertexBuffer);
-				Graphics::drawTriangleFan ();
-			}
+			Graphics::setStaticShader (m_longShader->prepareToView());
+			Graphics::setVertexBuffer (vertexBuffer);
+			Graphics::drawTriangleFan ();
 		}
 		break;
 
@@ -905,12 +902,9 @@ void Intro::update (const float elapsedTime)
 
 				//--
 				Shader* const logoShader = ShaderTemplateList::fetchModifiableShader (m_data->logoShaderTemplateName);
-				if (logoShader)
-				{
-					m_logoCrawlObject->setAppearance (new ShaderAppearance (m_data->logoSizeX, m_data->logoSizeY, logoShader, VectorArgb::solidWhite));
-					m_logoCrawlObject->setTransform_o2p (m_camera->getTransform_o2w ());
-					m_logoCrawlObject->move_o (Vector::unitZ * m_data->logoInitialPosition);
-				}
+				m_logoCrawlObject->setAppearance (new ShaderAppearance (m_data->logoSizeX, m_data->logoSizeY, logoShader, VectorArgb::solidWhite));
+				m_logoCrawlObject->setTransform_o2p (m_camera->getTransform_o2w ());
+				m_logoCrawlObject->move_o (Vector::unitZ * m_data->logoInitialPosition);
 
 				//-- start music
 				m_introSoundId = Audio::playSound ("sound/intro.snd", NULL);
@@ -945,15 +939,12 @@ void Intro::update (const float elapsedTime)
 				m_timer.setExpireTime (m_data->crawlTime);
 
 				Shader* crawlShader = ShaderTemplateList::fetchModifiableShader (m_data->crawlShaderTemplateName);
-				if (crawlShader)
-				{
-					m_logoCrawlObject->setAppearance (new ShaderAppearance (m_data->crawlSizeX, m_data->crawlSizeY, crawlShader, VectorArgb::solidWhite));
+				m_logoCrawlObject->setAppearance (new ShaderAppearance (m_data->crawlSizeX, m_data->crawlSizeY, crawlShader, VectorArgb::solidWhite));
 
-					m_logoCrawlObject->setTransform_o2p (m_camera->getTransform_o2w ());
-					m_logoCrawlObject->move_o (Vector (0.f, m_data->crawlInitialPositionDown, m_data->crawlInitialPositionForward));
-					m_logoCrawlObject->pitch_o (convertDegreesToRadians (90.f - m_data->crawlAngle));
-					m_logoCrawlObject->move_o (Vector::negativeUnitY * m_data->crawlInitialPositionBack);
-				}
+				m_logoCrawlObject->setTransform_o2p (m_camera->getTransform_o2w ());
+				m_logoCrawlObject->move_o (Vector (0.f, m_data->crawlInitialPositionDown, m_data->crawlInitialPositionForward));
+				m_logoCrawlObject->pitch_o (convertDegreesToRadians (90.f - m_data->crawlAngle));
+				m_logoCrawlObject->move_o (Vector::negativeUnitY * m_data->crawlInitialPositionBack);
 				
 				m_state = S_textScroll;
 			}

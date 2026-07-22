@@ -14,9 +14,7 @@
 #include "sharedFoundation/CrcLowerString.h"
 #include "sharedObject/CustomizationData.h"
 #include "sharedObject/AlterResult.h"
-#include "sharedObject/PaletteColorCustomizationVariable.h"
 #include "sharedObject/RangedIntCustomizationVariable.h"
-#include "sharedMath/PackedArgb.h"
 
 #include <string>
 #include <vector>
@@ -136,7 +134,7 @@ const StaticShader &CustomizableShader::prepareToView() const
 
 	if (m_isModified)
 	{
-		bool const ok = getCustomizableShaderTemplate().applyShaderSettings(*m_intValues, const_cast<StaticShader&>(baseStaticShader), m_directColors);
+		bool const ok = getCustomizableShaderTemplate().applyShaderSettings(*m_intValues, const_cast<StaticShader&>(baseStaticShader));
 		m_isModified = false;
 
 		if(!ok)
@@ -203,7 +201,6 @@ CustomizableShader::CustomizableShader(const CustomizableShaderTemplate &customi
 	m_baseShader(customizableShaderTemplate.getBaseShaderTemplate().fetchModifiableShader()),
 	m_customizationData(0),
 	m_intValues(new IntVector(static_cast<size_t>(customizableShaderTemplate.getCustomizationVariableCount()))),
-	m_directColors(new PackedArgbVector(static_cast<size_t>(customizableShaderTemplate.getCustomizationVariableCount()), PackedArgb(0, 0, 0, 0))),
 	m_isModified(true)
 {
 }
@@ -216,7 +213,6 @@ CustomizableShader::~CustomizableShader()
 	m_baseShader->release();
 
 	delete m_intValues;
-	delete m_directColors;
 
 	if (m_customizationData)
 	{
@@ -281,32 +277,6 @@ void CustomizableShader::handleCustomizationModification(const CustomizationData
 
 			// keep track that this instance has been modified
 			modified = true;
-		}
-
-		//-- Check for direct color override from PaletteColorCustomizationVariable
-		if (m_directColors)
-		{
-			const PaletteColorCustomizationVariable *const palVar = dynamic_cast<const PaletteColorCustomizationVariable*>(variable);
-			PackedArgb &directColor = (*m_directColors)[static_cast<size_t>(i)];
-
-			if (palVar && palVar->hasDirectColor())
-			{
-				const PackedArgb &newDirectColor = palVar->getDirectColor();
-				if (directColor != newDirectColor)
-				{
-					directColor = newDirectColor;
-					modified = true;
-				}
-			}
-			else
-			{
-				// Clear direct color - use palette (alpha=0 means no direct color override)
-				if (directColor.getA() != 0)
-				{
-					directColor = PackedArgb(0, 0, 0, 0);
-					modified = true;
-				}
-			}
 		}
 	}
 

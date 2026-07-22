@@ -42,7 +42,6 @@
 #define DO_OBJECT_TRACKING 0
 
 #if DO_OBJECT_TRACKING
-#include <cstdint>
 #include <map>
 #endif
 
@@ -124,10 +123,6 @@ namespace RenderWorldNamespace
 
 	RenderWorld::CellPropertyList                ms_visibleCellList;
 
-	// Deferred DPVS cell destruction to avoid crash when ship is packed (dpvs.dll access violation)
-	std::vector<DPVS::Cell *>                   ms_pendingDestroyDpvsCells;
-	void                  flushPendingDestroyDpvsCells();
-
 	void                  remove();
 	void                  clearVisibleCells();
 	void                  inWorldAddDpvsObject(Object *object, DPVS::Object *dpvsObject);
@@ -149,7 +144,7 @@ namespace RenderWorldNamespace
 	const int CALL_STACK_SIZE = 16;
 	struct CallStack
 	{
-		std::uintptr_t callers[CALL_STACK_SIZE];
+		uint32 callers[CALL_STACK_SIZE];
 	};
 	typedef std::map<DPVS::Object*, CallStack> CallStacks;
 	CallStacks            ms_callStacks;
@@ -265,8 +260,6 @@ void RenderWorld::install()
 void RenderWorld::remove()
 {
 	clearVisibleCells();
-
-	flushPendingDestroyDpvsCells();
 
 	ms_defaultModel->release();
 	ms_defaultModel = NULL;
@@ -682,19 +675,7 @@ DPVS::Cell *RenderWorldNamespace::createDpvsCell(CellProperty *owner)
 
 void RenderWorldNamespace::destroyDpvsCell(DPVS::Cell *dpvsCell)
 {
-	if (dpvsCell)
-		ms_pendingDestroyDpvsCells.push_back(dpvsCell);
-}
-
-// ----------------------------------------------------------------------
-
-void RenderWorldNamespace::flushPendingDestroyDpvsCells()
-{
-	for (std::vector<DPVS::Cell *>::iterator i = ms_pendingDestroyDpvsCells.begin(); i != ms_pendingDestroyDpvsCells.end(); ++i)
-	{
-		(*i)->release();
-	}
-	ms_pendingDestroyDpvsCells.clear();
+	dpvsCell->release();
 }
 
 // ----------------------------------------------------------------------
@@ -873,9 +854,6 @@ else \
 void RenderWorld::drawScene(const RenderWorldCamera &camera)
 {
 	DEBUG_FATAL(!ms_installed, ("RenderWorld not installed"));
-
-	// Flush deferred DPVS cell destruction from previous frame to avoid dpvs.dll crash when ship interior cells are destroyed (e.g. Land Ship)
-	flushPendingDestroyDpvsCells();
 
 	NP_PROFILER_AUTO_BLOCK_DEFINE("RenderWorld::drawScene setup");
 

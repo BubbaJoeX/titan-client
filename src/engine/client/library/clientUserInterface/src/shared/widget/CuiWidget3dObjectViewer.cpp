@@ -19,6 +19,7 @@
 #include "clientGame/ManufactureSchematicObject.h"
 #include "clientGraphics/Graphics.h"
 #include "clientGraphics/Light.h"
+#include "clientGraphics/ShaderPrimitiveSorter.h"
 #include "clientGraphics/ShaderTemplateList.h"
 #include "clientObject/ObjectListCamera.h"
 #include "clientSkeletalAnimation/SkeletalAppearance2.h"
@@ -550,7 +551,11 @@ void CuiWidget3dObjectViewer::RenderStart   (UICanvas & canvas) const
 	if (hasFlags (F_wireFrame))
 		Graphics::setFillMode (GFM_wire);
 
+	bool const heatShadersEnabled = ShaderPrimitiveSorter::getHeatShadersEnabled();
+	ShaderPrimitiveSorter::setHeatShadersEnabled(false);
 	m_camera->renderScene ();
+	Graphics::clearViewport(false, 0, true, 1.0f, true, 0);
+	ShaderPrimitiveSorter::setHeatShadersEnabled(heatShadersEnabled);
 
 	if (hasFlags (F_wireFrame))
 		Graphics::setFillMode (oldFillMode);
@@ -601,6 +606,11 @@ void CuiWidget3dObjectViewer::RenderStart   (UICanvas & canvas) const
 
 void CuiWidget3dObjectViewer::RenderStop () const
 {
+	if (m_renderObject == 0)
+		return;
+	
+	Graphics::setViewport (0, 0, Graphics::getCurrentRenderTargetWidth (), Graphics::getCurrentRenderTargetHeight ());
+
 }
 
 //-----------------------------------------------------------------
@@ -609,14 +619,6 @@ void CuiWidget3dObjectViewer::Render (UICanvas & canvas) const
 {
 	RenderStart   (canvas);
 	RenderStop    ();
-	Graphics::setViewport (0, 0, Graphics::getCurrentRenderTargetWidth (), Graphics::getCurrentRenderTargetHeight (), 0.0f, 1.0f);
-}
-
-//----------------------------------------------------------------------
-
-void CuiWidget3dObjectViewer::RestoreRenderTargetViewportAfterRender () const
-{
-	Graphics::setViewport (0, 0, Graphics::getCurrentRenderTargetWidth (), Graphics::getCurrentRenderTargetHeight (), 0.0f, 1.0f);
 }
 
 //----------------------------------------------------------------------

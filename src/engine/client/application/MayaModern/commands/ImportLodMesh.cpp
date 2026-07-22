@@ -1,5 +1,7 @@
 #include "ImportLodMesh.h"
+#include "ImportSkeletalMesh.h"
 #include "ImportPathResolver.h"
+#include "SwgImportTrace.h"
 #include "Iff.h"
 #include "MayaSceneBuilder.h"
 #include "Tag.h"
@@ -203,16 +205,10 @@ namespace
 {
     static void lodLog(const char* fmt, ...)
     {
-        char buf[1024];
         va_list args;
         va_start(args, fmt);
-        vsnprintf(buf, sizeof(buf), fmt, args);
+        SwgImportTrace::logV("ImportLodMesh", fmt, args);
         va_end(args);
-        std::string msg = std::string("[ImportLodMesh] ") + buf + "\n";
-        std::cerr << msg;
-#ifdef _WIN32
-        OutputDebugStringA(msg.c_str());
-#endif
     }
 
     static const Tag TAG_MLOD = TAG(M,L,O,D);
@@ -322,6 +318,22 @@ std::string resolveLodOrAptPath(const std::string& baseResolvedPath)
     if (iff.open((path + ".msh").c_str(), true))
         return path + ".msh";
     return path + ".lod";
+}
+
+MStatus importLodMeshFile(const std::string& path, const std::string& parentPath, bool visualHardpoints)
+{
+    MArgList args;
+    args.addArg(MString("-i"));
+    args.addArg(MString(path.c_str()));
+    if (!parentPath.empty())
+    {
+        args.addArg(MString("-parent"));
+        args.addArg(MString(parentPath.c_str()));
+    }
+    if (visualHardpoints)
+        args.addArg(MString("-visualHardpoints"));
+    ImportLodMesh importer;
+    return importer.doIt(args);
 }
 
 std::string resolveStaticMeshPath(const std::string& basePath)
@@ -618,6 +630,7 @@ MStatus ImportLodMesh::doIt(const MArgList& args)
         return MS::kFailure;
     }
 
+    SwgImportTrace::stage("ImportLodMesh begin");
     filename = resolveImportPath(filename);
     filename = resolveLodOrAptPath(filename);
 
@@ -795,7 +808,34 @@ MStatus ImportLodMesh::doIt(const MArgList& args)
     if (detailLevelPaths.empty())
     {
         lodLog("No detail level paths, returning");
+        iff.close();
         return MS::kSuccess;
+    }
+
+    iff.close();
+
+    // POB / nested import: load LOD0 directly under -parent — skip group -em / lodGroup MEL (deadlocks in file translator).
+    if (!parentPath.empty())
+    {
+        std::string resolvedPath = lod_path_helpers::resolveTreeFilePath(detailLevelPaths[0], filename);
+        resolvedPath = lod_path_helpers::resolveMeshPath(resolvedPath);
+        resolvedPath = resolveStaticMeshFilePathForImport(resolvedPath, filename);
+        lodLog("Nested import under parent [%s]: LOD0 -> %s", parentPath.c_str(), resolvedPath.c_str());
+
+        if (resolvedPath.size() >= 4 && resolvedPath.compare(resolvedPath.size() - 4, 4, ".msh") == 0)
+        {
+            MString rootPath;
+            status = MshTranslator::createMeshFromMsh(resolvedPath.c_str(), rootPath, MString(parentPath.c_str()), visualHardpoints);
+            return status;
+        }
+
+        MArgList skelArgs;
+        skelArgs.addArg(MString("-i"));
+        skelArgs.addArg(MString(resolvedPath.c_str()));
+        skelArgs.addArg(MString("-parent"));
+        skelArgs.addArg(MString(parentPath.c_str()));
+        ImportSkeletalMesh skelImporter;
+        return skelImporter.doIt(skelArgs);
     }
 
     lodLog("LOD paths: %zu levels", detailLevelPaths.size());
@@ -873,12 +913,13 @@ MStatus ImportLodMesh::doIt(const MArgList& args)
         else
         {
             lodLog("  importSkeletalMesh (for .mgn/.lmg/skeletal)");
-            MString importCmd = "importSkeletalMesh -i \"";
-            importCmd += resolvedPath.c_str();
-            importCmd += "\" -parent \"";
-            importCmd += lodPath.c_str();
-            importCmd += "\"";
-            status = MGlobal::executeCommand(importCmd, true, true);
+            MArgList skelArgs;
+            skelArgs.addArg(MString("-i"));
+            skelArgs.addArg(MString(resolvedPath.c_str()));
+            skelArgs.addArg(MString("-parent"));
+            skelArgs.addArg(MString(lodPath.c_str()));
+            ImportSkeletalMesh skelImporter;
+            status = skelImporter.doIt(skelArgs);
             lodLog("  importSkeletalMesh: %s", status ? "OK" : "FAILED");
             if (status)
                 importOk = true;

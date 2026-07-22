@@ -114,10 +114,8 @@ public:
 	static void                 render (UICanvas & canvas);
 
 	static void                 install (const UIBaseObject & rootPage);
-	static void                 remove ();
-
-	/// Re-query logical fonts (default_/bold_/starwars_). Call after user UI font or global font scale changes.
 	static void                 refreshFontStyleCache ();
+	static void                 remove ();
 
 	static UITextStyle *        getTextStyle (long height, const TextEnqueueInfo & info);
 	static UITextStyle *        getTextStyle (long height);
@@ -153,7 +151,7 @@ public:
 	};
 
 private:
-	static void           renderPlainText (UICanvas & canvas, const TextInfo & ti, UITextStyle & style, const UISize & maxBubbleSize, float logicalFromScreenScaleInv);
+	static void           renderPlainText (UICanvas & canvas, const TextInfo & ti, UITextStyle & style, const UISize & maxBubbleSize);
 	static void           renderBubble    (UICanvas & canvas, const TextInfo & ti, UITextStyle & style, const UISize & maxBubbleSize);
 
 

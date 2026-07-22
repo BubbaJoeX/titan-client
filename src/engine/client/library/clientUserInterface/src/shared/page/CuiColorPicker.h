@@ -12,21 +12,18 @@
 
 #include "UIEventCallback.h"
 #include "clientUserInterface/CuiMediator.h"
-#include "sharedMath/PackedArgb.h"
+#include "clientGame/TangibleObject.h"
 
 class CachedNetworkId;
 class CustomizationManagerPaletteColumns;
 class NetworkId;
 class Object;
 class PaletteArgb;
-class TangibleObject;
 class UIButton;
 class UIDataSource;
 class UILowerString;
 class UIPage;
-class UISliderbar;
 class UIText;
-class UITextbox;
 class UIVolumePage;
 class UIWidget;
 
@@ -76,8 +73,6 @@ public:
 
 	virtual void                  OnButtonPressed              (UIWidget * context);
 	virtual void                  OnVolumePageSelectionChanged (UIWidget * context);
-	virtual void                  OnTextboxChanged             (UIWidget * context);
-	virtual bool                  OnMessage                    (UIWidget * context, const UIMessage & msg);
 
 	void                          setTarget                    (const NetworkId & id, const std::string & var, int rangeMin, int rangeMax);
 	void                          setPalette(PaletteArgb const * palette);
@@ -111,16 +106,6 @@ public:
 	void                          reset                        ();
 
 	void                          handleMediatorPropertiesChanged ();
-
-	// Color wheel / HTML color support
-	void                          setColorWheelMode            (bool enabled);
-	bool                          isColorWheelMode             () const;
-	void                          setColorFromHtml             (const char * htmlColor);
-	void                          getColorAsHtml               (char * buffer, int bufferSize) const;
-	void                          setDirectColor               (const PackedArgb & color);
-	const PackedArgb &            getDirectColor               () const;
-	bool                          hasDirectColor               () const;
-
 private:
 	                             ~CuiColorPicker ();
 	                              CuiColorPicker ();
@@ -131,20 +116,8 @@ private:
 
 	void                     updateValue     (int index);
 	void                     updateValue     (TangibleObject & obj, int index, PathFlags flags = PF_any);
-	void                     updateValueDirectColor (TangibleObject & obj, const PackedArgb & color, PathFlags flags = PF_any);
 	void                     revert          ();
 	void                     storeProperties ();
-	void                     onColorWheelChanged (const PackedArgb & color);
-	void                     updateHtmlTextbox ();
-
-	// Color wheel helpers
-	void                     updateFromHSV();
-	void                     updateFromRGB();
-	void                     updateWheelCursor();
-	void                     updateRgbTextboxes();
-	void                     handleWheelInput(int x, int y);
-	static void              rgbToHsv(uint8 r, uint8 g, uint8 b, float & h, float & s, float & v);
-	static void              hsvToRgb(float h, float s, float v, uint8 & r, uint8 & g, uint8 & b);
 
 	UIVolumePage *           m_volumePage;
 	UIButton *               m_buttonCancel;
@@ -181,30 +154,6 @@ private:
 	};
 
 	PaletteSource            m_paletteSource;
-
-	// Color wheel / HTML color support
-	bool                     m_colorWheelMode;
-	UIButton *               m_buttonToggleMode;    // Toggle between palette grid and color wheel
-	UIPage *                 m_pageColorWheel;      // Color wheel container page
-	UIPage *                 m_pagePaletteGrid;     // Palette grid container page
-	UITextbox *              m_textboxHtml;         // HTML hex color input
-	UIPage *                 m_pageMatchedColor;    // Shows matched palette color when using direct color
-	PackedArgb               m_directColor;         // Current direct color (when using wheel/HTML)
-	bool                     m_useDirectColor;      // True if using direct color vs palette index
-	PackedArgb               m_originalDirectColor; // Original direct color for revert
-
-	// Color wheel interactive elements
-	UIPage *                 m_pageWheel;           // Wheel page (contains image + cursor)
-	UIWidget *               m_cursorWheel;         // Cursor on the wheel
-	UITextbox *              m_textboxR;            // Red value textbox
-	UITextbox *              m_textboxG;            // Green value textbox
-	UITextbox *              m_textboxB;            // Blue value textbox
-
-	// HSV state for color wheel
-	float                    m_hue;                 // 0.0 - 360.0
-	float                    m_saturation;          // 0.0 - 1.0
-	float                    m_colorValue;          // 0.0 - 1.0 (renamed from value to avoid keyword)
-	bool                     m_draggingWheel;
 };
 
 //----------------------------------------------------------------------

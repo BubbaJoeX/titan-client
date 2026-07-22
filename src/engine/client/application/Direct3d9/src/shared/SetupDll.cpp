@@ -16,7 +16,6 @@
 #include "sharedMath/VectorArgb.h"
 
 #include <DelayImp.h>
-#include <float.h>
 
 // ======================================================================
 
@@ -42,32 +41,16 @@ static FARPROC WINAPI DliHook(unsigned dliNotify, PDelayLoadInfo  pdli)
 	return 0;
 }
 
-// ======================================================================
-
-static void MaskFloatingPointExceptions()
-{
-	// Mask all x87 FPU exceptions to prevent crashes from invalid FPU operations
-	// This is necessary because DirectX may trigger FPU exceptions if not masked
-	_controlfp(_MCW_EM, _MCW_EM);
-}
-
-// ======================================================================
-
-BOOL APIENTRY DllMain(HMODULE, DWORD reason, LPVOID)
-{
 #if _MSC_VER < 1300
-	__pfnDliNotifyHook = DliHook;
+extern "C" PfnDliHook __pfnDliNotifyHook = DliHook;
 #else
-	__pfnDliNotifyHook2 = DliHook;
+extern "C" const PfnDliHook __pfnDliNotifyHook2 = DliHook;
 #endif
 
-	if (reason == DLL_PROCESS_ATTACH || reason == DLL_THREAD_ATTACH)
-	{
-		// Mask floating-point exceptions to prevent crashes from invalid FPU/SSE operations
-		// This must be done for each thread as FPU/MXCSR state is per-thread
-		MaskFloatingPointExceptions();
-	}
+// ======================================================================
 
+BOOL APIENTRY DllMain(HMODULE, DWORD, LPVOID)
+{
 	return TRUE;
 }
 

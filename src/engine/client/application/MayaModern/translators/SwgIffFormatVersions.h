@@ -37,5 +37,6 @@
  *   ImportPob / ExportPob — FORM PRTO inner TAG_0000 .. TAG_0004 (portal geometry IDTL vs PRTL).
  *
  * FLOR / floor collision
- *   FlrTranslator — FORM FLOR inner TAG_0006 (MayaModern/translators/flr.cpp).
+ *   FlrTranslator — FORM FLOR inner TAG_0000 .. TAG_0006 (matches sharedCollision/FloorMesh.cpp).
+ *   Export always writes FLOR/0006.
  */

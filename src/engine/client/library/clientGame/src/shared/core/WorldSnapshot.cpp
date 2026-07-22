@@ -29,7 +29,6 @@
 #include "sharedGame/SharedCellObjectTemplate.h"
 #include "sharedGame/SharedObjectTemplate.h"
 #include "sharedMath/Quaternion.h"
-#include "sharedMath/Vector.h"
 #include "sharedMath/SphereTree.h"
 #include "sharedObject/CellProperty.h"
 #include "sharedObject/ContainedByProperty.h"
@@ -39,7 +38,6 @@
 #include "sharedObject/ObjectTemplateList.h"
 #include "sharedObject/PortalProperty.h"
 #include "sharedObject/PortalPropertyTemplate.h"
-#include "sharedUtility/ConfigSharedUtility.h"
 #include "sharedUtility/WorldSnapshotReaderWriter.h"
 #include "sharedUtility/DataTable.h"
 #include <algorithm>
@@ -115,11 +113,11 @@ namespace WorldSnapshotNamespace
 	int  ms_numberOfObjectTemplates;
 
 	const float ms_closeToOriginDistance = 10.f;
+	float const cms_callbackTime = 1.f;
 
 	CellProperty const * ms_lastCellProperty;
 	Vector ms_lastPosition_w (0.f, -9999.f, 0.f);
 	float ms_updateDistanceSquared;
-	float ms_queryRadius = 512.f;
 	int ms_maximumNumberOfCreatesPerFrame = 1000;
 	int ms_maximumNumberOfDeletesPerFrame = 1000;
 
@@ -151,15 +149,24 @@ namespace WorldSnapshotNamespace
 		//-- verify that the portal layout crcs match
 		{
 			uint32 portalLayoutCrc = 0;
-			if (!Game::getSinglePlayer() || !ConfigClientGame::getWorldSnapshotIgnorePobChanges())
+			if (PortalPropertyTemplate::extractPortalLayoutCrc (objectTemplate->getPortalLayoutFilename ().c_str (), portalLayoutCrc))
 			{
-				if (PortalPropertyTemplate::extractPortalLayoutCrc (objectTemplate->getPortalLayoutFilename ().c_str (), portalLayoutCrc))
+				if (portalLayoutCrc != static_cast<uint32> (node->getPortalLayoutCrc ()))
 				{
-					if (portalLayoutCrc != static_cast<uint32> (node->getPortalLayoutCrc ()))
-					{
-						WARNING(true, ("WorldSnapshot createObject [%s] pob crc changed from [%d] to [%d]", 
-							objectTemplate->getName(), static_cast<int>(node->getPortalLayoutCrc()), static_cast<int>(portalLayoutCrc)));
+					// POB CRC mismatch: the buildout node recorded a different .pob
+					// CRC than the .pob actually loaded from the TREs (common with a
+					// reborn client + post-NGE / upstream content). Previously this
+					// returned 0 -> the portalized BUILDING was never instantiated ->
+					// its server-sent cells couldn't bind -> black "phantom" interiors.
+					// Now: log it and PROCEED with the loaded .pob, unless the strict
+					// check is explicitly forced (worldSnapshotIgnorePobChanges=false).
+					bool const ignorePob = ConfigClientGame::getWorldSnapshotIgnorePobChanges();
+					WARNING(true, ("WorldSnapshot createObject [%s] pob crc changed from [%d] to [%d] -- %s",
+						objectTemplate->getName(), static_cast<int>(node->getPortalLayoutCrc()), static_cast<int>(portalLayoutCrc),
+						ignorePob ? "ignoring, proceeding with loaded .pob" : "STRICT, skipping object"));
 
+					if (!ignorePob)
+					{
 						objectTemplate->releaseReference ();
 						objectTemplate=0;
 
@@ -214,7 +221,6 @@ namespace WorldSnapshotNamespace
 
 		object->setClientCached();
 		object->setTransform_o2p (node->getTransform_p ());
-		object->setScale (node->getObjectScale ());
 		object->setNetworkId (NetworkId (static_cast<NetworkId::NetworkIdType> (node->getNetworkIdInt ())));
 		object->createDefaultController();
 
@@ -343,7 +349,6 @@ void WorldSnapshot::install ()
 	WorldSnapshotReaderWriter::Node::setDetailLevelChangedFunction (detailLevelChanged);
 
 	ms_updateDistanceSquared = sqr (ConfigFile::getKeyFloat ("ClientGame/WorldSnapshot", "updateDistance", 4.f));
-	ms_queryRadius = ConfigFile::getKeyFloat ("ClientGame/WorldSnapshot", "queryRadius", 512.f);
 	ms_maximumNumberOfCreatesPerFrame = ConfigFile::getKeyInt("ClientGame/WorldSnapshot", "maximumNumberOfCreatesPerFrame", ms_maximumNumberOfCreatesPerFrame);
 	ms_maximumNumberOfDeletesPerFrame = ConfigFile::getKeyInt("ClientGame/WorldSnapshot", "maximumNumberOfDeletesPerFrame", ms_maximumNumberOfDeletesPerFrame);
 
@@ -423,12 +428,6 @@ void WorldSnapshot::load (char const *sceneName)
 
 	NOT_NULL(sceneName);
 
-	// Skip converted _ws buildout files in god client - these are server-side snapshots, not client buildouts
-	if (strstr(sceneName, "_ws"))
-	{
-		return;
-	}
-
 	//-- clear the current snapshot
 	ms_loadedList.clear ();
 	ms_reader.removeFromWorld ();
@@ -452,7 +451,7 @@ void WorldSnapshot::load (char const *sceneName)
 	if ( ConfigClientGame::getLoadBuildoutOnly() == false )
 #endif
 	{
-		if ( !ms_reader.load (sceneName))
+		if (!ms_reader.load (sceneName))
 		{
 			//-- only warn if we don't have a buildout and are not in a space scene
 			if (strncmp(sceneName, "space_", 6))
@@ -508,10 +507,6 @@ void WorldSnapshot::load (char const *sceneName)
 				int const qzColumn = areaBuildoutTable.findColumnNumber("qz");
 				int const radiusColumn = areaBuildoutTable.findColumnNumber("radius");
 				int const portalLayoutCrcColumn = areaBuildoutTable.findColumnNumber("portal_layout_crc");
-				int const sxColumn = areaBuildoutTable.findColumnNumber("sx");
-				int const syColumn = areaBuildoutTable.findColumnNumber("sy");
-				int const szColumn = areaBuildoutTable.findColumnNumber("sz");
-				bool const haveScaleColumns = (sxColumn >= 0 && syColumn >= 0 && szColumn >= 0);
 				std::string const requiredEvent = buildoutArea.getRequiredEventName();
 
 				FATAL(sharedTemplateCrcColumn < 0, ("Unable to find column [shared_template_crc] in [%s]", areaFilename));
@@ -654,15 +649,6 @@ void WorldSnapshot::load (char const *sceneName)
 							areaBuildoutTable.getFloatValue(pyColumn, buildoutRow),
 							areaBuildoutTable.getFloatValue(pzColumn, buildoutRow));
 					}
-
-					Vector objectScale(Vector::xyz111);
-					if (haveScaleColumns)
-					{
-						objectScale.set(
-							areaBuildoutTable.getFloatValue(sxColumn, buildoutRow),
-							areaBuildoutTable.getFloatValue(syColumn, buildoutRow),
-							areaBuildoutTable.getFloatValue(szColumn, buildoutRow));
-					}
 			
 					if ( !containerId || buildoutObjects.find( containerId ) != buildoutObjects.end() )
 					{
@@ -674,8 +660,7 @@ void WorldSnapshot::load (char const *sceneName)
 							xform,
 							radius,
 							portalLayoutCrc,
-							requiredEvent,
-							objectScale);
+							requiredEvent);
 					}
 
 					buildoutObjects.insert( objId );
@@ -734,9 +719,8 @@ void WorldSnapshot::preloadSomeAssets ()
 		PerformanceTimer preloadTimer;
 		preloadTimer.start();
 		int objectsLoaded = 0;
-		float const budgetSec = static_cast<float>(ConfigSharedUtility::getLoadingScreenPreloadBudgetMs()) * 0.001f;
 
-		while (ms_preloadObjectTemplate < ms_numberOfObjectTemplates && preloadTimer.getSplitTime () < budgetSec)
+		while (ms_preloadObjectTemplate < ms_numberOfObjectTemplates && preloadTimer.getSplitTime () < cms_callbackTime)
 		{
 #if PRODUCTION == 0
 			const int numberOfFilesOpenedTotal = TreeFile::getNumberOfFilesOpenedTotal ();
@@ -829,7 +813,7 @@ void WorldSnapshot::update(CellProperty const * const cellProperty, Vector const
 	//-- the first update's pending create query should ask the sphere tree for what should be loaded
 	ms_queryList.clear ();
 
-	ms_sphereTree.findInRange (position_w, ms_queryRadius, ms_queryList);
+	ms_sphereTree.findInRange (position_w, 1.f, ms_queryList);
 
 	if (!ms_queryList.empty () || !ms_loadedList.empty ())
 	{
@@ -1109,8 +1093,7 @@ Object* WorldSnapshot::addObject(
 	float            radius,
 	uint32           portalLayoutCrc,
 	int              cellCount,
-	std::string const& requiredEvent,
-	Vector const &   objectScale)
+	std::string const& requiredEvent)
 {
 	WorldSnapshotReaderWriter::Node const * const node = ms_reader.addObject(
 		networkIdInt,
@@ -1120,8 +1103,7 @@ Object* WorldSnapshot::addObject(
 		transform_p,
 		radius,
 		portalLayoutCrc, 
-		requiredEvent,
-		objectScale);
+		requiredEvent);
 
 	// TODO: We probably don't want to load an object if the event required for that object isn't currently active.
 
@@ -1134,9 +1116,7 @@ Object* WorldSnapshot::addObject(
 			i+1,
 			Transform::identity,
 			0,
-			0,
-			std::string(),
-			Vector::xyz111);
+			0);
 	}
 
 
@@ -1161,15 +1141,6 @@ void WorldSnapshot::moveObject(int64 networkIdInt, Transform const &transform_p)
 		if (node->getSpatialSubdivisionHandle())
 			ms_sphereTree.move(node->getSpatialSubdivisionHandle());
 	}
-}
-
-//-------------------------------------------------------------------
-
-void WorldSnapshot::setObjectScale(int64 networkIdInt, Vector const &objectScale)
-{
-	WorldSnapshotReaderWriter::Node * const node = ms_reader.find(networkIdInt);
-	if (node)
-		node->setObjectScale(objectScale);
 }
 
 //-------------------------------------------------------------------

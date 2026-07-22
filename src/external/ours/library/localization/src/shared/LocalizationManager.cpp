@@ -5,6 +5,7 @@
 //
 // ======================================================================
 
+// Rebuild when Unicode::String ABI changes (char16_t vs unsigned short).
 #include "FirstLocalization.h"
 #include "LocalizationManager.h"
 
@@ -460,22 +461,6 @@ LocalizationManager::StringValueCode LocalizationManager::getLocalizedStringValu
 {
 	value.clear ();
 
-	// Virtual tables: "internalKey|displayText" — only displayText is shown (client UI).
-	// convo_response: server-side conversation option ids; quest_pipe: quest journal/task strings in datatables.
-	if (id.getTable() == "convo_response" || id.getTable() == "quest_pipe")
-	{
-		std::string const & text = id.getText();
-		size_t const pipePos = text.find('|');
-		if (pipePos != std::string::npos)
-		{
-			value = Unicode::narrowToWide(text.substr(pipePos + 1));
-		}
-		else
-		{
-			value = Unicode::narrowToWide(text);
-		}
-		return SVC_ok;
-	}
 
 	// This finds the English string table if it exists, so if the table isn't found then it won't be found.
 	LocalizedStringTable * const table = fetchStringTable (id.getTable (), useEnglish);

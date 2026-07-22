@@ -11,8 +11,8 @@
 
 #include <algorithm>
 #include <cassert>
-#include <hash_map>
-#include <hash_set>
+#include <unordered_map>
+#include <unordered_Set>
 #include <list>
 #include <map>
 #include <set>
@@ -60,8 +60,8 @@ namespace UIBaseObjectNamespace
 		}
 	};
 
-	typedef std::hash_map<UIBaseObject const * /*child*/, UIBaseObject * /*root*/, UIBaseObjectHash> UIRootObjectMap;
-	typedef std::hash_set<UIBaseObject * /*child*/, UIBaseObjectHash> UIObjectHashSet;
+	typedef std::unordered_map<UIBaseObject const * /*child*/, UIBaseObject * /*root*/, UIBaseObjectHash> UIRootObjectMap;
+	typedef std::unordered_set<UIBaseObject * /*child*/, UIBaseObjectHash> UIObjectHashSet;
 	size_t const s_defaultWidgetObjects = 8192;
 	UIRootObjectMap s_uiRootObjectMap(s_defaultWidgetObjects);
 	UIObjectHashSet s_deletedObjects;
@@ -893,21 +893,14 @@ UIBaseObject *UIBaseObject::GetObjectFromPath( const char * const ObjectName ) c
 	if (ObjectName == 0 || *ObjectName == 0)
 		return 0;
 
+	UIBaseObject const * ObjectToSearch = this;
+
 	if( *ObjectName == '/' )
 	{
 		UIBaseObject const * const root = GetRoot();
 		UIBaseObject * const result = root ? root->GetObjectFromPath( ObjectName + 1 ) : NULL;
 		return result;
 	}
-
-	// Paths like "parent.body.right" begin resolution at our parent (used by TabbedPane TargetPage, etc.).
-	if (!_strnicmp(ObjectName, "parent.", 7))
-	{
-		const UIBaseObject * const p = GetParent();
-		return p ? p->GetObjectFromPath(ObjectName + 7) : 0;
-	}
-
-	UIBaseObject const * ObjectToSearch = this;
 
 	while( ObjectToSearch )
 	{

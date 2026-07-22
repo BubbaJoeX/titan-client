@@ -439,10 +439,11 @@ bool Direct3d9_OcclusionQuery::renderBoundingSphereQuery(QueryHandle handle, Sph
 	device->SetRenderState(D3DRS_COLORWRITEENABLE, 0);
 	device->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
 
-	device->SetStreamSource(0, ms_boxVertexBuffer, 0, sizeof(BoxVertex));
-	device->SetIndices(ms_boxIndexBuffer);
+	Direct3d9_StateCache::forceStreamSource(0, ms_boxVertexBuffer, 0, sizeof(BoxVertex));
+	Direct3d9_StateCache::forceIndexBuffer(ms_boxIndexBuffer);
 	device->SetFVF(D3DFVF_XYZ);
 	device->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, 8, 0, 12);
+	Direct3d9_StateCache::forceVertexDeclaration(NULL);
 
 	device->SetRenderState(D3DRS_COLORWRITEENABLE, oldColorWriteEnable);
 	device->SetRenderState(D3DRS_ZWRITEENABLE, oldZWriteEnable);
@@ -546,10 +547,11 @@ void Direct3d9_OcclusionQuery::renderBox(AxialBox const & box)
 	device->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
 
 	// Draw the box
-	device->SetStreamSource(0, ms_boxVertexBuffer, 0, sizeof(BoxVertex));
-	device->SetIndices(ms_boxIndexBuffer);
+	Direct3d9_StateCache::forceStreamSource(0, ms_boxVertexBuffer, 0, sizeof(BoxVertex));
+	Direct3d9_StateCache::forceIndexBuffer(ms_boxIndexBuffer);
 	device->SetFVF(D3DFVF_XYZ);
 	device->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, 8, 0, 12);
+	Direct3d9_StateCache::forceVertexDeclaration(NULL);
 
 	// Restore render states
 	device->SetRenderState(D3DRS_COLORWRITEENABLE, oldColorWriteEnable);

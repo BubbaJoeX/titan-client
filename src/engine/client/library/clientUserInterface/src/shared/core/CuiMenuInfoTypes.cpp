@@ -311,7 +311,6 @@ namespace Cui
 			MAKE_ID(ITEM_UNEQUIP_APPEARANCE,none,                     item_unequip_appearance,              CursorPaths::unequip);
 			MAKE_ID(OPEN_STORYTELLER_RECIPE,none,					  open_storyteller_recipe,              0);
 			MAKE_ID(GOD_TELEPORT, none, god_teleport, 0);
-			MAKE_ID(ITEM_MOVEMENT_MODE,     none,                     item_movement_mode,                   0);
 
 #undef MAKE_ID
 			

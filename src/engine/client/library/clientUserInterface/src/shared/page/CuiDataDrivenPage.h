@@ -78,7 +78,6 @@ protected:
 	virtual void               onSetProperty         (std::string const & widgetPath, bool isThisPage, std::string const & propertyName, Unicode::String const & propertyValue);
 	virtual void               performActivate       ();
 	virtual void               performDeactivate     ();
-	virtual bool               shouldSurviveDisabledWorkspace () const;
 	virtual UIEventCallback*   getCallbackObject     ();
 	void startPageSound(char const * const soundFile);
 	void stopPageSound();

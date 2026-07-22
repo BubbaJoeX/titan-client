@@ -10,7 +10,6 @@
 #include "clientUserInterface/CuiRadialMenuManager.h"
 
 #include "clientGame/BuildingObject.h"
-#include "clientUserInterface/CuiClaimManipulateState.h"
 #include "clientGame/CellObject.h"
 #include "clientGame/ClientCommandQueue.h"
 #include "clientGame/ClientImageDesignerManager.h"
@@ -20,8 +19,6 @@
 #include "clientGame/ClientWaypointObject.h"
 #include "clientGame/ContainerInterface.h"
 #include "clientGame/CreatureObject.h"
-#include "clientGame/DraftSchematicManager.h"
-#include "clientGame/DraftSchematicInfo.h"
 #include "clientGame/DroidProgramSizeManager.h"
 #include "clientGame/FactoryObject.h"
 #include "clientGame/Game.h"
@@ -44,7 +41,6 @@
 #include "clientUserInterface/CuiCombatManager.h"
 #include "clientUserInterface/CuiConversationManager.h"
 #include "clientUserInterface/CuiCraftManager.h"
-#include "clientUserInterface/CuiFurnitureMovementManager.h"
 #include "clientUserInterface/CuiInventoryManager.h"
 #include "clientUserInterface/CuiIoWin.h"
 #include "clientUserInterface/CuiManager.h"
@@ -65,7 +61,6 @@
 #include "sharedCollision/CollideParameters.h"
 #include "sharedCollision/CollisionInfo.h"
 #include "sharedFoundation/Clock.h"
-#include "sharedFoundation/ConstCharCrcString.h"
 #include "sharedFoundation/Crc.h"
 #include "sharedFoundation/GameControllerMessage.h"
 #include "sharedFoundation/Production.h"
@@ -82,7 +77,6 @@
 #include "sharedNetworkMessages/MessageQueueObjectMenuRequest.h"
 #include "sharedNetworkMessages/ObjectMenuSelectMessage.h" 
 #include "sharedObject/Appearance.h"
-#include "sharedObject/ObjectTemplateList.h"
 #include "sharedObject/AppearanceTemplate.h"
 #include "sharedObject/ArrangementDescriptor.h"
 #include "sharedObject/CellProperty.h"
@@ -113,15 +107,6 @@
 //======================================================================
 
 using namespace Cui::MenuInfoTypes;
-
-namespace
-{
-	/// GM draft schematic radial entries were gated on admin-only; include God Client so dev workflows match other god-mode bypasses.
-	inline bool canUseGmDraftSchematicMenus ()
-	{
-		return PlayerObject::isAdmin () || Game::isGodClient ();
-	}
-}
 
 namespace CuiRadialMenuManagerNamespace
 {
@@ -717,7 +702,7 @@ void CuiRadialMenuManager::update()
 	if (!s_pendingResponses.empty())
 	{
 		if (!player)
-		 s_pendingResponses.clear ();
+			s_pendingResponses.clear ();
 		else
 		{
 			PendingResponseInfo & entry = s_pendingResponses.front();
@@ -766,14 +751,7 @@ void CuiRadialMenuManager::update()
 		if (camera && s_updateByOffset) 
 		{
 			Vector worldPosition = object->getCollisionSphereExtent_w().getCenter();
-			// s_radialOffset_c is stored in camera space. Re-applying rotate_o2w() each frame
-			// while the chase camera orbits the mount makes the projected anchor circle on screen,
-			// which reads as a "spinning" radial and prevents selecting dismount / menu actions.
-			// While RidingMount (or client still has a mounted creature link), anchor without camera-offset spin.
-			bool const radialRideStable =
-				player->getState (States::RidingMount) || (player->getMountedCreature () != nullptr);
-			if (!radialRideStable)
-				worldPosition += camera->rotate_o2w(s_radialOffset_c);
+			worldPosition += camera->rotate_o2w(s_radialOffset_c);
 
 			Vector screenVect;
 			if (camera->projectInWorldSpace(worldPosition, &screenVect.x, &screenVect.y, 0, false))
@@ -801,13 +779,8 @@ bool CuiRadialMenuManager::createMenu (Object & object, const UIPoint & pt, bool
 
 	s_updateByOffset = false;
 
-	// Normally no radial on yourself; while mounted (vehicle-style) allow it so Dismount can target the rider oid.
 	if (&object == Game::getPlayer ())
-	{
-		CreatureObject const * const pc = Game::getPlayerCreature ();
-		if (!pc || (!pc->getState (States::RidingMount) && !pc->getMountedCreature ()))
-			return false;
-	}
+		return false;
 
 	s_helper.clear ();
 
@@ -824,7 +797,7 @@ bool CuiRadialMenuManager::createMenu (Object & object, const UIPoint & pt, bool
 
 		//-- sending labels to the server has no effect, they will get stripped off anyway		
 		if (!isInPublicContainer)
-		 s_helper.purgeLabels ();
+			s_helper.purgeLabels ();
 
 		if (++s_sequenceGlobal == 0)
 			++s_sequenceGlobal;
@@ -860,7 +833,7 @@ bool CuiRadialMenuManager::createMenu (Object & object, const UIPoint & pt, bool
 			ms_radial->SetProperty (UIRadialMenu::PropertyName::Style, Unicode::narrowToWide (RADIAL_STYLE));
 			UIWidget * const w = safe_cast<UIWidget *>(UIManager::gUIManager ().GetObjectFromPath (RADIAL_CENTER_PROTO, TUIWidget));
 			WARNING (!w, ("No such RADIAL_CENTER_PROTO [%s]", RADIAL_CENTER_PROTO));
-		 ms_radial->SetRadialCenterPrototype (w);
+			ms_radial->SetRadialCenterPrototype (w);
 			
 			UIWidget * const centerWidget = ms_radial->GetRadialCenterWidget ();
 			if (centerWidget)
@@ -970,7 +943,7 @@ CuiMenuInfoHelper * CuiRadialMenuManager::createMenu (Object & object, const UIP
 }
 
 
- //----------------------------------------------------------------------
+//----------------------------------------------------------------------
 
 namespace
 {
@@ -1333,13 +1306,11 @@ bool CuiRadialMenuManager::populateMenu (CuiMenuInfoHelper & helper, const Objec
 
 			return true;
 		}
-		//Add move option for furniture not in world or on player
-		if (got == SharedObjectTemplate::GOT_misc_furniture)
+
+		if(got == SharedObjectTemplate::GOT_misc_furniture)
 		{
-			if (!isInWorld && !isOnPlayer)
-			{
+			if(!isInWorld && !isOnPlayer)
 				pickupable = true;
-			}
 		}
 
 		if ((pickupable && !isInWorld) || allowPickups)
@@ -1696,15 +1667,9 @@ bool CuiRadialMenuManager::populateMenu (CuiMenuInfoHelper & helper, const Objec
 			const CellProperty * const parentCell = player->getParentCell ();
 			if (parentCell && parentCell != CellProperty::getWorldCellProperty () && !appearanceItem)
 				helper.addRootMenu (ITEM_DROP, got);
-			else if (parentCell && parentCell == CellProperty::getWorldCellProperty () && !appearanceItem
-				&& CuiClaimManipulateState::canDropInOpenClaim())
-				helper.addRootMenu (ITEM_DROP, got);
-
+			
 			if(!appearanceItem)
 				helper.addRootMenu (ITEM_DESTROY, got);
-
-			if (PlayerObject::isAdmin() && (parentCell == CellProperty::getWorldCellProperty()))
-				helper.addRootMenu(ITEM_DROP, got, true);
 		}
 
 		else if (player)
@@ -1860,16 +1825,6 @@ bool CuiRadialMenuManager::populateMenu (CuiMenuInfoHelper & helper, const Objec
 	else
 	{
 		helper.addRootMenu (EXAMINE,      got);
-	}
-
-	if (canUseGmDraftSchematicMenus () && clientObject)
-	{
-		const DraftSchematicInfo * const draftInfo = DraftSchematicManager::findDraftSchematicForObject(*clientObject);
-		if (draftInfo)
-		{
-			helper.addRootMenu(GM_CRAFT_SCHEMATIC, Unicode::narrowToWide("[GM] Craft (q1000)"));
-			helper.addRootMenu(GM_CRATE_SCHEMATIC, Unicode::narrowToWide("[GM] Factory Crate (q1000 x100)"));
-		}
 	}
 
 	return true;
@@ -2228,7 +2183,7 @@ void CuiRadialMenuManager::OnPopupMenuSelection (UIWidget * context)
 		{
 			if (label.empty ())
 				label = Cui::MenuInfoTypes::getLocalizedLabel (static_cast<Cui::MenuInfoTypes::Type>(type), clientObject->getGameObjectType ());
-
+			
 			Unicode::String result;
 			CuiStringVariablesManager::process (CuiStringIds::radial_out_of_range_prose, 
 				Unicode::emptyString, 
@@ -2461,22 +2416,6 @@ void CuiRadialMenuManager::performMenuAction (int sel, int index, bool serverNot
 		GenericValueTypeMessage<std::pair<NetworkId, std::string> > const msg("handleWaypointWarp", std::make_pair(cwo->getNetworkId(), ""));
 		GameNetwork::send(msg, true);
 	}
-	else if (sel == GM_CRAFT_SCHEMATIC || sel == GM_CRATE_SCHEMATIC)
-	{
-		if (clientObject && canUseGmDraftSchematicMenus ())
-		{
-			const DraftSchematicInfo * const draftInfo = DraftSchematicManager::findDraftSchematicForObject(*clientObject);
-			if (draftInfo)
-			{
-				const ConstCharCrcString & templateName = ObjectTemplateList::lookUp(draftInfo->getServerDraftSchematicTemplate());
-				if (!templateName.isEmpty())
-				{
-					const std::string cmdName = (sel == GM_CRAFT_SCHEMATIC) ? "gmCraftSchematic" : "gmCrateSchematic";
-					ClientCommandQueue::enqueueCommand(Crc::normalizeAndCalculate(cmdName.c_str()), NetworkId::cms_invalid, Unicode::narrowToWide(templateName.getString()));
-				}
-			}
-		}
-	}
 	else if (sel == SHIP_MANAGE_COMPONENTS)
 	{
 		if(clientObject)
@@ -2540,14 +2479,6 @@ void CuiRadialMenuManager::performMenuAction (int sel, int index, bool serverNot
 			CuiActionManager::performAction  (CuiActions::droidCommand, Unicode::narrowToWide(clientObject->getNetworkId().getValueString()));
 		}
 	}
-	else if(sel == ITEM_MOVEMENT_MODE)
-	{
-		// Enter furniture movement mode for the selected object
-		if(clientObject)
-		{
-			CuiFurnitureMovementManager::enterMovementMode(clientObject->getNetworkId());
-		}
-	}
 }
 
 //----------------------------------------------------------------------
@@ -2566,7 +2497,7 @@ void CuiRadialMenuManager::clear ()
 	if (ms_popup)
 	{
 		UIManager::gUIManager ().PopContextWidgets (ms_radial);
-	 setPopup (0);
+		setPopup (0);
 	}
 }
 
@@ -2648,11 +2579,6 @@ bool CuiRadialMenuManager::updateRanges ()
 	CreatureObject const * const creatureObject = clientObject->asCreatureObject();
 	if (creatureObject && !creatureObject->getCoverVisibility() && !creatureObject->isPassiveRevealPlayerCharacter(Game::getPlayerNetworkId()))
 	{
-		if (PlayerObject::isAdmin())
-		{
-			// allow gods to keep the radial up
-			return false;
-		}
 		CuiRadialMenuManager::clear ();
 		return false;
 	}
@@ -2749,6 +2675,8 @@ void CuiRadialMenuManager::touchCache  (const NetworkId & id)
 	}
 }
 
+//----------------------------------------------------------------------
+
 void  CuiRadialMenuManager::setObjectMenuDirty (NetworkId const & id)
 {
 	const CacheMap::iterator it = s_cacheMap.find (id);
@@ -2812,19 +2740,19 @@ bool CuiRadialMenuManager::performDefaultDoubleClickAction(Object const & object
 	SharedObjectTemplate::GameObjectType got  = SharedObjectTemplate::GOT_none;
 	if (clientObject)
 		got = static_cast<SharedObjectTemplate::GameObjectType> (clientObject->getGameObjectType ());
-
+	
 	////////////////////////////////////
 	
 	const bool isVendor = (got == SharedObjectTemplate::GOT_vendor || (tangible && tangible->hasCondition (TangibleObject::C_vendor)));
 	bool isAttackable = !isVendor;
 	isAttackable = isAttackable && tangible != 0 && tangible->isAttackable();
-	isAttackable = isAttackable && (!creature || !creature->isDead());
+	isAttackable = isAttackable && (!creature || !creature->isDead ());
 	isAttackable = isAttackable && got != SharedObjectTemplate::GOT_corpse;
-
+	
 	////////////////////////////////////
 
 	bool const isNestedInventory = tangible ? CuiInventoryManager::isNestedInventory(*tangible) : 0;
-	bool const isNestedEquipped = tangible ? CuiInventoryManager::isNestedEquipped(*tangible) : 0;
+	bool const isNestedEquipped = tangible ? CuiInventoryManager::isNestedEquipped(*tangible)  : 0;
 	bool const isOnPlayer = isNestedInventory || isNestedEquipped;
 	bool const isConversable = creature ? creature->hasCondition(TangibleObject::C_conversable) : false;
 	bool const isMount = creature ? creature->hasCondition(TangibleObject::C_mount) : false;
@@ -2834,15 +2762,14 @@ bool CuiRadialMenuManager::performDefaultDoubleClickAction(Object const & object
 	bool const isEnemy = creature ? creature->isEnemy() : false;
 	bool const pickupable = !isOnPlayer && canPickUp(got);
 	bool const isPlayer = creature ? creature->isPlayer() : false;
-	bool const isInWorld = !containedByObject || containedByObject->getCellProperty();
+	bool const isInWorld = !containedByObject || containedByObject->getCellProperty ();
 	bool const isOwner = creature ? creature->getMasterId() == player->getNetworkId() : false;
 	bool const isCraftingStation = got == SharedObjectTemplate::GOT_misc_crafting_station;
 
 	////////////////////////////////////
-
+	
 	uint32 const clientObjectUniqueId = clientObject ? clientObject->getUniqueId() : 0;
-	NetworkId const& networkId = object.getNetworkId();
-
+	NetworkId const & networkId = object.getNetworkId();
 
 	////////////////////////////////////
 

@@ -124,6 +124,9 @@
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\utility\StaticMeshTransferOptions.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\utility\SwgImportTrace.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SetDirectoryCommand.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -412,6 +415,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\utility\StaticMeshTransferOptions.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\utility\SwgImportTrace.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SetDirectoryCommand.h">

@@ -184,6 +184,8 @@ set(SOURCE_FILES
         utility/StaticMeshViewportSpace.h
         utility/StaticMeshTransferOptions.cpp
         utility/StaticMeshTransferOptions.h
+        utility/SwgImportTrace.cpp
+        utility/SwgImportTrace.h
 
         commands/SetDirectoryCommand.cpp
         commands/SetDirectoryCommand.h

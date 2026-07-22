@@ -49,12 +49,15 @@ LoginClientId::LoginClientId(Archive::ReadIterator & source) :
 GameNetworkMessage("LoginClientId"),
 id(),
 key(),
-version()
+version(),
+guid()
 {
 	addVariable(id);
 	addVariable(key);
 	addVariable(version);
 	unpack(source);
+		if (source.getSize() > 0)
+			guid.unpack(source);
 }
 
 //-----------------------------------------------------------------------

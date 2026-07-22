@@ -41,6 +41,7 @@ public:
 	static int                           getChatWindowFontSizeDefaultIndex ();
 	static int                           getChatWindowFontSizeDefaultSize  ();
 	static void                          setChatWindowFontSizeDefaultIndex (int index);
+	static void                          refreshChatWindowStylesIfInstalled ();
 
 	static bool                          isChatBrief                       ();
 	static bool                          isChatDiku                        ();
@@ -67,9 +68,6 @@ public:
 
 	static Callback &                    getChatFontSizeCallback    ();
 	static Callback &                    getChatBoxKeyClickCallback ();
-
-	/// No-op if install() has not run yet. Used when UI font face or scale changes globally.
-	static void                          refreshChatWindowStylesIfInstalled ();
 
 private:
 

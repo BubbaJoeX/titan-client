@@ -16,6 +16,7 @@
 #include "VertexBufferIterator.h"
 #include "MayaUtility.h"
 #include "StaticMeshViewportSpace.h"
+#include "SwgImportTrace.h"
 
 #include <maya/MDagPath.h>
 #include <maya/MStatus.h>
@@ -223,16 +224,10 @@ namespace
 {
     static void mshLog(const char* fmt, ...)
     {
-        char buf[1024];
         va_list args;
         va_start(args, fmt);
-        vsnprintf(buf, sizeof(buf), fmt, args);
+        SwgImportTrace::logV("MshTranslator", fmt, args);
         va_end(args);
-        std::string msg = std::string("[MshTranslator] ") + buf + "\n";
-        std::cerr << msg;
-#ifdef _WIN32
-        OutputDebugStringA(msg.c_str());
-#endif
     }
 
     MString s_parentPathForMshImport;
@@ -251,20 +246,23 @@ namespace
         MDagPath path;
         if (MDagPath::getAPathTo(meshRootObj, path) != MS::kSuccess)
             return false;
-        MFnDagNode meshRootFn(path);
-        if (meshRootFn.name() != MString("mesh"))
+        MDagPath meshGroupPath = path;
+        if (meshGroupPath.pop() != MS::kSuccess)
             return false;
-        MDagPath cellPath = path;
-        if (cellPath.pop() != MS::kSuccess)
+        if (MFnDagNode(meshGroupPath).name() != MString("mesh"))
             return false;
-        const unsigned childCount = cellPath.childCount();
-        for (unsigned i = 0; i < childCount; ++i)
+        if (meshGroupPath.pop() != MS::kSuccess)
+            return false;
+        const MString cellName = MFnDagNode(meshGroupPath).name();
+        if (cellName.length() < 2 || cellName.asChar()[0] != 'r')
+            return false;
+        for (unsigned j = 1; j < cellName.length(); ++j)
         {
-            MFnDagNode childFn(cellPath.child(i));
-            if (childFn.name() == MString("collision"))
-                return true;
+            const char c = cellName.asChar()[j];
+            if (c < '0' || c > '9')
+                return false;
         }
-        return false;
+        return true;
     }
 }
 
@@ -283,15 +281,12 @@ MStatus MshTranslator::createMeshFromMsh(const char* mshPath, MString& outRootPa
     mshLog("  Scene has %zu root transforms before import", before.size());
     s_parentPathForMshImport = parentPath;
     s_createdRootPathForMshImport = MString();
-    MFileObject fileObj;
-    fileObj.setRawFullName(mshPath);
-    MshTranslator* t = static_cast<MshTranslator*>(creator());
-    mshLog("  Calling reader...");
     const MString readerOpts = visualHardpoints ? MString("visualHardpoints=1") : MString();
-    MStatus status = t->reader(fileObj, readerOpts, MPxFileTranslator::kImportAccessMode);
-    mshLog("  Reader returned: %s", status ? "OK" : "FAILED");
+    MshTranslator importer;
+    mshLog("  Calling importMeshFromPathImpl (direct, no nested file translator)...");
+    MStatus status = importer.importMeshFromPathImpl(mshPath, readerOpts);
+    mshLog("  importMeshFromPathImpl returned: %s", status ? "OK" : "FAILED");
     s_parentPathForMshImport = MString();
-    delete t;
     if (!status) return status;
 
     if (s_createdRootPathForMshImport.length() > 0)
@@ -321,18 +316,16 @@ void* MshTranslator::creator()
 }
 
 /**
- * Function that handles reading in the file (import/open operations)
- *
- * @param file the file
- * @param options options
- * @param mode file access mode
- * @return the operation success/failure
+ * Core static mesh IFF import — shared by file translator and createMeshFromMsh.
+ * Do not route nested calls through MPxFileTranslator::reader (deadlocks during POB import).
  */
-MStatus MshTranslator::reader (const MFileObject& file, const MString& options, MPxFileTranslator::FileAccessMode mode)
+MStatus MshTranslator::importMeshFromPathImpl(const char* fileName, const MString& options)
 {
-    const char* fileName = file.expandedFullName().asChar();
-    mshLog("reader: %s", fileName);
-    mshLog("reader options string: [%s]", options.asChar() ? options.asChar() : "");
+    mshLog("importMeshFromPathImpl: %s", fileName ? fileName : "(null)");
+    SwgImportTrace::stage("MshTranslator importMeshFromPathImpl begin");
+    mshLog("  options string: [%s]", options.asChar() ? options.asChar() : "");
+
+    const std::string meshBaseNameFromPath = MayaUtility::parseFileNameToNodeName(fileName ? fileName : "");
 
     s_mshImportVisualHardpoints = false;
     {
@@ -478,7 +471,7 @@ MStatus MshTranslator::reader (const MFileObject& file, const MString& options, 
                 parentTransform.create(parentObj);
             else
                 parentTransform.create();
-            parentTransform.setName(file.rawName());
+            parentTransform.setName(meshBaseNameFromPath.c_str());
             meshImportRootObj = parentTransform.object();
             if (!parentObj.isNull())
             {
@@ -809,7 +802,7 @@ MStatus MshTranslator::reader (const MFileObject& file, const MString& options, 
                 parentTransform.create(parentObj);
             else
                 parentTransform.create();
-            parentTransform.setName(file.rawName());
+            parentTransform.setName(meshBaseNameFromPath.c_str());
             meshImportRootObj = parentTransform.object();
             if (!parentObj.isNull())
             {
@@ -823,7 +816,7 @@ MStatus MshTranslator::reader (const MFileObject& file, const MString& options, 
         {
             if (!hardpoints.empty())
             {
-                std::string meshBaseName = MayaUtility::parseFileNameToNodeName(file.rawName().asChar());
+                std::string meshBaseName = meshBaseNameFromPath;
                 std::map<std::string, MDagPath> emptyJointMap;
                 MStatus hpStatus;
                 if (s_mshImportVisualHardpoints)
@@ -878,6 +871,7 @@ MStatus MshTranslator::reader (const MFileObject& file, const MString& options, 
 
         iff.close();
 
+        SwgImportTrace::stage("MshTranslator importMeshFromPathImpl complete");
         return MS::kSuccess;
 
     }
@@ -887,6 +881,21 @@ MStatus MshTranslator::reader (const MFileObject& file, const MString& options, 
         return MS::kFailure;
     }
 
+}
+
+MStatus MshTranslator::reader(const MFileObject& file, const MString& options, MPxFileTranslator::FileAccessMode /*mode*/)
+{
+    std::string pathStd = MayaUtility::fileObjectPathForIdentify(file);
+    if (pathStd.empty())
+    {
+        const MString expanded = file.expandedFullName();
+        if (expanded.length() > 0)
+            pathStd = expanded.asChar();
+    }
+    if (pathStd.empty())
+        return MS::kFailure;
+    MshTranslator importer;
+    return importer.importMeshFromPathImpl(pathStd.c_str(), options);
 }
 
 /**

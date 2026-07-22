@@ -29,7 +29,6 @@
 #include "sharedObject/Object.h"
 #include "sharedUtility/LocalMachineOptionManager.h"
 
-#include <algorithm>
 #include <vector>
 
 // ============================================================================
@@ -685,21 +684,12 @@ float ParticleEffectAppearance::getPlayBackRate_w() const
 //--------------------------------------------------------------------------
 void ParticleEffectAppearance::setScale(Vector const & scale)
 {
-	// Appearance / widgets can propagate non-uniform scale; particle authoring only consumes a uniform scalar.
-	float uniformScale = scale.x;
-	if (!WithinEpsilonInclusive(scale.x, scale.y, FLT_MIN) || !WithinEpsilonInclusive(scale.x, scale.z, FLT_MIN))
-	{
-		DEBUG_REPORT_LOG(true,
-			("ParticleEffectAppearance::setScale non-uniform (%.6f, %.6f, %.6f) — using largest axis as uniform particle scale (e.g. UI layout).\n",
-			 scale.x, scale.y, scale.z));
-		uniformScale = std::max(scale.x, std::max(scale.y, scale.z));
-	}
+	DEBUG_FATAL(!WithinEpsilonInclusive(scale.x, scale.y, FLT_MIN) || !WithinEpsilonInclusive(scale.x, scale.z, FLT_MIN), ("ParticleEffectAppearance::setScale called with a non-uniform scale."));
+	DEBUG_FATAL((scale.x <= 0.0f), ("The scale(%f) must be > 0", scale.x));
 
-	DEBUG_FATAL((uniformScale <= 0.0f), ("The scale(%f) must be > 0", uniformScale));
+	Appearance::setScale(Vector(scale.x, scale.x, scale.x));
 
-	Appearance::setScale(Vector(uniformScale, uniformScale, uniformScale));
-
-	m_scale_w = uniformScale * m_particleEffectAppearanceTemplate->m_particleEffectDescription->getScale();
+	m_scale_w = scale.x * m_particleEffectAppearanceTemplate->m_particleEffectDescription->getScale();
 
 	if (m_parentParticleEffectAppearance != NULL)
 	{

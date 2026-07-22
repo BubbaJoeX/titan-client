@@ -36,7 +36,6 @@
 #include "clientGame/Game.h"
 #include "sharedCollision/CollideParameters.h"
 #include "sharedCollision/CollisionInfo.h"
-#include "sharedObject/CellProperty.h"
 #include "sharedDebug/DebugFlags.h"
 #include "sharedDebug/PerformanceTimer.h"
 #include "sharedDebug/Profiler.h"
@@ -71,30 +70,6 @@
 #include <cmath>
 #include <cstdio>
 #include <limits>
-
-namespace
-{
-	// File scope (not function-local): MSVC C4822 rejects `= delete` on copy/assign inside local classes.
-	class TerrainWorldLightingScope
-	{
-	public:
-		bool const m_active;
-		explicit TerrainWorldLightingScope (bool active) :
-			m_active (active)
-		{
-			if (m_active)
-				ShaderPrimitiveSorter::pushCell (*CellProperty::getWorldCellProperty ());
-		}
-		~TerrainWorldLightingScope ()
-		{
-			if (m_active)
-				ShaderPrimitiveSorter::popCell ();
-		}
-	private:
-		TerrainWorldLightingScope (TerrainWorldLightingScope const &) = delete;
-		TerrainWorldLightingScope &operator= (TerrainWorldLightingScope const &) = delete;
-	};
-}
 
 //===================================================================
 
@@ -692,7 +667,6 @@ ClientProceduralTerrainAppearance::~ClientProceduralTerrainAppearance ()
 	m_dpvsObject = NULL;
 
 	delete m_invalidateChunkRequestInfoList;
-
 	delete m_invalidateRegionList;
 
 	delete m_chunkTree;
@@ -937,6 +911,7 @@ ClientProceduralTerrainAppearance::ClientChunk *ClientProceduralTerrainAppearanc
 	generatorChunkData.numberOfPoles        = numberOfPoles;
 	generatorChunkData.upperPad             = upperPad;
 	generatorChunkData.distanceBetweenPoles = distanceBetweenPoles;
+
 	createChunkData.createChunkBuffer->allocate(numberOfPoles);
 
 	bool loadedFromDiskCache = false;
@@ -993,14 +968,12 @@ ClientProceduralTerrainAppearance::ClientChunk *ClientProceduralTerrainAppearanc
 					writeArray2d(cacheFile, createChunkData.createChunkBuffer->passableMap);
 				fclose(cacheFile);
 				if (!wrote)
-				{
 					::remove(cacheFileName);
-				}
 			}
 		}
 	}
 
-	// Apply city terrain height modifications (for flatten regions)
+	// Apply city terrain height modifications (for flatten regions).
 	if (CityTerrainLayerManager::isInstalled())
 	{
 		Array2d<Vector> * const vertexPositionMap = &createChunkData.createChunkBuffer->vertexPositionMap;
@@ -1009,12 +982,9 @@ ClientProceduralTerrainAppearance::ClientChunk *ClientProceduralTerrainAppearanc
 			for (int px = 0; px < numberOfPoles; ++px)
 			{
 				Vector & pos = vertexPositionMap->getData(px, pz);
-				float originalHeight = pos.y;
-				float modifiedHeight = originalHeight;
-				if (CityTerrainLayerManager::getModifiedHeight(pos.x, pos.z, originalHeight, modifiedHeight))
-				{
+				float modifiedHeight = pos.y;
+				if (CityTerrainLayerManager::getModifiedHeight(pos.x, pos.z, pos.y, modifiedHeight))
 					pos.y = modifiedHeight;
-				}
 			}
 		}
 	}
@@ -1128,9 +1098,7 @@ void ClientProceduralTerrainAppearance::calculateLod () const
 	PROFILER_AUTO_BLOCK_DEFINE ("ClientProceduralTerrainAppearance::calculateLod");
 
 	if (ms_forceRenderEntireMapEnabled && !m_forceRenderEntireMapDone)
-	{
 		forceCreateEntireMapChunks();
-	}
 
 	bool const atmosphericFlight = Game::isShipScene() && !Game::isSpace() && (Game::getPlayerContainingShip() != NULL);
 	ClientProceduralTerrainAppearance * const nonConstThis = const_cast<ClientProceduralTerrainAppearance*>(this);
@@ -1155,7 +1123,6 @@ void ClientProceduralTerrainAppearance::calculateLod () const
 	//-- frustum volume in world space
 	m_worldFrustum.transform (ms_referenceCamera->getFrustumVolume (), ms_referenceCamera->getTransform_o2w ());
 
-	// While locked, procedural rebuild is replacing dirty leaves; skipping LOD selection avoids fighting the worker.
 	if (!m_lockTerrainLevelOfDetail)
 	{
 		//-- fill out the terrain in the frustum
@@ -1174,9 +1141,7 @@ void ClientProceduralTerrainAppearance::calculateLod () const
 			m_lastRefPosition_w = refPosition;
 
 			if (atmosphericFlight && ms_enableAtmosphericChunkPrewarm)
-			{
 				prewarmAtmosphericFarLodChunks(refPosition);
-			}
 
 			//-- m_levelOfDetailFillComplete indicates that all potentially viewable terrain, from the camera position, has been filled in
 			m_levelOfDetailFillComplete = const_cast<ClientProceduralTerrainAppearance*> (this)->selectActualLevelOfDetail (ms_referenceCamera, referenceObject, &m_worldFrustum);
@@ -1201,15 +1166,10 @@ void ClientProceduralTerrainAppearance::prewarmAtmosphericFarLodChunks (Vector c
 	nonConstThis->m_lastAtmoPrewarmChunkX = centerChunkX;
 	nonConstThis->m_lastAtmoPrewarmChunkZ = centerChunkZ;
 
-	// Pre-generate an extended ring of high-detail chunks for atmospheric flight.
 	int const highDetailRadius = 8;
 	for (int dz = -highDetailRadius; dz <= highDetailRadius; ++dz)
-	{
 		for (int dx = -highDetailRadius; dx <= highDetailRadius; ++dx)
-		{
 			nonConstThis->createChunk(centerChunkX + dx, centerChunkZ + dz, 1, 0);
-		}
-	}
 }
 
 //-------------------------------------------------------------------
@@ -1229,7 +1189,6 @@ void ClientProceduralTerrainAppearance::forceCreateEntireMapChunks () const
 	if (chunkCountPerAxis <= 0)
 		return;
 
-	// Build the map progressively to avoid long stalls on loading/first render.
 	int const chunksPerFrameBudget = 128;
 	int builtThisFrame = 0;
 	for (int z = nonConstThis->m_forceRenderEntireMapCursorZ; z < chunkCountPerAxis; ++z)
@@ -1238,8 +1197,7 @@ void ClientProceduralTerrainAppearance::forceCreateEntireMapChunks () const
 		for (int x = startX; x < chunkCountPerAxis; ++x)
 		{
 			nonConstThis->createChunk(x, z, 1, 0);
-			++builtThisFrame;
-			if (builtThisFrame >= chunksPerFrameBudget)
+			if (++builtThisFrame >= chunksPerFrameBudget)
 			{
 				nonConstThis->m_forceRenderEntireMapCursorX = x + 1;
 				nonConstThis->m_forceRenderEntireMapCursorZ = z;
@@ -1287,7 +1245,7 @@ void ClientProceduralTerrainAppearance::preRender (const Camera* camera) const
 		{
 			m_worldFrustum.transform (frustumCamera->getFrustumVolume (), frustumCamera->getTransform_o2w ());
 
- 		TerrainQuadTree::ConstIterator node_iter (getChunkTree ()->getTopNode ());
+			TerrainQuadTree::ConstIterator node_iter (getChunkTree ()->getTopNode ());
 
 		const TerrainQuadTree::Node * snode = 0;
 
@@ -1404,23 +1362,10 @@ void ClientProceduralTerrainAppearance::render () const
 {
 	NP_PROFILER_AUTO_BLOCK_DEFINE ("ClientProceduralTerrainAppearance::render");
 
-	// DPVS sometimes reports exterior terrain visible without a portal-enter; the cell/fog stack can still
-	// reflect an interior (or transitional) cell. Drawing terrain under that state applies interior fog, env,
-	// and (via Direct3d9) interior material tint toward black splats. Always re-parent terrain+sky to the world
-	// cell whenever the active render cell is not already the world cell -- not only when custom pob lighting is flagged.
-	CellProperty const * const worldCell = CellProperty::getWorldCellProperty();
-	CellProperty const * const activeCell = ShaderPrimitiveSorter::getCurrentCellProperty();
-	bool const needWorldCell =
-		worldCell &&
-		activeCell &&
-		activeCell != worldCell;
-
-	TerrainWorldLightingScope const terrainWorldLightingScope(needWorldCell);
-
 	//-- render the environment
 	GroundEnvironment::getInstance().draw();
 
-	//-- render flora (radial: static NC + dynamic near/far; draw-only suppression for placement overlays)
+	//-- render flora
 	if (!ms_radialFloraDrawSuppressedForPlacementOverlay)
 	{
 		PROFILER_AUTO_BLOCK_DEFINE ("terrain draw flora");
@@ -1626,10 +1571,7 @@ bool ClientProceduralTerrainAppearance::approximateCollideObjects (const Vector&
 bool ClientProceduralTerrainAppearance::findStaticCollidableFlora (const Vector& position, ProceduralTerrainAppearance::StaticFloraData& data, bool& floraAllowed) const
 {
 	const Chunk* const chunk = ProceduralTerrainAppearance::findFirstRenderableChunk (position);
-	if (!chunk)
-		return false;
-
-	if (chunk->isExcluded(position))
+	if (!chunk || chunk->isExcluded(position))
 		return false;
 
 	FloraGroup::Info groupInfo;
@@ -1641,8 +1583,7 @@ bool ClientProceduralTerrainAppearance::findStaticCollidableFlora (const Vector&
 	if (overlayPaint)
 	{
 		groupInfo.setFamilyId(fid);
-		const float c = std::max(0.f, std::min(1.f, density));
-		groupInfo.setChildChoice(c);
+		groupInfo.setChildChoice(std::max(0.f, std::min(1.f, density)));
 		floraAllowed = true;
 	}
 
@@ -1657,7 +1598,7 @@ bool ClientProceduralTerrainAppearance::findStaticCollidableFlora (const Vector&
 	data.childChoice     = groupInfo.getChildChoice ();
 	data.familyChildData = &floraGroup.createFlora(groupInfo);
 	return true;
-}  //lint !e1763  // function marked as const modifies class
+}  //lint !e1763
 
 //-----------------------------------------------------------------
 
@@ -1699,9 +1640,6 @@ bool ClientProceduralTerrainAppearance::findEnvironment (const Vector& position,
 
 void ClientProceduralTerrainAppearance::buildLocalWaterTable (const TerrainGenerator::Layer* layer)
 {
-	if (!layer)
-		return;
-
 	if (!m_waterManagerList)
 		return;
 
@@ -1713,13 +1651,9 @@ void ClientProceduralTerrainAppearance::buildLocalWaterTable (const TerrainGener
 		int i;
 		for (i = 0; i < layer->getNumberOfBoundaries (); i++)
 		{
-			const TerrainGenerator::Boundary* const boundaryItem = layer->getBoundary (i);
-			if (!boundaryItem)
-				continue;
-
-			if (boundaryItem->isActive () && boundaryItem->getType () == TGBT_polygon)
+			if (layer->getBoundary (i)->isActive () && layer->getBoundary (i)->getType () == TGBT_polygon)
 			{
-				const BoundaryPolygon* boundary = safe_cast<const BoundaryPolygon*> (boundaryItem);
+				const BoundaryPolygon* boundary = safe_cast<const BoundaryPolygon*> (layer->getBoundary (i));
 				NOT_NULL (boundary);
 
 				if (boundary->isLocalWaterTable ())
@@ -1737,9 +1671,9 @@ void ClientProceduralTerrainAppearance::buildLocalWaterTable (const TerrainGener
 				}
 			}
 
-			if (boundaryItem->isActive () && boundaryItem->getType () == TGBT_rectangle)
+			if (layer->getBoundary (i)->isActive () && layer->getBoundary (i)->getType () == TGBT_rectangle)
 			{
-				const BoundaryRectangle* boundary = safe_cast<const BoundaryRectangle*> (boundaryItem);
+				const BoundaryRectangle* boundary = safe_cast<const BoundaryRectangle*> (layer->getBoundary (i));
 				NOT_NULL (boundary);
 
 				if (boundary->isLocalWaterTable ())
@@ -1779,13 +1713,9 @@ void ClientProceduralTerrainAppearance::buildLocalWaterTable (const TerrainGener
 		int i;
 		for (i = 0; i < layer->getNumberOfAffectors (); i++)
 		{
-			const TerrainGenerator::Affector* const aff = layer->getAffector (i);
-			if (!aff)
-				continue;
-
-			if (aff->isActive () && aff->getType () == TGAT_river)
+			if (layer->getAffector (i)->isActive () && layer->getAffector (i)->getType () == TGAT_river)
 			{
-				const AffectorRiver* affector = safe_cast<const AffectorRiver*> (aff);
+				const AffectorRiver* affector = safe_cast<const AffectorRiver*> (layer->getAffector (i));
 				NOT_NULL (affector);
 
 				if (affector->getHasLocalWaterTable ())
@@ -1819,9 +1749,9 @@ void ClientProceduralTerrainAppearance::buildLocalWaterTable (const TerrainGener
 			}
 
 			// Start Ribbon
-			else if (aff->isActive () && aff->getType () == TGAT_ribbon)
+			else if (layer->getAffector (i)->isActive () && layer->getAffector (i)->getType () == TGAT_ribbon)
 			{
-				const AffectorRibbon* affector = safe_cast<const AffectorRibbon*> (aff);
+				const AffectorRibbon* affector = safe_cast<const AffectorRibbon*> (layer->getAffector (i));
 				NOT_NULL (affector);
 
 				ArrayList<AffectorRibbon::Quad> ribbonQuadList;
@@ -1918,11 +1848,8 @@ void ClientProceduralTerrainAppearance::buildLocalWaterTable (const TerrainGener
 	{
 		int i;
 		for (i = 0; i < layer->getNumberOfLayers (); i++)
-		{
-			const TerrainGenerator::Layer* const subLayer = layer->getLayer (i);
-			if (subLayer && subLayer->isActive ())
-				buildLocalWaterTable (subLayer);
-		}
+			if (layer->getLayer (i)->isActive ())
+				buildLocalWaterTable (layer->getLayer (i));
 	}
 }
 
@@ -1930,20 +1857,12 @@ void ClientProceduralTerrainAppearance::buildLocalWaterTable (const TerrainGener
 
 void ClientProceduralTerrainAppearance::buildLocalWaterTables ()
 {
-	if (!proceduralTerrainAppearanceTemplate)
-		return;
-
-	const TerrainGenerator* const generator = proceduralTerrainAppearanceTemplate->getTerrainGenerator ();
-	if (!generator)
-		return;
+	const TerrainGenerator* generator = proceduralTerrainAppearanceTemplate->getTerrainGenerator ();
 
 	int i;
 	for (i = 0; i < generator->getNumberOfLayers (); i++)
-	{
-		const TerrainGenerator::Layer* const lyr = generator->getLayer (i);
-		if (lyr && lyr->isActive ())
-			buildLocalWaterTable (lyr);
-	}
+		if (generator->getLayer (i)->isActive ())
+			buildLocalWaterTable (generator->getLayer (i));
 }
 
 //-------------------------------------------------------------------
@@ -1973,22 +1892,17 @@ void ClientProceduralTerrainAppearance::purgeChunks ()
 
 	REPORT_LOG_PRINT (m_totalNumberOfChunksCreated, ("average chunk create: %1.3f generate, %1.3f client\n", m_totalChunkGenerationTime / m_totalNumberOfChunksCreated, m_totalChunkCreationTime / m_totalNumberOfChunksCreated));
 
-	if (TerrainQuadTree* const tree = getChunkTree ())
-	{
-		if (TerrainQuadTree::Node* const top = tree->getTopNode ())
-		{
-			IGNORE_RETURN (top->removeSubNodes (true));
-			if (top->getChunk ())
-				top->removeChunk (top->getChunk (), true);
-		}
-	}
+	IGNORE_RETURN (getChunkTree ()->getTopNode ()->removeSubNodes (true));
+	if (getChunkTree ()->getTopNode ()->getChunk ())
+		getChunkTree ()->getTopNode ()->removeChunk (getChunkTree ()->getTopNode ()->getChunk (), true);
 
 	m_totalChunkCreationTime     = 0;
 	m_totalChunkGenerationTime   = 0;
 	m_totalNumberOfChunksCreated = 0;
 
-	if (m_levelOfDetail)
-		m_levelOfDetail->setDirty (true);
+	NOT_NULL (m_levelOfDetail);
+
+	m_levelOfDetail->setDirty (true);
 
 	m_requestCriticalSection.leave();
 }
@@ -2012,10 +1926,8 @@ bool ClientProceduralTerrainAppearance::anyClientChunkReferencesShaderCache (Sha
 			if (clientChunk && clientChunk->referencesShaderCache (cache))
 				return true;
 		}
-
 		IGNORE_RETURN (iter.descend ());
 	}
-
 	return false;
 }
 
@@ -2025,13 +1937,7 @@ void ClientProceduralTerrainAppearance::serviceDeferredShaderCacheDeletes ()
 {
 	while (m_deferredShaderCacheDeletes.getNumberOfElements () > 0)
 	{
-		if (!terrainGenerationStabilized ())
-			return;
-
-		if (m_lockTerrainLevelOfDetail)
-			return;
-
-		if (m_requestThreadMode != RTM0_normal)
+		if (!terrainGenerationStabilized () || m_lockTerrainLevelOfDetail || m_requestThreadMode != RTM0_normal)
 			return;
 
 		ShaderCache * const victim = m_deferredShaderCacheDeletes[0];
@@ -2053,7 +1959,7 @@ void ClientProceduralTerrainAppearance::rebuildShaderCacheFromGenerator ()
 	NOT_NULL (terrainGenerator);
 	ShaderGroup const& shaderGroup = terrainGenerator->getShaderGroup ();
 
-	const_cast< ShaderGroup &> (shaderGroup).loadSurfaceProperties ();
+	const_cast<ShaderGroup &> (shaderGroup).loadSurfaceProperties ();
 
 	ShaderCache * const oldCache = m_shaderCache;
 	m_requestCriticalSection.enter ();
@@ -2356,26 +2262,14 @@ void ClientProceduralTerrainAppearance::debugDump () const
 
 const ProceduralTerrainAppearance::Chunk* ClientProceduralTerrainAppearance::findChunk (const int x, const int z, const int chunkSize) const
 {
-	TerrainQuadTree const* const tree = getChunkTree ();
-	if (!tree)
-		return 0;
-	return tree->findChunk (x, z, chunkSize);
+	return getChunkTree ()->findChunk (x, z, chunkSize);
 }
 
 //-------------------------------------------------------------------
 
 const ProceduralTerrainAppearance::Chunk* ClientProceduralTerrainAppearance::findFirstRenderableChunk (const int x, const int z) const
 {
-	// Terrain quad-tree can transiently lack a root node during setup / teardown; never dereference a null top.
-	TerrainQuadTree const* const tree = getChunkTree ();
-	if (!tree)
-		return 0;
-
-	TerrainQuadTree::Node const* const top = tree->getTopNode ();
-	if (!top)
-		return 0;
-
-	TerrainQuadTree::Node const* const node = top->findFirstRenderableNode (x, z);
+	const TerrainQuadTree::Node* const node = getChunkTree ()->getTopNode ()->findFirstRenderableNode (x, z);
 
 	return node ? node->getChunk () : 0;
 }

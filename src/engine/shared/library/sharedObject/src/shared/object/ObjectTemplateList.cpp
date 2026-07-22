@@ -174,7 +174,7 @@ void ObjectTemplateList::loadCrcStringTable(const char *fileName)
 ConstCharCrcString const ObjectTemplateList::lookUp(const char * string)
 {
 	ConstCharCrcString result = ms_crcStringTable.lookUp(string);
-	DEBUG_REPORT_LOG(result.isEmpty(), ("[Titan] ObjectTemplateList::lookUp objectTemplate %s not found in table\n", string));
+	WARNING(result.isEmpty(), ("ObjectTemplateList::lookUp objectTemplate %s not found in table", string));
 	return result;
 }
 

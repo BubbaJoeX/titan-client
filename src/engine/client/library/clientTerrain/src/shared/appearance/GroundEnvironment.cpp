@@ -20,7 +20,6 @@
 #include "clientTerrain/GroundEnvironment.h"
 
 #include "clientGraphics/Camera.h"
-#include "clientGraphics/ClientPresentation.h"
 #include "clientGraphics/DebugPrimitive.h"
 #include "clientGraphics/Graphics.h"
 #include "clientGraphics/Light.h"
@@ -1061,45 +1060,6 @@ void GroundEnvironment::apply (float const t)
 	DEBUG_REPORT_PRINT (ms_debugReport, ("main tangent color  = %3i, %3i, %3i\n", static_cast<int> (255.f * mainTangentColor.r), static_cast<int> (255.f * mainTangentColor.g), static_cast<int> (255.f * mainTangentColor.b)));
 	DEBUG_REPORT_PRINT (ms_debugReport, ("main tangent color scale = %1.2f\n", mainTangentColorScale));
 
-	if (ClientPresentation::isEnabled())
-	{
-		float const ambScale = ClientPresentation::getAmbientLightScale();
-		if (ambScale != 1.f)
-		{
-			ambientColor.r = clamp(0.f, ambientColor.r * ambScale, 1.f);
-			ambientColor.g = clamp(0.f, ambientColor.g * ambScale, 1.f);
-			ambientColor.b = clamp(0.f, ambientColor.b * ambScale, 1.f);
-		}
-		float const sunScale = ClientPresentation::getMainDiffuseScale();
-		if (sunScale != 1.f)
-		{
-			mainDiffuseColor.r = clamp(0.f, mainDiffuseColor.r * sunScale, 1.f);
-			mainDiffuseColor.g = clamp(0.f, mainDiffuseColor.g * sunScale, 1.f);
-			mainDiffuseColor.b = clamp(0.f, mainDiffuseColor.b * sunScale, 1.f);
-		}
-		float const specScale = ClientPresentation::getSpecularLightScale();
-		if (specScale != 1.f)
-		{
-			mainSpecularColor.r = clamp(0.f, mainSpecularColor.r * specScale, 1.f);
-			mainSpecularColor.g = clamp(0.f, mainSpecularColor.g * specScale, 1.f);
-			mainSpecularColor.b = clamp(0.f, mainSpecularColor.b * specScale, 1.f);
-		}
-		float const fillScale = ClientPresentation::getFillLightScale();
-		if (fillScale != 1.f)
-		{
-			fillColor.r = clamp(0.f, fillColor.r * fillScale, 1.f);
-			fillColor.g = clamp(0.f, fillColor.g * fillScale, 1.f);
-			fillColor.b = clamp(0.f, fillColor.b * fillScale, 1.f);
-		}
-		float const bounceScale = ClientPresentation::getBounceLightScale();
-		if (bounceScale != 1.f)
-		{
-			bounceColor.r = clamp(0.f, bounceColor.r * bounceScale, 1.f);
-			bounceColor.g = clamp(0.f, bounceColor.g * bounceScale, 1.f);
-			bounceColor.b = clamp(0.f, bounceColor.b * bounceScale, 1.f);
-		}
-	}
-
 	m_ambientLight->setDiffuseColor (ambientColor);
 
 	m_mainLight->setDiffuseColor (mainDiffuseColor);
@@ -1135,16 +1095,12 @@ void GroundEnvironment::apply (float const t)
 
 	m_clearColor = PackedRgb::linearInterpolate (m_previousEnvironmentBlock->getClearColorRamp () [m_currentColorIndex], m_currentEnvironmentBlock->getClearColorRamp () [m_currentColorIndex], t);
 
-	ClientPresentation::applySkyClearLift(m_clearColor);
-
 	// ----------------------------------------------------------------------
 
 	const float sunMoonAlpha = ::linearInterpolate (m_previousEnvironmentBlock->getSunMoonAlphaRamp () [m_currentColorIndex], m_currentEnvironmentBlock->getSunMoonAlphaRamp () [m_currentColorIndex], t);
 	float const minimumFogDensity = ::linearInterpolate (m_previousEnvironmentBlock->getFogEnabled () ? m_previousEnvironmentBlock->getMinimumFogDensity () : 0.f, m_currentEnvironmentBlock->getFogEnabled () ? m_currentEnvironmentBlock->getMinimumFogDensity () : 0.f, t);
 	float const maximumFogDensity = ::linearInterpolate (m_previousEnvironmentBlock->getFogEnabled () ? m_previousEnvironmentBlock->getMaximumFogDensity () : 0.f, m_currentEnvironmentBlock->getFogEnabled () ? m_currentEnvironmentBlock->getMaximumFogDensity () : 0.f, t);
 	m_fogDensity = ::linearInterpolate (minimumFogDensity, maximumFogDensity, clamp (0.f, (m_referenceCamera->getFarPlane () - 512.f) / (2048.f - 512.f), 1.f));
-	if (ClientPresentation::isEnabled())
-		m_fogDensity *= ClientPresentation::getEnvironmentFogDensityScale();
 	const float desiredCelestialAlpha = ::linearInterpolate (m_previousEnvironmentBlock->getCelestialAlphaRamp () [m_currentColorIndex], m_currentEnvironmentBlock->getCelestialAlphaRamp () [m_currentColorIndex], t);
 	const bool previousCelestialAlphaEnabled = m_previousEnvironmentBlock->getGradientSkyTexture () != 0;
 	const bool currentCelestialAlphaEnabled = m_currentEnvironmentBlock->getGradientSkyTexture () != 0;
@@ -1759,60 +1715,14 @@ void GroundEnvironment::alter(float elapsedTime)
 
 //-------------------------------------------------------------------
 
-namespace
-{
-	// Altitude (m above terrain) where the atmospheric veil blend starts.
-	float const s_atmoFogFadeStartHeight = 50.0f;
-	// Altitude where the blend completes (fog density floors at the fraction below).
-	float const s_atmoFogFadeEndHeight   = 120.0f;
-	// Atmospheric flight: slight veil over baseline environment fog (was 3.05f and read as heavy).
-	float const s_atmoFogDensityBoost    = 1.25f;
-	// At high altitude, keep at least this fraction of (boosted) fog so terrain does not
-	// "pop" clear when viewed from above (previously faded to 0 above s_atmoFogFadeEndHeight).
-	float const s_atmoFogHighAltitudeMinFraction = 0.5f;
-
-	bool suppressTerrainFogForAtmosphericShip ()
-	{
-		return false;
-	}
-}
-
-//-------------------------------------------------------------------
-
 void GroundEnvironment::draw () const
 {
-	CellProperty * const worldCellProperty = CellProperty::getWorldCellProperty ();
-
-	if (suppressTerrainFogForAtmosphericShip ())
-		worldCellProperty->setFogEnabled (false);
-	else if (m_enableFog)
+	if (m_enableFog)
 	{
-		float fogDensity = m_fogDensity;
-		if (Game::isShipScene () && !Game::isSpace () && Game::getPlayerContainingShip () != NULL && m_referenceCamera)
-		{
-			fogDensity *= s_atmoFogDensityBoost;
-
-			TerrainObject const * const terrainObject = TerrainObject::getConstInstance ();
-			Vector const & cameraPos_w = m_referenceCamera->getPosition_w ();
-			float altitudeAboveTerrain = cameraPos_w.y;
-			if (terrainObject)
-			{
-				float terrainHeight = 0.0f;
-				if (terrainObject->getHeight (Vector (cameraPos_w.x, 0.0f, cameraPos_w.z), terrainHeight))
-					altitudeAboveTerrain = cameraPos_w.y - terrainHeight;
-			}
-			float const heightRange = s_atmoFogFadeEndHeight - s_atmoFogFadeStartHeight;
-			float const fadeT = (heightRange > 0.001f)
-				? clamp (0.0f, (altitudeAboveTerrain - s_atmoFogFadeStartHeight) / heightRange, 1.0f)
-				: 0.0f;
-			// Ease off toward high altitude but keep some density so terrain does not snap clear.
-			float const altitudeScale = ::linearInterpolate (1.0f, s_atmoFogHighAltitudeMinFraction, fadeT);
-			fogDensity *= altitudeScale;
-		}
-
-		worldCellProperty->setFogEnabled (m_fogEnabled && fogDensity > 0.00001f);
+		CellProperty* const worldCellProperty = CellProperty::getWorldCellProperty ();
+		worldCellProperty->setFogEnabled (m_fogEnabled);
 		worldCellProperty->setFogColor (m_fogColor);
-		worldCellProperty->setFogDensity (fogDensity);
+		worldCellProperty->setFogDensity (m_fogDensity);
 	}
 
 #ifdef _DEBUG

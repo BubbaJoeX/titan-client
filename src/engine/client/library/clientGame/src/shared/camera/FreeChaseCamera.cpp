@@ -38,13 +38,13 @@
 #include "sharedFoundation/MessageQueue.h"
 #include "sharedGame/GameObjectTypes.h"
 #include "sharedGame/SharedObjectTemplate.h"
+#include "sharedMath/Transform.h"
 #include "sharedObject/AlterResult.h"
 #include "sharedObject/Appearance.h"
 #include "sharedObject/CellProperty.h"
 #include "sharedTerrain/TerrainObject.h"
 #include "sharedUtility/LocalMachineOptionManager.h"
 
-#include <algorithm>
 #include <map>
 
 //===================================================================
@@ -54,8 +54,6 @@ namespace
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 	const float MAX_PITCH_FABS = PI_OVER_2 - PI / 64.0f;
-
-	const ConstCharCrcLowerString ms_headName ("head");
 
 	float ms_spinYawPerSecond = PI_OVER_4 * 0.5f;
 
@@ -95,17 +93,6 @@ namespace
 		return creatureObject;
 	}
 
-	// Template cameraHeight is often human-scaled; tall/scaled mounts need a pivot that tracks visible bounds.
-	float chaseCameraLiftForMount(CreatureObject const *const mountCreature)
-	{
-		if (!mountCreature)
-			return 0.f;
-		float const fromTemplate = mountCreature->getCameraHeight();
-		float const r = mountCreature->getAppearanceSphereRadius();
-		float const fromAppearance = (r > 0.25f) ? (r * 0.72f) : 0.f;
-		return std::max(fromTemplate, fromAppearance);
-	}
-
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 	bool shouldBeInvisibleInFirstPerson(CreatureObject const * const mount)
@@ -116,6 +103,18 @@ namespace
 	}
 
 	static const float cs_cameraSnapBackSpeedModifier = 6.5f; // <-- this is arbitrary
+
+	// Chase-camera collision / ground clearances. Added to stop the camera
+	// dropping below the avatar and rendering the world's backfaces from under
+	// the ground when the view is pitched up from behind the character.
+	//  - backoff: keep the camera off any surface the collision rays hit, so the
+	//    near plane never straddles it (the simple-collision path already does
+	//    this; the diamond path used to leave the camera flush -> see-through).
+	//  - groundClearance: how far the camera must stay above the ground/footing.
+	//    The near plane is 1m, so this also accounts for the bottom of the near
+	//    frustum (>= nearPlane * tan(halfVerticalFov)) staying above the ground.
+	static const float cs_cameraCollisionBackoff = 0.25f;
+	static const float cs_cameraGroundClearance  = 0.50f;
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 }
@@ -158,7 +157,8 @@ FreeChaseCamera::FreeChaseCamera () :
 	m_context (0),
 	m_currentMode (false),
 	m_spinning (false),
-	m_colliding (false)
+	m_colliding (false),
+	m_firstPersonEyeHeight (1.7f)
 {
 #ifdef _DEBUG
 	DebugFlags::registerFlag (ms_debugReport, "ClientGame/FreeChaseCamera", "debugReport");
@@ -187,7 +187,7 @@ FreeChaseCamera::FreeChaseCamera () :
 			iff.enterForm (TAG_0000);
 
 				iff.enterChunk (TAG_ZOOM);
-				{		
+				{
 					m_numberOfSettings = iff.getChunkLengthTotal () / static_cast<int> (sizeof (float));
 					m_settings = new float [static_cast<size_t> (m_numberOfSettings)];
 
@@ -197,9 +197,15 @@ FreeChaseCamera::FreeChaseCamera () :
 				}
 				iff.exitChunk (TAG_ZOOM);
 
-				iff.enterChunk (TAG_INZM);
+				// INZM (initial zoom) is a post-NGE addition. The NGE-retail
+				// freechasecamera.iff lacks it - the file goes straight from
+				// ZOOM to FRST. Make INZM optional so we don't FATAL on the
+				// older asset; default ms_currentSetting in that case.
+				if (iff.enterChunk (TAG_INZM, true))
+				{
 					ms_currentSetting = iff.read_int32();
-				iff.exitChunk (TAG_INZM);
+					iff.exitChunk (TAG_INZM);
+				}
 
 				iff.enterChunk (TAG_FRST);
 					m_firstPersonDistance = iff.read_float ();
@@ -207,15 +213,42 @@ FreeChaseCamera::FreeChaseCamera () :
 
 				iff.enterChunk (TAG_DEFH);
 					{
-						float const x = iff.read_float();
-						m_reticleOffsetShoulder = iff.read_float();
-						float const z = iff.read_float();
-		
-						m_thirdPersonXOffset = iff.read_float();
-						m_reticleOffsetCenter = iff.read_float();
+						int const defhTotal = iff.getChunkLengthTotal();
+						int const defhFloatCount = defhTotal / static_cast<int>(sizeof(float));
+
+						// The post-NGE freechasecamera.iff has a different
+						// DEFH layout than the parser expects (we observed
+						// shoulderY = 2.1e8 with the old "5 floats" parse).
+						float vals[16];
+						int valsToRead = (defhFloatCount > 16) ? 16 : defhFloatCount;
+						for (int v = 0; v < valsToRead; ++v)
+							vals[v] = iff.read_float();
+						// Heuristic: pick the first sane value (|v| < 50) as the camera Y.
+						// On NGE retail freechasecamera.iff:
+						//   floats[0]=1.7 (x), floats[1]=2.1e8 (BAD), floats[2..4]=0
+						// vals[0]=1.7 puts the camera permanently 1.7m to the side of the player
+						// (player rendered off-center). Force the default X to 0 — the optional
+						// shoulder offset is layered on at runtime via m_thirdPersonXOffset
+						// when CuiPreferences::getOffsetCamera() is true.
+						float const z = (defhFloatCount >= 3 && fabsf(vals[2]) < 50.0f) ? vals[2] : 0.0f;
+						float const fileShoulderY = (defhFloatCount >= 2) ? vals[1] : 0.0f;
+						float const fileCenterY   = (defhFloatCount >= 5) ? vals[4] : 0.0f;
+
+						m_reticleOffsetShoulder = (fabsf(fileShoulderY) < 50.0f && fileShoulderY > 0.001f) ? fileShoulderY : 1.4f;
+						m_reticleOffsetCenter   = (fabsf(fileCenterY)   < 50.0f && fileCenterY > 0.001f) ? fileCenterY : 1.4f;
+						m_thirdPersonXOffset    = (defhFloatCount >= 4 && fabsf(vals[3]) < 50.0f) ? vals[3] : 0.0f;
+
+						// DEFH's leading float is the nominal "default height" -- the avatar's
+						// standing EYE LEVEL (~1.7m on retail). This post-NGE asset stores it as
+						// a single float; the older "5 float" parse mistook it for a sideways (X)
+						// offset and discarded it. Capture it as the first-person eye height; it
+						// is scaled to the avatar's size at runtime. Default 1.7 if out of range.
+						float const fileDefaultHeight = (defhFloatCount >= 1) ? vals[0] : 0.0f;
+						m_firstPersonEyeHeight = (fileDefaultHeight > 0.5f && fileDefaultHeight < 3.0f) ? fileDefaultHeight : 1.7f;
 
 						ms_defaultCameraHeight = m_reticleOffsetCenter;
 
+						float const x = 0.0f;
 						m_offsetDefault.set(x, (CuiPreferences::getOffsetCamera() ? m_reticleOffsetShoulder : m_reticleOffsetCenter), z);
 					}
 				iff.exitChunk (TAG_DEFH);
@@ -227,8 +260,8 @@ FreeChaseCamera::FreeChaseCamera () :
 						const int posture = iff.read_int32 ();
 						const int state = iff.read_int32 ();
 						const int key = (posture << 16) | state;
-						const Vector offset (0.f, iff.read_float (), 0.f);
-
+						const float rawY = iff.read_float ();
+						const Vector offset (0.f, rawY, 0.f);
 						if (posture >= 0 && posture < Postures::NumberOfPostures && state >= 0 && state < States::NumberOfStates)
 							m_offsetPostureStateMap->insert (std::make_pair (key, offset));
 					}
@@ -240,8 +273,8 @@ FreeChaseCamera::FreeChaseCamera () :
 					while (iff.getChunkLengthLeft ())
 					{
 						const int posture = iff.read_int32 ();
-						const Vector offset (0.f, iff.read_float (), 0.f);
-
+						const float rawY = iff.read_float ();
+						const Vector offset (0.f, rawY, 0.f);
 						if (posture >= 0 && posture < Postures::NumberOfPostures)
 							(*m_offsetPostureMap) [posture] = offset;
 					}
@@ -298,25 +331,30 @@ void FreeChaseCamera::alterCheckPostureOffsets ()
 		const uint64               states  = creatureObject->getStates ();
 		float const scale = ridingMount ? 1.f : creatureObject->getScaleFactor ();
 		const CreatureObject * const mountCreature = ridingMount ? creatureObject->getMountedCreature () : 0;
-		float const sphereRNow = mountCreature ? mountCreature->getAppearanceSphereRadius() : -1.f;
-		NetworkId const mountIdNow = mountCreature ? mountCreature->getNetworkId() : NetworkId::cms_invalid;
-		bool const mountAppearanceChanged =
-			ridingMount && mountCreature && (
-				mountIdNow != m_lastChaseMountId
-				|| (sphereRNow >= 0.f && std::fabs(sphereRNow - m_lastChaseMountSphereRadius) > 0.05f));
+		float const cameraHeight = mountCreature ? mountCreature->getCameraHeight (): 0.f;
 
-		float const cameraHeight = mountCreature ? chaseCameraLiftForMount(mountCreature) : 0.f;
-
-		if (m_currentPosture != posture || m_currentStates != states || m_currentFirstPerson != m_firstPerson || ms_cameraOffsetChanged || mountAppearanceChanged)
+		if (m_currentPosture != posture || m_currentStates != states || m_currentFirstPerson != m_firstPerson || ms_cameraOffsetChanged)
 		{
 			m_currentPosture = posture;
 			m_currentStates  = states;
 			m_currentFirstPerson = m_firstPerson;
-			
-			bool set = false;
 
-			m_offsetDefault.y = (!CuiPreferences::getOffsetCamera() && !m_firstPerson) ? CuiPreferences::getPlayerCameraHeight() : m_reticleOffsetShoulder;
-			
+			bool set = false;
+			const float playerCameraHeight = CuiPreferences::getPlayerCameraHeight();
+			// 3rd person (centered OR offset/over-the-shoulder) rides at the
+			// configurable player camera height; only the X shoulder shift (applied
+			// below) differs for offset cam.
+			//
+			// First person rides at the avatar's EYE LEVEL: the nominal default-height
+			// from the camera data file (DEFH, ~1.7m), scaled to the avatar's size by
+			// the '* scale' in the branch logic below. This matches the retail eye
+			// height and is STABLE. We deliberately do NOT track the live "head"
+			// hardpoint: it is already in the avatar's *scaled* object space (so it got
+			// double-scaled here and sank to mid-chest), it bobs every frame with the
+			// breathing/locomotion animation, and it sits at the base of the skull
+			// (below the eyes).
+			m_offsetDefault.y = m_firstPerson ? m_firstPersonEyeHeight : playerCameraHeight;
+
 			//-- is the posture/state combination in the state map?
 			{
 				PostureStateMap::iterator iter = m_offsetPostureStateMap->begin ();
@@ -334,13 +372,13 @@ void FreeChaseCamera::alterCheckPostureOffsets ()
 							{
 								m_desiredOffset += Vector::unitY * cameraHeight;
 							}
-							
+
 							set = true;
 						}
 					}
 				}
 			}
-			
+
 			//-- check the posture map
 			if (!set)
 			{
@@ -352,11 +390,11 @@ void FreeChaseCamera::alterCheckPostureOffsets ()
 					{
 						m_desiredOffset += Vector::unitY * cameraHeight;
 					}
-					
+
 					set = true;
 				}
 			}
-			
+
 			//-- use the default
 			if (!set)
 			{
@@ -372,17 +410,21 @@ void FreeChaseCamera::alterCheckPostureOffsets ()
 				const float offsetToUse = CuiPreferences::getOffsetCamera() ? m_thirdPersonXOffset : 0.0f;
 				m_desiredOffset.x += offsetToUse * scale;
 			}
-		}
 
-		if (ridingMount && mountCreature)
-		{
-			m_lastChaseMountId = mountCreature->getNetworkId();
-			m_lastChaseMountSphereRadius = sphereRNow >= 0.f ? sphereRNow : -1.f;
-		}
-		else
-		{
-			m_lastChaseMountId = NetworkId::cms_invalid;
-			m_lastChaseMountSphereRadius = -1.f;
+			//-- DEFENSIVE: clamp insane camera offsets that would put us in deep space.
+			//   Observed bug: m_desiredOffset.y was ~2e8 with NGE freechasecamera.iff, putting
+			//   camera 200M units above the ground. Clamp to a sane range and log.
+			if (m_desiredOffset.y < -50.0f || m_desiredOffset.y > 50.0f ||
+				m_desiredOffset.x < -50.0f || m_desiredOffset.x > 50.0f ||
+				m_desiredOffset.z < -50.0f || m_desiredOffset.z > 50.0f)
+			{
+				WARNING(true, ("FreeChaseCamera: invalid desired offset (%.3f, %.3f, %.3f); clamping to (0, 1.6, 0)",
+					m_desiredOffset.x, m_desiredOffset.y, m_desiredOffset.z));
+				m_desiredOffset.set(0.0f, 1.6f, 0.0f);
+				// Also re-snap m_offset so it doesn't lerp through bad values
+				if (m_offset.y < -50.0f || m_offset.y > 50.0f)
+					m_offset = m_desiredOffset;
+			}
 		}
 
 		ms_cameraOffsetChanged = false;
@@ -610,7 +652,6 @@ float FreeChaseCamera::alter (float elapsedTime)
 		{
 			m_offsetYaw_w -= turnTotal;
 		}
-
 	}
 	
 	m_lastTurnRate = turnTotal;
@@ -710,20 +751,8 @@ float FreeChaseCamera::alter (float elapsedTime)
 	}
 
 	//-- don't show the m_target if zoom distance is less than first person distance
-	float scaleForFpCam = creatureObject ? creatureObject->getScaleFactor () : 1.f;
-	if (creatureObject && creatureObject->getState (States::RidingMount) && creatureObject->isInWorldCell ())
-	{
-		CreatureObject const *const mc = creatureObject->getMountedCreature ();
-		if (mc)
-			scaleForFpCam = std::max (scaleForFpCam, mc->getScaleFactor ());
-	}
-	const float scaledFirstPersonDistance = m_firstPersonDistance * scaleForFpCam;
+	const float scaledFirstPersonDistance = m_firstPersonDistance * (creatureObject ? creatureObject->getScaleFactor () : 1.f);
 	m_colliding = false;
-
-	// Interior pob/building cells need more clearance along chase rays or thin hull polygons won't consistently hit sample rays—camera slips inside ceilings/view neighboring rooms near elevators/portals.
-	float const camSurfBias     = locomotionIndoors ? 0.58f : 0.28f;
-	float const lateralProbe    = locomotionIndoors ? 0.34f : 0.25f;
-	float const verticalProbe   = locomotionIndoors ? 0.48f : 0.25f;
 	
 	// prevent shoulder cam from clipping geometry (due to near plane)
 	if (creatureObject && m_currentZoom >= scaledFirstPersonDistance)
@@ -758,21 +787,20 @@ float FreeChaseCamera::alter (float elapsedTime)
 			if (ClientWorld::collide (getParentCell (), start_w, end_w, CollideParameters::cms_default, result, ClientWorld::CF_allCamera))
 			{
 				const float lineDistance = start_w.magnitudeBetween (end_w);
-				float hitFraction = lineDistance > 1e-4f ? (start_w.magnitudeBetween (result.getPoint ()) / lineDistance) : 1.f;
-				hitFraction = clamp (0.f, hitFraction - (camSurfBias / std::max (lineDistance, 1e-4f)), 1.f);
-				m_currentZoom = Vector::linearInterpolate (start_w, end_w, hitFraction).magnitudeBetween (start_w);
+				const float t = clamp (0.f, (start_w.magnitudeBetween (result.getPoint ()) / lineDistance) - (0.25f / lineDistance), 1.f);
+				m_currentZoom = Vector::linearInterpolate (start_w, end_w, t).magnitudeBetween (start_w);
 				m_colliding = true;
 			}
 		}
 		else
 		{
-			//-- Multiple rays from pivoted chase origins catch hull polygons missed when sampling dead-center (tight elevators/curved pob corridors).
+			//-- we're going to fire 4 rays in a diamond pattern to see what gets collided with
 			const Vector offsets [4] =
 			{
-				Vector::unitX * lateralProbe,
-				Vector::negativeUnitX * lateralProbe,
-				Vector::unitY * verticalProbe,
-				Vector::negativeUnitY * verticalProbe
+				Vector::unitX * 0.25f,
+				Vector::negativeUnitX * 0.25f,
+				Vector::unitY * 0.25f,
+				Vector::negativeUnitY * 0.25f
 			};
 
 			const Vector cameraZ_p = Vector::negativeUnitZ * m_zoom;
@@ -792,10 +820,7 @@ float FreeChaseCamera::alter (float elapsedTime)
 				CollisionInfo interimResult;
 				if (ClientWorld::collide (getParentCell (), interimStart_w, interimEnd_w, CollideParameters::cms_default, interimResult, ClientWorld::CF_allCamera))
 				{
-					const float rayLen = interimStart_w.magnitudeBetween (interimEnd_w);
-					float hitDist = rayLen > 1e-4f ? interimStart_w.magnitudeBetween (interimResult.getPoint ()) : rayLen;
-					hitDist = std::max (0.f, hitDist - camSurfBias);
-					const float t = rayLen > 1e-4f ? clamp (0.f, hitDist / rayLen, 1.f) : 1.f;
+					const float t = clamp (0.f, interimStart_w.magnitudeBetween (interimResult.getPoint ()) / interimStart_w.magnitudeBetween (interimEnd_w), 1.f);
 
 					if (t < minimumT)
 					{
@@ -811,7 +836,47 @@ float FreeChaseCamera::alter (float elapsedTime)
 			if(!shipObject)
 			{
 				if (hit)
-					m_currentZoom = Vector::linearInterpolate (start_w, end_w, minimumT).magnitudeBetween (start_w);
+				{
+					// Back the camera off the collision point so its near plane
+					// doesn't straddle the surface. The simple-collision path
+					// above does the same; the diamond path used to place the
+					// camera flush, which let you see through whatever it hit.
+					float const hitDistance = Vector::linearInterpolate (start_w, end_w, minimumT).magnitudeBetween (start_w);
+					m_currentZoom = std::max (0.0f, hitDistance - cs_cameraCollisionBackoff);
+				}
+			}
+		}
+
+		//-- GROUND FLOOR: never let the chase camera descend below the ground /
+		//   footing. When the view is pitched up from behind, the camera swings
+		//   down-and-back; if the world camera-collision misses it (or only pulls
+		//   it flush with the terrain) the camera ends up under the world and
+		//   renders the backfaces of distant meshes from below. Pull the camera
+		//   in along its own view ray so it lands no lower than a small clearance
+		//   above the ground. Reducing the zoom (rather than just clamping Y) keeps
+		//   the avatar framed and degrades gracefully into first person up close.
+		if (creatureObject && !shipObject)
+		{
+			const Vector pivot_w   = getPosition_w ();                  // pivot at camera height (pre-pullback)
+			const Vector viewDir_w = rotate_o2w (Vector::negativeUnitZ); // unit dir the camera pulls back along
+			if (viewDir_w.y < -0.01f)                                   // only when the camera would move downward
+			{
+				float floorY = creatureObject->getPosition_w ().y;     // the avatar's footing (origin is at the feet)
+				if (getParentCell () == CellProperty::getWorldCellProperty ())
+				{
+					const TerrainObject * const terrain = TerrainObject::getConstInstance ();
+					float terrainHeight = 0.0f;
+					if (terrain && terrain->getHeight (pivot_w, terrainHeight))
+						floorY = std::max (floorY, terrainHeight);
+				}
+				floorY += cs_cameraGroundClearance;
+
+				if (pivot_w.y > floorY)
+				{
+					const float maxZoomToFloor = (floorY - pivot_w.y) / viewDir_w.y; // both negative -> positive distance
+					if (m_currentZoom > maxZoomToFloor)
+						m_currentZoom = maxZoomToFloor;
+				}
 			}
 		}
 
@@ -877,8 +942,6 @@ void FreeChaseCamera::setTarget (const Object* const target, bool force, bool ov
 		m_currentStates  = 0;
 		m_desiredOffset  = m_offsetDefault;
 		m_offset         = m_offsetDefault;
-		m_lastChaseMountId = NetworkId::cms_invalid;
-		m_lastChaseMountSphereRadius = -1.f;
 	}
 }
 

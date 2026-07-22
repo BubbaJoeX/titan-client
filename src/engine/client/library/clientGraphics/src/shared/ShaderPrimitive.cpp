@@ -9,7 +9,6 @@
 #include "clientGraphics/ShaderPrimitive.h"
 
 #include "clientGraphics/StaticShader.h"
-#include "sharedMath/Transform.h"
 #include "sharedObject/AlterResult.h"
 
 // ======================================================================
@@ -199,13 +198,6 @@ bool ShaderPrimitive::shouldApplyHologramShaderPrepareToViewOverride() const
 // ----------------------------------------------------------------------
 
 bool ShaderPrimitive::collide(const Vector & /*start_o*/, const Vector & /*end_o*/, CollisionInfo & /*result*/) const
-{
-	return false;
-}
-
-// ----------------------------------------------------------------------
-
-bool ShaderPrimitive::getWorldTransformForBatching(Transform & /*transform_w*/, Vector & /*objectScale*/) const
 {
 	return false;
 }

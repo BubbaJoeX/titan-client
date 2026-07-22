@@ -265,9 +265,6 @@ namespace
 		MAKE_NAME(clothing_wookiee);
 		MAKE_NAME(clothing_misc);
 		MAKE_NAME(clothing_skirt);
-		MAKE_NAME(beastmaster);
-		MAKE_NAME(beastmaster_misc);
-		MAKE_NAME(beastmaster_pet);
 		MAKE_NAME(ship_component);
 		MAKE_NAME(ship_component_reactor);
 		MAKE_NAME(ship_component_engine);
@@ -307,6 +304,9 @@ namespace
 		MAKE_NAME(chronicles_quest_holocron);
 		MAKE_NAME(chronicles_quest_holocron_recipe);
 		MAKE_NAME(chronicles_relic_fragment);
+		MAKE_NAME(beastmaster);
+		MAKE_NAME(beastmaster_pet);
+		MAKE_NAME(beastmaster_misc);
 
 #undef MAKE_NAME
 

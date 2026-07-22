@@ -22,7 +22,6 @@
 #include "clientUserInterface/CuiActionManager.h"
 #include "clientUserInterface/CuiActions.h"
 #include "clientUserInterface/CuiConversationManager.h"
-#include "clientUserInterface/CuiFurnitureMovementManager.h"
 #include "clientUserInterface/CuiInputMessage.def"
 #include "clientUserInterface/CuiLoadingManager.h"
 #include "clientUserInterface/CuiManager.h"
@@ -238,9 +237,6 @@ void CuiIoWin::draw () const
 	const GroundScene * const gs = dynamic_cast<const GroundScene *>(Game::getScene ());
 	if (gs)
 		gs->drawOverlays();
-
-	// Render furniture movement gizmos in world space (like GodClient)
-	CuiFurnitureMovementManager::render();
 
 	{
 		PROFILER_AUTO_BLOCK_DEFINE ("CuiManager::render (ui)");
@@ -690,50 +686,20 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 	switch (event->type)
 	{
 	case IOET_MouseMove:
-		{
-			// In decorator mode, always consume mouse move so it never drives character movement
-			if (CuiFurnitureMovementManager::isDecoratorCameraActive())
-			{
-				bool leftButton = (msg.Modifiers.LeftMouseDown != 0);
-				bool rightButton = (msg.Modifiers.RightMouseDown != 0);
-				CuiFurnitureMovementManager::processMouseInput(
-					m_mouseCursor->getX(),
-					m_mouseCursor->getY(),
-					leftButton,
-					rightButton);
-				return IOR_Block;
-			}
-			// Handle gizmo dragging when object selected
-			if (CuiFurnitureMovementManager::isActive())
-			{
-				bool leftButton = (msg.Modifiers.LeftMouseDown != 0);
-				bool rightButton = (msg.Modifiers.RightMouseDown != 0);
-				if (CuiFurnitureMovementManager::processMouseInput(
-					m_mouseCursor->getX(),
-					m_mouseCursor->getY(),
-					leftButton,
-					rightButton))
-					return IOR_Block;
-			}
-			
+		{		
 			UIPoint newCoords;
-			//Add a movement multiplier (UI space must match UIManager::GetLastMouseCoord)
+			//Add a movement multiplier
 			newCoords.x = m_mouseCursor->getX ();
 			newCoords.y = m_mouseCursor->getY ();
-			CuiManager::transformScreenPixelsToUiSpace (newCoords);
-			UIPoint delta (newCoords - UIManager::gUIManager ().GetLastMouseCoord ());
+			UIPoint delta (newCoords - UIManager::gUIManager ().GetLastMouseCoord ());						
 			if((delta.x != 0) && (delta.y != 0))
 			{				
 				delta.x = static_cast<long>(delta.x * GroundScene::getMouseSensitivity());
 				delta.y = static_cast<long>(delta.y * GroundScene::getMouseSensitivity());
 				newCoords.x = UIManager::gUIManager ().GetLastMouseCoord ().x + delta.x;
 				newCoords.y = UIManager::gUIManager ().GetLastMouseCoord ().y + delta.y;
-				UIPoint screenCoords (newCoords);
-				CuiManager::transformUiPixelsToScreen (screenCoords);
-				// Keep msg in screen space: dead-zone clamp and processUiManagerMessage
-				// both assume screen pixels and apply one screen->UI transform there.
-				msg.MouseCoords = screenCoords;
-				m_mouseCursor->gotoXY (screenCoords.x, screenCoords.y);					
+				msg.MouseCoords = newCoords;
+				m_mouseCursor->gotoXY (msg.MouseCoords.x, msg.MouseCoords.y);					
 			}			
 		}
 
@@ -750,9 +716,9 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 				else
 				{
 					// If we're panning the camera around, not clicking, we wanna make sure this action is cancelled...
-					UIPoint uiMouse (m_mouseCursor->getX (), m_mouseCursor->getY ());
-					CuiManager::transformScreenPixelsToUiSpace (uiMouse);
-					UIPoint const delta (uiMouse - UIManager::gUIManager ().GetLastMouseCoord ());
+					UIPoint delta;
+					delta.Set(m_mouseCursor->getX(), m_mouseCursor->getY());
+					delta -= UIManager::gUIManager().GetLastMouseCoord();
 					if (delta.Magnitude() > UIManager::gUIManager().GetDragThreshold())
 						IGNORE_RETURN(CuiActionManager::performAction (CuiActions::setIntendedAndSummonRadialMenu, Unicode::narrowToWide ("cancel")));
 
@@ -766,9 +732,9 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 
 		if (!m_pointerInputActive && uiManager->IsContextRequestPending (false))
 		{
-			UIPoint uiMouse (m_mouseCursor->getX (), m_mouseCursor->getY ());
-			CuiManager::transformScreenPixelsToUiSpace (uiMouse);
-			const UIPoint delta (UIManager::gUIManager ().GetLastMouseCoord ()  - uiMouse);
+			msg.MouseCoords.x = m_mouseCursor->getX ();
+			msg.MouseCoords.y = m_mouseCursor->getY ();
+			const UIPoint delta (UIManager::gUIManager ().GetLastMouseCoord ()  - msg.MouseCoords);
 
 			if (delta.Magnitude () > UIManager::gUIManager ().GetDragThreshold ())
 				uiManager->ForcePendingContextRequest (false);
@@ -788,7 +754,7 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 				msg.Data          = static_cast<short>(event->arg3 * one_over_120);
 				msg.MouseCoords.x = m_mouseCursor->getX ();
 				msg.MouseCoords.y = m_mouseCursor->getY ();
-				if (CuiManager::processUiManagerMessage (msg))
+				if (uiManager->ProcessMessage (msg))
 					return IOR_Block;
 				else
 					return IOR_Pass;
@@ -801,19 +767,29 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 				const GroundScene * const gs = dynamic_cast<const GroundScene *>(Game::getScene ());
 				const bool isFirstPerson = gs ? gs->isFirstPerson () : 0;
 
+				// UI scale: dead-zone math and mouse-edge clamps live in
+				// LOGICAL canvas coords here because msg.MouseCoords (sourced
+				// from m_mouseCursor->getX/Y) is already logical post-
+				// MouseCursor::processEvent scaling. Mixing physical render-
+				// target dims into clamps was producing reticle-at-bottom-
+				// right because center got computed as physical (2560,720)
+				// which is the bottom-right corner of the logical canvas.
+				const long uiCanvasWidth  = Graphics::getUiCanvasWidth();
+				const long uiCanvasHeight = Graphics::getUiCanvasHeight();
+
 				UIRect deadZone;
-				
+
 				if (!m_pointerInputActive)
 				{
 					deadZone = m_deadZone;
 
 					if (isFirstPerson)
 					{
-						deadZone.left = deadZone.right  = Graphics::getCurrentRenderTargetWidth () / 2L;
-						deadZone.top  = deadZone.bottom = Graphics::getCurrentRenderTargetHeight () / 2L;
+						deadZone.left = deadZone.right  = uiCanvasWidth  / 2L;
+						deadZone.top  = deadZone.bottom = uiCanvasHeight / 2L;
 					}
 
-					else 
+					else
 					{
 						if (GroundScene::getInvertMouseLook ())
 						{
@@ -828,12 +804,12 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 				}
 				else
 				{
-					deadZone.bottom = Graphics::getCurrentRenderTargetHeight () - 2L;
-					deadZone.right  = Graphics::getCurrentRenderTargetWidth  () - 2L;
+					deadZone.bottom = uiCanvasHeight - 2L;
+					deadZone.right  = uiCanvasWidth  - 2L;
 				}
 
-				deadZone.bottom = std::min(deadZone.bottom, Graphics::getCurrentRenderTargetHeight() - 2L);
-				deadZone.right = std::min(deadZone.right, Graphics::getCurrentRenderTargetWidth() - 2L);
+				deadZone.bottom = std::min(deadZone.bottom, uiCanvasHeight - 2L);
+				deadZone.right  = std::min(deadZone.right,  uiCanvasWidth  - 2L);
 				deadZone.top = std::max(deadZone.top, 0L);
 				deadZone.left = std::max(deadZone.left, 0L);
 
@@ -848,15 +824,15 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 					}
 					else
 					{
-						msg.MouseCoords.y = Graphics::getCurrentRenderTargetHeight () / 2L;
-						msg.MouseCoords.x = Graphics::getCurrentRenderTargetWidth () / 2L;
+						msg.MouseCoords.y = uiCanvasHeight / 2L;
+						msg.MouseCoords.x = uiCanvasWidth  / 2L;
 					}
-					
+
 					m_mouseCursor->gotoXY (msg.MouseCoords.x, msg.MouseCoords.y);
 				}
-				
-				IGNORE_RETURN (CuiManager::processUiManagerMessage (msg));
-				
+
+				IGNORE_RETURN (uiManager->ProcessMessage (msg));
+
 				CuiManager::InputManager::setPointerMotionCapturedByUiX (true);
 				CuiManager::InputManager::setPointerMotionCapturedByUiY (true);
 
@@ -866,16 +842,8 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 					CuiManager::InputManager::setPointerMotionCapturedByUiX (false);
 					CuiManager::InputManager::setPointerMotionCapturedByUiY (false);
 				}
-				
-				// Modeless UI skips the block below unless we include turret views. If pointer
-				// motion stays "captured", IoWin returns IOR_Block here and GroundScene never
-				// receives IOET_MouseMove — relative MouseCursor deltas stay zero (no mouselook).
-				const bool turretMouselookView =
-					gs &&
-					(gs->getCurrentView () == GroundScene::CI_installationTurret ||
-					 gs->getCurrentView () == GroundScene::CI_shipTurret);
 
-				if ( gs && (!CuiPreferences::getUseModelessInterface () || turretMouselookView) )
+				if ( gs && !CuiPreferences::getUseModelessInterface() )
 				{
 					if ( !CuiManager::getPointerInputActive () || (CuiPreferences::getPointerModeMouseCameraEnabled () && CuiMediator::getCountPointerInputActive () <= 0) )
 					{
@@ -889,7 +857,7 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 								msg.MouseCoords.x <= deadZone.left  ||
 								msg.MouseCoords.x >= deadZone.right)
 								CuiManager::InputManager::setPointerMotionCapturedByUiX (false);
-							
+
 							if (
 								msg.MouseCoords.y <= deadZone.top   ||
 								msg.MouseCoords.y >= deadZone.bottom)
@@ -905,8 +873,8 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 					return IOR_Pass;
 				}
 
-				if (msg.MouseCoords.x <= 0 || (msg.MouseCoords.x >= Graphics::getCurrentRenderTargetWidth () - 2) ||
-					msg.MouseCoords.y <= 0 || (msg.MouseCoords.y >= Graphics::getCurrentRenderTargetHeight () - 2))
+				if (msg.MouseCoords.x <= 0 || (msg.MouseCoords.x >= uiCanvasWidth  - 2) ||
+					msg.MouseCoords.y <= 0 || (msg.MouseCoords.y >= uiCanvasHeight - 2))
 				{
 					m_emitter->emitMessage (MessageDispatch::MessageBase (Messages::MOUSE_HIT_EDGE));
 				}
@@ -965,7 +933,7 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 			if (msg.Keystroke >= ' ')
 			{
 				//if nothing accepted this character message, make certain that it goes to chat
-				if(!CuiManager::processUiManagerMessage (msg))
+				if(!uiManager->ProcessMessage (msg))
 				{
 					UIWidget* selected = UIManager::gUIManager().GetRootPage()->GetFocusedLeafWidget();
 					//unselected the focused widgets so that chat gets the message
@@ -983,7 +951,7 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 						}
 					}
 					//reprocess the message now that chat should catch it
-					IGNORE_RETURN(CuiManager::processUiManagerMessage (msg));
+					IGNORE_RETURN(uiManager->ProcessMessage (msg));
 				}
 			}
 		}
@@ -1028,16 +996,6 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 	case IOET_KeyDown:
 		AwayFromKeyBoardManager::touch();
 		
-		// Check if decorator camera or furniture movement mode wants to consume this input (WASD, etc.)
-		if (CuiFurnitureMovementManager::isActive() || CuiFurnitureMovementManager::isDecoratorCameraActive())
-		{
-			if (CuiFurnitureMovementManager::processKeyDown(event->arg2))
-			{
-				retval = true;
-				break;
-			}
-		}
-
 		if (m_keyboardInputActive)
 		{
 			InputMap * const gameInputMap = Game::getGameInputMap ();
@@ -1080,16 +1038,6 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 		{
 			m_ignoreNextNumPadValue = false;
 
-			// Check if decorator camera or furniture movement mode wants to consume this input
-			if (CuiFurnitureMovementManager::isActive() || CuiFurnitureMovementManager::isDecoratorCameraActive())
-			{
-				if (CuiFurnitureMovementManager::processKeyUp(event->arg2))
-				{
-					retval = true;
-					break;
-				}
-			}
-
 			if (m_keyboardInputActive)
 				retval = true;
 			
@@ -1106,81 +1054,29 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 		break;
 	case IOET_MouseButtonUp:
 	case IOET_MouseButtonDown:
-		// Check if decorator camera or furniture movement mode wants to consume mouse input (pan, gizmo, selection)
-		if (CuiFurnitureMovementManager::isActive() || CuiFurnitureMovementManager::isDecoratorCameraActive())
-		{
-			bool leftButton = false;
-			bool rightButton = false;
-			if (event->arg2 == 3)
-			{
-				if (event->type == IOET_MouseButtonDown)
-					CuiFurnitureMovementManager::setMouse4Down(true);
-				else if (event->type == IOET_MouseButtonUp)
-					CuiFurnitureMovementManager::setMouse4Down(false);
-			}
-			if (event->type == IOET_MouseButtonDown)
-			{
-				leftButton = (event->arg2 == 0);
-				rightButton = (event->arg2 == 1);
-			}
-			else if (event->type == IOET_MouseButtonUp)
-			{
-				leftButton = (msg.Modifiers.LeftMouseDown != 0) && (event->arg2 != 0);
-				rightButton = (msg.Modifiers.RightMouseDown != 0) && (event->arg2 != 1);
-			}
-			
-			if (CuiFurnitureMovementManager::processMouseInput(
-				m_mouseCursor->getX(), 
-				m_mouseCursor->getY(), 
-				leftButton, 
-				rightButton))
-			{
-				retval = true;
-				break;
-			}
-		}
-		// Handle object selection when decorator camera is active and processMouseInput did not consume (e.g. left-click on empty space)
-		if (CuiFurnitureMovementManager::isDecoratorCameraActive() && event->type == IOET_MouseButtonDown)
-		{
-			bool leftButton = (event->arg2 == 0);
-			if (leftButton)
-			{
-				// Try to select object at click position
-				if (CuiFurnitureMovementManager::selectObjectAtScreenPosition(
-					m_mouseCursor->getX(), 
-					m_mouseCursor->getY()))
-				{
-					retval = true;
-					break;
-				}
-			}
-		}
-		// In decorator mode, never pass mouse1/mouse2 to the game so character does not move
-		if (CuiFurnitureMovementManager::isDecoratorCameraActive())
-			retval = true;
 		break;
 	case IOET_SetSystemMouseCursorPosition:
 		break;
 
 	case IOET_IMEComposition:
 		msg.Type = UIMessage::IMEComposition;
-		retval = CuiManager::processUiManagerMessage (msg) || retval;
+		retval = uiManager->ProcessMessage (msg) || retval;
 		break;
 	case IOET_IMEChangeCandidate:
 		CuiMediatorFactory::activate (CuiMediatorTypes::IMEInput);
 
 		msg.Type = UIMessage::IMEChangeCandidate;
-		retval = CuiManager::processUiManagerMessage (msg) || retval;
+		retval = uiManager->ProcessMessage (msg) || retval;
 		break;
 	case IOET_IMECloseCandidate:
 		CuiMediatorFactory::deactivate (CuiMediatorTypes::IMEInput);
 
 		msg.Type = UIMessage::IMECloseCandidate;
-		retval = CuiManager::processUiManagerMessage (msg) || retval;
+		retval = uiManager->ProcessMessage (msg) || retval;
 		break;
 	case IOET_IMEEndComposition:
 		msg.Type = UIMessage::IMEEndComposition;
-		retval = CuiManager::processUiManagerMessage (msg) || retval;
+		retval = uiManager->ProcessMessage (msg) || retval;
 		break;
 	}
 
@@ -1218,7 +1114,7 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 						continue;
 					}
 
-					retval = CuiManager::processUiManagerMessage (msg) || retval;
+					retval = uiManager->ProcessMessage (msg) || retval;
 
 					//-----------------------------------------------------------------
 					//-- send a doubleclick message if needed
@@ -1243,7 +1139,7 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 								msg.Type = UIMessage::RightMouseDoubleClick;
 							}
 
-							retval = CuiManager::processUiManagerMessage (msg) || retval;
+							retval = uiManager->ProcessMessage (msg) || retval;
 						}
 					}
 
@@ -1264,7 +1160,7 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 
 					if (msg.Type > UIMessage::IMEFirst && msg.Type < UIMessage::IMELast)
 					{
-						retval = CuiManager::processUiManagerMessage(msg) || retval;
+						retval = uiManager->ProcessMessage(msg) || retval;
 					}
 				}
 			}
@@ -1330,7 +1226,7 @@ void CuiIoWin::warpCursor (int x, int y)
 	Zero (msg.Modifiers);
 	msg.MouseCoords.x = m_mouseCursor->getX ();
 	msg.MouseCoords.y = m_mouseCursor->getY ();
-	IGNORE_RETURN (CuiManager::processUiManagerMessage (msg));
+	IGNORE_RETURN (UIManager::gUIManager ().ProcessMessage (msg));
 }
 
 //----------------------------------------------------------------------
@@ -1541,7 +1437,7 @@ void CuiIoWin::setDeadZoneSize         (int xy)
 		if (Game::isHudSceneTypeSpace())
 			ms_reticleDeadZoneSizeUsable = std::max(ms_minimumSpaceDeadZone, ms_reticleDeadZoneSize);
 		else
-		 ms_reticleDeadZoneSizeUsable = ms_reticleDeadZoneSize;
+			ms_reticleDeadZoneSizeUsable = ms_reticleDeadZoneSize;
 
 		if (CuiManager::getInstalled ())
 			CuiManager::getIoWin ().resetDeadZone ();
@@ -1564,7 +1460,11 @@ void CuiIoWin::getScreenCenter (UIPoint & screenCenter) const
 	{
 		if (!Game::isHudSceneTypeSpace())
 		{
-			screenCenter.Set (Graphics::getCurrentRenderTargetWidth() / 2, Graphics::getCurrentRenderTargetHeight() / 2);
+			// UI scale: screen center MUST be in LOGICAL canvas coords because
+			// callers feed this into UI widget SetLocation (which then goes
+			// through the canvas Scale matrix). Using physical-pixel center
+			// here causes widgets to land at bottom-right at uiScale>1.
+			screenCenter.Set (Graphics::getUiCanvasWidth() / 2, Graphics::getUiCanvasHeight() / 2);
 			return;
 		}
 	}
@@ -1602,7 +1502,8 @@ void CuiIoWin::setScreenCenter (UIPoint const & screenCenter, bool keepMouseOffs
 
 void CuiIoWin::resetScreenCenter ()
 {
-	UIPoint screenCenter (Graphics::getCurrentRenderTargetWidth() / 2, Graphics::getCurrentRenderTargetHeight() / 2);
+	// UI scale: LOGICAL canvas coords; see getScreenCenter() comment.
+	UIPoint screenCenter (Graphics::getUiCanvasWidth() / 2, Graphics::getUiCanvasHeight() / 2);
 	setScreenCenter (screenCenter, false);
 }
 
@@ -1610,7 +1511,8 @@ void CuiIoWin::resetScreenCenter ()
 
 void CuiIoWin::getScreenCenterDefault(UIPoint & screenCenter) const
 {
-	screenCenter.Set(Graphics::getCurrentRenderTargetWidth() / 2, Graphics::getCurrentRenderTargetHeight() / 2);
+	// UI scale: LOGICAL canvas coords; see getScreenCenter() comment.
+	screenCenter.Set(Graphics::getUiCanvasWidth() / 2, Graphics::getUiCanvasHeight() / 2);
 }
 
 //----------------------------------------------------------------------
@@ -1627,7 +1529,7 @@ void CuiIoWin::getScreenCenterOffset(UIPoint & screenCenterOffset) const
 }
 
 
-///----------------------------------------------------------------------
+//----------------------------------------------------------------------
 
 void CuiIoWin::setMouseLookState( MouseLookState state )
 {

@@ -14,7 +14,6 @@
 
 #include "sharedMath/Sphere.h"
 #include "sharedMath/Transform.h"
-#include "sharedMath/Vector.h"
 #include "../../../../../../engine/shared/library/sharedFoundation/include/public/sharedFoundation/MemoryBlockManagerMacros.h"
 #include <string>
 
@@ -59,7 +58,6 @@ public:
 		void             setRadius (float radius);
 		void             setPortalLayoutCrc (uint32 portalLayoutCrc);
 		void             setEventName(const std::string & eventName);
-		void             setObjectScale (Vector const &objectScale);
 
 		bool             isDeleted () const;
 		int64            getNetworkIdInt () const;
@@ -67,7 +65,6 @@ public:
 		int              getObjectTemplateNameIndex () const;
 		int              getCellIndex () const;
 		const Transform& getTransform_p () const;
-		Vector const &   getObjectScale () const;
 		float            getRadius () const;
 		uint32           getPortalLayoutCrc () const;
 		const std::string& getEventName() const; 
@@ -117,7 +114,6 @@ public:
 		int              m_objectTemplateNameIndex;
 		int              m_cellIndex;
 		Transform        m_transform_p;
-		Vector           m_objectScale;
 		float            m_radius;
 		uint32           m_portalLayoutCrc;
 		Node*            m_parent;
@@ -144,7 +140,7 @@ public:
 
 	//-- creation interface
 	void             clear ();
-	const Node*      addObject (int64 networkIdInt, int64 containedByNetworkIdInt, CrcString const &objectTemplateName, int cellIndex, const Transform& transform_p, float radius, uint32 portalLayoutCrc, const std::string & eventName = "", Vector const &objectScale = Vector::xyz111);
+	const Node*      addObject (int64 networkIdInt, int64 containedByNetworkIdInt, CrcString const &objectTemplateName, int cellIndex, const Transform& transform_p, float radius, uint32 portalLayoutCrc, const std::string & eventName = "");
 
 	//-- query interface
 	int              getNumberOfNodes () const;
@@ -179,7 +175,7 @@ private:
 	typedef stdvector<char*>::fwd ObjectTemplateNameList;
 	ObjectTemplateNameList* const m_objectTemplateNameList;
 
-	typedef stdhash_map<uint32, uint>::fwd ObjectTemplateCrcMap;
+	typedef stdhash_map<uint32, uint> ObjectTemplateCrcMap;
 	ObjectTemplateCrcMap* const m_objectTemplateCrcMap; // map from crc to index in name list
 
 	typedef stdmap<int64, Node*>::fwd NetworkIdNodeMap;

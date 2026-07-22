@@ -654,14 +654,11 @@ IoResult SpaceDeath::processEvent(IoEvent* event)
 		case IOET_MouseButtonDown:
 		case IOET_MouseButtonUp:
 			{
-				// Allow key/button input to dismiss death cam once explosion has finished (padding or done).
-				// Fixes soft-lock when respawning in same scene (e.g. atmospheric flight) where SceneChanged never fires.
-				if (m_state == S_cutSceneShipDestructionPadding || m_state == S_done)
-					return IOR_BlockKillMe;
 #if _DEBUG
-				if (m_testing)
+				if (m_testing && (m_state == S_cutSceneShipDestructionPadding || m_state == S_done))
 					return IOR_BlockKillMe;
 #endif
+
 				return IOR_Block;
 			}
 
@@ -893,15 +890,7 @@ void SpaceDeath::drawCutSceneShipDestruction() const
 	CellProperty * cellProperty_p = m_playerShip->getParentCell();
 	Transform const shipTransform_p(m_playerShip->getTransform_o2c());
 
-	Vector toLookAt_p = m_cameraTarget->calculateCurrentLookAt();
-
-	// When camera is above ship (top view), bias look-at downward to avoid showing under the terrain
-	Vector const camOffsetPos_p = m_cameraOffset_p.getPosition_p();
-	if (camOffsetPos_p.y > 0.5f)
-	{
-		float const downwardBias = m_playerShip->getAppearanceSphereRadius() * 2.0f;
-		toLookAt_p.y -= downwardBias;
-	}
+	Vector const toLookAt_p = m_cameraTarget->calculateCurrentLookAt();
 
 	Transform targetTransform_p;
 	targetTransform_p.multiply(shipTransform_p, m_cameraOffset_p);

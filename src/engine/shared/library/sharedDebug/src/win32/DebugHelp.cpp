@@ -481,7 +481,7 @@ bool DebugHelp::loadSymbolsForDll(const char *name)
 
 // ----------------------------------------------------------------------
 #pragma warning (disable: 4740 4748)
-void DebugHelp::getCallStack(std::uintptr_t *callStack, int sizeOfCallStack)
+void DebugHelp::getCallStack(uint32 *callStack, int sizeOfCallStack)
 {
 	{
 		for (int i = 0; i < sizeOfCallStack; ++i)
@@ -500,32 +500,37 @@ void DebugHelp::getCallStack(std::uintptr_t *callStack, int sizeOfCallStack)
 	//	return;
 
 	EnterCriticalSection(&criticalSection);
-	__asm
-	{
-		call GetEIP
-		GetEIP:
-		pop eax
-		mov context.Eip, eax
-		mov context.Esp, esp
-		mov context.Ebp, ebp
-	}
+	// Was: x86 inline asm `call GetEIP; pop eax; mov context.Eip, eax;
+	// mov context.Esp, esp; mov context.Ebp, ebp` to seed the CONTEXT
+	// with the current thread's instruction/stack/frame pointers.
+	// RtlCaptureContext does the same thing portably (fills Eip/Esp/Ebp
+	// on x86, Rip/Rsp/Rbp on x64).
+	RtlCaptureContext(&context);
 	LeaveCriticalSection(&criticalSection);
 
 	STACKFRAME64 stackFrame;
 	Zero(stackFrame);
 	stackFrame.AddrPC.Mode      = AddrModeFlat;
+	stackFrame.AddrStack.Mode   = AddrModeFlat;
+	stackFrame.AddrFrame.Mode   = AddrModeFlat;
+#if defined(_M_X64)
+	stackFrame.AddrPC.Offset    = context.Rip;
+	stackFrame.AddrStack.Offset = context.Rsp;
+	stackFrame.AddrFrame.Offset = context.Rbp;
+	const DWORD machineType     = IMAGE_FILE_MACHINE_AMD64;
+#else
 	stackFrame.AddrPC.Offset    = context.Eip;
 	stackFrame.AddrStack.Offset = context.Esp;
-	stackFrame.AddrStack.Mode   = AddrModeFlat;
 	stackFrame.AddrFrame.Offset = context.Ebp;
-	stackFrame.AddrFrame.Mode   = AddrModeFlat;
+	const DWORD machineType     = IMAGE_FILE_MACHINE_I386;
+#endif
 
 	for (int i = 0; i < sizeOfCallStack; ++i, ++callStack)
 	{
-		if (stackWalk64(IMAGE_FILE_MACHINE_I386, process, process, &stackFrame, &context, NULL, functionTableAccess, getModuleBase, NULL))
+		if (stackWalk64(machineType, process, process, &stackFrame, &context, NULL, functionTableAccess, getModuleBase, NULL))
 		{
 			const DWORD64 Offset = stackFrame.AddrPC.Offset;
-			*callStack = static_cast<std::uintptr_t>(Offset);
+			*callStack = DWORD(Offset);
 		}
 	}
 }
@@ -537,7 +542,7 @@ void DebugHelp::reportCallStack(int const maxStackDepth)
 	// look up the call stack information
 	int const callStackOffset = 2;
 	int const callStackSize = callStackOffset + maxStackDepth;
-	std::uintptr_t * const callStack = static_cast<std::uintptr_t *>(_alloca((callStackOffset + maxStackDepth) * sizeof(std::uintptr_t)));
+	uint32 * callStack = static_cast<uint32 *>(_alloca((callStackOffset + maxStackDepth) * sizeof(uint32)));
 	getCallStack(callStack, callStackOffset + maxStackDepth);
 
 	// look up the caller's file and line
@@ -553,7 +558,7 @@ void DebugHelp::reportCallStack(int const maxStackDepth)
 				if (lookupAddress(callStack[i], lib, file, sizeof(file), line))
 					REPORT_LOG(true, ("\t%s(%d) : caller %d\n", file, line, i-callStackOffset));
 				else
-					REPORT_LOG(true, ("\tunknown(%p) : caller %d\n", reinterpret_cast<void const *>(callStack[i]), i-callStackOffset));
+					REPORT_LOG(true, ("\tunknown(0x%08X) : caller %d\n", static_cast<int>(callStack[i]), i-callStackOffset));
 			}
 		}
 	}
@@ -561,20 +566,18 @@ void DebugHelp::reportCallStack(int const maxStackDepth)
 
 // ----------------------------------------------------------------------
 
-bool DebugHelp::lookupAddress(std::uintptr_t address, char *libName, char *fileName, int fileNameLength, int &line)
+bool DebugHelp::lookupAddress(uint32 address, char *libName, char *fileName, int fileNameLength, int &line)
 {
 	UNREF(libName);
 
 	if (!library)
 		return false;
 
-	const DWORD64 address64 = static_cast<DWORD64>(address);
-
 	// make sure the image is loaded
 	IMAGEHLP_MODULE64 imageHelpModule;
 	Zero(imageHelpModule);
 	imageHelpModule.SizeOfStruct = sizeof(imageHelpModule);
-	if (!symGetModuleInfo64(process, address64, &imageHelpModule))
+	if (!symGetModuleInfo64(process, address, &imageHelpModule))
 		return false;
 
 	// look up the symbol
@@ -583,11 +586,11 @@ bool DebugHelp::lookupAddress(std::uintptr_t address, char *libName, char *fileN
 	memset(buffer, 0, sizeof(buffer));
 	IMAGEHLP_SYMBOL64 *imageHelpSymbol = reinterpret_cast<IMAGEHLP_SYMBOL64*>(buffer);
 	imageHelpSymbol->SizeOfStruct = sizeof(IMAGEHLP_SYMBOL64);
-	imageHelpSymbol->Address = address64;
+	imageHelpSymbol->Address = address;
 	imageHelpSymbol->MaxNameLength = MaxNameLength;
 	{
 		DWORD64 displacement = 0;
-		if (!symGetSymFromAddr64(process, address64, &displacement, imageHelpSymbol))
+		if (!symGetSymFromAddr64(process, address, &displacement, imageHelpSymbol))
 		{
 			return false;
 		}
@@ -599,7 +602,7 @@ bool DebugHelp::lookupAddress(std::uintptr_t address, char *libName, char *fileN
 	imageHelpLine.SizeOfStruct = sizeof(imageHelpLine);
 	{
 		DWORD displacement = 0;
-		if (!symGetLineFromAddr64(process, address64, &displacement, &imageHelpLine))
+		if (!symGetLineFromAddr64(process, address, &displacement, &imageHelpLine))
 		{
 			return false;
 		}

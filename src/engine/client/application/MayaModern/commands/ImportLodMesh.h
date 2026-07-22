@@ -22,6 +22,9 @@ public:
 /** Resolve appearance path to .lod or .apt file. Tries .lod first, then .apt. */
 std::string resolveLodOrAptPath(const std::string& baseResolvedPath);
 
+/** Run importLodMesh without MEL executeCommand (safe during file translator import). */
+MStatus importLodMeshFile(const std::string& path, const std::string& parentPath = std::string(), bool visualHardpoints = false);
+
 /** Resolve path for static mesh: prefer .apt over .msh. APT is the entry point for static meshes. */
 std::string resolveStaticMeshPath(const std::string& basePath);
 

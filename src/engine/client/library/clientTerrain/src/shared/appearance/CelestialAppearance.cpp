@@ -9,7 +9,6 @@
 #include "clientTerrain/FirstClientTerrain.h"
 #include "clientTerrain/CelestialAppearance.h"
 
-#include "clientGraphics/Camera.h"
 #include "clientGraphics/DynamicVertexBuffer.h"
 #include "clientGraphics/Graphics.h"
 #include "clientGraphics/RenderWorld.h"
@@ -230,10 +229,6 @@ DPVS::Object* CelestialAppearance::getDpvsObject() const
 
 void CelestialAppearance::render() const
 {
-	Camera const & camera = ShaderPrimitiveSorter::getCurrentCamera();
-	if (camera.isUnderWater())
-		return;
-
 	ShaderPrimitiveSorter::add(*m_localShaderPrimitive);
 }
 

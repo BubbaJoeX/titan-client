@@ -139,10 +139,11 @@ CuiBackdrop::SceneRenderer::~SceneRenderer ()
 
 void CuiBackdrop::SceneRenderer::Render( UICanvas & ) const
 {
-	Graphics::clearViewport (true, 0, true, 1.0f, true, 0);
+	if (!m_camera)
+		return;
 
-	if (m_camera)
-		m_camera->renderScene ();
+	Graphics::clearViewport (true, 0, true, 1.0f, true, 0);
+	m_camera->renderScene ();
 }
 
 //-----------------------------------------------------------------

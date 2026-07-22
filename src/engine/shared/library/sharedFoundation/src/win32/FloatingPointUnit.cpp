@@ -11,8 +11,6 @@
 
 #include "sharedFoundation/ConfigSharedFoundation.h"
 
-#include <xmmintrin.h>
-
 // ======================================================================
 
 int                          FloatingPointUnit::updateNumber;
@@ -20,7 +18,6 @@ ushort                       FloatingPointUnit::status;
 FloatingPointUnit::Precision FloatingPointUnit::precision;
 FloatingPointUnit::Rounding  FloatingPointUnit::rounding;
 bool                         FloatingPointUnit::exceptionEnabled[E_max];
-unsigned int                 FloatingPointUnit::mxcsrStatus;
 
 // ======================================================================
 
@@ -42,11 +39,6 @@ const WORD EXCEPTION_ZERO_DIVIDE = BINARY4(0000,0000,0000,0100);
 const WORD EXCEPTION_DENORMAL    = BINARY4(0000,0000,0000,0010);
 const WORD EXCEPTION_INVALID     = BINARY4(0000,0000,0000,0001);
 const WORD EXCEPTION_ALL         = BINARY4(0000,0000,0011,1111);
-
-// MXCSR exception mask bits (bits 7-12 mask SSE exceptions when set to 1)
-const unsigned int MXCSR_EXCEPTION_MASK = 0x1F80;  // Mask all SSE exceptions
-const unsigned int MXCSR_DAZ            = 0x0040;  // Denormals Are Zero
-const unsigned int MXCSR_FTZ            = 0x8000;  // Flush To Zero
 
 // ======================================================================
 
@@ -101,14 +93,6 @@ void FloatingPointUnit::install(void)
 	}
 
 	setControlWord(status);
-
-	// Also configure MXCSR for SSE exceptions - mask all exceptions
-	// and enable flush-to-zero and denormals-are-zero for performance
-	mxcsrStatus = _mm_getcsr();
-	mxcsrStatus |= MXCSR_EXCEPTION_MASK;  // Mask all SSE exceptions
-	mxcsrStatus |= MXCSR_FTZ;             // Flush denormal results to zero
-	mxcsrStatus |= MXCSR_DAZ;             // Treat denormal inputs as zero
-	_mm_setcsr(mxcsrStatus);
 }
 
 // ----------------------------------------------------------------------
@@ -123,13 +107,6 @@ void FloatingPointUnit::update(void)
 		setControlWord(status);
 	}
 
-	// Also restore MXCSR if it was changed by external code
-	unsigned int currentMxcsr = _mm_getcsr();
-	if (currentMxcsr != mxcsrStatus)
-	{
-		_mm_setcsr(mxcsrStatus);
-	}
-
 	++updateNumber;
 }
 
@@ -139,7 +116,12 @@ WORD FloatingPointUnit::getControlWord(void)
 {
 	WORD controlWord = 0;
 
+#if defined(_M_IX86)
+	// x87 FPU control word - x86 only. On x64, MSVC uses SSE for
+	// floating-point by default; the x87 FPU is mostly unused and there
+	// is no per-thread x87 control word to read.
 	__asm fnstcw controlWord;
+#endif
 	return controlWord;
 }
 
@@ -148,7 +130,12 @@ WORD FloatingPointUnit::getControlWord(void)
 void FloatingPointUnit::setControlWord(WORD controlWord)
 {
 	UNREF(controlWord);
+#if defined(_M_IX86)
 	__asm fldcw controlWord;
+#endif
+	// No-op on x64 - SSE rounding/precision is configured via
+	// _controlfp_s, not via x87 fldcw, and we don't need to tune it
+	// for the SWG client.
 }
 
 // ----------------------------------------------------------------------

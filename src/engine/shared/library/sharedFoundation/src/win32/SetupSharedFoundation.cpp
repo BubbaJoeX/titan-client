@@ -31,10 +31,8 @@
 
 #include <eh.h>
 #include <cstdio>
-#include <Psapi.h>
-#if defined(_MSC_VER)
-#include <delayimp.h>
-#endif
+#include <DbgHelp.h>
+#pragma comment(lib, "Dbghelp.lib")
 
 // ======================================================================
 
@@ -62,16 +60,31 @@ LONG __stdcall SetupSharedFoundationNamespace::MyUnhandledExceptionFilter(LPEXCE
 		return EXCEPTION_CONTINUE_SEARCH;
 	entered = true;
 
-	if (!exceptionPointers || !exceptionPointers->ExceptionRecord)
+	// log some important information. Note the format string was originally
+	// `%08x(%d)=code %08x=addr` which silently truncated the 8-byte
+	// ExceptionAddress on x64 to its low 32 bits, making post-mortem
+	// addresses meaningless. Use %p (and an extra access-violation
+	// info line) so the dump is actually useful.
+	static char buffer[512];
 	{
-		OutputDebugStringA("MyUnhandledExceptionFilter: invalid EXCEPTION_POINTERS\n");
-		entered = false;
-		return EXCEPTION_CONTINUE_SEARCH;
+		EXCEPTION_RECORD const * const r = exceptionPointers->ExceptionRecord;
+		int n = sprintf(buffer, "Exception %08x(%ld)=code  addr=%p  ip=%p\n",
+			r->ExceptionCode, static_cast<long>(r->ExceptionCode),
+			r->ExceptionAddress,
+#ifdef _M_X64
+			(void*)exceptionPointers->ContextRecord->Rip
+#else
+			(void*)exceptionPointers->ContextRecord->Eip
+#endif
+		);
+		if (r->ExceptionCode == EXCEPTION_ACCESS_VIOLATION && r->NumberParameters >= 2)
+		{
+			ULONG_PTR const op = r->ExceptionInformation[0];   // 0=read, 1=write, 8=execute
+			ULONG_PTR const va = r->ExceptionInformation[1];
+			char const * const verb = (op == 0 ? "read" : op == 1 ? "write" : op == 8 ? "DEP execute" : "?");
+			n += sprintf(buffer + n, "AV %s of address %p\n", verb, (void*)va);
+		}
 	}
-
-	// log some important information
-	static char buffer[128];
-	sprintf(buffer, "Exception %08x(%d)=code %08x=addr\n", exceptionPointers->ExceptionRecord->ExceptionCode, exceptionPointers->ExceptionRecord->ExceptionCode, exceptionPointers->ExceptionRecord->ExceptionAddress);
 	OutputDebugString(buffer);
 
 	// write the minidump if we're in here for the first time
@@ -100,7 +113,14 @@ LONG __stdcall SetupSharedFoundationNamespace::MyUnhandledExceptionFilter(LPEXCE
 
 		static char fileName[512];
 
-		sprintf(fileName, "%s-%s-%I64d.txt", Os::getShortProgramName(), ApplicationVersion::getInternalVersion(), timestamp);
+		// Write crash dumps under logs/crash/ so they don't litter the
+		// client install directory. CreateDirectory is a no-op if the
+		// directory already exists; ignore failures and the CreateFile
+		// below will surface any real problem.
+		CreateDirectoryA("logs", NULL);
+		CreateDirectoryA("logs\\crash", NULL);
+
+		sprintf(fileName, "logs\\crash\\%s-%s-%I64d.txt", Os::getShortProgramName(), ApplicationVersion::getInternalVersion(), timestamp);
 		HANDLE const file = CreateFile(fileName, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_ARCHIVE, NULL);
 		if (file != INVALID_HANDLE_VALUE)
 		{
@@ -135,6 +155,36 @@ LONG __stdcall SetupSharedFoundationNamespace::MyUnhandledExceptionFilter(LPEXCE
 			char text7[] = "\n\n";
 			WriteFile(file, text7, strlen(text7), &bytesWritten, NULL);
 
+			// Capture and dump a stack trace. The minidump path further
+			// below sometimes fails silently (e.g. dbghelp not loadable);
+			// having symbols inline in the .txt makes triage possible
+			// without external tools.
+			{
+				static void * frames[64];
+				USHORT const captured = CaptureStackBackTrace(0, 64, frames, NULL);
+				HANDLE const proc = GetCurrentProcess();
+				SymInitialize(proc, NULL, TRUE);
+				char symBuf[sizeof(SYMBOL_INFO) + 256];
+				SYMBOL_INFO * const sym = reinterpret_cast<SYMBOL_INFO*>(symBuf);
+				sym->SizeOfStruct = sizeof(SYMBOL_INFO);
+				sym->MaxNameLen = 255;
+				char traceLine[768];
+				char header[] = "Stack trace:\n";
+				WriteFile(file, header, strlen(header), &bytesWritten, NULL);
+				for (USHORT i = 0; i < captured; ++i)
+				{
+					DWORD64 disp = 0;
+					int n;
+					if (SymFromAddr(proc, reinterpret_cast<DWORD64>(frames[i]), &disp, sym))
+						n = sprintf(traceLine, "  [%2u] %p  %s+0x%llx\n", i, frames[i], sym->Name, (unsigned long long)disp);
+					else
+						n = sprintf(traceLine, "  [%2u] %p  (no symbol)\n", i, frames[i]);
+					WriteFile(file, traceLine, n, &bytesWritten, NULL);
+				}
+				char traceEnd[] = "\n";
+				WriteFile(file, traceEnd, 1, &bytesWritten, NULL);
+			}
+
 			char const * text8 = "";
 			for (int i = 0; text8; ++i)
 			{
@@ -150,82 +200,21 @@ LONG __stdcall SetupSharedFoundationNamespace::MyUnhandledExceptionFilter(LPEXCE
 			CloseHandle(file);
 		}
 
-		sprintf(fileName, "%s-%s-%I64d.mdmp", Os::getShortProgramName(), ApplicationVersion::getInternalVersion(), timestamp);
+		sprintf(fileName, "logs\\crash\\%s-%s-%I64d.mdmp", Os::getShortProgramName(), ApplicationVersion::getInternalVersion(), timestamp);
 		OutputDebugString("Generating minidump ");
 		OutputDebugString(fileName);
 		OutputDebugString("\n");
 		DebugHelp::writeMiniDump(fileName, exceptionPointers);
 
-		sprintf(fileName, "%s-%s-%I64d.log", Os::getShortProgramName(), ApplicationVersion::getInternalVersion(), timestamp);
+		sprintf(fileName, "logs\\crash\\%s-%s-%I64d.log", Os::getShortProgramName(), ApplicationVersion::getInternalVersion(), timestamp);
 		TailFileLogObserver::flushAllTailFileLogObservers(fileName);
 	}
 
 	// tell the Os not to abort so we can rethrow the exception
 	Os::returnFromAbort();
 
-	// Try to identify which module the crash occurred in
-	static char moduleName[MAX_PATH] = "unknown";
-	static char fatalMessage[1024];
-	HMODULE hMods[1024];
-	DWORD cbNeeded;
-	void* crashAddr = exceptionPointers->ExceptionRecord->ExceptionAddress;
-	
-	if (EnumProcessModules(GetCurrentProcess(), hMods, sizeof(hMods), &cbNeeded))
-	{
-		for (unsigned int i = 0; i < (cbNeeded / sizeof(HMODULE)); i++)
-		{
-			MODULEINFO modInfo;
-			if (GetModuleInformation(GetCurrentProcess(), hMods[i], &modInfo, sizeof(modInfo)))
-			{
-				void* modBase = modInfo.lpBaseOfDll;
-				void* modEnd = reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(modBase) + modInfo.SizeOfImage);
-				if (crashAddr >= modBase && crashAddr < modEnd)
-				{
-					GetModuleBaseNameA(GetCurrentProcess(), hMods[i], moduleName, sizeof(moduleName));
-					break;
-				}
-			}
-		}
-	}
-
-	// MSVC delay-load helper raises 0xC06D007E (DLL missing) / 0xC06D007F (export missing).
-	// ExceptionInformation[0] points at DelayLoadInfo (see delayhlp.cpp).
-	char delayDetail[480] = "";
-#if defined(_MSC_VER)
-	{
-		const EXCEPTION_RECORD *const er = exceptionPointers->ExceptionRecord;
-		if ((er->ExceptionCode == 0xC06D007E || er->ExceptionCode == 0xC06D007F) &&
-		    er->NumberParameters >= 1)
-		{
-			PDelayLoadInfo const pdli = reinterpret_cast<PDelayLoadInfo>(static_cast<uintptr_t>(er->ExceptionInformation[0]));
-			if (pdli && pdli->cb >= sizeof(DelayLoadInfo) && pdli->szDll)
-			{
-				if (er->ExceptionCode == 0xC06D007E)
-				{
-					_snprintf(delayDetail, sizeof(delayDetail), " [DelayLoad: could not load DLL \"%s\"]", pdli->szDll);
-				}
-				else
-				{
-					const ULONG_PTR nameOrOrdinal = reinterpret_cast<ULONG_PTR>(pdli->dlp.szProcName);
-					if (nameOrOrdinal > 0xFFFF)
-						_snprintf(delayDetail, sizeof(delayDetail), " [DelayLoad: \"%s\" does not export \"%s\"]", pdli->szDll, pdli->dlp.szProcName);
-					else
-						_snprintf(delayDetail, sizeof(delayDetail), " [DelayLoad: \"%s\" does not export ordinal %lu]", pdli->szDll, static_cast<unsigned long>(nameOrOrdinal & 0xFFFF));
-				}
-				delayDetail[sizeof(delayDetail) - 1] = '\0';
-			}
-		}
-	}
-#endif
-
-	sprintf(fatalMessage, "ExceptionHandler invoked: Exception code 0x%08x at address %p in module %s%s",
-		exceptionPointers->ExceptionRecord->ExceptionCode,
-		crashAddr,
-		moduleName,
-		delayDetail);
-
 	// Let the ExitChain do its job
-	Fatal("%s", fatalMessage);
+	Fatal("ExceptionHandler invoked");
 
 	// rethrow the exception so that the debugger can catch it
 	entered = false;
@@ -257,6 +246,15 @@ void SetupSharedFoundation::install(const Data &data)
 
 	ms_writeMiniDumps = data.writeMiniDumps;
 	SetUnhandledExceptionFilter(MyUnhandledExceptionFilter);
+
+	// Make sure the logs/, logs/crash/, and logs/ext/ directories exist
+	// so other modules can write debug logs, crash dumps, and assorted
+	// diagnostic dumps (shader sources, memory manager logs, TreeFile
+	// stats, character lists, etc.) to them without having to handle
+	// directory creation themselves.
+	CreateDirectoryA("logs", NULL);
+	CreateDirectoryA("logs\\crash", NULL);
+	CreateDirectoryA("logs\\ext", NULL);
 
 	// and get the command line stuff in quick so we can make decisions based on the command line settings
 	CommandLine::install();

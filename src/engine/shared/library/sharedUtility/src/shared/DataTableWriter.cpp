@@ -18,28 +18,9 @@
 #include "sharedXml/XmlTreeDocumentList.h"
 #include "sharedXml/XmlTreeNode.h"
 
-#include <algorithm>
-#include <cstdio>
 #include <map>
-#include <string>
-#include <vector>
 
 // ======================================================================
-
-/** Lines starting with ## (after optional whitespace) are comments and skipped when loading. */
-static bool isTabCommentLine(char const * line)
-{
-	while (*line == ' ' || *line == '\t')
-		++line;
-	return line[0] == '#' && line[1] == '#';
-}
-
-/** Advance past the next newline; returns pointer to start of next line or 0. */
-static char const * nextLine(char const * p)
-{
-	p = strchr(p, '\n');
-	return p ? p + 1 : 0;
-}
 
 #ifdef _DEBUG
 namespace DataTableWriterNamespace
@@ -256,362 +237,13 @@ bool DataTableWriter::isXmlFile(const char * filename)
 
 // ----------------------------------------------------------------------
 
-bool DataTableWriter::isIffFile(const char * filename)
-{
-	NOT_NULL(filename);
-
-	const char * iffExt = ".iff";
-	const int    extLen = 4;
-	int fileLength = static_cast<int>(strlen(filename));
-
-	if (fileLength <= extLen)
-		return false;
-
-	return _strnicmp(filename + fileLength - extLen, iffExt, extLen) == 0;
-}
-
-// ----------------------------------------------------------------------
-
-void DataTableWriter::loadFromIff(const char * filename)
-{
-	NOT_NULL(filename);
-
-	Iff iff(filename, false);
-	DataTable dt;
-	dt.load(iff);
-
-	NamedDataTable * ndt = new NamedDataTable();
-	std::string tableName = getTableNameFromTabFile(filename);
-	ndt->setName(tableName);
-
-	// Copy columns and types
-	int numCols = dt.getNumColumns();
-	for (int c = 0; c < numCols; ++c)
-	{
-		ndt->m_columns.push_back(dt.getColumnName(c));
-		ndt->m_types.push_back(new DataTableColumnType(dt.getDataTypeForColumn(c).getTypeSpecString()));
-	}
-
-	// Copy rows
-	int numRows = dt.getNumRows();
-	for (int r = 0; r < numRows; ++r)
-	{
-		NamedDataTable::DataTableRow * newRow = new NamedDataTable::DataTableRow;
-		for (int c = 0; c < numCols; ++c)
-		{
-			char buf[16384];
-			buf[0] = '\0';
-			DataTableColumnType const & colType = ndt->getDataTypeForColumn(c);
-			switch (colType.getType())
-			{
-			case DataTableColumnType::DT_Enum:
-				{
-					std::string label;
-					if (colType.getEnumLabelForValue(dt.getIntValue(c, r), label))
-						strncpy(buf, label.c_str(), sizeof(buf) - 1);
-					else
-						snprintf(buf, sizeof(buf), "%d", dt.getIntValue(c, r));
-					buf[sizeof(buf) - 1] = '\0';
-				}
-				break;
-			case DataTableColumnType::DT_Bool:
-				snprintf(buf, sizeof(buf), "%d", dt.getIntValue(c, r));
-				break;
-			case DataTableColumnType::DT_Int:
-			case DataTableColumnType::DT_HashString:
-				snprintf(buf, sizeof(buf), "%d", dt.getIntValue(c, r));
-				break;
-			case DataTableColumnType::DT_BitVector:
-				{
-					std::string labels;
-					if (colType.getBitVectorLabelsForValue(dt.getIntValue(c, r), labels))
-						strncpy(buf, labels.c_str(), sizeof(buf) - 1);
-					else
-						snprintf(buf, sizeof(buf), "%d", dt.getIntValue(c, r));
-					buf[sizeof(buf) - 1] = '\0';
-				}
-				break;
-			case DataTableColumnType::DT_Float:
-				snprintf(buf, sizeof(buf), "%g", static_cast<double>(dt.getFloatValue(c, r)));
-				break;
-			case DataTableColumnType::DT_String:
-			case DataTableColumnType::DT_Comment:
-			default:
-				{
-					const char * s = dt.getStringValue(c, r);
-					if (s)
-						strncpy(buf, s, sizeof(buf) - 1);
-					buf[sizeof(buf) - 1] = '\0';
-				}
-				break;
-			}
-			newRow->push_back(_getNewCell(colType, buf));
-		}
-		ndt->m_rows.push_back(newRow);
-	}
-
-	m_tables.push_back(ndt);
-}
-
-// ----------------------------------------------------------------------
-
-namespace BuildoutSpreadsheetTabRepairNamespace
-{
-	void stripCarriageReturn(std::string &line)
-	{
-		if (!line.empty() && line[line.size() - 1] == '\r')
-			line.erase(line.size() - 1);
-	}
-
-	void splitTabRow(std::string const &line, std::vector<std::string> &out)
-	{
-		out.clear();
-		std::string::size_type start = 0;
-		for (;;)
-		{
-			std::string::size_type const tab = line.find('\t', start);
-			if (tab == std::string::npos)
-			{
-				out.push_back(line.substr(start));
-				break;
-			}
-			out.push_back(line.substr(start, tab - start));
-			start = tab + 1;
-		}
-	}
-
-	std::string joinTabRow(std::vector<std::string> const &fields)
-	{
-		std::string result;
-		for (std::vector<std::string>::size_type i = 0; i < fields.size(); ++i)
-		{
-			if (i)
-				result += '\t';
-			result += fields[i];
-		}
-		return result;
-	}
-
-	char const * const SERVER_BUILDOUT_COLUMN_ROW = "objid\tcontainer\tserver_template_crc\tcell_index\tpx\tpy\tpz\tqw\tqx\tqy\tqz\tsx\tsy\tsz\tscripts\tobjvars";
-	char const * const SERVER_BUILDOUT_TYPE_ROW = "i\ti\th\ti\tf\tf\tf\tf\tf\tf\tf\tf\tf\tf\ts\tp";
-	char const * const CLIENT_BUILDOUT_COLUMN_ROW = "objid\tcontainer\ttype\tshared_template_crc\tcell_index\tpx\tpy\tpz\tqw\tqx\tqy\tqz\tsx\tsy\tsz\tradius\tportal_layout_crc";
-	char const * const CLIENT_BUILDOUT_TYPE_ROW = "i\ti\ti\th\ti\tf\tf\tf\tf\tf\tf\tf\tf\tf\tf\ti";
-	char const * const CLIENT_LEGACY_BUILDOUT_TYPE_ROW = "i\ti\ti\th\ti\tf\tf\tf\tf\tf\tf\tf\tf\tf\ti";
-
-	void repairIfNeeded(char const * tabFilename)
-	{
-		if (!tabFilename || !*tabFilename)
-			return;
-
-		StdioFile in(tabFilename, "r");
-		if (!in.isOpen())
-			return;
-
-		int const len = in.length();
-		if (len <= 0)
-			return;
-
-		std::vector<char> buf(static_cast<size_t>(len) + 1);
-		if (in.read(&buf[0], len) != len)
-			return;
-		in.close();
-		buf[static_cast<size_t>(len)] = '\0';
-
-		std::string content(&buf[0]);
-		std::vector<std::string> lines;
-		for (std::string::size_type pos = 0; pos < content.size();)
-		{
-			std::string::size_type const nl = content.find('\n', pos);
-			if (nl == std::string::npos)
-			{
-				lines.push_back(content.substr(pos));
-				break;
-			}
-			lines.push_back(content.substr(pos, nl - pos));
-			pos = nl + 1;
-		}
-
-		std::vector<std::string::size_type> dataLineIndices;
-		for (std::string::size_type i = 0; i < lines.size(); ++i)
-		{
-			stripCarriageReturn(lines[i]);
-			if (!lines[i].empty() && !isTabCommentLine(lines[i].c_str()))
-				dataLineIndices.push_back(i);
-		}
-
-		if (dataLineIndices.size() < 2)
-			return;
-
-		std::string::size_type const iCol = dataLineIndices[0];
-		std::string::size_type const iType = dataLineIndices[1];
-
-		std::vector<std::string> cols;
-		std::vector<std::string> types;
-		splitTabRow(lines[iCol], cols);
-		splitTabRow(lines[iType], types);
-
-		bool const isServer = std::find(cols.begin(), cols.end(), "server_template_crc") != cols.end();
-		bool const isClient = std::find(cols.begin(), cols.end(), "shared_template_crc") != cols.end();
-		if (!isServer && !isClient)
-			return;
-
-		bool modified = false;
-
-		if (isServer)
-		{
-			bool const hasSx = std::find(cols.begin(), cols.end(), "sx") != cols.end();
-			if (hasSx && cols.size() == 16 && types.size() == 13)
-			{
-				types.insert(types.begin() + 11, 3, "f");
-				lines[iType] = joinTabRow(types);
-				modified = true;
-			}
-			else if (!hasSx && cols.size() == 13 && types.size() == 13)
-			{
-				lines[iCol] = SERVER_BUILDOUT_COLUMN_ROW;
-				lines[iType] = SERVER_BUILDOUT_TYPE_ROW;
-				modified = true;
-			}
-			else if (cols.size() == 16 && types.size() != cols.size()
-				&& cols.size() >= 2
-				&& cols[cols.size() - 2] == "scripts"
-				&& cols[cols.size() - 1] == "objvars")
-			{
-				lines[iType] = SERVER_BUILDOUT_TYPE_ROW;
-				modified = true;
-			}
-
-			splitTabRow(lines[iCol], cols);
-			splitTabRow(lines[iType], types);
-			if (cols.size() != types.size())
-			{
-				if (cols.size() == 16)
-				{
-					lines[iType] = SERVER_BUILDOUT_TYPE_ROW;
-					modified = true;
-					splitTabRow(lines[iType], types);
-				}
-				else if (!hasSx && cols.size() == 13)
-				{
-					lines[iCol] = SERVER_BUILDOUT_COLUMN_ROW;
-					lines[iType] = SERVER_BUILDOUT_TYPE_ROW;
-					modified = true;
-					splitTabRow(lines[iCol], cols);
-					splitTabRow(lines[iType], types);
-				}
-			}
-			if (cols.size() != types.size())
-				return;
-
-			for (std::vector<std::string>::size_type k = 2; k < dataLineIndices.size(); ++k)
-			{
-				std::string::size_type const r = dataLineIndices[k];
-				if (lines[r].empty())
-					continue;
-				std::vector<std::string> fields;
-				splitTabRow(lines[r], fields);
-				if (fields.size() == 13)
-				{
-					fields.insert(fields.begin() + 11, 3, "1");
-					lines[r] = joinTabRow(fields);
-					modified = true;
-				}
-			}
-		}
-		else if (isClient)
-		{
-			bool const hasSx = std::find(cols.begin(), cols.end(), "sx") != cols.end();
-			if (hasSx && cols.size() == 17 && types.size() == 14)
-			{
-				types.insert(types.begin() + 12, 3, "f");
-				lines[iType] = joinTabRow(types);
-				modified = true;
-			}
-			else if (!hasSx && cols.size() == 14 && types.size() == 14)
-			{
-				lines[iCol] = CLIENT_BUILDOUT_COLUMN_ROW;
-				lines[iType] = CLIENT_BUILDOUT_TYPE_ROW;
-				modified = true;
-			}
-			else if (cols.size() == 17 && types.size() != cols.size()
-				&& cols.size() >= 2
-				&& cols[cols.size() - 2] == "radius"
-				&& cols[cols.size() - 1] == "portal_layout_crc")
-			{
-				lines[iType] = CLIENT_BUILDOUT_TYPE_ROW;
-				modified = true;
-			}
-			else if (cols.size() == 14 && types.size() != cols.size()
-				&& cols.size() >= 1
-				&& cols.back() == "portal_layout_crc")
-			{
-				lines[iType] = CLIENT_LEGACY_BUILDOUT_TYPE_ROW;
-				modified = true;
-			}
-
-			splitTabRow(lines[iCol], cols);
-			splitTabRow(lines[iType], types);
-			if (cols.size() != types.size())
-			{
-				if (cols.size() == 17)
-				{
-					lines[iType] = CLIENT_BUILDOUT_TYPE_ROW;
-					modified = true;
-					splitTabRow(lines[iType], types);
-				}
-				else if (cols.size() == 14)
-				{
-					lines[iType] = CLIENT_LEGACY_BUILDOUT_TYPE_ROW;
-					modified = true;
-					splitTabRow(lines[iType], types);
-				}
-			}
-			if (cols.size() != types.size())
-				return;
-
-			for (std::vector<std::string>::size_type k = 2; k < dataLineIndices.size(); ++k)
-			{
-				std::string::size_type const r = dataLineIndices[k];
-				if (lines[r].empty())
-					continue;
-				std::vector<std::string> fields;
-				splitTabRow(lines[r], fields);
-				if (fields.size() == 14)
-				{
-					fields.insert(fields.begin() + 12, 3, "1");
-					lines[r] = joinTabRow(fields);
-					modified = true;
-				}
-			}
-		}
-
-		if (!modified)
-			return;
-
-		StdioFile out(tabFilename, "w");
-		if (!out.isOpen())
-			return;
-		for (std::vector<std::string>::size_type i = 0; i < lines.size(); ++i)
-		{
-			static_cast<void>(out.write(static_cast<int>(lines[i].size()), lines[i].c_str()));
-			static_cast<void>(out.write(1, "\n"));
-		}
-		out.close();
-	}
-}
-
-// ----------------------------------------------------------------------
-
 void DataTableWriter::loadFromSpreadsheet(const char * filename)
 {
 	NOT_NULL(filename);
 
 	if(!isXmlFile(filename))
-	{
-		BuildoutSpreadsheetTabRepairNamespace::repairIfNeeded(filename);
 		// Original file format
 		_loadFromSpreadsheetTab(filename);
-	}
 	else
 		// XML file format
 		_loadFromSpreadsheetXml(filename);
@@ -922,13 +554,7 @@ void DataTableWriter::_loadFromSpreadsheetTab(const char * filename)
 	// past the end of the file data
 	buffer[bytes_read] = 0;
 
-	const char* currentPos = buffer;
-	// Skip leading comment lines (##)
-	while (currentPos && *currentPos && isTabCommentLine(currentPos))
-		currentPos = nextLine(currentPos);
-	FATAL(!currentPos || !*currentPos, ("No column row when loading %s.", filename));
-
-	const char* newLine = strchr(currentPos, '\n');
+	const char* newLine = strchr(buffer, '\n');
 	FATAL(!newLine, ("No end of line while looking for column row when loading %s.", filename));
 
 	FATAL(!m_tables.empty(), ("TAB file does not support multiple tables when loading %s.", filename));
@@ -937,31 +563,22 @@ void DataTableWriter::_loadFromSpreadsheetTab(const char * filename)
 	ndt = m_tables.back();
 	ndt->setName(getTableNameFromTabFile(filename).c_str());
 
-	_loadColumnNames(ndt, currentPos);
-	currentPos = newLine + 1;
+	_loadColumnNames(ndt, buffer);
+	const char* currentPos = newLine + 1;
 
-	// Skip comment lines before types row
-	while (currentPos && *currentPos && isTabCommentLine(currentPos))
-		currentPos = nextLine(currentPos);
-	newLine = currentPos ? strchr(currentPos, '\n') : 0;
-	FATAL(!newLine, ("No end of line while looking for types row when loading %s.", filename));
+	newLine = strchr(currentPos, '\n');
+	FATAL(!newLine, ("No end of line while looking for column row when loading %s.", filename));
 
 	_loadTypes(ndt, currentPos);
 	currentPos = newLine + 1;
 
 	newLine = strchr(currentPos, '\n');
-	for (int count = 0; newLine; )
+
+	for(int count = 0; newLine; ++count)
 	{
-		// Skip comment lines in data section
-		if (isTabCommentLine(currentPos))
-		{
-			currentPos = newLine + 1;
-			newLine = strchr(currentPos, '\n');
-			continue;
-		}
 		_loadRow(ndt, currentPos, count);
-		++count;
 		currentPos = newLine + 1;
+
 		newLine = strchr(currentPos, '\n');
 	}
 	FATAL(ndt->getNumRows() < 1, ("No rows in the table when loading %s.", filename));
@@ -995,31 +612,6 @@ bool DataTableWriter::save(const char * outputFileName, bool optional) const
 
 
 	return _writeTable( m_tables.front(), outputFileName, optional );
-}
-
-// ----------------------------------------------------------------------
-
-bool DataTableWriter::saveToTab(const char * outputFileName, bool optional) const
-{
-	if (!outputFileName || strlen(outputFileName) == 0)
-	{
-		DEBUG_FATAL(true, ("OutputFileName is NULL or empty."));
-		return false;
-	}
-
-	if (m_tables.size() > 1)
-	{
-		DEBUG_FATAL(true, ("saveToTab not supported on DataTableWriter with multiple tables."));
-		return false;
-	}
-
-	if (m_tables.size() == 0)
-	{
-		DEBUG_FATAL(true, ("DataTableWriter is empty."));
-		return false;
-	}
-
-	return _writeTableToTab( m_tables.front(), outputFileName, optional );
 }
 
 // ----------------------------------------------------------------------
@@ -1069,110 +661,6 @@ void DataTableWriter::_saveTableToIff(Iff & iff, NamedDataTable * ndt) const
 
 	iff.exitForm(TAG_0001);
 	iff.exitForm();
-}
-
-// ----------------------------------------------------------------------
-
-namespace
-{
-	void writeTabCell(FILE * f, DataTableColumnType const & colType, DataTableCell const * cell)
-	{
-		if (!cell)
-			return;
-		char buf[16384];
-		buf[0] = '\0';
-		switch (colType.getBasicType())
-		{
-		case DataTableColumnType::DT_Int:
-			snprintf(buf, sizeof(buf), "%d", cell->getIntValue());
-			break;
-		case DataTableColumnType::DT_Float:
-			snprintf(buf, sizeof(buf), "%g", static_cast<double>(cell->getFloatValue()));
-			break;
-		case DataTableColumnType::DT_String:
-		case DataTableColumnType::DT_Comment:
-		default:
-			{
-				std::string val = cell->getStringValue() ? cell->getStringValue() : "";
-				if (val.find('\t') != std::string::npos || val.find('\n') != std::string::npos || val.find('"') != std::string::npos)
-				{
-					std::string escaped;
-					escaped.reserve(val.size() + 4);
-					escaped += '"';
-					for (size_t i = 0; i < val.size(); ++i)
-					{
-						if (val[i] == '"')
-							escaped += "\"\"";
-						else
-							escaped += val[i];
-					}
-					escaped += '"';
-					val = escaped;
-				}
-				fprintf(f, "%s", val.c_str());
-			}
-			return;
-		}
-		fprintf(f, "%s", buf);
-	}
-}
-
-bool DataTableWriter::_writeTableToTab(NamedDataTable const * ndt, const char * outputFile, bool optional) const
-{
-	NOT_NULL(ndt);
-
-	if (!FileNameUtils::isWritable(outputFile))
-	{
-		FATAL(!optional, ("ERROR: The output file is not available for writing: %s", outputFile));
-		WARNING(true, ("ERROR: The output file is not available for writing: %s", outputFile));
-		return false;
-	}
-
-	FILE * f = fopen(outputFile, "w");
-	if (!f)
-	{
-		FATAL(!optional, ("ERROR: Could not open for writing: %s", outputFile));
-		return false;
-	}
-
-	// Column names row
-	for (int c = 0; c < ndt->getNumColumns(); ++c)
-	{
-		if (c > 0)
-			fprintf(f, "\t");
-		fprintf(f, "%s", ndt->getColumnName(c).c_str());
-	}
-	fprintf(f, "\n");
-
-	// Types row
-	for (int c = 0; c < ndt->getNumColumns(); ++c)
-	{
-		if (c > 0)
-			fprintf(f, "\t");
-		std::string typeStr = ndt->getDataTypeForColumn(c).getTypeSpecString();
-		if (typeStr.find('\t') != std::string::npos)
-			fprintf(f, "\"%s\"", typeStr.c_str());
-		else
-			fprintf(f, "%s", typeStr.c_str());
-	}
-	fprintf(f, "\n");
-
-	// Data rows
-	for (int r = 0; r < ndt->getNumRows(); ++r)
-	{
-		NamedDataTable::DataTableRow const * row = ndt->m_rows[static_cast<size_t>(r)];
-		for (int c = 0; c < ndt->getNumColumns(); ++c)
-		{
-			if (c > 0)
-				fprintf(f, "\t");
-			DataTableCell const * cell = (*row)[static_cast<size_t>(c)];
-			writeTabCell(f, ndt->getDataTypeForColumn(c), cell);
-		}
-		fprintf(f, "\n");
-	}
-
-	fclose(f);
-	return true;
 }
 
 // ----------------------------------------------------------------------
@@ -1250,7 +738,6 @@ DataTableCell *DataTableWriter::_getNewCell(DataTableColumnType const &columnTyp
 		break;
 	case DataTableColumnType::DT_String:
 	case DataTableColumnType::DT_Comment:
-	case DataTableColumnType::DT_Unknown:
 		return new DataTableCell(value.c_str());
 		break;
 	default:

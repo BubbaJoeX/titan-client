@@ -17,6 +17,7 @@
 #include "clientGraphics/TextureList.h"
 #include "clientTerrain/ClientProceduralTerrainAppearance_ShaderData.h"
 #include "clientTerrain/ConfigClientTerrain.h"
+#include "sharedFile/TreeFile.h"
 #include "sharedMath/VectorArgb.h"
 #include "sharedUtility/FileName.h"
 
@@ -158,14 +159,35 @@ ClientProceduralTerrainAppearance::ShaderCache::ShaderCache (const ShaderGroup& 
 		{
 			char shaderName [64];
 			sprintf (shaderName , "shader/terrain_%sblend%i.sht", dot3 ? "dot3_" : "", i);
-			blendingShader [i] = safe_cast<StaticShader*>(ShaderTemplateList::fetchModifiableShader (shaderName));
-			blendingShader [i]->setObeysLightScale (ConfigClientTerrain::getEnableLightScaling ());
-			
+			// Skip the fetch if the shader file isn't in the loaded TRE -
+			// fetchModifiableShader returns a placeholder otherwise, which
+			// renders as a transparent / invisible shader at runtime.
+			if (TreeFile::exists(shaderName))
+			{
+				blendingShader [i] = safe_cast<StaticShader*>(ShaderTemplateList::fetchModifiableShader (shaderName));
+				if (blendingShader [i])
+					blendingShader [i]->setObeysLightScale (ConfigClientTerrain::getEnableLightScaling ());
+			}
+			else
+			{
+				WARNING(true, ("ClientProceduralTerrainAppearance::ShaderCache: %s not in TreeFile, skipping non-spec blend tile %d", shaderName, i));
+				blendingShader [i] = NULL;
+			}
+
 			if (specular)
 			{
 				sprintf (shaderName , "shader/terrain_%sblend%i_spec.sht", dot3 ? "dot3_" : "", i);
-				blendingShaderSpecular[i] = safe_cast<StaticShader*>(ShaderTemplateList::fetchModifiableShader (shaderName));
-				blendingShaderSpecular[i]->setObeysLightScale (ConfigClientTerrain::getEnableLightScaling ());
+				if (TreeFile::exists(shaderName))
+				{
+					blendingShaderSpecular[i] = safe_cast<StaticShader*>(ShaderTemplateList::fetchModifiableShader (shaderName));
+					if (blendingShaderSpecular[i])
+						blendingShaderSpecular[i]->setObeysLightScale (ConfigClientTerrain::getEnableLightScaling ());
+				}
+				else
+				{
+					// Spec variants missing from post-NGE TRE - fall back to non-spec at render time.
+					blendingShaderSpecular[i] = NULL;
+				}
 			}
 			else
 				blendingShaderSpecular[i] = NULL;
@@ -230,8 +252,11 @@ ClientProceduralTerrainAppearance::ShaderCache::~ShaderCache ()
 
 	for (i = 0; i < 4; i++)
 	{
-		blendingShader [i]->release();
-		blendingShader [i] = 0;
+		if (blendingShader [i])
+		{
+			blendingShader [i]->release();
+			blendingShader [i] = 0;
+		}
 
 		if (blendingShaderSpecular[i])
 		{
@@ -305,10 +330,8 @@ void ClientProceduralTerrainAppearance::ShaderCache::getTextures (const ShaderGr
 	const ShaderCacheNode &c = cache[sgi.getPriority ()][childIndex];
 
 	shader = c.shader;
-	diffuseTexture = c.diffuseTexture ? c.diffuseTexture : m_defaultTexture;
+	diffuseTexture = c.diffuseTexture;
 	normalTexture = c.normalTexture;
-	if (ClientProceduralTerrainAppearance::getDot3Terrain () && !normalTexture)
-		normalTexture = m_defaultNormal;
 }
 
 //-------------------------------------------------------------------
@@ -330,34 +353,16 @@ void ClientProceduralTerrainAppearance::ShaderCache::preloadShaders () const
 				StaticShader const * staticShader = 
 					 safe_cast<const StaticShader*>(ShaderTemplateList::fetchShader (FileName (FileName::P_shader, fcd.shaderTemplateName)));
 
-				if (!staticShader)
-				{
-					DEBUG_WARNING (true, ("Terrain ShaderCache: could not load shader template '%s' (family %d child %d); using default textures.", fcd.shaderTemplateName, shaderGroup.getFamilyId(i), j));
-					c.shader = 0;
-					c.diffuseTexture = m_defaultTexture;
-					c.diffuseTexture->fetch ();
-					if (ClientProceduralTerrainAppearance::getDot3Terrain ())
-					{
-						c.normalTexture = m_defaultNormal;
-						c.normalTexture->fetch ();
-					}
-					continue;
-				}
-
 				c.shader = staticShader;
 
 				bool result = staticShader->getTexture(TAG(M,A,I,N), c.diffuseTexture);
-				if (!result || !c.diffuseTexture)
-				{
-					DEBUG_WARNING (true, ("Terrain ShaderCache: missing MAIN texture for '%s' (family %d child %d); using default diffuse.", fcd.shaderTemplateName, shaderGroup.getFamilyId(i), j));
-					c.diffuseTexture = m_defaultTexture;
-				}
+				DEBUG_FATAL(!result, ("Could not get texture from static shader"));
 				c.diffuseTexture->fetch();
 
 				if (ClientProceduralTerrainAppearance::getDot3Terrain ())
 				{
 					result = staticShader->getTexture(TAG(N,R,M,L), c.normalTexture);
-					if (!result || !c.normalTexture)
+					if (!result)
 						c.normalTexture = m_defaultNormal;
 					c.normalTexture->fetch();
 				}

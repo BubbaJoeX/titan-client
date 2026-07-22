@@ -1587,7 +1587,7 @@ namespace
 {
 	template <typename T> void detachFromMorphWidgetVector (T & v)
 	{
-		for (T::iterator it = v.begin (); it != v.end (); ++it)
+		for (typename T::iterator it = v.begin (); it != v.end (); ++it)
 		{
 			UIWidget * const widget = *it;
 			widget->Detach (0);

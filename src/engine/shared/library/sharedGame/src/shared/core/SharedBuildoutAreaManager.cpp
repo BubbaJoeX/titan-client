@@ -17,7 +17,6 @@
 #include "sharedTerrain/ProceduralTerrainAppearance.h"
 #include "sharedTerrain/TerrainObject.h"
 #include "sharedUtility/DataTable.h"
-#include "../../../../../../client/library/clientGame/src/shared/core/Game.h"
 
 // ======================================================================
 
@@ -196,11 +195,6 @@ void SharedBuildoutAreaManager::install()
 		for (int sceneRow = 0; sceneRow < sceneCount; ++sceneRow)
 		{
 			const std::string &sceneNameTemp = buildoutScenesTable.getStringValue("sceneName", sceneRow);
-			// Skip server-side worldserver files in god client
-			if (sceneNameTemp.find("_ws") != std::string::npos)
-			{
-				continue;
-			}
 			s_buildoutScenes.push_back(sceneNameTemp);
 			const std::string &sceneName = s_buildoutScenes.back();
 
@@ -229,7 +223,7 @@ void SharedBuildoutAreaManager::install()
 			int const areaCount = areaListTable.getNumRows();
 			for (int areaRow = 0; areaRow < areaCount; ++areaRow)
 			{
-				areasForScene.push_back();
+				areasForScene.emplace_back();
 				BuildoutArea &buildoutArea = areasForScene.back();
 				buildoutArea.areaIndex = i*100+areaRow;
 				buildoutArea.areaName = areaListTable.getStringValue("area", areaRow);
@@ -295,7 +289,7 @@ void SharedBuildoutAreaManager::remove()
 
 //----------------------------------------------------------------------
 
-void SharedBuildoutAreaManager::load(std::string const& sceneName)
+void SharedBuildoutAreaManager::load(std::string const & sceneName)
 {
 	if (sceneName == s_currentScene)
 		return;
@@ -303,15 +297,15 @@ void SharedBuildoutAreaManager::load(std::string const& sceneName)
 	s_currentScene = sceneName;
 
 	BuildoutAreaNameMap::const_iterator const it = s_buildoutAreas.find(sceneName);
-
+	
 	if (it != s_buildoutAreas.end())
 	{
 		s_buildoutAreasForCurrentScene = &(it->second);
 	}
 	else
 	{
-		s_buildoutAreasForCurrentScene = &s_emptyBuildoutAreas;
-	}
+		s_buildoutAreasForCurrentScene=&s_emptyBuildoutAreas;
+	}	
 }
 
 // ----------------------------------------------------------------------
@@ -485,7 +479,6 @@ void Archive::get(Archive::ReadIterator &source, ServerBuildoutAreaRow &target)
 	Archive::get(source, target.cellIndex);
 	Archive::get(source, target.position);
 	Archive::get(source, target.orientation);
-	Archive::get(source, target.scale);
 	Archive::get(source, target.scripts);
 	Archive::get(source, target.objvars);
 }
@@ -500,7 +493,6 @@ void Archive::put(Archive::ByteStream &target, ServerBuildoutAreaRow const &sour
 	Archive::put(target, source.cellIndex);
 	Archive::put(target, source.position);
 	Archive::put(target, source.orientation);
-	Archive::put(target, source.scale);
 	Archive::put(target, source.scripts);
 	Archive::put(target, source.objvars);
 }
@@ -516,7 +508,6 @@ void Archive::get(Archive::ReadIterator &source, ClientBuildoutAreaRow &target)
 	Archive::get(source, target.cellIndex);
 	Archive::get(source, target.position);
 	Archive::get(source, target.orientation);
-	Archive::get(source, target.scale);
 	Archive::get(source, target.radius);
 	Archive::get(source, target.portalLayoutCrc);
 }
@@ -532,7 +523,6 @@ void Archive::put(Archive::ByteStream &target, ClientBuildoutAreaRow const &sour
 	Archive::put(target, source.cellIndex);
 	Archive::put(target, source.position);
 	Archive::put(target, source.orientation);
-	Archive::put(target, source.scale);
 	Archive::put(target, source.radius);
 	Archive::put(target, source.portalLayoutCrc);
 }

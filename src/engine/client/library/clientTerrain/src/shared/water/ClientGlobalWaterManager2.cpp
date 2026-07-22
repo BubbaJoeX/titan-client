@@ -10,12 +10,6 @@
 #include "clientTerrain/FirstClientTerrain.h"
 #include "clientTerrain/ClientGlobalWaterManager2.h"
 
-#include "clientGame/ConfigClientGame.h"
-#include "clientGame/DeveloperWaterEnvironmentOverride.h"
-#include "clientGame/WaterEnvironmentFlow.h"
-
-#include "sharedTerrain/TerrainWaterLevelDeveloperDelta.h"
-
 #include "clientGraphics/Camera.h"
 #include "clientGraphics/DebugPrimitive.h"
 #include "clientGraphics/DynamicIndexBuffer.h"
@@ -42,7 +36,6 @@
 #include "sharedObject/Appearance.h"
 
 #include <algorithm>
-#include <cstdint>
 #include <vector>
 
 // =====================================================================
@@ -67,45 +60,6 @@ namespace ClientGlobalWaterManager2Namespace
 }
 
 using namespace ClientGlobalWaterManager2Namespace;
-
-namespace
-{
-	uint32_t s_prevWaterPatchFingerprint = 0;
-
-	// Extra pole/wave parameters for vertex_program/water_pass2*.vsh (not used by stock shaders until extended).
-	// Maps to Graphics::setVertexShaderUserConstants indices 5..7 -> hardware user constant registers c5..c7 (see Direct3d9_VertexShaderConstantRegisters.h).
-	// Layout:
-	//   c5 = (pole0_x, pole0_z, pole0_radius, pole0_amplitude)
-	//   c6 = (pole0_speed, pole0_phase, pole1_x, pole1_z)
-	//   c7 = (pole1_radius, pole1_amplitude, pole1_speed, pole1_phase)
-	void pushWaterPoleVertexShaderConstants ()
-	{
-		if (!ConfigClientGame::getWaterEnvironmentPoleShaderConstants ()
-			|| !ConfigClientGame::getWaterEnvironmentPoleEnabled ())
-		{
-			Graphics::setVertexShaderUserConstants (5, 0.f, 0.f, 0.f, 0.f);
-			Graphics::setVertexShaderUserConstants (6, 0.f, 0.f, 0.f, 0.f);
-			Graphics::setVertexShaderUserConstants (7, 0.f, 0.f, 0.f, 0.f);
-			return;
-		}
-
-		Graphics::setVertexShaderUserConstants (5,
-			ConfigClientGame::getWaterEnvironmentPole0X (),
-			ConfigClientGame::getWaterEnvironmentPole0Z (),
-			ConfigClientGame::getWaterEnvironmentPole0Radius (),
-			ConfigClientGame::getWaterEnvironmentPole0Amplitude ());
-		Graphics::setVertexShaderUserConstants (6,
-			ConfigClientGame::getWaterEnvironmentPole0Speed (),
-			ConfigClientGame::getWaterEnvironmentPole0Phase (),
-			ConfigClientGame::getWaterEnvironmentPole1X (),
-			ConfigClientGame::getWaterEnvironmentPole1Z ());
-		Graphics::setVertexShaderUserConstants (7,
-			ConfigClientGame::getWaterEnvironmentPole1Radius (),
-			ConfigClientGame::getWaterEnvironmentPole1Amplitude (),
-			ConfigClientGame::getWaterEnvironmentPole1Speed (),
-			ConfigClientGame::getWaterEnvironmentPole1Phase ());
-	}
-}
 
 //===================================================================
 //#define FIELD_OF_VIEW (90.0f/360.0f * PI_TIMES_2)
@@ -173,7 +127,7 @@ protected:
 		) const;
 
 	bool               _isEmpty()          const { return m_isEmpty; };
-	float              _heightAt (float wx, float wz) const { return m_height + TerrainWaterLevelDeveloperDelta::getDeltaAt (wx, wz); }
+	float              _height()           const { return m_height; }
 	float              _heightDelta()      const { return m_heightDelta; }
 	bool               _usesVertexShader() const { return m_usesVertexShader; }
 	float              _shaderSize()       const { return m_shaderSize; }
@@ -213,10 +167,6 @@ private:
 	const float                 m_heightDelta;
 	const Rectangle2d           m_clipRegion;
 	double                      m_time;
-
-protected:
-
-	mutable bool                m_invalidateCachedWaterGeometry;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -289,7 +239,7 @@ void ClientGlobalWaterManager2::StaticShaderPrimitive::_buildGraphicsBuffers() c
 
 	_reset();
 
-	_tesselate(Vector(0.0f, _heightAt(0.f, 0.f)+2.0f, 0.0f), m_fieldOfView, m_farPlane, m_resolution, ALL_QUADRANTS);
+	_tesselate(Vector(0.0f, _height()+2.0f, 0.0f), m_fieldOfView, m_farPlane, m_resolution, ALL_QUADRANTS);
 
 	if (_isEmpty())
 	{
@@ -321,22 +271,12 @@ void ClientGlobalWaterManager2::StaticShaderPrimitive::_buildGraphicsBuffers() c
 
 void ClientGlobalWaterManager2::StaticShaderPrimitive::prepareToDraw () const
 {
-	if (m_invalidateCachedWaterGeometry)
-	{
-		delete m_vertexBuffer;
-		m_vertexBuffer = 0;
-		delete m_indexBuffer;
-		m_indexBuffer = 0;
-		m_invalidateCachedWaterGeometry = false;
-	}
-
 	const Camera& camera = ShaderPrimitiveSorter::getCurrentCamera ();
 	const float fieldOfView = camera.getHorizontalFieldOfView();
 	const float farPlane = camera.getFarPlane();
 	const float resolution = float(camera.getViewportWidth());
 
-	Vector const camPosW = camera.getPosition_w ();
-	const bool above = camPosW.y > _heightAt (camPosW.x, camPosW.z);
+	const bool above = camera.getPosition_w ().y > _height();
 
 	m_renderQuadrants = _getPotentiallyVisibleQuadrants(camera);
 	if (m_renderQuadrants==0)
@@ -375,8 +315,6 @@ void ClientGlobalWaterManager2::StaticShaderPrimitive::prepareToDraw () const
 	Graphics::setVertexShaderUserConstants(2, xref, 0.0f, zref, 0.0f);
 	Graphics::setVertexShaderUserConstants(3, _clipRegion().x0, -65536.0f, _clipRegion().y0, -65536.0f);
 	Graphics::setVertexShaderUserConstants(4, _clipRegion().x1,  65536.0f, _clipRegion().y1,  65536.0f);
-
-	pushWaterPoleVertexShaderConstants ();
 
 	Graphics::setObjectToWorldTransformAndScale(Transform::identity, Vector::xyz111); 
 	//Graphics::setObjectToWorldTransformAndScale (m_appearance.getTransform_w (), Vector::xyz111);
@@ -497,8 +435,7 @@ void ClientGlobalWaterManager2::DynamicShaderPrimitive::prepareToDraw () const
 		return;
 	}
 
-	Vector const camPosW = camera.getPosition_w ();
-	const bool above = camPosW.y > _heightAt (camPosW.x, camPosW.z);
+	const bool above = camera.getPosition_w ().y > _height();
 
 	m_vertexBuffer.lock(m_vertexArray.size());
 	VertexBufferWriteIterator vv = m_vertexBuffer.begin();
@@ -534,8 +471,6 @@ void ClientGlobalWaterManager2::DynamicShaderPrimitive::prepareToDraw () const
 		Graphics::setVertexShaderUserConstants(2, 0.0f, 0.0f, 0.0f, 0.0f);
 		Graphics::setVertexShaderUserConstants(3, _clipRegion().x0, -65536.0f, _clipRegion().y0, -65536.0f);
 		Graphics::setVertexShaderUserConstants(4, _clipRegion().x1,  65536.0f, _clipRegion().y1,  65536.0f);
-
-		pushWaterPoleVertexShaderConstants ();
 	}
 
 	//-- setup the data to render
@@ -584,8 +519,7 @@ ClientGlobalWaterManager2::LocalShaderPrimitive::LocalShaderPrimitive (const App
 	m_height (height),
 	m_heightDelta(m_usesClipRegion ? 0.0f : 0.03f),
 	m_clipRegion((m_usesClipRegion) ? (*clipRegion) : (Rectangle2d(-2*m_mapWidthInMeters, -2*m_mapWidthInMeters, 2*m_mapWidthInMeters, 2*m_mapWidthInMeters))),
-	m_time (0.f),
-	m_invalidateCachedWaterGeometry (false)
+	m_time (0.f)
 {
 	_reset();
 }
@@ -604,20 +538,6 @@ float ClientGlobalWaterManager2::LocalShaderPrimitive::alter (const float elapse
 	m_time += elapsedTime;
 	m_shader->alter (elapsedTime);
 
-	if (ConfigClientGame::getWaterEnvironmentPoleCpuMeshDisplacement ()
-		&& (ConfigClientGame::getWaterEnvironmentPoleEnabled () || ConfigClientGame::getWaterEnvironmentFlowFieldEnabled ()))
-		m_invalidateCachedWaterGeometry = true;
-
-	if (DeveloperWaterEnvironmentOverride::isActive ())
-		m_invalidateCachedWaterGeometry = true;
-
-	uint32_t const fp = TerrainWaterLevelDeveloperDelta::getFingerprint ();
-	if (fp != s_prevWaterPatchFingerprint)
-	{
-		s_prevWaterPatchFingerprint = fp;
-		m_invalidateCachedWaterGeometry = true;
-	}
-
 	return AlterResult::cms_alterNextFrame;
 }
 
@@ -632,7 +552,7 @@ const Vector ClientGlobalWaterManager2::LocalShaderPrimitive::getPosition_w() co
 
 float ClientGlobalWaterManager2::LocalShaderPrimitive::getDepthSquaredSortKey() const
 {
-	return -_heightAt (0.f, 0.f);
+	return -m_height;
 }
 
 // ----------------------------------------------------------------------
@@ -750,7 +670,7 @@ void ClientGlobalWaterManager2::LocalShaderPrimitive::_tesselate(const Vector &r
 	const float pixelAngle = fieldOfView / float(resolution);
 
 	/*
-	float altitude = abs(referencePosition_w.y - _heightAt (referencePosition_w.x, referencePosition_w.z));
+	float altitude = abs(referencePosition_w.y - m_height);
 	if (altitude<1.0f)
 	{
 		altitude=1.0f;
@@ -771,7 +691,7 @@ void ClientGlobalWaterManager2::LocalShaderPrimitive::_tesselate(const Vector &r
 
 		y=0;
 		verts1.clear();
-		verts1.push_back(Vector(xref, _heightAt(xref, zref), zref));
+		verts1.push_back(Vector(xref, m_height, zref));
 		int indexOffset1=-1;
 		double last_ystep=WATER_QUANTIZATION/2.0;
 		int new_tris=0;
@@ -830,33 +750,33 @@ void ClientGlobalWaterManager2::LocalShaderPrimitive::_tesselate(const Vector &r
 			{
 				for (int i=0;i<new_tris;i++, vx+=xstep)
 				{
-					verts2.push_back(Vector(vx+xref, _heightAt(vx+xref, vy+zref), vy+zref));
+					verts2.push_back(Vector(vx+xref, m_height, vy+zref));
 				}
-				verts2.push_back(Vector(xwidth/2.0f+xref, _heightAt(xwidth/2.0f+xref, vy+zref), vy+zref));
+				verts2.push_back(Vector(xwidth/2.0f+xref, m_height, vy+zref));
 			} break;
 			case 1: 
 			{
 				for (int i=0;i<new_tris;i++, vx+=xstep)
 				{
-					verts2.push_back(Vector(vy+xref, _heightAt(vy+xref, -vx+zref), -vx+zref));
+					verts2.push_back(Vector(vy+xref, m_height, -vx+zref));
 				}
-				verts2.push_back(Vector(vy+xref, _heightAt(vy+xref, -xwidth/2.0f+zref), -xwidth/2.0f+zref));
+				verts2.push_back(Vector(vy+xref, m_height, -xwidth/2.0f+zref));
 			} break;
 			case 2: 
 			{
 				for (int i=0;i<new_tris;i++, vx+=xstep)
 				{
-					verts2.push_back(Vector(-vx+xref, _heightAt(-vx+xref, -vy+zref), -vy+zref));
+					verts2.push_back(Vector(-vx+xref, m_height, -vy+zref));
 				}
-				verts2.push_back(Vector(-(xwidth/2.0f)+xref, _heightAt(-(xwidth/2.0f)+xref, -vy+zref), -vy+zref));
+				verts2.push_back(Vector(-(xwidth/2.0f)+xref, m_height, -vy+zref));
 			} break;
 			case 3: 
 			{
 				for (int i=0;i<new_tris;i++, vx+=xstep)
 				{
-					verts2.push_back(Vector(-vy+xref, _heightAt(-vy+xref, vx+zref), vx+zref));
+					verts2.push_back(Vector(-vy+xref, m_height, vx+zref));
 				}
-				verts2.push_back(Vector(-vy+xref, _heightAt(-vy+xref, xwidth/2.0f+zref), xwidth/2.0f+zref));
+				verts2.push_back(Vector(-vy+xref, m_height, xwidth/2.0f+zref));
 			} break;
 			}
 			/////////////////////////////////////////////////////////////////////////
@@ -935,8 +855,6 @@ void ClientGlobalWaterManager2::LocalShaderPrimitive::_fillGraphicsBuffersFFP(Ve
 		const float du = cos (turn) * m_heightDelta;
 		position.y += du;
 
-		position.y += WaterEnvironmentFlow::sampleWaveDisplacementYWorld (position.x, position.z, m_time);
-
 		vv.setPosition (position);
 
 		vv.setNormal(normal);
@@ -965,8 +883,7 @@ void ClientGlobalWaterManager2::LocalShaderPrimitive::_fillGraphicsBuffersVS(Ver
 
 	for (unsigned i = 0; i < numVerts; ++i, ++vv)
 	{
-		Vector position = verts[i];
-		position.y += WaterEnvironmentFlow::sampleWaveDisplacementYWorld (position.x, position.z, m_time);
+		const Vector &position = verts[i];
 		vv.setPosition(position);
 	}
 	{
@@ -998,24 +915,22 @@ unsigned ClientGlobalWaterManager2::LocalShaderPrimitive::_getPotentiallyVisible
 	const Vector referencePosition_w = i_camera.getPosition_w();
 	const float xref = float(POS_QUANTIZE(referencePosition_w.x));
 	const float zref = float(POS_QUANTIZE(referencePosition_w.z));
-	float const hMid = _heightAt (xref, zref);
-	float const span = m_heightDelta + TerrainWaterLevelDeveloperDelta::getMaxAbsDelta ();
 
-	if (_plane_cull(Plane(Vector(0, 1,0), -(hMid+span)), frustumVertices, Camera::FV_Max))
+	if (_plane_cull(Plane(Vector(0, 1,0), -(m_height+m_heightDelta)), frustumVertices, Camera::FV_Max))
 	{
 		// view frustum is entirely above the top water plane
 		return 0;
 	}
 
-	if (_plane_cull(Plane(Vector(0,-1,0),  (hMid-span)), frustumVertices, Camera::FV_Max))
+	if (_plane_cull(Plane(Vector(0,-1,0),  (m_height-m_heightDelta)), frustumVertices, Camera::FV_Max))
 	{
 		// view frustum is entirely below the top water plane
 		return 0;
 	}
 
 	Vector meshExtents[6];
-	meshExtents[0].set(xref, hMid+span, zref);
-	meshExtents[1].set(xref, hMid-span, zref);
+	meshExtents[0].set(xref, m_height+m_heightDelta, zref);
+	meshExtents[1].set(xref, m_height-m_heightDelta, zref);
 	const float farPlane = i_camera.getFarPlane();
 
 	const float oosqrt2 = .707106781188f;
@@ -1030,10 +945,10 @@ unsigned ClientGlobalWaterManager2::LocalShaderPrimitive::_getPotentiallyVisible
 		&& !_plane_cull(Plane(Vector(0,0,-1), center), frustumVertices, Camera::FV_Max)
 		)
 	{
-		meshExtents[2].set(xref+farPlane, _heightAt(xref+farPlane, zref+farPlane)+span, zref+farPlane);
-		meshExtents[3].set(xref+farPlane, _heightAt(xref+farPlane, zref+farPlane)-span, zref+farPlane); 
-		meshExtents[4].set(xref-farPlane, _heightAt(xref-farPlane, zref+farPlane)+span, zref+farPlane);
-		meshExtents[5].set(xref-farPlane, _heightAt(xref-farPlane, zref+farPlane)-span, zref+farPlane); 
+		meshExtents[2].set(xref+farPlane, m_height+m_heightDelta, zref+farPlane);
+		meshExtents[3].set(xref+farPlane, m_height-m_heightDelta, zref+farPlane); 
+		meshExtents[4].set(xref-farPlane, m_height+m_heightDelta, zref+farPlane);
+		meshExtents[5].set(xref-farPlane, m_height-m_heightDelta, zref+farPlane); 
 		if (!frustum_w.fastConservativeExcludes(meshExtents, 6))
 		{
 			retVal|=Z_QUADRANT;
@@ -1048,10 +963,10 @@ unsigned ClientGlobalWaterManager2::LocalShaderPrimitive::_getPotentiallyVisible
 		&& !_plane_cull(Plane(Vector(-1,0,0), center), frustumVertices, Camera::FV_Max)
 		)
 	{
-		meshExtents[2].set(xref+farPlane, _heightAt(xref+farPlane, zref+farPlane)+span, zref+farPlane);
-		meshExtents[3].set(xref+farPlane, _heightAt(xref+farPlane, zref+farPlane)-span, zref+farPlane); 
-		meshExtents[4].set(xref+farPlane, _heightAt(xref+farPlane, zref-farPlane)+span, zref-farPlane);
-		meshExtents[5].set(xref+farPlane, _heightAt(xref+farPlane, zref-farPlane)-span, zref-farPlane); 
+		meshExtents[2].set(xref+farPlane, m_height+m_heightDelta, zref+farPlane);
+		meshExtents[3].set(xref+farPlane, m_height-m_heightDelta, zref+farPlane); 
+		meshExtents[4].set(xref+farPlane, m_height+m_heightDelta, zref-farPlane);
+		meshExtents[5].set(xref+farPlane, m_height-m_heightDelta, zref-farPlane); 
 		if (!frustum_w.fastConservativeExcludes(meshExtents, 6))
 		{
 			retVal|=X_QUADRANT;
@@ -1066,10 +981,10 @@ unsigned ClientGlobalWaterManager2::LocalShaderPrimitive::_getPotentiallyVisible
 		&& !_plane_cull(Plane(Vector(0,0,1), center), frustumVertices, Camera::FV_Max)
 		)
 	{
-		meshExtents[2].set(xref+farPlane, _heightAt(xref+farPlane, zref-farPlane)+span, zref-farPlane);
-		meshExtents[3].set(xref+farPlane, _heightAt(xref+farPlane, zref-farPlane)-span, zref-farPlane); 
-		meshExtents[4].set(xref-farPlane, _heightAt(xref-farPlane, zref-farPlane)+span, zref-farPlane);
-		meshExtents[5].set(xref-farPlane, _heightAt(xref-farPlane, zref-farPlane)-span, zref-farPlane); 
+		meshExtents[2].set(xref+farPlane, m_height+m_heightDelta, zref-farPlane);
+		meshExtents[3].set(xref+farPlane, m_height-m_heightDelta, zref-farPlane); 
+		meshExtents[4].set(xref-farPlane, m_height+m_heightDelta, zref-farPlane);
+		meshExtents[5].set(xref-farPlane, m_height-m_heightDelta, zref-farPlane); 
 		if (!frustum_w.fastConservativeExcludes(meshExtents, 6))
 		{
 			retVal|=NZ_QUADRANT;
@@ -1084,10 +999,10 @@ unsigned ClientGlobalWaterManager2::LocalShaderPrimitive::_getPotentiallyVisible
 		&& !_plane_cull(Plane(Vector(1,0,0), center), frustumVertices, Camera::FV_Max)
 		)
 	{
-		meshExtents[2].set(xref-farPlane, _heightAt(xref-farPlane, zref+farPlane)+span, zref+farPlane);
-		meshExtents[3].set(xref-farPlane, _heightAt(xref-farPlane, zref+farPlane)-span, zref+farPlane); 
-		meshExtents[4].set(xref-farPlane, _heightAt(xref-farPlane, zref-farPlane)+span, zref-farPlane);
-		meshExtents[5].set(xref-farPlane, _heightAt(xref-farPlane, zref-farPlane)-span, zref-farPlane); 
+		meshExtents[2].set(xref-farPlane, m_height+m_heightDelta, zref+farPlane);
+		meshExtents[3].set(xref-farPlane, m_height-m_heightDelta, zref+farPlane); 
+		meshExtents[4].set(xref-farPlane, m_height+m_heightDelta, zref-farPlane);
+		meshExtents[5].set(xref-farPlane, m_height-m_heightDelta, zref-farPlane); 
 		if (!frustum_w.fastConservativeExcludes(meshExtents, 6))
 		{
 			retVal|=NX_QUADRANT;
@@ -1107,21 +1022,15 @@ bool ClientGlobalWaterManager2::LocalShaderPrimitive::isPotentiallyVisible() con
 		return true;
 	}
 
-	float const span = m_heightDelta + TerrainWaterLevelDeveloperDelta::getMaxAbsDelta ();
-	float const h00 = _heightAt (m_clipRegion.x0, m_clipRegion.y0);
-	float const h01 = _heightAt (m_clipRegion.x0, m_clipRegion.y1);
-	float const h10 = _heightAt (m_clipRegion.x1, m_clipRegion.y0);
-	float const h11 = _heightAt (m_clipRegion.x1, m_clipRegion.y1);
-
 	Vector meshExtents[8];
-	meshExtents[0].set(m_clipRegion.x0, h00+span, m_clipRegion.y0);
-	meshExtents[1].set(m_clipRegion.x0, h00-span, m_clipRegion.y0);
-	meshExtents[2].set(m_clipRegion.x0, h01+span, m_clipRegion.y1);
-	meshExtents[3].set(m_clipRegion.x0, h01-span, m_clipRegion.y1);
-	meshExtents[4].set(m_clipRegion.x1, h11+span, m_clipRegion.y1);
-	meshExtents[5].set(m_clipRegion.x1, h11-span, m_clipRegion.y1);
-	meshExtents[6].set(m_clipRegion.x1, h10+span, m_clipRegion.y0);
-	meshExtents[7].set(m_clipRegion.x1, h10-span, m_clipRegion.y0);
+	meshExtents[0].set(m_clipRegion.x0, m_height+m_heightDelta, m_clipRegion.y0);
+	meshExtents[1].set(m_clipRegion.x0, m_height-m_heightDelta, m_clipRegion.y0);
+	meshExtents[2].set(m_clipRegion.x0, m_height+m_heightDelta, m_clipRegion.y1);
+	meshExtents[3].set(m_clipRegion.x0, m_height-m_heightDelta, m_clipRegion.y1);
+	meshExtents[4].set(m_clipRegion.x1, m_height+m_heightDelta, m_clipRegion.y1);
+	meshExtents[5].set(m_clipRegion.x1, m_height-m_heightDelta, m_clipRegion.y1);
+	meshExtents[6].set(m_clipRegion.x1, m_height+m_heightDelta, m_clipRegion.y0);
+	meshExtents[7].set(m_clipRegion.x1, m_height-m_heightDelta, m_clipRegion.y0);
 
 	const Camera& camera = ShaderPrimitiveSorter::getCurrentCamera ();
 	const Volume &frustum_w = camera.getWorldFrustumVolume();

@@ -14,9 +14,7 @@
 #include "UIImage.h"
 #include "UIMessage.h"
 #include "UIPage.h"
-#include "UISliderbar.h"
 #include "UIText.h"
-#include "UITextbox.h"
 #include "UIUtils.h"
 #include "UIVolumePage.h"
 #include "UnicodeUtils.h"
@@ -32,8 +30,6 @@
 
 #include <list>
 #include <map>
-#include <cmath>
-#include <algorithm>
 
 //======================================================================
 
@@ -121,25 +117,7 @@ m_forceColumns(0),
 m_autoForceColumns(false),
 m_changed(false),
 m_lastSize(),
-m_paletteSource(PS_target),
-m_colorWheelMode(false),
-m_buttonToggleMode(0),
-m_pageColorWheel(0),
-m_pagePaletteGrid(0),
-m_textboxHtml(0),
-m_pageMatchedColor(0),
-m_directColor(PackedArgb::solidWhite),
-m_useDirectColor(false),
-m_originalDirectColor(PackedArgb::solidWhite),
-m_pageWheel(0),
-m_cursorWheel(0),
-m_textboxR(0),
-m_textboxG(0),
-m_textboxB(0),
-m_hue(0.0f),
-m_saturation(1.0f),
-m_colorValue(1.0f),
-m_draggingWheel(false)
+m_paletteSource(PS_target)
 {
 	getCodeDataObject(TUIVolumePage, m_volumePage, "volumePage");
 	getCodeDataObject(TUIButton, m_buttonCancel, "buttonCancel", true);
@@ -148,30 +126,10 @@ m_draggingWheel(false)
 	getCodeDataObject(TUIWidget, m_sampleElement, "sampleElement", true);
 	getCodeDataObject(TUIWidget, m_text, "text", true);
 
-	// Color wheel / HTML color support (optional UI elements)
-	getCodeDataObject(TUIPage, m_pageColorWheel, "pageColorWheel", true);
-	getCodeDataObject(TUIPage, m_pagePaletteGrid, "pagePaletteGrid", true);
-	getCodeDataObject(TUITextbox, m_textboxHtml, "textboxHtml", true);
-	getCodeDataObject(TUIPage, m_pageMatchedColor, "pageMatchedColor", true);
-
-	// Color wheel interactive elements
-	getCodeDataObject(TUIPage, m_pageWheel, "pageWheel", true);
-	getCodeDataObject(TUIWidget, m_cursorWheel, "cursorWheel", true);
-	getCodeDataObject(TUITextbox, m_textboxR, "textR", true);
-	getCodeDataObject(TUITextbox, m_textboxG, "textG", true);
-	getCodeDataObject(TUITextbox, m_textboxB, "textB", true);
-
 	if(getButtonClose())
 		m_buttonClose = getButtonClose();
-
+	
 	m_volumePage->Clear();
-
-	// Show color wheel mode by default if available
-	if (m_pageColorWheel)
-	{
-		m_pageColorWheel->SetVisible(true);
-		m_colorWheelMode = true;
-	}
 
 	IGNORE_RETURN(setState(MS_closeable));
 }
@@ -189,16 +147,6 @@ CuiColorPicker::~CuiColorPicker()
 	m_buttonClose = 0;
 	m_pageSample = 0;
 	m_text = 0;
-	m_buttonToggleMode = 0;
-	m_pageColorWheel = 0;
-	m_pagePaletteGrid = 0;
-	m_textboxHtml = 0;
-	m_pageMatchedColor = 0;
-	m_pageWheel = 0;
-	m_cursorWheel = 0;
-	m_textboxR = 0;
-	m_textboxG = 0;
-	m_textboxB = 0;
 
 	if (m_palette)
 	{
@@ -218,35 +166,6 @@ CuiColorPicker::~CuiColorPicker()
 void CuiColorPicker::performActivate()
 {
 	handleMediatorPropertiesChanged();
-
-	// Register toggle mode button callback (optional; GM UI may omit)
-	if (m_buttonToggleMode)
-		m_buttonToggleMode->AddCallback(this);
-
-	// Register HTML textbox callback
-	if (m_textboxHtml)
-		m_textboxHtml->AddCallback(this);
-
-	// Register RGB textbox callbacks
-	if (m_textboxR)
-		m_textboxR->AddCallback(this);
-	if (m_textboxG)
-		m_textboxG->AddCallback(this);
-	if (m_textboxB)
-		m_textboxB->AddCallback(this);
-
-	// Register wheel for mouse input
-	if (m_pageWheel)
-	{
-		m_pageWheel->AddCallback(this);
-		m_pageWheel->SetAbsorbsInput(true);
-		m_pageWheel->SetGetsInput(true);
-	}
-
-	// Register parent page to track mouse during drag
-	getPage().AddCallback(this);
-	getPage().SetGetsInput(true);
-
 	setIsUpdating(true);
 }
 
@@ -255,29 +174,6 @@ void CuiColorPicker::performActivate()
 void CuiColorPicker::performDeactivate()
 {
 	setIsUpdating(false);
-
-	// Unregister toggle mode button callback
-	if (m_buttonToggleMode)
-		m_buttonToggleMode->RemoveCallback(this);
-
-	// Unregister HTML textbox callback
-	if (m_textboxHtml)
-		m_textboxHtml->RemoveCallback(this);
-
-	// Unregister RGB textbox callbacks
-	if (m_textboxR)
-		m_textboxR->RemoveCallback(this);
-	if (m_textboxG)
-		m_textboxG->RemoveCallback(this);
-	if (m_textboxB)
-		m_textboxB->RemoveCallback(this);
-
-	// Unregister wheel callbacks
-	if (m_pageWheel)
-		m_pageWheel->RemoveCallback(this);
-
-	// Unregister parent page callback
-	getPage().RemoveCallback(this);
 
 	if (m_buttonCancel)
 		m_buttonCancel->RemoveCallback(this);
@@ -303,11 +199,6 @@ void CuiColorPicker::OnButtonPressed(UIWidget *context)
 	{
 		revert();
 	}
-	else if (context == m_buttonToggleMode)
-	{
-		// Toggle between palette grid and color wheel mode
-		setColorWheelMode(!m_colorWheelMode);
-	}
 }
 
 //----------------------------------------------------------------------
@@ -320,85 +211,8 @@ void CuiColorPicker::OnVolumePageSelectionChanged(UIWidget * context)
 
 		updateValue(index);
 
-		// When selecting from palette, clear direct color mode
-		m_useDirectColor = false;
-		updateHtmlTextbox();
-
 		if (checkAndResetChanged())
 			m_userChanged = true;
-	}
-}
-
-//----------------------------------------------------------------------
-
-void CuiColorPicker::OnTextboxChanged(UIWidget * context)
-{
-	if (context == m_textboxHtml)
-	{
-		Unicode::String text;
-		m_textboxHtml->GetLocalText(text);
-		std::string htmlColor = Unicode::wideToNarrow(text);
-
-		if (PackedArgb::isValidHtmlColor(htmlColor.c_str()))
-		{
-			PackedArgb color = PackedArgb::fromHtmlString(htmlColor.c_str());
-			setDirectColor(color);
-		}
-	}
-	else if (context == m_textboxR || context == m_textboxG || context == m_textboxB)
-	{
-		// Get RGB values from textboxes
-		uint8 r = m_directColor.getR();
-		uint8 g = m_directColor.getG();
-		uint8 b = m_directColor.getB();
-
-		if (m_textboxR)
-		{
-			Unicode::String text;
-			m_textboxR->GetLocalText(text);
-			int val = atoi(Unicode::wideToNarrow(text).c_str());
-			r = static_cast<uint8>(std::max(0, std::min(255, val)));
-		}
-		if (m_textboxG)
-		{
-			Unicode::String text;
-			m_textboxG->GetLocalText(text);
-			int val = atoi(Unicode::wideToNarrow(text).c_str());
-			g = static_cast<uint8>(std::max(0, std::min(255, val)));
-		}
-		if (m_textboxB)
-		{
-			Unicode::String text;
-			m_textboxB->GetLocalText(text);
-			int val = atoi(Unicode::wideToNarrow(text).c_str());
-			b = static_cast<uint8>(std::max(0, std::min(255, val)));
-		}
-
-		m_directColor.setArgb(255, r, g, b);
-		m_useDirectColor = true;
-		rgbToHsv(r, g, b, m_hue, m_saturation, m_colorValue);
-
-		updateWheelCursor();
-		updateHtmlTextbox();
-
-		if (m_pageSample)
-			m_pageSample->SetBackgroundTint(UIColor(r, g, b));
-
-		// Apply to target
-		TangibleObject * const object = m_targetObject->getPointer();
-		if (object)
-			updateValueDirectColor(*object, m_directColor);
-
-		// Apply to linked objects
-		for (ObjectWatcherVector::iterator it = m_linkedObjects->begin(); it != m_linkedObjects->end(); ++it)
-		{
-			TangibleObject * const linked_object = *it;
-			if (linked_object)
-				updateValueDirectColor(*linked_object, m_directColor, PF_private);
-		}
-
-		m_changed = true;
-		m_userChanged = true;
 	}
 }
 
@@ -876,496 +690,6 @@ void CuiColorPicker::handleMediatorPropertiesChanged()
 
 	m_changed = m_userChanged = false;
 	updateCellSizes ();
-}
-
-//----------------------------------------------------------------------
-
-void CuiColorPicker::setColorWheelMode(bool enabled)
-{
-	m_colorWheelMode = enabled;
-
-	// Toggle visibility of palette grid vs color wheel
-	if (m_pagePaletteGrid)
-		m_pagePaletteGrid->SetVisible(!enabled);
-	else if (m_volumePage)
-		m_volumePage->SetVisible(!enabled);
-
-	if (m_pageColorWheel)
-		m_pageColorWheel->SetVisible(enabled);
-
-	// Update button text
-	if (m_buttonToggleMode)
-	{
-		if (enabled)
-			m_buttonToggleMode->SetText(UIString(Unicode::narrowToWide("Palette Mode")));
-		else
-			m_buttonToggleMode->SetText(UIString(Unicode::narrowToWide("Color Wheel")));
-	}
-}
-
-//----------------------------------------------------------------------
-
-bool CuiColorPicker::isColorWheelMode() const
-{
-	return m_colorWheelMode;
-}
-
-//----------------------------------------------------------------------
-
-void CuiColorPicker::setColorFromHtml(const char * htmlColor)
-{
-	if (!htmlColor || !PackedArgb::isValidHtmlColor(htmlColor))
-		return;
-
-	PackedArgb color = PackedArgb::fromHtmlString(htmlColor);
-	setDirectColor(color);
-}
-
-//----------------------------------------------------------------------
-
-void CuiColorPicker::getColorAsHtml(char * buffer, int bufferSize) const
-{
-	if (m_useDirectColor)
-	{
-		m_directColor.toHtmlString(buffer, bufferSize, false);
-	}
-	else if (m_palette)
-	{
-		bool error = false;
-		int index = m_volumePage ? m_volumePage->GetLastSelectedIndex() : 0;
-		index = std::max(0, std::min(index, m_palette->getEntryCount() - 1));
-		PackedArgb const & color = m_palette->getEntry(index, error);
-		if (!error)
-			color.toHtmlString(buffer, bufferSize, false);
-	}
-}
-
-//----------------------------------------------------------------------
-
-void CuiColorPicker::setDirectColor(const PackedArgb & color)
-{
-	m_directColor = color;
-	m_useDirectColor = true;
-
-	// Update the preview
-	if (m_pageSample)
-	{
-		m_pageSample->SetBackgroundTint(UIColor(color.getR(), color.getG(), color.getB()));
-	}
-
-	// Update HTML textbox
-	updateHtmlTextbox();
-
-	// Find closest palette match and show it
-	if (m_palette)
-	{
-		int matchedIndex = m_palette->findClosestMatch(color);
-
-		// Show matched color in the matched color preview
-		if (m_pageMatchedColor)
-		{
-			bool error = false;
-			PackedArgb const & matchedColor = m_palette->getEntry(matchedIndex, error);
-			if (!error)
-			{
-				m_pageMatchedColor->SetBackgroundTint(UIColor(matchedColor.getR(), matchedColor.getG(), matchedColor.getB()));
-			}
-		}
-
-		// Update the target object with the direct color
-		TangibleObject * const object = m_targetObject->getPointer();
-		if (object)
-		{
-			updateValueDirectColor(*object, color);
-		}
-
-		// Update linked objects
-		for (ObjectWatcherVector::iterator it = m_linkedObjects->begin(); it != m_linkedObjects->end(); ++it)
-		{
-			TangibleObject * const linked_object = *it;
-			if (linked_object)
-				updateValueDirectColor(*linked_object, color, PF_private);
-		}
-	}
-
-	m_changed = true;
-	m_userChanged = true;
-}
-
-//----------------------------------------------------------------------
-
-const PackedArgb & CuiColorPicker::getDirectColor() const
-{
-	return m_directColor;
-}
-
-//----------------------------------------------------------------------
-
-bool CuiColorPicker::hasDirectColor() const
-{
-	return m_useDirectColor;
-}
-
-//----------------------------------------------------------------------
-
-void CuiColorPicker::updateValueDirectColor(TangibleObject & obj, const PackedArgb & color, PathFlags flags)
-{
-	CustomizationData * const cdata = obj.fetchCustomizationData();
-	if (cdata)
-	{
-		PaletteColorCustomizationVariable * const var = dynamic_cast<PaletteColorCustomizationVariable *>(findVariable(*cdata, m_targetVariable, flags));
-
-		if (var)
-		{
-			var->setDirectColor(color);
-			m_changed = true;
-		}
-		cdata->release();
-	}
-}
-
-//----------------------------------------------------------------------
-
-void CuiColorPicker::onColorWheelChanged(const PackedArgb & color)
-{
-	setDirectColor(color);
-}
-
-//----------------------------------------------------------------------
-
-void CuiColorPicker::updateHtmlTextbox()
-{
-	if (m_textboxHtml)
-	{
-		char htmlColor[16];
-		if (m_useDirectColor)
-		{
-			m_directColor.toHtmlString(htmlColor, sizeof(htmlColor), false);
-		}
-		else if (m_palette)
-		{
-			bool error = false;
-			int index = m_volumePage ? m_volumePage->GetLastSelectedIndex() : 0;
-			index = std::max(0, std::min(index, m_palette->getEntryCount() - 1));
-			PackedArgb const & color = m_palette->getEntry(index, error);
-			if (!error)
-				color.toHtmlString(htmlColor, sizeof(htmlColor), false);
-			else
-				snprintf(htmlColor, sizeof(htmlColor), "#000000");
-		}
-		else
-		{
-			snprintf(htmlColor, sizeof(htmlColor), "#000000");
-		}
-		m_textboxHtml->SetLocalText(Unicode::narrowToWide(htmlColor));
-	}
-}
-
-//----------------------------------------------------------------------
-
-void CuiColorPicker::updateRgbTextboxes()
-{
-	if (m_textboxR)
-	{
-		char buf[8];
-		snprintf(buf, sizeof(buf), "%d", m_directColor.getR());
-		m_textboxR->SetLocalText(Unicode::narrowToWide(buf));
-	}
-	if (m_textboxG)
-	{
-		char buf[8];
-		snprintf(buf, sizeof(buf), "%d", m_directColor.getG());
-		m_textboxG->SetLocalText(Unicode::narrowToWide(buf));
-	}
-	if (m_textboxB)
-	{
-		char buf[8];
-		snprintf(buf, sizeof(buf), "%d", m_directColor.getB());
-		m_textboxB->SetLocalText(Unicode::narrowToWide(buf));
-	}
-}
-
-//----------------------------------------------------------------------
-
-bool CuiColorPicker::OnMessage(UIWidget * context, const UIMessage & msg)
-{
-	// Handle mouse input on the color wheel image or parent page during drag
-	bool isWheelContext = (context == m_pageWheel);
-	bool isParentDrag = (m_draggingWheel && (context == &getPage()));
-
-	if (isWheelContext || isParentDrag)
-	{
-		if (msg.Type == UIMessage::LeftMouseDown && isWheelContext)
-		{
-			m_draggingWheel = true;
-			handleWheelInput(msg.MouseCoords.x, msg.MouseCoords.y);
-			return false;
-		}
-		else if (msg.Type == UIMessage::LeftMouseUp)
-		{
-			if (m_draggingWheel)
-			{
-				// Convert coords to wheel-local if needed
-				UIPoint localCoords = msg.MouseCoords;
-				if (!isWheelContext && m_pageWheel)
-				{
-					UIPoint wheelScreenPos;
-					m_pageWheel->GetWorldLocation(wheelScreenPos);
-					UIPoint contextScreenPos;
-					if (context)
-						context->GetWorldLocation(contextScreenPos);
-					localCoords.x = msg.MouseCoords.x + contextScreenPos.x - wheelScreenPos.x;
-					localCoords.y = msg.MouseCoords.y + contextScreenPos.y - wheelScreenPos.y;
-				}
-				handleWheelInput(localCoords.x, localCoords.y);
-				m_draggingWheel = false;
-			}
-			return false;
-		}
-		else if (msg.Type == UIMessage::MouseMove)
-		{
-			// Auto-update color preview as cursor moves while dragging
-			if (m_draggingWheel)
-			{
-				// Convert coords to wheel-local if needed
-				UIPoint localCoords = msg.MouseCoords;
-				if (!isWheelContext && m_pageWheel)
-				{
-					UIPoint wheelScreenPos;
-					m_pageWheel->GetWorldLocation(wheelScreenPos);
-					UIPoint contextScreenPos;
-					if (context)
-						context->GetWorldLocation(contextScreenPos);
-					localCoords.x = msg.MouseCoords.x + contextScreenPos.x - wheelScreenPos.x;
-					localCoords.y = msg.MouseCoords.y + contextScreenPos.y - wheelScreenPos.y;
-				}
-				handleWheelInput(localCoords.x, localCoords.y);
-			}
-			return false;
-		}
-	}
-
-	return true;
-}
-
-//----------------------------------------------------------------------
-
-void CuiColorPicker::rgbToHsv(uint8 r, uint8 g, uint8 b, float & h, float & s, float & v)
-{
-	float rf = r / 255.0f;
-	float gf = g / 255.0f;
-	float bf = b / 255.0f;
-
-	float maxC = std::max(rf, std::max(gf, bf));
-	float minC = std::min(rf, std::min(gf, bf));
-	float delta = maxC - minC;
-
-	v = maxC;
-
-	if (maxC > 0.0f)
-		s = delta / maxC;
-	else
-		s = 0.0f;
-
-	if (delta < 0.00001f)
-	{
-		h = 0.0f;
-	}
-	else
-	{
-		if (rf >= maxC)
-			h = (gf - bf) / delta;
-		else if (gf >= maxC)
-			h = 2.0f + (bf - rf) / delta;
-		else
-			h = 4.0f + (rf - gf) / delta;
-
-		h *= 60.0f;
-		if (h < 0.0f)
-			h += 360.0f;
-	}
-}
-
-//----------------------------------------------------------------------
-
-void CuiColorPicker::hsvToRgb(float h, float s, float v, uint8 & r, uint8 & g, uint8 & b)
-{
-	if (s <= 0.0f)
-	{
-		r = g = b = static_cast<uint8>(v * 255.0f);
-		return;
-	}
-
-	float hh = h;
-	if (hh >= 360.0f)
-		hh = 0.0f;
-	hh /= 60.0f;
-
-	int i = static_cast<int>(hh);
-	float ff = hh - i;
-	float p = v * (1.0f - s);
-	float q = v * (1.0f - (s * ff));
-	float t = v * (1.0f - (s * (1.0f - ff)));
-
-	float rf, gf, bf;
-	switch (i)
-	{
-	case 0:
-		rf = v; gf = t; bf = p;
-		break;
-	case 1:
-		rf = q; gf = v; bf = p;
-		break;
-	case 2:
-		rf = p; gf = v; bf = t;
-		break;
-	case 3:
-		rf = p; gf = q; bf = v;
-		break;
-	case 4:
-		rf = t; gf = p; bf = v;
-		break;
-	default:
-		rf = v; gf = p; bf = q;
-		break;
-	}
-
-	r = static_cast<uint8>(rf * 255.0f);
-	g = static_cast<uint8>(gf * 255.0f);
-	b = static_cast<uint8>(bf * 255.0f);
-}
-
-//----------------------------------------------------------------------
-
-void CuiColorPicker::updateFromHSV()
-{
-	uint8 r, g, b;
-	hsvToRgb(m_hue, m_saturation, m_colorValue, r, g, b);
-	m_directColor.setArgb(255, r, g, b);
-	m_useDirectColor = true;
-
-	updateRgbTextboxes();
-	updateWheelCursor();
-	updateHtmlTextbox();
-
-	if (m_pageSample)
-		m_pageSample->SetBackgroundTint(UIColor(r, g, b));
-
-	// Apply to target
-	TangibleObject * const object = m_targetObject->getPointer();
-	if (object)
-		updateValueDirectColor(*object, m_directColor);
-
-	m_changed = true;
-	m_userChanged = true;
-}
-
-//----------------------------------------------------------------------
-
-void CuiColorPicker::updateFromRGB()
-{
-	rgbToHsv(m_directColor.getR(), m_directColor.getG(), m_directColor.getB(),
-	         m_hue, m_saturation, m_colorValue);
-	updateFromHSV();
-}
-
-//----------------------------------------------------------------------
-
-void CuiColorPicker::updateWheelCursor()
-{
-	if (!m_cursorWheel || !m_pageWheel)
-		return;
-
-	// Get the actual size of the wheel page
-	UISize wheelSize = m_pageWheel->GetSize();
-	const float imgCenterX = wheelSize.x * 0.5f;
-	const float imgCenterY = wheelSize.y * 0.5f;
-	const float imgRadius = std::min(imgCenterX, imgCenterY);
-
-	// Place cursor at (hue angle, saturation distance) on the wheel
-	// Red is at bottom (hue 0 = positive Y direction)
-	float angle = m_hue * 3.14159265f / 180.0f;
-	float radius = m_saturation * imgRadius;
-
-	// For red at bottom: X = -sin(angle), Y = cos(angle)
-	int cursorX = static_cast<int>(imgCenterX - radius * sinf(angle));
-	int cursorY = static_cast<int>(imgCenterY + radius * cosf(angle));
-
-	UISize cursorSize = m_cursorWheel->GetSize();
-	m_cursorWheel->SetLocation(cursorX - cursorSize.x / 2, cursorY - cursorSize.y / 2);
-}
-
-
-//----------------------------------------------------------------------
-
-void CuiColorPicker::handleWheelInput(int x, int y)
-{
-	if (!m_pageWheel)
-		return;
-
-	// Get the actual size of the wheel page
-	UISize wheelSize = m_pageWheel->GetSize();
-	const float imgCenterX = wheelSize.x * 0.5f;
-	const float imgCenterY = wheelSize.y * 0.5f;
-	const float imgRadius  = std::min(imgCenterX, imgCenterY);
-
-	const float dx = static_cast<float>(x) - imgCenterX;
-	const float dy = static_cast<float>(y) - imgCenterY;
-
-	// Normalized distance from center: 0.0 = dead center, 1.0 = edge
-	float dist = sqrtf(dx * dx + dy * dy) / imgRadius;
-
-	// When not dragging, ignore clicks clearly outside the wheel circle
-	// When dragging, clamp to edge to allow smooth selection at maximum saturation
-	if (!m_draggingWheel && dist > 1.05f)
-		return;
-
-	// Clamp to circle edge
-	if (dist > 1.0f)
-		dist = 1.0f;
-
-	// Angle from center - red is at bottom of wheel
-	// atan2 gives angle from positive X axis, we need angle from positive Y axis (bottom)
-	float angle = atan2f(-dx, dy);  // Swapped and negated for bottom=0 (red)
-	if (angle < 0.0f)
-		angle += 2.0f * 3.14159265f;
-
-	// Convert to degrees (0-360)
-	m_hue        = angle * 180.0f / 3.14159265f;
-	m_saturation = dist;
-	m_colorValue = 1.0f;
-
-	// Convert HSV to RGB
-	uint8 r, g, b;
-	hsvToRgb(m_hue, m_saturation, m_colorValue, r, g, b);
-
-	// Set the direct color
-	m_directColor.setArgb(255, r, g, b);
-	m_useDirectColor = true;
-
-	// Update all UI elements
-	updateRgbTextboxes();
-	updateWheelCursor();
-	updateHtmlTextbox();
-
-	if (m_pageSample)
-		m_pageSample->SetBackgroundTint(UIColor(r, g, b));
-
-	// Apply to target object immediately
-	TangibleObject * const object = m_targetObject->getPointer();
-	if (object)
-		updateValueDirectColor(*object, m_directColor);
-
-	// Update linked objects
-	for (ObjectWatcherVector::iterator it = m_linkedObjects->begin(); it != m_linkedObjects->end(); ++it)
-	{
-		TangibleObject * const linked_object = *it;
-		if (linked_object)
-			updateValueDirectColor(*linked_object, m_directColor, PF_private);
-	}
-
-	m_changed = true;
-	m_userChanged = true;
 }
 
 //======================================================================

@@ -16,7 +16,6 @@
 
 #include <cassert>
 #include <list>
-#include <set>
 #include <vector>
 
 const char * UITabbedPane::TypeName	= "TabbedPane";
@@ -123,27 +122,6 @@ namespace UITabbedPaneNamespace
 			count++;
 		}
 
-		return 0;
-	}
-
-	//----------------------------------------------------------------------
-
-	/// Walk from \p leaf up to the direct child of \p targetPage (the tab "page" root).
-	/// If \p leaf is nested (e.g. UITable under a UIPage), returns that UIPage so tab switching
-	/// does not hide every sibling of \p leaf on \p targetPage.
-	UIWidget * getDirectChildOfTargetPage(UIPage const * const targetPage, UIWidget * const leaf)
-	{
-		if (!targetPage || !leaf)
-			return 0;
-
-		UIBaseObject * walk = leaf;
-		while (walk)
-		{
-			UIBaseObject * const parent = walk->GetParent();
-			if (parent == static_cast<UIBaseObject const *>(targetPage))
-				return static_cast<UIWidget *>(walk);
-			walk = parent;
-		}
 		return 0;
 	}
 
@@ -329,7 +307,7 @@ bool UITabbedPane::SetProperty(const UILowerString & Name, const UIString &Value
 	{
 		UIWidget * newWidget = static_cast<UIWidget*>(GetObjectFromPath(Value, TUIWidget));
 
-		if ((newWidget && !newWidget->IsTransient() &&(newWidget != mTabObject) && getButton(newWidget)) || Value.empty())
+		if ((newWidget && !newWidget->IsTransient() && (newWidget != mTabObject.pointer()) && getButton(newWidget)) || Value.empty())
 		{
 			mTabObject = newWidget;
 			RecreateButtons();
@@ -949,51 +927,18 @@ void UITabbedPane::SetActiveTab(long index)
 			}
 		}
 
-		std::set<UIWidget *> tabPanelRoots;
+		UIObjectList olistTargetPageChildren;
+		mTargetPage->GetChildren(olistTargetPageChildren);
+
+		for (UIObjectList::iterator it = olistTargetPageChildren.begin(); it != olistTargetPageChildren.end(); ++it)
 		{
-			const long tabCount = mDataSource->GetChildCount();
-			for (long ti = 0; ti < tabCount; ++ti)
-			{
-				UIData * const tabData = static_cast<UIData *>(mDataSource->GetChildByPosition(ti));
-				if (!tabData)
-					continue;
-				UIString tabTargetPath;
-				if (!tabData->GetProperty(DataProperties::DATA_TARGET, tabTargetPath))
-					continue;
-				UIWidget * const tabTargetWidget =
-					static_cast<UIWidget *>(mTargetPage->GetObjectFromPath(tabTargetPath, TUIWidget));
-				if (!tabTargetWidget)
-					continue;
-				UIWidget * const root = getDirectChildOfTargetPage(mTargetPage, tabTargetWidget);
-				if (root)
-					tabPanelRoots.insert(root);
-			}
-		}
+			if (!(*it)->IsA(TUIWidget))
+				continue;
 
-		UIWidget * const activeRoot = getDirectChildOfTargetPage(mTargetPage, newWidget);
+			UIWidget * const w = static_cast<UIWidget *>(*it);
 
-		// Only toggle tab-panel roots when we resolved a real direct child. If activeRoot is
-		// null (missing Target, path off-TargetPage, etc.), toggling would hide every root and
-		// wipe the whole panel — seen after splitter/tab layout changes.
-		if (activeRoot)
-		{
-			UIObjectList olist;
-			mTargetPage->GetChildren(olist);
-
-			for (UIObjectList::iterator it = olist.begin(); it != olist.end(); ++it)
-			{
-				if (!(*it)->IsA(TUIWidget))
-					continue;
-
-				UIWidget * const w = static_cast<UIWidget *>(*it);
-
-				if (tabPanelRoots.find(w) != tabPanelRoots.end())
-				{
-					const bool on = (w == activeRoot);
-					w->SetVisible(on);
-					w->SetEnabled(on);
-				}
-			}
+			w->SetVisible(w == newWidget);
+			w->SetEnabled(w == newWidget);
 		}
 	}
 
@@ -1012,10 +957,9 @@ void UITabbedPane::SetSize(const UISize &NewSize)
 
 long UITabbedPane::GetTabFromPoint(const UIPoint & point) const
 {
-	if (mTabObject) 
-	{
-		_asm nop;
-	}
+	// Was `_asm nop;` - a debug breakpoint placeholder. Inline asm is
+	// x86-only in MSVC; the body is intentionally empty.
+	(void)mTabObject;
 
 	UIWidget * const widget = GetWidgetFromPoint(point, false);
 

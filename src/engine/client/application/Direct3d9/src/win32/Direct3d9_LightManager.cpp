@@ -355,26 +355,17 @@ bool Direct3d9_LightManager::getMaterialInteriorTintMultiply(VectorRgba &outRgbM
 
 void Direct3d9_LightManager::setObeysLightScale(const bool obeysLightScale)
 {
+	// With obeysLightScale=true, scaled-intensity light selection can pick a dim auxiliary
+	// light over the sun for skin shaders, leaving characters flat or black at midday.
+	// Always use unscaled intensities at GPU upload; day/night ramp is near 1.0 at noon.
 	ms_obeysLightScale = obeysLightScale;
-	if (ms_obeysLightScale)
-	{
-		getPossiblyScaledDiffuseIntensity   = &Light::getScaledDiffuseIntensity;
-		getPossiblyScaledDiffuseColor       = &Light::getScaledDiffuseColor;
-		getPossiblyScaledDiffuseBackColor   = &Light::getScaledDiffuseBackColor;
-		getPossiblyScaledDiffuseTangentColor= &Light::getScaledDiffuseTangentColor;
-		getPossiblyScaledSpecularIntensity  = &Light::getScaledSpecularIntensity;
-		getPossiblyScaledSpecularColor      = &Light::getScaledSpecularColor;
-	}
-	else
-	{
-		getPossiblyScaledDiffuseIntensity   = &Light::getDiffuseIntensity;
-		getPossiblyScaledDiffuseColor       = &Light::getDiffuseColor;
-		getPossiblyScaledDiffuseBackColor   = &Light::getDiffuseBackColor;
-		getPossiblyScaledDiffuseTangentColor= &Light::getDiffuseTangentColor;
-		getPossiblyScaledSpecularIntensity  = &Light::getSpecularIntensity;
-		getPossiblyScaledSpecularColor      = &Light::getSpecularColor;
-	}
-	ms_dirty = true;	
+	getPossiblyScaledDiffuseIntensity    = &Light::getDiffuseIntensity;
+	getPossiblyScaledDiffuseColor        = &Light::getDiffuseColor;
+	getPossiblyScaledDiffuseBackColor    = &Light::getDiffuseBackColor;
+	getPossiblyScaledDiffuseTangentColor = &Light::getDiffuseTangentColor;
+	getPossiblyScaledSpecularIntensity   = &Light::getSpecularIntensity;
+	getPossiblyScaledSpecularColor       = &Light::getSpecularColor;
+	ms_dirty = true;
 }
 
 // ----------------------------------------------------------------------
@@ -582,6 +573,19 @@ void Direct3d9_LightManager::selectLights()
 
 #ifdef VSPS
 
+namespace
+{
+	// Light colors should be non-negative; negative diffuse from the day/night ramp
+	// turns surfaces black in HLSL when the diffuse term skips saturate.
+	inline void copyClampedRgb(VectorRgba &dst, VectorArgb const &src)
+	{
+		dst.r = src.r > 0.0f ? src.r : 0.0f;
+		dst.g = src.g > 0.0f ? src.g : 0.0f;
+		dst.b = src.b > 0.0f ? src.b : 0.0f;
+		dst.a = src.a;
+	}
+}
+
 void Direct3d9_LightManager::applyLights_vertexShader()
 {
 	LightData lightData;
@@ -590,7 +594,14 @@ void Direct3d9_LightManager::applyLights_vertexShader()
 	Zero(extendedLightData);
 
 	{
+		// Clamp negative ambient (physically impossible; day/night ramp interpolation
+		// can go below zero) but do NOT impose a minimum ambient floor. The previous
+		// 0.3 floor lifted every scene's ambient to 30% grey, washing out world
+		// lighting and killing shadow contrast (retail applies no floor).
 		lightData.ambient = ms_currentLights.ambient;
+		if (lightData.ambient.r < 0.0f) lightData.ambient.r = 0.0f;
+		if (lightData.ambient.g < 0.0f) lightData.ambient.g = 0.0f;
+		if (lightData.ambient.b < 0.0f) lightData.ambient.b = 0.0f;
 	}
 
 	{
@@ -607,16 +618,10 @@ void Direct3d9_LightManager::applyLights_vertexShader()
 				parallelSpecular.direction.z = -direction.z;
 
 				const VectorArgb &diffuseColor = (light->*getPossiblyScaledDiffuseColor)();
-				parallelSpecular.diffuseColor.r = diffuseColor.r;
-				parallelSpecular.diffuseColor.g = diffuseColor.g;
-				parallelSpecular.diffuseColor.b = diffuseColor.b;
-				parallelSpecular.diffuseColor.a = diffuseColor.a;
+				copyClampedRgb(parallelSpecular.diffuseColor, diffuseColor);
 
 				const VectorArgb &specularColor = (light->*getPossiblyScaledSpecularColor)();
-				parallelSpecular.specularColor.r = specularColor.r;
-				parallelSpecular.specularColor.g = specularColor.g;
-				parallelSpecular.specularColor.b = specularColor.b;
-				parallelSpecular.specularColor.a = specularColor.a;
+				copyClampedRgb(parallelSpecular.specularColor, specularColor);
 
 				if (i == 0)
 				{
@@ -673,6 +678,10 @@ void Direct3d9_LightManager::applyLights_vertexShader()
 
 					VectorRgba alphaFadeAndBloomSettings = Direct3d9::getAlphaFadeAndBloomSettings();
 
+					pixelDot3Data.diffuseColor.r = lightData.ambient.r;
+					pixelDot3Data.diffuseColor.g = lightData.ambient.g;
+					pixelDot3Data.diffuseColor.b = lightData.ambient.b;
+
 					pixelDot3Data.diffuseColor.a = alphaFadeAndBloomSettings.r; //alphaFadeOpacityEnabled in diffuseColor.a
 					pixelDot3Data.specularColor.a = alphaFadeAndBloomSettings.a; //alphaFadeOpacity in specularColor.a
 					pixelDot3Data.tangentMinusDiffuseColor.a = alphaFadeAndBloomSettings.g; //bloomEnabled in tangentMinusDiffuseColor.a
@@ -698,10 +707,7 @@ void Direct3d9_LightManager::applyLights_vertexShader()
 				parallel.direction.z = -direction.z;
 
 				const VectorArgb &diffuseColor = (light->*getPossiblyScaledDiffuseColor)();
-				parallel.diffuseColor.r = diffuseColor.r;
-				parallel.diffuseColor.g = diffuseColor.g;
-				parallel.diffuseColor.b = diffuseColor.b;
-				parallel.diffuseColor.a = diffuseColor.a;
+				copyClampedRgb(parallel.diffuseColor, diffuseColor);
 			}
 		}
 	}
@@ -721,10 +727,7 @@ void Direct3d9_LightManager::applyLights_vertexShader()
 				pointSpecular.position.w = 1.0f;
 
 				const VectorArgb &diffuseColor = (light->*getPossiblyScaledDiffuseColor)();
-				pointSpecular.diffuseColor.r = diffuseColor.r;
-				pointSpecular.diffuseColor.g = diffuseColor.g;
-				pointSpecular.diffuseColor.b = diffuseColor.b;
-				pointSpecular.diffuseColor.a = diffuseColor.a;
+				copyClampedRgb(pointSpecular.diffuseColor, diffuseColor);
 
 				pointSpecular.attenuation.k0 = light->getConstantAttenuation();
 				pointSpecular.attenuation.k1 = light->getLinearAttenuation();
@@ -732,10 +735,7 @@ void Direct3d9_LightManager::applyLights_vertexShader()
 				pointSpecular.attenuation.k3 = 0.0f;
 
 				const VectorArgb &specularColor = (light->*getPossiblyScaledSpecularColor)();
-				pointSpecular.specularColor.r = specularColor.r;
-				pointSpecular.specularColor.g = specularColor.g;
-				pointSpecular.specularColor.b = specularColor.b;
-				pointSpecular.specularColor.a = specularColor.a;
+				copyClampedRgb(pointSpecular.specularColor, specularColor);
 			}
 			else
 			{
@@ -759,10 +759,7 @@ void Direct3d9_LightManager::applyLights_vertexShader()
 				point.position.w = 1.0f;
 
 				const VectorArgb &diffuseColor = (light->*getPossiblyScaledDiffuseColor)();
-				point.diffuseColor.r = diffuseColor.r;
-				point.diffuseColor.g = diffuseColor.g;
-				point.diffuseColor.b = diffuseColor.b;
-				point.diffuseColor.a = diffuseColor.a;
+				copyClampedRgb(point.diffuseColor, diffuseColor);
 
 				point.attenuation.k0 = light->getConstantAttenuation();
 				point.attenuation.k1 = light->getLinearAttenuation();
@@ -793,13 +790,14 @@ void Direct3d9_LightManager::_vsps_setExtendedLightData(
 	float bloomEnabled
 	)
 {
-	const VectorArgb &diffuseBackColor = (light->*getPossiblyScaledDiffuseBackColor)();
+	VectorArgb diffuseBackColor    = (light->*getPossiblyScaledDiffuseBackColor)();
+	VectorArgb diffuseTangentColor = (light->*getPossiblyScaledDiffuseTangentColor)();
+
 	extendedParallelSpecular.backColor.r = diffuseBackColor.r;
 	extendedParallelSpecular.backColor.g = diffuseBackColor.g;
 	extendedParallelSpecular.backColor.b = diffuseBackColor.b;
 	extendedParallelSpecular.backColor.a = diffuseBackColor.a;
 
-	const VectorArgb &diffuseTangentColor = (light->*getPossiblyScaledDiffuseTangentColor)();
 	extendedParallelSpecular.tangentColor.r = diffuseTangentColor.r;
 	extendedParallelSpecular.tangentColor.g = diffuseTangentColor.g;
 	extendedParallelSpecular.tangentColor.b = diffuseTangentColor.b;

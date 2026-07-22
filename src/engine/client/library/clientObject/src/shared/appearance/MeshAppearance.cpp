@@ -319,6 +319,16 @@ void MeshAppearance::setAlpha(bool const opaqueEnabled, float const opaqueAlpha,
 
 // ----------------------------------------------------------------------
 
+void MeshAppearance::objectListCameraRender() const
+{
+	// Same issue as DetailAppearance::objectListCameraRender(): world fade-in alpha
+	// state must not affect UI object-list camera previews (examine, inventory icons).
+	const_cast<MeshAppearance *>(this)->setAlpha(false, 0.0f, false, 0.0f);
+	Appearance::objectListCameraRender();
+}
+
+// ----------------------------------------------------------------------
+
 void MeshAppearance::render() const
 {
 	NP_PROFILER_AUTO_BLOCK_DEFINE("MeshAppearance::render");

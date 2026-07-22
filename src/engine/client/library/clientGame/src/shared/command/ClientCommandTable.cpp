@@ -58,12 +58,12 @@ void ClientCommandTable::load()
 	getCommandTableListFromDataTable("datatables/command/command_tables_shared.iff", commandTablesToLoad);
 	getCommandTableListFromDataTable("datatables/command/command_tables_client.iff", commandTablesToLoad);
 
-	if (Game::isShipScene())
+	if (Game::isSpace())
 	{
 		getCommandTableListFromDataTable("datatables/command/command_tables_shared_space.iff", commandTablesToLoad);
 		getCommandTableListFromDataTable("datatables/command/command_tables_client_space.iff", commandTablesToLoad);
 	}
-	if (!Game::isSpace())
+	else
 	{
 		getCommandTableListFromDataTable("datatables/command/command_tables_shared_ground.iff", commandTablesToLoad);
 		getCommandTableListFromDataTable("datatables/command/command_tables_client_ground.iff", commandTablesToLoad);

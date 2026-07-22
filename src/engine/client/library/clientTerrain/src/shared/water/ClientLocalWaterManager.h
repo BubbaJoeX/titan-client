@@ -33,9 +33,6 @@ public:
 	//-- used for arbitrary polygonal horizontal water tables
 	void addWater (char const * debugName, const char* shaderTemplateName, real shaderSize, const stdvector<Vector2d>::fwd& pointList, real height, const Vector2d& direction, real velocity);
 
-	/// Clear dynamic water meshes so they can be replayed from the TerrainGenerator / boundary list (God Client tooling).
-	void clearRebuildableWaterPrimitives ();
-
 	//-- used for water tables created by the old river affector
 	void addWater (char const * debugName, const char* shaderTemplateName, real shaderSize, const stdvector<Vector>::fwd& pointList, const Vector2d& direction, real velocity);
 

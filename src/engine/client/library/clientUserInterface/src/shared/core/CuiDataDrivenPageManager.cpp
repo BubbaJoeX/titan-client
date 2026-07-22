@@ -17,10 +17,8 @@
 
 #include "clientGame/Game.h"
 #include "clientGame/GameNetwork.h"
-#include "clientUserInterface/CuiColorPicker.h"
 #include "clientUserInterface/CuiDataDrivenPage.h"
 #include "clientUserInterface/CuiDataDrivenPageCountdownTimer.h"
-#include "clientUserInterface/CuiDataDrivenPageVideoPlayer.h"
 #include "clientUserInterface/CuiMediator.h"
 #include "clientUserInterface/CuiWorkspace.h"
 
@@ -148,8 +146,6 @@ void CuiDataDrivenPageManager::createPage (SuiPageData const &pageData)
 
 	if (_stricmp(pageName.c_str(), "Script.CountdownTimerBar") == 0)
 		mediator = new CuiDataDrivenPageCountdownTimer(std::string(), *newPage, clientPageId);
-	else if (_stricmp(pageName.c_str(), "Script.videoPlayer") == 0)
-		mediator = new CuiDataDrivenPageVideoPlayer(std::string(), *newPage, clientPageId);
 	else
 		mediator = new CuiDataDrivenPage(std::string(), *newPage, clientPageId);
 	
@@ -216,6 +212,13 @@ void CuiDataDrivenPageManager::handleSceneChange()
 
 //-----------------------------------------------------------------
 
+void CuiDataDrivenPageManager::receiveCreatePageMessage      (SuiCreatePageMessage const &createPageMessage)
+{
+	createPage(createPageMessage.getPageData());
+}
+
+//-----------------------------------------------------------------
+
 void CuiDataDrivenPageManager::resetLocalizedStringsForAllPages ()
 {
 	for (PageMap::iterator it = ms_pages.begin (); it != ms_pages.end (); ++it)
@@ -224,13 +227,6 @@ void CuiDataDrivenPageManager::resetLocalizedStringsForAllPages ()
 		if (page)
 			page->getPage ().ResetLocalizedStrings ();
 	}
-}
-
-//-----------------------------------------------------------------
-
-void CuiDataDrivenPageManager::receiveCreatePageMessage      (SuiCreatePageMessage const &createPageMessage)
-{
-	createPage(createPageMessage.getPageData());
 }
 
 //-----------------------------------------------------------------

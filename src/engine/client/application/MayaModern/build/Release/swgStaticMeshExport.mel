@@ -4,8 +4,9 @@
 // All export paths use StaticMeshExportPipeline + StaticMeshTransferOptions:
 //   • File > Export SwgMsh (dialog options string)
 //   • exportStaticMesh MEL command (-path, optional -objExportDirectUv)
-// Winding: automatic (StaticMeshViewportSpace). UV: viewport-direct by default (objExportDirectUv=1).
-// Legacy 1-V round-trip: set objExportDirectUv=0 in export dialog only when re-importing old .msh shells.
+// Winding: automatic (StaticMeshViewportSpace).
+// UV in .msh file: always legacy 1-V for SWG Viewer. objExportDirectUv=0 (default) in export dialog;
+//   objExportDirectUv=1 only affects Maya re-import of those files, not Viewer encoding.
 //
 // Combined SWG .msh + OBJ: use two materials (one per source). Per-SG overrides: swgExportUvDirect, swgExportTriangleSwap.
 //

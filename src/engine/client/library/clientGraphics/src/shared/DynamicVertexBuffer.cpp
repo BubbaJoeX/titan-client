@@ -16,10 +16,10 @@
 // ======================================================================
 
 MemoryBlockManager  *DynamicVertexBuffer::ms_memoryBlockManager;
+bool                 DynamicVertexBuffer::ms_ringLocked[DR_count];
 
 #ifdef _DEBUG
 int                               DynamicVertexBuffer::ms_dynamicGlobalId;
-bool                              DynamicVertexBuffer::ms_dynamicGlobalLocked;
 #endif
 
 // ======================================================================
@@ -34,6 +34,8 @@ void DynamicVertexBuffer::install()
 {
 	DEBUG_FATAL(ms_memoryBlockManager, ("Already installed"));
 	ms_memoryBlockManager = new MemoryBlockManager("DynamicVertexBuffer", true, sizeof(DynamicVertexBuffer), 0, 0, 0);
+	for (int i = 0; i < DR_count; ++i)
+		ms_ringLocked[i] = false;
 	ExitChain::add(remove, "DynamicVertexBuffer::remove()");
 }
 
@@ -68,10 +70,11 @@ void  DynamicVertexBuffer::operator delete(void *pointer)
 
 // ======================================================================
 
-DynamicVertexBuffer::DynamicVertexBuffer(const VertexBufferFormat &format)
+DynamicVertexBuffer::DynamicVertexBuffer(const VertexBufferFormat &format, DynamicRing ring)
 : HardwareVertexBuffer(T_dynamic, format),
 	m_graphicsData(0),
 	m_sortKey(0),
+	m_ringIndex(ring),
 	m_data(0),
 	m_numberOfVertices(0)
 #ifdef _DEBUG

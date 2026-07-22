@@ -328,16 +328,16 @@ void Direct3d9_Instancing::drawHardwareInstanced(int instanceCount)
 
 	// Set stream 0 for geometry (indexed data, geometry instancing divider)
 	UINT const geometryStride = ms_currentVertexBuffer->getVertexSize();
-	device->SetStreamSource(0, d3dVbData->getVertexBuffer(), 0, geometryStride);
+	Direct3d9_StateCache::forceStreamSource(0, d3dVbData->getVertexBuffer(), 0, geometryStride);
 	device->SetStreamSourceFreq(0, D3DSTREAMSOURCE_INDEXEDDATA | instanceCount);
 
 	// Set stream 1 for instance data (instance data divider)
-	device->SetStreamSource(1, ms_instanceBuffer, 0, cs_instanceDataSize);
+	Direct3d9_StateCache::forceStreamSource(1, ms_instanceBuffer, 0, cs_instanceDataSize);
 	device->SetStreamSourceFreq(1, D3DSTREAMSOURCE_INSTANCEDATA | 1);
 
 	// Set vertex declaration
 	if (ms_instanceDeclaration)
-		device->SetVertexDeclaration(ms_instanceDeclaration);
+		Direct3d9_StateCache::forceVertexDeclaration(ms_instanceDeclaration);
 
 	// Draw
 	if (ms_currentIndexBuffer)
@@ -346,7 +346,7 @@ void Direct3d9_Instancing::drawHardwareInstanced(int instanceCount)
 			safe_cast<Direct3d9_StaticIndexBufferData const *>(ms_currentIndexBuffer->m_graphicsData);
 		if (d3dIbData)
 		{
-			device->SetIndices(d3dIbData->getIndexBuffer());
+			Direct3d9_StateCache::forceIndexBuffer(d3dIbData->getIndexBuffer());
 
 			int const numIndices = ms_currentIndexBuffer->getNumberOfIndices();
 			int const primitiveCount = numIndices / 3;
@@ -366,6 +366,7 @@ void Direct3d9_Instancing::drawHardwareInstanced(int instanceCount)
 	// Reset stream frequency
 	device->SetStreamSourceFreq(0, 1);
 	device->SetStreamSourceFreq(1, 1);
+	Direct3d9_StateCache::forceStreamSource(1, NULL, 0, 0);
 }
 
 // ----------------------------------------------------------------------

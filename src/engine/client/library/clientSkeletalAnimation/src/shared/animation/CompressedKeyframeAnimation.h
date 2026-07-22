@@ -69,9 +69,6 @@ public:
 
 	virtual SkeletalAnimation       *resolveSkeletalAnimation();
 
-	virtual bool                     setHoldAtFrame(float frameNumber);
-	virtual void                     clearHoldFrame();
-
 private:
 
 	class StaticQuaternionOperation;
@@ -122,8 +119,6 @@ private:
 	mutable int                m_translationStartKeyIndex;
 
 	const float               &m_scale;
-
-	bool                       m_holdFrame;
 };
 
 // ======================================================================

@@ -600,25 +600,16 @@ void ClientProceduralTerrainAppearance::ShaderSet::render (const Camera* camera,
 				continue;
 #endif
 
-			// Check for city terrain shader override
 			const Shader * effectiveShader = shader;
 			float blendWeight = 0.0f;
 			const Shader * overrideShader = 0;
 
 			Vector const & center = primitiveSphere.getCenter();
-			if (CityTerrainLayerManager::getShaderOverride(center.x, center.z, overrideShader, blendWeight))
+			if (CityTerrainLayerManager::getShaderOverride(center.x, center.z, overrideShader, blendWeight) &&
+				blendWeight > 0.001f &&
+				overrideShader)
 			{
-				// Use any non-zero blend so edge falloff and city shader paints remain visible (was 0.5f).
-				if (blendWeight > 0.001f && overrideShader)
-				{
-					effectiveShader = overrideShader;
-					static bool s_loggedOnce = false;
-					if (!s_loggedOnce)
-					{
-						REPORT_LOG(true, ("[Titan] ShaderSet::render: applied shader override at (%.1f,%.1f) blend=%.2f\n", center.x, center.z, blendWeight));
-						s_loggedOnce = true;
-					}
-				}
+				effectiveShader = overrideShader;
 			}
 
 			ClientTerrainSorter::queue (effectiveShader, primitive);

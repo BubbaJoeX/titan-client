@@ -14,12 +14,11 @@
 
 #include <string>
 
-#include "sharedMath/Vector.h"
-
 class CellProperty;
 class CrcString;
 class NetworkId;
 class Transform;
+class Vector;
 class Object;
 
 //===================================================================
@@ -39,8 +38,7 @@ public:
 		float radius,
 		uint32 portalLayoutCrc,
 		int cellCount,
-		std::string const &requiredEvent = "",
-		Vector const &objectScale = Vector::xyz111);
+		std::string const &requiredEvent = "");
 
 
 	static void load               (char const *sceneName);
@@ -48,7 +46,6 @@ public:
 	static void update             (CellProperty const * cellProperty, Vector const & position_w);
 	static bool isClientCached     (int64 networkIdInt);
 	static void moveObject         (int64 networkIdInt, Transform const &transform_p);
-	static void setObjectScale     (int64 networkIdInt, Vector const &objectScale);
 	static void removeObject       ( int64 networkIdInt);
 	static void loadIfClientCached (NetworkId const &networkId);
 	static void preloadSomeAssets  ();

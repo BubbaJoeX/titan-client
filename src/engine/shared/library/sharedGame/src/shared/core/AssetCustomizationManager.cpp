@@ -10,23 +10,17 @@
 #include "sharedGame/AssetCustomizationManager.h"
 
 #include "sharedDebug/InstallTimer.h"
-#include "sharedFile/AsynchronousLoader.h"
 #include "sharedFile/Iff.h"
 #include "sharedFoundation/CrcString.h"
 #include "sharedFoundation/ExitChain.h"
 #include "sharedFoundation/TemporaryCrcString.h"
 #include "sharedMath/PaletteArgb.h"
 #include "sharedMath/PaletteArgbList.h"
-#include "sharedObject/Appearance.h"
-#include "sharedObject/AppearanceTemplateList.h"
 #include "sharedObject/BasicRangedIntCustomizationVariable.h"
 #include "sharedObject/CustomizationData.h"
-#include "sharedObject/MemoryBlockManagedObject.h"
 #include "sharedObject/PaletteColorCustomizationVariable.h"
-#include "sharedObject/RangedIntCustomizationVariable.h"
 
 #include <stdlib.h>
-#include <set>
 
 // ======================================================================
 
@@ -75,8 +69,8 @@ namespace AssetCustomizationManagerNamespace
 
 	struct UsageIndexEntry
 	{
-		uint32  assetId;        //lint -esym(754, UsageIndexEntry::assetId) // error 754: (Info -- local structure member not referenced) // Wrong, accessed indirectly.
-		uint32  listStartIndex; // into ULST
+		uint16  assetId;        //lint -esym(754, UsageIndexEntry::assetId) // error 754: (Info -- local structure member not referenced) // Wrong, accessed indirectly.
+		uint16  listStartIndex;
 		uint8   count;
 	} PACKING_END_STRUCT;
 
@@ -84,8 +78,8 @@ namespace AssetCustomizationManagerNamespace
 
 	struct LinkIndexEntry
 	{
-		uint32  assetId;        //lint -esym(754, LinkIndexEntry::assetId) // error 754: (Info -- local structure member not referenced) // Wrong, accessed indirectly.
-		uint32  listStartIndex; // into LLST
+		uint16  assetId;        //lint -esym(754, LinkIndexEntry::assetId) // error 754: (Info -- local structure member not referenced) // Wrong, accessed indirectly.
+		uint16  listStartIndex;
 		uint8   count;
 	} PACKING_END_STRUCT;
 
@@ -94,7 +88,7 @@ namespace AssetCustomizationManagerNamespace
 	struct CrcLookupEntry
 	{
 		uint32  assetNameCrc;   //lint -esym(754, CrcLookupEntry::assetNameCrc) // error 754: (Info -- local structure member not referenced) // Wrong, accessed indirectly.
-		uint32  assetId;
+		uint16  assetId;
 	} PACKING_END_STRUCT;
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -126,7 +120,6 @@ namespace AssetCustomizationManagerNamespace
 
 	int                    compare_uint16(void const *lhs, void const *rhs);
 	int                    compare_uint32(void const *lhs, void const *rhs);
-	int                    compare_uint32_key_to_index_entry_asset_id(void const *keyPtr, void const *elementPtr);
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -169,13 +162,13 @@ namespace AssetCustomizationManagerNamespace
 	VariableUsage   *s_variableUsageMap;
 	int              s_maxValidVariableUsageId;
 
-	uint32          *s_variableUsageList;
+	uint16          *s_variableUsageList;
 	int              s_variableUsageListEntryCount;
 
 	UsageIndexEntry *s_usageIndex;
 	int              s_usageIndexEntryCount;
 
-	uint32          *s_linkList;
+	uint16          *s_linkList;
 	int              s_linkListEntryCount;
 
 	LinkIndexEntry  *s_linkIndex;
@@ -183,8 +176,6 @@ namespace AssetCustomizationManagerNamespace
 
 	CrcLookupEntry  *s_crcLookupTable;
 	int              s_crcLookupEntryCount;
-	bool             s_attemptedDefaultLoad;
-	std::set<std::string> s_runtimeLookupBlacklist;
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 }
@@ -229,7 +220,7 @@ void AssetCustomizationManagerNamespace::remove()
 	s_maxValidVariableUsageId = 0;
 
 	delete [] s_variableUsageList;
-	s_variableUsageList           = NULL;
+	s_variableUsageList           = 0;
 	s_variableUsageListEntryCount = 0;
 
 	delete [] s_usageIndex;
@@ -247,8 +238,6 @@ void AssetCustomizationManagerNamespace::remove()
 	delete [] s_crcLookupTable;
 	s_crcLookupTable      = NULL;
 	s_crcLookupEntryCount = 0;
-	s_attemptedDefaultLoad = false;
-	s_runtimeLookupBlacklist.clear();
 }
 
 // ----------------------------------------------------------------------
@@ -347,9 +336,9 @@ void AssetCustomizationManagerNamespace::load_0000(Iff &iff)
 		//-- Read variable usage list.
 		iff.enterChunk(TAG_ULST);
 		
-			s_variableUsageListEntryCount = iff.getChunkLengthLeft(sizeof(uint32));
-			s_variableUsageList           = new uint32[static_cast<size_t>(s_variableUsageListEntryCount)];
-			iff.read_uint32(s_variableUsageListEntryCount, s_variableUsageList);
+			s_variableUsageListEntryCount = iff.getChunkLengthLeft(sizeof(uint16));
+			s_variableUsageList           = new uint16[static_cast<size_t>(s_variableUsageListEntryCount)];
+			iff.read_uint16(s_variableUsageListEntryCount, s_variableUsageList);
 
 		iff.exitChunk(TAG_ULST);
 
@@ -365,9 +354,9 @@ void AssetCustomizationManagerNamespace::load_0000(Iff &iff)
 		//-- Read asset linkage list.
 		iff.enterChunk(TAG_LLST);
 		
-			s_linkListEntryCount = iff.getChunkLengthLeft(sizeof(uint32));
-			s_linkList           = new uint32[static_cast<size_t>(s_linkListEntryCount)];
-			iff.read_uint32(s_linkListEntryCount, s_linkList);
+			s_linkListEntryCount = iff.getChunkLengthLeft(sizeof(uint16));
+			s_linkList           = new uint16[static_cast<size_t>(s_linkListEntryCount)];
+			iff.read_uint16(s_linkListEntryCount, s_linkList);
 
 		iff.exitChunk(TAG_LLST);
 
@@ -477,8 +466,8 @@ AssetCustomizationManagerNamespace::UsageIndexEntry const *AssetCustomizationMan
 	VALIDATE_RANGE_INCLUSIVE_INCLUSIVE(1, assetId, s_crcLookupEntryCount);
 
 	//-- Do a binary search on the UsageIndexEntry list.
-	uint32 const key = static_cast<uint32>(assetId);
-	return static_cast<UsageIndexEntry const *>(bsearch(&key, s_usageIndex, static_cast<size_t>(s_usageIndexEntryCount), sizeof(UsageIndexEntry), compare_uint32_key_to_index_entry_asset_id));
+	uint16 const key = static_cast<uint16>(assetId);
+	return static_cast<UsageIndexEntry*>(bsearch(&key, s_usageIndex, static_cast<size_t>(s_usageIndexEntryCount), sizeof(UsageIndexEntry), compare_uint16));
 }
 
 // ----------------------------------------------------------------------
@@ -487,9 +476,9 @@ AssetCustomizationManagerNamespace::LinkIndexEntry const *AssetCustomizationMana
 {
 	VALIDATE_RANGE_INCLUSIVE_INCLUSIVE(1, assetId, s_crcLookupEntryCount);
 
-	//-- Do a binary search on the LinkIndexEntry list.
-	uint32 const key = static_cast<uint32>(assetId);
-	return static_cast<LinkIndexEntry const *>(bsearch(&key, s_linkIndex, static_cast<size_t>(s_linkIndexEntryCount), sizeof(LinkIndexEntry), compare_uint32_key_to_index_entry_asset_id));
+	//-- Do a binary search on the UsageIndexEntry list.
+	uint16 const key = static_cast<uint16>(assetId);
+	return static_cast<LinkIndexEntry*>(bsearch(&key, s_linkIndex, static_cast<size_t>(s_linkIndexEntryCount), sizeof(LinkIndexEntry), compare_uint16));
 }
 
 // ----------------------------------------------------------------------
@@ -499,7 +488,7 @@ int AssetCustomizationManagerNamespace::lookupAssetId(CrcString const &assetName
 	uint32 const key            = assetName.getCrc();
 	CrcLookupEntry const *entry = static_cast<CrcLookupEntry*>(bsearch(&key, s_crcLookupTable, static_cast<size_t>(s_crcLookupEntryCount), sizeof(CrcLookupEntry), compare_uint32));
 
-	return (entry != NULL) ? static_cast<int>(entry->assetId) : 0;
+	return (entry != NULL) ? entry->assetId : 0;
 }
 
 // ----------------------------------------------------------------------
@@ -544,22 +533,6 @@ int AssetCustomizationManagerNamespace::compare_uint32(void const *lhs, void con
 
 // ----------------------------------------------------------------------
 
-int AssetCustomizationManagerNamespace::compare_uint32_key_to_index_entry_asset_id(void const *keyPtr, void const *elementPtr)
-{
-	NOT_NULL(keyPtr);
-	NOT_NULL(elementPtr);
-
-	uint32 const key    = *static_cast<uint32 const *>(keyPtr);
-	uint32 const elt    = *static_cast<uint32 const *>(elementPtr);
-	if (key < elt)
-		return -1;
-	if (key > elt)
-		return 1;
-	return 0;
-}
-
-// ----------------------------------------------------------------------
-
 void AssetCustomizationManagerNamespace::addVariablesForAssetAndLinks(int assetId, CustomizationData &customizationData, bool skipSharedOwnerVariables, int &addedVariableCount)
 {
 	//-- Find variables used directly by specified asset.
@@ -576,7 +549,7 @@ void AssetCustomizationManagerNamespace::addVariablesForAssetAndLinks(int assetI
 		for (int i = startIndex; i < endIndex; ++i)
 		{
 			//-- Get variable usage info.
-			uint32 const variableUsageId = s_variableUsageList[i];
+			uint16 const variableUsageId = s_variableUsageList[i];
 
 			VariableUsage const *variableUsage = getVariableUsageFromId(variableUsageId);
 			NOT_NULL(variableUsage);
@@ -660,158 +633,10 @@ void AssetCustomizationManagerNamespace::addVariablesForAssetAndLinks(int assetI
 		for (int i = startIndex; i < endIndex; ++i)
 		{
 			//-- Get asset id for the linked asset, call this function recursively on it.
-			uint32 const dependencyAssetId = s_linkList[i];
-			addVariablesForAssetAndLinks(static_cast<int>(dependencyAssetId), customizationData, skipSharedOwnerVariables, addedVariableCount);
+			uint16 const dependencyAssetId = s_linkList[i];
+			addVariablesForAssetAndLinks(dependencyAssetId, customizationData, skipSharedOwnerVariables, addedVariableCount);
 		}
 	}
-}
-
-// ----------------------------------------------------------------------
-
-namespace
-{
-	struct VariableCountContext
-	{
-		int count;
-	};
-
-	struct VariableCopyContext
-	{
-		CustomizationData &destination;
-		bool               skipSharedOwnerVariables;
-		int                copiedCount;
-	};
-
-	void countVariableCallback(std::string const &, CustomizationVariable const *, void *context)
-	{
-		NOT_NULL(context);
-		VariableCountContext * const variableCountContext = reinterpret_cast<VariableCountContext *>(context);
-		++variableCountContext->count;
-	}
-
-	bool isSharedOwnerVariablePath(std::string const &variablePathName)
-	{
-		return (variablePathName.compare(0, 14, "/shared_owner/") == 0);
-	}
-
-	void copyVariableCallback(std::string const &fullVariablePathName, CustomizationVariable const *customizationVariable, void *context)
-	{
-		NOT_NULL(context);
-		NOT_NULL(customizationVariable);
-		VariableCopyContext * const variableCopyContext = reinterpret_cast<VariableCopyContext *>(context);
-
-		if (variableCopyContext->skipSharedOwnerVariables && isSharedOwnerVariablePath(fullVariablePathName))
-			return;
-
-		if (variableCopyContext->destination.findConstVariable(fullVariablePathName))
-			return;
-
-		PaletteColorCustomizationVariable const * const paletteVariable = dynamic_cast<PaletteColorCustomizationVariable const *>(customizationVariable);
-		if (paletteVariable)
-		{
-			PaletteArgb const * const palette = paletteVariable->fetchPalette();
-			variableCopyContext->destination.addVariableTakeOwnership(fullVariablePathName, new PaletteColorCustomizationVariable(palette, paletteVariable->getValue()));
-			palette->release();
-			++variableCopyContext->copiedCount;
-			return;
-		}
-
-		RangedIntCustomizationVariable const * const rangedVariable = dynamic_cast<RangedIntCustomizationVariable const *>(customizationVariable);
-		if (rangedVariable)
-		{
-			int minRangeInclusive = 0;
-			int maxRangeExclusive = 0;
-			rangedVariable->getRange(minRangeInclusive, maxRangeExclusive);
-			variableCopyContext->destination.addVariableTakeOwnership(fullVariablePathName, new BasicRangedIntCustomizationVariable(minRangeInclusive, rangedVariable->getValue(), maxRangeExclusive));
-			++variableCopyContext->copiedCount;
-			return;
-		}
-
-		WARNING(true, ("AssetCustomizationManager: unsupported variable type for [%s] while copying runtime customization declarations.", fullVariablePathName.c_str()));
-	}
-
-	int getVariableCount(CustomizationData const &customizationData)
-	{
-		VariableCountContext variableCountContext;
-		variableCountContext.count = 0;
-		customizationData.iterateOverConstVariables(countVariableCallback, &variableCountContext, false);
-		return variableCountContext.count;
-	}
-
-	int addVariablesFromAppearance(CrcString const &assetName, CustomizationData &customizationData, bool skipSharedOwnerVariables)
-	{
-		char const * const assetPath = assetName.getString();
-		if (!assetPath || !*assetPath)
-			return 0;
-
-		MemoryBlockManagedObject scratchObject;
-		Appearance * const appearance = AppearanceTemplateList::createAppearance(assetPath);
-		if (!appearance)
-			return 0;
-
-		scratchObject.setAppearance(appearance);
-
-		Appearance * const ownedAppearance = scratchObject.getAppearance();
-		if (!ownedAppearance)
-			return 0;
-
-		int const beforeCount = getVariableCount(customizationData);
-
-		if (skipSharedOwnerVariables)
-		{
-			CustomizationData * const scratchCustomizationData = new CustomizationData(scratchObject);
-			scratchCustomizationData->fetch();
-			ownedAppearance->addCustomizationVariables(*scratchCustomizationData);
-
-			VariableCopyContext variableCopyContext = {customizationData, true, 0};
-			scratchCustomizationData->iterateOverConstVariables(copyVariableCallback, &variableCopyContext, false);
-			scratchCustomizationData->release();
-		}
-		else
-		{
-			ownedAppearance->addCustomizationVariables(customizationData);
-		}
-
-		int const afterCount = getVariableCount(customizationData);
-		return (afterCount >= beforeCount) ? (afterCount - beforeCount) : 0;
-	}
-
-	bool tryAddVariablesFromAppearance(CrcString const &assetName, CustomizationData &customizationData, bool skipSharedOwnerVariables, int &addedVariableCount)
-	{
-#if defined(PLATFORM_WIN32)
-		__try
-		{
-			addedVariableCount = addVariablesFromAppearance(assetName, customizationData, skipSharedOwnerVariables);
-			return true;
-		}
-		__except(EXCEPTION_EXECUTE_HANDLER)
-		{
-			addedVariableCount = 0;
-			return false;
-		}
-#else
-		addedVariableCount = addVariablesFromAppearance(assetName, customizationData, skipSharedOwnerVariables);
-		return true;
-#endif
-	}
-
-	bool shouldSkipRuntimeLookup(char const *assetPath)
-	{
-		if (!assetPath || !*assetPath)
-			return true;
-
-		std::string const path(assetPath);
-		std::string::size_type const dot = path.find_last_of('.');
-		if (dot == std::string::npos)
-			return false;
-
-		std::string ext = path.substr(dot);
-		for (std::string::size_type i = 0; i < ext.size(); ++i)
-			ext[i] = static_cast<char>(tolower(static_cast<unsigned char>(ext[i])));
-
-		return (ext == ".lmg") || (ext == ".mgn");
-	}
-
 }
 
 // ======================================================================
@@ -821,18 +646,24 @@ namespace
 void AssetCustomizationManager::install(char const *filename)
 {
 	InstallTimer const installTimer("AssetCustomizationManager::install");
+
 	DEBUG_FATAL(s_installed, ("AssetCustomizationManager already installed."));
-	if (filename && *filename)
-	{
-		Iff iff;
-		bool const openResult = iff.open(filename, true);
-		if (openResult)
-			load(iff);
-	}
-	s_attemptedDefaultLoad = false;
-	s_runtimeLookupBlacklist.clear();
+	DEBUG_FATAL(!filename || !*filename, ("AssetCustomizationManager requires a valid filename for successful installation."));
+
+	//-- Check endian-ness of platform.  This code assumes little-endian due to the way
+	//   the data image is loaded directly into memory.  If we ever hit this,
+	//   we can do a conversion at load time to big-endian.
+	uint32 testValue = 1;
+	FATAL(*reinterpret_cast<uint8*>(&testValue) != 1, ("AssetCustomizationManager: running on a non-little-endian architecture, unsupported by this class at this time."));
+
+	Iff iff;
+	bool const openResult = iff.open(filename, true);
+	FATAL(!openResult, ("AssetCustomizationManager data file [%s] does not exist or failed to open.  This is likely a configuration file issue.", filename));
+
+	load(iff);
+
 	s_installed = true;
-	ExitChain::add(remove, "AssetCustomizationManager", 0, false);
+	ExitChain::add(remove, "AssetCustomizationManager");
 }
 
 // ----------------------------------------------------------------------
@@ -840,82 +671,20 @@ void AssetCustomizationManager::install(char const *filename)
 int AssetCustomizationManager::addCustomizationVariablesForAsset(CrcString const &assetName, CustomizationData &customizationData, bool skipSharedOwnerVariables)
 {
 	DEBUG_FATAL(!s_installed, ("AssetCustomizationManager not installed."));
-	if (!s_attemptedDefaultLoad && (!s_crcLookupTable || s_crcLookupEntryCount <= 0))
+
+	//-- Convert asset name to internal asset id.
+	int const assetId = lookupAssetId(assetName);
+	if (!assetId)
 	{
-		s_attemptedDefaultLoad = true;
-		Iff iff;
-		if (iff.open("customization/asset_customization_manager.iff", true))
-			load(iff);
+		// Exit: there are no customization variables for this asset or its dependencies.
+		return 0;
 	}
 
-	// Prefer ACM when data exists to avoid partial runtime declarations on legacy assets.
-	if (s_crcLookupTable && (s_crcLookupEntryCount > 0))
-	{
-		int const assetId = lookupAssetId(assetName);
-		if (assetId)
-		{
-			int addedVariableCount = 0;
-			addVariablesForAssetAndLinks(assetId, customizationData, skipSharedOwnerVariables, addedVariableCount);
-			return addedVariableCount;
-		}
-	}
+	//-- Recursively add customization variables used directly by an asset and then check any child assets used by the asset.
+	int addedVariableCount = 0;
+	addVariablesForAssetAndLinks(assetId, customizationData, skipSharedOwnerVariables, addedVariableCount);
 
-	// No ACM entry: use runtime declaration extraction for rapid iteration/new assets.
-	int runtimeAddedVariableCount = 0;
-	char const * const assetPath = assetName.getString();
-	std::string const assetKey = assetPath ? assetPath : "";
-	if (!assetKey.empty() && !shouldSkipRuntimeLookup(assetPath) && (s_runtimeLookupBlacklist.find(assetKey) == s_runtimeLookupBlacklist.end()))
-	{
-		if (!tryAddVariablesFromAppearance(assetName, customizationData, skipSharedOwnerVariables, runtimeAddedVariableCount))
-		{
-			s_runtimeLookupBlacklist.insert(assetKey);
-			WARNING(true, ("AssetCustomizationManager: runtime customization lookup crashed for [%s]; blacklisting runtime for this asset and using ACM fallback.", assetPath ? assetPath : "<null>"));
-		}
-	}
-
-	if (runtimeAddedVariableCount > 0)
-		return runtimeAddedVariableCount;
-
-	return 0;
-}
-
-// ----------------------------------------------------------------------
-
-bool AssetCustomizationManager::isAssetCustomizable(CrcString const &assetName)
-{
-	DEBUG_FATAL(!s_installed, ("AssetCustomizationManager not installed."));
-	bool result = false;
-	char const * const assetPath = assetName.getString();
-	std::string const assetKey = assetPath ? assetPath : "";
-	if (!assetKey.empty() && !shouldSkipRuntimeLookup(assetPath) && (s_runtimeLookupBlacklist.find(assetKey) == s_runtimeLookupBlacklist.end()))
-	{
-		MemoryBlockManagedObject scratchObject;
-		CustomizationData * const scratchCustomizationData = new CustomizationData(scratchObject);
-		scratchCustomizationData->fetch();
-		int runtimeAddedVariableCount = 0;
-		if (tryAddVariablesFromAppearance(assetName, *scratchCustomizationData, false, runtimeAddedVariableCount))
-			result = (runtimeAddedVariableCount > 0);
-		else
-		{
-			s_runtimeLookupBlacklist.insert(assetKey);
-			result = false;
-			WARNING(true, ("AssetCustomizationManager: runtime customizability query crashed for [%s]; blacklisting runtime for this asset and using ACM fallback.", assetPath ? assetPath : "<null>"));
-		}
-		scratchCustomizationData->release();
-	}
-	if (!result)
-	{
-		if (!s_attemptedDefaultLoad && (!s_crcLookupTable || s_crcLookupEntryCount <= 0))
-		{
-			s_attemptedDefaultLoad = true;
-			Iff iff;
-			if (iff.open("customization/asset_customization_manager.iff", true))
-				load(iff);
-		}
-	}
-	if (!result && s_crcLookupTable && (s_crcLookupEntryCount > 0))
-		result = (lookupAssetId(assetName) != 0);
-	return result;
+	return addedVariableCount;
 }
 
 // ======================================================================

@@ -187,12 +187,6 @@ public:
 	virtual void            saveSettings              () const;
 	virtual void            loadSettings              ();
 
-	// When false (default), activate() is skipped if the containing workspace is disabled (e.g. HUD hidden).
-	virtual bool            canActivateWhenWorkspaceDisabled () const;
-
-	// When true, mediator is not deactivated when the containing workspace is disabled (HUD hidden).
-	virtual bool            shouldSurviveDisabledWorkspace () const;
-
 	void                    setSettingsAutoSizeLocation (bool size, bool location);
 
 	bool                    getStartSize                (UISize & size);
@@ -283,8 +277,11 @@ public:
 			return var;
 		}
 
-		FATAL (!optional, ("Unable to find CodeData object '%s' from '%s'", name, rootPage->GetFullPath ().c_str ()));
+		// Vanilla NGE-retail UIs are missing widgets later patches added.
+		// Demote to warning so callers see NULL instead of a hard FATAL.
+		WARNING (!optional, ("Unable to find CodeData object '%s' from '%s'", name, rootPage->GetFullPath ().c_str ()));
 
+		var = 0;
 		return 0;
 	}
 

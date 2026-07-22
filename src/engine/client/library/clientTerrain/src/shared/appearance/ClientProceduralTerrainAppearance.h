@@ -11,9 +11,9 @@
 //-------------------------------------------------------------------
 
 #include "clientTerrain/ClientRadialFloraManager.h"
+#include "sharedFoundation/ArrayList.h"
 #include "sharedMath/Transform.h"
 #include "sharedMath/Volume.h"
-#include "sharedFoundation/ArrayList.h"
 #include "sharedSynchronization/Gate.h"
 #include "sharedSynchronization/Mutex.h"
 #include "sharedTerrain/ProceduralTerrainAppearance.h"
@@ -395,8 +395,7 @@ public:
 	static float         getStaticNonCollidableFloraDistance ();
 	static void          setStaticNonCollidableFloraDistance (float staticNonCollidableFloraDistance);
 
-	/// Temporary (structure placement overlay): skips drawing all procedural radial flora layers
-	/// (dynamic near/far and static non-collidable billboards). Does not modify player flora options or collision.
+	/// Temporary structure-placement overlay: skip drawing radial flora layers.
 	static void          setRadialFloraDrawSuppressed (bool suppressed);
 	static bool          getRadialFloraDrawSuppressed ();
 

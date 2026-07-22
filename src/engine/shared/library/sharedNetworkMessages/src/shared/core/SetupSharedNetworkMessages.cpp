@@ -65,7 +65,6 @@
 #include "sharedNetworkMessages/MessageQueueNetworkIdAndTransform.h"
 #include "sharedNetworkMessages/MessageQueueNetworkIdPair.h"
 #include "sharedNetworkMessages/MessageQueueNpcConversationMessage.h"
-#include "sharedNetworkMessages/MessageQueueNpcConversationCameraCommand.h"
 #include "sharedNetworkMessages/MessageQueueObjectMenuRequest.h"
 #include "sharedNetworkMessages/MessageQueueOpponentInfo.h"
 #include "sharedNetworkMessages/MessageQueuePosture.h"
@@ -138,7 +137,7 @@ namespace SetupSharedNetworkMessagesNamespace
 
 	MessageQueue::Data* unpackNothing(Archive::ReadIterator &)
 	{
-		return nullptr;
+		return NULL;
 	}
 
 	void packGenericShipDamageMessage(const MessageQueue::Data * data, Archive::ByteStream & target)
@@ -274,24 +273,6 @@ namespace SetupSharedNetworkMessagesNamespace
 
 	//----------------------------------------------------------------------
 
-	void packGenericStringMessage(const MessageQueue::Data * data, Archive::ByteStream & target)
-	{
-		MessageQueueGenericValueType<std::string> const * const msg = safe_cast<MessageQueueGenericValueType<std::string> const *>(data);
-		if (msg)
-			Archive::put(target, msg->getValue());
-	}
-
-	//----------------------------------------------------------------------
-
-	MessageQueue::Data* unpackGenericStringMessage(Archive::ReadIterator & source)
-	{
-		std::string v;
-		Archive::get(source, v);
-		return new MessageQueueGenericValueType<std::string>(v);
-	}
-
-	//----------------------------------------------------------------------
-
 	void packNetworkIdMessage(const MessageQueue::Data * data, Archive::ByteStream & target)
 	{
 		const MessageQueueGenericValueType<NetworkId> * const msg = dynamic_cast<const MessageQueueGenericValueType<NetworkId> *>(data);
@@ -390,7 +371,6 @@ void SetupSharedNetworkMessages::install ()
 	MessageQueueSpatialChat::install();
 	MessageQueueStartNpcConversation::install();
 	MessageQueueStopNpcConversation::install();
-	MessageQueueNpcConversationCameraCommand::install();
 	MessageQueueString::install();
 	MessageQueueStringList::install();
 	MessageQueueTeleportAck::install();
@@ -439,12 +419,6 @@ void SetupSharedNetworkMessages::install ()
 	ControllerMessageFactory::registerControllerMessageHandler(CM_ratingFinished, packInt, unpackInt, true);
 	ControllerMessageFactory::registerControllerMessageHandler(CM_abandonPlayerQuest, packNetworkIdMessage, unpackNetworkIdMessage, true);
 	ControllerMessageFactory::registerControllerMessageHandler(CM_openRecipe, packNetworkIdMessage, unpackNetworkIdMessage, true);
-
-	// TangibleDynamics: register handler for dynamics data messages (string payload)
-	ControllerMessageFactory::registerControllerMessageHandler(CM_tangibleDynamicsData, packGenericStringMessage, unpackGenericStringMessage);
-
-	// MountTangibleObject: register handler for mount/dismount messages (string payload: "M:objectId" or "D")
-	ControllerMessageFactory::registerControllerMessageHandler(CM_mountTangibleObject, packGenericStringMessage, unpackGenericStringMessage);
 
 	g_installed = true;
 	ExitChain::add (SetupSharedNetworkMessages::remove, "SetupSharedNetworkMessages");

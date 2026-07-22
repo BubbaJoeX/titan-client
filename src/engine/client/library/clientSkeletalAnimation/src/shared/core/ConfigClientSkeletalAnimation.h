@@ -46,6 +46,7 @@ public:
 
 	static bool  getRenderPlaybackScriptFeedback();
 
+	static bool  getForceHighestLod();
 	static bool  getLodManagerEnable();
 	static float getLodManagerFirstLodCount();
 	static int   getLodManagerEveryOtherFrameSkinningCharacterCount();

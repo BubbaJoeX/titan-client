@@ -43,10 +43,6 @@ public:
 	bool mangleValue(std::string &value) const;
 	DataTableCell const *getDefaultCell() const;
 	bool areUniqueCellsRequired() const;
-	/** Reverse lookup: given enum int value, return the label. Returns false if not found. */
-	bool getEnumLabelForValue(int value, std::string & outLabel) const;
-	/** Reverse lookup: given bitvector int value, return comma-separated labels. Returns false if enum map missing. */
-	bool getBitVectorLabelsForValue(int value, std::string & outLabels) const;
 
 private:
 	bool lookupEnum(std::string const &label, int &result) const;

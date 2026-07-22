@@ -117,7 +117,7 @@ private:
 
 	public:
 
-		Metrics::Metrics () :
+		Metrics () :
 			minimumShadowVolumeVertices (1 << 17),
 			maximumShadowVolumeVertices (0),
 			minimumShadowVolumeIndices (1 << 17),

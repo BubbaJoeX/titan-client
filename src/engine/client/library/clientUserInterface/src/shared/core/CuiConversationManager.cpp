@@ -507,7 +507,10 @@ void CuiConversationManager::setTarget (NetworkId const & id, uint32 const appea
 				pcc->fullStop ();
 		}
 		// Activate KOTOR-style cinematic conversation for ground
-		CuiMediatorFactory::activateInWorkspace("WS_CinematicConversation");
+		CuiMediator * const cinematic = CuiMediatorFactory::activateInWorkspace("WS_CinematicConversation");
+		if (!cinematic)
+			// Factory logs the activation failure; release the prep guard so locomotion cannot remain locked.
+			CuiConversationManager::setCinematicConversationUiActive (false);
 	}
 
 	// Clear prep guard only when no cinematic mediator instance exists (workspace + Swg registration).

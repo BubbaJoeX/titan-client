@@ -12,6 +12,9 @@
 #include <maya/MFn.h>
 #include <maya/MFnMesh.h>
 #include <maya/MFnSingleIndexedComponent.h>
+#include <maya/MFnLambertShader.h>
+#include <maya/MFnSet.h>
+#include <maya/MColor.h>
 #include <maya/MFnSkinCluster.h>
 #include <maya/MFnTransform.h>
 #include <maya/MGlobal.h>
@@ -191,9 +194,9 @@ MStatus MayaSceneBuilder::createMesh(
     }
     meshFn.setName(MString(meshName.c_str()), &status);
 
-    // Enable double-sided display so geometry is visible from both sides (avoids black backfaces)
-    MString doubleSidedCmd = "setAttr \"" + meshFn.fullPathName() + ".doubleSided\" 1";
-    MGlobal::executeCommand(doubleSidedCmd);
+    MPlug doubleSidedPlug = meshFn.findPlug("doubleSided", true);
+    if (!doubleSidedPlug.isNull())
+        doubleSidedPlug.setBool(true);
 
     // UVs — explicit map1 (required for Arnold / Maya 2027 UV data meshes)
     MFloatArray uArray, vArray;
@@ -485,34 +488,60 @@ MStatus MayaSceneBuilder::assignPobCollisionPreviewMaterial(const MDagPath& mesh
     if (!meshShapePath.hasFn(MFn::kMesh))
         return MS::kFailure;
 
-    MString createIfMissing =
-        "if (!`objExists \"swgPob_collisionPreviewGreen\"`) {"
-        "shadingNode -asShader lambert -n \"swgPob_collisionPreviewGreen\";"
-        "setAttr \"swgPob_collisionPreviewGreen.color\" -type double3 0.14 0.68 0.22;"
-        "sets -renderable true -noSurfaceShader true -empty -name \"swgPob_collisionPreviewGreenSG\";"
-        "connectAttr -f swgPob_collisionPreviewGreen.outColor swgPob_collisionPreviewGreenSG.surfaceShader;"
-        "}";
-    MGlobal::executeCommand(createIfMissing);
+    MStatus status;
+    auto findDependNode = [](const char* name, MObject& out) -> bool {
+        MSelectionList list;
+        if (list.add(MString(name)) != MS::kSuccess || list.length() == 0)
+            return false;
+        return list.getDependNode(0, out) == MS::kSuccess;
+    };
 
-    MString assignCmd = "hyperShade -assign \"swgPob_collisionPreviewGreenSG\" \"";
-    assignCmd += meshShapePath.fullPathName();
-    assignCmd += "\"";
-    MStatus assignStatus = MGlobal::executeCommand(assignCmd, false, false);
-    if (!assignStatus)
+    static const char* kLambertName = "swgPob_collisionPreviewGreen";
+    static const char* kSgName = "swgPob_collisionPreviewGreenSG";
+
+    MObject lambertObj;
+    if (!findDependNode(kLambertName, lambertObj))
     {
-        MFnMesh meshFn(meshShapePath);
-        const int polyCount = meshFn.numPolygons();
-        if (polyCount > 0)
+        MFnLambertShader lambertFn;
+        lambertObj = lambertFn.create(true, &status);
+        if (!status)
+            return status;
+        lambertFn.setName(kLambertName);
+        lambertFn.setColor(MColor(0.14f, 0.68f, 0.22f));
+    }
+
+    MObject sgObj;
+    if (!findDependNode(kSgName, sgObj))
+    {
+        MDGModifier createMod;
+        sgObj = createMod.createNode("shadingEngine", &status);
+        status = createMod.doIt();
+        if (!status)
+            return status;
+        MFnDependencyNode sgDepFn(sgObj);
+        sgDepFn.setName(kSgName);
+
+        MDGModifier connectMod;
+        MFnDependencyNode lambertDep(lambertObj);
+        MPlug outColor = lambertDep.findPlug("outColor", true);
+        MFnDependencyNode sgDep(sgObj);
+        MPlug surfaceShader = sgDep.findPlug("surfaceShader", true);
+        if (!outColor.isNull() && !surfaceShader.isNull())
         {
-            assignCmd = "sets -e -forceElement \"swgPob_collisionPreviewGreenSG\" \"";
-            assignCmd += meshShapePath.fullPathName();
-            assignCmd += ".f[0:";
-            assignCmd += (polyCount - 1);
-            assignCmd += "]\"";
-            assignStatus = MGlobal::executeCommand(assignCmd, false, false);
+            status = connectMod.connect(outColor, surfaceShader);
+            if (status)
+                status = connectMod.doIt();
+            if (!status)
+                return status;
         }
     }
-    return assignStatus;
+
+    MFnSingleIndexedComponent comp;
+    comp.setCompleteData(MFn::kMeshPolygonComponent);
+    MFnSet setFn(sgObj, &status);
+    if (!status)
+        return status;
+    return setFn.addMember(meshShapePath, comp.object());
 }
 
 MStatus MayaSceneBuilder::assignMaterials(
@@ -521,6 +550,13 @@ MStatus MayaSceneBuilder::assignMaterials(
     const std::string& inputFilePath)
 {
     if (shaderGroups.empty()) return MS::kSuccess;
+
+    auto findDependNode = [](const MString& name, MObject& out) -> bool {
+        MSelectionList list;
+        if (list.add(name) != MS::kSuccess || list.length() == 0)
+            return false;
+        return list.getDependNode(0, out) == MS::kSuccess;
+    };
 
     // Per-mesh only: same shader template on another mesh must import again (own texture / nodes). A global cache
     // reused SGs across imports and forced the second mesh green or wrong texture.
@@ -575,11 +611,8 @@ MStatus MayaSceneBuilder::assignMaterials(
         }
         else
         {
-            MString checkCmd = "objExists \"";
-            checkCmd += sgNodeName;
-            checkCmd += "\"";
-            int exists = 0;
-            bool materialExists = (MGlobal::executeCommand(checkCmd, exists) && exists);
+            MObject sgObj;
+            const bool materialExists = findDependNode(sgNodeName, sgObj);
 
             if (!materialExists)
             {
@@ -597,7 +630,6 @@ MStatus MayaSceneBuilder::assignMaterials(
                     MStringArray importResult;
                     if (MGlobal::executeCommand(importCmd, importResult, false, false) && importResult.length() > 0)
                     {
-                        materialExists = true;
                         sgNodeName = importResult[0];
                         shaderToActualSgName[cacheKey] = sgNodeName.asChar();
                     }
@@ -623,28 +655,33 @@ MStatus MayaSceneBuilder::assignMaterials(
             }
         }
 
-        // Use shape path for mesh face components (e.g. |parent|meshShape.f[0:N])
-        char rangeBuf[64];
-        sprintf(rangeBuf, "%d:%d", faceOffset, faceOffset + faceCount - 1);
+        MObject shadingGroupObj;
+        MStatus setStatus = MS::kFailure;
+        if (findDependNode(sgNodeName, shadingGroupObj))
+        {
+            MIntArray faceIds;
+            faceIds.setLength(static_cast<unsigned>(faceCount));
+            for (int f = 0; f < faceCount; ++f)
+                faceIds[f] = faceOffset + f;
 
-        MString compPath = meshShapePath.fullPathName();
-        compPath += ".f[";
-        compPath += rangeBuf;
-        compPath += "]";
+            MFnSingleIndexedComponent compFn;
+            MObject compObj = compFn.create(MFn::kMeshPolygonComponent, &setStatus);
+            if (setStatus)
+                setStatus = compFn.addElements(faceIds);
+            if (setStatus)
+            {
+                MFnSet setFn(shadingGroupObj, &setStatus);
+                if (setStatus)
+                    setStatus = setFn.addMember(meshShapePath, compObj);
+            }
+        }
 
-        // Pass component path directly to sets -e -forceElement (more reliable than select-then-sets)
-        MString setCmd = "sets -e -forceElement \"";
-        setCmd += sgNodeName;
-        setCmd += "\" \"";
-        setCmd += compPath;
-        setCmd += "\"";
-        MStatus setStatus = MGlobal::executeCommand(setCmd);
         if (setStatus)
             shaderLog("assignMaterials: assigned %s to %s faces %d-%d", sgNodeName.asChar(), meshShapePath.fullPathName().asChar(), faceOffset, faceOffset + faceCount - 1);
         else
         {
-            shaderLog("assignMaterials: sets -e -forceElement FAILED sg=%s comp=%s", sgNodeName.asChar(), compPath.asChar());
-            std::cerr << "MayaSceneBuilder: sets -e -forceElement failed sg=" << sgNodeName.asChar() << " comp=" << compPath.asChar() << "\n";
+            shaderLog("assignMaterials: MFnSet addMember FAILED sg=%s mesh=%s", sgNodeName.asChar(), meshShapePath.fullPathName().asChar());
+            std::cerr << "MayaSceneBuilder: MFnSet addMember failed sg=" << sgNodeName.asChar() << " mesh=" << meshShapePath.fullPathName().asChar() << "\n";
         }
 
         faceOffset += faceCount;

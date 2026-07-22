@@ -370,7 +370,8 @@ bool SwgCuiAvatarCreationHelper::finishCreation (bool automatic)
 		if (sceneSelector->startScene (s_creature->getObjectTemplateName (), s_creature))
 		{
 			//-- the scene now owns the player's creature
-			IGNORE_RETURN (s_creaturePool->erase (std::remove (s_creaturePool->begin (), s_creaturePool->end (), s_creature), s_creaturePool->end ()));
+			CreatureObject* const creaturePtr = s_creature.getPointer();
+			IGNORE_RETURN (s_creaturePool->erase (std::remove (s_creaturePool->begin (), s_creaturePool->end (), creaturePtr), s_creaturePool->end ()));
 			s_creature = 0;
 			purgePool (true);
 			return true;

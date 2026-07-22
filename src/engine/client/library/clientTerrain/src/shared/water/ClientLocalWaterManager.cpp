@@ -786,34 +786,21 @@ ClientLocalWaterManager::ClientLocalWaterManager (const Appearance& appearance) 
 
 ClientLocalWaterManager::~ClientLocalWaterManager ()
 {
-	clearRebuildableWaterPrimitives ();
-
 #ifdef _DEBUG
 	DebugFlags::unregisterFlag(ms_noRenderWater);
 #endif
 
-	delete m_localShaderPrimitiveDefaultList;
-	m_localShaderPrimitiveDefaultList = 0;
-
-	delete m_localShaderPrimitiveRibbonStripList;
-	m_localShaderPrimitiveRibbonStripList = 0;
-}
-
-//-------------------------------------------------------------------
-
-void ClientLocalWaterManager::clearRebuildableWaterPrimitives ()
-{
-	if (!m_localShaderPrimitiveDefaultList)
-		m_localShaderPrimitiveDefaultList = NON_NULL (new LocalShaderPrimitiveDefaultList);
-
-	if (!m_localShaderPrimitiveRibbonStripList)
-		m_localShaderPrimitiveRibbonStripList = NON_NULL (new LocalShaderPrimitiveRibbonStripList);
-
 	std::for_each (m_localShaderPrimitiveDefaultList->begin (), m_localShaderPrimitiveDefaultList->end (), PointerDeleter ());
 	m_localShaderPrimitiveDefaultList->clear ();
 
+	delete m_localShaderPrimitiveDefaultList;
+	m_localShaderPrimitiveDefaultList = 0;
+
 	std::for_each (m_localShaderPrimitiveRibbonStripList->begin (), m_localShaderPrimitiveRibbonStripList->end (), PointerDeleter ());
 	m_localShaderPrimitiveRibbonStripList->clear ();
+
+	delete m_localShaderPrimitiveRibbonStripList;
+	m_localShaderPrimitiveRibbonStripList = 0;
 }
 
 //-------------------------------------------------------------------
@@ -979,10 +966,25 @@ void ClientLocalWaterManager::addRibbonStrip (char const * debugName, const char
 void ClientLocalWaterManager::alter (float time)
 {
 	NOT_NULL (m_localShaderPrimitiveDefaultList);
-	std::for_each (m_localShaderPrimitiveDefaultList->begin (), m_localShaderPrimitiveDefaultList->end (), std::bind2nd (std::mem_fun (&LocalShaderPrimitiveDefault::alter), time));
+	std::for_each(
+		m_localShaderPrimitiveDefaultList->begin(),
+		m_localShaderPrimitiveDefaultList->end(),
+		[time](LocalShaderPrimitiveDefault* p)
+		{
+			p->alter(time);
+		}
+	);
 
 	NOT_NULL (m_localShaderPrimitiveRibbonStripList);
-	std::for_each (m_localShaderPrimitiveRibbonStripList->begin (), m_localShaderPrimitiveRibbonStripList->end (), std::bind2nd (std::mem_fun (&LocalShaderPrimitiveRibbonStrip::alter), time));
+	std::for_each(
+		m_localShaderPrimitiveRibbonStripList->begin(),
+		m_localShaderPrimitiveRibbonStripList->end(),
+		[time](LocalShaderPrimitiveRibbonStrip* p)
+		{
+			p->alter(time);
+		}
+	);
+
 }
 
 //-------------------------------------------------------------------

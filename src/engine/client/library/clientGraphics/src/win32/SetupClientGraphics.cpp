@@ -18,7 +18,6 @@
 #include "clientGraphics/DynamicVertexBuffer.h"
 #include "clientGraphics/Graphics.h"
 #include "clientGraphics/GraphicsOptionTags.h"
-#include "clientGraphics/RenderBatchManager.h"
 #include "clientGraphics/RenderWorld.h"
 #include "clientGraphics/ScreenShotHelper.h"
 #include "clientGraphics/ShaderCapability.h"
@@ -113,10 +112,8 @@ bool SetupClientGraphics::install(const Data &data)
 
 		Texture::install();
 
-		// God Client terrain / city overlays use Line3dDebugPrimitive in Release; pool must exist or operator new/delete fault.
-		Line3dDebugPrimitive::install ();
-
 #ifdef _DEBUG
+		Line3dDebugPrimitive::install ();
 		Line2dDebugPrimitive::install ();
 		FrameDebugPrimitive::install ();
 		FrustumDebugPrimitive::install ();
@@ -238,7 +235,6 @@ bool SetupClientGraphics::install(const Data &data)
 		TextureList::addCleanupCallbackFunction(CellProperty::releaseWorldCellPropertyEnvironmentTexture);
 
 		RenderWorld::install();
-		RenderBatchManager::install();
 	}
 
 	StaticVertexBuffer::install();

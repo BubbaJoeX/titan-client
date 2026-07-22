@@ -198,16 +198,11 @@ void Report::vprintf(const char *format, va_list va)
 {
 	char buffer[8 * 1024];
 
-	static const char prefix[] = "[Titan] ";
-	static const int prefixLen = sizeof(prefix) - 1;
-
-	memcpy(buffer, prefix, prefixLen);
-
 	// make sure the buffer is always NULL terminated
 	buffer[sizeof(buffer)-1] = '\0';
 
-	// format the string into the space after the prefix
-	IGNORE_RETURN(vsnprintf(buffer + prefixLen, sizeof(buffer) - prefixLen - 1, format, va));
+	// format the string
+	IGNORE_RETURN(vsnprintf(buffer, sizeof(buffer)-1, format, va));
 
 	// handle overflow reasonably nicely
 	if (strlen(buffer) == sizeof(buffer)-1)
@@ -217,6 +212,25 @@ void Report::vprintf(const char *format, va_list va)
 	}
 
 	puts(buffer);
+
+	// Also tee to logs/warning.log so issues are visible after the fact.
+	// Open lazily on first call; keep it open for the lifetime of the
+	// process so we don't pay open()/close() per WARNING.
+	static FILE * s_warningLog = NULL;
+	static bool s_warningLogTried = false;
+	if (!s_warningLogTried)
+	{
+		s_warningLogTried = true;
+		s_warningLog = fopen("logs/warning.log", "w");
+	}
+	if (s_warningLog)
+	{
+		fputs(buffer, s_warningLog);
+		size_t const len = strlen(buffer);
+		if (len == 0 || buffer[len-1] != '\n')
+			fputc('\n', s_warningLog);
+		fflush(s_warningLog);
+	}
 }
 
 // ----------------------------------------------------------------------

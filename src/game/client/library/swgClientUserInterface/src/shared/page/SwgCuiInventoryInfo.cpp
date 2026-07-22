@@ -227,6 +227,10 @@ m_leftPaneStartWidth(0)
 		m_viewer->setCameraTransformToObj  (true);
 		m_viewer->setCameraLodBias         (3.0f);
 		m_viewer->setCameraLodBiasOverride (true);
+
+		UIBaseObject * const viewerParent = m_viewer->GetParent ();
+		if (viewerParent && viewerParent->IsA (TUIPage))
+			IGNORE_RETURN (static_cast<UIPage *>(viewerParent)->MoveChild (m_viewer, UIBaseObject::Top));
 	}
 	
 	m_label->SetPreLocalized          (true);
@@ -353,8 +357,17 @@ void SwgCuiInventoryInfo::setInfoObject (Object * object, bool requestAttributeU
 		}
 	}
 
-	if (object && requestAttributeUpdate && object->getNetworkId () != NetworkId::cms_invalid)
-		ObjectAttributeManager::requestUpdate (object->getNetworkId ());
+	//-- never request server attributes for client-local (fake) ids; draft schematics,
+	//-- preview objects, and other UI-only objects use these and the server has no such
+	//-- object.  Without this guard every row switch / examine update spams
+	//-- getAttributesBatch with bogus ids and the server invalidates open containers.
+	if (object && requestAttributeUpdate)
+	{
+		NetworkId const & objId = object->getNetworkId ();
+		if ((objId != NetworkId::cms_invalid)
+			&& (Game::getSinglePlayer () || !ClientObject::isFakeNetworkId (objId)))
+			ObjectAttributeManager::requestUpdate (objId);
+	}
 
 	ClientObject * const clientObject = object ? object->asClientObject (): 0;
 	
@@ -444,13 +457,11 @@ void SwgCuiInventoryInfo::setInfoObject (Object * object, bool requestAttributeU
 
 	updateAttributeFlags();
 
-	if (PlayerObject::isAdmin ())
-	{
-		NetworkId nid = NetworkId::cms_invalid;
-		if (object)
-			nid = object->getNetworkId ();
-		updateGodObjScriptTable (nid);
-	}
+	//-- god objvar tables are populated from cached attributes only; do not trigger
+	//-- network fetches here (setInfoObject runs on every craft row switch and examine
+	//-- update).  Admin tables refresh when attributes arrive via the normal watcher.
+	if (PlayerObject::isAdmin () && object)
+		updateGodObjScriptTable (object->getNetworkId ());
 
 	packExamineScrollContent(m_content);
 
@@ -580,13 +591,6 @@ void SwgCuiInventoryInfo::update (float)
 	{
 		ObjectAttributeManager::stopWatching(this);
 		return;
-	}
-
-	if (m_viewer)
-	{
-		UIBaseObject * const p = m_viewer->GetParent ();
-		if (p && p->IsA (TUIPage))
-			IGNORE_RETURN (static_cast<UIPage *>(p)->MoveChild (m_viewer, UIBaseObject::Bottom));
 	}
 
 	if (!m_isPlayer) 
@@ -951,8 +955,20 @@ void SwgCuiInventoryInfo::updateGodObjScriptTable (NetworkId const & id)
 	if (id == NetworkId::cms_invalid)
 		return;
 
+	//-- never request attributes for client-local (fake) ids, e.g. draft schematic display
+	//-- objects; the server has no such object.  This mirrors the fake-id guard used for
+	//-- formatDescription in setInfoObject.  Without it, every row switch in the draft
+	//-- schematics window sends a getAttributesBatch request for a bogus id to the server.
+	if (!Game::getSinglePlayer () && ClientObject::isFakeNetworkId (id))
+		return;
+
+	//-- pages without god tables (e.g. the crafting draft info pane) have nothing to show;
+	//-- skip so getAttributes cannot fire attribute requests as a side effect
+	if (!m_godAttribsPage && !m_godScriptvarsPage)
+		return;
+
 	ObjectAttributeManager::AttributeVector av;
-	if (!ObjectAttributeManager::getAttributes (id, av, false, true))
+	if (!ObjectAttributeManager::getAttributes (id, av, false, false))
 		return;
 
 	ObjectAttributeManager::AttributeVector objRows;

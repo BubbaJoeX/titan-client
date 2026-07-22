@@ -3605,19 +3605,9 @@ bool FloorMesh::dropTest ( FloorLocator const & testLoc, FloorLocator & outLoc )
 
 bool FloorMesh::dropTest ( FloorLocator const & testLoc, float hopHeight, FloorLocator & outLoc ) const
 {
-	return dropTest( testLoc, hopHeight, outLoc, Vector::negativeUnitY );
-}
-
-// ----------
-
-bool FloorMesh::dropTest ( FloorLocator const & testLoc, float hopHeight, FloorLocator & outLoc, Vector const & dropDir_l ) const
-{
 	Vector point = testLoc.getPosition_l();
 
-	Vector lineDir = dropDir_l;
-	IGNORE_RETURN( lineDir.normalize() );
-
-	Line3d line( point, lineDir );
+	Line3d line(point,-Vector::unitY);
 
 	FloorLocator closestAbove;
 	FloorLocator closestBelow;
@@ -3703,19 +3693,9 @@ bool FloorMesh::dropTest ( FloorLocator const & testLoc, float hopHeight, FloorL
 
 bool FloorMesh::dropTest ( FloorLocator const & testLoc, int triID, FloorLocator & outLoc ) const
 {
-	return dropTest( testLoc, triID, outLoc, Vector::negativeUnitY );
-}
-
-// ----------
-
-bool FloorMesh::dropTest ( FloorLocator const & testLoc, int triID, FloorLocator & outLoc, Vector const & dropDir_l ) const
-{
 	Vector point = testLoc.getPosition_l();
 
-	Vector lineDir = dropDir_l;
-	IGNORE_RETURN( lineDir.normalize() );
-
-	Line3d line( point, lineDir );
+	Line3d line(point,-Vector::unitY);
 
 	FloorLocator tempLoc;
 

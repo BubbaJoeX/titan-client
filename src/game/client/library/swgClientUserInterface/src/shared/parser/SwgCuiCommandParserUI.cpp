@@ -71,7 +71,7 @@
 #include "LocalizationManager.h"
 
 #include <cstdio>
-#include <hash_map>
+#include <unordered_map>
 #include <list>
 #include <map>
 #include <set>

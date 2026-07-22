@@ -12,6 +12,7 @@
 #include "sharedDebug/DebugFlags.h"
 #include "sharedFoundation/ConfigFile.h"
 
+#include <climits>
 #include <cstdlib>
 
 // ======================================================================
@@ -47,6 +48,8 @@ namespace
 	bool  s_logStringSelectorAnimation;
 
 	bool  s_renderPlaybackScriptFeedback;
+
+	bool  s_forceHighestLod;
 
 	bool  s_lodManagerEnable;
 	float s_lodManagerFirstLodCount;
@@ -128,9 +131,22 @@ void ConfigClientSkeletalAnimation::install()
 	KEY_BOOL      (logSameTrackTrumping, false);
 	REGISTER_FLAG (logSameTrackTrumping);
 
+	// x64: force LOD 0 until screen-fraction + CharacterLodManager paths are validated
+	// on 64-bit (retail distance LOD caused persistent lowest-LOD lock in world + previews).
+#if defined(_WIN64)
+	KEY_BOOL      (forceHighestLod, true);
+#else
+	KEY_BOOL      (forceHighestLod, false);
+#endif
+
 	KEY_BOOL      (lodManagerEnable, true);
 	KEY_FLOAT     (lodManagerFirstLodCount, 2.5f);
 	KEY_INT       (lodManagerEveryOtherFrameSkinningCharacterCount, 10);
+#if defined(_WIN64)
+	// Count N means "first N characters skip every-other-frame skinning"; use max
+	// so no character gets the optimization on x64 (stale VB bytes => vertex spikes).
+	s_lodManagerEveryOtherFrameSkinningCharacterCount = INT_MAX;
+#endif
 	KEY_INT       (lodManagerHardSkinningCharacterCount, 5);
 
 	KEY_INT       (skipActionGenerationFrameCount, 30 * 1);
@@ -297,6 +313,13 @@ bool ConfigClientSkeletalAnimation::getAllowSameTrackTrumping()
 bool ConfigClientSkeletalAnimation::getLogSameTrackTrumping()
 {
 	return s_logSameTrackTrumping;
+}
+
+// ----------------------------------------------------------------------
+
+bool ConfigClientSkeletalAnimation::getForceHighestLod()
+{
+	return s_forceHighestLod;
 }
 
 // ----------------------------------------------------------------------

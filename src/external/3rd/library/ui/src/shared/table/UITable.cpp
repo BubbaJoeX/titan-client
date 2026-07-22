@@ -820,7 +820,6 @@ void UITable::Render( UICanvas & canvas ) const
 				{
 					widgetToRender->RenderText(canvas);
 				}
-				widgetToRender->RestoreRenderTargetViewportAfterRender ();
 				canvas.PopState ();
 			}
 		}

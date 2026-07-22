@@ -267,9 +267,7 @@ const ShaderTemplate *ShaderTemplateList::fetch(Iff &iff)
 const Shader *ShaderTemplateList::fetchShader(const char *name)
 {
 	const ShaderTemplate *shaderTemplate = fetch(name);
-	if (!shaderTemplate)
-		return NULL;
-	const Shader *shader = shaderTemplate->fetchShader();
+		const Shader *shader = shaderTemplate->fetchShader();
 	shaderTemplate->release();
 	return shader;
 }
@@ -279,8 +277,6 @@ const Shader *ShaderTemplateList::fetchShader(const char *name)
 const Shader *ShaderTemplateList::fetchShader(const CrcString &name)
 {
 	const ShaderTemplate *shaderTemplate = fetch(name);
-	if (!shaderTemplate)
-		return NULL;
 	const Shader *shader = shaderTemplate->fetchShader();
 	shaderTemplate->release();
 	return shader;
@@ -291,8 +287,6 @@ const Shader *ShaderTemplateList::fetchShader(const CrcString &name)
 Shader *ShaderTemplateList::fetchModifiableShader(const char *name)
 {
 	const ShaderTemplate *shaderTemplate = fetch(name);
-	if (!shaderTemplate)
-		return NULL;
 	Shader *shader = shaderTemplate->fetchModifiableShader();
 	shaderTemplate->release();
 	return shader;
@@ -303,8 +297,6 @@ Shader *ShaderTemplateList::fetchModifiableShader(const char *name)
 Shader *ShaderTemplateList::fetchModifiableShader(const CrcString &name)
 {
 	const ShaderTemplate *shaderTemplate = fetch(name);
-	if (!shaderTemplate)
-		return NULL;
 	Shader *shader = shaderTemplate->fetchModifiableShader();
 	shaderTemplate->release();
 	return shader;
@@ -315,8 +307,6 @@ Shader *ShaderTemplateList::fetchModifiableShader(const CrcString &name)
 const Shader *ShaderTemplateList::fetchShader(Iff &iff)
 {
 	const ShaderTemplate *shaderTemplate = fetch(iff);
-	if (!shaderTemplate)
-		return NULL;
 	const Shader *shader = shaderTemplate->fetchShader();
 	shaderTemplate->release();
 	return shader;
@@ -327,8 +317,6 @@ const Shader *ShaderTemplateList::fetchShader(Iff &iff)
 Shader *ShaderTemplateList::fetchModifiableShader(Iff &iff)
 {
 	const ShaderTemplate *shaderTemplate = fetch(iff);
-	if (!shaderTemplate)
-		return NULL;
 	Shader *shader = shaderTemplate->fetchModifiableShader();
 	shaderTemplate->release();
 	return shader;

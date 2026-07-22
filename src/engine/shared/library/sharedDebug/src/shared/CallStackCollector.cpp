@@ -20,7 +20,6 @@
 #include "sharedFoundation/PersistentCrcString.h"
 
 #include <algorithm>
-#include <cstdint>
 #include <map>
 #include <vector>
 
@@ -50,7 +49,7 @@ namespace CallStackCollectorNamespace
 		~Node();
 
 		CrcString const & getName() const;
-		void addCallStack(std::uintptr_t * callStack);
+		void addCallStack(uint32 * callStack);
 
 		void debugReport() const;
 
@@ -64,7 +63,7 @@ namespace CallStackCollectorNamespace
 
 		public:
 
-			std::uintptr_t * m_callStack;
+			uint32 * m_callStack;
 			int m_calls;
 		};
 
@@ -126,10 +125,10 @@ CrcString const & CallStackCollectorNamespace::Node::getName() const
 
 // ----------------------------------------------------------------------
 
-void CallStackCollectorNamespace::Node::addCallStack(std::uintptr_t * const callStack)
+void CallStackCollectorNamespace::Node::addCallStack(uint32 * const callStack)
 {
 	//-- Compute crc of memory
-	uint32 const crc = Crc::calculate(callStack, static_cast<int>(sizeof(std::uintptr_t) * static_cast<size_t>(CALLSTACK_DEPTH)));
+	uint32 const crc = Crc::calculate(callStack, sizeof(uint32) * CALLSTACK_DEPTH);
 
 	//-- Find callstack in list
 	CallStackEntryMap::iterator iter = m_callStackEntryMap.find(crc);
@@ -141,8 +140,8 @@ void CallStackCollectorNamespace::Node::addCallStack(std::uintptr_t * const call
 	else
 	{
 		//-- Create new callstack
-		std::uintptr_t * const newCallStack = new std::uintptr_t[CALLSTACK_DEPTH];
-		memcpy(newCallStack, callStack, sizeof(std::uintptr_t) * static_cast<size_t>(CALLSTACK_DEPTH));
+		uint32 * const newCallStack = new uint32[CALLSTACK_DEPTH];
+		memcpy(newCallStack, callStack, sizeof(uint32) * CALLSTACK_DEPTH);
 
 		CallStackEntry callStackEntry;
 		callStackEntry.m_callStack = newCallStack;
@@ -181,7 +180,7 @@ void CallStackCollectorNamespace::Node::debugReport() const
 			if (DebugHelp::lookupAddress(callStackEntry->m_callStack[j], libName, fileName, sizeof(fileName), line))
 				REPORT_LOG(true, ("  %s(%d) : caller %d\n", fileName, line, j - 1));
 			else
-				REPORT_LOG(true, ("  unknown(%p) : caller %d\n", reinterpret_cast<void const *>(callStackEntry->m_callStack[j]), j - 1));
+				REPORT_LOG(true, ("  unknown(0x%08X) : caller %d\n", static_cast<int>(callStackEntry->m_callStack[j]), j - 1));
 		}
 	}
 }
@@ -219,7 +218,7 @@ void CallStackCollector::sample(char const * const name)
 	}
 
 	//-- Sample the callstack
-	std::uintptr_t callStack[CALLSTACK_DEPTH];
+	uint32 callStack[CALLSTACK_DEPTH];
 	DebugHelp::getCallStack(&callStack[0], CALLSTACK_DEPTH);
 
 	//-- Add to the node

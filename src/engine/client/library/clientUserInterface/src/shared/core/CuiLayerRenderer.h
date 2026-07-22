@@ -66,6 +66,7 @@ public:
 
 	static void            flushRenderQueue ();
 	static void            flushRenderQueueIfCurShader (const Shader & shader);
+	static void            restoreUiDrawState ();
 
 #if PRODUCTION == 0
 	static const Metrics & getMetrics ();

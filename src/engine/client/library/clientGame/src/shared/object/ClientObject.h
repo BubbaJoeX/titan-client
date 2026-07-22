@@ -163,6 +163,10 @@ public:
 	virtual const ClientDataFile* getClientData () const;
 	void                   reapplyClientData ();
 
+	// x64: tracks whether ClientDataFile-baked wearables have been applied.
+	bool                  getClientDataFileWearablesApplied () const;
+	void                  setClientDataFileWearablesApplied (bool applied);
+
 	TerrainGenerator::Layer* getLayer () const;
 	void                     setLayer(TerrainGenerator::Layer* layer);
 
@@ -296,6 +300,7 @@ private:
 	Archive::AutoDeltaVariableCallback<int, Callbacks::BankBalance, ClientObject> m_bankBalance;
 
 	bool                             m_clientCached : 1;
+	bool                             m_clientDataFileWearablesApplied : 1;
 	uint32                           m_uniqueId;
 	ObjectVector                    *m_auxilliaryObjectVector;
 

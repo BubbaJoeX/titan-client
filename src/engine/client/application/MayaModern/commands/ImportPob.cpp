@@ -1,8 +1,10 @@
 #include "ImportPob.h"
 #include "ImportPathResolver.h"
 #include "ImportLodMesh.h"
+#include "MayaUtility.h"
 #include "MayaSceneBuilder.h"
 #include "PobAuthoringShared.h"
+#include "SwgImportTrace.h"
 #include "flr.h"
 
 #include "Iff.h"
@@ -30,13 +32,16 @@
 #include <maya/MFnDirectionalLight.h>
 #include <maya/MFnLight.h>
 #include <maya/MFnPointLight.h>
+#include <maya/MFnMesh.h>
+#include <maya/MFloatPointArray.h>
+#include <maya/MIntArray.h>
+#include <maya/MDagModifier.h>
 
 #include <string>
 #include <vector>
 #include <cstdio>
 #include <cstdlib>
 #include <cstdarg>
-#include <sys/stat.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -46,16 +51,61 @@ namespace
 {
     static void pobLog(const char* fmt, ...)
     {
-        char buf[1024];
         va_list args;
         va_start(args, fmt);
-        vsnprintf(buf, sizeof(buf), fmt, args);
+        SwgImportTrace::logV("ImportPob", fmt, args);
         va_end(args);
-        std::string msg = std::string("[ImportPob] ") + buf + "\n";
-        std::cerr << msg;
-#ifdef _WIN32
-        OutputDebugStringA(msg.c_str());
-#endif
+    }
+
+    /** Suspend viewport refresh during bulk import; restore on scope exit. */
+    struct ImportRefreshGuard
+    {
+        ImportRefreshGuard()
+        {
+            (void)MGlobal::executeCommand("refresh -suspend true", false, false);
+        }
+        ~ImportRefreshGuard()
+        {
+            SwgImportTrace::stage("import refresh unsuspend begin");
+            (void)MGlobal::executeCommand("refresh -suspend false", false, false);
+            SwgImportTrace::stage("import refresh unsuspend OK");
+        }
+    };
+
+    static MStatus createNamedChildTransform(MObject parentObj, const char* name, MObject& outTransform)
+    {
+        MStatus st;
+        MFnTransform fn;
+        outTransform = fn.create(parentObj, &st);
+        if (!st)
+            return st;
+        MStatus nameSt;
+        (void)fn.setName(MString(name), &nameSt);
+        return nameSt;
+    }
+
+    static MStatus reparentTransform(MObject childTransform, MObject newParent)
+    {
+        MDagModifier mod;
+        MStatus st = mod.reparentNode(childTransform, newParent);
+        if (!st)
+            return st;
+        return mod.doIt();
+    }
+
+    static void ensureBoolAttr(MFnDependencyNode& dep, const char* name, bool value)
+    {
+        MPlug p = dep.findPlug(name, true);
+        if (p.isNull())
+        {
+            MFnNumericAttribute nAttr;
+            MObject a = nAttr.create(name, name, MFnNumericData::kBoolean);
+            nAttr.setStorable(true);
+            if (dep.addAttribute(a))
+                p = dep.findPlug(name, true);
+        }
+        if (!p.isNull())
+            p.setBool(value);
     }
 
     static const Tag TAG_PRTO = TAG(P,R,T,O);
@@ -89,6 +139,8 @@ namespace
         float quadraticAttenuation = 0.f;
     };
 
+    static void skipOneIffBlock(Iff& iff);
+
     struct PortalGeometry
     {
         std::vector<Vector> vertices;
@@ -97,6 +149,11 @@ namespace
         void loadFromPrtl(Iff& iff)
         {
             const int numVerts = iff.read_int32();
+            if (numVerts < 0 || numVerts > 65536)
+            {
+                pobLog("PRTL: invalid vertex count %d", numVerts);
+                return;
+            }
             vertices.resize(static_cast<size_t>(numVerts));
             for (int j = 0; j < numVerts; ++j)
                 vertices[j] = iff.read_floatVector();
@@ -114,18 +171,42 @@ namespace
         void loadFromIdtl(Iff& iff)
         {
             iff.enterForm(TAG_IDTL);
+            const Tag idtlVersion = iff.getCurrentName();
+            if (idtlVersion != TAG_0000)
+            {
+                pobLog("IDTL: unsupported version, skipping");
+                skipOneIffBlock(iff);
+                iff.exitForm(TAG_IDTL);
+                return;
+            }
             iff.enterForm(TAG_0000);
             iff.enterChunk(TAG_VERT);
-            const int numVerts = iff.read_int32();
+            const int numVerts = iff.getChunkLengthLeft(12) / 12;
+            if (numVerts < 0 || numVerts > 65536)
+            {
+                pobLog("IDTL: invalid vertex count %d", numVerts);
+                iff.exitChunk(TAG_VERT);
+                iff.exitForm(TAG_0000);
+                iff.exitForm(TAG_IDTL);
+                return;
+            }
             vertices.resize(static_cast<size_t>(numVerts));
-            for (int j = 0; j < numVerts; ++j)
-                vertices[static_cast<size_t>(j)] = iff.read_floatVector();
+            if (numVerts > 0)
+                iff.read_floatVector(numVerts, vertices.data());
             iff.exitChunk(TAG_VERT);
             iff.enterChunk(TAG_INDX);
-            const int numIndices = iff.read_int32();
+            const int numIndices = iff.getChunkLengthLeft(4) / 4;
+            if (numIndices < 0 || numIndices > 196608)
+            {
+                pobLog("IDTL: invalid index count %d", numIndices);
+                iff.exitChunk(TAG_INDX);
+                iff.exitForm(TAG_0000);
+                iff.exitForm(TAG_IDTL);
+                return;
+            }
             indices.resize(static_cast<size_t>(numIndices));
             for (int j = 0; j < numIndices; ++j)
-                indices[j] = iff.read_int32();
+                indices[static_cast<size_t>(j)] = iff.read_int32();
             iff.exitChunk(TAG_INDX);
             iff.exitForm(TAG_0000);
             iff.exitForm(TAG_IDTL);
@@ -172,13 +253,54 @@ namespace
 
     static std::string resolveTreeFilePath(const std::string& treeFilePath, const std::string& inputFilename)
     {
-        if (treeFilePath.empty()) return std::string();
+        if (treeFilePath.empty())
+            return std::string();
+
+        std::string normalized = treeFilePath;
+        for (auto& c : normalized)
+            if (c == '\\')
+                c = '/';
+        if (normalized.size() >= 2 && normalized[1] == ':')
+            return normalized;
+
+        std::string probe = normalized;
+        if (probe.find("appearance/") != 0 && probe.find("shader/") != 0 &&
+            probe.find("texture/") != 0 && probe.find("effect/") != 0)
+            probe = "appearance/" + probe;
+
+        if (!inputFilename.empty())
+        {
+            std::string normIn = inputFilename;
+            for (auto& c : normIn)
+                if (c == '\\')
+                    c = '/';
+            const auto cgPos = normIn.find("compiled/game/");
+            if (cgPos != std::string::npos)
+            {
+                const std::string baseDir = normIn.substr(0, cgPos + 14);
+                const std::string resolved = baseDir + probe;
+                if (MayaUtility::fileExists(resolved))
+                    return resolved;
+                std::string resolvedBs = resolved;
+                for (char& c : resolvedBs)
+                    if (c == '/')
+                        c = '\\';
+                if (resolvedBs != resolved && MayaUtility::fileExists(resolvedBs))
+                    return resolvedBs;
+            }
+        }
+
+        const std::string fromGame = resolveGameAssetPath(probe);
+        if (!fromGame.empty())
+            return fromGame;
+
         std::string baseDir;
         const char* envExportRoot = getenv("TITAN_EXPORT_ROOT");
         if (envExportRoot && envExportRoot[0])
         {
             baseDir = envExportRoot;
-            if (!baseDir.empty() && baseDir.back() != '/') baseDir += '/';
+            if (!baseDir.empty() && baseDir.back() != '/')
+                baseDir += '/';
         }
         else
         {
@@ -186,23 +308,30 @@ namespace
             if (envDataRoot && envDataRoot[0])
             {
                 baseDir = envDataRoot;
-                if (!baseDir.empty() && baseDir.back() != '/') baseDir += '/';
+                if (!baseDir.empty() && baseDir.back() != '/')
+                    baseDir += '/';
             }
             else
             {
                 std::string norm = inputFilename;
-                for (auto& c : norm) if (c == '\\') c = '/';
+                for (auto& c : norm)
+                    if (c == '\\')
+                        c = '/';
                 const auto cgPos = norm.find("compiled/game/");
                 if (cgPos != std::string::npos)
                     baseDir = norm.substr(0, cgPos + 14);
             }
         }
-        if (baseDir.empty()) return treeFilePath;
-        std::string path = treeFilePath;
+        if (baseDir.empty())
+            return normalized;
+
+        std::string path = normalized;
         if (path.find("appearance/") != 0 && path.find("appearance\\") != 0)
             path = "appearance/" + path;
         std::string resolved = baseDir + path;
-        for (auto& c : resolved) if (c == '\\') c = '/';
+        for (auto& c : resolved)
+            if (c == '\\')
+                c = '/';
         return resolved;
     }
 
@@ -386,28 +515,17 @@ namespace
         if (!st)
             pobLog("  assignPobCollisionPreviewMaterial failed for portal mesh");
 
-        std::string shapeFullPath = meshShapePath.fullPathName().asChar();
-        MString addCmd = "addAttr -ln portal -at bool \"";
-        addCmd += shapeFullPath.c_str();
-        addCmd += "\"";
-        MGlobal::executeCommand(addCmd);
-        MString setCmd = "setAttr \"";
-        setCmd += shapeFullPath.c_str();
-        setCmd += ".portal\" 1";
-        MGlobal::executeCommand(setCmd);
+        MFnDependencyNode shapeDepFn(meshShapePath.node());
+        ensureBoolAttr(shapeDepFn, "portal", true);
 
         meshShapePath.pop(1);
         outPortalTransformPath = meshShapePath;
         MFnDependencyNode transformDepFn(outPortalTransformPath.node());
         addPortalAuthoringAttrs(transformDepFn, pd);
 
-        MFnDagNode parentFn(parentObj);
-        MString parentCmd = "parent \"";
-        parentCmd += outPortalTransformPath.fullPathName();
-        parentCmd += "\" \"";
-        parentCmd += parentFn.fullPathName();
-        parentCmd += "\"";
-        MGlobal::executeCommand(parentCmd);
+        st = reparentTransform(outPortalTransformPath.node(), parentObj);
+        if (!st)
+            return st;
         PobAuthoring::applyDoorHardpointAttributes(outPortalTransformPath.node(), pd.hasDoorHardpoint, pd.doorTransform);
         return MS::kSuccess;
     }
@@ -484,17 +602,9 @@ namespace
             return MS::kSuccess;
         MStatus st;
         MFnTransform cellFn(cellObj);
-        MString cmd = "createNode transform -n \"lights\" -p \"" + cellFn.fullPathName() + "\"";
-        MStringArray result;
-        MGlobal::executeCommand(cmd, result);
         MObject lightsGroup;
-        if (result.length() > 0)
-        {
-            MSelectionList sel;
-            if (sel.add(result[0]) == MS::kSuccess)
-                sel.getDependNode(0, lightsGroup);
-        }
-        if (lightsGroup.isNull())
+        st = createNamedChildTransform(cellObj, "lights", lightsGroup);
+        if (!st || lightsGroup.isNull())
             return MS::kFailure;
 
         for (size_t i = 0; i < lights.size(); ++i)
@@ -590,6 +700,10 @@ MStatus ImportPob::doIt(const MArgList& args)
         return MS::kFailure;
     }
 
+    SwgImportTrace::beginSession("importPob", filename.c_str());
+    SwgImportTrace::stage("importPob begin");
+    ImportRefreshGuard refreshGuard;
+
     pobLog("Starting import: %s", filename.c_str());
     filename = resolveImportPath(filename);
     pobLog("Resolved path: %s", filename.c_str());
@@ -637,13 +751,23 @@ MStatus ImportPob::doIt(const MArgList& args)
     iff.exitChunk(TAG_DATA);
 
     pobLog("PRTO v%d: %d portals, %d cells", version, numberOfPortals, numberOfCells);
+    SwgImportTrace::stage("PRTO header parsed");
 
     std::vector<PortalGeometry> portalGeometries(static_cast<size_t>(numberOfPortals));
     iff.enterForm(TAG_PRTS);
     for (int i = 0; i < numberOfPortals && iff.getNumberOfBlocksLeft() > 0; ++i)
     {
-        if (iff.isCurrentForm() && iff.getCurrentName() == TAG_IDTL)
-            portalGeometries[static_cast<size_t>(i)].loadFromIdtl(iff);
+        SwgImportTrace::stagef("PRTS portal %d begin", i);
+        if (version >= 4)
+        {
+            if (iff.isCurrentForm() && iff.getCurrentName() == TAG_IDTL)
+                portalGeometries[static_cast<size_t>(i)].loadFromIdtl(iff);
+            else
+            {
+                pobLog("PRTS portal %d: expected IDTL form in PRTO v%d, skipping block", i, version);
+                skipOneIffBlock(iff);
+            }
+        }
         else if (!iff.isCurrentForm() && iff.getCurrentName() == TAG_PRTL)
         {
             iff.enterChunk(TAG_PRTL);
@@ -652,11 +776,13 @@ MStatus ImportPob::doIt(const MArgList& args)
         }
         else
         {
-            pobLog("PRTS portal %d: skipping unexpected block (tag mismatch)", i);
+            pobLog("PRTS portal %d: expected PRTL chunk in PRTO v%d, skipping block", i, version);
             skipOneIffBlock(iff);
         }
+        SwgImportTrace::stagef("PRTS portal %d OK (%zu verts)", i, portalGeometries[static_cast<size_t>(i)].vertices.size());
     }
     iff.exitForm(TAG_PRTS);
+    SwgImportTrace::stage("portal geometry parsed");
 
     std::string rootName = filename;
     const auto lastSlash = rootName.find_last_of("/\\");
@@ -688,10 +814,23 @@ MStatus ImportPob::doIt(const MArgList& args)
     iff.enterForm(TAG_CELS);
     for (int i = 0; i < numberOfCells; ++i)
     {
+        SwgImportTrace::stagef("cell r%d parse begin", i);
+
         iff.enterForm(TAG_CELL);
         Tag cellVersionTag = iff.getCurrentName();
+        const bool cellVersionKnown =
+            cellVersionTag == TAG_0001 || cellVersionTag == TAG_0002 || cellVersionTag == TAG_0003 ||
+            cellVersionTag == TAG_0004 || cellVersionTag == TAG_0005;
+        if (!cellVersionKnown)
+        {
+            pobLog("Cell r%d: unsupported CELL version, skipping", i);
+            skipOneIffBlock(iff);
+            iff.exitForm(TAG_CELL);
+            continue;
+        }
+
         int cellVersion = (cellVersionTag == TAG_0001) ? 1 : (cellVersionTag == TAG_0002) ? 2 :
-            (cellVersionTag == TAG_0003) ? 3 : (cellVersionTag == TAG_0004) ? 4 : (cellVersionTag == TAG_0005) ? 5 : 0;
+            (cellVersionTag == TAG_0003) ? 3 : (cellVersionTag == TAG_0004) ? 4 : 5;
 
         iff.enterForm(cellVersionTag);
 
@@ -759,6 +898,8 @@ MStatus ImportPob::doIt(const MArgList& args)
                 iff.enterForm(TAG_PRTL);
                 PortalData pd = readPortalDataFromPrtl(iff);
                 iff.exitForm(TAG_PRTL);
+                if (version == 2)
+                    pd.passable = !pd.passable;
                 if (pd.portalIndex >= 0 && pd.portalIndex < numberOfPortals)
                     cellPortalData.push_back(pd);
             }
@@ -767,6 +908,8 @@ MStatus ImportPob::doIt(const MArgList& args)
                 iff.enterForm();
                 iff.exitForm();
             }
+            else
+                skipOneIffBlock(iff);
         }
 
         std::vector<PobCellLight> cellLights;
@@ -794,34 +937,39 @@ MStatus ImportPob::doIt(const MArgList& args)
 
         pobLog("Cell r%d: appearance=%s floor=%s portals=%zu", i, appearanceName.c_str(), floorName.c_str(), cellPortalData.size());
 
+        MObject cellObj = cellTransforms[static_cast<size_t>(i)];
+        MObject meshTransformObj;
+        MObject portalsTransformObj;
+        MObject collisionTransformObj;
+        SwgImportTrace::stagef("cell r%d groups begin", i);
+        if (!createNamedChildTransform(cellObj, "mesh", meshTransformObj))
+            pobLog("  Failed to create mesh group");
+        if (!createNamedChildTransform(cellObj, "portals", portalsTransformObj))
+            pobLog("  Failed to create portals group");
+        if (!createNamedChildTransform(cellObj, "collision", collisionTransformObj))
+            pobLog("  Failed to create collision group");
+        SwgImportTrace::stagef("cell r%d groups OK", i);
+
         if (!appearanceName.empty())
         {
             std::string resolvedPath = resolveTreeFilePath(appearanceName, filename);
             resolvedPath = resolveLodOrAptPath(resolvedPath);
-            MObject cellObj = cellTransforms[static_cast<size_t>(i)];
-            MFnTransform cellFn(cellObj);
-            MString meshCmd = "createNode transform -n \"mesh\" -p \"" + cellFn.fullPathName() + "\"";
-            MStringArray meshResult;
-            status = MGlobal::executeCommand(meshCmd, meshResult);
-            MObject meshTransformObj;
-            std::string parentCellPath = std::string(cellFn.fullPathName().asChar()) + "|mesh";
-            if (status && meshResult.length() > 0)
+            std::string parentCellPath;
+            if (!meshTransformObj.isNull())
             {
-                MSelectionList sel;
-                if (sel.add(meshResult[0]) == MS::kSuccess)
-                {
-                    sel.getDependNode(0, meshTransformObj);
-                    parentCellPath = meshResult[0].asChar();
-                }
+                MFnDagNode meshDag(meshTransformObj);
+                parentCellPath = meshDag.fullPathName().asChar();
+            }
+            else
+            {
+                MFnTransform cellFn(cellObj);
+                parentCellPath = std::string(cellFn.fullPathName().asChar()) + "|mesh";
             }
 
+            SwgImportTrace::stagef("cell r%d importLodMesh begin: %s", i, resolvedPath.c_str());
             pobLog("  Loading mesh: %s -> %s", appearanceName.c_str(), resolvedPath.c_str());
-            MString cmd = "importLodMesh -i \"";
-            cmd += resolvedPath.c_str();
-            cmd += "\" -parent \"";
-            cmd += parentCellPath.c_str();
-            cmd += "\"";
-            status = MGlobal::executeCommand(cmd, true, true);
+            status = importLodMeshFile(resolvedPath, parentCellPath);
+            SwgImportTrace::stagef("cell r%d importLodMesh %s", i, status ? "OK" : "FAILED");
             pobLog("  importLodMesh %s", status ? "OK" : "FAILED");
             if (status && !meshTransformObj.isNull())
             {
@@ -843,19 +991,11 @@ MStatus ImportPob::doIt(const MArgList& args)
         if (!cellPortalData.empty())
         {
             pobLog("  Creating %zu portal(s)", cellPortalData.size());
-            MObject cellObj = cellTransforms[static_cast<size_t>(i)];
-            MFnTransform cellFn(cellObj);
-            MString cmd = "createNode transform -n \"portals\" -p \"" + cellFn.fullPathName() + "\"";
-            MStringArray result;
-            MGlobal::executeCommand(cmd, result);
-            MObject portalsObj;
-            if (result.length() > 0)
+            if (portalsTransformObj.isNull())
             {
-                MSelectionList sel;
-                if (sel.add(result[0]) == MS::kSuccess)
-                    sel.getDependNode(0, portalsObj);
+                pobLog("  Missing portals group");
             }
-            if (!portalsObj.isNull())
+            else
             {
                 for (size_t p = 0; p < cellPortalData.size(); ++p)
                 {
@@ -865,13 +1005,17 @@ MStatus ImportPob::doIt(const MArgList& args)
                         pg = &portalGeometries[static_cast<size_t>(geomIdx)];
                     char portalName[32];
                     sprintf(portalName, "p%zu", p);
+                    SwgImportTrace::stagef("cell r%d portal p%zu begin", i, p);
                     MDagPath portalXformPath;
-                    status = createPortalRepresentation(pg, portalName, portalsObj, cellPortalData[p], portalXformPath);
+                    status = createPortalRepresentation(pg, portalName, portalsTransformObj, cellPortalData[p], portalXformPath);
+                    SwgImportTrace::stagef("cell r%d portal p%zu %s", i, p, status ? "OK" : "FAILED");
                     if (!status)
                         pobLog("  Portal p%zu: createPortalRepresentation failed", p);
                 }
             }
         }
+
+        SwgImportTrace::stagef("cell r%d post-portals", i);
 
         if (!cellLights.empty())
         {
@@ -883,36 +1027,31 @@ MStatus ImportPob::doIt(const MArgList& args)
 
         if (!floorName.empty())
         {
+            SwgImportTrace::stagef("cell r%d floor resolve begin", i);
             std::string resolvedFloor = resolveTreeFilePath(floorName, filename);
             if (resolvedFloor.size() < 4 ||
                 (resolvedFloor.compare(resolvedFloor.size() - 4, 4, ".flr") != 0 &&
                  resolvedFloor.compare(resolvedFloor.size() - 4, 4, ".FLR") != 0))
                 resolvedFloor += ".flr";
 
-            struct stat st = {};
-            if (stat(resolvedFloor.c_str(), &st) != 0)
+            SwgImportTrace::stagef("cell r%d floor resolved: %s", i, resolvedFloor.c_str());
+
+            if (!MayaUtility::fileExists(resolvedFloor))
             {
                 pobLog("  Floor file not found, skipping: %s", resolvedFloor.c_str());
             }
             else
             {
+                SwgImportTrace::stagef("cell r%d floor load begin: %s", i, resolvedFloor.c_str());
                 pobLog("  Loading floor: %s", floorName.c_str());
-                MObject cellObj = cellTransforms[static_cast<size_t>(i)];
-                MFnTransform cellFn(cellObj);
-                MString cmd = "createNode transform -n \"collision\" -p \"" + cellFn.fullPathName() + "\"";
-                MStringArray result;
-                MGlobal::executeCommand(cmd, result);
-                MObject collisionObj;
-                MSelectionList collisionSel;
-                if (result.length() > 0)
+                if (collisionTransformObj.isNull())
                 {
-                    if (collisionSel.add(result[0]) == MS::kSuccess)
-                        collisionSel.getDependNode(0, collisionObj);
+                    pobLog("  Missing collision group");
                 }
-                if (!collisionObj.isNull())
+                else
                 {
                     MDagPath floorMeshPath;
-                    MStatus flrStatus = FlrTranslator::createMeshFromFlr(resolvedFloor.c_str(), "floor0", collisionObj, floorMeshPath);
+                    MStatus flrStatus = FlrTranslator::createMeshFromFlr(resolvedFloor.c_str(), "floor0", collisionTransformObj, floorMeshPath);
                     if (flrStatus)
                     {
                         pobLog("    Floor mesh loaded: %s", resolvedFloor.c_str());
@@ -934,19 +1073,27 @@ MStatus ImportPob::doIt(const MArgList& args)
                     else
                     {
                         pobLog("    Floor load failed, using fallback plane: %s", resolvedFloor.c_str());
-                        MFnDagNode collisionDagFn(collisionObj);
-                        std::string collisionPath = collisionDagFn.fullPathName().asChar();
-                        MGlobal::executeCommand("polyPlane -w 1 -h 1 -sx 1 -sy 1 -n \"floor0\"");
-                        collisionSel.clear();
-                        MGlobal::getActiveSelectionList(collisionSel);
-                        if (collisionSel.length() > 0)
+                        MFloatPointArray verts;
+                        verts.append(MFloatPoint(0.5f, 0.0f, 0.5f));
+                        verts.append(MFloatPoint(-0.5f, 0.0f, 0.5f));
+                        verts.append(MFloatPoint(-0.5f, 0.0f, -0.5f));
+                        verts.append(MFloatPoint(0.5f, 0.0f, -0.5f));
+                        MIntArray counts;
+                        counts.append(4);
+                        MIntArray connects;
+                        connects.append(0);
+                        connects.append(1);
+                        connects.append(2);
+                        connects.append(3);
+                        MFnMesh meshFn;
+                        MObject floorShape = meshFn.create(4, 1, verts, counts, connects, collisionTransformObj, &status);
+                        if (status && !floorShape.isNull())
                         {
+                            meshFn.setName(MString("floor0"));
                             MDagPath floorPath;
-                            collisionSel.getDagPath(0, floorPath);
-                            if (!floorPath.hasFn(MFn::kTransform)) floorPath.pop();
-                            MDagPath fallbackShapePath = floorPath;
-                            fallbackShapePath.extendToShape();
-                            MFnDependencyNode fallbackDepFn(fallbackShapePath.node());
+                            MFnDagNode(floorShape).getPath(floorPath);
+                            if (floorPath.hasFn(MFn::kMesh)) floorPath.pop(1);
+                            MFnDependencyNode fallbackDepFn(floorPath.node());
                             MPlug fallbackPlug = fallbackDepFn.findPlug("external_reference", true);
                             if (fallbackPlug.isNull())
                             {
@@ -958,13 +1105,14 @@ MStatus ImportPob::doIt(const MArgList& args)
                             }
                             if (!fallbackPlug.isNull())
                                 fallbackPlug.setValue(MString(floorName.c_str()));
-                            MString parentCmd = "parent \"" + floorPath.fullPathName() + "\" \"" + collisionPath.c_str() + "\"";
-                            MGlobal::executeCommand(parentCmd);
                         }
                     }
                 }
             }
+            SwgImportTrace::stagef("cell r%d floor done", i);
         }
+
+        SwgImportTrace::stagef("cell r%d complete", i);
     }
     iff.exitForm(TAG_CELS);
 
@@ -983,5 +1131,7 @@ MStatus ImportPob::doIt(const MArgList& args)
     iff.exitForm(TAG_PRTO);
 
     pobLog("Import complete: %s", rootName.c_str());
+    SwgImportTrace::stage("importPob complete");
+    SwgImportTrace::stage("importPob returning");
     return MS::kSuccess;
 }

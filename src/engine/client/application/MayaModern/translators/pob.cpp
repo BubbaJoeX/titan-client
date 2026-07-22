@@ -1,7 +1,11 @@
 #include "pob.h"
 #include "SwgTranslatorNames.h"
+#include "ImportPathResolver.h"
+#include "ImportPob.h"
 #include "MayaUtility.h"
+#include "SwgImportTrace.h"
 
+#include <maya/MArgList.h>
 #include <maya/MFileObject.h>
 #include <maya/MGlobal.h>
 #include <maya/MPxFileTranslator.h>
@@ -41,17 +45,30 @@ MPxFileTranslator::MFileKind PobTranslator::identifyFile(const MFileObject& file
 
 MStatus PobTranslator::reader(const MFileObject& file, const MString& /*optionsString*/, MPxFileTranslator::FileAccessMode /*mode*/)
 {
-    const std::string pathStd = MayaUtility::fileObjectPathForIdentify(file);
+    std::string pathStd = MayaUtility::fileObjectPathForIdentify(file);
+    if (pathStd.empty())
+    {
+        const MString expanded = file.expandedFullName();
+        if (expanded.length() > 0)
+            pathStd = expanded.asChar();
+    }
+    pathStd = resolveWindowsMayaAbsolutePath(pathStd);
     if (pathStd.empty())
     {
         MGlobal::displayError("POB import: could not resolve file path from MFileObject.");
         return MS::kFailure;
     }
-    const MString path(pathStd.c_str());
-    MString cmd = "importPob -i \"";
-    cmd += path;
-    cmd += "\"";
-    return MGlobal::executeCommand(cmd);
+    SwgImportTrace::beginSession("PobTranslator::reader", pathStd.c_str());
+    MArgList args;
+    args.addArg(MString("-i"));
+    args.addArg(MString(pathStd.c_str()));
+    ImportPob importer;
+    const MStatus status = importer.doIt(args);
+    SwgImportTrace::stagef("PobTranslator::reader doIt %s", status ? "OK" : "FAILED");
+    if (!status)
+        MGlobal::displayError("POB import failed — see Script Editor / stderr for [ImportPob] logs.");
+    SwgImportTrace::stage("PobTranslator::reader returning");
+    return status;
 }
 
 MStatus PobTranslator::writer(const MFileObject& file, const MString& /*optionsString*/, MPxFileTranslator::FileAccessMode /*mode*/)

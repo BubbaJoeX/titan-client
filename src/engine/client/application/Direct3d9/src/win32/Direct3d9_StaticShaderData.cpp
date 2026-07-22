@@ -132,6 +132,8 @@ using namespace Direct3d9_StaticShaderDataNamespace;
 #ifdef _DEBUG
 bool                                             Direct3d9_StaticShaderData::Pass::ms_useDefaultMaterial;
 Direct3d9_StaticShaderData::Pass::PaddedMaterial Direct3d9_StaticShaderData::Pass::ms_defaultMaterial;
+#endif
+#if DEBUG_LEVEL == DEBUG_LEVEL_DEBUG
 Direct3d9_StaticShaderData::Pass::PaddedMaterial Direct3d9_StaticShaderData::Pass::ms_debugMaterial;
 #ifdef VSPS
 VectorRgba                                       Direct3d9_StaticShaderData::Pass::ms_debugTextureFactorData[2];
@@ -427,7 +429,8 @@ bool Direct3d9_StaticShaderData::Stage::getTextureSortKey(int &value) const
 {
 	if (m_texture)
 	{
-		value = reinterpret_cast<int>((*m_texture)->getBaseTexture());
+		uintptr_t const textureAddress = reinterpret_cast<uintptr_t>((*m_texture)->getBaseTexture());
+		value = static_cast<int>(textureAddress ^ (textureAddress >> 32));
 		return true;
 	}
 
@@ -537,7 +540,9 @@ void Direct3d9_StaticShaderData::Pass::install()
 	ms_defaultMaterial.pad1                =  0.0f;
 	ms_defaultMaterial.pad2                =  0.0f;
 	ms_defaultMaterial.pad3                =  0.0f;
+#endif
 
+#if DEBUG_LEVEL == DEBUG_LEVEL_DEBUG
 	ms_debugMaterial.material.Ambient.r  = 100.0f;
 	ms_debugMaterial.material.Ambient.g  =   0.0f;
 	ms_debugMaterial.material.Ambient.b  = 100.0f;
@@ -633,7 +638,7 @@ void Direct3d9_StaticShaderData::Pass::construct(const StaticShader &shader, con
 #if defined(FFP) && defined(VSPS)
 	else
 	{
-		m_vertexShader = false;
+		m_vertexShader = 0;
 	}
 #endif
 

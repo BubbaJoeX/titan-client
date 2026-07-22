@@ -2,6 +2,7 @@
 #include "SwgTranslatorNames.h"
 
 #include "CollisionEnums.h"
+#include "FloorTri.h"
 #include "Iff.h"
 #include "Globals.h"
 #include "Misc.h"
@@ -9,10 +10,12 @@
 #include "Vector.h"
 #include "MayaSceneBuilder.h"
 #include "MayaUtility.h"
+#include "SwgImportTrace.h"
 
 #include <maya/MDagPath.h>
 #include <maya/MFnDagNode.h>
 #include <maya/MFnMesh.h>
+#include <maya/MDagModifier.h>
 #include <maya/MGlobal.h>
 #include <maya/MPointArray.h>
 #include <maya/MIntArray.h>
@@ -37,239 +40,311 @@ namespace {
     const Tag TAG_FLOR = TAG(F,L,O,R);
     const Tag TAG_VERT = TAG(V,E,R,T);
     const Tag TAG_TRIS = TAG(T,R,I,S);
+    const Tag TAG_PNOD = TAG(P,N,O,D);
+    const Tag TAG_PEDG = TAG(P,E,D,G);
 
     static void flrLog(const char* fmt, ...)
     {
-        char buf[1024];
         va_list args;
         va_start(args, fmt);
-        vsnprintf(buf, sizeof(buf), fmt, args);
+        SwgImportTrace::logV("FlrTranslator", fmt, args);
         va_end(args);
-        std::string msg = std::string("[FlrTranslator] ") + buf + "\n";
-        std::cerr << msg;
-#ifdef _WIN32
-        OutputDebugStringA(msg.c_str());
-#endif
+    }
+
+    static void skipOneIffBlock(Iff& iff)
+    {
+        if (iff.getNumberOfBlocksLeft() <= 0)
+            return;
+        if (iff.isCurrentForm())
+        {
+            iff.enterForm();
+            while (iff.getNumberOfBlocksLeft() > 0)
+                skipOneIffBlock(iff);
+            iff.exitForm();
+        }
+        else
+        {
+            iff.enterChunk();
+            iff.exitChunk();
+        }
+    }
+
+    static void appendTriCorners(const FloorTri& tri, std::vector<int>& indices)
+    {
+        indices.push_back(tri.getCornerIndex(0));
+        indices.push_back(tri.getCornerIndex(1));
+        indices.push_back(tri.getCornerIndex(2));
+    }
+
+    static bool readFlorVertices(Iff& iff, Tag versionTag, std::vector<Vector>& vertices)
+    {
+        iff.enterChunk(TAG_VERT);
+        if (versionTag == TAG_0006)
+        {
+            const int vertexCount = iff.read_int32();
+            vertices.resize(static_cast<size_t>(vertexCount));
+            for (int i = 0; i < vertexCount; ++i)
+                vertices[static_cast<size_t>(i)] = iff.read_floatVector();
+        }
+        else
+        {
+            while (iff.getChunkLengthLeft() > 0)
+                vertices.push_back(iff.read_floatVector());
+        }
+        iff.exitChunk(TAG_VERT);
+        return !vertices.empty();
+    }
+
+    static bool readFlorTriangles(Iff& iff, Tag versionTag, std::vector<int>& indices)
+    {
+        iff.enterChunk(TAG_TRIS);
+        if (versionTag == TAG_0000)
+        {
+            while (iff.getChunkLengthLeft() > 0)
+            {
+                FloorTri tri;
+                tri.setIndex(iff.read_int32());
+                tri.setCornerIndex(0, iff.read_int32());
+                tri.setCornerIndex(1, iff.read_int32());
+                tri.setCornerIndex(2, iff.read_int32());
+                iff.read_int32();
+                iff.read_int32();
+                iff.read_int32();
+                iff.read_floatVector();
+                appendTriCorners(tri, indices);
+            }
+        }
+        else if (versionTag == TAG_0001)
+        {
+            while (iff.getChunkLengthLeft() > 0)
+            {
+                FloorTri tri;
+                tri.setIndex(iff.read_int32());
+                tri.setCornerIndex(0, iff.read_int32());
+                tri.setCornerIndex(1, iff.read_int32());
+                tri.setCornerIndex(2, iff.read_int32());
+                iff.read_int32();
+                iff.read_int32();
+                iff.read_int32();
+                iff.read_floatVector();
+                iff.read_bool8();
+                iff.read_bool8();
+                iff.read_bool8();
+                iff.read_bool8();
+                appendTriCorners(tri, indices);
+            }
+        }
+        else if (versionTag == TAG_0002)
+        {
+            while (iff.getChunkLengthLeft() > 0)
+            {
+                FloorTri tri;
+                tri.read_0000(iff);
+                appendTriCorners(tri, indices);
+            }
+        }
+        else if (versionTag == TAG_0003 || versionTag == TAG_0004)
+        {
+            while (iff.getChunkLengthLeft() > 0)
+            {
+                FloorTri tri;
+                tri.read_0001(iff);
+                appendTriCorners(tri, indices);
+            }
+        }
+        else if (versionTag == TAG_0005)
+        {
+            const int triCount = iff.getChunkLengthTotal() / FloorTri::getOnDiskSize_0001();
+            for (int i = 0; i < triCount; ++i)
+            {
+                FloorTri tri;
+                tri.read_0001(iff);
+                appendTriCorners(tri, indices);
+            }
+        }
+        else if (versionTag == TAG_0006)
+        {
+            const int triCount = iff.read_int32();
+            for (int i = 0; i < triCount; ++i)
+            {
+                FloorTri tri;
+                tri.read_0002(iff);
+                appendTriCorners(tri, indices);
+            }
+        }
+        else
+        {
+            iff.exitChunk(TAG_TRIS);
+            return false;
+        }
+        iff.exitChunk(TAG_TRIS);
+        return indices.size() >= 3;
+    }
+
+    static void skipFlorTailBlocks(Iff& iff, Tag versionTag)
+    {
+        while (!iff.atEndOfForm())
+        {
+            if (versionTag == TAG_0004 && !iff.isCurrentForm())
+            {
+                const Tag chunkTag = iff.getCurrentName();
+                if (chunkTag == TAG_PNOD || chunkTag == TAG_PEDG)
+                {
+                    iff.enterChunk(chunkTag);
+                    iff.exitChunk(chunkTag);
+                    continue;
+                }
+            }
+            skipOneIffBlock(iff);
+        }
+    }
+
+    /**
+     * Read FLOR/0000..0006 geometry (VERT + TRIS). Skips pathfinding / box-tree tail blocks.
+     * Matches sharedCollision/FloorMesh.cpp version matrix.
+     */
+    static bool readFlorGeometry(Iff& iff, Tag versionTag, std::vector<Vector>& vertices, std::vector<int>& indices)
+    {
+        iff.enterForm(versionTag);
+        if (!readFlorVertices(iff, versionTag, vertices))
+        {
+            iff.exitForm(versionTag);
+            return false;
+        }
+        if (!readFlorTriangles(iff, versionTag, indices))
+        {
+            iff.exitForm(versionTag);
+            return false;
+        }
+        skipFlorTailBlocks(iff, versionTag);
+        iff.exitForm(versionTag);
+        return true;
+    }
+
+    static bool loadFlorFile(const char* flrPath, std::vector<Vector>& vertices, std::vector<int>& indices)
+    {
+        if (!flrPath || !flrPath[0] || !Iff::isValid(flrPath))
+            return false;
+        Iff iff;
+        if (!iff.open(flrPath, false))
+            return false;
+        if (iff.getCurrentName() != TAG_FLOR)
+            return false;
+
+        iff.enterForm(TAG_FLOR);
+        const Tag versionTag = iff.getCurrentName();
+        const bool ok =
+            (versionTag == TAG_0000 || versionTag == TAG_0001 || versionTag == TAG_0002 ||
+             versionTag == TAG_0003 || versionTag == TAG_0004 || versionTag == TAG_0005 ||
+             versionTag == TAG_0006)
+                ? readFlorGeometry(iff, versionTag, vertices, indices)
+                : false;
+        iff.exitForm(TAG_FLOR);
+        return ok;
+    }
+
+    static MStatus buildFlrPreviewMesh(
+        const std::vector<Vector>& vertices,
+        const std::vector<int>& indices,
+        const char* meshName,
+        MObject parentObj,
+        MDagPath& outPath)
+    {
+        if (vertices.empty() || indices.size() < 3)
+            return MS::kFailure;
+
+        std::vector<float> positions;
+        positions.reserve(vertices.size() * 3);
+        for (size_t i = 0; i < vertices.size(); ++i)
+        {
+            positions.push_back(vertices[i].x);
+            positions.push_back(vertices[i].y);
+            positions.push_back(vertices[i].z);
+        }
+        std::vector<float> normals(positions.size(), 0.0f);
+
+        MayaSceneBuilder::ShaderGroupData sg;
+        sg.shaderTemplateName = "shader/placeholder";
+        for (size_t t = 0; t + 2 < indices.size(); t += 3)
+        {
+            MayaSceneBuilder::TriangleData tri;
+            tri.indices[0] = indices[t];
+            tri.indices[1] = indices[t + 1];
+            tri.indices[2] = indices[t + 2];
+            sg.triangles.push_back(tri);
+        }
+        std::vector<MayaSceneBuilder::ShaderGroupData> groups(1, sg);
+
+        MStatus status = MayaSceneBuilder::createMesh(positions, normals, groups, meshName ? meshName : "floor", outPath);
+        if (!status)
+            return status;
+        status = MayaSceneBuilder::assignPobCollisionPreviewMaterial(outPath);
+        if (!status)
+            flrLog("assignPobCollisionPreviewMaterial failed (floor preview shading)");
+        if (!parentObj.isNull())
+        {
+            MDagPath meshTransformPath = outPath;
+            if (meshTransformPath.hasFn(MFn::kMesh))
+                meshTransformPath.pop(1);
+            MDagModifier mod;
+            status = mod.reparentNode(meshTransformPath.node(), parentObj);
+            if (status)
+                status = mod.doIt();
+        }
+        return status;
     }
 }
 
-// creates an instance of the FlrTranslator
 void* FlrTranslator::creator()
 {
     return new FlrTranslator();
 }
 
-/**
- * Read FLOR version 0006: VERT (int32 count + vectors), TRIS (int32 count + FloorTri_0002 each).
- * FloorTri_0002: corners(3*int32), index(int32), neighbors(3*int32), normal(Vector),
- *   edgeTypes(3*uint8), fallthrough(bool8), partTag(int32), portalIds(3*int32).
- */
-static bool readFlor0006(Iff& iff, std::vector<Vector>& vertices, std::vector<int>& indices)
-{
-    iff.enterForm(TAG_0006);
-
-    iff.enterChunk(TAG_VERT);
-    const int vertexCount = iff.read_int32();
-    vertices.resize(static_cast<size_t>(vertexCount));
-    for (int i = 0; i < vertexCount; ++i)
-        vertices[static_cast<size_t>(i)] = iff.read_floatVector();
-    iff.exitChunk(TAG_VERT);
-
-    iff.enterChunk(TAG_TRIS);
-    const int triCount = iff.read_int32();
-    indices.reserve(static_cast<size_t>(triCount) * 3);
-    for (int i = 0; i < triCount; ++i)
-    {
-        const int c0 = iff.read_int32();
-        const int c1 = iff.read_int32();
-        const int c2 = iff.read_int32();
-        iff.read_int32();
-        iff.read_int32();
-        iff.read_int32();
-        iff.read_int32();
-        iff.read_floatVector();
-        iff.read_uint8();
-        iff.read_uint8();
-        iff.read_uint8();
-        iff.read_bool8();
-        iff.read_int32();
-        iff.read_int32();
-        iff.read_int32();
-        iff.read_int32();
-        indices.push_back(c0);
-        indices.push_back(c1);
-        indices.push_back(c2);
-    }
-    iff.exitChunk(TAG_TRIS);
-
-    iff.exitForm(TAG_0006);
-    return true;
-}
-
 MStatus FlrTranslator::createMeshFromFlr(const char* flrPath, const char* meshName, MObject parentObj, MDagPath& outPath)
 {
     flrLog("createMeshFromFlr: %s", flrPath ? flrPath : "(null)");
-    if (!flrPath || !flrPath[0] || !Iff::isValid(flrPath))
-        return MS::kFailure;
-    Iff iff;
-    if (!iff.open(flrPath, false))
-    {
-        flrLog("Failed to open file");
-        return MS::kFailure;
-    }
-    const Tag tagFlor = TAG(F,L,O,R);
-    if (iff.getCurrentName() != tagFlor)
-        return MS::kFailure;
-
-    iff.enterForm(tagFlor);
     std::vector<Vector> vertices;
     std::vector<int> indices;
-
-    const Tag versionTag = iff.getCurrentName();
-    if (versionTag == TAG_0006)
+    if (!loadFlorFile(flrPath, vertices, indices))
     {
-        if (!readFlor0006(iff, vertices, indices))
-        {
-            iff.exitForm(tagFlor);
-            return MS::kFailure;
-        }
-    }
-    else
-    {
-        iff.exitForm(tagFlor);
+        flrLog("Failed to parse FLOR geometry");
         return MS::kFailure;
     }
-    iff.exitForm(tagFlor);
-
-    if (vertices.empty() || indices.size() < 3)
-        return MS::kFailure;
-
-    std::vector<float> positions;
-    positions.reserve(vertices.size() * 3);
-    for (size_t i = 0; i < vertices.size(); ++i)
-    {
-        positions.push_back(vertices[i].x);
-        positions.push_back(vertices[i].y);
-        positions.push_back(vertices[i].z);
-    }
-    std::vector<float> normals(positions.size(), 0.0f);
-
-    MayaSceneBuilder::ShaderGroupData sg;
-    sg.shaderTemplateName = "shader/placeholder";
-    for (size_t t = 0; t + 2 < indices.size(); t += 3)
-    {
-        MayaSceneBuilder::TriangleData tri;
-        tri.indices[0] = indices[t];
-        tri.indices[1] = indices[t + 1];
-        tri.indices[2] = indices[t + 2];
-        sg.triangles.push_back(tri);
-    }
-    std::vector<MayaSceneBuilder::ShaderGroupData> groups(1, sg);
 
     flrLog("Creating mesh: %zu vertices, %zu triangles", vertices.size(), indices.size() / 3);
-    MStatus status = MayaSceneBuilder::createMesh(positions, normals, groups, meshName ? meshName : "floor", outPath);
+    MStatus status = buildFlrPreviewMesh(vertices, indices, meshName, parentObj, outPath);
     if (!status)
-    {
         flrLog("createMesh failed");
-        return status;
-    }
-    status = MayaSceneBuilder::assignPobCollisionPreviewMaterial(outPath);
-    if (!status)
-        flrLog("assignPobCollisionPreviewMaterial failed (floor preview shading)");
-    flrLog("createMeshFromFlr OK");
-
-    if (!parentObj.isNull())
-    {
-        MDagPath meshTransformPath = outPath;
-        if (meshTransformPath.hasFn(MFn::kMesh))
-            meshTransformPath.pop(1);
-        MFnDagNode parentFn(parentObj);
-        MString parentCmd = "parent \"";
-        parentCmd += meshTransformPath.fullPathName();
-        parentCmd += "\" \"";
-        parentCmd += parentFn.fullPathName();
-        parentCmd += "\"";
-        status = MGlobal::executeCommand(parentCmd);
-    }
+    else
+        flrLog("createMeshFromFlr OK");
     return status;
 }
 
 MStatus FlrTranslator::reader(const MFileObject& file, const MString& options, MPxFileTranslator::FileAccessMode mode)
 {
-    const char* fileName = file.expandedFullName().asChar();
-    flrLog("reader: %s", fileName);
-    if (!Iff::isValid(fileName))
+    std::string fileName = MayaUtility::fileObjectPathForIdentify(file);
+    if (fileName.empty())
+        fileName = file.expandedFullName().asChar();
+    flrLog("reader: %s", fileName.c_str());
+    if (!Iff::isValid(fileName.c_str()))
     {
         std::cerr << fileName << " could not be read as a valid IFF file!" << std::endl;
         return MS::kFailure;
     }
-    Iff iff;
-    if (!iff.open(fileName, false))
-    {
-        std::cerr << fileName << " could not be opened" << std::endl;
-        return MS::kFailure;
-    }
-    if (iff.getRawDataSize() < 1)
-    {
-        std::cerr << fileName << " was read in as an IFF but its size was empty!" << std::endl;
-        return MS::kFailure;
-    }
 
-    if (iff.getCurrentName() != TAG_FLOR)
-    {
-        std::cerr << fileName << " is not a FLOR file" << std::endl;
-        return MS::kFailure;
-    }
-
-    iff.enterForm(TAG_FLOR);
     std::vector<Vector> vertices;
     std::vector<int> indices;
-
-    const Tag versionTag = iff.getCurrentName();
-    if (versionTag == TAG_0006)
+    if (!loadFlorFile(fileName.c_str(), vertices, indices))
     {
-        if (!readFlor0006(iff, vertices, indices))
-        {
-            iff.exitForm(TAG_FLOR);
-            return MS::kFailure;
-        }
-    }
-    else
-    {
-        std::cerr << "FlrTranslator: unsupported FLOR version" << std::endl;
-        iff.exitForm(TAG_FLOR);
+        std::cerr << "FlrTranslator: failed to parse FLOR geometry in " << fileName << std::endl;
         return MS::kFailure;
     }
-
-    iff.exitForm(TAG_FLOR);
 
     if (vertices.empty() || indices.size() < 3)
     {
         std::cerr << "FlrTranslator: no geometry in " << fileName << std::endl;
         return MS::kSuccess;
     }
-
-    std::vector<float> positions;
-    positions.reserve(vertices.size() * 3);
-    for (size_t i = 0; i < vertices.size(); ++i)
-    {
-        positions.push_back(vertices[i].x);
-        positions.push_back(vertices[i].y);
-        positions.push_back(vertices[i].z);
-    }
-    std::vector<float> normals(positions.size(), 0.0f);
-
-    MayaSceneBuilder::ShaderGroupData sg;
-    sg.shaderTemplateName = "shader/placeholder";
-    for (size_t t = 0; t + 2 < indices.size(); t += 3)
-    {
-        MayaSceneBuilder::TriangleData tri;
-        tri.indices[0] = indices[t];
-        tri.indices[1] = indices[t + 1];
-        tri.indices[2] = indices[t + 2];
-        sg.triangles.push_back(tri);
-    }
-    std::vector<MayaSceneBuilder::ShaderGroupData> groups(1, sg);
 
     std::string meshName = fileName;
     const size_t lastSlash = meshName.find_last_of("/\\");
@@ -281,7 +356,7 @@ MStatus FlrTranslator::reader(const MFileObject& file, const MString& options, M
 
     flrLog("Creating mesh: %zu vertices, %zu triangles", vertices.size(), indices.size() / 3);
     MDagPath meshPath;
-    MStatus status = MayaSceneBuilder::createMesh(positions, normals, groups, meshName, meshPath);
+    MStatus status = buildFlrPreviewMesh(vertices, indices, meshName.c_str(), MObject::kNullObj, meshPath);
     if (!status)
     {
         flrLog("createMesh failed");
@@ -289,7 +364,6 @@ MStatus FlrTranslator::reader(const MFileObject& file, const MString& options, M
         return MS::kFailure;
     }
     flrLog("reader OK");
-
     return MS::kSuccess;
 }
 

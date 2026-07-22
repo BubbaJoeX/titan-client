@@ -2503,7 +2503,7 @@ SwgCuiChatWindow::Tab * SwgCuiChatWindow::staticFindChatTabByTabId(int tabId, Sw
 		}
 	}
 
-	return false;
+	return 0;
 }
 
 //----------------------------------------------------------------------

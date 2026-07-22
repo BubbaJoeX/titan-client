@@ -81,7 +81,6 @@ private:
 
 	CustomizationData *m_customizationData;
 	IntVector *const   m_intValues;
-	PackedArgbVector  *m_directColors;    // direct color overrides (one per variable, ARGB=0 means no override)
 	mutable bool       m_isModified;
 
 };

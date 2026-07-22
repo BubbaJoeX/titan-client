@@ -369,7 +369,8 @@ void SwgCuiAllTargets::updateStatusOpacity(CachedNetworkId const & id)
 
 		for (it = m_statii->begin(); it != m_statii->end(); ++it)
 		{
-			if (it->second && it->second != status)
+			SwgCuiStatusGround* other = it->second;
+			if (other && other != status)
 			{
 				if (status->isStatusBarVisibleAndOverlapping(it->second))
 				{
@@ -535,7 +536,7 @@ void SwgCuiAllTargets::update(const Camera & camera)
 						int64 const value = tangible->getNetworkId().getValue();
 						unsigned const long procId = tangible->getAuthServerProcessId();
 						
-						snprintf(buffer, sizeof(buffer), "(%d) "INT64_FORMAT_SPECIFIER, procId, value);
+						snprintf(buffer, sizeof(buffer), "(%d) " INT64_FORMAT_SPECIFIER, procId, value);
 						
 						status->setDebugInformation(buffer);
 					}

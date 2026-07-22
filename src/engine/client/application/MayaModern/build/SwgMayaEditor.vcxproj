@@ -592,6 +592,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\utility\StaticMeshViewportSpace.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\utility\StaticMeshTransferOptions.cpp" />
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\utility\StaticMeshTransferOptions.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\utility\SwgImportTrace.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\utility\SwgImportTrace.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SetDirectoryCommand.cpp" />
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SetDirectoryCommand.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SetBaseDirectory.cpp" />

@@ -27,7 +27,6 @@
 #include "clientGraphics/Graphics.h"
 #include "clientUserInterface/ConfigClientUserInterface.h"
 #include "clientUserInterface/CuiObjectTextManager.h"
-#include "clientUserInterface/CuiPreferences.h"
 #include "clientUserInterface/CuiTextManager.h"
 #include "sharedGame/SharedObjectTemplate.h"
 #include "sharedGame/SpatialChatManager.h"
@@ -35,8 +34,6 @@
 #include "sharedObject/CachedNetworkId.h"
 #include "sharedObject/CellProperty.h"
 #include "sharedUtility/LocalMachineOptionManager.h"
-
-#include <algorithm>
 
 //----------------------------------------------------------------------
 
@@ -47,7 +44,7 @@ const char * const KeyName = "ChatBubbles";
 //lint -e655 //(Warning -- bit-wise operation uses (compatible) enum's)
 //lint -esym(641, CollisionFlags) // convert enum to int
 //lint -esym(534, UIBaseObject::Detach) // ignore return
-//lint -esym(534, multimap<float,_STL::pair<const BubbleStack *,Vector>,_STL::less<float>,_STL::allocator<_STL::pair<const float,_STL::pair<const BubbleStack *,Vector>>>>::insert) // ignore return
+//lint -esym(534, multimap<float,std::pair<const BubbleStack *,Vector>,std::less<float>,std::allocator<std::pair<const float,std::pair<const BubbleStack *,Vector>>>>::insert) // ignore return
 
 
 //======================================================================
@@ -465,23 +462,39 @@ void CuiChatBubbleManager::install (const UIBaseObject & rootPage)
 	REGISTER_OPTION (bubbleRangeFactor);
 	REGISTER_OPTION (bubbleFontSize);
 
-	s_info.icon.page = NON_NULL (safe_cast<UIPage *>(rootPage.GetObjectFromPath ("/MsgBox.ChatBubbleIcon", TUIPage)));
+	// The chat bubble icon/text/spout widgets live under /MsgBox.* in the
+	// post-NGE UI bundle. The NGE-retail UI tree doesn't have those paths;
+	// GetObjectFromPath returns null and NON_NULL is a no-op in release,
+	// so the next SetLocation call AVs at offset 0x50. Skip the chat-bubble
+	// setup entirely when the root icon page is missing - chat bubbles
+	// just won't render in-world, but the client survives install().
+	s_info.icon.page = safe_cast<UIPage *>(rootPage.GetObjectFromPath ("/MsgBox.ChatBubbleIcon", TUIPage));
+	if (!s_info.icon.page)
+	{
+		WARNING(true, ("CuiChatBubbleManager: /MsgBox.ChatBubbleIcon missing from UI bundle, chat bubbles disabled."));
+		ms_installed = true;
+		return;
+	}
 	s_info.icon.page->SetLocation (0, 0);
 	s_info.icon.page->Attach (0);
 
-	s_info.icon.outer = NON_NULL (safe_cast<UIImage *>(s_info.icon.page->GetObjectFromPath ("Outer", TUIImage)));
-	s_info.icon.ring  = NON_NULL (safe_cast<UIImage *>(s_info.icon.page->GetObjectFromPath ("Ring",  TUIImage)));
-	s_info.icon.inner = NON_NULL (safe_cast<UIImage *>(s_info.icon.page->GetObjectFromPath ("Inner", TUIImage)));
+	s_info.icon.outer = safe_cast<UIImage *>(s_info.icon.page->GetObjectFromPath ("Outer", TUIImage));
+	s_info.icon.ring  = safe_cast<UIImage *>(s_info.icon.page->GetObjectFromPath ("Ring",  TUIImage));
+	s_info.icon.inner = safe_cast<UIImage *>(s_info.icon.page->GetObjectFromPath ("Inner", TUIImage));
 
-	s_info.bubble.text = NON_NULL (safe_cast<UIText *>(rootPage.GetObjectFromPath ("/MsgBox.ChatBubbleText", TUIText)));
-	s_info.bubble.text->SetPreLocalized (true);
-	// The Japanese client will default to Left-aligned text in text bubbles, where the US defaults to centered
-	if (useJapanese)
-		s_info.bubble.text->SetTextAlignment(UITextStyle::Left);
-	s_info.bubble.text->Attach (0);
+	s_info.bubble.text = safe_cast<UIText *>(rootPage.GetObjectFromPath ("/MsgBox.ChatBubbleText", TUIText));
+	if (s_info.bubble.text)
+	{
+		s_info.bubble.text->SetPreLocalized (true);
+		// The Japanese client will default to Left-aligned text in text bubbles, where the US defaults to centered
+		if (useJapanese)
+			s_info.bubble.text->SetTextAlignment(UITextStyle::Left);
+		s_info.bubble.text->Attach (0);
+	}
 
-	s_info.bubble.spout = NON_NULL (safe_cast<UIImage *>(rootPage.GetObjectFromPath ("/MsgBox.ChatSpout", TUIImage)));
-	s_info.bubble.spout->SetLocation (0, 0);
+	s_info.bubble.spout = safe_cast<UIImage *>(rootPage.GetObjectFromPath ("/MsgBox.ChatSpout", TUIImage));
+	if (s_info.bubble.spout)
+		s_info.bubble.spout->SetLocation (0, 0);
 
 	//-----------------------------------------------------------------
 	//-- load up the chat bubble icon style info
@@ -711,13 +724,6 @@ void CuiChatBubbleManager::render (UICanvas & canvas, const Camera & camera)
 	s_screenRadius    = sqrt (sqr(s_screenCenter.x) + sqr (s_screenCenter.y));
 
 	initBubbles ();
-
-	float const uiInv = 1.0f / std::max (1.0e-6f, CuiPreferences::getUiScaleFactor ());
-	const UISize savedLayoutScreenSize = s_screenSize;
-	s_screenSize.x = static_cast<long>(savedLayoutScreenSize.x * uiInv + 0.5f);
-	s_screenSize.y = static_cast<long>(savedLayoutScreenSize.y * uiInv + 0.5f);
-	s_maxBubbleSize.x = s_screenSize.x / 2;
-	s_maxBubbleSize.y = s_screenSize.y / 4;
 	
 	//----------------------------------------------------------------------
 	//-- sort the stack map
@@ -820,9 +826,8 @@ void CuiChatBubbleManager::render (UICanvas & canvas, const Camera & camera)
 		const BubbleStack::ElementList & elementList = bubbleStack.getElements ();
 
 		UIScalar nameOffset = CuiObjectTextManager::getNameWidgetHeight(bubbleStack.getId());
-		nameOffset = static_cast<long>(nameOffset * uiInv + 0.5f);
 
-		UIPoint screenPt(static_cast<long>(screenVect.x * uiInv + 0.5f), static_cast<long>(screenVect.y * uiInv + 0.5f) - nameOffset);
+		UIPoint screenPt(static_cast<long>(screenVect.x), static_cast<long>(screenVect.y) - nameOffset);
 		
 		const float oldOpacity = canvas.GetOpacity ();
 		
@@ -874,8 +879,6 @@ void CuiChatBubbleManager::render (UICanvas & canvas, const Camera & camera)
 		
 		canvas.SetOpacity (oldOpacity);
 	}
-
-	s_screenSize = savedLayoutScreenSize;
 }
 
 //-----------------------------------------------------------------

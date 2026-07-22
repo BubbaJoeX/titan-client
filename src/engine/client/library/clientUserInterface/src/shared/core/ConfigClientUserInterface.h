@@ -117,6 +117,7 @@ public:
 	static float               getUiScaleFactor ();
 	static int                 getUiFontScalePercent ();
 	static bool                getUiFontFullReplace ();
+	static bool                getDebugUiFlushDump ();
 };
 
 //======================================================================

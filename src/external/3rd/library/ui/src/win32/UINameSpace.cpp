@@ -273,11 +273,9 @@ void UINamespace::Link( void )
 
 void UINamespace::ResetLocalizedStrings (void)
 {
-	UIObjectList const childrenSnapshot (mChildren);
-	for (UIObjectList::const_iterator i = childrenSnapshot.begin (); i != childrenSnapshot.end (); ++i)
+	for( UIObjectList::iterator i = mChildren.begin(); i != mChildren.end(); ++i )
 	{
-		if (*i)
-			(*i)->ResetLocalizedStrings ();
+		(*i)->ResetLocalizedStrings ();
 	}
 }
 

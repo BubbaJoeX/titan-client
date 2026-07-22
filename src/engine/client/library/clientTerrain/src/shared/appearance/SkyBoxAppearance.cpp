@@ -330,9 +330,6 @@ void SkyBoxAppearance::render () const
 	if (ms_noRenderSkyBox)
 		return;
 
-	if (ShaderPrimitiveSorter::getCurrentCamera().isUnderWater())
-		return;
-
 	if (m_localShaderPrimitive && m_alpha > 0.f)
 		ShaderPrimitiveSorter::add (*m_localShaderPrimitive);
 }

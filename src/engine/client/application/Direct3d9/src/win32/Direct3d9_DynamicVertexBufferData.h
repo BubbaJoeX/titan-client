@@ -64,11 +64,22 @@ private:
 
 private:
 
-	static bool                    ms_newFrame;
+	enum Ring
+	{
+		R_world    = DynamicVertexBuffer::DR_world,
+		R_ui       = DynamicVertexBuffer::DR_ui,
+		R_skeletal = DynamicVertexBuffer::DR_skeletal,
+		R_count    = DynamicVertexBuffer::DR_count,
+		B_count    = 2
+	};
+
+private:
+
+	static bool                    ms_newFrame[R_count];
 	static int                     ms_size;
-	static int                     ms_used[2];
-	static int                     ms_activeBufferIndex;
-	static IDirect3DVertexBuffer9 *ms_d3dVertexBuffers[2];
+	static int                     ms_activeBufferIndex[R_count];
+	static int                     ms_used[R_count][B_count];
+	static IDirect3DVertexBuffer9 *ms_d3dVertexBuffer[R_count][B_count];
 	static MemoryBlockManager     *ms_memoryBlockManager;
 
 	static int                     ms_locksSinceBeginFrame;
@@ -83,6 +94,8 @@ private:
 	const VertexBufferDescriptor  &m_vertexBufferDescriptor;
 	int                            m_numberOfVertices;
 	int                            m_offset;
+	int                            m_ringIndex;
+	int                            m_bufferIndex;
 	IDirect3DVertexDeclaration9   *m_vertexDeclaration;
 };
 

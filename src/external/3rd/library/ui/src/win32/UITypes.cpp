@@ -25,7 +25,6 @@ const UIColor UIColor::green   (0x00,0xff,0x00);
 const UIColor UIColor::cyan    (0x00,0xff,0xff);
 const UIColor UIColor::blue    (0x00,0x00,0xff);
 const UIColor UIColor::violet  (0xff,0x00,0xff);
-const UIColor UIColor::maroon  (0x80, 0x00, 0x00);
 
 //----------------------------------------------------------------------
 

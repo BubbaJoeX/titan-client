@@ -1,5 +1,13 @@
 #include "libMozilla.h"
 
+#if defined(_WIN64)
+#undef WINVER
+#undef _WIN32_WINNT
+#define WINVER 0x0601
+#define _WIN32_WINNT 0x0601
+#include <windows.h>
+#endif
+
 // Define this if you want to link with the debug version of Mozilla in debug builds.  By default we link with release libs, even in
 // debug builds because of DLL issues.  If you want to link with the debug Mozilla you will also need to use the libMozilla_to_x_copy_debug.bat
 // script included with libMozilla to get the debug libraries into the right place on your X drive.  You will also need to modify the
@@ -74,9 +82,11 @@
 #include <nsXPCOM.h>
 #include <nsXULAppAPI.h>
 
+#if !defined(_WIN64)
 #include <windows.h>
+#endif
 
-static char *s_nullString = "";
+static char s_nullString[] = "";
 static bool  s_bEnableMemoryCache = true;
 static bool  s_bEnableDiskCache = true;
 static unsigned s_uMaxDiskCacheSizeKB = 1024 * 10;
@@ -217,7 +227,7 @@ static struct
 namespace libMozilla
 {
     Manager *g_pManager = 0;
-    char *aCommandTable[ NUM_COMMANDS ] = {};
+    char const *aCommandTable[ NUM_COMMANDS ] = {};
 
     void initCommandTable()
     {

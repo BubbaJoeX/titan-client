@@ -13,9 +13,9 @@
 
 #include "../../../../../../engine/shared/library/sharedFoundation/include/public/sharedFoundation/MemoryBlockManagerMacros.h"
 #include "sharedObject/RangedIntCustomizationVariable.h"
-#include "sharedMath/PackedArgb.h"
 
 class MemoryBlockManager;
+class PackedArgb;
 class PaletteArgb;
 
 // ======================================================================
@@ -37,26 +37,9 @@ public:
 
 	virtual void         writeObjectTemplateExportString(const std::string &variablePathName, ObjectTemplateCustomizationDataWriter &writer) const;
 
-	// Persistence overrides for direct color support
-	virtual int          getPersistedDataByteCount() const;
-	virtual void         saveToByteVector(ByteVector &data) const;
-	virtual bool         restoreFromByteVector(ByteVector const &data, int startIndex, int length);
-
 	const PaletteArgb   *fetchPalette() const;
 
 	void                 setClosestColor(const PackedArgb &targetColor);
-
-	// Direct color support - HTML hex codes and RGB values
-	bool                 setDirectColor(const PackedArgb &color);
-	bool                 setDirectColorHtml(const char *htmlColor);
-	bool                 hasDirectColor() const;
-	const PackedArgb    &getDirectColor() const;
-	int                  getMatchedPaletteIndex() const;
-
-	// Static helpers for special index encoding
-	static bool          isSpecialColorIndex(int index);
-	static int           encodeColorAsIndex(const PackedArgb &color);
-	static PackedArgb    decodeColorFromIndex(int specialIndex);
 
 #ifdef _DEBUG
 	virtual std::string  debugToString() const;
@@ -73,8 +56,6 @@ private:
 
 	const PaletteArgb *const m_palette;
 	int                      m_paletteIndex;
-	bool                     m_useDirectColor;
-	mutable PackedArgb       m_directColor;
 
 };
 

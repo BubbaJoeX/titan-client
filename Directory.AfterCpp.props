@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!-- Applied via ForceImportAfterCppProps after Microsoft.Cpp.props sets defaults,
+       so OutDir/TargetDir/TargetPath all agree for x64 incremental builds. -->
+  <PropertyGroup Condition="'$(Platform)' == 'x64'">
+    <OutDir>$(MSBuildThisFileDirectory)src\build\win32\x64\$(Configuration)\</OutDir>
+    <IntDir>$(OutDir)obj\$(MSBuildProjectName)\</IntDir>
+    <SwgOutputSuffix Condition="'$(Configuration)' == 'Release'">r</SwgOutputSuffix>
+    <SwgOutputSuffix Condition="'$(Configuration)' == 'Optimized'">o</SwgOutputSuffix>
+    <SwgOutputSuffix Condition="'$(Configuration)' == 'Debug'">d</SwgOutputSuffix>
+    <TargetName Condition="'$(MSBuildProjectName)' == 'SwgClient'">SwgTitan_$(SwgOutputSuffix)</TargetName>
+    <TargetName Condition="'$(MSBuildProjectName)' == 'Direct3d9'">gl05_$(SwgOutputSuffix)</TargetName>
+    <TargetName Condition="'$(MSBuildProjectName)' == 'Direct3d9_ffp'">gl06_$(SwgOutputSuffix)</TargetName>
+    <TargetName Condition="'$(MSBuildProjectName)' == 'Direct3d9_vsps'">gl07_$(SwgOutputSuffix)</TargetName>
+  </PropertyGroup>
+</Project>

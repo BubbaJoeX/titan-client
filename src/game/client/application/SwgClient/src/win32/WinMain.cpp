@@ -50,22 +50,25 @@ static bool SetUserSelectedMemoryManagerTarget()
 
 static void SetDefaultMemoryManagerTargetSize()
 {
-	// we use 75% of the available ram, up to 1536mb in the case of 2gb (32 bit without PAE limit)
 	MEMORYSTATUSEX memoryStatus = { sizeof memoryStatus };
 	GlobalMemoryStatusEx(&memoryStatus);
-	int ramMB = (memoryStatus.ullTotalPhys / 1048576);
+	int ramMB = static_cast<int>(memoryStatus.ullTotalPhys / 1048576);
 
-	// without PAE enabled 2048 is the max we can do, but SWG crashes if we give it all the RAM sometimes
+#if defined(_WIN64)
+	// x64: use 75% of physical RAM, capped at 12 GB. The legacy 1536 MB cap was a
+	// 32-bit address-space workaround and causes a perf cliff on modern machines.
+	int targetMB = static_cast<int>(ramMB * 0.75);
+	if (targetMB > 12288)
+		targetMB = 12288;
+	MemoryManager::setLimit(targetMB, false, false);
+#else
+	// Win32: 75% of RAM, capped at 1536 MB when >= 2 GB (no-PAE safety).
 	if (ramMB >= 2048)
-	{
 		ramMB = 1536;
-	}
-	else 
-	{
-		ramMB = (ramMB * .75);
-	}
-
+	else
+		ramMB = static_cast<int>(ramMB * 0.75);
 	MemoryManager::setLimit(ramMB, false, false);
+#endif
 }
 
 void externalCommandHandler(const char* command)
@@ -86,9 +89,9 @@ void externalCommandHandler(const char* command)
 
 		HINSTANCE result = ShellExecute(NULL, "open", url8.c_str(), NULL, NULL, SW_SHOWNORMAL);
 
-		if (reinterpret_cast<int>(result) < 32) //Pulled straight from MSDN -ARH
+		if (reinterpret_cast<intptr_t>(result) <= 32) //Pulled straight from MSDN -ARH
 		{
-			WARNING(true, ("could not launch external application (%d)", reinterpret_cast<int>(result)));
+			WARNING(true, ("could not launch external application (%p)", result));
 		}
 		else
 		{

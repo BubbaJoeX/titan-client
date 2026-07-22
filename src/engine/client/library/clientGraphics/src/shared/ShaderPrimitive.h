@@ -12,7 +12,6 @@
 
 #include "sharedMath/Vector.h"
 
-class Transform;
 class CollisionInfo;
 class CustomizationData;
 class SoftwareBlendSkeletalShaderPrimitive;
@@ -25,7 +24,7 @@ class ShaderPrimitive
 {
 public:
 
-	typedef enum SkinningMode
+	enum SkinningMode
 	{
 		SM_noSkinning,
 		SM_hardSkinning,
@@ -56,9 +55,6 @@ public:
 	virtual bool                shouldApplyHologramShaderPrepareToViewOverride() const;
 
 	virtual bool                collide(const Vector &start_o, const Vector &end_o, CollisionInfo &result) const;
-
-	/// Optional transform + scale for deferred batching paths (e.g. RenderBatchManager phase integration).
-	virtual bool                getWorldTransformForBatching(Transform & transform_w, Vector & objectScale) const;
 
 	virtual SoftwareBlendSkeletalShaderPrimitive       *asSoftwareBlendSkeletalShaderPrimitive();
 	virtual SoftwareBlendSkeletalShaderPrimitive const *asSoftwareBlendSkeletalShaderPrimitive() const;

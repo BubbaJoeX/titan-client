@@ -179,8 +179,10 @@ Index *Direct3d9_DynamicIndexBufferData::lock(int numberOfIndices)
 	FATAL(FAILED(hresult), ("Could not lock dynamic %s %d=err %d=discard %d=offset %d=length %d/%d/%d=locks %d/%d/%d=discards", "ib", HRESULT_CODE(hresult), discard, m_offset * sizeof(Index), length, ms_locksSinceBeginFrame, ms_locksSinceResourceCreation, ms_locksEver, ms_discardsSinceBeginFrame, ms_discardsSinceResourceCreation, ms_discardsEver));
 	NOT_NULL(data);
 
+#if !defined(_WIN64)
 	if (IsBadWritePtr(data, 1) != 0)
 		data = Direct3d9::getTemporaryBuffer(length);
+#endif
 
 	return reinterpret_cast<Index *>(data);
 }

@@ -191,6 +191,7 @@ ClientObject::ClientObject(const SharedObjectTemplate* newTemplate, const Object
 	m_cashBalance(0),
 	m_bankBalance(0),
 	m_clientCached(false),
+	m_clientDataFileWearablesApplied(false),
 	m_uniqueId(ms_nextUniqueId++),
 	m_auxilliaryObjectVector(NULL),
 	m_lastFlyTextTime(0.f)
@@ -1375,6 +1376,20 @@ void ClientObject::setClientCached ()
 bool ClientObject::isClientCached () const
 {
 	return m_clientCached;
+}
+
+//----------------------------------------------------------------------
+
+bool ClientObject::getClientDataFileWearablesApplied () const
+{
+	return m_clientDataFileWearablesApplied;
+}
+
+//----------------------------------------------------------------------
+
+void ClientObject::setClientDataFileWearablesApplied (bool const applied)
+{
+	m_clientDataFileWearablesApplied = applied;
 }
 
 //----------------------------------------------------------------------

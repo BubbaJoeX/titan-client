@@ -36,20 +36,6 @@ public:
 
 	static PackedArgb const linearInterpolate(PackedArgb const & color1, PackedArgb const & color2, float t);
 
-	// HTML color support (#RRGGBB or #AARRGGBB format)
-	static PackedArgb   fromHtmlString(const char * htmlColor);
-	static bool         isValidHtmlColor(const char * htmlColor);
-	void                toHtmlString(char * buffer, int bufferSize, bool includeAlpha = false) const;
-
-	// Special palette index encoding for direct RGB colors
-	// Positive indices (0 to N-1): Traditional palette index
-	// Negative indices: Direct RGB encoding
-	//   Formula: index = -((r << 16) | (g << 8) | b) - 1
-	//   Decode:  rgb = -(index + 1); r = (rgb >> 16) & 0xFF; g = (rgb >> 8) & 0xFF; b = rgb & 0xFF
-	static int          encodeAsSpecialIndex(const PackedArgb & color);
-	static PackedArgb   decodeFromSpecialIndex(int specialIndex);
-	static bool         isSpecialColorIndex(int index);
-
 public:
 
 	PackedArgb();

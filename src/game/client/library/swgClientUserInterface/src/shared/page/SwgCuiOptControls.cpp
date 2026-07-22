@@ -101,100 +101,100 @@ m_reaquireJoysticks ( NULL )
 	UICheckbox * checkbox = 0;
 
 	getCodeDataObject (TUISliderbar, slider, "sliderCameraZoomSpeed");
-	registerSlider (*slider, FreeChaseCamera::setCameraZoomSpeed, FreeChaseCamera::getCameraZoomSpeed, ConfigClientGame::getFreeChaseCameraZoomSpeed, 0.2f, 1.0f);
+	registerSlider (slider, FreeChaseCamera::setCameraZoomSpeed, FreeChaseCamera::getCameraZoomSpeed, ConfigClientGame::getFreeChaseCameraZoomSpeed, 0.2f, 1.0f);
 
 	getCodeDataObject (TUISliderbar, slider, "sliderMouseSensitivity");
-	registerSlider (*slider, GroundScene::setMouseSensitivity, GroundScene::getMouseSensitivity, ConfigClientGame::getMouseSensitivity, 0.20f, 3.0f);
+	registerSlider (slider, GroundScene::setMouseSensitivity, GroundScene::getMouseSensitivity, ConfigClientGame::getMouseSensitivity, 0.20f, 3.0f);
 
 	getCodeDataObject (TUISliderbar, slider, "sliderMouseInertia");
-	registerSlider (*slider, CuiPreferences::setCameraInertia, CuiPreferences::getCameraInertia, ConfigClientUserInterface::getCameraInertia, 0.0f, 30.0f);
+	registerSlider (slider, CuiPreferences::setCameraInertia, CuiPreferences::getCameraInertia, ConfigClientUserInterface::getCameraInertia, 0.0f, 30.0f);
 
 	getCodeDataObject (TUISliderbar, slider, "sliderDeadZone");
-	registerSlider (*slider, CuiIoWin::setDeadZoneSize, CuiIoWin::getDeadZoneSize, ConfigClientUserInterface::getReticleDeadZoneSizeX, 0, 700);
+	registerSlider (slider, CuiIoWin::setDeadZoneSize, CuiIoWin::getDeadZoneSize, ConfigClientUserInterface::getReticleDeadZoneSizeX, 0, 700);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkInvertMouseLook");
-	registerCheckbox (*checkbox, GroundScene::setInvertMouseLook, GroundScene::getInvertMouseLook, ConfigClientGame::getInvertMouse);
+	registerCheckbox (checkbox, GroundScene::setInvertMouseLook, GroundScene::getInvertMouseLook, ConfigClientGame::getInvertMouse);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkMouseMode");
-	registerCheckbox (*checkbox, CuiPreferences::setMouseModeDefault, CuiPreferences::getMouseModeDefault, ConfigClientUserInterface::getMouseModeDefault);
+	registerCheckbox (checkbox, CuiPreferences::setMouseModeDefault, CuiPreferences::getMouseModeDefault, ConfigClientUserInterface::getMouseModeDefault);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkRunDefault");
-	registerCheckbox (*checkbox, PlayerCreatureController::setRunWhenMoving, PlayerCreatureController::getRunWhenMoving, ConfigClientGame::getRunWhenMoving);
+	registerCheckbox (checkbox, PlayerCreatureController::setRunWhenMoving, PlayerCreatureController::getRunWhenMoving, ConfigClientGame::getRunWhenMoving);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkTargetUntargets");
-	registerCheckbox (*checkbox, CuiPreferences::setTargetNothingUntargets, CuiPreferences::getTargetNothingUntargets, ConfigClientUserInterface::getTargetNothingUntargets);
+	registerCheckbox (checkbox, CuiPreferences::setTargetNothingUntargets, CuiPreferences::getTargetNothingUntargets, ConfigClientUserInterface::getTargetNothingUntargets);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkTurnStrafes");
-	registerCheckbox (*checkbox, CuiPreferences::setTurnStrafesDuringMouseModeToggle, CuiPreferences::getTurnStrafesDuringMouseModeToggle, ConfigClientUserInterface::getTurnStrafesDuringMouseModeToggle);
+	registerCheckbox (checkbox, CuiPreferences::setTurnStrafesDuringMouseModeToggle, CuiPreferences::getTurnStrafesDuringMouseModeToggle, ConfigClientUserInterface::getTurnStrafesDuringMouseModeToggle);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkCanFireSecondariesFromToolbar");
-	registerCheckbox (*checkbox, CuiPreferences::setCanFireSecondariesFromToolbar, CuiPreferences::getCanFireSecondariesFromToolbar, ConfigClientUserInterface::getCanFireSecondariesFromToolbar);
+	registerCheckbox (checkbox, CuiPreferences::setCanFireSecondariesFromToolbar, CuiPreferences::getCanFireSecondariesFromToolbar, ConfigClientUserInterface::getCanFireSecondariesFromToolbar);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkShipAutolevel");
-	registerCheckbox (*checkbox, CuiPreferences::setShipAutolevel, CuiPreferences::getShipAutolevel, ConfigClientGame::getShipAutolevelDefault);
+	registerCheckbox (checkbox, CuiPreferences::setShipAutolevel, CuiPreferences::getShipAutolevel, ConfigClientGame::getShipAutolevelDefault);
 
 	// -- Gimbal Setting
 	getCodeDataObject (TUICheckbox, checkbox, "checkGimbal");
-	registerCheckbox (*checkbox, CuiPreferences::setEnableGimbal, CuiPreferences::getEnableGimbal, ConfigClientUserInterface::getEnableGimbal);
+	registerCheckbox (checkbox, CuiPreferences::setEnableGimbal, CuiPreferences::getEnableGimbal, ConfigClientUserInterface::getEnableGimbal);
 
 	//-- ship pilot mouse mode
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkPilotMouseModeAuto");
-	registerCheckbox (*checkbox, SwgCuiOptControlsNamespace::setPilotMouseModeAuto, SwgCuiOptControlsNamespace::getPilotMouseModeAuto, SwgCuiOptBase::getTrue);
+	registerCheckbox (checkbox, SwgCuiOptControlsNamespace::setPilotMouseModeAuto, SwgCuiOptControlsNamespace::getPilotMouseModeAuto, SwgCuiOptBase::getTrue);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkPilotMouseModeVirtualJoystick");
-	registerCheckbox (*checkbox, SwgCuiOptControlsNamespace::setPilotMouseModeVirtualJoystick, SwgCuiOptControlsNamespace::getPilotMouseModeVirtualJoystick, SwgCuiOptBase::getFalse);
+	registerCheckbox (checkbox, SwgCuiOptControlsNamespace::setPilotMouseModeVirtualJoystick, SwgCuiOptControlsNamespace::getPilotMouseModeVirtualJoystick, SwgCuiOptBase::getFalse);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkPilotMouseModeCockpitCamera");
-	registerCheckbox (*checkbox, SwgCuiOptControlsNamespace::setPilotMouseModeCockpitCamera, SwgCuiOptControlsNamespace::getPilotMouseModeCockpitCamera, SwgCuiOptBase::getFalse);
+	registerCheckbox (checkbox, SwgCuiOptControlsNamespace::setPilotMouseModeCockpitCamera, SwgCuiOptControlsNamespace::getPilotMouseModeCockpitCamera, SwgCuiOptBase::getFalse);
 
 	//-- joystick invert
 	getCodeDataObject (TUICheckbox, checkbox, "checkJoystickInvert");
-	registerCheckbox (*checkbox, CuiPreferences::setJoystickInverted, CuiPreferences::isJoystickInverted, SwgCuiOptBase::getFalse);
+	registerCheckbox (checkbox, CuiPreferences::setJoystickInverted, CuiPreferences::isJoystickInverted, SwgCuiOptBase::getFalse);
 
 	//-- joystick sensitivity
 	getCodeDataObject (TUISliderbar, slider, "sliderJoystickSensitivity");
-	registerSlider (*slider, CuiPreferences::setJoystickSensitivity, CuiPreferences::getJoystickSensitivity, SwgCuiOptBase::getOne, 0.1f, 2.0f);
+	registerSlider (slider, CuiPreferences::setJoystickSensitivity, CuiPreferences::getJoystickSensitivity, SwgCuiOptBase::getOne, 0.1f, 2.0f);
 
 	//-- joystick deadzone
 	getCodeDataObject (TUISliderbar, slider, "sliderJoystickDeadzone");
-	registerSlider (*slider, CuiPreferences::setJoystickDeadZone, CuiPreferences::getJoystickDeadZone, SwgCuiOptControlsNamespace::getJoystickDeadZoneDefault, 0.0f, 0.5f);
+	registerSlider (slider, CuiPreferences::setJoystickDeadZone, CuiPreferences::getJoystickDeadZone, SwgCuiOptControlsNamespace::getJoystickDeadZoneDefault, 0.0f, 0.5f);
 
 	//-- ship pov hat mode (snap)
 	getCodeDataObject (TUICheckbox, checkbox, "checkPovHatModeSnap");
-	registerCheckbox (*checkbox, SwgCuiOptControlsNamespace::setPovHatModeSnap, SwgCuiOptControlsNamespace::getPovHatModeSnap, SwgCuiOptBase::getTrue);
+	registerCheckbox (checkbox, SwgCuiOptControlsNamespace::setPovHatModeSnap, SwgCuiOptControlsNamespace::getPovHatModeSnap, SwgCuiOptBase::getTrue);
 
 	//-- pov hat snap angle
 	getCodeDataObject (TUISliderbar, slider, "sliderPovHatModeSnapAngle");
-	registerSlider (*slider, CuiPreferences::setPovHatSnapAngleDegrees, CuiPreferences::getPovHatSnapAngleDegrees, SwgCuiOptControlsNamespace::getPovHatModeSnapAngleDefault, 30.0f, 180.0f);
+	registerSlider (slider, CuiPreferences::setPovHatSnapAngleDegrees, CuiPreferences::getPovHatSnapAngleDegrees, SwgCuiOptControlsNamespace::getPovHatModeSnapAngleDefault, 30.0f, 180.0f);
 
 	//-- ship pov hat mode (pan)
 	getCodeDataObject (TUICheckbox, checkbox, "checkPovHatModePan");
-	registerCheckbox (*checkbox, SwgCuiOptControlsNamespace::setPovHatModePan, SwgCuiOptControlsNamespace::getPovHatModePan, SwgCuiOptBase::getFalse);
+	registerCheckbox (checkbox, SwgCuiOptControlsNamespace::setPovHatModePan, SwgCuiOptControlsNamespace::getPovHatModePan, SwgCuiOptBase::getFalse);
 
 	//-- pov hat pan speed
 	getCodeDataObject (TUISliderbar, slider, "sliderPovHatModePanSpeed");
-	registerSlider (*slider, CuiPreferences::setPovHatPanSpeed, CuiPreferences::getPovHatPanSpeed, SwgCuiOptBase::getOne, 0.1f, 2.0f);
+	registerSlider (slider, CuiPreferences::setPovHatPanSpeed, CuiPreferences::getPovHatPanSpeed, SwgCuiOptBase::getOne, 0.1f, 2.0f);
 
 	//-- recenter cockpit camera on ship movement
 	getCodeDataObject (TUICheckbox, checkbox, "checkCockpitCameraRecenter");
-	registerCheckbox (*checkbox, CuiPreferences::setCockpitCameraRecenterOnShipMovement, CuiPreferences::getCockpitCameraRecenterOnShipMovement, SwgCuiOptBase::getTrue);
+	registerCheckbox (checkbox, CuiPreferences::setCockpitCameraRecenterOnShipMovement, CuiPreferences::getCockpitCameraRecenterOnShipMovement, SwgCuiOptBase::getTrue);
 
 	//-- cockpit camera snap speed
 	getCodeDataObject (TUISliderbar, slider, "sliderCockpitCameraSnapSpeed");
-	registerSlider (*slider, CuiPreferences::setCockpitCameraSnapSpeed, CuiPreferences::getCockpitCameraSnapSpeed, SwgCuiOptBase::getOne, 0.1f, 2.0f);
+	registerSlider (slider, CuiPreferences::setCockpitCameraSnapSpeed, CuiPreferences::getCockpitCameraSnapSpeed, SwgCuiOptBase::getOne, 0.1f, 2.0f);
 
 	//-- cockpit camera y offset
 	getCodeDataObject (TUISliderbar, slider, "sliderCockpitCameraYOffset");
-	registerSlider (*slider, CuiPreferences::setCockpitCameraYOffset, CuiPreferences::getCockpitCameraYOffset, SwgCuiOptBase::getOne, -10.0f, 10.0f);
+	registerSlider (slider, CuiPreferences::setCockpitCameraYOffset, CuiPreferences::getCockpitCameraYOffset, SwgCuiOptBase::getOne, -10.0f, 10.0f);
 
 	//-- cockpit camera zoom multiplier
 	getCodeDataObject (TUISliderbar, slider, "sliderCockpitCameraZoomMultiplier");
-	registerSlider (*slider, CuiPreferences::setCockpitCameraZoomMultiplier, CuiPreferences::getCockpitCameraZoomMultiplier, SwgCuiOptBase::getOne, 1.0f, 3.0f);
+	registerSlider (slider, CuiPreferences::setCockpitCameraZoomMultiplier, CuiPreferences::getCockpitCameraZoomMultiplier, SwgCuiOptBase::getOne, 1.0f, 3.0f);
 
 	//-- Client head tracking
 	getCodeDataObject(TUICheckbox, checkbox, "checkTrackIr");
-	registerCheckbox (*checkbox, ClientHeadTracking::setEnabled, ClientHeadTracking::getEnabled, getClientHeadTrackingDefault);
+	registerCheckbox (checkbox, ClientHeadTracking::setEnabled, ClientHeadTracking::getEnabled, getClientHeadTrackingDefault);
 	if (!ClientHeadTracking::isSupported())
 		checkbox->SetEnabled(false);
 

@@ -24,7 +24,6 @@
 #include "clientGame/ClientAsteroidManager.h"
 #include "clientGame/ClientBattlefieldMarkerObjectTemplate.h"
 #include "clientGame/ClientBattlefieldMarkerOutlineObject.h"
-#include "clientGame/ClientClaimFootprintManager.h"
 #include "clientGame/ClientBattlefieldMarkerOutlineObjectNotification.h"
 #include "clientGame/ClientBuffBuilderManager.h"
 #include "clientGame/ClientBuffManager.h"
@@ -134,7 +133,6 @@
 #include "clientGame/RemoteCreatureController.h"
 #include "clientGame/RemoteShipController.h"
 #include "clientGame/RoleIconManager.h"
-#include "clientGame/RtCameraManager.h"
 #include "clientGame/SaddleManager.h"
 #include "clientGame/ShipComponentPowerEffectsManagerClient.h"
 #include "clientGame/ShipController.h"
@@ -171,8 +169,6 @@
 #include "clientGraphics/Camera.h"
 #include "clientGraphics/DebugPrimitive.h"
 #include "clientGraphics/DebugPrimitive.h"
-#include "clientGraphics/AtmosphericEffects.h"
-#include "clientGraphics/ClientPresentation.h"
 #include "clientGraphics/PostProcessingEffectsManager.h"
 #include "clientGraphics/RenderWorld.h"
 #include "clientGraphics/ShaderPrimitiveSorter.h"
@@ -536,8 +532,6 @@ void SetupClientGame::install (const Data &data)
 
 	LightsaberCollisionManager::install ();
 
-	ClientPresentation::install();
-	AtmosphericEffects::install();
 	PostProcessingEffectsManager::install();
 	Bloom::install ();
 
@@ -574,7 +568,6 @@ void SetupClientGame::install (const Data &data)
 		ClientStructureFootprintObjectNotification::install ();
 		TerrainObject::addTerrainChangedFunction (ClientStructureFootprintObjectNotification::terrainChanged);
 		ClientBattlefieldMarkerOutlineObject::install ();
-		ClientClaimFootprintManager::install();
 		ClientBattlefieldMarkerOutlineObjectNotification::install();
 		TerrainObject::addTerrainChangedFunction (ClientBattlefieldMarkerOutlineObjectNotification::terrainChanged);
 		ClientPathObject::install ();
@@ -671,7 +664,6 @@ void SetupClientGame::install (const Data &data)
 		MatchMakingManager::install();
 		CustomerServiceManager::install();
 		AlarmManager::install();
-		RtCameraManager::install();
 		ChatLogManager::install();
 		ClientTextManager::install();
 		CommunityManager::install();

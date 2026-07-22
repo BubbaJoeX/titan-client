@@ -1836,7 +1836,7 @@ void CommandCppFuncsNamespace::commandFuncDraw (Command const & , NetworkId cons
 
 void CommandCppFuncsNamespace::commandFuncUiDebugExamine (Command const & , NetworkId const & , NetworkId const & , Unicode::String const & params)
 {
-	if (ConfigClientGame::getCSR())
+	if(Game::getPlayerObject()->isAdmin())
 	{
 		const std::string debugExamineCommand = "/ui debugexamine ";
 		std::string command = debugExamineCommand + Unicode::wideToUTF8(params);
@@ -2233,16 +2233,7 @@ void CommandCppFuncsNamespace::commandFuncWaypointAutopilot(Command const & /*co
 			CuiSystemMessageManager::sendFakeSystemMessage (Unicode::narrowToWide("(debug) You cannot autopilot to a different space zone."));
 			return;
 		}
-		Vector targetLoc = waypoint->getLocation();
-		if (!Game::isSpace())
-		{
-			float terrainHeight = 0.0f;
-			TerrainObject const * const terrain = TerrainObject::getConstInstance();
-			if (terrain)
-				terrain->getHeight(Vector(targetLoc.x, 0.0f, targetLoc.z), terrainHeight);
-			targetLoc.y = terrainHeight + 200.0f;
-		}
-		playerShipController->engageAutopilotToLocation(targetLoc);
+		playerShipController->engageAutopilotToLocation(waypoint->getLocation());
 		waypoint->setWaypointActive(true);
 	}
 }

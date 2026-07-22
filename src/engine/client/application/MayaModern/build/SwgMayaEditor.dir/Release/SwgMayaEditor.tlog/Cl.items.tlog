@@ -39,6 +39,7 @@ D:\titan\client\src\engine\client\application\MayaModern\utility\MayaConversions
 D:\titan\client\src\engine\client\application\MayaModern\utility\MayaCompoundString.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\MayaCompoundString.obj
 D:\titan\client\src\engine\client\application\MayaModern\utility\StaticMeshViewportSpace.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\StaticMeshViewportSpace.obj
 D:\titan\client\src\engine\client\application\MayaModern\utility\StaticMeshTransferOptions.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\StaticMeshTransferOptions.obj
+D:\titan\client\src\engine\client\application\MayaModern\utility\SwgImportTrace.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\SwgImportTrace.obj
 D:\titan\client\src\engine\client\application\MayaModern\commands\SetDirectoryCommand.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\SetDirectoryCommand.obj
 D:\titan\client\src\engine\client\application\MayaModern\commands\SetBaseDirectory.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\SetBaseDirectory.obj
 D:\titan\client\src\engine\client\application\MayaModern\commands\ExportDirectoryBootstrap.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\ExportDirectoryBootstrap.obj

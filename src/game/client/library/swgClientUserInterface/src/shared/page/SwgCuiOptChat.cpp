@@ -83,72 +83,72 @@ SwgCuiOptBase ("SwgCuiOptChat", page)
 	registerSlider    (*slider, CuiChatBubbleManager::setChatBubbleRangeFactor, CuiChatBubbleManager::getChatBubbleRangeFactor, ConfigClientUserInterface::getChatBubbleRangeFactor, 0.10f, 2.0f);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkChatBoxKeyClick");
-	registerCheckbox (*checkbox, CuiChatManager::setChatBoxKeyClick, CuiChatManager::getChatBoxKeyClick, ConfigClientUserInterface::getChatBoxKeyClick);
+	registerCheckbox (checkbox, CuiChatManager::setChatBoxKeyClick, CuiChatManager::getChatBoxKeyClick, ConfigClientUserInterface::getChatBoxKeyClick);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkChatBrief");
-	registerCheckbox (*checkbox, CuiChatManager::setChatBrief, CuiChatManager::isChatBrief, CuiChatManager::isChatBriefDefault);
+	registerCheckbox (checkbox, CuiChatManager::setChatBrief, CuiChatManager::isChatBrief, CuiChatManager::isChatBriefDefault);
 	getCodeDataObject (TUICheckbox, checkbox, "checkChatDiku");
-	registerCheckbox (*checkbox, CuiChatManager::setChatDiku, CuiChatManager::isChatDiku, CuiChatManager::isChatDikuDefault);
+	registerCheckbox (checkbox, CuiChatManager::setChatDiku, CuiChatManager::isChatDiku, CuiChatManager::isChatDikuDefault);
 	getCodeDataObject (TUICheckbox, checkbox, "checkChatProse");
-	registerCheckbox (*checkbox, CuiChatManager::setChatProse, CuiChatManager::isChatProse, CuiChatManager::isChatProseDefault);
+	registerCheckbox (checkbox, CuiChatManager::setChatProse, CuiChatManager::isChatProse, CuiChatManager::isChatProseDefault);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkChatBubbleEmotes");
-	registerCheckbox (*checkbox, CuiChatBubbleManager::setBubbleEmotesEnabled, CuiChatBubbleManager::getBubbleEmotesEnabled, ConfigClientUserInterface::getChatBubbleEmotesEnabled);
+	registerCheckbox (checkbox, CuiChatBubbleManager::setBubbleEmotesEnabled, CuiChatBubbleManager::getBubbleEmotesEnabled, ConfigClientUserInterface::getChatBubbleEmotesEnabled);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkChatBubbleProse");
-	registerCheckbox (*checkbox, CuiChatBubbleManager::setBubbleProse, CuiChatBubbleManager::getBubbleProse, CuiChatBubbleManager::getBubbleProseDefault);
+	registerCheckbox (checkbox, CuiChatBubbleManager::setBubbleProse, CuiChatBubbleManager::getBubbleProse, CuiChatBubbleManager::getBubbleProseDefault);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkChatBubbleShowAll");
-	registerCheckbox (*checkbox, CuiChatBubbleManager::setBubbleShowAll, CuiChatBubbleManager::getBubbleShowAll, CuiChatBubbleManager::getBubbleShowAllDefault);
+	registerCheckbox (checkbox, CuiChatBubbleManager::setBubbleShowAll, CuiChatBubbleManager::getBubbleShowAll, CuiChatBubbleManager::getBubbleShowAllDefault);
 	getCodeDataObject (TUICheckbox, checkbox, "checkChatBubbleShowGroup");
-	registerCheckbox (*checkbox, CuiChatBubbleManager::setBubbleShowGroup, CuiChatBubbleManager::getBubbleShowGroup, CuiChatBubbleManager::getBubbleShowGroupDefault);
+	registerCheckbox (checkbox, CuiChatBubbleManager::setBubbleShowGroup, CuiChatBubbleManager::getBubbleShowGroup, CuiChatBubbleManager::getBubbleShowGroupDefault);
 	getCodeDataObject (TUICheckbox, checkbox, "checkChatBubbleShowGuild");
-	registerCheckbox (*checkbox, CuiChatBubbleManager::setBubbleShowGuild, CuiChatBubbleManager::getBubbleShowGuild, CuiChatBubbleManager::getBubbleShowGuildDefault);
+	registerCheckbox (checkbox, CuiChatBubbleManager::setBubbleShowGuild, CuiChatBubbleManager::getBubbleShowGuild, CuiChatBubbleManager::getBubbleShowGuildDefault);
 	getCodeDataObject (TUICheckbox, checkbox, "checkChatBubbleShowNPC");
-	registerCheckbox (*checkbox, CuiChatBubbleManager::setBubbleShowNPC, CuiChatBubbleManager::getBubbleShowNPC, CuiChatBubbleManager::getBubbleShowNPCDefault);
+	registerCheckbox (checkbox, CuiChatBubbleManager::setBubbleShowNPC, CuiChatBubbleManager::getBubbleShowNPC, CuiChatBubbleManager::getBubbleShowNPCDefault);
 	getCodeDataObject (TUICheckbox, checkbox, "checkChatBubbleShowPlayer");
-	registerCheckbox (*checkbox, CuiChatBubbleManager::setBubbleShowPlayer, CuiChatBubbleManager::getBubbleShowPlayer, CuiChatBubbleManager::getBubbleShowPlayerDefault);
+	registerCheckbox (checkbox, CuiChatBubbleManager::setBubbleShowPlayer, CuiChatBubbleManager::getBubbleShowPlayer, CuiChatBubbleManager::getBubbleShowPlayerDefault);
 	getCodeDataObject (TUICheckbox, checkbox, "checkChatBubbleShowSelf");
-	registerCheckbox (*checkbox, CuiChatBubbleManager::setBubbleShowSelf, CuiChatBubbleManager::getBubbleShowSelf, CuiChatBubbleManager::getBubbleShowSelfDefault);
+	registerCheckbox (checkbox, CuiChatBubbleManager::setBubbleShowSelf, CuiChatBubbleManager::getBubbleShowSelf, CuiChatBubbleManager::getBubbleShowSelfDefault);
 	getCodeDataObject (TUICheckbox, checkbox, "checkChatBubbleSocials");
-	registerCheckbox (*checkbox, CuiChatBubbleManager::setBubbleSocialsEnabled, CuiChatBubbleManager::getBubbleSocialsEnabled, CuiChatBubbleManager::getBubbleSocialsEnabledDefault);
+	registerCheckbox (checkbox, CuiChatBubbleManager::setBubbleSocialsEnabled, CuiChatBubbleManager::getBubbleSocialsEnabled, CuiChatBubbleManager::getBubbleSocialsEnabledDefault);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkShowAFKSpeech");
-	registerCheckbox (*checkbox, CuiPreferences::setShowAFKSpeech, CuiPreferences::getShowAFKSpeech, SwgCuiOptBase::getTrue);
+	registerCheckbox (checkbox, CuiPreferences::setShowAFKSpeech, CuiPreferences::getShowAFKSpeech, SwgCuiOptBase::getTrue);
 
 #if 0	
 	//disabled temporarily until we have a solution for npc conversation where the very last message is sent spatially
 	getCodeDataObject (TUICheckbox, checkbox, "checkShowNPCSpeech");
-	registerCheckbox (*checkbox, CuiPreferences::setShowNPCSpeech, CuiPreferences::getShowNPCSpeech, SwgCuiOptBase::getTrue);
+	registerCheckbox (checkbox, CuiPreferences::setShowNPCSpeech, CuiPreferences::getShowNPCSpeech, SwgCuiOptBase::getTrue);
 #endif
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkChatBubblesEnable");
-	registerCheckbox (*checkbox, CuiChatBubbleManager::setBubblesEnabled, CuiChatBubbleManager::getBubblesEnabled, ConfigClientUserInterface::getChatBubblesEnabled);
+	registerCheckbox (checkbox, CuiChatBubbleManager::setBubblesEnabled, CuiChatBubbleManager::getBubblesEnabled, ConfigClientUserInterface::getChatBubblesEnabled);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkChatTimestamp");
-	registerCheckbox (*checkbox, CuiChatManager::setChatBoxTimestamp, CuiChatManager::getChatBoxTimestamp, ConfigClientUserInterface::getChatTimestampEnabled);
+	registerCheckbox (checkbox, CuiChatManager::setChatBoxTimestamp, CuiChatManager::getChatBoxTimestamp, ConfigClientUserInterface::getChatTimestampEnabled);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkProfanity");
-	registerCheckbox (*checkbox, Game::setProfanityFiltered, Game::isProfanityFiltered, ConfigClientGame::isProfanityFiltered);
+	registerCheckbox (checkbox, Game::setProfanityFiltered, Game::isProfanityFiltered, ConfigClientGame::isProfanityFiltered);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkChatAutoEmote");
-	registerCheckbox (*checkbox, CuiPreferences::setChatAutoEmote, CuiPreferences::getChatAutoEmote, SwgCuiOptBase::getTrue);
+	registerCheckbox (checkbox, CuiPreferences::setChatAutoEmote, CuiPreferences::getChatAutoEmote, SwgCuiOptBase::getTrue);
 
 	// combat spam options
 	getCodeDataObject (TUIComboBox, combo, "comboCombatSpamFilter");
-	registerComboBox (*combo, onCombatSpamFilterSet, onCombatSpamFilterGet, getDefaultCombatSpamFilter);
+	registerComboBox (combo, onCombatSpamFilterSet, onCombatSpamFilterGet, getDefaultCombatSpamFilter);
 	getCodeDataObject (TUISliderbar, slider, "sliderCombatSpamRangeFilter");
 	registerSlider    (*slider, setCombatSpamRangeFilter, CuiPreferences::getCombatSpamRangeFilter, CuiPreferences::getCombatSpamRangeFilterDefault, 1, 128);
 	getCodeDataObject (TUICheckbox, checkbox, "checkCombatSpamBrief");
-	registerCheckbox (*checkbox, CuiPreferences::setCombatSpamBrief, CuiPreferences::getCombatSpamBrief, SwgCuiOptBase::getTrue);
+	registerCheckbox (checkbox, CuiPreferences::setCombatSpamBrief, CuiPreferences::getCombatSpamBrief, SwgCuiOptBase::getTrue);
 	getCodeDataObject (TUICheckbox, checkbox, "checkCombatSpamVerbose");
-	registerCheckbox (*checkbox, CuiPreferences::setCombatSpamVerbose, CuiPreferences::getCombatSpamVerbose, SwgCuiOptBase::getFalse);
+	registerCheckbox (checkbox, CuiPreferences::setCombatSpamVerbose, CuiPreferences::getCombatSpamVerbose, SwgCuiOptBase::getFalse);
 	getCodeDataObject (TUICheckbox, checkbox, "spamShowWeapon");
-	registerCheckbox (*checkbox, CuiPreferences::setSpamShowWeapon, CuiPreferences::getSpamShowWeapon, SwgCuiOptBase::getTrue);
+	registerCheckbox (checkbox, CuiPreferences::setSpamShowWeapon, CuiPreferences::getSpamShowWeapon, SwgCuiOptBase::getTrue);
 	getCodeDataObject (TUICheckbox, checkbox, "spamShowDamageDetail");
-	registerCheckbox (*checkbox, CuiPreferences::setSpamShowDamageDetail, CuiPreferences::getSpamShowDamageDetail, SwgCuiOptBase::getTrue);
+	registerCheckbox (checkbox, CuiPreferences::setSpamShowDamageDetail, CuiPreferences::getSpamShowDamageDetail, SwgCuiOptBase::getTrue);
 	getCodeDataObject (TUICheckbox, checkbox, "spamShowArmorAbsorption");
-	registerCheckbox (*checkbox, CuiPreferences::setSpamShowArmorAbsorption, CuiPreferences::getSpamShowArmorAbsorption, SwgCuiOptBase::getTrue);
+	registerCheckbox (checkbox, CuiPreferences::setSpamShowArmorAbsorption, CuiPreferences::getSpamShowArmorAbsorption, SwgCuiOptBase::getTrue);
 }
 
 //----------------------------------------------------------------------

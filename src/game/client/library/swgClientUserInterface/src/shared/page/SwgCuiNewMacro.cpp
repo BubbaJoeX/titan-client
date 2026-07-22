@@ -18,6 +18,7 @@
 #include "UIPage.h"
 #include "UIText.h"
 #include "UIVolumePage.h"
+#include <iterator>
 #include "UnicodeUtils.h"
 #include "clientGame/ClientMacroManager.h"
 #include "clientUserInterface/CuiMessageBox.h"

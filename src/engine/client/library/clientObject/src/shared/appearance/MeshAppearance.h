@@ -50,6 +50,7 @@ public:
 	virtual void                addCustomizationVariables(CustomizationData &customizationData) const;
 
 	virtual void                render() const;
+	virtual void                objectListCameraRender() const;
 	virtual void drawDebugShapes (DebugShapeRenderer* renderer) const;
 
 	const ShaderPrimitiveSet   *getShaderPrimitiveSet() const;

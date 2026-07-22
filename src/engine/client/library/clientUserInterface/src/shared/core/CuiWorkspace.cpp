@@ -218,14 +218,11 @@ void CuiWorkspace::updateMediatorEnabledStates (bool force)
 	//-- deactivate handles
 	else
 	{			
-		//-- disable all mediators (sticky mediators survive workspace-off so e.g. cinematic convo stays up when HUD is hidden)
+		//-- disable all mediators
 		for (MediatorSet::iterator it = m_mediators->begin (); it != m_mediators->end (); ++it)
 		{
 			CuiMediator * const mediator = NON_NULL (*it);
-			bool const sticky = mediator->isStickyVisible ();
-			bool const surviveWorkspaceDisabled = !m_enabled && mediator->shouldSurviveDisabledWorkspace ();
-
-			if (!surviveWorkspaceDisabled && (!m_enabled || !sticky))
+			if (!m_enabled || !mediator->isStickyVisible ())
 			{
 				if (mediator->isActive ())
 				{
@@ -235,15 +232,7 @@ void CuiWorkspace::updateMediatorEnabledStates (bool force)
 			}
 
 			if (m_toggleMediatorsEnabled)
-			{
-				if (surviveWorkspaceDisabled)
-				{
-					// HUD workspace is off but this mediator must stay interactive (e.g. cinematic conversation).
-					mediator->setEnabled (true);
-				}
-				else
-					mediator->setEnabled (false);
-			}
+				mediator->setEnabled (false);
 		}
 	}
 

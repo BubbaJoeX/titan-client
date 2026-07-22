@@ -5,6 +5,7 @@
 //
 // ======================================================================
 
+// Force rebuild when Unicode::String ABI changes (char16_t vs unsigned short).
 #include "FirstUnicode.h"
 #include "UnicodeUtils.h"
 

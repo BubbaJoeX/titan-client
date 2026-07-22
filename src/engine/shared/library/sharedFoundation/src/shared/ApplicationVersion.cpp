@@ -8,7 +8,6 @@
 
 #include "sharedFoundation/FirstSharedFoundation.h"
 #include "sharedFoundation/ApplicationVersion.h"
-#include "sharedFoundation/BranchVersion.h"
 
 // ======================================================================
 
@@ -71,13 +70,6 @@ char const * ApplicationVersion::getInternalVersion()
 		return "unknown.0";
 
 	return ms_version + versionOffset;
-}
-
-// ----------------------------------------------------------------------
-
-char const * ApplicationVersion::getBranchVersion()
-{
-	return APPLICATION_BRANCH_VERSION;
 }
 
 // ======================================================================

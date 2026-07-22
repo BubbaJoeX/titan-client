@@ -141,14 +141,12 @@ private:
 
 	void             loadLocalDataFromString_1(const std::string &stringData);
 	void             loadLocalDataFromString_2(const std::string &stringData);
-	void             loadLocalDataFromString_3(const std::string &stringData);
 
 	void             saveToByteVector(ByteVector &data, bool persistRemoteData = false) const;
 
 	bool             restoreFromByteVector(ByteVector const &data);
 	bool             restoreFromByteVector_1(ByteVector const &data);
 	bool             restoreFromByteVector_2(ByteVector const &data);
-	bool             restoreFromByteVector_3(ByteVector const &data);
 
 	
 	// Disabled.

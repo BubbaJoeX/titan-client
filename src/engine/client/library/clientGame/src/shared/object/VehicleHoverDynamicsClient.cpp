@@ -29,14 +29,10 @@
 #include "clientParticle/LightningAppearance.h"
 #include "clientSkeletalAnimation/SkeletalAppearance2.h"
 #include "sharedCollision/BoxExtent.h"
-#include "sharedCollision/CollisionProperty.h"
 #include "sharedFoundation/PersistentCrcString.h"
-#include "sharedGame/GameObjectTypes.h"
-#include "sharedGame/SharedObjectTemplate.h"
 #include "sharedFoundation/TemporaryCrcString.h"
 #include "sharedObject/Appearance.h"
 #include "sharedObject/AppearanceTemplate.h"
-#include "sharedObject/CellProperty.h"
 #include "sharedObject/AppearanceTemplateList.h"
 #include "sharedTerrain/TerrainObject.h"
 #include <list>
@@ -57,7 +53,7 @@ namespace
 	
 	const int s_numCrumbs      = 120;
 	const int s_numCrumbsPopup = 60;
-
+	
 	typedef VehicleHoverDynamicsClient::ParticleEffectVector ParticleEffectVector;
 	typedef VehicleHoverDynamicsClient::SoundIdVector SoundIdVector;
 	
@@ -452,8 +448,6 @@ float VehicleHoverDynamicsClient::alter(float elapsedTime)
 	}
 
 	const float retval = VehicleHoverDynamics::alter (elapsedTime);
-	
-	// Airspeeder mode: collision is driven by server when player presses Enter Skyway button (not by height threshold)
 	
 	FreeChaseCamera::ms_vehicleCameraOffsetY = 0.0f;
 	

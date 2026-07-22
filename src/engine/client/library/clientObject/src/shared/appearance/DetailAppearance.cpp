@@ -53,7 +53,7 @@ namespace DetailAppearanceNamespace
 	bool  ms_drawTestShape         = false;
 	bool  ms_drawWriteShape        = false;
 	bool  ms_forceLowDetailLevels  = false;
-	bool  ms_forceHighDetailLevels = true;
+	bool  ms_forceHighDetailLevels = false;
 	bool  ms_enableDetailLevelStretch = true;
 	bool  ms_fadeInEnabled         = true;
 	bool  ms_crossFadeEnabled      = false;
@@ -86,6 +86,13 @@ void DetailAppearance::install()
 	LocalMachineOptionManager::registerOption (ms_fadeInEnabled,         section, "fadeInEnabled");
 	LocalMachineOptionManager::registerOption (ms_crossFadeEnabled,      section, "crossFadeEnabled");
 	LocalMachineOptionManager::registerOption (ms_useLODManager,         section, "useLODManager");
+
+#if defined(_WIN64)
+	// Existing option files force the highest LOD before its asynchronous
+	// mesh load completes.  Do not allow persisted settings to reintroduce
+	// the static-building streaming race on x64.
+	ms_forceHighDetailLevels = false;
+#endif
 
 	if (Graphics::getShaderCapability() < ShaderCapability(1, 1))
 	{
@@ -418,16 +425,21 @@ int DetailAppearance::_chooseDetailLevel() const
 	if (ms_forceHighDetailLevels)
 	{
 		const int highestDetailLevel = numberOfDetailLevels - 1;
-		// Always request highest detail LOD to be loaded and use it
-		// getAppearance() triggers async loading if not already loaded
+		// Request the highest LOD, but never select an unloaded appearance.
+		// Returning an unloaded index leaves portions of multipart buildings
+		// missing until streaming catches up.
 		const Appearance *appearance = getAppearance(highestDetailLevel);
 		if (appearance && appearance->isLoaded())
-		{
 			return highestDetailLevel;
+
+		for (int detailLevel = highestDetailLevel - 1; detailLevel >= 0; --detailLevel)
+		{
+			appearance = m_appearanceList[detailLevel];
+			if (appearance && appearance->isLoaded())
+				return detailLevel;
 		}
-		// If not loaded yet, still return highest detail to indicate we want it
-		// The rendering system will handle the async load
-		return highestDetailLevel;
+
+		return -1;
 	}
 
 	// get the distance from the camera to the object
@@ -907,20 +919,15 @@ void DetailAppearance::_alterShowLodZero()
 {
 	if (++m_alters > 2)
 	{
-		// Show highest detail level (last index), not index 0 which is lowest detail
-		const int highestDetailLevel = m_appearanceListSize - 1;
-		if (highestDetailLevel >= 0)
+		// LOD zero is preloaded and is the only safe initial DPVS shape while
+		// higher-detail building pieces are still streaming.
+		Appearance * const appearance = _getAppearance(0);
+		if (appearance && appearance->isLoaded())
 		{
-			Appearance * a = _getAppearance(highestDetailLevel);
-			if (a && a->isLoaded())
-			{
-				m_currentDetailLevel = highestDetailLevel;
-
-				_endAppearanceFade(a, true);
-				_updateLodSettings(m_currentDetailLevel);
-
-				_setDpvsWriteShape();
-			}
+			m_currentDetailLevel = 0;
+			_endAppearanceFade(appearance, true);
+			_updateLodSettings(m_currentDetailLevel);
+			_setDpvsWriteShape();
 		}
 	}
 }

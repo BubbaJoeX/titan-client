@@ -736,7 +736,6 @@ buttonsComposite.enabled=1'
 					<Button
 						BackgroundColor='#FFFFFF'
 						BackgroundOpacity='0.90'
-						cmdname='CMD_uiDecoratorSpawn'
 						ContextToParent='true'
 						Dragable='true'
 						DragType='command'

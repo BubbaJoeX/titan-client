@@ -170,74 +170,74 @@ m_sliderGamma      (0)
 	registerSlider (*m_sliderGamma, Game::setGamma, Game::getGamma, Game::getDefaultGamma, 0.5f, 1.5f);
 
 	getCodeDataObject (TUISliderbar, slider, "sliderFov");
-	registerSlider (*slider, GroundScene::setCameraFieldOfViewDegrees, GroundScene::getCameraFieldOfViewDegrees, ConfigClientGame::getCameraFieldOfView, 60.0f, 120.0f);
+	registerSlider (slider, GroundScene::setCameraFieldOfViewDegrees, GroundScene::getCameraFieldOfViewDegrees, ConfigClientGame::getCameraFieldOfView, 60.0f, 120.0f);
 
 	getCodeDataObject (TUISliderbar, slider, "sliderFarPlane");
-	registerSlider (*slider, GroundScene::setCameraFarPlane, GroundScene::getCameraFarPlane, ConfigClientGame::getCameraFarPlane, 1024.0f, 4096.0f);
+	registerSlider (slider, GroundScene::setCameraFarPlane, GroundScene::getCameraFarPlane, ConfigClientGame::getCameraFarPlane, 1024.0f, 4096.0f);
 
 	getCodeDataObject (TUISliderbar, slider, "sliderStaticLodBias");
-	registerSlider (*slider, DetailAppearance::setDetailLevelBias, DetailAppearance::getDetailLevelBias, ConfigClientObject::getDetailLevelBias, 0.5f, 2.0f);
+	registerSlider (slider, DetailAppearance::setDetailLevelBias, DetailAppearance::getDetailLevelBias, ConfigClientObject::getDetailLevelBias, 0.5f, 2.0f);
 
 	getCodeDataObject (TUISliderbar, slider, "sliderCharacterLodBias");
-	registerSlider (*slider, SkeletalAppearance2::setDetailLevelBias, SkeletalAppearance2::getDetailLevelBias, ConfigClientObject::getDetailLevelBias, 0.5f, 2.0f);
+	registerSlider (slider, SkeletalAppearance2::setDetailLevelBias, SkeletalAppearance2::getDetailLevelBias, ConfigClientObject::getDetailLevelBias, 0.5f, 2.0f);
 
 	getCodeDataObject (TUISliderbar, slider, "sliderParticleLodBias");
-	registerSlider (*slider, setParticleLodBias, getParticleLodBias, ConfigClientObject::getDetailLevelBias, 0.25f, 1.0f);
+	registerSlider (slider, setParticleLodBias, getParticleLodBias, ConfigClientObject::getDetailLevelBias, 0.25f, 1.0f);
 
 	getCodeDataObject (TUISliderbar, slider, "sliderNebulaDensity");
-	registerSlider (*slider, SwgCuiOptGraphicsNamespace::setNebulaDensity, CuiPreferences::getGlobalNebulaDensity, CuiPreferences::getGlobalNebulaDensityDefault, 1.0f, 120.0f);
+	registerSlider (slider, SwgCuiOptGraphicsNamespace::setNebulaDensity, CuiPreferences::getGlobalNebulaDensity, CuiPreferences::getGlobalNebulaDensityDefault, 1.0f, 120.0f);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkRenderShadows");
-	registerCheckbox (*checkbox, ShadowManager::setEnabled, ShadowManager::getEnabled, ShadowManager::getEnabledDefault);
+	registerCheckbox (checkbox, ShadowManager::setEnabled, ShadowManager::getEnabled, ShadowManager::getEnabledDefault);
 
 	getCodeDataObject (TUICheckbox, checkbox, "radioShadowsCharNone");
-	registerCheckbox (*checkbox, ShadowManager::setSkeletalShadowsNone, ShadowManager::getSkeletalShadowsNone, ShadowManager::getSkeletalShadowsNoneDefault);
+	registerCheckbox (checkbox, ShadowManager::setSkeletalShadowsNone, ShadowManager::getSkeletalShadowsNone, ShadowManager::getSkeletalShadowsNoneDefault);
 
 	getCodeDataObject (TUICheckbox, checkbox, "radioShadowsCharSimple");
-	registerCheckbox (*checkbox, ShadowManager::setSkeletalShadowsSimple, ShadowManager::getSkeletalShadowsSimple, ShadowManager::getSkeletalShadowsSimpleDefault);
+	registerCheckbox (checkbox, ShadowManager::setSkeletalShadowsSimple, ShadowManager::getSkeletalShadowsSimple, ShadowManager::getSkeletalShadowsSimpleDefault);
 
 	getCodeDataObject (TUICheckbox, checkbox, "radioShadowsCharVolume");
-	registerCheckbox (*checkbox, ShadowManager::setSkeletalShadowsVolumetric, ShadowManager::getSkeletalShadowsVolumetric, ShadowManager::getSkeletalShadowsVolumetricDefault);
+	registerCheckbox (checkbox, ShadowManager::setSkeletalShadowsVolumetric, ShadowManager::getSkeletalShadowsVolumetric, ShadowManager::getSkeletalShadowsVolumetricDefault);
 
 	getCodeDataObject (TUICheckbox, checkbox, "radioShadowsNonCharNone");
-	registerCheckbox (*checkbox, ShadowManager::setMeshShadowsNone, ShadowManager::getMeshShadowsNone, ShadowManager::getMeshShadowsNoneDefault);
+	registerCheckbox (checkbox, ShadowManager::setMeshShadowsNone, ShadowManager::getMeshShadowsNone, ShadowManager::getMeshShadowsNoneDefault);
 
 	getCodeDataObject (TUICheckbox, checkbox, "radioShadowsNonCharVolume");
-	registerCheckbox (*checkbox, ShadowManager::setMeshShadowsVolumetric, ShadowManager::getMeshShadowsVolumetric, ShadowManager::getMeshShadowsVolumetricDefault);
+	registerCheckbox (checkbox, ShadowManager::setMeshShadowsVolumetric, ShadowManager::getMeshShadowsVolumetric, ShadowManager::getMeshShadowsVolumetricDefault);
 
 	getCodeDataObject (TUISliderbar, slider, "sliderShadowDetail");
-	registerSlider (*slider, ShadowManager::setShadowDetailLevel, ShadowManager::getShadowDetailLevel, ShadowManager::getShadowDetailLevelDefault, 0.f, 1.f);
+	registerSlider (slider, ShadowManager::setShadowDetailLevel, ShadowManager::getShadowDetailLevel, ShadowManager::getShadowDetailLevelDefault, 0.f, 1.f);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkBatchRenderer");
-	registerCheckbox (*checkbox, setEnableBatchRenderer, getEnableBatchRenderer, SwgCuiOptBase::getFalse);
+	registerCheckbox (checkbox, setEnableBatchRenderer, getEnableBatchRenderer, SwgCuiOptBase::getFalse);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkCharacterLodManager");
-	registerCheckbox (*checkbox, setEnableCharacterLodManager, getEnableCharacterLodManager, ConfigClientSkeletalAnimation::getLodManagerEnable);
+	registerCheckbox (checkbox, setEnableCharacterLodManager, getEnableCharacterLodManager, ConfigClientSkeletalAnimation::getLodManagerEnable);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkSimpleCameraCollision");
-	registerCheckbox (*checkbox, FreeChaseCamera::setCameraSimpleCollision, FreeChaseCamera::getCameraSimpleCollision, FreeChaseCamera::getCameraSimpleCollisionDefault);
+	registerCheckbox (checkbox, FreeChaseCamera::setCameraSimpleCollision, FreeChaseCamera::getCameraSimpleCollision, FreeChaseCamera::getCameraSimpleCollisionDefault);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkScreenshotTypeBmp");
-	registerCheckbox (*checkbox, setScreenShotTypeBmp, getScreenShotTypeBmp, SwgCuiOptBase::getFalse);
+	registerCheckbox (checkbox, setScreenShotTypeBmp, getScreenShotTypeBmp, SwgCuiOptBase::getFalse);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkScreenshotTypeTga");
-	registerCheckbox (*checkbox, setScreenShotTypeTga, getScreenShotTypeTga, SwgCuiOptBase::getFalse);
+	registerCheckbox (checkbox, setScreenShotTypeTga, getScreenShotTypeTga, SwgCuiOptBase::getFalse);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkScreenshotTypeJpg");
-	registerCheckbox (*checkbox, setScreenShotTypeJpg, getScreenShotTypeJpg, SwgCuiOptBase::getTrue);
+	registerCheckbox (checkbox, setScreenShotTypeJpg, getScreenShotTypeJpg, SwgCuiOptBase::getTrue);
 
 	getCodeDataObject (TUISliderbar, slider, "sliderScreenShotQuality");
-	registerSlider (*slider, Graphics::setScreenShotQuality, Graphics::getScreenShotQuality, getDefaultScreenShotQuality, 1, 100);
+	registerSlider (slider, Graphics::setScreenShotQuality, Graphics::getScreenShotQuality, getDefaultScreenShotQuality, 1, 100);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkFadeObjects");
-	registerCheckbox (*checkbox, DetailAppearance::setFadeInEnabled, DetailAppearance::getFadeInEnabled, SwgCuiOptBase::getTrue);
+	registerCheckbox (checkbox, DetailAppearance::setFadeInEnabled, DetailAppearance::getFadeInEnabled, SwgCuiOptBase::getTrue);
 	if(Graphics::getShaderCapability() < ShaderCapability(1, 1))
 	{
 		checkbox->SetEnabled(false);
 	}
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkCrossFadeDetailLevels");
-	registerCheckbox (*checkbox, DetailAppearance::setGlobalCrossFadeEnabled, DetailAppearance::getGlobalCrossFadeEnabled, SwgCuiOptBase::getFalse);
+	registerCheckbox (checkbox, DetailAppearance::setGlobalCrossFadeEnabled, DetailAppearance::getGlobalCrossFadeEnabled, SwgCuiOptBase::getFalse);
 	if(Graphics::getShaderCapability() < ShaderCapability(1, 1))
 	{
 		checkbox->SetEnabled(false);
@@ -246,14 +246,14 @@ m_sliderGamma      (0)
 	bool const canBloom = PostProcessingEffectsManager::isSupported() && Bloom::isSupported();
 
 	getCodeDataObject(TUICheckbox, checkbox, "checkEnableBloom");
-	registerCheckbox (*checkbox, Bloom::setEnabled, Bloom::isEnabled, canBloom ? SwgCuiOptBase::getTrue : SwgCuiOptBase::getFalse);
+	registerCheckbox (checkbox, Bloom::setEnabled, Bloom::isEnabled, canBloom ? SwgCuiOptBase::getTrue : SwgCuiOptBase::getFalse);
 	if (!canBloom)
 	{
 		checkbox->SetChecked(false);
 	}
 
 	getCodeDataObject(TUICheckbox, checkbox, "checkEnableHeatShimmer");
-	registerCheckbox (*checkbox, ShaderPrimitiveSorter::setHeatShadersEnabled, ShaderPrimitiveSorter::getHeatShadersEnabled, SwgCuiOptBase::getFalse);
+	registerCheckbox (checkbox, ShaderPrimitiveSorter::setHeatShadersEnabled, ShaderPrimitiveSorter::getHeatShadersEnabled, SwgCuiOptBase::getFalse);
 	if (!PostProcessingEffectsManager::isSupported() || !ShaderPrimitiveSorter::getHeatShadersCapable())
 	{
 		checkbox->SetChecked(false);
@@ -267,7 +267,7 @@ m_sliderGamma      (0)
 
 	bool const canPostProcess = PostProcessingEffectsManager::isSupported();
 	getCodeDataObject(TUICheckbox, checkbox, "checkEnablePostProcess");
-	registerCheckbox (*checkbox, PostProcessingEffectsManager::setEnabled, PostProcessingEffectsManager::isEnabled, canPostProcess ? SwgCuiOptBase::getTrue : SwgCuiOptBase::getFalse);
+	registerCheckbox (checkbox, PostProcessingEffectsManager::setEnabled, PostProcessingEffectsManager::isEnabled, canPostProcess ? SwgCuiOptBase::getTrue : SwgCuiOptBase::getFalse);
 	if (!canPostProcess)
 	{
 		checkbox->SetProperty(UILowerString("OnSet"), Unicode::emptyString);
@@ -282,7 +282,7 @@ m_sliderGamma      (0)
 	{
 		getCodeDataObject(TUICheckbox, checkbox, "checkEnableAntialias");
 		checkbox->SetEnabled(true);
-		registerCheckbox (*checkbox, PostProcessingEffectsManager::setAntialiasEnabled, PostProcessingEffectsManager::getAntialiasEnabled, SwgCuiOptBase::getFalse);
+		registerCheckbox (checkbox, PostProcessingEffectsManager::setAntialiasEnabled, PostProcessingEffectsManager::getAntialiasEnabled, SwgCuiOptBase::getFalse);
 	}
 	else
 	{
@@ -306,20 +306,20 @@ m_sliderGamma      (0)
 	}
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkEnableGlare");
-	registerCheckbox (*checkbox, GameCamera::setUserEnableGlare, GameCamera::getUserEnableGlare, SwgCuiOptBase::getTrue);
+	registerCheckbox (checkbox, GameCamera::setUserEnableGlare, GameCamera::getUserEnableGlare, SwgCuiOptBase::getTrue);
 
 	getCodeDataObject (TUICheckbox, checkbox, "checkDisableAnimationPriorities");
-	registerCheckbox (*checkbox, CuiPreferences::setDisableAnimationPriorities, CuiPreferences::getDisableAnimationPriorities, ConfigClientAnimation::getEnableCombatTrumping);
+	registerCheckbox (checkbox, CuiPreferences::setDisableAnimationPriorities, CuiPreferences::getDisableAnimationPriorities, ConfigClientAnimation::getEnableCombatTrumping);
 
 	getCodeDataObject (TUISliderbar, slider, "sliderParticleLimit");
-	registerSlider (*slider, setParticleUserLimit, getParticleUserLimit, ConfigClientParticle::getParticleUserLimit, 0, 2048);
+	registerSlider (slider, setParticleUserLimit, getParticleUserLimit, ConfigClientParticle::getParticleUserLimit, 0, 2048);
 
 	getCodeDataObject (TUISliderbar, slider, "sliderCameraHeight");
-	registerSlider (*slider, FreeChaseCamera::setCameraHeight, FreeChaseCamera::getCameraHeight, FreeChaseCamera::getCameraHeightDefault, 1.4f, 3.5f);
+	registerSlider (slider, FreeChaseCamera::setCameraHeight, FreeChaseCamera::getCameraHeight, FreeChaseCamera::getCameraHeightDefault, 1.4f, 3.5f);
 
 	//-- camera offset
 	getCodeDataObject (TUICheckbox, checkbox, "checkOffsetCamera");
-	registerCheckbox (*checkbox, FreeChaseCamera::setOffsetCamera, FreeChaseCamera::getOffsetCamera, ConfigClientUserInterface::getOffsetCamera);
+	registerCheckbox (checkbox, FreeChaseCamera::setOffsetCamera, FreeChaseCamera::getOffsetCamera, ConfigClientUserInterface::getOffsetCamera);
 
 
 }

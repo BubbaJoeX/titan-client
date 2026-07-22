@@ -227,14 +227,17 @@ void CustomizationManager::install ()
 		cust.skillModValue = customizationDataTable.getIntValue(CustomizationDataColumnNames::skillModValue, l);
 		cust.modificationType = customizationDataTable.getStringValue(CustomizationDataColumnNames::modificationType, l);
 
-		// operator[] creates empty map/vector when missing; update in place — copying the whole
-		// map/vector per row was O(n^2) and could exhaust heap on large customization_data.iff (x64).
-		CustomizationSpeciesMap &customizationMap = ms_customizationsBySpeciesGenderAndGroup[species_gender];
-		CustomizationVector &customizationVector = customizationMap[customizationGroup];
+		//we specifically want a CustomizationSpeciesMap created if we don't already have one 
+		CustomizationSpeciesMap customizationMap = ms_customizationsBySpeciesGenderAndGroup[species_gender];
+		//we specifically want a CustomizationVector created if we don't already have one 
+		CustomizationVector customizationVector = customizationMap[customizationGroup];
 		customizationVector.push_back(cust);
+		customizationMap[customizationGroup] = customizationVector;
+		ms_customizationsBySpeciesGenderAndGroup[species_gender] = customizationMap;
 
-		CustomizationVector &bySpeciesVector = ms_customizationsBySpeciesGender[species_gender];
-		bySpeciesVector.push_back(cust);
+		customizationVector = ms_customizationsBySpeciesGender[species_gender];
+		customizationVector.push_back(cust);
+		ms_customizationsBySpeciesGender[species_gender] = customizationVector;
 	}
 
 	//load palette data

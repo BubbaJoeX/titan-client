@@ -276,19 +276,6 @@ void Direct3d9_RenderTarget::setRenderTarget(Texture *texture, CubeFace cubeFace
 
 	if (texture->isRenderTarget())
 	{
-		// For render target textures, use the primary depth stencil if available
-		// This enables proper depth testing for 3D scene rendering (e.g., RT cameras)
-		// The primary depth buffer is typically equal to or larger than render targets
-		if (ms_primaryDepthStencilSurface)
-		{
-			hresult = device->SetDepthStencilSurface(ms_primaryDepthStencilSurface);
-			if (FAILED(hresult))
-			{
-				// Fallback: disable depth stencil if setting fails
-				device->SetDepthStencilSurface(NULL);
-			}
-		}
-
 		IGNORE_RETURN(ms_renderSurface->Release());
 		ms_renderSurface = NULL;
 	}

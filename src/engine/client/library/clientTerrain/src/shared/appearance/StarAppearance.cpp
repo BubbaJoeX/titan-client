@@ -497,8 +497,6 @@ void StarAppearance::render() const
 		return;
 
 	Camera const & camera = ShaderPrimitiveSorter::getCurrentCamera();
-	if (camera.isUnderWater())
-		return;
 
 #ifdef _DEBUG
 	int totalNumberOfStars = 0;

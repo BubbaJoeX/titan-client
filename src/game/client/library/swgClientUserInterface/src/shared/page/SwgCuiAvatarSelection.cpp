@@ -439,8 +439,8 @@ void SwgCuiAvatarSelection::refreshList (bool updateSelection)
 		}
 	}
 	
-	//-- if no avatars exist, try to create one
-	if (aiv.empty () && !m_autoConnected && GameNetwork::isConnectedToLoginServer ())
+	//-- if no avatars exist, try to create one (skip if already on a galaxy connection)
+	if (aiv.empty () && !m_autoConnected && GameNetwork::isConnectedToLoginServer () && CuiLoginManager::getConnectedClusterId () == 0)
 	{
 		m_autoConnected = true;
 		m_createButton->Press ();
@@ -533,7 +533,7 @@ void SwgCuiAvatarSelection::addAvatar (const CuiLoginManagerAvatarInfo & avatarI
 			{
 				if(clusterInfo->isAdmin)
 				{
-					Unicode::String lockedFlag = L"\\#00ff00 (God Mode)";
+					Unicode::String lockedFlag = u"\\#00ff00 (God Mode)";
 					statusDisplayStr = CuiStringIdsServer::server_locked.localize() + lockedFlag;
 				}
 				else
@@ -552,21 +552,21 @@ void SwgCuiAvatarSelection::addAvatar (const CuiLoginManagerAvatarInfo & avatarI
 			statusDisplayStr = CuiStringIdsServer::server_offline.localize ();
 		if(clusterInfo->isAdmin && clusterInfo->isSecret)
 		{
-			Unicode::String secretFlag = L"\\#ff00ff (Secret)";
+			Unicode::String secretFlag = u"\\#ff00ff (Secret)";
 			statusDisplayStr += secretFlag;
 		}
 	}
 	
 	if (clusterInfo && !clusterInfo->branch.empty() && clusterInfo->isAdmin)
 	{
-		static const Unicode::String::value_type *s_colorRed     = L"\\#ff0000";
-		static const Unicode::String::value_type *s_colorGreen   = L"\\#00ff00";
-		static const Unicode::String::value_type *s_colorBlue    = L"\\#0000ff";
-		static const Unicode::String::value_type *s_colorMagenta = L"\\#ff00ff";
-		static const Unicode::String::value_type *s_colorYellow  = L"\\#ffff00";
-		static const Unicode::String::value_type *s_colorCyan    = L"\\#00ffff";
-		static const Unicode::String::value_type *s_colorWhite   = L"\\#ffffff";
-		static const Unicode::String::value_type *s_colorBlack   = L"\\#000000";
+		static const Unicode::String::value_type *s_colorRed     = u"\\#ff0000";
+		static const Unicode::String::value_type *s_colorGreen   = u"\\#00ff00";
+		static const Unicode::String::value_type *s_colorBlue    = u"\\#0000ff";
+		static const Unicode::String::value_type *s_colorMagenta = u"\\#ff00ff";
+		static const Unicode::String::value_type *s_colorYellow  = u"\\#ffff00";
+		static const Unicode::String::value_type *s_colorCyan    = u"\\#00ffff";
+		static const Unicode::String::value_type *s_colorWhite   = u"\\#ffffff";
+		static const Unicode::String::value_type *s_colorBlack   = u"\\#000000";
 
 		Unicode::String color = s_colorRed; // red is the default color
 
@@ -590,7 +590,7 @@ void SwgCuiAvatarSelection::addAvatar (const CuiLoginManagerAvatarInfo & avatarI
 		}
 
 		//avatarDisplayName = color + avatarDisplayName;
-		clusterDisplayName = color + clusterDisplayName + L" [Test]";
+		clusterDisplayName = color + clusterDisplayName + u" [Test]";
 		planetDisplayName = color + planetDisplayName;
 		statusDisplayStr = color + statusDisplayStr;
 	}

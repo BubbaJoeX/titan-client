@@ -74,6 +74,9 @@ public:
                                      bool visualHardpoints = false);
 
 private:
+    /** Core IFF→Maya mesh build. Must not be invoked via MPxFileTranslator::reader during another file import. */
+    MStatus importMeshFromPathImpl(const char* fileName, const MString& options);
+
     static MString const magic;
 };
 

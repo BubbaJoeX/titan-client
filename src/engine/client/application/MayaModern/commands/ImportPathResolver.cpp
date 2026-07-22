@@ -121,13 +121,30 @@ std::string resolveImportPath(const std::string& path)
     if (isAbsolutePath(result)) return result;
 
     std::string baseDir = getImportDataRoot();
-    if (baseDir.empty()) return result;
+    if (baseDir.empty())
+    {
+        std::string treePath = result;
+        if (!hasTreeFilePrefix(treePath))
+            treePath = "appearance/" + treePath;
+        const std::string probed = resolveGameAssetPath(treePath);
+        if (!probed.empty())
+            return probed;
+        return result;
+    }
 
     std::string treePath = result;
     if (!hasTreeFilePrefix(treePath))
         treePath = "appearance/" + treePath;
 
-    return baseDir + treePath;
+    const std::string combined = baseDir + treePath;
+    if (MayaUtility::fileExists(combined))
+        return combined;
+
+    const std::string probed = resolveGameAssetPath(treePath);
+    if (!probed.empty())
+        return probed;
+
+    return combined;
 }
 
 namespace
@@ -233,9 +250,19 @@ std::string resolveGameAssetPath(const std::string& treeRel)
             return candidateBs;
     }
 
-    const std::string importResolved = resolveImportPath(rel);
-    if (!importResolved.empty() && MayaUtility::fileExists(importResolved))
-        return importResolved;
+    const std::string base = getImportDataRoot();
+    if (!base.empty())
+    {
+        const std::string candidate = base + rel;
+        if (MayaUtility::fileExists(candidate))
+            return candidate;
+        std::string candidateBs = candidate;
+        for (char& c : candidateBs)
+            if (c == '/')
+                c = '\\';
+        if (candidateBs != candidate && MayaUtility::fileExists(candidateBs))
+            return candidateBs;
+    }
 
     return std::string();
 }

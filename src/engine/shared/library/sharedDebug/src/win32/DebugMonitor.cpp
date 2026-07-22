@@ -13,7 +13,6 @@
 
 #include "sharedDebug/DebugFlags.h"
 #include "sharedFoundation/ConfigFile.h"
-#include <cstdio>
 
 // ======================================================================
 
@@ -46,10 +45,6 @@ namespace DebugMonitorNamespace
 	PrintFunction           printFunction;
 
 	bool                    noClear;
-
-	// File logging support
-	FILE* logFile = NULL;
-	bool                    logToFile = false;
 
 	int GetRegistryValue(char const * name, int defaultValue)
 	{
@@ -117,19 +112,6 @@ void DebugMonitor::install()
 			dll = NULL;
 			UNREF(result);
 			DEBUG_FATAL(!result, ("FreeLibrary failed"));
-		}
-	}
-
-	// Initialize file logging regardless of debug window
-	logToFile = ConfigFile::getKeyBool("SharedDebug", "logToFile", true);
-	if (logToFile)
-	{
-		const char* logFileName = ConfigFile::getKeyString("SharedDebug", "logFileName", "client.log");
-		logFile = fopen(logFileName, "a");
-		if (logFile)
-		{
-			fprintf(logFile, "\n========== Client Session Started ==========\n");
-			fflush(logFile);
 		}
 	}
 }
@@ -313,17 +295,10 @@ void DebugMonitor::gotoXY(int x, int y)
  * @param string  String to display on the debug monitor
  */
 
-void DebugMonitor::print(const char* string)
+void DebugMonitor::print(const char *string)
 {
 	if (printFunction)
 		printFunction(string);
-
-	// Also write to log file
-	if (logFile && string)
-	{
-		fprintf(logFile, "%s", string);
-		fflush(logFile);
-	}
 }
 
 // ----------------------------------------------------------------------

@@ -51,9 +51,7 @@ ForceFieldAppearance::ForceFieldAppearance(VertexList const & verts, const Vecto
 
 	// ----------
 
-	//TODO: return this with proper door parsing
-
-	//ForceFieldAppearance::attachPrimitive( new DynamicColorPolyPrimitive(*this, verts, newColor) );
+	ForceFieldAppearance::attachPrimitive( new DynamicColorPolyPrimitive(*this, verts, newColor) );
 
 	AxialBox box;
 	box.add(verts);

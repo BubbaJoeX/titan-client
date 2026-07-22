@@ -29,8 +29,6 @@
 #include "sharedMath/Vector2d.h"
 #include "sharedNetworkMessages/MessageQueueDataTransform.h"
 #include "sharedNetworkMessages/MessageQueueDataTransformWithParent.h"
-#include "sharedGame/GameObjectTypes.h"
-#include "sharedGame/SharedObjectTemplate.h"
 #include "sharedObject/AlterResult.h"
 #include "sharedObject/CellProperty.h"
 #include "sharedObject/NetworkIdManager.h"
@@ -962,13 +960,9 @@ bool RemoteCreatureController::shouldApplyAnimationDrivenLocomotion () const
 	CreatureObject const *const creatureObject = safe_cast<CreatureObject const*> (getOwner ());
 	if (creatureObject && creatureObject->isMountForThisClientPlayer())
 	{
-		// Vehicles: keep blending skeletal translation with hover/dynamics as before.
-		// Creature mounts: PlayerCreatureController integrates world position from input + setDesiredVelocity;
-		// applying getObjectLocomotion translation here as well fights that path and produces visible stutter.
-		bool const isVehicle =
-			GameObjectTypes::isTypeOf(creatureObject->getGameObjectType(), static_cast<int>(SharedObjectTemplate::GOT_vehicle));
-		result = isVehicle;
-		DEBUG_REPORT_PRINT (ms_printDeadReckoningUsage && isOwnerAnimationDebuggerTarget (), ("dead reckoning usage: object id [%s]: animation-driven locomotion: %s (player's mount, %s)\n", getOwner () ? getOwner ()->getNetworkId ().getValueString ().c_str () : "<NULL>", result ? "applied" : "skipped", isVehicle ? "vehicle" : "creature"));
+		// Always use animation driven locomotion when we're the player's mount.
+		result = true;
+		DEBUG_REPORT_PRINT (ms_printDeadReckoningUsage && isOwnerAnimationDebuggerTarget (), ("dead reckoning usage: object id [%s]: animation-driven locomotion: applied (creature is the player's mount)\n", getOwner () ? getOwner ()->getNetworkId ().getValueString ().c_str () : "<NULL>"));
 	}
 	else
 	{

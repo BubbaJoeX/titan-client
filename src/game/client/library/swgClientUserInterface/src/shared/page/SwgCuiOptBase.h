@@ -74,6 +74,14 @@ protected:
 
 	void registerComboBox (UIComboBox & checkbox, ComboSetterFunc  setter, ComboGetterFunc  getter, ComboGetterFunc  getterDefault);
 
+	// Null-safe overloads for optional widgets missing from some UI skins.
+	void registerSlider   (UISliderbar * slider, StaticSetterInt   setter, StaticGetterInt   getter, StaticGetterInt   getterDefault, int start,   int endAllowed, int end,   SliderFuncInt memberFunc = 0,   SliderFuncRaw memberFuncRaw = 0)   { if (slider) registerSlider   (*slider, setter, getter, getterDefault, start, endAllowed, end, memberFunc, memberFuncRaw); }
+	void registerSlider   (UISliderbar * slider, StaticSetterFloat setter, StaticGetterFloat getter, StaticGetterFloat getterDefault, float start, float endAllowed, float end, SliderFuncFloat memberFunc = 0, SliderFuncRaw memberFuncRaw = 0) { if (slider) registerSlider   (*slider, setter, getter, getterDefault, start, endAllowed, end, memberFunc, memberFuncRaw); }
+	void registerSlider   (UISliderbar * slider, StaticSetterInt   setter, StaticGetterInt   getter, StaticGetterInt   getterDefault, int start,   int end,   SliderFuncInt memberFunc = 0,   SliderFuncRaw memberFuncRaw = 0)   { if (slider) registerSlider   (*slider, setter, getter, getterDefault, start, end, memberFunc, memberFuncRaw); }
+	void registerSlider   (UISliderbar * slider, StaticSetterFloat setter, StaticGetterFloat getter, StaticGetterFloat getterDefault, float start, float end, SliderFuncFloat memberFunc = 0, SliderFuncRaw memberFuncRaw = 0)             { if (slider) registerSlider   (*slider, setter, getter, getterDefault, start, end, memberFunc, memberFuncRaw); }
+	void registerCheckbox (UICheckbox *  checkbox, StaticSetterBool  setter, StaticGetterBool  getter, StaticGetterBool  getterDefault, CheckboxFunc memberFunc = 0)                                                                      { if (checkbox) registerCheckbox (*checkbox, setter, getter, getterDefault, memberFunc); }
+	void registerComboBox (UIComboBox *  combo, ComboSetterFunc  setter, ComboGetterFunc  getter, ComboGetterFunc  getterDefault)                                                                                                        { if (combo) registerComboBox (*combo, setter, getter, getterDefault); }
+
 	virtual                 ~SwgCuiOptBase ();
 
 	static bool  getTrue  ()  { return true; }

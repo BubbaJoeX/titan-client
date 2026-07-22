@@ -129,6 +129,7 @@ namespace GraphicsNamespace
 	float                                     ms_brightness = Graphics::getDefaultBrightness();
 	float                                     ms_contrast = Graphics::getDefaultContrast();
 	float                                     ms_gamma = Graphics::getDefaultGamma();
+	float                                     ms_uiCanvasScale = 1.0f;
 
 	int                                       ms_screenShotFormat = static_cast<int>(GSSF_jpg);
 	int                                       ms_screenShotQuality = 100;
@@ -442,6 +443,30 @@ int Graphics::getFrameBufferMaxWidth()
 int Graphics::getFrameBufferMaxHeight()
 {
 	return ms_frameBufferMaxHeight;
+}
+
+// ----------------------------------------------------------------------
+
+float Graphics::getUiCanvasScale()
+{
+	return ms_uiCanvasScale;
+}
+
+void Graphics::setUiCanvasScale(float scale)
+{
+	if (scale < 0.5f) scale = 0.5f;
+	if (scale > 4.0f) scale = 4.0f;
+	ms_uiCanvasScale = scale;
+}
+
+int Graphics::getUiCanvasWidth()
+{
+	return static_cast<int>(static_cast<float>(ms_frameBufferMaxWidth) / ms_uiCanvasScale);
+}
+
+int Graphics::getUiCanvasHeight()
+{
+	return static_cast<int>(static_cast<float>(ms_frameBufferMaxHeight) / ms_uiCanvasScale);
 }
 
 // ----------------------------------------------------------------------

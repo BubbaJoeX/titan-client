@@ -242,13 +242,8 @@ bool ClientProceduralTerrainAppearance::ClientChunk::collide (const Vector& star
 		const uint n = m_shaderSetList.size();
 		uint i;
 		for (i = 0; i < n; ++i)
-		{
-			ShaderSet* const ss = m_shaderSetList[i];
-			if (!ss)
-				continue;
-			if (ss->collide (start, end, info))
+			if (m_shaderSetList[i]->collide (start, end, info))
 				found = true;
-		}
 	}
 
 	return found;
@@ -273,30 +268,17 @@ bool ClientProceduralTerrainAppearance::ClientChunk::getHeightAt (const Vector& 
 		const uint n = m_shaderSetList.size();
 		uint i;
 		for (i = 0; i < n; ++i)
-		{
-			ShaderSet* const ss = m_shaderSetList[i];
-			if (!ss)
-				continue;
-			if (ss->getHeightAt (start, end, info))
+			if (m_shaderSetList[i]->getHeightAt (start, end, info))
 			{
 				if (height)
 				{
 					float baseHeight = info.getPoint().y;
 					float modifiedHeight = baseHeight;
-
-					if (CityTerrainLayerManager::getModifiedHeight(pos.x, pos.z, baseHeight, modifiedHeight))
-					{
-						*height = modifiedHeight;
-					}
-					else
-					{
-						*height = baseHeight;
-					}
+					*height = CityTerrainLayerManager::getModifiedHeight(pos.x, pos.z, baseHeight, modifiedHeight) ? modifiedHeight : baseHeight;
 				}
 
 				return true;
 			}
-		}
 	}
 
 	return false;
@@ -321,17 +303,12 @@ bool ClientProceduralTerrainAppearance::ClientChunk::getHeightAt (const Vector& 
 		const uint n = m_shaderSetList.size();
 		uint i;
 		for (i = 0; i < n; ++i)
-		{
-			ShaderSet* const ss = m_shaderSetList[i];
-			if (!ss)
-				continue;
-			if (ss->getHeightAt (start, end, info))
+			if (m_shaderSetList[i]->getHeightAt (start, end, info))
 			{
 				if (height)
 				{
 					float baseHeight = info.getPoint().y;
 					float modifiedHeight = baseHeight;
-
 					if (CityTerrainLayerManager::getModifiedHeight(pos.x, pos.z, baseHeight, modifiedHeight))
 					{
 						*height = modifiedHeight;
@@ -346,13 +323,10 @@ bool ClientProceduralTerrainAppearance::ClientChunk::getHeightAt (const Vector& 
 					}
 				}
 				else if (normal)
-				{
 					*normal = info.getNormal();
-				}
 
 				return true;
 			}
-		}
 	}
 
 	return false;
@@ -369,8 +343,7 @@ namespace
 		if (CityTerrainLayerManager::getModifiedFlora(positionX, positionZ, fid, fid, density))
 		{
 			groupInfo.setFamilyId(fid);
-			const float c = std::max(0.f, std::min(1.f, density));
-			groupInfo.setChildChoice(c);
+			groupInfo.setChildChoice(std::max(0.f, std::min(1.f, density)));
 		}
 	}
 
@@ -381,8 +354,7 @@ namespace
 		if (CityTerrainLayerManager::getModifiedRadial(positionX, positionZ, fid, fid, childChoice))
 		{
 			radialInfo.setFamilyId(fid);
-			const float c = std::max(0.f, std::min(1.f, childChoice));
-			radialInfo.setChildChoice(c);
+			radialInfo.setChildChoice(std::max(0.f, std::min(1.f, childChoice)));
 		}
 	}
 }
@@ -419,8 +391,7 @@ void ClientProceduralTerrainAppearance::ClientChunk::createTileShader (ShaderDat
 		sgi [2][2] = shaderMap->getData (x + 2, z - 2);
 	}
 
-	// God Client: apply live shader paint at each blended sample pole. Use actual pole XZ from the
-	// vertex buffer when available so queries match TerrainObject/procedural space (avoids chunk/LOD math drift).
+	// Apply live God Client shader paint at each blended sample pole.
 	{
 		const float chunk2Meters = m_proceduralTerrainAppearance.getChunkWidthInMeters();
 		const float minXw = static_cast<float>(chunkX) * chunk2Meters;
@@ -429,19 +400,16 @@ void ClientProceduralTerrainAppearance::ClientChunk::createTileShader (ShaderDat
 		if (nTiles2 > 0)
 		{
 			const float nTiles2f = static_cast<float>(nTiles2);
-
+			static const int kOffset[3] = { -2, 0, 2 };
 			for (int j = 0; j < 3; ++j)
 			{
 				for (int i = 0; i < 3; ++i)
 				{
-					static const int kOffset[3] = { -2, 0, 2 };
 					const int mapX = x + kOffset[i];
 					const int mapZ = z + kOffset[2 - j];
 					ShaderGroup::Info& cell = sgi[i][j];
-					const float ratioX = static_cast<float>(mapX - originOffset) / nTiles2f;
-					const float ratioZ = static_cast<float>(mapZ - originOffset) / nTiles2f;
-					float wx = minXw + ratioX * chunkWidthInMeters;
-					float wz = minZw + ratioZ * chunkWidthInMeters;
+					float wx = minXw + (static_cast<float>(mapX - originOffset) / nTiles2f) * chunkWidthInMeters;
+					float wz = minZw + (static_cast<float>(mapZ - originOffset) / nTiles2f) * chunkWidthInMeters;
 					if (vertexXZForModifiers &&
 						mapX >= 0 && mapZ >= 0 &&
 						mapX < vertexXZForModifiers->getWidth () &&
@@ -451,20 +419,16 @@ void ClientProceduralTerrainAppearance::ClientChunk::createTileShader (ShaderDat
 						wx = pole.x;
 						wz = pole.z;
 					}
+
 					int fid = cell.getFamilyId();
 					float feather = 0.f;
 					if (CityTerrainLayerManager::getModifiedShader(wx, wz, fid, fid, feather))
 					{
-						// Shader cache rows are keyed by family *index* (Info::priority), not just family id.
-						// Updating only familyId leaves stale priority pointing at wrong .sht / textures.
 						ShaderGroup::Info const canonical = shaderCache->getShaderGroup().chooseShader(fid);
 						if (canonical.getFamilyId() == fid)
 						{
 							cell.setPriority(canonical.getPriority());
 							cell.setFamilyId(fid);
-							// God Client live paint: feather is brush strength metadata, NOT ShaderGroup::Info
-							// childChoice (pick/blend shader variants within the family). Reusing feather as
-							// childChoice produced invalid/random variant indices (black/intermittent tiles).
 							if (!useFirstChild)
 								cell.setChildChoice(0.f);
 						}
@@ -721,13 +685,6 @@ void ClientProceduralTerrainAppearance::ClientChunk::resetIndices(unsigned newHa
 
 //-------------------------------------------------------------------
 
-bool ClientProceduralTerrainAppearance::ClientChunk::referencesShaderCache (ShaderCache const* const cache) const
-{
-	return shaderCache == cache;
-}
-
-//-------------------------------------------------------------------
-
 void ClientProceduralTerrainAppearance::ClientChunk::create (const ClientCreateChunkData& createChunkData)
 {
 	createChunkData.validate ();
@@ -859,13 +816,9 @@ void ClientProceduralTerrainAppearance::ClientChunk::create (const ClientCreateC
 						const int iZ = indexZ + vid.z;
 
 						Vector position = vertexPositionMap->getData (iX, iZ);
-
-						// Apply height modification from city terrain flattening
 						float modifiedHeight = position.y;
 						if (CityTerrainLayerManager::getModifiedHeight(position.x, position.z, position.y, modifiedHeight))
-						{
 							position.y = modifiedHeight;
-						}
 
 						vertexList[i] = position;
 						normalList[i] = ccd_vertexNormalMap->getData(iX, iZ);
@@ -874,6 +827,7 @@ void ClientProceduralTerrainAppearance::ClientChunk::create (const ClientCreateC
 #if PRODUCTION == 0
 						if (ClientProceduralTerrainAppearance::isShowPassable())
 						{
+							PackedRgb prgb = ccd_colorMap->getData (iX, iZ);
 							//-- exaggerate passable areas with color
 							if (!ccd_passableMap->getData(iX, iZ))
 								prgb = PackedRgb::linearInterpolate(prgb, PackedRgb::solidBlack, 0.6f);
@@ -882,11 +836,9 @@ void ClientProceduralTerrainAppearance::ClientChunk::create (const ClientCreateC
 							colorList[i] = prgb.convert();
 						}
 #endif
-						{
-							PackedRgb prgbOut = prgb;
-							if (CityTerrainLayerManager::getModifiedVertexColor(position.x, position.z, prgb, prgbOut))
-								colorList[i] = prgbOut.convert();
-						}
+						PackedRgb prgbOut = prgb;
+						if (CityTerrainLayerManager::getModifiedVertexColor(position.x, position.z, prgb, prgbOut))
+							colorList[i] = prgbOut.convert();
 
 						//-- extents
 						m_boxExtent.updateMinAndMax (position);
@@ -935,9 +887,7 @@ void ClientProceduralTerrainAppearance::ClientChunk::create (const ClientCreateC
 						Vector pos = vertexPositionMap->getData (x, z);
 						float modifiedHeight = pos.y;
 						if (CityTerrainLayerManager::getModifiedHeight(pos.x, pos.z, pos.y, modifiedHeight))
-						{
 							pos.y = modifiedHeight;
-						}
 						vertices.push_back (pos);
 					}
 				}
@@ -1028,23 +978,27 @@ void ClientProceduralTerrainAppearance::ClientChunk::create (const ClientCreateC
 
 //-------------------------------------------------------------------
 
+bool ClientProceduralTerrainAppearance::ClientChunk::referencesShaderCache (ShaderCache const* const cache) const
+{
+	return shaderCache == cache;
+}
+
+//-------------------------------------------------------------------
+
 void ClientProceduralTerrainAppearance::ClientChunk::applyInPlaceRegenerationFromBuiltChunk (ClientChunk *const disposableBuiltChunk)
 {
 	NOT_NULL (disposableBuiltChunk);
 	DEBUG_FATAL (this == disposableBuiltChunk, ("terrain in-place regen: disposable chunk is the live chunk"));
-
 	DEBUG_FATAL (
 		chunkX != disposableBuiltChunk->chunkX ||
 		chunkZ != disposableBuiltChunk->chunkZ ||
 		chunkWidthInMeters != disposableBuiltChunk->chunkWidthInMeters,
 		("terrain in-place regen chunk identity mismatch"));
 
-	// Remove flora tied to this leaf's prior footprint before we swap map pointers away.
 	ClientProceduralTerrainAppearance &appearance = static_cast<ClientProceduralTerrainAppearance &>(m_proceduralTerrainAppearance);
 	appearance.destroyFloraForChunkInPlaceRegen (this);
 
 	m_shaderSetList.swap (disposableBuiltChunk->m_shaderSetList);
-
 	std::swap (shaderCache, disposableBuiltChunk->shaderCache);
 	std::swap (colorMap, disposableBuiltChunk->colorMap);
 	std::swap (floraStaticNonCollidableMap, disposableBuiltChunk->floraStaticNonCollidableMap);
@@ -1053,22 +1007,18 @@ void ClientProceduralTerrainAppearance::ClientChunk::applyInPlaceRegenerationFro
 	std::swap (environmentMap, disposableBuiltChunk->environmentMap);
 	std::swap (vertexNormalMap, disposableBuiltChunk->vertexNormalMap);
 	std::swap (m_writeIndexedTriangleList, disposableBuiltChunk->m_writeIndexedTriangleList);
-
 	std::swap (shaderMap, disposableBuiltChunk->shaderMap);
 	std::swap (m_floraStaticCollidableMap, disposableBuiltChunk->m_floraStaticCollidableMap);
 
-	{
-		AxialBox const tmpBox = m_boxExtent.getBox ();
-		m_boxExtent.setBox (disposableBuiltChunk->m_boxExtent.getBox ());
-		disposableBuiltChunk->m_boxExtent.setBox (tmpBox);
-	}
+	AxialBox const tmpBox = m_boxExtent.getBox ();
+	m_boxExtent.setBox (disposableBuiltChunk->m_boxExtent.getBox ());
+	disposableBuiltChunk->m_boxExtent.setBox (tmpBox);
 
 	std::swap (hasLargerNeighborFlags, disposableBuiltChunk->hasLargerNeighborFlags);
 	std::swap (originOffset, disposableBuiltChunk->originOffset);
 	std::swap (numberOfPoles, disposableBuiltChunk->numberOfPoles);
 	std::swap (m_excluded, disposableBuiltChunk->m_excluded);
 	std::swap (m_passable, disposableBuiltChunk->m_passable);
-
 	std::swap (m_spatialSubdivisionHandle, disposableBuiltChunk->m_spatialSubdivisionHandle);
 
 	if (m_dpvsObject)
@@ -1086,7 +1036,6 @@ void ClientProceduralTerrainAppearance::ClientChunk::applyInPlaceRegenerationFro
 	}
 
 	delete disposableBuiltChunk;
-
 	appearance.createFloraForChunkInPlaceRegen (this);
 }
 
@@ -1163,14 +1112,11 @@ bool ClientProceduralTerrainAppearance::ClientChunk::findStaticNonCollidableFlor
 	if (overlayPaint)
 	{
 		groupInfo.setFamilyId(fid);
-		const float c = std::max(0.f, std::min(1.f, density));
-		groupInfo.setChildChoice(c);
+		groupInfo.setChildChoice(std::max(0.f, std::min(1.f, density)));
 		floraAllowed = true;
 	}
 	else if (baseHadFlora)
-	{
 		applyGodClientFloraModifier(positionX, positionZ, groupInfo);
-	}
 
 	if (!baseHadFlora && !overlayPaint)
 		return false;

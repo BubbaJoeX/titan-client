@@ -8,7 +8,7 @@
 #include "sharedNetwork/Address.h"
 #include "sharedNetwork/NetworkHandler.h"
 
-#include <winsock.h>
+#include <winsock2.h>
 
 //-----------------------------------------------------------------------
 

@@ -386,7 +386,8 @@ void SwgCuiCraftDraft::resetCategory ()
 	const int activeTab = m_tabs->GetActiveTab ();
 
 	UIDataSourceContainer * dsc_toSelect = 0;
-	bool const showAll = (m_checkShowAll && m_checkShowAll->IsChecked());
+	//-- fail open: a missing checkbox must never filter the tree down to nothing
+	bool const showAll = (!m_checkShowAll || m_checkShowAll->IsChecked());
 
 	if (activeTab >= 0)
 	{
@@ -434,7 +435,11 @@ void SwgCuiCraftDraft::resetCategory ()
 					if (dsc_gameType->GetChildCount() > 0)
 						dsc_tree->AddChild (dsc_gameType);
 					else
-						dsc_gameType->Detach(0);
+					{
+						//-- never attached anywhere; balance the refcount so Detach actually destroys it
+						dsc_gameType->Attach (0);
+						IGNORE_RETURN (dsc_gameType->Detach (0));
+					}
 				}
 			}
 		}

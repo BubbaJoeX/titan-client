@@ -91,6 +91,9 @@ public:
 	static void   setUiContextEnabled(bool enabled);
 	static bool   getUiContextEnabled();
 
+	// Clears static UI-preview globals that must not leak into world rendering.
+	static void   resetUiRenderGlobals();
+
 
 #ifdef _DEBUG
 	static bool  getRenderTargetDirection();

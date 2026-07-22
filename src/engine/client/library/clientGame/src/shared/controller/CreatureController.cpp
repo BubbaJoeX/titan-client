@@ -691,12 +691,6 @@ void CreatureController::applyAnimationDrivenLocomotion (float elapsedTime)
 
 //----------------------------------------------------------------------
 
-void CreatureController::onJumpRequested ()
-{
-}
-
-// ----------------------------------------------------------------------
-
 void CreatureController::handleMessage (const int message, const float value, const MessageQueue::Data* const data, const uint32 flags)
 {
 	switch (message)
@@ -704,8 +698,6 @@ void CreatureController::handleMessage (const int message, const float value, co
 
 		case CM_jump:
 			{
-				onJumpRequested ();
-
 				// Ignore jump animation message if this is the current client's player.
 				// Player's own jump animation has already played immediately on client-side when jump was executed.
 				if (getOwner() != Game::getPlayer())

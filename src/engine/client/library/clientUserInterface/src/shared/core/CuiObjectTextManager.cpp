@@ -9,7 +9,6 @@
 #include "clientUserInterface/CuiObjectTextManager.h"
 
 #include "clientGame/BuildingObject.h"
-#include "clientGame/CellObject.h"
 #include "clientGame/ClientWorld.h"
 #include "clientGame/ContainerInterface.h"
 #include "clientGame/CreatureObject.h"
@@ -20,19 +19,12 @@
 #include "clientGame/PlayerObject.h"
 #include "clientGame/ShipObject.h"
 #include "clientGraphics/Camera.h"
-#include "clientGraphics/DynamicVertexBuffer.h"
 #include "clientGraphics/Graphics.h"
-#include "clientGraphics/ShaderTemplate.h"
-#include "clientGraphics/ShaderTemplateList.h"
-#include "clientGraphics/StaticShader.h"
-#include "clientGraphics/Texture.h"
-#include "clientGraphics/TextureList.h"
 #include "clientObject/RibbonAppearance.h"
 #include "clientParticle/ParticleEffectAppearance.h"
 #include "clientSkeletalAnimation/SkeletalAppearance2.h"
 #include "clientSkeletalAnimation/Skeleton.h"
 #include "clientUserInterface/CuiGameColorManager.h"
-#include "clientUserInterface/CuiLayer_TextureCanvas.h"
 #include "clientUserInterface/CuiPreferences.h"
 #include "clientUserInterface/CuiStringIdsWho.h"
 #include "clientUserInterface/CuiTextManager.h"
@@ -49,32 +41,24 @@
 #include "sharedFoundation/NetworkIdArchive.h"
 #include "sharedFoundation/Production.h"
 #include "sharedGame/PvpData.h"
-#include "sharedGame/StaffRankDataTable.h"
 #include "sharedGame/SharedBuildingObjectTemplate.h"
 #include "sharedGame/SharedCreatureObjectTemplate.h"
-#include "sharedMath/VectorArgb.h"
 #include "sharedMathArchive/TransformArchive.h"
 #include "sharedMessageDispatch/Message.h"
 #include "sharedMessageDispatch/Receiver.h"
 #include "sharedNetworkMessages/SceneChannelMessages.h"
 #include "sharedObject/CellProperty.h"
-#include "sharedObject/Portal.h"
 #include "swgSharedUtility/States.def"
 
 #include "UIBaseObject.h"
-#include "UIFontCharacter.h"
 #include "UIImageStyle.h"
 #include "UIManager.h"
 #include "UIPage.h"
-#include "UITextStyle.h"
 
 #include "UnicodeUtils.h"
 
 #include <algorithm>
-#include <cctype>
 #include <list>
-#include <map>
-#include <set>
 
 //======================================================================
 
@@ -82,131 +66,6 @@
 
 namespace CuiObjectTextManagerNamespace
 {
-	float const s_apartmentBarrierLabelRange = 96.0f;
-	float const s_apartmentBarrierLabelHeightOffset = 1.25f;
-	float const s_apartmentBarrierLabelDoorOffset = 0.35f;
-	VectorArgb const s_apartmentBarrierLabelColor(1.0f, 0.45f, 0.92f, 0.92f);
-	typedef std::map<Portal const *, Vector> ApartmentPortalAnchorMap;
-	ApartmentPortalAnchorMap s_apartmentPortalAnchors;
-
-	bool isApartmentBarrierLabel(Unicode::String const & label)
-	{
-		if (label.empty())
-			return false;
-		std::string const narrowLabel = Unicode::wideToNarrow(label);
-		return (narrowLabel == "VACANT") || (narrowLabel == "PUBLIC") || (narrowLabel.find("Owner: ") == 0);
-	}
-
-	void enqueueApartmentBarrierLabel(
-		Camera const & camera,
-		Vector const & worldPosition,
-		Unicode::String const & label)
-	{
-		Vector projected;
-		if (!camera.projectInWorldSpace(worldPosition, &projected.x, &projected.y, &projected.z, false))
-			return;
-
-		CuiTextManager::TextEnqueueInfo info;
-		info.screenVect = projected;
-		info.worldDistance = camera.getPosition_w().magnitudeBetween(worldPosition);
-		info.backgroundOpacity = 0.0f;
-		info.textColor = UIColor(47, 214, 214);
-		info.opacity = 1.0f;
-		info.textWeight = CuiTextManager::TextEnqueueInfo::TW_starwars;
-		info.id = NetworkId::cms_invalid;
-		info.updateOffset = false;
-		CuiTextManager::enqueueText(label, info);
-	}
-
-	void drawApartmentBarrierLabelStable(
-		Camera const & camera,
-		Vector const & worldPosition,
-		Unicode::String const & label)
-	{
-		enqueueApartmentBarrierLabel(camera, worldPosition, label);
-	}
-
-	Vector const & getApartmentPortalAnchor(
-		Portal const * const canonicalPortal,
-		Object const & sourceCellObject,
-		Transform const & doorTransform_p)
-	{
-		ApartmentPortalAnchorMap::iterator const found = s_apartmentPortalAnchors.find(canonicalPortal);
-		if (found != s_apartmentPortalAnchors.end())
-			return (*found).second;
-
-		Vector const doorPosition = sourceCellObject.rotateTranslate_o2w(doorTransform_p.getPosition_p());
-		Transform const & sourceCellTransform = sourceCellObject.getTransform_o2w();
-		Vector const doorForward = sourceCellTransform.rotate_l2p(doorTransform_p.getLocalFrameK_p());
-		Vector const doorUp = sourceCellTransform.rotate_l2p(doorTransform_p.getLocalFrameJ_p());
-		Vector const labelPosition = doorPosition + (doorForward * s_apartmentBarrierLabelDoorOffset) + (doorUp * s_apartmentBarrierLabelHeightOffset);
-		return s_apartmentPortalAnchors.insert(std::make_pair(canonicalPortal, labelPosition)).first->second;
-	}
-
-	void drawApartmentBarrierLabelsForCell(
-		Camera const & camera,
-		CellProperty const & sourceCell,
-		std::set<Portal const *> & visitedPortals)
-	{
-		Vector const cameraPos = camera.getPosition_w();
-		float const maxRangeSquared = s_apartmentBarrierLabelRange * s_apartmentBarrierLabelRange;
-
-		int const portalObjectCount = sourceCell.getNumberOfPortalObjects();
-		for (int portalObjectIndex = 0; portalObjectIndex < portalObjectCount; ++portalObjectIndex)
-		{
-			CellProperty::PortalObjectEntry const & portalObject = sourceCell.getPortalObject(portalObjectIndex);
-			if (!portalObject.portalList)
-				continue;
-
-			CellProperty::PortalList const & portalList = *portalObject.portalList;
-			for (CellProperty::PortalList::const_iterator portalIt = portalList.begin(); portalIt != portalList.end(); ++portalIt)
-			{
-				Portal * const portal = *portalIt;
-				if (!portal)
-					continue;
-
-				Portal * const neighborPortal = portal->getNeighbor();
-				if (!neighborPortal)
-					continue;
-
-				Portal const * const canonical = (portal < neighborPortal) ? portal : neighborPortal;
-				if (visitedPortals.find(canonical) != visitedPortals.end())
-					continue;
-				visitedPortals.insert(canonical);
-
-				CellProperty * const destinationCell = neighborPortal->getParentCell();
-				if (!destinationCell || destinationCell == CellProperty::getWorldCellProperty())
-					continue;
-
-				Object const & destinationCellObject = destinationCell->getOwner();
-				CellObject const * const destinationClientCell = dynamic_cast<CellObject const *>(&destinationCellObject);
-				if (!destinationClientCell)
-					continue;
-
-				Unicode::String const & label = destinationClientCell->getCellLabel();
-				if (!isApartmentBarrierLabel(label))
-					continue;
-
-				Transform const doorTransform_p = portal->getDoorTransform();
-				Object const & sourceCellObject = sourceCell.getOwner();
-				Vector const & labelPosition = getApartmentPortalAnchor(canonical, sourceCellObject, doorTransform_p);
-				if (labelPosition.magnitudeBetweenSquared(cameraPos) > maxRangeSquared)
-					continue;
-				drawApartmentBarrierLabelStable(camera, labelPosition, label);
-			}
-		}
-	}
-
-	void drawApartmentBarrierLabels(Camera const & camera)
-	{
-		CellProperty const * const currentCell = camera.getParentCell();
-		if (!currentCell)
-			return;
-
-		std::set<Portal const *> visitedPortals;
-		drawApartmentBarrierLabelsForCell(camera, *currentCell, visitedPortals);
-	}
-
 	class HeadFramePair
 	{
 	public:
@@ -241,7 +100,6 @@ namespace CuiObjectTextManagerNamespace
 			if (message.isType (Game::Messages::SCENE_CHANGED))
 			{
 				s_headMap.clear ();
-				s_apartmentPortalAnchors.clear ();
 			}
 		}
 	};
@@ -285,24 +143,13 @@ namespace CuiObjectTextManagerNamespace
 		if (!app->isLoaded())
 			return false;
 
-		bool const isAtmosphericFlight = !Game::isSpace() && Game::isHudSceneTypeSpace();
-
 		if (!app->getRenderedThisFrame())
-		{
-			if (!(isAtmosphericFlight && targetObject.getParentCell() == CellProperty::getWorldCellProperty()))
-				return false;
-		}
+			return false;
 
 		CellProperty const * const worldCell = CellProperty::getWorldCellProperty();
 		CellProperty const * const targetCell = targetObject.getParentCell();
-		if (!isAtmosphericFlight && ((sourceCell == worldCell) || (targetCell == worldCell)) && (sourceCell != targetCell))
+		if (((sourceCell == worldCell) || (targetCell == worldCell)) && (sourceCell != targetCell))
 			return false;
-
-		if (isAtmosphericFlight && targetCell == worldCell)
-		{
-			timeFactor = 1.0f;
-			return true;
-		}
 
 		Vector const & targetPos = targetObject.rotateTranslate_o2w(CuiObjectTextManager::getCurrentObjectHeadPoint_o (targetObject));
 				
@@ -401,15 +248,7 @@ namespace CuiObjectTextManagerNamespace
 			}
 
 			bool hasPriviledgedTitle = false;
-			if (playerObject->isStaffRankDisplayTitle())
-			{
-				s.push_back ('\n');
-				s.push_back ('(');
-				s += Unicode::narrowToWide(StaffRankDataTable::getRankTitle(playerObject->getStaffRankDisplayLevel()));
-				s.push_back (')');
-				hasPriviledgedTitle = true;
-			}
-			else if (playerObject->isNormalPlayer())
+			if (playerObject->isNormalPlayer())
 			{
 				hasPriviledgedTitle = false;
 			}
@@ -811,8 +650,6 @@ void CuiObjectTextManager::getObjectFullName(Unicode::String & name, const Clien
 
 void CuiObjectTextManager::drawObjectLabels(Camera const & camera)
 {
-	drawApartmentBarrierLabels(camera);
-
 	// Get frame time.
 	float const frameTime = Clock::frameTime();
 
@@ -828,14 +665,7 @@ void CuiObjectTextManager::drawObjectLabels(Camera const & camera)
 	Object const * const thePlayer = Game::getPlayer();
 	float const distanceCameraToPlayer = thePlayer ? thePlayer->getPosition_w().magnitudeBetween(selfPos) : 0.0f;
 	
-	float nameRange = (CuiPreferences::getObjectNameRange() + distanceCameraToPlayer) * 2.0f;
-	if (!Game::isSpace() && Game::isHudSceneTypeSpace())
-	{
-		float const atmoRange = 512.0f;
-		if (nameRange < atmoRange)
-			nameRange = atmoRange;
-	}
-	ClientWorld::findObjectsInRange(selfPos, nameRange, cov);
+	ClientWorld::findObjectsInRange(selfPos, (CuiPreferences::getObjectNameRange() + distanceCameraToPlayer) * 2.0f, cov);
 	
 	CreatureObject const * const player = Game::getPlayerCreature ();
 	int const drawNetworkIds = CuiPreferences::getDrawNetworkIds();
@@ -883,16 +713,11 @@ void CuiObjectTextManager::drawObjectLabels(Camera const & camera)
 		{
 			continue;
 		}
-		bool const isAtmoFlight = !Game::isSpace() && Game::isHudSceneTypeSpace();
 		bool isVisibleThisFrame = false;
 		if (object) 
 		{
 			Appearance const * const app = object->getAppearance();
 			if (app && app->getRenderedThisFrame())
-			{
-				isVisibleThisFrame = true;
-			}
-			else if (isAtmoFlight && object->getParentCell() == CellProperty::getWorldCellProperty())
 			{
 				isVisibleThisFrame = true;
 			}
@@ -992,10 +817,6 @@ bool  CuiObjectTextManager::getObjectHeadPoint     (const Object & object, const
 	Vector currentHeadPoint = getCurrentObjectHeadPoint_o (object);
 //	currentHeadPoint.y *= 1.05f;
 	currentHeadPoint.y += offset * 1.05f;
-	// Apply object scale so nameplate position matches scaled object
-	currentHeadPoint.x *= object.getScale().x;
-	currentHeadPoint.y *= object.getScale().y;
-	currentHeadPoint.z *= object.getScale().z;
 	
 	const Vector & headPoint = object.rotateTranslate_o2w (currentHeadPoint);
 	Vector screenVect;
@@ -1021,10 +842,6 @@ void CuiObjectTextManager::renderTextAbove (const ClientObject & object, const C
 
 	Vector currentHeadPoint = getCurrentObjectHeadPoint_o (object);
 //	currentHeadPoint.y *= 1.05f;
-	// Apply object scale so nameplate position matches scaled object
-	currentHeadPoint.x *= object.getScale().x;
-	currentHeadPoint.y *= object.getScale().y;
-	currentHeadPoint.z *= object.getScale().z;
 	
 	const Vector & headPoint = object.rotateTranslate_o2w (currentHeadPoint);
 	

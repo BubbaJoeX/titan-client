@@ -132,7 +132,7 @@ namespace CuiManagerNamespace
 		Unicode::UnicodeStringVector::const_iterator itToken;
 		for (itToken = effectTokens.begin(); itToken != effectTokens.end(); ++itToken)
 		{
-			if (_wcsnicmp((*itToken).c_str(), token.c_str(), token.size()) == 0)
+			if (UIUnicode::nicmp((*itToken).c_str(), token.c_str(), token.size()) == 0)
 			{
 				break;
 			}
@@ -146,7 +146,7 @@ namespace CuiManagerNamespace
 		// Ensure we have a properly formatted string.
 		Unicode::String const & assignementString = *(itToken + 1);
 		UIString const & assignmentToken = UIManager::gUIManager().getEffectToken(UIManager::EFTKN_Assignment);
-		if (_wcsnicmp(assignementString.c_str(), assignmentToken.c_str(), assignmentToken.size()) != 0)
+		if (UIUnicode::nicmp(assignementString.c_str(), assignmentToken.c_str(), assignmentToken.size()) != 0)
 		{
 			return false;
 		}
@@ -304,6 +304,16 @@ namespace
 }
 
 static bool s_uiScaleLayoutPending = false;
+
+static void syncUiCanvasScale (float s)
+{
+	if (s < 0.5f)
+		s = 0.5f;
+	if (s > 4.0f)
+		s = 4.0f;
+	UIManager::SetMouseInputScale (s);
+	Graphics::setUiCanvasScale (s);
+}
 
 static void flushPendingUiScaleLayout ()
 {
@@ -478,9 +488,10 @@ void CuiManager::install ()
 	uiManager->AddLocalizedStringFactory (ms_uiStringFactory);
 
 	{
+		float const s = CuiPreferences::getUiScaleFactor ();
+		syncUiCanvasScale (s);
 		int const rw = Graphics::getCurrentRenderTargetWidth ();
 		int const rh = Graphics::getCurrentRenderTargetHeight ();
-		float const s = ConfigClientUserInterface::getUiScaleFactor ();
 		long const lw = std::max (1L, static_cast<long>(static_cast<float>(rw) / s + 0.5f));
 		long const lh = std::max (1L, static_cast<long>(static_cast<float>(rh) / s + 0.5f));
 		rootPage->SetSize (UISize (lw, lh));
@@ -871,7 +882,7 @@ void CuiManager::render ()
 	ptimer.start ();
 #endif
 
-	Graphics::setViewport (0, 0, Graphics::getCurrentRenderTargetWidth (), Graphics::getCurrentRenderTargetHeight ());
+	Graphics::setViewport (0, 0, Graphics::getCurrentRenderTargetWidth (), Graphics::getCurrentRenderTargetHeight (), 0.0f, 1.0f);
 
 	//-- ensure that the player mesh is rendered
 	bool savedPlayerShowMeshState = false;
@@ -896,12 +907,7 @@ void CuiManager::render ()
 	bool wasDropShadowEnabled = UITextStyle::GetGlobalDropShadowEnabled();
 	UITextStyle::SetGlobalDropShadowEnabled (s_textDropShadow);
 
-	float const uiScale = CuiPreferences::getUiScaleFactor ();
-	if (uiScale != 1.0f)
-		ms_uiCanvas->PushState ();
-	if (uiScale != 1.0f)
-		ms_uiCanvas->Scale (uiScale, uiScale);
-
+	// World-space overlays first, unscaled (anchored to 3D camera projection).
 	CuiTextManager::render (*ms_uiCanvas);
 	CuiTextManager::resetQueue ();
 
@@ -909,15 +915,22 @@ void CuiManager::render ()
 	if (camera)
 		CuiChatBubbleManager::render (*ms_uiCanvas, *camera);
 
-	ClientRegionManager::drawRegions();
-
 	UITextStyle::SetGlobalDropShadowEnabled(wasDropShadowEnabled);
 
-	UIManager::gUIManager ().Render (*ms_uiCanvas);
-	CuiLayerRenderer::flushRenderQueue ();
+	float const uiScale = CuiPreferences::getUiScaleFactor ();
+	syncUiCanvasScale (uiScale);
+	const bool applyUIScale = (uiScale != 1.0f);
+	if (applyUIScale)
+		ms_uiCanvas->PushState ();
+	if (applyUIScale)
+		ms_uiCanvas->Scale (uiScale, uiScale);
 
-	if (uiScale != 1.0f)
+	UIManager::gUIManager ().Render (*ms_uiCanvas);
+
+	if (applyUIScale)
 		ms_uiCanvas->PopState ();
+
+	CuiLayerRenderer::flushRenderQueue ();
 
 	Graphics::setFillMode (oldFillMode);
 
@@ -950,6 +963,8 @@ void CuiManager::render ()
 			lastTimes [numLastTimes - 1], totalTime));
 	}
 #endif
+
+	ClientRegionManager::drawRegions();
 
 	//-- restore the player mesh rendering state
 	if (playerSkeletalAppearance)
@@ -1436,6 +1451,7 @@ void CuiManager::setSize (int width, int height)
 	NOT_NULL (rootPage);
 
 	float const s = CuiPreferences::getUiScaleFactor ();
+	syncUiCanvasScale (s);
 	long const lw = std::max (1L, static_cast<long>(static_cast<float>(width) / s + 0.5f));
 	long const lh = std::max (1L, static_cast<long>(static_cast<float>(height) / s + 0.5f));
 	rootPage->SetSize (UISize (lw, lh));
@@ -1463,6 +1479,7 @@ void CuiManager::updateRootPageLayoutForUiScale ()
 		return;
 
 	float const s = CuiPreferences::getUiScaleFactor ();
+	syncUiCanvasScale (s);
 	long const lw = std::max (1L, static_cast<long>(static_cast<float>(w) / s + 0.5f));
 	long const lh = std::max (1L, static_cast<long>(static_cast<float>(h) / s + 0.5f));
 	rootPage->SetSize (UISize (lw, lh));
@@ -1611,7 +1628,7 @@ void CuiManager::playUiEffect(std::string const & effect, Object * /*target*/)
 		bool resetEffectors = false;
 		if(getTokenValue(effectTokens, UIManager::gUIManager().getEffectToken(UIManager::EFTKN_Reset), resetToken))
 		{
-			resetEffectors = _wcsnicmp(resetToken.c_str(), s_booleanTrue.c_str(), s_booleanTrue.size()) == 0;
+			resetEffectors = UIUnicode::nicmp(resetToken.c_str(), s_booleanTrue.c_str(), s_booleanTrue.size()) == 0;
 		}
 
 		//-- Cancel.
@@ -1619,7 +1636,7 @@ void CuiManager::playUiEffect(std::string const & effect, Object * /*target*/)
 		bool cancelEffector = false;
 		if(getTokenValue(effectTokens, UIManager::gUIManager().getEffectToken(UIManager::EFTKN_Cancel), cancelToken))
 		{
-			cancelEffector = _wcsnicmp(cancelToken.c_str(), s_booleanTrue.c_str(), s_booleanTrue.size()) == 0;
+			cancelEffector = UIUnicode::nicmp(cancelToken.c_str(), s_booleanTrue.c_str(), s_booleanTrue.size()) == 0;
 		}
 
 		//-- Set active.
@@ -1627,7 +1644,7 @@ void CuiManager::playUiEffect(std::string const & effect, Object * /*target*/)
 		bool setVisible = true;
 		if(getTokenValue(effectTokens, UIManager::gUIManager().getEffectToken(UIManager::EFTKN_Active), activatePage))
 		{
-			setVisible = _wcsnicmp(activatePage.c_str(), s_booleanTrue.c_str(), s_booleanTrue.size()) == 0;
+			setVisible = UIUnicode::nicmp(activatePage.c_str(), s_booleanTrue.c_str(), s_booleanTrue.size()) == 0;
 			targetPage->SetVisible(setVisible);
 		}
 

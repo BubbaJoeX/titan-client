@@ -209,7 +209,7 @@ public:
 	static bool isCrafting(NetworkId const & object);
 
 	static bool isCraftingStartCommand(uint32 commandHash);
-	static void CuiCraftManager::abortCraftingStart();
+	static void abortCraftingStart();
 
 	static bool                               isSchematicFavorite                    (uint32 serverCrc);
 	static bool                               toggleSchematicFavorite                (uint32 serverCrc);

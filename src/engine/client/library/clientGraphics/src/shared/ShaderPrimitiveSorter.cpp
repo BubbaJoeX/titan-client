@@ -14,8 +14,6 @@
 #include "clientGraphics/GraphicsOptionTags.h"
 #include "clientGraphics/Light.h"
 #include "clientGraphics/PostProcessingEffectsManager.h"
-#include "clientGraphics/AtmosphericEffects.h"
-#include "clientGraphics/RenderBatchManager.h"
 #include "clientGraphics/ShaderPrimitive.h"
 #include "clientGraphics/ShaderTemplateList.h"
 #include "clientGraphics/StaticShader.h"
@@ -28,7 +26,6 @@
 #include "sharedFoundation/ExitChain.h"
 #include "sharedMath/Rectangle2d.h"
 #include "sharedMath/Rectangle2d.h"
-#include "sharedMath/Transform.h"
 #include "sharedMath/VectorRgba.h"
 #include "sharedObject/CellProperty.h"
 #include "sharedUtility/LocalMachineOptionManager.h"
@@ -118,8 +115,6 @@ private:
 	void sort_z();
 
 	void add(const ShaderPrimitive &shaderPrimitive, const StaticShader &staticShader, bool alphaFadeEnabled, float alphaFadeOpacity, const LightBitSet &lightBitVector);
-
-	static void drawEntry(Entry const & entry);
 
 	static void getSortKeys_unknown(Entry &);
 	static void getSortKeys_none(Entry &);
@@ -513,16 +508,8 @@ void ShaderPrimitiveSorter::finishCompositing(int sectionRectX0, int sectionRect
 	Texture * const secondaryBuffer = PostProcessingEffectsManager::getSecondaryBuffer();
 	Texture * const heatBuffer = PostProcessingEffectsManager::getTertiaryBuffer();
 
-	if (ms_showDebugHeatShaders || ms_debugDisableHeatShaders || !ms_heatShadersEnabled || !heatBuffer || !primaryBuffer || !secondaryBuffer)
-	{
-		// startCompositing may have bound the heat RT; avoid leaving a stale target or scissor if we bail out.
-		if (primaryBuffer)
-			Graphics::setRenderTarget(primaryBuffer, CF_none, 0);
-		else
-			Graphics::setRenderTarget(NULL, CF_none, 0);
-		Graphics::setScissorRect(false, 0, 0, 0, 0);
+	if (ms_showDebugHeatShaders || ms_debugDisableHeatShaders || !ms_heatShadersEnabled || !heatBuffer || !primaryBuffer)
 		return;
-	}
 
 	int const sectionRectWidth = sectionRectX1 - sectionRectX0;
 	int const sectionRectHeight = sectionRectY1 - sectionRectY0;
@@ -587,7 +574,7 @@ void ShaderPrimitiveSorter::finishCompositing(int sectionRectX0, int sectionRect
 	compositingShader.setTexture(TAG(M,A,I,N), *secondaryBuffer);
 	compositingShader.setTexture(TAG(H,E,A,T), *heatBuffer);
 	Graphics::setStaticShader(compositingShader);
-	VectorRgba const pixelShaderUserConstants(ms_elapsedTime, ms_showDebugHeatShaderRects ? 1.0f : 0.0f, AtmosphericEffects::getHeatShimmerStrength(), AtmosphericEffects::getHeatShimmerFrequency());
+	VectorRgba const pixelShaderUserConstants(ms_elapsedTime, ms_showDebugHeatShaderRects ? 1.0f : 0.0f, 0.0f, 0.0f);
 	Graphics::setPixelShaderUserConstants(&pixelShaderUserConstants, 1);
 	Graphics::setObjectToWorldTransformAndScale(Transform::identity, Vector::xyz111);
 	Graphics::setVertexBuffer(vertexBuffer);
@@ -608,19 +595,9 @@ bool ShaderPrimitiveSorter::startCompositing(ShaderPrimitive const & shaderPrimi
 
 	Texture * const primaryBuffer = PostProcessingEffectsManager::getPrimaryBuffer();
 	Texture * const heatBuffer = PostProcessingEffectsManager::getTertiaryBuffer();
-	Texture * const secondaryBuffer = PostProcessingEffectsManager::getSecondaryBuffer();
 	
 	if (!heatBuffer || !primaryBuffer)
 		return false;
-
-	// finishCompositing copies via secondary; without it we must not bind the heat RT or we never return to the scene target
-#if PRODUCTION == 0
-	if (!ms_showDebugHeatShaders && !secondaryBuffer)
-		return false;
-#else
-	if (!secondaryBuffer)
-		return false;
-#endif
 	
 	//-- if we are showing debug heat shaders, just render them normally
 	if (ms_showDebugHeatShaders)
@@ -721,18 +698,14 @@ void ShaderPrimitiveSorter::Phase::draw()
 
 	NP_PROFILER_AUTO_BLOCK_DEFINE("ShaderPrimitiveSorter::Phase::draw");
 
-	bool const useOrderedBatch = RenderBatchManager::isInstalled() && RenderBatchManager::getUsePhaseOrderedBatching();
-
-	if (useOrderedBatch)
-		RenderBatchManager::beginPhaseOrderedBatch(ShaderPrimitiveSorter::getCurrentCameraPosition());
-
 	ShaderPrimitives::iterator end = m_shaderPrimitives.end();
-	for (ShaderPrimitives::iterator iter = m_shaderPrimitives.begin() + m_stackOffsets.back(); iter != end; ++iter)
+	for (ShaderPrimitives::iterator i = m_shaderPrimitives.begin() + m_stackOffsets.back(); i != end; ++i)
 	{
-		Entry const           &entry           = *iter;
+		Entry const           &entry           = *i;
 		StaticShader const    &staticShader    = *entry.staticShader;
 		ShaderPrimitive const &shaderPrimitive = *entry.shaderPrimitive;
 		bool const alphaFadeOpacityEnabled     = entry.alphaFadeOpacityEnabled;
+		float const alphaFadeOpacity           = entry.alphaFadeOpacity;
 		int const              numberOfPasses  = staticShader.getNumberOfPasses();
 
 #if PRODUCTION == 0
@@ -742,43 +715,105 @@ void ShaderPrimitiveSorter::Phase::draw()
 			NP_PROFILER_BLOCK_ENTER(profilerBlockByTime);
 #endif
 
-		bool deferredOk = false;
-		if (useOrderedBatch)
+		ShaderPrimitiveSorter::setLights(i->lightBitSet);
+
+#if PRODUCTION == 0
+		if (ms_profilePrepareToDraw)
+			NP_PROFILER_BLOCK_ENTER(ms_profilerBlockPrepareToDraw);
+#endif
+
+		shaderPrimitive.prepareToDraw();
+
+#if PRODUCTION == 0
+		if (ms_profilePrepareToDraw)
+			NP_PROFILER_BLOCK_LEAVE(ms_profilerBlockPrepareToDraw);
+#endif
+
+		Texture * const primaryBuffer = PostProcessingEffectsManager::getPrimaryBuffer();
+
+		int const destinationWidth = primaryBuffer ? primaryBuffer->getWidth() : 0;
+		int const destinationHeight = primaryBuffer ? primaryBuffer->getHeight() : 0;
+
+		int sectionRectX0 = 0;
+		int sectionRectY0 = 0;
+		int sectionRectX1 = destinationWidth;
+		int sectionRectY1 = destinationHeight;
+		
+		Graphics::setAlphaFadeOpacity(alphaFadeOpacityEnabled, alphaFadeOpacity);
+		
+		for (int i = 0; i < numberOfPasses; ++i)
 		{
-			Transform batchTransform;
-			Vector batchScale;
-			unsigned long const lightMask = entry.lightBitSet.to_ulong();
-			deferredOk =
-				(numberOfPasses == 1)
-				&& !alphaFadeOpacityEnabled
-				&& !staticShader.isHeatPass(0)
-				&& shaderPrimitive.getWorldTransformForBatching(batchTransform, batchScale);
+			Graphics::setStaticShader(staticShader, i);
+						
+			bool const isHeat = entry.staticShader->isHeatPass(i);
+			
+			if (isHeat)
+			{
+				if (!ms_heatShadersEnabled)
+				{
+					continue;
+				}
+				
+#if PRODUCTION == 0
+				if (ms_profileDraw)
+					NP_PROFILER_BLOCK_ENTER(ms_profilerBlockCompositeStart);
+#endif
+				
+				bool const result = startCompositing(shaderPrimitive, sectionRectX0, sectionRectY0, sectionRectX1, sectionRectY1);
+				
+#if PRODUCTION == 0
+				if (ms_profileDraw)
+					NP_PROFILER_BLOCK_LEAVE(ms_profilerBlockCompositeStart);
+#endif
+				
+				if (!result)
+					continue;
 
-			if (deferredOk)
-				RenderBatchManager::submitPhaseOrderedPrimitive(&shaderPrimitive, batchTransform, batchScale, static_cast<uint32>(lightMask));
+				Graphics::setAlphaFadeOpacity(false, alphaFadeOpacity);
+			}
+			
+			
+#if PRODUCTION == 0
+			if (ms_profileDraw)
+				NP_PROFILER_BLOCK_ENTER(ms_profilerBlockDraw);
+#endif
+
+			shaderPrimitive.draw();
+			
+#if PRODUCTION == 0
+			if (ms_profileDraw)
+				NP_PROFILER_BLOCK_LEAVE(ms_profilerBlockDraw);
+#endif
+
+			if (isHeat)
+			{
+				//-- @todo: this should probably be specified by the shader primitive's shader
+				StaticShader * const compositingShader = PostProcessingEffectsManager::getHeatCompositingShader();
+				
+				if (compositingShader)
+				{
+
+#if PRODUCTION == 0
+				if (ms_profileDraw)
+					NP_PROFILER_BLOCK_ENTER(ms_profilerBlockCompositeFinish);
+#endif
+					
+					finishCompositing(sectionRectX0, sectionRectY0, sectionRectX1, sectionRectY1, *compositingShader);
+
+#if PRODUCTION == 0
+				if (ms_profileDraw)
+					NP_PROFILER_BLOCK_LEAVE(ms_profilerBlockCompositeFinish);
+#endif
+
+				}
+				
+			}
 		}
-
-		if (!deferredOk)
-		{
-			if (useOrderedBatch)
-				RenderBatchManager::flushPhaseOrderedBatch();
-
-			drawEntry(entry);
-
-			if (useOrderedBatch)
-				RenderBatchManager::beginPhaseOrderedBatchResume();
-		}
-
+		
 #if PRODUCTION == 0
 		if (typeName)
 			NP_PROFILER_BLOCK_LEAVE(profilerBlockByTime);
 #endif
-	}
-
-	if (useOrderedBatch)
-	{
-		RenderBatchManager::flushPhaseOrderedBatch();
-		RenderBatchManager::endPhaseOrderedBatchIntegration();
 	}
 
 	Graphics::setAlphaFadeOpacity(false, 1.0f);
@@ -846,34 +881,6 @@ namespace ShaderPrimitiveSorterNamespace
 };
 
 using namespace ShaderPrimitiveSorterNamespace;
-
-namespace
-{
-	/**
-	 * Interior volume lighting without _dark.pob:
-	 *
-	 * Precalc / prelit shaders normally consume pob lights only through the "with precalculated vertex lighting"
-	 * bitmask, while their verts still carry baked irradiance from export.
-	 *
-	 * When CellProperty::hasCustomLightingOverride() is true, CellObject has rebuilt template lights with the
-	 * remote tint and we must drive hull shading from those runtime lights. Route those shaders through the
-	 * same bitmask as fully dynamic meshes so parallel/point contributions reach the VS/PS constant pack.
-	 *
-	 * (_dark.pob is an alternate mesh swap with darker baked verts; when absent, this bitmask routing plus
-	 * override ambient / material tint carries room brightness.)
-	 */
-	inline ShaderPrimitiveSorter::LightBitSet const & selectLightBitSetForInteriorShader(StaticShader const & staticShader)
-	{
-		if (!staticShader.containsPrecalculatedVertexLighting())
-			return ShaderPrimitiveSorter::getLightsAffectingShadersWithoutPrecalculatedVertexLighting();
-
-		CellProperty const * const cell = (!ms_cellPropertyStack.empty()) ? ms_cellPropertyStack.back() : NULL;
-		if (cell && cell->hasCustomLightingOverride())
-			return ShaderPrimitiveSorter::getLightsAffectingShadersWithoutPrecalculatedVertexLighting();
-
-		return ShaderPrimitiveSorter::getLightsAffectingShadersWithPrecalculatedVertexLighting();
-	}
-}
 
 ShaderPrimitiveSorter::Phases                    ShaderPrimitiveSorter::ms_phase;
 ShaderPrimitiveSorter::PhaseMap                  ShaderPrimitiveSorter::ms_phaseMap;
@@ -1120,7 +1127,7 @@ void ShaderPrimitiveSorter::disableLight(const Light &light)
 
 // ----------------------------------------------------------------------
 
-void ShaderPrimitiveSorter::setLights(LightBitSet const &lightBitSet)
+void ShaderPrimitiveSorter::setLights(const LightBitSet &lightBitSet)
 {
 	ms_activeLightList.clear();	
 
@@ -1135,127 +1142,6 @@ void ShaderPrimitiveSorter::setLights(LightBitSet const &lightBitSet)
 		}
 
 	Graphics::setLights(ms_activeLightList);
-}
-
-// ----------------------------------------------------------------------
-
-void ShaderPrimitiveSorter::applyLightBitSetForDrawing(LightBitSet const & lightBitSet)
-{
-	setLights(lightBitSet);
-}
-
-// ----------------------------------------------------------------------
-
-void ShaderPrimitiveSorter::Phase::drawEntry(Entry const & entry)
-{
-	StaticShader const    &staticShader    = *entry.staticShader;
-	ShaderPrimitive const &shaderPrimitive = *entry.shaderPrimitive;
-	bool const alphaFadeOpacityEnabled     = entry.alphaFadeOpacityEnabled;
-	float const alphaFadeOpacity           = entry.alphaFadeOpacity;
-	int const              numberOfPasses  = staticShader.getNumberOfPasses();
-
-	ShaderPrimitiveSorter::setLights(entry.lightBitSet);
-
-#if PRODUCTION == 0
-	if (ms_profilePrepareToDraw)
-		NP_PROFILER_BLOCK_ENTER(ms_profilerBlockPrepareToDraw);
-#endif
-
-	shaderPrimitive.prepareToDraw();
-
-#if PRODUCTION == 0
-	if (ms_profilePrepareToDraw)
-		NP_PROFILER_BLOCK_LEAVE(ms_profilerBlockPrepareToDraw);
-#endif
-
-	Texture * const primaryBuffer = PostProcessingEffectsManager::getPrimaryBuffer();
-
-	int const destinationWidth = primaryBuffer ? primaryBuffer->getWidth() : 0;
-	int const destinationHeight = primaryBuffer ? primaryBuffer->getHeight() : 0;
-
-	int sectionRectX0 = 0;
-	int sectionRectY0 = 0;
-	int sectionRectX1 = destinationWidth;
-	int sectionRectY1 = destinationHeight;
-	
-	Graphics::setAlphaFadeOpacity(alphaFadeOpacityEnabled, alphaFadeOpacity);
-	
-	for (int passIndex = 0; passIndex < numberOfPasses; ++passIndex)
-	{
-		Graphics::setStaticShader(staticShader, passIndex);
-					
-		bool const isHeat = entry.staticShader->isHeatPass(passIndex);
-		
-		if (isHeat)
-		{
-			if (!ms_heatShadersEnabled)
-			{
-				continue;
-			}
-
-			// Normal heat path composites back using 2d_heat_composite; if it failed to load, skip the pass (same as missing RTs).
-#if PRODUCTION == 0
-			if (!ms_showDebugHeatShaders && !PostProcessingEffectsManager::getHeatCompositingShader())
-				continue;
-#else
-			if (!PostProcessingEffectsManager::getHeatCompositingShader())
-				continue;
-#endif
-			
-#if PRODUCTION == 0
-			if (ms_profileDraw)
-				NP_PROFILER_BLOCK_ENTER(ms_profilerBlockCompositeStart);
-#endif
-			
-			bool const result = startCompositing(shaderPrimitive, sectionRectX0, sectionRectY0, sectionRectX1, sectionRectY1);
-			
-#if PRODUCTION == 0
-			if (ms_profileDraw)
-				NP_PROFILER_BLOCK_LEAVE(ms_profilerBlockCompositeStart);
-#endif
-			
-			if (!result)
-				continue;
-
-			Graphics::setAlphaFadeOpacity(false, alphaFadeOpacity);
-		}
-		
-		
-#if PRODUCTION == 0
-		if (ms_profileDraw)
-			NP_PROFILER_BLOCK_ENTER(ms_profilerBlockDraw);
-#endif
-
-		shaderPrimitive.draw();
-		
-#if PRODUCTION == 0
-		if (ms_profileDraw)
-			NP_PROFILER_BLOCK_LEAVE(ms_profilerBlockDraw);
-#endif
-
-		if (isHeat)
-		{
-			StaticShader * const compositingShader = PostProcessingEffectsManager::getHeatCompositingShader();
-			
-			if (compositingShader)
-			{
-
-#if PRODUCTION == 0
-			if (ms_profileDraw)
-				NP_PROFILER_BLOCK_ENTER(ms_profilerBlockCompositeFinish);
-#endif
-				
-				finishCompositing(sectionRectX0, sectionRectY0, sectionRectX1, sectionRectY1, *compositingShader);
-
-#if PRODUCTION == 0
-				if (ms_profileDraw)
-					NP_PROFILER_BLOCK_LEAVE(ms_profilerBlockCompositeFinish);
-#endif
-
-			}
-			
-		}
-	}
 }
 
 // ----------------------------------------------------------------------
@@ -1309,7 +1195,10 @@ void ShaderPrimitiveSorter::add(const ShaderPrimitive &shaderPrimitive)
 	{
 		NP_PROFILER_AUTO_BLOCK_DEFINE("ShaderPrimitiveSorter::add simple insertion");
 
-		ms_phase[phase].add(shaderPrimitive, staticShader, selectLightBitSetForInteriorShader(staticShader));
+		if (staticShader.containsPrecalculatedVertexLighting())
+			ms_phase[phase].add(shaderPrimitive, staticShader, ms_lightsAffectingShadersWithPrecalculatedVertexLighting);
+		else
+			ms_phase[phase].add(shaderPrimitive, staticShader, ms_lightsAffectingShadersWithoutPrecalculatedVertexLighting);
 	}
 }
 
@@ -1344,7 +1233,10 @@ void ShaderPrimitiveSorter::add(const ShaderPrimitive &shaderPrimitive, const in
 	StaticShader const & staticShader = ms_prepareToViewFunction(shaderPrimitive);
 	DEBUG_FATAL(phase < 0 || phase >= static_cast<int>(ms_phase.size()), ("Invalid phase %d/%d", phase, ms_phase.size()));
 
-	ms_phase[phase].add(shaderPrimitive, staticShader, selectLightBitSetForInteriorShader(staticShader));
+	if (staticShader.containsPrecalculatedVertexLighting())
+		ms_phase[phase].add(shaderPrimitive, staticShader, ms_lightsAffectingShadersWithPrecalculatedVertexLighting);
+	else
+		ms_phase[phase].add(shaderPrimitive, staticShader, ms_lightsAffectingShadersWithoutPrecalculatedVertexLighting);
 }
 
 // ----------------------------------------------------------------------
@@ -1375,7 +1267,10 @@ void ShaderPrimitiveSorter::addWithAlphaFadeOpacity(const ShaderPrimitive &shade
 	{
 		if (!opaqueEnable)
 		{
-			ms_phase[phase].add(shaderPrimitive, staticShader, selectLightBitSetForInteriorShader(staticShader));
+			if (staticShader.containsPrecalculatedVertexLighting())
+				ms_phase[phase].add(shaderPrimitive, staticShader, ms_lightsAffectingShadersWithPrecalculatedVertexLighting);
+			else
+				ms_phase[phase].add(shaderPrimitive, staticShader, ms_lightsAffectingShadersWithoutPrecalculatedVertexLighting);
 			return;
 		}
 
@@ -1387,7 +1282,10 @@ void ShaderPrimitiveSorter::addWithAlphaFadeOpacity(const ShaderPrimitive &shade
 		{
 			if (!alphaEnable)
 			{
-				ms_phase[phase].add(shaderPrimitive, staticShader, selectLightBitSetForInteriorShader(staticShader));
+				if (staticShader.containsPrecalculatedVertexLighting())
+					ms_phase[phase].add(shaderPrimitive, staticShader, ms_lightsAffectingShadersWithPrecalculatedVertexLighting);
+				else
+					ms_phase[phase].add(shaderPrimitive, staticShader, ms_lightsAffectingShadersWithoutPrecalculatedVertexLighting);
 				return;
 			}
 
@@ -1405,7 +1303,10 @@ void ShaderPrimitiveSorter::addWithAlphaFadeOpacity(const ShaderPrimitive &shade
 			phase = ms_aboveWaterPhase;
 	}
 
-	ms_phase[phase].addWithAlphaFadeOpacity(shaderPrimitive, staticShader, alphaFadeOpacity, selectLightBitSetForInteriorShader(staticShader));
+	if (staticShader.containsPrecalculatedVertexLighting())
+		ms_phase[phase].addWithAlphaFadeOpacity(shaderPrimitive, staticShader, alphaFadeOpacity, ms_lightsAffectingShadersWithPrecalculatedVertexLighting);
+	else
+		ms_phase[phase].addWithAlphaFadeOpacity(shaderPrimitive, staticShader, alphaFadeOpacity, ms_lightsAffectingShadersWithoutPrecalculatedVertexLighting);
 }
 
 // ----------------------------------------------------------------------
@@ -1433,9 +1334,6 @@ void ShaderPrimitiveSorter::add(const ShaderPrimitive &shaderPrimitive, const Li
 void ShaderPrimitiveSorter::pushCell(CellProperty const * cellProperty, Texture const * environmentTexture, bool fogEnabled, float fogDensity, PackedArgb const & fogColor)
 {
 	NP_PROFILER_AUTO_BLOCK_DEFINE("ShaderPrimitiveSorter::pushCell");
-
-	// Interior tint gate: enables Direct3d9_LightManager override ambient/material multiply for all draws until popCell.
-	// Nested cells restore parent CellProperty values on pop (see popCell).
 
 #ifdef _DEBUG
 	{
@@ -1474,18 +1372,7 @@ void ShaderPrimitiveSorter::pushCell(CellProperty const * cellProperty, Texture 
 
 	ms_cellPropertyStack.push_back(cellProperty);
 	if (cellProperty)
-	{
 		cellProperty->callEnterRenderHookFunctions();
-
-		if (cellProperty->hasCustomLightingOverride())
-			Graphics::setOverrideFullAmbient(true, cellProperty->getCustomLightingR(), cellProperty->getCustomLightingG(), cellProperty->getCustomLightingB());
-		else
-			Graphics::setOverrideFullAmbient(false, 0.0f, 0.0f, 0.0f);
-	}
-	else
-	{
-		Graphics::setOverrideFullAmbient(false, 0.0f, 0.0f, 0.0f);
-	}
 
 	ms_popped = false;
 
@@ -1556,19 +1443,6 @@ void ShaderPrimitiveSorter::popCell()
 	}
 	ms_cellPropertyStack.pop_back();
 
-	if (!ms_cellPropertyStack.empty() && ms_cellPropertyStack.back())
-	{
-		CellProperty const * const parentCell = ms_cellPropertyStack.back();
-		if (parentCell->hasCustomLightingOverride())
-			Graphics::setOverrideFullAmbient(true, parentCell->getCustomLightingR(), parentCell->getCustomLightingG(), parentCell->getCustomLightingB());
-		else
-			Graphics::setOverrideFullAmbient(false, 0.0f, 0.0f, 0.0f);
-	}
-	else
-	{
-		Graphics::setOverrideFullAmbient(false, 0.0f, 0.0f, 0.0f);
-	}
-
 	ms_popped = true;
 
 #ifdef _DEBUG
@@ -1577,13 +1451,6 @@ void ShaderPrimitiveSorter::popCell()
 
 	DEBUG_REPORT_PRINT(ms_reportPixelsComposited && ms_pixelsCompositedThisFrame > 0, 
 		("Composited [%8d] KiloPixels in [%4d] passes\n", ms_pixelsCompositedThisFrame / 1000, ms_compositePasses));
-}
-
-// ----------------------------------------------------------------------
-
-CellProperty const * ShaderPrimitiveSorter::getCurrentCellProperty()
-{
-	return ms_cellPropertyStack.empty() ? NULL : ms_cellPropertyStack.back();
 }
 
 // ----------------------------------------------------------------------

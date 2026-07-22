@@ -21,14 +21,11 @@
 #include "clientGame/ObjectAttributeManager.h"
 #include "clientGame/ResourceTypeManager.h"
 #include "clientGame/TaskConnection.h"
-#include "clientTerrain/CityTerrainLayerManager.h"
 #include "clientUserInterface/CuiActionManager.h"
 #include "clientUserInterface/CuiActions.h"
 #include "clientUserInterface/CuiLoadingManager.h"
 #include "clientUserInterface/CuiLoginManager.h"
 #include "clientUserInterface/CuiLoginManagerAvatarInfo.h"
-#include "clientUserInterface/CuiMediatorFactory.h"
-#include "clientUserInterface/CuiMediatorTypes.h"
 #include "clientUserInterface/CuiPreferences.h"
 #include "clientUserInterface/CuiStringIds.h"
 #include "sharedDebug/InstallTimer.h"
@@ -44,9 +41,6 @@
 #include "sharedNetwork/NetworkSetupData.h"
 #include "sharedNetworkMessages/ClientCentralMessages.h"
 #include "sharedNetworkMessages/ClientLoginMessages.h"
-#include "sharedNetworkMessages/CityTerrainMessages.h"
-#include "sharedNetworkMessages/ProceduralTerrainSyncMessages.h"
-#include "sharedFoundation/Crc.h"
 #include "sharedNetworkMessages/CommandChannelMessages.h"
 #include "sharedNetworkMessages/ConsoleChannelMessages.h"
 #include "sharedNetworkMessages/GenericValueTypeMessage.h"
@@ -59,10 +53,6 @@
 #include "sharedObject/Object.h"
 #include "sharedRemoteDebugServer/SharedRemoteDebugServer.h"
 #include "sharedUtility/FileName.h"
-
-#include <cstring>
-#include <fstream>
-#include <vector>
 
 //----------------------------------------------------------------------
 
@@ -91,122 +81,6 @@ namespace
 	// std::map<gcwScoreGroup, std::map<gcwScoreCategory, % contribution> >
 	// % contribution is expressed as a value out of 1,000,000,000
 	std::map<std::string, std::map<std::string, int> > s_gcwScoreCategoryGroups;
-}
-
-//----------------------------------------------------------------------
-
-namespace ProceduralTerrainSyncClientNamespace
-{
-	struct ClientProceduralTerrainSyncState
-	{
-		std::string fileName;
-		uint32 totalSize;
-		uint32 crc;
-		std::vector<unsigned char> buffer;
-		uint32 bytesReceived;
-	};
-
-	static ClientProceduralTerrainSyncState s_proceduralTerrainSync;
-
-	static void resetProceduralTerrainSync()
-	{
-		s_proceduralTerrainSync = ClientProceduralTerrainSyncState();
-	}
-
-	static void applyCompletedProceduralTerrainSync()
-	{
-		uint32 const verifyCrc = Crc::calculate(
-			&s_proceduralTerrainSync.buffer[0],
-			static_cast<int>(s_proceduralTerrainSync.buffer.size()),
-			Crc::crcInit);
-
-		if (verifyCrc != s_proceduralTerrainSync.crc)
-		{
-			WARNING(true, ("ProceduralTerrainSync: client CRC mismatch."));
-			resetProceduralTerrainSync();
-			return;
-		}
-
-		char pathBuffer[8192];
-		if (!TreeFile::getPathName(s_proceduralTerrainSync.fileName.c_str(), pathBuffer, sizeof(pathBuffer)))
-		{
-			WARNING(true, ("ProceduralTerrainSync: client getPathName failed for [%s].", s_proceduralTerrainSync.fileName.c_str()));
-			resetProceduralTerrainSync();
-			return;
-		}
-
-		{
-			std::ofstream out(pathBuffer, std::ios::binary | std::ios::trunc);
-			if (!out)
-			{
-				WARNING(true, ("ProceduralTerrainSync: client failed to write [%s].", pathBuffer));
-				resetProceduralTerrainSync();
-				return;
-			}
-			out.write(reinterpret_cast<char const *>(&s_proceduralTerrainSync.buffer[0]), static_cast<std::streamsize>(s_proceduralTerrainSync.buffer.size()));
-		}
-
-		TreeFile::clearCachedFiles();
-		AppearanceTemplateList::garbageCollect();
-		if (GroundScene * const gs = dynamic_cast<GroundScene *>(Game::getScene()))
-			gs->reloadTerrain();
-
-		resetProceduralTerrainSync();
-	}
-
-	void handleProceduralTerrainSyncChunk(ProceduralTerrainSyncChunkMessage const & msg)
-	{
-		uint32 const maxBytes = 32u * 1024u * 1024u;
-
-		if (msg.getTotalSize() == 0 || msg.getTotalSize() > maxBytes)
-		{
-			resetProceduralTerrainSync();
-			return;
-		}
-
-		std::vector<unsigned char> const & chunk = msg.getChunkBytes();
-		if (chunk.empty())
-		{
-			resetProceduralTerrainSync();
-			return;
-		}
-
-		if (msg.getByteOffset() == 0)
-			resetProceduralTerrainSync();
-
-		if (msg.getByteOffset() == 0)
-		{
-			s_proceduralTerrainSync.fileName = msg.getTerrainTreeFileName();
-			s_proceduralTerrainSync.totalSize = msg.getTotalSize();
-			s_proceduralTerrainSync.crc = msg.getCrc32();
-			s_proceduralTerrainSync.buffer.resize(msg.getTotalSize());
-			s_proceduralTerrainSync.bytesReceived = 0;
-		}
-
-		if (msg.getTerrainTreeFileName() != s_proceduralTerrainSync.fileName ||
-			msg.getTotalSize() != s_proceduralTerrainSync.totalSize ||
-			msg.getCrc32() != s_proceduralTerrainSync.crc)
-		{
-			resetProceduralTerrainSync();
-			return;
-		}
-
-		if (msg.getByteOffset() + chunk.size() > s_proceduralTerrainSync.totalSize ||
-			msg.getByteOffset() != s_proceduralTerrainSync.bytesReceived)
-		{
-			resetProceduralTerrainSync();
-			return;
-		}
-
-		std::memcpy(
-			&s_proceduralTerrainSync.buffer[msg.getByteOffset()],
-			&chunk[0],
-			chunk.size());
-		s_proceduralTerrainSync.bytesReceived = msg.getByteOffset() + static_cast<uint32>(chunk.size());
-
-		if (s_proceduralTerrainSync.bytesReceived >= s_proceduralTerrainSync.totalSize)
-			applyCompletedProceduralTerrainSync();
-	}
 }
 
 //----------------------------------------------------------------------
@@ -245,11 +119,6 @@ MessageDispatch::Receiver ()
 	connectToMessage("GcwRegionsRsp");
 	connectToMessage("GcwGroupsRsp");
 	connectToMessage("OpenExamineWindow");
-	connectToMessage("OpenCityTerrainPainterMessage");
-	connectToMessage("OpenTerraformingUIMessage");
-	connectToMessage("CityTerrainModifyMessage");
-	connectToMessage("CityTerrainPaintResponseMessage");
-	connectToMessage("ProceduralTerrainSyncChunkMessage");
 }
 
 //-----------------------------------------------------------------------
@@ -372,74 +241,11 @@ void GameNetwork::Listener::receiveMessage(const MessageDispatch::Emitter & , co
 		GenericValueTypeMessage<std::map<std::string, std::map<std::string, int> > > const gcwGroupsRsp(ri);
 		s_gcwScoreCategoryGroups = gcwGroupsRsp.getValue();
 	}
-	else if(message.isType("OpenExamineWindow"))
+	else if (message.isType("OpenExamineWindow"))
 	{
 		Archive::ReadIterator ri = NON_NULL (safe_cast<const GameNetworkMessage *>(&message))->getByteStream().begin();
 		GenericValueTypeMessage<NetworkId> const openExamineWindowMsg(ri);
 		CuiActionManager::performAction(CuiActions::examine, Unicode::narrowToWide(openExamineWindowMsg.getValue().getValueString()));
-	}
-	else if(message.isType("OpenCityTerrainPainterMessage"))
-	{
-		Archive::ReadIterator ri = NON_NULL (safe_cast<const GameNetworkMessage *>(&message))->getByteStream().begin();
-		GenericValueTypeMessage<int32> const msg(ri);
-		int32 cityId = msg.getValue();
-		CityTerrainLayerManager::notifyOpenCityTerrainPainterRequested(cityId);
-		CuiMediatorFactory::activateInWorkspace("WS_CityTerrainPainter");
-	}
-	else if(message.isType("OpenTerraformingUIMessage"))
-	{
-		Archive::ReadIterator ri = NON_NULL (safe_cast<const GameNetworkMessage *>(&message))->getByteStream().begin();
-		GenericValueTypeMessage<int32> const msg(ri);
-		int32 cityId = msg.getValue();
-		CityTerrainLayerManager::notifyOpenTerraformingRequested(cityId);
-		CuiMediatorFactory::activateInWorkspace("WS_Terraforming");
-	}
-	else if(message.isType("CityTerrainModifyMessage"))
-	{
-		Archive::ReadIterator ri = NON_NULL (safe_cast<const GameNetworkMessage *>(&message))->getByteStream().begin();
-		CityTerrainModifyMessage const msg(ri);
-
-		REPORT_LOG(true, ("[Titan] GameNetwork: received CityTerrainModifyMessage cityId=%d type=%d regionId=%s shader=%s\n",
-			msg.getCityId(), msg.getModificationType(), msg.getRegionId().c_str(), msg.getShaderTemplate().c_str()));
-
-		if (CityTerrainLayerManager::isInstalled())
-		{
-			CityTerrainLayerManager::getInstance().handleTerrainModifyMessage(
-				msg.getCityId(),
-				msg.getModificationType(),
-				msg.getRegionId(),
-				msg.getShaderTemplate(),
-				msg.getCenterX(),
-				msg.getCenterZ(),
-				msg.getRadius(),
-				msg.getEndX(),
-				msg.getEndZ(),
-				msg.getWidth(),
-				msg.getHeight(),
-				msg.getBlendDistance(),
-				msg.getRegionActive()
-			);
-		}
-		// Game UI registers notifyCityTerrainUiRefresh (clientGame cannot include SWG headers).
-		CityTerrainLayerManager::notifyCityTerrainUiRefresh(msg.getCityId());
-	}
-	else if(message.isType("CityTerrainPaintResponseMessage"))
-	{
-		Archive::ReadIterator ri = NON_NULL (safe_cast<const GameNetworkMessage *>(&message))->getByteStream().begin();
-		CityTerrainPaintResponseMessage const msg(ri);
-
-		REPORT_LOG(true, ("[Titan] GameNetwork: received CityTerrainPaintResponseMessage success=%d regionId=%s error=%s\n",
-			msg.getSuccess() ? 1 : 0, msg.getRegionId().c_str(), msg.getErrorMessage().c_str()));
-
-		if (CityTerrainLayerManager::isInstalled())
-			CityTerrainLayerManager::dispatchPaintResponse(msg.getSuccess(), msg.getRegionId(), msg.getErrorMessage());
-		CityTerrainLayerManager::notifyCityTerrainUiRefresh(0);
-	}
-	else if(message.isType("ProceduralTerrainSyncChunkMessage"))
-	{
-		Archive::ReadIterator ri = NON_NULL (safe_cast<const GameNetworkMessage *>(&message))->getByteStream().begin();
-		ProceduralTerrainSyncChunkMessage const syncMsg(ri);
-		ProceduralTerrainSyncClientNamespace::handleProceduralTerrainSyncChunk(syncMsg);
 	}
 }
 

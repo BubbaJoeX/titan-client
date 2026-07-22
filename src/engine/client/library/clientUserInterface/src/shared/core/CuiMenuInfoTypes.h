@@ -169,9 +169,7 @@ namespace Cui
 			ITEM_UNEQUIP_APPEARANCE,
 			OPEN_STORYTELLER_RECIPE,
 			GOD_TELEPORT,
-			ITEM_MOVEMENT_MODE,
-			GM_CRAFT_SCHEMATIC,
-			GM_CRATE_SCHEMATIC,
+
 			CLIENT_MENU_LAST,
 
 			// some server side menu items that we need to catch on the client side

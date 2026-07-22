@@ -1,0 +1,23 @@
+00:00:00   656MB         | log started Fri Jun 19 13:52:56 2026
+00:00:00   656MB         | Arnold 7.5.1.1 [db61e838] windows x86_64 icx-2025.2.0 oiio-2.6.3 osl-1.13.3 vdb-11.0.0 adlsdk-10.0.1.66 clmhub-3.3.0.15 rlm-17.0.1 optix-8.0.0 2026/04/15 04:45:19
+00:00:00   656MB         | running on MSI, pid=9148
+00:00:00   656MB         |  1 x Intel(R) Core(TM) i7-14650HX (24 cores, 24 logical) with 16088MB
+00:00:00   656MB         |  NVIDIA driver version 591.44
+00:00:00   656MB         |  GPU 0: NVIDIA GeForce RTX 5050 Laptop GPU @ 2092MHz (compute 12.0) with 8150MB (7699MB available) (NVLink:0)
+00:00:00   656MB         |  Windows 10 (version 10.0, build 26200)
+00:00:00   656MB         |  soft limit for open files changed from 512 to 2048
+00:00:00   656MB         |  
+00:00:00   656MB         | Installing system handler with mask 255
+00:00:07   965MB         | [metadata] loading metadata file: C:\Program Files\Autodesk\Arnold\Maya2027\bin\arnold.mtd
+00:00:07   967MB         | loading plugins from C:\Program Files\Autodesk\Arnold\Maya2027\bin\..\plugins ...
+00:00:07   968MB         |  alembic_proc.dll: alembic uses Arnold 7.5.1.1
+00:00:07   999MB         |  usd_proc.dll: usd uses Arnold 7.5.1.1
+00:00:07   999MB         | loaded 2 plugins from 2 lib(s) in 0:00.63
+00:00:08  1009MB         |  unloading 2 plugins
+00:00:08  1009MB         |   closing alembic_proc.dll ...
+00:00:08  1009MB         |   closing usd_proc.dll ...
+00:00:08  1002MB         |  unloading plugins done
+00:00:08  1002MB         | Arnold shutdown
+00:00:08   989MB         | Installing system handler with mask 0
+bifrostGraph::bifrostRiggingMenu: (kFailure): Unexpected Internal Failure
+OPENSSL_Uplink(00007FF8647A0C58,08): no OPENSSL_Applink

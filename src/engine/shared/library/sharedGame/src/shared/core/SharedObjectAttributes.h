@@ -182,9 +182,6 @@ namespace SharedObjectAttributes
 
 	MAKE_ATTRIB (tier);
 
-	MAKE_ATTRIB (display_name);
-	MAKE_ATTRIB (display_description);
-
 #undef MAKE_ATTRIB
 
 };

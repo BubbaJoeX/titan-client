@@ -21,7 +21,6 @@
 #include "clientGame/PlayerObject.h"
 #include "clientGame/Projectile.h"
 #include "clientGame/SaddleManager.h"
-#include "clientGame/ShipStation.h"
 #include "clientGame/TrackingProjectile.h"
 #include "clientGraphics/Light.h"
 #include "clientGraphics/RenderWorld.h"
@@ -61,7 +60,6 @@ namespace ClientEffectManagerNamespace
 {
 	const ConstCharCrcLowerString cs_lootDisc("appearance/pt_loot_disc.prt");
 	float const					  ms_maxAutoLootDistance = 16.0f;
-	float const					  ms_maxRemoteLootDistanceShip = 150.0f;
 	StringId                      ms_autoLootStringId("ui", "auto_loot_fail");
 
 	//NOTE: We need a separate class to handle the Receiver, since it's non-static and
@@ -101,8 +99,8 @@ namespace ClientEffectManagerNamespace
 						if(creature && Game::getPlayerCreature())
 						{
 							Vector distance = Game::getPlayerCreature()->getPosition_w() - creature->getPosition_w();
-							float const maxDist = (Game::isShipScene() && Game::getPlayerCreature()->getShipStation() != ShipStation::ShipStation_None) ? ms_maxRemoteLootDistanceShip : ms_maxAutoLootDistance;
-							if(distance.approximateMagnitude() < maxDist)
+							
+							if(distance.approximateMagnitude() < ms_maxAutoLootDistance)
 							{
 								ClientCommandQueue::enqueueCommand ("loot", pceom.getObjectId(), Unicode::emptyString);
 							}
@@ -139,8 +137,8 @@ namespace ClientEffectManagerNamespace
 						if(creature && Game::getPlayerCreature())
 						{
 							Vector distance = Game::getPlayerCreature()->getPosition_w() - creature->getPosition_w();
-							float const maxDist = (Game::isShipScene() && Game::getPlayerCreature()->getShipStation() != ShipStation::ShipStation_None) ? ms_maxRemoteLootDistanceShip : ms_maxAutoLootDistance;
-							if(distance.approximateMagnitude() < maxDist)
+
+							if(distance.approximateMagnitude() < ms_maxAutoLootDistance)
 							{
 								ClientCommandQueue::enqueueCommand ("loot", pceotm.getObjectId(), Unicode::emptyString);
 							}
@@ -1226,7 +1224,7 @@ void ClientEffectManager::createClientTrackingProjectileObjectToObject(std::stri
 
 // ----------------------------------------------------------------------
 
-void ClientEffectManager::createClientTrackingProjectileObjectToLocation(const _STL::string &weaponObjectTemplateName, const CellProperty *const cellProperty, const Object &source, const _STL::string &sourceHardpoint, const Vector &endLoc, const float speed, const float expiration, const bool hasTrail, const uint32 trailArgb)
+void ClientEffectManager::createClientTrackingProjectileObjectToLocation(const std::string &weaponObjectTemplateName, const CellProperty *const cellProperty, const Object &source, const std::string &sourceHardpoint, const Vector &endLoc, const float speed, const float expiration, const bool hasTrail, const uint32 trailArgb)
 {
 	if (!cellProperty)
 		return;
@@ -1289,7 +1287,7 @@ void ClientEffectManager::createClientTrackingProjectileObjectToLocation(const _
 
 // ----------------------------------------------------------------------
 
-void ClientEffectManager::createClientTrackingProjectileLocationToObject(const _STL::string &weaponObjectTemplateName, const CellProperty *const cellProperty, const Vector &startLoc, const Object &target, const _STL::string &targetHardpoint, const float speed, const float expiration, const bool hasTrail, const uint32 trailArgb)
+void ClientEffectManager::createClientTrackingProjectileLocationToObject(const std::string &weaponObjectTemplateName, const CellProperty *const cellProperty, const Vector &startLoc, const Object &target, const std::string &targetHardpoint, const float speed, const float expiration, const bool hasTrail, const uint32 trailArgb)
 {
 	if (!cellProperty)
 		return;

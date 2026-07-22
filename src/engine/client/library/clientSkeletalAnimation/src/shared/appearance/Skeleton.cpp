@@ -1893,6 +1893,7 @@ void Skeleton::allocateTransformArrays(int transformCount)
 	m_bindPoseModelToRootTransformBackingStore = new uint8[poseDataSize];
 
 	m_bindPoseModelToRootTransforms = reinterpret_cast<PoseModelTransform*>(POINTER_ALIGN_32(m_bindPoseModelToRootTransformBackingStore));
+	memset(m_bindPoseModelToRootTransformBackingStore, 0, poseDataSize);
 	//-------------------------------------------------------
 
 	m_frameLastExtentCalculate              = -1;

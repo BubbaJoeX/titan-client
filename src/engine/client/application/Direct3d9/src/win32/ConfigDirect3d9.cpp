@@ -113,9 +113,9 @@ void ConfigDirect3d9::install()
 	}
 
 	// Engine optimization settings
-	KEY_BOOL(enableInstancing, true);
+	KEY_BOOL(enableInstancing, false);
 	KEY_INT (maxInstancesPerBatch, 256);
-	KEY_BOOL(enableOcclusionQueries, true);
+	KEY_BOOL(enableOcclusionQueries, false);
 	KEY_INT (occlusionQueryLatency, 2);
 
 	int const vertexProcessingMode = ConfigFile::getKeyInt("Direct3d9", "vertexProcessingMode", 0);

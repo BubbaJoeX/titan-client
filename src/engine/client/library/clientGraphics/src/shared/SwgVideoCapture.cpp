@@ -14,7 +14,7 @@
 #include "VideoCapture/VideoCapture.h"
 #include "SoeUtil/String.h"
 
-#if PRODUCTION == 0
+#if PRODUCTION == 0 && !defined(_WIN64)
 
 namespace VideoCapture
 {
@@ -653,5 +653,34 @@ void run()
 } // SingleUse
 
 } // VideoCapture
+
+#elif PRODUCTION == 0 && defined(_WIN64)
+
+// x64 has no VideoCapture vendor libs (win32-only); provide no-op stubs for dev builds.
+namespace VideoCapture
+{
+void install()
+{
+}
+
+namespace SingleUse
+{
+void config(int, int, int, const char *, AudioCapture::IManager *)
+{
+}
+
+void start(VideoCapture::SingleUse::ICallback *, AudioCapture::IManager *)
+{
+}
+
+void stop()
+{
+}
+
+void run()
+{
+}
+} // namespace SingleUse
+} // namespace VideoCapture
 
 #endif // PRODUCTION

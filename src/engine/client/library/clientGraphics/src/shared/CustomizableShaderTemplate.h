@@ -65,7 +65,7 @@ public:
 	const std::string             &getIntVariableName(int index) const;
 	bool                           isIntVariablePrivate(int index) const;
 
-	bool                           applyShaderSettings(const IntVector &intValues, StaticShader &shader, const PackedArgbVector *directColors = 0) const;
+	bool                           applyShaderSettings(const IntVector &intValues, StaticShader &shader) const;
 
 	const ShaderTemplate          &getBaseShaderTemplate() const;
 
