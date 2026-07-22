@@ -122,6 +122,19 @@ Portal::Portal(const PortalPropertyTemplateCellPortal &portalTemplate, CellPrope
 
 Portal::~Portal()
 {
+	if (m_door)
+	{
+		// Door objects are children of the portal owner and can remain scheduled
+		// until that object hierarchy is deleted.  Break their non-owning portal
+		// links before destroying DPVS state so DoorObject::alter() cannot call
+		// setClosed() through a stale Portal.
+		DoorObject * const neighborDoor = m_door->getNeighbor();
+		if (neighborDoor)
+			neighborDoor->setNeighbor(NULL);
+		m_door->setNeighbor(NULL);
+		m_door->setPortal(NULL);
+	}
+
 	if (m_dpvsPortal)
 	{
 		m_relativeToObject->removeDpvsObject(m_dpvsPortal);

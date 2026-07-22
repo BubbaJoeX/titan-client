@@ -26,6 +26,7 @@
 #include "sharedTerrain/FloraManager.h"
 #include "sharedDebug/DebugFlags.h"
 #include "sharedDebug/InstallTimer.h"
+#include "sharedFoundation/ConfigFile.h"
 #include "sharedFoundation/ExitChain.h"
 #include "sharedFoundation/NetworkId.h"
 #include "sharedMath/Transform.h"
@@ -47,6 +48,7 @@ namespace RtCameraManagerNamespace
 	typedef std::map<NetworkId, RtCameraManager::RtCameraFeed> FeedMap;
 	typedef std::map<NetworkId, NetworkId> ScreenToCameraMap;
 	typedef std::vector<Object const*> ExcludedObjectList;
+	typedef std::vector<Texture*> TexturePool;
 
 	// Store feed info for recreation after device restore
 	struct FeedRestoreInfo
@@ -64,12 +66,17 @@ namespace RtCameraManagerNamespace
 	bool                s_installed = false;
 	bool                s_systemAvailable = true;
 	bool                s_isRenderingRtFeed = false;  // Recursion guard
+	int                 s_maxActiveFeeds = RtCameraManager::MAX_ACTIVE_CAMERAS;
+	int                 s_maxRendersPerFrame = 1;
+	float               s_baseUpdateRate = 0.10f;
+	float               s_maxViewDistanceSquared = 100.0f * 100.0f;
 
 	// Render camera for RT feeds - uses RenderWorldCamera for proper scene rendering
 	RenderWorldCamera*  s_rtCamera = nullptr;
 
 	// List of RT screen objects to exclude from RT camera renders (recursion protection)
 	ExcludedObjectList  s_rtScreenObjects;
+	TexturePool         s_renderTexturePool;
 
 	// Render target texture format
 	TextureFormat const s_renderTargetFormats[] = { TF_ARGB_8888 };
@@ -89,7 +96,7 @@ using namespace RtCameraManagerNamespace;
 
 // ============================================================================
 
-float const RtCameraManager::DEFAULT_UPDATE_RATE = 0.05f;  // 50ms = 20 FPS
+float const RtCameraManager::DEFAULT_UPDATE_RATE = 0.10f;  // Conservative 10 FPS base
 float const RtCameraManager::MIN_UPDATE_RATE = 0.016f;     // ~60 FPS max
 
 // ============================================================================
@@ -103,6 +110,19 @@ void RtCameraManager::install()
 	s_installed = true;
 	s_feeds = new FeedMap();
 	s_screenToCamera = new ScreenToCameraMap();
+	s_maxActiveFeeds = ConfigFile::getKeyInt("ClientGame", "rtCameraMaxFeeds", MAX_ACTIVE_CAMERAS);
+	if (s_maxActiveFeeds < 1) s_maxActiveFeeds = 1;
+	if (s_maxActiveFeeds > MAX_ACTIVE_CAMERAS) s_maxActiveFeeds = MAX_ACTIVE_CAMERAS;
+	s_maxRendersPerFrame = ConfigFile::getKeyInt("ClientGame", "rtCameraMaxRendersPerFrame", 1);
+	if (s_maxRendersPerFrame < 1) s_maxRendersPerFrame = 1;
+	if (s_maxRendersPerFrame > 2) s_maxRendersPerFrame = 2;
+	s_baseUpdateRate = ConfigFile::getKeyFloat("ClientGame", "rtCameraBaseUpdateRate", DEFAULT_UPDATE_RATE);
+	if (s_baseUpdateRate < 0.05f) s_baseUpdateRate = 0.05f;
+	if (s_baseUpdateRate > 0.50f) s_baseUpdateRate = 0.50f;
+	float maxViewDistance = ConfigFile::getKeyFloat("ClientGame", "rtCameraMaxViewDistance", 100.0f);
+	if (maxViewDistance < 10.0f) maxViewDistance = 10.0f;
+	if (maxViewDistance > 250.0f) maxViewDistance = 250.0f;
+	s_maxViewDistanceSquared = maxViewDistance * maxViewDistance;
 
 	// Create the render world camera for RT feeds
 	s_rtCamera = new RenderWorldCamera();
@@ -118,7 +138,8 @@ void RtCameraManager::install()
 
 	ExitChain::add(RtCameraManager::remove, "RtCameraManager::remove", 0, false);
 
-	DEBUG_REPORT_LOG(true, ("RtCameraManager: installed with full scene rendering\n"));
+	DEBUG_REPORT_LOG(true, ("RtCameraManager: installed feeds=%d rendersPerFrame=%d baseRate=%.3f\n",
+		s_maxActiveFeeds, s_maxRendersPerFrame, s_baseUpdateRate));
 }
 
 // -----------------------------------------------------------------------------
@@ -150,6 +171,11 @@ void RtCameraManager::remove()
 		delete s_screenToCamera;
 		s_screenToCamera = nullptr;
 	}
+
+	for (TexturePool::iterator it = s_renderTexturePool.begin(); it != s_renderTexturePool.end(); ++it)
+		if (*it)
+			(*it)->release();
+	s_renderTexturePool.clear();
 
 	// Clean up render camera
 	if (s_rtCamera)
@@ -224,9 +250,9 @@ bool RtCameraManager::registerFeed(NetworkId const& cameraId, NetworkId const& s
 		return false;
 
 	// Check max cameras
-	if (static_cast<int>(s_feeds->size()) >= MAX_ACTIVE_CAMERAS)
+	if (static_cast<int>(s_feeds->size()) >= s_maxActiveFeeds)
 	{
-		DEBUG_REPORT_LOG(s_debugRtCamera, ("RtCameraManager: Max cameras reached (%d)\n", MAX_ACTIVE_CAMERAS));
+		DEBUG_REPORT_LOG(s_debugRtCamera, ("RtCameraManager: Max cameras reached (%d)\n", s_maxActiveFeeds));
 		return false;
 	}
 
@@ -264,8 +290,9 @@ bool RtCameraManager::registerFeed(NetworkId const& cameraId, NetworkId const& s
 	feed.screenObjectId = screenId;
 	feed.fov = fov;
 	feed.resolution = resolution;
-	feed.updateTimer = 0.0f;
-	feed.updateRate = DEFAULT_UPDATE_RATE;
+	size_t const feedIndex = s_feeds->size();
+	feed.updateRate = s_baseUpdateRate * (1.0f + static_cast<float>(feedIndex) * 0.5f);
+	feed.updateTimer = (s_baseUpdateRate / static_cast<float>(s_maxActiveFeeds)) * static_cast<float>(feedIndex);
 	feed.renderTexture = renderTexture;
 	feed.isActive = true;
 	feed.needsUpdate = true;
@@ -442,53 +469,41 @@ void RtCameraManager::renderFeeds()
 	if (s_isRenderingRtFeed)
 		return;
 
-	// Find the closest visible screen to render (only render ONE at a time to conserve GPU memory)
-	RtCameraFeed* closestFeed = nullptr;
-	float closestDistanceSquared = FLT_MAX;
-
 	Camera const* playerCamera = Game::getCamera();
+	if (!playerCamera)
+		return;
 	Vector cameraPos;
-	if (playerCamera)
+	cameraPos = playerCamera->getPosition_w();
+
+	// Select independently each pass so the conservative per-frame budget can be raised
+	// without changing the main renderer or allowing one near screen to starve the others.
+	for (int renderedCount = 0; renderedCount < s_maxRendersPerFrame; ++renderedCount)
 	{
-		cameraPos = playerCamera->getPosition_w();
-	}
-
-	for (FeedMap::iterator it = s_feeds->begin(); it != s_feeds->end(); ++it)
-	{
-		RtCameraFeed& feed = it->second;
-
-		if (!feed.isActive || !feed.needsUpdate)
-			continue;
-
-		// Skip if no render texture (may have been released due to device lost)
-		if (!feed.renderTexture)
-			continue;
-
-		// Get screen object position
-		Object* screenObject = NetworkIdManager::getObjectById(feed.screenObjectId);
-		if (!screenObject)
-			continue;
-
-		// Calculate distance to screen
-		Vector const screenPos = screenObject->getPosition_w();
-		float const distanceSquared = screenPos.magnitudeBetweenSquared(cameraPos);
-
-		// Only consider screens within view distance (100m)
-		float const maxViewDistanceSquared = 100.0f * 100.0f;
-		if (distanceSquared > maxViewDistanceSquared)
-			continue;
-
-		// Track closest screen
-		if (distanceSquared < closestDistanceSquared)
+		RtCameraFeed* closestFeed = nullptr;
+		float closestDistanceSquared = FLT_MAX;
+		for (FeedMap::iterator it = s_feeds->begin(); it != s_feeds->end(); ++it)
 		{
-			closestDistanceSquared = distanceSquared;
-			closestFeed = &feed;
-		}
-	}
+			RtCameraFeed& feed = it->second;
+			if (!feed.isActive || !feed.needsUpdate || !feed.renderTexture)
+				continue;
 
-	// Only render the closest visible screen
-	if (closestFeed)
-	{
+			Object* screenObject = NetworkIdManager::getObjectById(feed.screenObjectId);
+			if (!screenObject)
+				continue;
+
+			float const distanceSquared = screenObject->getPosition_w().magnitudeBetweenSquared(cameraPos);
+			if (distanceSquared > s_maxViewDistanceSquared)
+				continue;
+
+			if (distanceSquared < closestDistanceSquared)
+			{
+				closestDistanceSquared = distanceSquared;
+				closestFeed = &feed;
+			}
+		}
+
+		if (!closestFeed)
+			break;
 		renderSingleFeed(*closestFeed);
 		closestFeed->needsUpdate = false;
 	}
@@ -535,14 +550,13 @@ void RtCameraManager::renderSingleFeed(RtCameraFeed& feed)
 	s_rtCamera->setTransform_o2p(cameraTransform);
 
 	// Set camera parameters
-	float const aspectRatio = 1.0f;  // Square texture
 	float const nearPlane = 0.5f;
 	float const farPlane = 16000.0f;
 	float const fovRadians = feed.fov * 3.14159265f / 180.0f;
 
 	s_rtCamera->setNearPlane(nearPlane);
 	s_rtCamera->setFarPlane(farPlane);
-	s_rtCamera->setHorizontalFieldOfView(fovRadians * aspectRatio);
+	s_rtCamera->setHorizontalFieldOfView(fovRadians);
 	s_rtCamera->setViewport(0, 0, feed.resolution, feed.resolution);
 
 	// Clear excluded objects and add all RT screens for recursion protection
@@ -595,6 +609,16 @@ void RtCameraManager::renderSingleFeed(RtCameraFeed& feed)
 	// Restore back buffer as render target
 	Graphics::setRenderTarget(nullptr, CF_none, 0);
 
+	// These are process-global terrain references. Leaving the RT camera installed here
+	// makes the stable main renderer cull flora/terrain from the last feed.
+	Camera * const playerCamera = Game::getCamera();
+	Object const * const playerObject = Game::getPlayer();
+	ClientProceduralTerrainAppearance::setReferenceCamera(playerCamera);
+	GroundEnvironment::getInstance().setReferenceCamera(playerCamera);
+	GroundEnvironment::getInstance().setReferenceObject(playerObject);
+	FloraManager::setReferenceObject(playerObject);
+	s_rtCamera->setActive(false);
+
 	// Clear recursion guard
 	s_isRenderingRtFeed = false;
 
@@ -618,6 +642,16 @@ Texture* RtCameraManager::createRenderTexture(int resolution)
 		resolution = 128;
 	if (resolution > 512)
 		resolution = 512;
+
+	for (TexturePool::iterator it = s_renderTexturePool.begin(); it != s_renderTexturePool.end(); ++it)
+	{
+		Texture * const texture = *it;
+		if (texture && texture->getWidth() == resolution && texture->getHeight() == resolution)
+		{
+			s_renderTexturePool.erase(it);
+			return texture;
+		}
+	}
 
 	// Create a render target texture
 	int const textureCreationFlags = TCF_renderTarget;
@@ -645,7 +679,10 @@ void RtCameraManager::releaseRenderTexture(Texture* texture)
 {
 	if (texture)
 	{
-		texture->release();
+		if (s_systemAvailable && static_cast<int>(s_renderTexturePool.size()) < s_maxActiveFeeds)
+			s_renderTexturePool.push_back(texture);
+		else
+			texture->release();
 	}
 }
 
@@ -667,10 +704,8 @@ bool RtCameraManager::isScreenVisible(NetworkId const& screenId)
 	Vector const cameraPos = playerCamera->getPosition_w();
 	float const distanceSquared = screenPos.magnitudeBetweenSquared(cameraPos);
 
-	// Only render if screen is within 100 meters
-	float const maxViewDistanceSquared = 100.0f * 100.0f;
-
-	return distanceSquared <= maxViewDistanceSquared;
+	// Only render inside the configured feed distance.
+	return distanceSquared <= s_maxViewDistanceSquared;
 }
 
 // -----------------------------------------------------------------------------
@@ -779,6 +814,10 @@ void RtCameraManager::lostDevice()
 	// Reset render target to primary/backbuffer before releasing our textures
 	// This ensures the GPU is not using our render targets when we release them
 	Graphics::setRenderTarget(nullptr, CF_none, 0);
+	for (TexturePool::iterator poolIt = s_renderTexturePool.begin(); poolIt != s_renderTexturePool.end(); ++poolIt)
+		if (*poolIt)
+			(*poolIt)->release();
+	s_renderTexturePool.clear();
 
 	// Save feed info for restoration
 	if (!s_feedRestoreInfo)
@@ -819,6 +858,7 @@ void RtCameraManager::restoreDevice()
 		return;
 
 	DEBUG_REPORT_LOG(true, ("RtCameraManager: restoreDevice - recreating render targets\n"));
+	s_systemAvailable = true;
 
 	// Recreate render textures for all feeds and force immediate refresh
 	for (FeedMap::iterator it = s_feeds->begin(); it != s_feeds->end(); ++it)
@@ -838,7 +878,6 @@ void RtCameraManager::restoreDevice()
 			feed.cameraObjectId.getValueString().c_str()));
 	}
 
-	s_systemAvailable = true;
 }
 
 // ============================================================================

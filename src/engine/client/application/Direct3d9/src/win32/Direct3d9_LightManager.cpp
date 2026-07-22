@@ -11,6 +11,7 @@
 #include "FirstDirect3d9.h"
 #include "Direct3d9_LightManager.h"
 
+#include "ConfigDirect3d9.h"
 #include "Direct3d9.h"
 #include "Direct3d9_PixelShaderConstantRegisters.h"
 #include "Direct3d9_StateCache.h"
@@ -33,16 +34,13 @@
 	   ShaderPrimitiveSorter::pushCell enables Graphics::setOverrideFullAmbient(R,G,B) from CellProperty while
 	   hasCustomLightingOverride() is true.
 
-	2. CellObject::setCellLightColor rebuilds template pob lights with diffuse/spec scaled by the same RGB and marks
-	   lights to affect both precalc and non-precalc shader buckets. selectLightBitSetForInteriorShader then routes
-	   precalc ("prelit") static shaders through the dynamic-light bitmask while override is on, so runtime lights
-	   reach hull geometry without swapping to a second pob.
+	2. CellObject::setCellLightColor rebuilds template pob lights with RGB tint while preserving vanilla diffuse/specular
+	   shader routing. Prelit meshes keep their authored balance instead of receiving diffuse light a second time.
 
 	3. Static shader passes marked containsPrecalculatedVertexLighting use Pass::m_fullAmbient; Pass::apply calls
 	   Direct3d9_LightManager::setFullAmbientOn(true). That primes ms_fullAmbient to either white (outdoors) or the
-	   override RGB (interiors). Dynamic passes clear ms_fullAmbient; selectLights() then clamps collapsed ambient up to
-	   the interior tint per RGB channel so dot3/skin meshes receive matching uplight while brighter template ambients
-	   are left unchanged (max, not additive).
+	   override RGB (interiors). Dynamic passes clear ms_fullAmbient; selectLights() adds only a configurable fraction
+	   of the interior tint as minimum uplight so dot3/skin meshes remain readable without a full-white wash.
 
 	4. Direct3d9_StaticShaderData::Pass::apply multiplies material Ambient/Diffuse/Emissive/Specular by the override
 	   RGB so albedo, emissive stages, and spec highlights track the room tint together with constant/uplight data.
@@ -508,13 +506,14 @@ void Direct3d9_LightManager::selectLights()
 			// Dynamic passes (avatars, props, dot3 skins) clear ms_fullAmbient and build ambient only from Light::T_ambient collapse.
 			// Ship/house templates often omit ambient entries or keep them very low while relying on baked hull lighting—fine for
 			// precalc meshes but leaves dynamic meshes with a starved ambient constant (black silhouette under ceiling lamps).
-			// Raise each ambient channel to at least the interior tint when override is active; if template ambient is already
-			// brighter than the tint, leave it (max, not additive—avoids double-fill when a dim ambient was already folded in).
+			// Raise each ambient channel to a conservative fraction of the interior tint. Full tint here was additive
+			// with template lights and material tint, washing dynamic objects out at otherwise vanilla settings.
 			if (ms_overrideFullAmbient && ms_fullAmbient.r <= 0.0f && ms_fullAmbient.g <= 0.0f && ms_fullAmbient.b <= 0.0f)
 			{
-				const float tr = ms_overrideFullAmbientColor.r;
-				const float tg = ms_overrideFullAmbientColor.g;
-				const float tb = ms_overrideFullAmbientColor.b;
+				float const ambientScale = ConfigDirect3d9::getInteriorDynamicAmbientScale();
+				const float tr = ms_overrideFullAmbientColor.r * ambientScale;
+				const float tg = ms_overrideFullAmbientColor.g * ambientScale;
+				const float tb = ms_overrideFullAmbientColor.b * ambientScale;
 				float &ar = ms_currentLights.ambient.r;
 				float &ag = ms_currentLights.ambient.g;
 				float &ab = ms_currentLights.ambient.b;

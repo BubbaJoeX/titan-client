@@ -127,7 +127,7 @@ float ShipProjectile::alter(float const elapsedTime)
 	
 	Vector resultEndPos_w;
 	if (m_missHitData.handleCollision(*this, m_ownerShip, m_weaponIndex, m_lastCellProperty, m_lastPosition_w, endPosition_w, resultEndPos_w, true))
-		AlterResult::cms_kill;
+		return AlterResult::cms_kill;
 	
 	//if a flyby sound *could* be played for this bolt
 	if(m_canPlayFlyby)

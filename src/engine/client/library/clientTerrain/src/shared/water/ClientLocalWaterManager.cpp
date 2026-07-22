@@ -790,17 +790,24 @@ ClientLocalWaterManager::~ClientLocalWaterManager ()
 	DebugFlags::unregisterFlag(ms_noRenderWater);
 #endif
 
-	std::for_each (m_localShaderPrimitiveDefaultList->begin (), m_localShaderPrimitiveDefaultList->end (), PointerDeleter ());
-	m_localShaderPrimitiveDefaultList->clear ();
+	clearRebuildableWaterPrimitives ();
 
 	delete m_localShaderPrimitiveDefaultList;
 	m_localShaderPrimitiveDefaultList = 0;
 
-	std::for_each (m_localShaderPrimitiveRibbonStripList->begin (), m_localShaderPrimitiveRibbonStripList->end (), PointerDeleter ());
-	m_localShaderPrimitiveRibbonStripList->clear ();
-
 	delete m_localShaderPrimitiveRibbonStripList;
 	m_localShaderPrimitiveRibbonStripList = 0;
+}
+
+//-------------------------------------------------------------------
+
+void ClientLocalWaterManager::clearRebuildableWaterPrimitives ()
+{
+	std::for_each (m_localShaderPrimitiveDefaultList->begin (), m_localShaderPrimitiveDefaultList->end (), PointerDeleter ());
+	m_localShaderPrimitiveDefaultList->clear ();
+
+	std::for_each (m_localShaderPrimitiveRibbonStripList->begin (), m_localShaderPrimitiveRibbonStripList->end (), PointerDeleter ());
+	m_localShaderPrimitiveRibbonStripList->clear ();
 }
 
 //-------------------------------------------------------------------

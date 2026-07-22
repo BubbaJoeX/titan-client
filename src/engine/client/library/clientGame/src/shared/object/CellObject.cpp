@@ -36,6 +36,7 @@
 #include "sharedObject/PortalPropertyTemplate.h"
 #include "sharedObject/PortalPropertyTemplateList.h"
 
+#include <algorithm>
 #include <set>
 
 // ======================================================================
@@ -482,12 +483,16 @@ void CellObject::setCellLightColor(float r, float g, float b, float brightness)
 	}
 	m_cellLights.clear();
 
-	const bool wasCustom = m_hasCustomLighting;
+	bool const firstCustomLightingUpdate = !m_hasCustomLighting;
 	m_hasCustomLighting = true;
 
-	const float fr = r * brightness;
-	const float fg = g * brightness;
-	const float fb = b * brightness;
+	// The original remote device uses normalized RGB, but accept legacy 0..255 payload values without changing the wire format.
+	float const inputMaximum = std::max (r, std::max (g, b));
+	float const rgbDivisor = inputMaximum > 1.5f ? 255.f : 1.f;
+	float const appliedBrightness = clamp (0.f, brightness, ConfigClientGame::getRemoteCellLightingBrightnessCap ());
+	const float fr = clamp (0.f, (r / rgbDivisor) * appliedBrightness, 1.f);
+	const float fg = clamp (0.f, (g / rgbDivisor) * appliedBrightness, 1.f);
+	const float fb = clamp (0.f, (b / rgbDivisor) * appliedBrightness, 1.f);
 
 	CellProperty * const cellProperty = getCellProperty();
 	PortalProperty * portalProperty = NULL;
@@ -496,19 +501,22 @@ void CellObject::setCellLightColor(float r, float g, float b, float brightness)
 	{
 		cellProperty->setCustomLightingOverride(true, fr, fg, fb);
 		portalProperty = const_cast<PortalProperty *>(cellProperty->getPortalProperty());
-
-		if (!wasCustom)
-		{
-			REPORT_LOG(true, ("setCellLightColor: first custom lighting, calling swapBuildingToDarkPob\n"));
+		if (firstCustomLightingUpdate && ConfigClientGame::getRemoteCellLightingUseDarkPob ())
 			swapBuildingToDarkPob(cellProperty);
-		}
 	}
 
-	const float clampR = (fr > 1.0f) ? 1.0f : fr;
-	const float clampG = (fg > 1.0f) ? 1.0f : fg;
-	const float clampB = (fb > 1.0f) ? 1.0f : fb;
+	REPORT_LOG (true, ("setCellLightColor: applied normalized RGB=(%.3f,%.3f,%.3f), brightness=%.3f (cap %.3f)\n",
+		fr, fg, fb, appliedBrightness, ConfigClientGame::getRemoteCellLightingBrightnessCap ()));
 
-	// Recreate the original POB lights at their positions, tinted with the user's color.
+	if (ConfigClientGame::getAmbientLightInCells())
+	{
+		Light * const ambientLight = new Light(Light::T_ambient, VectorArgb(1.f, fr, fg, fb));
+		ambientLight->attachToObject_p(this, true);
+		m_cellLights.push_back(ambientLight);
+	}
+
+	// Recreate the original POB lights at their positions and preserve vanilla shader routing:
+	// diffuse lights affect dynamic meshes; a separate black-diffuse light carries specular to prelit meshes.
 	if (portalProperty)
 	{
 		const PortalPropertyTemplate & templ = portalProperty->getPortalPropertyTemplate();
@@ -523,53 +531,44 @@ void CellObject::setCellLightColor(float r, float g, float b, float brightness)
 				{
 					const PortalPropertyTemplateCellLight & lightData = *i;
 
-					VectorArgb tintedColor(
+					VectorArgb const tintedDiffuse(
 						lightData.diffuseColor.a,
-						lightData.diffuseColor.r * clampR,
-						lightData.diffuseColor.g * clampG,
-						lightData.diffuseColor.b * clampB
+						lightData.diffuseColor.r * fr,
+						lightData.diffuseColor.g * fg,
+						lightData.diffuseColor.b * fb
+					);
+					VectorArgb const tintedSpecular(
+						lightData.specularColor.a,
+						lightData.specularColor.r * fr,
+						lightData.specularColor.g * fg,
+						lightData.specularColor.b * fb
 					);
 
-					Light * light = NULL;
-
-					if (lightData.type == PortalPropertyTemplateCellLight::T_ambient)
+					Light * const diffuseLight = createLight(lightData);
+					if (diffuseLight)
 					{
-						light = new Light(Light::T_ambient, tintedColor);
-					}
-					else if (lightData.type == PortalPropertyTemplateCellLight::T_parallel)
-					{
-						light = new Light(Light::T_parallel, tintedColor);
-						light->setTransform_o2p(lightData.transform);
-					}
-					else if (lightData.type == PortalPropertyTemplateCellLight::T_point)
-					{
-						light = new Light(Light::T_point, tintedColor);
-						light->setTransform_o2p(lightData.transform);
-						light->setConstantAttenuation(lightData.constantAttenuation);
-						light->setLinearAttenuation(lightData.linearAttenuation);
-						light->setQuadraticAttenuation(lightData.quadraticAttenuation);
+						diffuseLight->setDiffuseColor(tintedDiffuse);
+						diffuseLight->setSpecularColor(tintedSpecular);
+						diffuseLight->setAffectsShadersWithPrecalculatedVertexLighting(false);
+						diffuseLight->attachToObject_p(this, true);
+						m_cellLights.push_back(diffuseLight);
 					}
 
-					if (light)
+					if (tintedSpecular.r != 0.f || tintedSpecular.g != 0.f || tintedSpecular.b != 0.f)
 					{
-						light->setAffectsShadersWithPrecalculatedVertexLighting(true);
-						light->setAffectsShadersWithoutPrecalculatedVertexLighting(true);
-						light->attachToObject_p(this, true);
-						m_cellLights.push_back(light);
+						Light * const specularLight = createLight(lightData);
+						if (specularLight)
+						{
+							specularLight->setDiffuseColor(VectorArgb::solidBlack);
+							specularLight->setSpecularColor(tintedSpecular);
+							specularLight->setAffectsShadersWithoutPrecalculatedVertexLighting(false);
+							specularLight->attachToObject_p(this, true);
+							m_cellLights.push_back(specularLight);
+						}
 					}
 				}
 			}
 		}
-	}
-
-	// If no POB lights were added, fall back to a single ambient light.
-	if (m_cellLights.empty())
-	{
-		Light * ambientLight = new Light(Light::T_ambient, VectorArgb(1.0f, clampR, clampG, clampB));
-		ambientLight->setAffectsShadersWithPrecalculatedVertexLighting(true);
-		ambientLight->setAffectsShadersWithoutPrecalculatedVertexLighting(true);
-		ambientLight->attachToObject_p(this, true);
-		m_cellLights.push_back(ambientLight);
 	}
 }
 

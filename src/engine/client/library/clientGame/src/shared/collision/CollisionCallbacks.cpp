@@ -346,8 +346,22 @@ bool CollisionCallbacksNamespace::onDoCollisionWithTerrain(Object * const object
 		if (!Game::isSpace())
 		{
 			// Atmospheric flight: terrain clamping is handled by PlayerShipController.
-			// Skip collision response entirely to prevent velocity reflection flutter.
-			return false;
+			// Keep the impact effect and authoritative damage notification, but do
+			// not reflect velocity because that fights the terrain clamp.
+			if (!ms_isPlayingClientEffect)
+			{
+				if (ms_shipObjectClientEffectTemplate)
+				{
+					ClientEffect * const clientEffect = ms_shipObjectClientEffectTemplate->createClientEffect(CellProperty::getWorldCellProperty(), result.m_pointOfCollision_p, Vector::unitY);
+					clientEffect->execute();
+					delete clientEffect;
+				}
+
+				GenericValueTypeMessage<std::string> const terrainMsg("ShipTerrainCollision", "hit");
+				GameNetwork::send(terrainMsg, true);
+				ms_isPlayingClientEffect = true;
+			}
+			return true;
 		}
 
 		shipController->respondToCollision(result.m_deltaToMoveBack_p, result.m_newReflection_p, result.m_normalOfSurface_p);

@@ -50,6 +50,7 @@ namespace ConfigDirect3d9Namespace
 	bool ms_srgbTextureSampling;
 
 	float ms_presentationTextureMipLodBias;
+	float ms_interiorDynamicAmbientScale;
 
 	// Engine optimization settings
 	bool ms_enableInstancing;
@@ -110,6 +111,15 @@ void ConfigDirect3d9::install()
 		else if (milli > 3000)
 			milli = 3000;
 		ms_presentationTextureMipLodBias = static_cast<float>(milli) / 1000.f;
+	}
+
+	{
+		int milli = ConfigFile::getKeyInt("Direct3d9", "interiorDynamicAmbientScaleMilli", 180);
+		if (milli < 0)
+			milli = 0;
+		else if (milli > 500)
+			milli = 500;
+		ms_interiorDynamicAmbientScale = static_cast<float>(milli) / 1000.f;
 	}
 
 	// Engine optimization settings
@@ -256,6 +266,13 @@ bool ConfigDirect3d9::getSrgbTextureSampling()
 float ConfigDirect3d9::getPresentationTextureMipLodBias()
 {
 	return ms_presentationTextureMipLodBias;
+}
+
+// ----------------------------------------------------------------------
+
+float ConfigDirect3d9::getInteriorDynamicAmbientScale()
+{
+	return ms_interiorDynamicAmbientScale;
 }
 
 // ----------------------------------------------------------------------

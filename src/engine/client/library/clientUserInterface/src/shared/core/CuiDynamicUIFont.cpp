@@ -119,29 +119,6 @@ namespace
 		return UIManager::gUIManager ().GetObjectFromPath ("/Fonts", TUINamespace);
 	}
 
-	void removeCuiuifStyles (UIBaseObject *fontsRoot)
-	{
-		if (!fontsRoot)
-			return;
-		UIBaseObject::UIObjectList children;
-		fontsRoot->GetChildren (children);
-		std::vector<UIBaseObject *> toDetach;
-		for (UIBaseObject::UIObjectList::iterator it = children.begin (); it != children.end (); ++it)
-		{
-			UIBaseObject *const o = *it;
-			if (!o || !o->IsA (TUITextStyle))
-				continue;
-			char const *const n = o->GetName ().c_str ();
-			if (n && !strncmp (n, "cuiuif_", 7))
-				toDetach.push_back (o);
-		}
-		for (size_t i = 0; i < toDetach.size (); ++i)
-		{
-			IGNORE_RETURN (fontsRoot->RemoveChild (toDetach[i]));
-			toDetach[i]->Destroy ();
-		}
-	}
-
 	struct EnumFontCtx
 	{
 		std::set<std::string> *facesUtf8;
@@ -522,9 +499,9 @@ bool CuiDynamicUIFont::applyFontFaceUtf8 (std::string const &utf8Face)
 	static int s_gen = 1;
 	int const gen = s_gen++;
 
-	// Important: do not call removeCuiuifStyles() here. buildPointSize() recreates glyph data in the
-	// existing /Fonts.cuiuif_<pt> nodes so widget UITextStyle* pointers stay valid. Removing styles
-	// firstDestroy()s TextStyles while the UI still references them → blank text / crash until refresh.
+	// Keep /Fonts.cuiuif_<pt> object identities stable for the lifetime of the UI. Many legacy
+	// widgets cache raw UITextStyle pointers, and there is no complete registry with which to rebind
+	// every cache before deleting these objects.
 
 	// Sizes used across HUD, options, and SUI; must cover scaled lookups (font slider + UI scale).
 	// Include every integer 10–40 plus 9 and common larger sizes so lookups never miss after scaling.
@@ -539,19 +516,19 @@ bool CuiDynamicUIFont::applyFontFaceUtf8 (std::string const &utf8Face)
 	{
 		if (!buildPointSize (faceW, s_pointSizes[i], gen, fontsRoot, newAtlasTextures))
 		{
-			// Same teardown order as clearUserFont: rebind UI to stock styles while the
-			// cuiuif_* objects still exist, only then destroy them (avoids dangling styles).
 			UITextStyleManager::GetInstance ()->clearUserDefaultFontFace ();
+			CuiPreferences::setUiDefaultFontFaceUtf8 ("");
 			refreshAllUiText ();
-			removeCuiuifStyles (fontsRoot);
-			releaseAtlasTextures (newAtlasTextures);
-			releaseAtlasTextures (s_currentGenAtlasTextures);
+			// A failed generation may already be referenced by a partially rebuilt style. Retain its
+			// named texture refs until the next complete generation replaces every style.
+			s_currentGenAtlasTextures.insert (s_currentGenAtlasTextures.end (), newAtlasTextures.begin (), newAtlasTextures.end ());
 			return false;
 		}
 	}
 
 	// Only after all atlases are rebuilt: point the resolver at the new face (empty was handled above).
 	UITextStyleManager::GetInstance ()->setUserDefaultFontFaceUtf8 (utf8Face);
+	CuiPreferences::setUiDefaultFontFaceUtf8 (utf8Face);
 
 	// Drop the named-texture list refs of the superseded generation (names embed the gen counter,
 	// so registerNamedPixelTexture's replace-by-name never reclaims them).
@@ -568,15 +545,14 @@ bool CuiDynamicUIFont::applyFontFaceUtf8 (std::string const &utf8Face)
 
 void CuiDynamicUIFont::clearUserFont ()
 {
+	CuiPreferences::setUiDefaultFontFaceUtf8 ("");
 #if defined(_WIN32)
 	UITextStyleManager *const mgr = UITextStyleManager::GetInstance ();
 	if (mgr)
 		mgr->clearUserDefaultFontFace ();
-	// Rebind all UI to stock /Fonts.* styles while cuiuif_* objects still exist, then tear them down.
-	// If we Destroy() cuiuif_* first, widgets keep dangling UITextStyle* until refresh.
+	// Rebind known caches to stock fonts, but deliberately keep generated styles and their current
+	// atlases alive. Unregistered legacy widgets may still hold raw UITextStyle pointers.
 	refreshAllUiText ();
-	removeCuiuifStyles (findFontsRoot ());
-	releaseAtlasTextures (s_currentGenAtlasTextures);
 	CuiManager::scheduleUiScaleLayoutUpdate ();
 #endif
 }
@@ -586,6 +562,12 @@ void CuiDynamicUIFont::clearUserFont ()
 void CuiDynamicUIFont::applySavedPreferenceIfAny ()
 {
 #if defined(_WIN32)
+	UITextStyleManager *const mgr = UITextStyleManager::GetInstance ();
+	if (mgr)
+	{
+		mgr->setFontScalePercent (CuiPreferences::getUiFontScalePercent ());
+		mgr->setUserFontFullReplace (CuiPreferences::getUiFontFullReplace ());
+	}
 	std::string const &s = CuiPreferences::getUiDefaultFontFaceUtf8 ();
 	if (!s.empty ())
 		IGNORE_RETURN (applyFontFaceUtf8 (s));

@@ -67,6 +67,11 @@ void ClientCommandTable::load()
 	{
 		getCommandTableListFromDataTable("datatables/command/command_tables_shared_ground.iff", commandTablesToLoad);
 		getCommandTableListFromDataTable("datatables/command/command_tables_client_ground.iff", commandTablesToLoad);
+
+		// Atmospheric flight uses the ground scene and input map, but commands such
+		// as leaveStation are defined in the shared space command table.
+		if (Game::isShipScene())
+			getCommandTableListFromDataTable("datatables/command/command_tables_shared_space.iff", commandTablesToLoad);
 	}
 
 	CommandTable::loadCommandTables(commandTablesToLoad);

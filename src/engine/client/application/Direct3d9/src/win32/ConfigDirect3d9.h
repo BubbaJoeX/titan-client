@@ -62,6 +62,8 @@ public:
 
 	/// Mip LOD bias from [ClientGraphics/Presentation] textureMipLodBiasMilli (-3000..3000 => -3..3).
 	static float getPresentationTextureMipLodBias();
+	/// Fraction of remote interior RGB used as minimum ambient for dynamic meshes (0..0.5).
+	static float getInteriorDynamicAmbientScale();
 
 	// Engine optimization settings
 	static bool getEnableInstancing();

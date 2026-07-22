@@ -60,6 +60,15 @@ namespace UIRadialMenuNamespace
 		UIRadialMenuStyle::BST_NW
 	};
 
+	UIString makeDisplayLabel (UIString const &sourceText)
+	{
+		UIString displayText (sourceText);
+		while (!displayText.empty () && displayText[displayText.size () - 1] == static_cast<Unicode::unicode_char_t>(' '))
+			displayText.resize (displayText.size () - 1);
+		displayText.push_back (static_cast<Unicode::unicode_char_t>(' '));
+		return displayText;
+	}
+
 	//================================================================
 	// Basic category.
 	_GROUPBEGIN(Basic)
@@ -533,7 +542,9 @@ void UIRadialMenu::RecreateButtons ()
 			if (data->GetProperty (DataPropertyName::Icon, iconPath))
 				butt->SetProperty (UIButton::PropertyName::Icon, iconPath);
 
-			butt->SetText (text);
+			// Pad only the transient display text. The data-source label remains unchanged for
+			// localization, persistence, command identity, and future button recreation.
+			butt->SetText (makeDisplayLabel (text));
 			butt->SetTransient (true);
 
 			AddChild (butt);

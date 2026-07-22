@@ -217,7 +217,7 @@ void ClientProceduralTerrainAppearance::LevelOfDetail::removeAllObjectsFromWorld
 
 void ClientProceduralTerrainAppearance::LevelOfDetail::setThreshold (const float threshold)
 {
-	ms_threshold = threshold;
+	ms_threshold = clamp (1.f, threshold, ConfigClientTerrain::getHighLevelOfDetailThresholdCap ());
 	m_thresholdInternal = 1 / (ms_threshold * m_cpta.getChunkWidthInMeters ());
 
 	setDirty (true);
@@ -244,7 +244,7 @@ void ClientProceduralTerrainAppearance::LevelOfDetail::setHeightBiasFactor (cons
 
 void ClientProceduralTerrainAppearance::LevelOfDetail::setForceHighThreshold (const float forceHighThreshold)
 {
-	ms_forceHighThreshold = forceHighThreshold;
+	ms_forceHighThreshold = clamp (1.f, forceHighThreshold, ConfigClientTerrain::getHighLevelOfDetailThresholdCap ());
 
 	// the literal float const added to this is a a hack to prevent artifacts in tools like the
 	// viewer where you can rotate around a chunk corner at a precise distance.
@@ -650,8 +650,9 @@ bool ClientProceduralTerrainAppearance::LevelOfDetail::selectActualLevelOfDetail
 	m_referenceObject = referenceObject;
 	m_frustum = frustum;
 
-	// sqrt of 2 is the correct (liberal approximation) value for a 90 degree view frustum
-	m_buildRadiusSquared = sqr(4096.f * ms_sqrt_2);
+	// sqrt of 2 is the correct (liberal approximation) value for a 90 degree view frustum.
+	// ConfigClientTerrain applies both the configurable cap and the absolute safety ceiling.
+	m_buildRadiusSquared = sqr(ConfigClientTerrain::getTerrainRenderDistance () * ms_sqrt_2);
 
 	//--------------------------------------------------------------------------
 	m_chunkRequestInfoList->clear ();
@@ -704,7 +705,9 @@ bool ClientProceduralTerrainAppearance::LevelOfDetail::selectActualLevelOfDetail
 
 void ClientProceduralTerrainAppearance::initializeLevelOfDetail (const int levels)
 {
-	DEBUG_FATAL (levels > 5, ("terrain initializeLevelOfDetail levels %d is too deep.\n", levels));
+	DEBUG_FATAL (levels > ConfigClientTerrain::getMaximumLevelOfDetailLevels (),
+		("terrain initializeLevelOfDetail levels %d exceeds configured maximum %d.\n",
+			levels, ConfigClientTerrain::getMaximumLevelOfDetailLevels ()));
 
 	TerrainQuadTree::Node * snode = 0;
 	TerrainQuadTree::Iterator node_iter (getChunkTree ()->getTopNode ());

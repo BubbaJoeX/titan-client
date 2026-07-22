@@ -42,7 +42,14 @@ namespace ConfigClientGameNamespace
 	float           ms_cameraNearPlane;
 	float           ms_cameraFarPlane;
 	float           ms_cameraFarPlaneSpace;
+	float           ms_cameraFarPlaneCap;
+	float           ms_cameraFarPlaneSpaceCap;
 	float           ms_cameraFieldOfView;
+	float           ms_dynamicLightDayScale;
+	float           ms_dynamicLightNightScale;
+	float           ms_dynamicLightTransitionFraction;
+	float           ms_remoteCellLightingBrightnessCap;
+	bool            ms_remoteCellLightingUseDarkPob;
 
 	const char*     ms_playerName;
 
@@ -663,9 +670,58 @@ float ConfigClientGame::getCameraFarPlaneSpace()
 
 //-------------------------------------------------------------------
 
+float ConfigClientGame::getCameraFarPlaneCap ()
+{
+	return ms_cameraFarPlaneCap;
+}
+
+//-------------------------------------------------------------------
+
+float ConfigClientGame::getCameraFarPlaneSpaceCap ()
+{
+	return ms_cameraFarPlaneSpaceCap;
+}
+
+//-------------------------------------------------------------------
+
 float ConfigClientGame::getCameraFieldOfView ()
 {
 	return ms_cameraFieldOfView;
+}
+
+//-------------------------------------------------------------------
+
+float ConfigClientGame::getDynamicLightDayScale ()
+{
+	return ms_dynamicLightDayScale;
+}
+
+//-------------------------------------------------------------------
+
+float ConfigClientGame::getDynamicLightNightScale ()
+{
+	return ms_dynamicLightNightScale;
+}
+
+//-------------------------------------------------------------------
+
+float ConfigClientGame::getDynamicLightTransitionFraction ()
+{
+	return ms_dynamicLightTransitionFraction;
+}
+
+//-------------------------------------------------------------------
+
+float ConfigClientGame::getRemoteCellLightingBrightnessCap ()
+{
+	return ms_remoteCellLightingBrightnessCap;
+}
+
+//-------------------------------------------------------------------
+
+bool ConfigClientGame::getRemoteCellLightingUseDarkPob ()
+{
+	return ms_remoteCellLightingUseDarkPob;
 }
 
 //-------------------------------------------------------------------
@@ -1005,9 +1061,28 @@ void ConfigClientGame::install(void)
 	KEY_FLOAT  (movementSpeed,                 2.f);
 
 	KEY_FLOAT  (cameraNearPlane,               0.25f);
+	KEY_FLOAT  (cameraFarPlaneCap,             16384.f);
+	ms_cameraFarPlaneCap = clamp (4096.f, ms_cameraFarPlaneCap, 32768.f);
 	KEY_FLOAT  (cameraFarPlane,                8192.f);
+	ms_cameraFarPlane = clamp (1024.f, ms_cameraFarPlane, ms_cameraFarPlaneCap);
+
+	KEY_FLOAT  (cameraFarPlaneSpaceCap,        32768.f);
+	ms_cameraFarPlaneSpaceCap = clamp (16384.f, ms_cameraFarPlaneSpaceCap, 65536.f);
 	KEY_FLOAT  (cameraFarPlaneSpace,           16384.f);
+	ms_cameraFarPlaneSpace = clamp (4096.f, ms_cameraFarPlaneSpace, ms_cameraFarPlaneSpaceCap);
 	KEY_FLOAT  (cameraFieldOfView,             60.f);
+	KEY_FLOAT  (dynamicLightDayScale,          0.35f);
+	ms_dynamicLightDayScale = clamp (0.f, ms_dynamicLightDayScale, 1.f);
+	KEY_FLOAT  (dynamicLightNightScale,        1.f);
+	ms_dynamicLightNightScale = clamp (0.25f, ms_dynamicLightNightScale, 2.f);
+	KEY_FLOAT  (dynamicLightTransitionFraction, 0.04f);
+	ms_dynamicLightTransitionFraction = clamp (0.01f, ms_dynamicLightTransitionFraction, 0.15f);
+	KEY_FLOAT  (remoteCellLightingBrightnessCap, 1.f);
+	ms_remoteCellLightingBrightnessCap = clamp (0.25f, ms_remoteCellLightingBrightnessCap, 1.25f);
+	KEY_BOOL   (remoteCellLightingUseDarkPob,   false);
+
+	REPORT_LOG (true, ("ClientGame view distance: ground=%.0f/%.0f, space=%.0f/%.0f\n",
+		ms_cameraFarPlane, ms_cameraFarPlaneCap, ms_cameraFarPlaneSpace, ms_cameraFarPlaneSpaceCap));
 
 	KEY_STRING (playerName,                    "player");
 	KEY_STRING (avatarSelection,               0);

@@ -40,7 +40,8 @@ public:
 		FM_shake        = (1 << 9),
 		FM_float        = (1 << 10),
 		FM_conveyor     = (1 << 11),
-		FM_carousel     = (1 << 12)
+		FM_carousel     = (1 << 12),
+		FM_lockToParent = (1 << 13)
 	};
 
 	enum MovementSpace
@@ -121,6 +122,11 @@ public:
 	float  getFollowHoverHeight() const;
 	float  getFollowBobAmplitude() const;
 
+	// Lock to parent
+	void   setLockToParentEffect(uint64 parentNetworkId, Vector const & positionOffset,
+		Vector const & rotationOffset, bool matchRotation, float duration = -1.0f);
+	void   clearLockToParentEffect();
+
 	// Sway/Pendulum (swinging back and forth)
 	void   setSwayEffect(float swingAngle, float swingSpeed, float damping = 0.0f, float duration = -1.0f);
 	void   clearSwayEffect();
@@ -179,6 +185,7 @@ protected:
 	virtual void updateOrbitEffect(float elapsedTime);
 	virtual void updateHoverEffect(float elapsedTime);
 	virtual void updateFollowTargetEffect(float elapsedTime);
+	virtual void updateLockToParentEffect(float elapsedTime);
 
 private:
 
@@ -260,6 +267,15 @@ private:
 	float  m_followElapsed;
 	bool   m_followTargetEffectActive;
 
+	// Lock to parent
+	uint64 m_lockToParentId;
+	Vector m_lockToParentPositionOffset;
+	Vector m_lockToParentRotationOffset;
+	bool   m_lockToParentMatchRotation;
+	float  m_lockToParentDuration;
+	float  m_lockToParentElapsed;
+	bool   m_lockToParentEffectActive;
+
 	// Sway
 	float  m_swayAngle;
 	float  m_swaySpeed;
@@ -305,6 +321,7 @@ private:
 	float  m_carouselAngle;
 	float  m_carouselVerticalAmplitude;
 	float  m_carouselVerticalSpeed;
+	float  m_carouselVerticalPhase;
 	float  m_carouselDuration;
 	float  m_carouselElapsed;
 	bool   m_carouselEffectActive;

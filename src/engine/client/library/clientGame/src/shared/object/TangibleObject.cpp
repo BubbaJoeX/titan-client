@@ -15,6 +15,7 @@
 #include "clientGame/ClientCollisionProperty.h"
 #include "clientGame/ClientCommandQueue.h"
 #include "clientGame/ClientDataFile.h"
+#include "clientGame/ConfigClientGame.h"
 #include "clientGame/ClientSynchronizedUi.h"
 #include "clientGame/ClientTangibleDynamics.h"
 #include "clientGame/ClientTangibleObjectTemplate.h"
@@ -65,6 +66,7 @@
 #include "sharedObject/ObjectTemplateList.h"
 #include "sharedObject/RotationDynamics.h"
 #include "sharedObject/SlottedContainer.h"
+#include "sharedTerrain/TerrainObject.h"
 #include "sharedFoundation/Tag.h"
 #include "sharedUtility/Callback.h"
 
@@ -94,7 +96,7 @@ typedef struct libvlc_instance_t libvlc_instance_t;
 typedef struct libvlc_media_t libvlc_media_t;
 typedef struct libvlc_media_player_t libvlc_media_player_t;
 typedef __int64 libvlc_time_t;
-typedef void (*libvlc_video_lock_cb)(void *opaque, void **planes);
+typedef void * (*libvlc_video_lock_cb)(void *opaque, void **planes);
 typedef void (*libvlc_video_unlock_cb)(void *opaque, void *picture, void *const *planes);
 typedef void (*libvlc_video_display_cb)(void *opaque, void *picture);
 typedef void (*libvlc_audio_play_cb)(void *data, const void *samples, unsigned count, __int64 pts);
@@ -264,15 +266,12 @@ namespace TangibleObjectNamespace
 	float const cs_mediaMaxRenderDistanceSquared = cs_mediaMaxRenderDistance * cs_mediaMaxRenderDistance;
 	int const cs_maxActivePaintings = 1;  // Only render 1 painting at a time
 	int const cs_maxActiveVideoPlayers = 1;  // Only render 1 video player at a time
-	int const cs_maxActiveRtScreens = 1;  // Only render 1 RT screen at a time
 
 	// Track the currently active media object (closest one)
 	TangibleObject const * ms_closestPainting = nullptr;
 	TangibleObject const * ms_closestVideoPlayer = nullptr;
-	TangibleObject const * ms_closestRtScreen = nullptr;
 	float ms_closestPaintingDistSq = FLT_MAX;
 	float ms_closestVideoPlayerDistSq = FLT_MAX;
-	float ms_closestRtScreenDistSq = FLT_MAX;
 
 	// Frame tracking for resetting distance calculations
 	unsigned long ms_lastMediaFrameTime = 0;
@@ -286,10 +285,8 @@ namespace TangibleObjectNamespace
 		{
 			ms_closestPainting = nullptr;
 			ms_closestVideoPlayer = nullptr;
-			ms_closestRtScreen = nullptr;
 			ms_closestPaintingDistSq = FLT_MAX;
 			ms_closestVideoPlayerDistSq = FLT_MAX;
-			ms_closestRtScreenDistSq = FLT_MAX;
 			ms_lastMediaFrameTime = currentTime;
 		}
 	}
@@ -1126,6 +1123,7 @@ namespace VideoStreamNamespace
 		pfn_libvlc_media_player_get_time   pMediaPlayerGetTime;
 		pfn_libvlc_media_player_get_length pMediaPlayerGetLength;
 		libvlc_instance_t *              vlcInstance;
+		char                             runtimeDirectory[MAX_PATH];
 		bool                             loaded;
 		bool                             loadAttempted;
 	};
@@ -1148,7 +1146,92 @@ namespace VideoStreamNamespace
 		char buf[768];
 		buf[0] = '\0';
 		_vsnprintf_s(buf, sizeof(buf), _TRUNCATE, fmt, args);
-		DEBUG_REPORT_LOG(true, ("[Titan] VLC] level=%d %s\n", level, buf));
+		DEBUG_REPORT_LOG(true, ("[Titan] VLC: level=%d %s\n", level, buf));
+	}
+
+	bool fileExists(char const * path)
+	{
+		DWORD const attributes = path ? GetFileAttributesA(path) : INVALID_FILE_ATTRIBUTES;
+		return attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_DIRECTORY) == 0;
+	}
+
+	bool directoryExists(char const * path)
+	{
+		DWORD const attributes = path ? GetFileAttributesA(path) : INVALID_FILE_ATTRIBUTES;
+		return attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+	}
+
+	void appendVlcCandidate(std::vector<std::string> & candidates, std::string const & directory)
+	{
+		if (directory.empty())
+			return;
+		std::string normalized(directory);
+		while (!normalized.empty() && (normalized[normalized.size() - 1] == '\\' || normalized[normalized.size() - 1] == '/'))
+			normalized.erase(normalized.size() - 1);
+		if (!normalized.empty())
+			candidates.push_back(normalized);
+	}
+
+	bool loadVlcRuntime(std::string & runtimeDirectory)
+	{
+		std::vector<std::string> candidates;
+
+		char configuredDirectory[MAX_PATH] = { 0 };
+		DWORD const configuredLength = GetEnvironmentVariableA("SWG_VLC_RUNTIME", configuredDirectory, MAX_PATH);
+		if (configuredLength > 0 && configuredLength < MAX_PATH)
+			appendVlcCandidate(candidates, configuredDirectory);
+
+		char executablePath[MAX_PATH] = { 0 };
+		DWORD const executableLength = GetModuleFileNameA(0, executablePath, MAX_PATH);
+		if (executableLength > 0 && executableLength < MAX_PATH)
+		{
+			char * const slash = strrchr(executablePath, '\\');
+			if (slash)
+			{
+				*slash = '\0';
+				appendVlcCandidate(candidates, std::string(executablePath) + "\\vlc");
+				appendVlcCandidate(candidates, std::string(executablePath) + "\\runtime\\vlc");
+				appendVlcCandidate(candidates, executablePath);
+			}
+		}
+
+		DWORD lastError = ERROR_MOD_NOT_FOUND;
+		for (std::vector<std::string>::const_iterator it = candidates.begin(); it != candidates.end(); ++it)
+		{
+			std::string const dllPath = *it + "\\libvlc.dll";
+			if (!fileExists(dllPath.c_str()))
+			{
+				DEBUG_REPORT_LOG(ms_logVideoStreamDiagnostics, ("[Titan] VideoStream: VLC candidate missing [%s]\n", dllPath.c_str()));
+				continue;
+			}
+
+			SetLastError(ERROR_SUCCESS);
+			ms_vlcApi.hLibVlc = LoadLibraryExA(dllPath.c_str(), 0, LOAD_WITH_ALTERED_SEARCH_PATH);
+			if (ms_vlcApi.hLibVlc)
+			{
+				runtimeDirectory = *it;
+				return true;
+			}
+
+			lastError = GetLastError();
+			DEBUG_REPORT_LOG(true, ("[Titan] VideoStream: VLC candidate failed [%s], Win32 error=%lu%s\n",
+				dllPath.c_str(), lastError, lastError == ERROR_BAD_EXE_FORMAT ? " (runtime architecture does not match client)" : ""));
+		}
+
+		DEBUG_REPORT_LOG(true, ("[Titan] VideoStream: no usable %s libVLC runtime found (last error=%lu). "
+			"Set SWG_VLC_RUNTIME or deploy vlc\\libvlc.dll, libvlccore.dll and plugins\\ beside the client executable.\n",
+			sizeof(void *) == 8 ? "x64" : "x86", lastError));
+		return false;
+	}
+
+	void unloadIncompleteVlcRuntime()
+	{
+		if (ms_vlcApi.vlcInstance && ms_vlcApi.pRelease)
+			ms_vlcApi.pRelease(ms_vlcApi.vlcInstance);
+		ms_vlcApi.vlcInstance = 0;
+		if (ms_vlcApi.hLibVlc)
+			FreeLibrary(ms_vlcApi.hLibVlc);
+		ms_vlcApi.hLibVlc = 0;
 	}
 
 	bool loadVlcApi()
@@ -1159,16 +1242,15 @@ namespace VideoStreamNamespace
 		ms_vlcApi.loadAttempted = true;
 		ms_vlcApi.loaded = false;
 
-		ms_vlcApi.hLibVlc = LoadLibraryA("libvlc.dll");
-		if (!ms_vlcApi.hLibVlc)
-		{
-			DEBUG_REPORT_LOG(true, ("[Titan] VideoStream: Failed to load libvlc.dll\n"));
+		std::string runtimeDirectory;
+		if (!loadVlcRuntime(runtimeDirectory))
 			return false;
-		}
+		strncpy(ms_vlcApi.runtimeDirectory, runtimeDirectory.c_str(), sizeof(ms_vlcApi.runtimeDirectory) - 1);
+		ms_vlcApi.runtimeDirectory[sizeof(ms_vlcApi.runtimeDirectory) - 1] = '\0';
 
 		#define LOAD_VLC_FUNC(name, type) \
-			ms_vlcApi.p##type = (pfn_libvlc_##name)GetProcAddress(ms_vlcApi.hLibVlc, "libvlc_" #name); \
-			if (!ms_vlcApi.p##type) { DEBUG_REPORT_LOG(true, ("[Titan] VideoStream: Failed to load libvlc_%s\n", #name)); return false; }
+			ms_vlcApi.p##type = reinterpret_cast<pfn_libvlc_##name>(GetProcAddress(ms_vlcApi.hLibVlc, "libvlc_" #name)); \
+			if (!ms_vlcApi.p##type) { DEBUG_REPORT_LOG(true, ("[Titan] VideoStream: runtime [%s] is missing libvlc_%s\n", ms_vlcApi.runtimeDirectory, #name)); unloadIncompleteVlcRuntime(); return false; }
 
 		LOAD_VLC_FUNC(new, New);
 		LOAD_VLC_FUNC(release, Release);
@@ -1191,15 +1273,21 @@ namespace VideoStreamNamespace
 
 		#undef LOAD_VLC_FUNC
 
+		std::string const pluginPath = std::string("--plugin-path=") + ms_vlcApi.runtimeDirectory + "\\plugins";
+		if (!directoryExists((std::string(ms_vlcApi.runtimeDirectory) + "\\plugins").c_str()))
+			DEBUG_REPORT_LOG(true, ("[Titan] VideoStream: VLC plugins directory missing [%s\\plugins]; media decoding will fail\n", ms_vlcApi.runtimeDirectory));
+
 		const char * const vlcArgs[] = {
 			"--quiet",
 			"--no-xlib",
-			"--no-video-title-show"
+			"--no-video-title-show",
+			pluginPath.c_str()
 		};
-		ms_vlcApi.vlcInstance = ms_vlcApi.pNew(3, vlcArgs);
+		ms_vlcApi.vlcInstance = ms_vlcApi.pNew(4, vlcArgs);
 		if (!ms_vlcApi.vlcInstance)
 		{
-			DEBUG_REPORT_LOG(true, ("[Titan] VideoStream: Failed to create VLC instance\n"));
+			DEBUG_REPORT_LOG(true, ("[Titan] VideoStream: failed to create VLC instance from [%s]; verify libvlccore.dll and plugins\\ match libvlc.dll\n", ms_vlcApi.runtimeDirectory));
+			unloadIncompleteVlcRuntime();
 			return false;
 		}
 
@@ -1210,7 +1298,8 @@ namespace VideoStreamNamespace
 			DEBUG_REPORT_LOG(true, ("[Titan] VideoStream: libvlc_log_set missing; VLC may spam the console\n"));
 
 		ms_vlcApi.loaded = true;
-		DEBUG_REPORT_LOG(true, ("[Titan] VideoStream: libVLC loaded successfully\n"));
+		DEBUG_REPORT_LOG(true, ("[Titan] VideoStream: loaded %s libVLC runtime from [%s]\n",
+			sizeof(void *) == 8 ? "x64" : "x86", ms_vlcApi.runtimeDirectory));
 		return true;
 	}
 
@@ -1505,6 +1594,8 @@ namespace VideoStreamNamespace
 	void * videoLockCallback(void * opaque, void ** planes)
 	{
 		VideoStreamRuntimeData * data = reinterpret_cast<VideoStreamRuntimeData *>(opaque);
+		if (!data || !planes || !data->videoBuffer)
+			return 0;
 		EnterCriticalSection(&data->bufferLock);
 		*planes = data->videoBuffer;
 		return 0;
@@ -1515,6 +1606,8 @@ namespace VideoStreamNamespace
 		UNREF(picture);
 		UNREF(planes);
 		VideoStreamRuntimeData * data = reinterpret_cast<VideoStreamRuntimeData *>(opaque);
+		if (!data)
+			return;
 		InterlockedExchange(&data->frameReady, 1);
 		LeaveCriticalSection(&data->bufferLock);
 	}
@@ -2190,6 +2283,10 @@ float TangibleObject::alter(const float elapsedTime)
 			{
 				VerifyObjectEffects();
 
+				// Remote RGB remains authoritative, while intensity follows the same environment clock as the sky and sun.
+				if (!m_dynamicLightState.get().empty())
+					applyDynamicLightState(m_dynamicLightState.get());
+
 				// Magic painting: closest-only (tailor handled above).
 				if (hasCondition(C_magicPaintingUrl) && !usesTailorRemoteTextureMode())
 				{
@@ -2214,14 +2311,10 @@ float TangibleObject::alter(const float elapsedTime)
 					updateVideoEmitterAudio();
 				}
 
-				// Update RT Screen texture from camera feed - only render if we're the closest one
+				// The manager owns feed admission and GPU update budgeting; every admitted
+				// screen must receive its own texture rather than sharing a nearest-only gate.
 				if (!m_rtScreenLinkedCamera.get().empty())
-				{
-					if (shouldRenderMedia(this, ms_closestRtScreen, ms_closestRtScreenDistSq))
-					{
-						updateRtScreenTexture();
-					}
-				}
+					updateRtScreenTexture();
 
 				// Restart any object effects that are finished playing.
 				std::map<std::string, Object *>::const_iterator iter = m_objectEffects.begin();
@@ -2302,10 +2395,10 @@ void TangibleObject::endBaselines()
 	m_lastOnOffStatus = (getCondition() & C_onOff) != 0;
 	setChildWingsOpened((getCondition() & C_wingsOpened) != 0);
 
-	applyDynamicLightState(m_dynamicLightState.get());
 	// Apply dynamic mount metadata + hp_dyn before condition callbacks so CreatureObject::onJustBecameMountable()
 	// sees isMountDynamicActive() and skips IFF saddles when mount.dm is authored.
 	applyDynamicHardpointsState(m_dynamicHardpointsState.get());
+	applyDynamicLightState(m_dynamicLightState.get());
 
 	handleConditionModified (0, getCondition ());
 }
@@ -2325,8 +2418,8 @@ void TangibleObject::addToWorld()
 	if (!m_rtScreenLinkedCamera.get().empty())
 		updateRtCameraFeed();
 
-	applyDynamicLightState(m_dynamicLightState.get());
 	applyDynamicHardpointsState(m_dynamicHardpointsState.get());
+	applyDynamicLightState(m_dynamicLightState.get());
 }
 
 // ----------------------------------------------------------------------
@@ -2525,8 +2618,8 @@ void TangibleObject::changeAppearance(const SharedTangibleObjectTemplate & objec
 		m_dynamicLightDefaultsCaptured = false;
 		m_dynamicLightDefaults.clear();
 		setAppearance(appearance);
-		applyDynamicLightState(m_dynamicLightState.get());
 		applyDynamicHardpointsState(m_dynamicHardpointsState.get());
+		applyDynamicLightState(m_dynamicLightState.get());
 	}
 }	// TangibleObject::changeAppearance(const SharedObjectTemplate &)
 
@@ -3281,10 +3374,7 @@ void TangibleObject::updateRemoteVideoStream()
 
 		ms_vlcApi.pVideoSetFormat(runtimeData.mediaPlayer, "BGRA", VIDEO_WIDTH, VIDEO_HEIGHT, VIDEO_PITCH);
 		ms_vlcApi.pVideoSetCallbacks(runtimeData.mediaPlayer,
-			reinterpret_cast<libvlc_video_lock_cb>(videoLockCallback),
-			reinterpret_cast<libvlc_video_unlock_cb>(videoUnlockCallback),
-			reinterpret_cast<libvlc_video_display_cb>(videoDisplayCallback),
-			&runtimeData);
+			videoLockCallback, videoUnlockCallback, videoDisplayCallback, &runtimeData);
 
 		applyLibvlcPlayerVolume(runtimeData, 0);
 		DWORD const tPlay = ms_logVideoStreamDiagnostics ? GetTickCount() : 0;
@@ -3645,6 +3735,30 @@ void TangibleObject::rtCameraActiveModified(const std::string & value)
 
 namespace TangibleObjectDynamicLightNamespace
 {
+	float computeTimeOfDayScale()
+	{
+		TerrainObject const * const terrain = TerrainObject::getConstInstance();
+		if (!terrain)
+			return ConfigClientGame::getDynamicLightNightScale();
+
+		float const timeRatio = clamp (0.f, terrain->getTime(), 1.f);
+		float const transition = ConfigClientGame::getDynamicLightTransitionFraction();
+		float const dayNightSplit = 0.7f; // GroundEnvironment's established day/night split.
+
+		float daylight = 0.f;
+		if (timeRatio < transition)
+			daylight = timeRatio / transition;
+		else if (timeRatio < dayNightSplit - transition)
+			daylight = 1.f;
+		else if (timeRatio < dayNightSplit + transition)
+			daylight = (dayNightSplit + transition - timeRatio) / (2.f * transition);
+
+		return linearInterpolate (
+			ConfigClientGame::getDynamicLightNightScale(),
+			ConfigClientGame::getDynamicLightDayScale(),
+			clamp (0.f, daylight, 1.f));
+	}
+
 	void collectChildLightsRecursive(Object *const node, stdvector<Light *>::fwd &out)
 	{
 		if (!node)
@@ -3664,6 +3778,18 @@ namespace TangibleObjectDynamicLightNamespace
 
 void TangibleObject::dynamicLightStateModified(std::string const &value)
 {
+	int enabled = 0;
+	float r = 0.f;
+	float g = 0.f;
+	float b = 0.f;
+	float range = 0.f;
+	float intensity = 0.f;
+	if (!value.empty() && sscanf(value.c_str(), "%d %f %f %f %f %f", &enabled, &r, &g, &b, &range, &intensity) != 6)
+		REPORT_LOG (true, ("TangibleObject dynamic light: rejected malformed state for [%s]\n", getNetworkId().getValueString().c_str()));
+	else
+		REPORT_LOG (true, ("TangibleObject dynamic light: object=[%s], enabled=%d, rgb=(%.3f,%.3f,%.3f), range=%.2f, intensity=%.2f\n",
+			getNetworkId().getValueString().c_str(), enabled, r, g, b, range, intensity));
+
 	applyDynamicLightState(value);
 }
 
@@ -3708,6 +3834,12 @@ void TangibleObject::applyDynamicLightState(std::string const &state)
 		return;
 	}
 
+	r = clamp (0.f, r, 1.f);
+	g = clamp (0.f, g, 1.f);
+	b = clamp (0.f, b, 1.f);
+	range = clamp (0.1f, range, 256.f);
+	intensity = clamp (0.f, intensity, 8.f) * TangibleObjectDynamicLightNamespace::computeTimeOfDayScale();
+
 	if (!m_dynamicLightDefaultsCaptured || m_dynamicLightDefaults.size() != lights.size())
 	{
 		m_dynamicLightDefaults.clear();
@@ -3746,7 +3878,7 @@ namespace TangibleObjectHpDynClientNamespace
 		for (int i = 0; i < n; ++i)
 			collectHpDynNodesPostOrder(node->getChildObject(i), out);
 		char const *const dbg = node->getDebugName();
-		if (dbg && std::strncmp(dbg, "HpDyn", 5) == 0)
+		if (dbg && (std::strcmp(dbg, "HpDynApp") == 0 || std::strcmp(dbg, "HpDynLight") == 0 || std::strcmp(dbg, "HpDynFx") == 0))
 			out.push_back(node);
 	}
 
@@ -3890,7 +4022,11 @@ void TangibleObject::clearDynamicHardpointObjects()
 
 void TangibleObject::dynamicHardpointsStateModified(std::string const &value)
 {
+	// Restore authored/current light defaults before deleting dynamic light children;
+	// otherwise the cached raw Light pointers outlive their hp_dyn objects.
+	applyDynamicLightState(std::string());
 	applyDynamicHardpointsState(value);
+	applyDynamicLightState(m_dynamicLightState.get());
 }
 
 void TangibleObject::applyDynamicHardpointsState(std::string const &packed)
@@ -4108,12 +4244,19 @@ void TangibleObject::updateRtCameraFeed()
 	NetworkId const screenId = getNetworkId();
 
 	// Check if already registered
-	if (RtCameraManager::getFeedByScreen(screenId) != nullptr)
+	RtCameraManager::RtCameraFeed const * const existingFeed = RtCameraManager::getFeedByScreen(screenId);
+	if (existingFeed != nullptr)
 	{
-		// Already registered, just update
-		RtCameraManager::updateCameraTransform(cameraNetId, cameraTangible->getTransform_o2w());
-		RtCameraManager::updateCameraFov(cameraNetId, fov);
-		return;
+		if (existingFeed->cameraObjectId == cameraNetId && existingFeed->resolution == resolution)
+		{
+			RtCameraManager::updateCameraTransform(cameraNetId, cameraTangible->getTransform_o2w());
+			RtCameraManager::updateCameraFov(cameraNetId, fov);
+			return;
+		}
+
+		// Link or target-size changes require a clean rebind; updating the new camera id
+		// against the old feed silently fails and leaves the screen on stale content.
+		RtCameraManager::unregisterFeedByScreen(screenId);
 	}
 
 	// Register new feed
@@ -4637,10 +4780,12 @@ void TangibleObject::handleConditionModified (int oldCondition, int newCondition
 		if (newDynamic && !oldDynamic)
 		{
 			// Condition just set — attach ClientTangibleDynamics if we don't already have one
-			if (!getDynamics() || !dynamic_cast<ClientTangibleDynamics*>(getDynamics()))
-			{
+			if (!getDynamics())
 				setDynamics(new ClientTangibleDynamics(this));
-			}
+			else
+				DEBUG_WARNING(!dynamic_cast<ClientTangibleDynamics*>(getDynamics()),
+					("TangibleObject [%s] cannot enable TangibleDynamics without replacing existing dynamics",
+					getNetworkId().getValueString().c_str()));
 		}
 		else if (!newDynamic && oldDynamic)
 		{

@@ -20,6 +20,9 @@ public:
 	static bool  getUseRealGeometryForOcclusion ();
 	static bool  getUseClientServerProceduralTerrainAppearanceTemplate ();
 	static float getHighLevelOfDetailThreshold ();
+	static float getHighLevelOfDetailThresholdCap ();
+	static float getTerrainRenderDistance ();
+	static int   getMaximumLevelOfDetailLevels ();
 
 	static bool  getTerrainMultiThreaded ();
 

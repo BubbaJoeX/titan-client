@@ -1372,7 +1372,15 @@ void ShaderPrimitiveSorter::pushCell(CellProperty const * cellProperty, Texture 
 
 	ms_cellPropertyStack.push_back(cellProperty);
 	if (cellProperty)
+	{
 		cellProperty->callEnterRenderHookFunctions();
+		if (cellProperty->hasCustomLightingOverride())
+			Graphics::setOverrideFullAmbient(true, cellProperty->getCustomLightingR(), cellProperty->getCustomLightingG(), cellProperty->getCustomLightingB());
+		else
+			Graphics::setOverrideFullAmbient(false, 0.f, 0.f, 0.f);
+	}
+	else
+		Graphics::setOverrideFullAmbient(false, 0.f, 0.f, 0.f);
 
 	ms_popped = false;
 
@@ -1442,6 +1450,13 @@ void ShaderPrimitiveSorter::popCell()
 #endif
 	}
 	ms_cellPropertyStack.pop_back();
+
+	// Restore the parent cell's override; never leak interior RGB into the next world-cell draw.
+	CellProperty const * const parentCell = ms_cellPropertyStack.empty() ? NULL : ms_cellPropertyStack.back();
+	if (parentCell && parentCell->hasCustomLightingOverride())
+		Graphics::setOverrideFullAmbient(true, parentCell->getCustomLightingR(), parentCell->getCustomLightingG(), parentCell->getCustomLightingB());
+	else
+		Graphics::setOverrideFullAmbient(false, 0.f, 0.f, 0.f);
 
 	ms_popped = true;
 

@@ -30,6 +30,9 @@ public:
 	virtual void alter (real time);
 	virtual void draw () const;
 
+	//-- discard generator-owned primitives before rebuilding edited terrain water
+	void clearRebuildableWaterPrimitives ();
+
 	//-- used for arbitrary polygonal horizontal water tables
 	void addWater (char const * debugName, const char* shaderTemplateName, real shaderSize, const stdvector<Vector2d>::fwd& pointList, real height, const Vector2d& direction, real velocity);
 

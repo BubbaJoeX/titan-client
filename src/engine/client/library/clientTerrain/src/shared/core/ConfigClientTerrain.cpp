@@ -20,6 +20,9 @@ namespace
 	bool  ms_useRealGeometryForOcclusion;
 	bool  ms_useClientServerProceduralTerrainAppearanceTemplate;
 	float ms_highLevelOfDetailThreshold;
+	float ms_highLevelOfDetailThresholdCap;
+	float ms_terrainRenderDistance;
+	int   ms_maximumLevelOfDetailLevels;
 
 	bool  ms_terrainMultiThreaded;
 
@@ -74,6 +77,27 @@ bool ConfigClientTerrain::getUseClientServerProceduralTerrainAppearanceTemplate 
 float ConfigClientTerrain::getHighLevelOfDetailThreshold ()
 {
 	return ms_highLevelOfDetailThreshold;
+}
+
+//-------------------------------------------------------------------
+
+float ConfigClientTerrain::getHighLevelOfDetailThresholdCap ()
+{
+	return ms_highLevelOfDetailThresholdCap;
+}
+
+//-------------------------------------------------------------------
+
+float ConfigClientTerrain::getTerrainRenderDistance ()
+{
+	return ms_terrainRenderDistance;
+}
+
+//-------------------------------------------------------------------
+
+int ConfigClientTerrain::getMaximumLevelOfDetailLevels ()
+{
+	return ms_maximumLevelOfDetailLevels;
 }
 
 //-------------------------------------------------------------------
@@ -264,10 +288,47 @@ void ConfigClientTerrain::install()
 {
 	DEBUG_REPORT_LOG_PRINT (ConfigSharedTerrain::getDebugReportInstall (), ("ConfigClientTerrain::install\n"));
 
+#if defined(_WIN64)
+	float const defaultHighDetailThreshold = 6.f;
+	float const defaultHighDetailThresholdCap = 12.f;
+	float const defaultRenderDistance = 8192.f;
+	float const defaultRenderDistanceCap = 16384.f;
+	int const defaultMaximumLevelOfDetailLevels = 6;
+	int const defaultMaximumLevelOfDetailLevelsCap = 7;
+	int const defaultMaximumChunks = 24 * 1024;
+	int const defaultMaximumChunksCap = 48 * 1024;
+#else
+	float const defaultHighDetailThreshold = 4.5f;
+	float const defaultHighDetailThresholdCap = 8.f;
+	float const defaultRenderDistance = 4096.f;
+	float const defaultRenderDistanceCap = 8192.f;
+	int const defaultMaximumLevelOfDetailLevels = 5;
+	int const defaultMaximumLevelOfDetailLevelsCap = 6;
+	int const defaultMaximumChunks = 10 * 1024;
+	int const defaultMaximumChunksCap = 20 * 1024;
+#endif
+
 	KEY_BOOL   (useOcclusion,                        false);
 	KEY_BOOL   (useClientServerProceduralTerrainAppearanceTemplate, false);
 	KEY_BOOL   (useRealGeometryForOcclusion,         false);
-	KEY_FLOAT  (highLevelOfDetailThreshold,          4.5f);
+	KEY_FLOAT  (highLevelOfDetailThresholdCap,       defaultHighDetailThresholdCap);
+	ms_highLevelOfDetailThresholdCap = clamp (4.5f, ms_highLevelOfDetailThresholdCap, 16.f);
+	KEY_FLOAT  (highLevelOfDetailThreshold,          defaultHighDetailThreshold);
+	ms_highLevelOfDetailThreshold = clamp (1.f, ms_highLevelOfDetailThreshold, ms_highLevelOfDetailThresholdCap);
+
+	{
+		float const requestedCap = ConfigFile::getKeyFloat ("ClientTerrain", "terrainRenderDistanceCap", defaultRenderDistanceCap);
+		float const renderDistanceCap = clamp (4096.f, requestedCap, 32768.f);
+		float const requestedDistance = ConfigFile::getKeyFloat ("ClientTerrain", "terrainRenderDistance", defaultRenderDistance);
+		ms_terrainRenderDistance = clamp (1024.f, requestedDistance, renderDistanceCap);
+	}
+
+	{
+		int const requestedCap = ConfigFile::getKeyInt ("ClientTerrain", "maximumLevelOfDetailLevelsCap", defaultMaximumLevelOfDetailLevelsCap);
+		int const levelCap = clamp (5, requestedCap, 8);
+		int const requestedLevels = ConfigFile::getKeyInt ("ClientTerrain", "maximumLevelOfDetailLevels", defaultMaximumLevelOfDetailLevels);
+		ms_maximumLevelOfDetailLevels = clamp (5, requestedLevels, levelCap);
+	}
 
 	KEY_BOOL   (terrainMultiThreaded,                true);
 
@@ -297,7 +358,19 @@ void ConfigClientTerrain::install()
 	KEY_BOOL   (dynamicFarFloraEnabled,              true);
 	KEY_BOOL   (dynamicNearFloraEnabled,             true);
 	KEY_BOOL   (staticNonCollidableFloraEnabled,     true);
-	KEY_INT    (maximumNumberOfChunksAllowed,        10 * 1024);
+	{
+		int const requestedCap = ConfigFile::getKeyInt ("ClientTerrain", "maximumNumberOfChunksAllowedCap", defaultMaximumChunksCap);
+		int const chunkCap = clamp (10 * 1024, requestedCap, 64 * 1024);
+		int const requestedChunks = ConfigFile::getKeyInt ("ClientTerrain", "maximumNumberOfChunksAllowed", defaultMaximumChunks);
+		ms_maximumNumberOfChunksAllowed = clamp (1024, requestedChunks, chunkCap);
+	}
+
+	REPORT_LOG (true, ("ClientTerrain rendering: distance=%.0f, highDetail=%.2f/%.2f, detailLevels=%d, chunkLimit=%d\n",
+		ms_terrainRenderDistance,
+		ms_highLevelOfDetailThreshold,
+		ms_highLevelOfDetailThresholdCap,
+		ms_maximumLevelOfDetailLevels,
+		ms_maximumNumberOfChunksAllowed));
 }
 
 //===================================================================

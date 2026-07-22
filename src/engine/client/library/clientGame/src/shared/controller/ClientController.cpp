@@ -678,20 +678,6 @@ bool ClientController::isOwnerAnimationDebuggerTarget() const
 
 void ClientController::handleNetUpdateTransform(const MessageQueueDataTransform& message)
 {
-	// Skip server transform updates for objects with active hover/follow dynamics
-	// The client handles smooth visual updates locally for these effects
-	Object* const ownerObject = getOwner();
-	if (ownerObject)
-	{
-		ClientTangibleDynamics const * const ctd = dynamic_cast<ClientTangibleDynamics const *>(ownerObject->getDynamics());
-		if (ctd && (ctd->isForceActive(ClientTangibleDynamics::FM_hover) ||
-		            ctd->isForceActive(ClientTangibleDynamics::FM_followTarget)))
-		{
-			// Don't apply server position - client is handling smooth movement
-			return;
-		}
-	}
-
 	//-- verify the object-to-parent position is within sane limits.
 	TerrainObject const *const terrain = TerrainObject::getInstance();
 	if (terrain)
@@ -722,20 +708,6 @@ void ClientController::handleNetUpdateTransform(const MessageQueueDataTransform&
 
 void ClientController::handleNetUpdateTransformWithParent(const MessageQueueDataTransformWithParent& message)
 {
-	// Skip server transform updates for objects with active hover/follow dynamics
-	// The client handles smooth visual updates locally for these effects
-	Object* const ownerObject = getOwner();
-	if (ownerObject)
-	{
-		ClientTangibleDynamics const * const ctd = dynamic_cast<ClientTangibleDynamics const *>(ownerObject->getDynamics());
-		if (ctd && (ctd->isForceActive(ClientTangibleDynamics::FM_hover) ||
-		            ctd->isForceActive(ClientTangibleDynamics::FM_followTarget)))
-		{
-			// Don't apply server position - client is handling smooth movement
-			return;
-		}
-	}
-
 #ifdef _DEBUG
 	//-- verify that we did not receive the same transform
 	if (message.getParent () == getOwner ()->getParentCell ()->getOwner ().getNetworkId () && message.getTransform () == getOwner ()->getTransform_o2p ())
@@ -1043,23 +1015,38 @@ void ClientController::handleMessage (const int message, const float value, cons
 				if (!tangible)
 					return;
 
+				std::string const & packed = msg->getValue();
 				ClientTangibleDynamics * ctd = dynamic_cast<ClientTangibleDynamics *>(ownerObject->getDynamics());
+				if (packed == "X")
+				{
+					if (ctd)
+					{
+						ctd->clearAllForces();
+						ownerObject->setDynamics(NULL);
+					}
+					ownerObject->scheduleForAlter();
+					return;
+				}
+
+				// Ignore late reliable updates after the server has toggled the condition off.
+				if (!tangible->hasCondition(TangibleObject::C_magicTangibleDynamic))
+					return;
+
 				if (!ctd)
 				{
+					if (ownerObject->getDynamics())
+					{
+						DEBUG_WARNING(true, ("Ignoring TangibleDynamics snapshot for [%s]: object already has incompatible dynamics",
+							ownerObject->getNetworkId().getValueString().c_str()));
+						return;
+					}
 					ctd = new ClientTangibleDynamics(ownerObject);
 					ownerObject->setDynamics(ctd);
 				}
 
 				// Parse the packed string: "channel:param1,param2,...|channel:param1,param2,..."
-				// Channels: P=push, S=spin, B=breathing, N=bounce, W=wobble, O=orbit, E=easing, X=clearAll
-				std::string const & packed = msg->getValue();
-
-				if (packed == "X")
-				{
-					ctd->clearAllForces();
-					ownerObject->scheduleForAlter();
-					return;
-				}
+				// A message is a complete snapshot; channels omitted by the server are cleared below.
+				int incomingForceMask = ClientTangibleDynamics::FM_none;
 
 				// Tokenize by '|'
 				size_t pos = 0;
@@ -1093,35 +1080,59 @@ void ClientController::handleMessage (const int message, const float value, cons
 					case 'P': // Push: vx,vy,vz,duration,space,drag
 						if (v.size() >= 6)
 						{
+							incomingForceMask |= ClientTangibleDynamics::FM_push;
+							int movementSpace = static_cast<int>(v[4]);
+							if (movementSpace < ClientTangibleDynamics::MS_world || movementSpace > ClientTangibleDynamics::MS_object)
+								movementSpace = ClientTangibleDynamics::MS_world;
 							if (v[5] > 0.0f)
-								ctd->setPushForceWithDrag(Vector(v[0], v[1], v[2]), v[5], v[3], static_cast<ClientTangibleDynamics::MovementSpace>(static_cast<int>(v[4])));
+								ctd->setPushForceWithDrag(Vector(v[0], v[1], v[2]), v[5], v[3], static_cast<ClientTangibleDynamics::MovementSpace>(movementSpace));
 							else
-								ctd->setPushForce(Vector(v[0], v[1], v[2]), v[3], static_cast<ClientTangibleDynamics::MovementSpace>(static_cast<int>(v[4])));
+								ctd->setPushForce(Vector(v[0], v[1], v[2]), v[3], static_cast<ClientTangibleDynamics::MovementSpace>(movementSpace));
 						}
 						break;
 					case 'S': // Spin: yaw,pitch,roll,duration
 						if (v.size() >= 4)
+						{
+							incomingForceMask |= ClientTangibleDynamics::FM_spin;
 							ctd->setSpinForce(Vector(v[0], v[1], v[2]), v[3]);
+							if (v.size() >= 5)
+								ctd->setSpinAroundAppearanceCenter(v[4] != 0.0f);
+						}
 						break;
 					case 'B': // Breathing: min,max,speed,duration
 						if (v.size() >= 4)
+						{
+							incomingForceMask |= ClientTangibleDynamics::FM_breathing;
 							ctd->setBreathingEffect(v[0], v[1], v[2], v[3]);
+						}
 						break;
 					case 'N': // Bounce: gravity,elasticity,velocity,duration
 						if (v.size() >= 4)
+						{
+							incomingForceMask |= ClientTangibleDynamics::FM_bounce;
 							ctd->setBounceEffect(v[0], v[1], v[2], v[3]);
+						}
 						break;
 					case 'W': // Wobble: ampX,ampY,ampZ,freqX,freqY,freqZ,duration
 						if (v.size() >= 7)
+						{
+							incomingForceMask |= ClientTangibleDynamics::FM_wobble;
 							ctd->setWobbleEffect(Vector(v[0], v[1], v[2]), Vector(v[3], v[4], v[5]), v[6]);
+						}
 						break;
 					case 'O': // Orbit: cx,cy,cz,radius,speed,duration
 						if (v.size() >= 6)
+						{
+							incomingForceMask |= ClientTangibleDynamics::FM_orbit;
 							ctd->setOrbitEffect(Vector(v[0], v[1], v[2]), v[3], v[4], v[5]);
+						}
 						break;
 					case 'H': // Hover: hoverHeight,bobAmplitude,bobSpeed,duration
 						if (v.size() >= 4)
+						{
+							incomingForceMask |= ClientTangibleDynamics::FM_hover;
 							ctd->setHoverEffect(v[0], v[1], v[2], v[3]);
+						}
 						break;
 					case 'F': // Follow: targetId,distance,speed,hoverHeight,bobAmplitude,duration
 						// Special handling: targetId must be parsed as uint64 directly, not float
@@ -1132,38 +1143,86 @@ void ClientController::handleMessage (const int message, const float value, cons
 							{
 								std::string const targetIdStr = params.substr(0, firstComma);
 								uint64 const targetId = strtoull(targetIdStr.c_str(), nullptr, 10);
+								incomingForceMask |= ClientTangibleDynamics::FM_followTarget;
 								ctd->setFollowTargetEffect(targetId, v[1], v[2], v[3], v[4], v[5]);
+							}
+						}
+						break;
+					case 'Q': // Lock parent: id,offset xyz,rotation xyz,match,duration
+						{
+							size_t const firstComma = params.find(',');
+							if (firstComma != std::string::npos && v.size() >= 9)
+							{
+								uint64 const parentId = strtoull(params.substr(0, firstComma).c_str(), nullptr, 10);
+								incomingForceMask |= ClientTangibleDynamics::FM_lockToParent;
+								ctd->setLockToParentEffect(parentId, Vector(v[1], v[2], v[3]),
+									Vector(v[4], v[5], v[6]), v[7] != 0.0f, v[8]);
 							}
 						}
 						break;
 					case 'Y': // Sway: swingAngle,swingSpeed,damping,duration
 						if (v.size() >= 4)
+						{
+							incomingForceMask |= ClientTangibleDynamics::FM_sway;
 							ctd->setSwayEffect(v[0], v[1], v[2], v[3]);
+						}
 						break;
 					case 'K': // Shake: intensity,frequency,duration
 						if (v.size() >= 3)
+						{
+							incomingForceMask |= ClientTangibleDynamics::FM_shake;
 							ctd->setShakeEffect(v[0], v[1], v[2]);
+						}
 						break;
 					case 'L': // Float: height,driftSpeed,randomStrength,duration
 						if (v.size() >= 4)
+						{
+							incomingForceMask |= ClientTangibleDynamics::FM_float;
 							ctd->setFloatEffect(v[0], v[1], v[2], v[3]);
+						}
 						break;
 					case 'C': // Conveyor: dirX,dirY,dirZ,speed,wrapDistance,duration
 						if (v.size() >= 6)
+						{
+							incomingForceMask |= ClientTangibleDynamics::FM_conveyor;
 							ctd->setConveyorEffect(Vector(v[0], v[1], v[2]), v[3], v[4], v[5]);
+						}
 						break;
 					case 'R': // Carousel: centerX,centerY,centerZ,radius,rotationSpeed,verticalAmplitude,verticalSpeed,duration
 						if (v.size() >= 8)
+						{
+							incomingForceMask |= ClientTangibleDynamics::FM_carousel;
 							ctd->setCarouselEffect(Vector(v[0], v[1], v[2]), v[3], v[4], v[5], v[6], v[7]);
+						}
 						break;
 					case 'E': // Easing: type,duration
 						if (v.size() >= 2)
-							ctd->setEasing(static_cast<ClientTangibleDynamics::EaseType>(static_cast<int>(v[0])), v[1]);
+						{
+							int easeType = static_cast<int>(v[0]);
+							if (easeType < ClientTangibleDynamics::ET_none || easeType > ClientTangibleDynamics::ET_easeInOut)
+								easeType = ClientTangibleDynamics::ET_none;
+							ctd->setEasing(static_cast<ClientTangibleDynamics::EaseType>(easeType), v[1]);
+						}
 						break;
 					default:
 						break;
 					}
 				}
+
+				if ((incomingForceMask & ClientTangibleDynamics::FM_push) == 0) ctd->clearPushForce();
+				if ((incomingForceMask & ClientTangibleDynamics::FM_spin) == 0) ctd->clearSpinForce();
+				if ((incomingForceMask & ClientTangibleDynamics::FM_breathing) == 0) ctd->clearBreathingEffect();
+				if ((incomingForceMask & ClientTangibleDynamics::FM_bounce) == 0) ctd->clearBounceEffect();
+				if ((incomingForceMask & ClientTangibleDynamics::FM_wobble) == 0) ctd->clearWobbleEffect();
+				if ((incomingForceMask & ClientTangibleDynamics::FM_orbit) == 0) ctd->clearOrbitEffect();
+				if ((incomingForceMask & ClientTangibleDynamics::FM_hover) == 0) ctd->clearHoverEffect();
+				if ((incomingForceMask & ClientTangibleDynamics::FM_followTarget) == 0) ctd->clearFollowTargetEffect();
+				if ((incomingForceMask & ClientTangibleDynamics::FM_lockToParent) == 0) ctd->clearLockToParentEffect();
+				if ((incomingForceMask & ClientTangibleDynamics::FM_sway) == 0) ctd->clearSwayEffect();
+				if ((incomingForceMask & ClientTangibleDynamics::FM_shake) == 0) ctd->clearShakeEffect();
+				if ((incomingForceMask & ClientTangibleDynamics::FM_float) == 0) ctd->clearFloatEffect();
+				if ((incomingForceMask & ClientTangibleDynamics::FM_conveyor) == 0) ctd->clearConveyorEffect();
+				if ((incomingForceMask & ClientTangibleDynamics::FM_carousel) == 0) ctd->clearCarouselEffect();
 
 				// Schedule for alter to ensure smooth frame-by-frame updates
 				ownerObject->scheduleForAlter();

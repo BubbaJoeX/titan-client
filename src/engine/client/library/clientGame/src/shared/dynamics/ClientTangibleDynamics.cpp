@@ -136,6 +136,13 @@ ClientTangibleDynamics::ClientTangibleDynamics(Object* owner) :
 	m_followDuration(-1.0f),
 	m_followElapsed(0.0f),
 	m_followTargetEffectActive(false),
+	m_lockToParentId(0),
+	m_lockToParentPositionOffset(Vector::zero),
+	m_lockToParentRotationOffset(Vector::zero),
+	m_lockToParentMatchRotation(true),
+	m_lockToParentDuration(-1.0f),
+	m_lockToParentElapsed(0.0f),
+	m_lockToParentEffectActive(false),
 	m_swayAngle(0.1f),
 	m_swaySpeed(1.0f),
 	m_swayDamping(0.0f),
@@ -172,6 +179,7 @@ ClientTangibleDynamics::ClientTangibleDynamics(Object* owner) :
 	m_carouselAngle(0.0f),
 	m_carouselVerticalAmplitude(0.0f),
 	m_carouselVerticalSpeed(1.0f),
+	m_carouselVerticalPhase(0.0f),
 	m_carouselDuration(-1.0f),
 	m_carouselElapsed(0.0f),
 	m_carouselEffectActive(false),
@@ -494,6 +502,35 @@ float  ClientTangibleDynamics::getFollowHoverHeight() const    { return m_follow
 float  ClientTangibleDynamics::getFollowBobAmplitude() const   { return m_followBobAmplitude; }
 
 // ======================================================================
+// LOCK TO PARENT
+// ======================================================================
+
+void ClientTangibleDynamics::setLockToParentEffect(uint64 parentNetworkId, Vector const & positionOffset,
+	Vector const & rotationOffset, bool matchRotation, float duration)
+{
+	m_lockToParentId = parentNetworkId;
+	m_lockToParentPositionOffset = positionOffset;
+	m_lockToParentRotationOffset = rotationOffset;
+	m_lockToParentMatchRotation = matchRotation;
+	m_lockToParentDuration = duration;
+	m_lockToParentElapsed = 0.0f;
+	m_lockToParentEffectActive = true;
+	recalculateMode();
+}
+
+void ClientTangibleDynamics::clearLockToParentEffect()
+{
+	m_lockToParentId = 0;
+	m_lockToParentPositionOffset = Vector::zero;
+	m_lockToParentRotationOffset = Vector::zero;
+	m_lockToParentMatchRotation = true;
+	m_lockToParentDuration = -1.0f;
+	m_lockToParentElapsed = 0.0f;
+	m_lockToParentEffectActive = false;
+	recalculateMode();
+}
+
+// ======================================================================
 // SWAY
 // ======================================================================
 
@@ -678,6 +715,7 @@ void ClientTangibleDynamics::clearAllForces()
 	clearOrbitEffect();
 	clearHoverEffect();
 	clearFollowTargetEffect();
+	clearLockToParentEffect();
 	clearSwayEffect();
 	clearShakeEffect();
 	clearFloatEffect();
@@ -699,6 +737,11 @@ float ClientTangibleDynamics::alter(float elapsedTime)
 
 	if (m_activeForceMask != FM_none)
 	{
+		if (m_lockToParentEffectActive)
+		{
+			updateLockToParentEffect(elapsedTime);
+			return (m_activeForceMask != FM_none) ? AlterResult::cms_alterNextFrame : baseAlterResult;
+		}
 		if (m_pushForceActive)         updatePushForce(elapsedTime);
 		if (m_spinForceActive)         updateSpinForce(elapsedTime);
 		if (m_breathingEffectActive)   updateBreathingEffect(elapsedTime);
@@ -790,12 +833,16 @@ void ClientTangibleDynamics::updatePushForce(float elapsedTime)
 			owner->setPosition_w(nextPos);
 		}
 	}
+	else if (m_pushSpace == MS_parent)
+	{
+		Vector const currentPos = owner->getPosition_p();
+		Vector const nextPos = currentPos + vel * elapsedTime;
+		owner->setPosition_p(nextPos);
+	}
 	else
 	{
-		// Simple local space movement
-		Vector const currentPos = owner->getPosition_w();
-		Vector const nextPos = currentPos + vel * elapsedTime;
-		owner->setPosition_w(nextPos);
+		Vector const velocity_p = owner->getTransform_o2p().rotate_l2p(vel);
+		owner->setPosition_p(owner->getPosition_p() + velocity_p * elapsedTime);
 	}
 }
 
@@ -1021,7 +1068,7 @@ void ClientTangibleDynamics::updateFollowTargetEffect(float elapsedTime)
 	// Ultra-smooth exponential interpolation
 	// Lower smoothFactor = smoother but more lag, higher = snappier but can feel jerky
 	// 5.0 provides a nice balance of smooth and responsive
-	float const positionSmoothFactor = 5.0f;
+	float const positionSmoothFactor = (m_followSpeed > 0.01f) ? m_followSpeed : 0.01f;
 	float const rotationSmoothFactor = 8.0f;
 
 	float const posLerpFactor = 1.0f - exp(-positionSmoothFactor * elapsedTime);
@@ -1054,6 +1101,41 @@ void ClientTangibleDynamics::updateFollowTargetEffect(float elapsedTime)
 		ownerTransform.setLocalFrameKJ_p(newFacing, Vector::unitY);
 		owner->setTransform_o2w(ownerTransform);
 	}
+}
+
+// ----------------------------------------------------------------------
+
+void ClientTangibleDynamics::updateLockToParentEffect(float elapsedTime)
+{
+	Object * const owner = getOwner();
+	if (!owner) { clearLockToParentEffect(); return; }
+
+	if (m_lockToParentDuration >= 0.0f)
+	{
+		m_lockToParentElapsed += elapsedTime;
+		if (m_lockToParentElapsed >= m_lockToParentDuration) { clearLockToParentEffect(); return; }
+	}
+
+	if (m_lockToParentId == 0) { clearLockToParentEffect(); return; }
+	Object const * const parent = NetworkIdManager::getObjectById(
+		NetworkId(static_cast<NetworkId::NetworkIdType>(m_lockToParentId)));
+	if (!parent)
+		return;
+
+	Transform const & parentTransform = parent->getTransform_o2w();
+	Vector const position = parent->getPosition_w() + parentTransform.rotate_l2p(m_lockToParentPositionOffset);
+	if (!m_lockToParentMatchRotation)
+	{
+		owner->setPosition_w(position);
+		return;
+	}
+
+	Transform transform = parentTransform;
+	transform.setPosition_p(position);
+	transform.yaw_l(m_lockToParentRotationOffset.y * (PI / 180.0f));
+	transform.pitch_l(m_lockToParentRotationOffset.x * (PI / 180.0f));
+	transform.roll_l(m_lockToParentRotationOffset.z * (PI / 180.0f));
+	owner->setTransform_o2w(transform);
 }
 
 // ----------------------------------------------------------------------
@@ -1267,6 +1349,7 @@ void ClientTangibleDynamics::setCarouselEffect(const Vector& center, float radiu
 	m_carouselRotationSpeed = rotationSpeed;
 	m_carouselVerticalAmplitude = verticalAmplitude;
 	m_carouselVerticalSpeed = verticalSpeed;
+	m_carouselVerticalPhase = 0.0f;
 
 	// Calculate initial angle from object's current position
 	if (owner)
@@ -1295,6 +1378,7 @@ void ClientTangibleDynamics::clearCarouselEffect()
 	m_carouselAngle = 0.0f;
 	m_carouselVerticalAmplitude = 0.0f;
 	m_carouselVerticalSpeed = 1.0f;
+	m_carouselVerticalPhase = 0.0f;
 	m_carouselDuration = -1.0f;
 	m_carouselElapsed = 0.0f;
 	m_carouselEffectActive = false;
@@ -1318,6 +1402,7 @@ void ClientTangibleDynamics::updateCarouselEffect(float elapsedTime)
 
 	// Update rotation angle
 	m_carouselAngle += m_carouselRotationSpeed * elapsedTime;
+	m_carouselVerticalPhase += m_carouselVerticalSpeed * elapsedTime;
 
 	// Calculate position on rotating platform
 	float const newX = m_carouselCenter.x + m_carouselRadius * cos(m_carouselAngle);
@@ -1328,7 +1413,7 @@ void ClientTangibleDynamics::updateCarouselEffect(float elapsedTime)
 	if (m_carouselVerticalAmplitude > 0.0f)
 	{
 		// Object goes up as it rotates - sinusoidal based on angle
-		newY += m_carouselVerticalAmplitude * sin(m_carouselAngle);
+		newY += m_carouselVerticalAmplitude * sin(m_carouselVerticalPhase);
 	}
 
 	owner->setPosition_w(Vector(newX, newY, newZ));
@@ -1349,6 +1434,7 @@ void ClientTangibleDynamics::recalculateMode()
 	if (m_orbitEffectActive)       m_activeForceMask |= FM_orbit;
 	if (m_hoverEffectActive)       m_activeForceMask |= FM_hover;
 	if (m_followTargetEffectActive) m_activeForceMask |= FM_followTarget;
+	if (m_lockToParentEffectActive) m_activeForceMask |= FM_lockToParent;
 	if (m_swayEffectActive)        m_activeForceMask |= FM_sway;
 	if (m_shakeEffectActive)       m_activeForceMask |= FM_shake;
 	if (m_floatEffectActive)       m_activeForceMask |= FM_float;

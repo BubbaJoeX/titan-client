@@ -470,12 +470,6 @@ void CuiManager::install ()
 
 	CuiDynamicUIFont::applySavedPreferenceIfAny ();
 
-	if (UITextStyleManager::GetInstance ())
-		UITextStyleManager::GetInstance ()->setFontScalePercent (CuiPreferences::getUiFontScalePercent ());
-
-	if (UITextStyleManager::GetInstance ())
-		UITextStyleManager::GetInstance ()->setUserFontFullReplace (CuiPreferences::getUiFontFullReplace ());
-
 	InstallTimer installTimerLink("Link");
 	rootPage->Link ();
 	installTimerLink.manualExit();

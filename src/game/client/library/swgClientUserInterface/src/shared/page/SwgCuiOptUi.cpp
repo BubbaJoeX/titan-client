@@ -552,11 +552,7 @@ void SwgCuiOptUi::resetDefaults   (bool confirmed)
 {
 	if (confirmed)
 	{
-		// Base class resets sliders/checkboxes next; their setters call refreshAllUiText(). If custom
-		// /Fonts.cuiuif_* styles still exist, that refresh binds them to widgets, then clearUserFont()
-		// would Destroy those TextStyles and leave dangling pointers (blank text / crash). Tear down
-		// user fonts first so all refreshes use stock font styles.
-		CuiPreferences::setUiDefaultFontFaceUtf8 ("");
+		// Route subsequent slider/checkbox refreshes through stock fonts from the outset.
 		CuiDynamicUIFont::clearUserFont ();
 		CuiPreferences::setUiFontFullReplace (false);
 	}
@@ -594,10 +590,6 @@ void SwgCuiOptUi::OnButtonPressed (UIWidget * context)
 			m_comboUiFont->GetSelectedIndexName (name);
 		if (name.empty ())
 		{
-			// Restore picker textboxes to stock styles BEFORE clearUserFont() destroys cuiuif_* styles.
-			// Otherwise refreshFontPickerChrome() accesses destroyed UITextStyle pointers and crashes.
-			releaseOwnedFontPickerTextboxStyles ();
-			CuiPreferences::setUiDefaultFontFaceUtf8 ("");
 			CuiDynamicUIFont::clearUserFont ();
 			if (m_textUiFontFilter)
 				m_textUiFontFilter->SetText (Unicode::emptyString);
@@ -606,7 +598,6 @@ void SwgCuiOptUi::OnButtonPressed (UIWidget * context)
 		{
 			if (!CuiDynamicUIFont::applyFontFaceUtf8 (name))
 				return;
-			CuiPreferences::setUiDefaultFontFaceUtf8 (name);
 			if (m_textUiFontFilter)
 				m_textUiFontFilter->SetText (Unicode::utf8ToWide (name));
 		}

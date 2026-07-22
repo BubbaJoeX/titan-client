@@ -36,7 +36,14 @@ public:
 	static float               getCameraNearPlane ();
 	static float               getCameraFarPlane ();
 	static float               getCameraFarPlaneSpace();
+	static float               getCameraFarPlaneCap ();
+	static float               getCameraFarPlaneSpaceCap ();
 	static float               getCameraFieldOfView();
+	static float               getDynamicLightDayScale ();
+	static float               getDynamicLightNightScale ();
+	static float               getDynamicLightTransitionFraction ();
+	static float               getRemoteCellLightingBrightnessCap ();
+	static bool                getRemoteCellLightingUseDarkPob ();
 
 	static const char*         getPlayerName();
 

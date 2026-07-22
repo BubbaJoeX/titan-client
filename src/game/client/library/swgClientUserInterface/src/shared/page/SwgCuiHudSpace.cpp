@@ -334,8 +334,9 @@ void SwgCuiHudSpace::update(float const updateDeltaSeconds)
 			
 			// Update the exit station icon.
 			bool const isPobShip = shipObject->isPobShip();
+			bool const isAtmosphericFlight = Game::isShipScene() && !Game::isSpace();
 			ShipStation::Type const shipStation = static_cast<ShipStation::Type>(player->getShipStation());
-			canExitStation =  isPobShip && shipStation != ShipStation::ShipStation_None;
+			canExitStation = (isPobShip || isAtmosphericFlight) && shipStation != ShipStation::ShipStation_None;
 			bool const wasExitStationVisible = m_exitStationButton->IsVisible();
 			
 			if (canExitStation != wasExitStationVisible) //lint !e731

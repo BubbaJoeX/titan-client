@@ -43,7 +43,7 @@ public:
 		bool        needsUpdate;
 	};
 
-	static int const MAX_ACTIVE_CAMERAS = 2;
+	static int const MAX_ACTIVE_CAMERAS = 4;
 	static int const DEFAULT_RESOLUTION = 256;
 	static float const DEFAULT_UPDATE_RATE;
 	static float const MIN_UPDATE_RATE;

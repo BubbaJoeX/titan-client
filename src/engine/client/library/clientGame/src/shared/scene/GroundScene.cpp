@@ -467,6 +467,10 @@ void GroundScene::install ()
 	LocalMachineOptionManager::registerOption (ms_invertMouse, "ClientGame", "invertMouse");
 	LocalMachineOptionManager::registerOption (ms_listenerFollowsPlayer, "ClientGame", "listenerFollowsPlayer");
 
+	// Local machine options are user-editable and load during registration; reapply the configured safety caps.
+	ms_cameraFarPlane = clamp (1024.f, ms_cameraFarPlane, ConfigClientGame::getCameraFarPlaneCap ());
+	ms_cameraFarPlaneSpace = clamp (4096.f, ms_cameraFarPlaneSpace, ConfigClientGame::getCameraFarPlaneSpaceCap ());
+
 	s_installed = true;
 
 	ExitChain::add (GroundSceneNamespace::remove, "GroundSceneNamespace::remove");
@@ -575,17 +579,17 @@ float GroundScene::getCameraFarPlaneSpace()
 
 void GroundScene::setCameraFarPlane (const float farPlane)
 {
-	ms_cameraFarPlane = farPlane;
+	ms_cameraFarPlane = clamp (1024.f, farPlane, ConfigClientGame::getCameraFarPlaneCap ());
 
 	if (Game::isSpace())
 		return;
 
-	ShadowManager::setVolumetricShadowDistanceLevel ((farPlane - 512.f) / (2048.f - 512.f));
+	ShadowManager::setVolumetricShadowDistanceLevel ((ms_cameraFarPlane - 512.f) / (2048.f - 512.f));
 
 	GroundScene* const groundScene = dynamic_cast<GroundScene*> (Game::getScene ());
 	if (groundScene)
 	{
-		float const actualFarPlane = groundScene->isTutorial() ? cms_tutorialFarPlaneDistance : farPlane;
+		float const actualFarPlane = groundScene->isTutorial() ? cms_tutorialFarPlaneDistance : ms_cameraFarPlane;
 		int i;
 		for (i = 0; i < groundScene->getNumberOfViews (); ++i)
 			groundScene->getCamera (i)->setFarPlane (actualFarPlane);
@@ -596,19 +600,19 @@ void GroundScene::setCameraFarPlane (const float farPlane)
 
 void GroundScene::setCameraFarPlaneSpace(const float farPlane)
 {
-	ms_cameraFarPlaneSpace = farPlane;
+	ms_cameraFarPlaneSpace = clamp (4096.f, farPlane, ConfigClientGame::getCameraFarPlaneSpaceCap ());
 
 	if (!Game::isSpace())
 		return;
 
-	ShadowManager::setVolumetricShadowDistanceLevel ((farPlane - 512.f) / (2048.f - 512.f));
+	ShadowManager::setVolumetricShadowDistanceLevel ((ms_cameraFarPlaneSpace - 512.f) / (2048.f - 512.f));
 
 	GroundScene* const groundScene = dynamic_cast<GroundScene*> (Game::getScene ());
 	if (groundScene)
 	{
 		bool const isSpace = Game::isSpace();
 
-		float const actualFarPlane = groundScene->isTutorial() ? cms_tutorialFarPlaneDistance : (isSpace ? farPlane : farPlane);
+		float const actualFarPlane = groundScene->isTutorial() ? cms_tutorialFarPlaneDistance : (isSpace ? ms_cameraFarPlaneSpace : ms_cameraFarPlaneSpace);
 		int i;
 		for (i = 0; i < groundScene->getNumberOfViews (); ++i)
 			groundScene->getCamera (i)->setFarPlane (actualFarPlane);
@@ -2966,12 +2970,23 @@ void GroundScene::receiveMessage(const MessageDispatch::Emitter &, const Message
 #if 1
 									else
 									{
-										//-- Tell the object to kill itself next alter.
-										existingObject->kill();
+										if (ship && clientObject->getPortalProperty())
+										{
+											// POB portal/door hierarchies can still have scheduled alters when
+											// their owner leaves the scene.  Remove DPVS participation now,
+											// then delete through the existing serialized destruction queue.
+											DEBUG_REPORT_LOG_PRINT(ms_logCreateMessages, ("SceneDestroyObject: queueing portal object for delete %s\n", existingObject->getDebugInformation().c_str()));
+											if (existingObject->isInWorld())
+												existingObject->removeFromWorld();
+											m_destroyObjectSet->insert(networkId);
+										}
+										else
+										{
+											//-- Tell the object to kill itself next alter.
+											existingObject->kill();
+											existingObject->scheduleForAlter();
+										}
 									}
-									
-									//-- Ensure the object gets an alter.
-									existingObject->scheduleForAlter();
 #else
 									else
 									{
