@@ -877,6 +877,10 @@ void Game::install(Application const application)
 
 		// -----------------------------------------------------------------------------------
 
+		RtCameraManager::install();
+
+		// -----------------------------------------------------------------------------------
+
 #ifdef _DEBUG
 		//-- see if the gameserver is to be run in a mode to scan update ranges
 		if (ConfigFile::getKeyBool ("SwgClient", "verifyUpdateRanges", false))

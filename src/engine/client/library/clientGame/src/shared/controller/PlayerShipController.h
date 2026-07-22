@@ -65,6 +65,7 @@ public:
 	ShipObject const * getShipToFollow() const;
 	bool isFollowing() const;
 	bool isAutoPilotEngaged() const;
+	void handleTerrainCollision(Vector const & surfaceNormal_p);
 
 protected:
 
@@ -136,6 +137,7 @@ private:
 	float m_throttleDeltaAxisPosition;
 	bool m_sentAutoPilotEngagedMessage;
 	bool m_boosterWasActive;
+	float m_terrainCollisionCooldown;
 };
 
 //======================================================================

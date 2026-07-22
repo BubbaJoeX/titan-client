@@ -3378,7 +3378,15 @@ void TangibleObject::updateRemoteVideoStream()
 
 		applyLibvlcPlayerVolume(runtimeData, 0);
 		DWORD const tPlay = ms_logVideoStreamDiagnostics ? GetTickCount() : 0;
-		ms_vlcApi.pMediaPlayerPlay(runtimeData.mediaPlayer);
+		int const playResult = ms_vlcApi.pMediaPlayerPlay(runtimeData.mediaPlayer);
+		if (playResult != 0)
+		{
+			DEBUG_REPORT_LOG(true, ("[Titan] VideoStream: libvlc_media_player_play failed for [%s] (result=%d); verify URL access, codec/demux plugins, and matching runtime files\n",
+				playUrl.c_str(), playResult));
+			stopAndReleaseMediaPlayer(runtimeData);
+			runtimeData.settled = true;
+			return;
+		}
 		if (ms_logVideoStreamDiagnostics && tPlay != 0)
 		{
 			DWORD const dt = GetTickCount() - tPlay;

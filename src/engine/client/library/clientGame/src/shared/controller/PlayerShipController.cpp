@@ -98,6 +98,14 @@ namespace PlayerShipControllerNamespace
 	float const c_shipFollowDistance = 50.f;
 	float const c_shipFollowTolerance = 10.f;
 
+	float const c_terrainImpactMinimumSpeed = 8.0f;
+	float const c_terrainImpactMaximumSpeed = 60.0f;
+	float const c_terrainImpactCooldown = 1.5f;
+	float const c_terrainJoltUpMinimum = 8.0f;
+	float const c_terrainJoltUpMaximum = 20.0f;
+	float const c_terrainJoltBackMinimum = 4.0f;
+	float const c_terrainJoltBackMaximum = 12.0f;
+
 	float computeRequiredAcceleration(float const currentPosition, float const targetPosition, float const currentSpeed, float const acceleration, float const maxSpeed);
 
 	float convertValueWithDeadZone(float value, float joystickSensitivityPower, float joystickDeadZone)
@@ -197,7 +205,8 @@ PlayerShipController::PlayerShipController(ShipObject * const newOwner) :
 	m_throttleDeltaSliderPosition(0.0f),
 	m_throttleDeltaAxisPosition(0.0f),
 	m_sentAutoPilotEngagedMessage(false),
-	m_boosterWasActive(false)
+	m_boosterWasActive(false),
+	m_terrainCollisionCooldown(0.0f)
 {
 }
 
@@ -301,6 +310,8 @@ PlayerShipController const * PlayerShipController::asPlayerShipController() cons
 float PlayerShipController::realAlter(float const elapsedTime)
 {
 	NP_PROFILER_AUTO_BLOCK_DEFINE("PlayerShipController::realAlter");
+
+	m_terrainCollisionCooldown = std::max(0.0f, m_terrainCollisionCooldown - elapsedTime);
 
 	//-- Only continue if we're a ShipObject
 	ShipObject * const owner = getShipOwner();
@@ -787,6 +798,10 @@ float PlayerShipController::realAlter(float const elapsedTime)
 
 			if (pos.y < minShipY)
 			{
+				Vector const impactVelocity = m_shipDynamicsModel->getVelocity();
+				if (impactVelocity.y < -c_terrainImpactMinimumSpeed)
+					handleTerrainCollision(Vector::unitY);
+
 				pos.y = minShipY;
 				t.setPosition_p(pos);
 				m_shipDynamicsModel->setTransform(t);
@@ -1474,6 +1489,49 @@ bool PlayerShipController::isFollowing() const
 bool PlayerShipController::isAutoPilotEngaged() const
 {
 	return m_autopilotEngaged;
+}
+
+//----------------------------------------------------------------------
+
+void PlayerShipController::handleTerrainCollision(Vector const & surfaceNormal_p)
+{
+	if (Game::isSpace() || m_terrainCollisionCooldown > 0.0f || !m_shipDynamicsModel)
+		return;
+
+	Vector normal_p(surfaceNormal_p);
+	if (!normal_p.normalize())
+		normal_p = Vector::unitY;
+
+	Vector const incomingVelocity = m_shipDynamicsModel->getVelocity();
+	float const impactSpeed = std::max(0.0f, -incomingVelocity.dot(normal_p));
+	if (impactSpeed < c_terrainImpactMinimumSpeed)
+		return;
+
+	float const severity = clamp(
+		0.0f,
+		(impactSpeed - c_terrainImpactMinimumSpeed) / (c_terrainImpactMaximumSpeed - c_terrainImpactMinimumSpeed),
+		1.0f);
+
+	Vector horizontalDirection(incomingVelocity.x, 0.0f, incomingVelocity.z);
+	if (!horizontalDirection.normalize())
+	{
+		ShipObject const * const owner = getShipOwner();
+		horizontalDirection = owner ? owner->getTransform_o2p().getLocalFrameK_p() : Vector::unitZ;
+		horizontalDirection.y = 0.0f;
+		if (!horizontalDirection.normalize())
+			horizontalDirection = Vector::unitZ;
+	}
+
+	float const joltUp = c_terrainJoltUpMinimum + severity * (c_terrainJoltUpMaximum - c_terrainJoltUpMinimum);
+	float const joltBack = c_terrainJoltBackMinimum + severity * (c_terrainJoltBackMaximum - c_terrainJoltBackMinimum);
+	m_shipDynamicsModel->setVelocity((normal_p * joltUp) - (horizontalDirection * joltBack));
+	m_sendReliableTransformThisFrame = true;
+	m_terrainCollisionCooldown = c_terrainImpactCooldown;
+
+	char severityText[16];
+	IGNORE_RETURN(snprintf(severityText, sizeof(severityText), "%.3f", severity));
+	GenericValueTypeMessage<std::string> const terrainMsg("ShipTerrainCollision", severityText);
+	GameNetwork::send(terrainMsg, true);
 }
 
 //----------------------------------------------------------------------

@@ -18,6 +18,7 @@
 #include "clientGame/ClientObject.h"
 #include "clientGame/Game.h"
 #include "clientGame/GameNetwork.h"
+#include "clientGame/PlayerShipController.h"
 #include "clientGame/ShipController.h"
 #include "clientGame/ShipObject.h"
 #include "sharedCollision/CollisionWorld.h"
@@ -345,9 +346,12 @@ bool CollisionCallbacksNamespace::onDoCollisionWithTerrain(Object * const object
 
 		if (!Game::isSpace())
 		{
-			// Atmospheric flight: terrain clamping is handled by PlayerShipController.
-			// Keep the impact effect and authoritative damage notification, but do
-			// not reflect velocity because that fights the terrain clamp.
+			// Atmospheric flight uses a bounded jolt instead of the space reflection;
+			// PlayerShipController also owns the impact threshold and send cooldown.
+			PlayerShipController * const playerShipController = shipController->asPlayerShipController();
+			if (playerShipController)
+				playerShipController->handleTerrainCollision(result.m_normalOfSurface_p);
+
 			if (!ms_isPlayingClientEffect)
 			{
 				if (ms_shipObjectClientEffectTemplate)
@@ -357,8 +361,6 @@ bool CollisionCallbacksNamespace::onDoCollisionWithTerrain(Object * const object
 					delete clientEffect;
 				}
 
-				GenericValueTypeMessage<std::string> const terrainMsg("ShipTerrainCollision", "hit");
-				GameNetwork::send(terrainMsg, true);
 				ms_isPlayingClientEffect = true;
 			}
 			return true;
