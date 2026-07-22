@@ -46,6 +46,7 @@
 #include "sharedGame/SpaceStringIds.h"
 #include "sharedMathArchive/TransformArchive.h"
 #include "sharedMathArchive/VectorArchive.h"
+#include "sharedNetworkMessages/GenericValueTypeMessage.h"
 #include "sharedNetworkMessages/MessageQueueDataTransform.h"
 #include "sharedNetworkMessages/MessageQueueGenericValueType.h"
 #include "sharedNetworkMessages/MessageQueueTeleportAck.h"
