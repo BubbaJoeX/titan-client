@@ -1,0 +1,165 @@
+/****************************************************************************
+** ActionsFileControl meta object code from reading C++ file 'ActionsFileControl.h'
+**
+** Created: Thu Jul 23 03:18:10 2026
+**      by: The Qt MOC ($Id: $)
+**
+** WARNING! All changes made in this file will be lost!
+*****************************************************************************/
+
+#include <qmetaobject.h>
+#include <qapplication.h>
+
+#include <private/qucomextra_p.h>
+#if !defined(Q_MOC_OUTPUT_REVISION) || (Q_MOC_OUTPUT_REVISION != 26)
+#error "This file was generated using the moc from 3.3.4. It"
+#error "cannot be used with the include files from this version of Qt."
+#error "(The moc has changed too much.)"
+#endif
+
+const char *ActionsFileControl::className() const
+{
+    return "ActionsFileControl";
+}
+
+QMetaObject *ActionsFileControl::metaObj = 0;
+static QMetaObjectCleanUp cleanUp_ActionsFileControl( "ActionsFileControl", &ActionsFileControl::staticMetaObject );
+
+#ifndef QT_NO_TRANSLATION
+QString ActionsFileControl::tr( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "ActionsFileControl", s, c, QApplication::DefaultCodec );
+    else
+	return QString::fromLatin1( s );
+}
+#ifndef QT_NO_TRANSLATION_UTF8
+QString ActionsFileControl::trUtf8( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "ActionsFileControl", s, c, QApplication::UnicodeUTF8 );
+    else
+	return QString::fromUtf8( s );
+}
+#endif // QT_NO_TRANSLATION_UTF8
+
+#endif // QT_NO_TRANSLATION
+
+QMetaObject* ActionsFileControl::staticMetaObject()
+{
+    if ( metaObj )
+	return metaObj;
+    QMetaObject* parentObject = QObject::staticMetaObject();
+    static const QUMethod slot_0 = {"onSendAsset", 0, 0 };
+    static const QUMethod slot_1 = {"onReloadAsset", 0, 0 };
+    static const QUMethod slot_2 = {"onRetrieveAsset", 0, 0 };
+    static const QUMethod slot_3 = {"onBroadcastUpdate", 0, 0 };
+    static const QUMethod slot_4 = {"onUpdateDbTemplates", 0, 0 };
+    static const QUMethod slot_5 = {"onVerifyAsset", 0, 0 };
+    static const QUMethod slot_6 = {"onFlush", 0, 0 };
+    static const QUMethod slot_7 = {"onOpenFileServerTree", 0, 0 };
+    static const QUMethod slot_8 = {"onOpenTemplateEditor", 0, 0 };
+    static const QUMethod slot_9 = {"onOpenDatatableEditor", 0, 0 };
+    static const QUMethod slot_10 = {"onOpenBuildoutEditor", 0, 0 };
+    static const QUParameter param_slot_11[] = {
+	{ "path", &static_QUType_ptr, "std::string", QUParameter::In }
+    };
+    static const QUMethod slot_11 = {"onSelectedPathChanged", 1, param_slot_11 };
+    static const QMetaData slot_tbl[] = {
+	{ "onSendAsset()", &slot_0, QMetaData::Public },
+	{ "onReloadAsset()", &slot_1, QMetaData::Public },
+	{ "onRetrieveAsset()", &slot_2, QMetaData::Public },
+	{ "onBroadcastUpdate()", &slot_3, QMetaData::Public },
+	{ "onUpdateDbTemplates()", &slot_4, QMetaData::Public },
+	{ "onVerifyAsset()", &slot_5, QMetaData::Public },
+	{ "onFlush()", &slot_6, QMetaData::Public },
+	{ "onOpenFileServerTree()", &slot_7, QMetaData::Public },
+	{ "onOpenTemplateEditor()", &slot_8, QMetaData::Public },
+	{ "onOpenDatatableEditor()", &slot_9, QMetaData::Public },
+	{ "onOpenBuildoutEditor()", &slot_10, QMetaData::Public },
+	{ "onSelectedPathChanged(const std::string&)", &slot_11, QMetaData::Public }
+    };
+    static const QUParameter param_signal_0[] = {
+	{ "msg", &static_QUType_charstar, 0, QUParameter::In }
+    };
+    static const QUMethod signal_0 = {"fileControlStatusMessage", 1, param_signal_0 };
+    static const QMetaData signal_tbl[] = {
+	{ "fileControlStatusMessage(const char*)", &signal_0, QMetaData::Public }
+    };
+    metaObj = QMetaObject::new_metaobject(
+	"ActionsFileControl", parentObject,
+	slot_tbl, 12,
+	signal_tbl, 1,
+#ifndef QT_NO_PROPERTIES
+	0, 0,
+	0, 0,
+#endif // QT_NO_PROPERTIES
+	0, 0 );
+    cleanUp_ActionsFileControl.setMetaObject( metaObj );
+    return metaObj;
+}
+
+void* ActionsFileControl::qt_cast( const char* clname )
+{
+    if ( !qstrcmp( clname, "ActionsFileControl" ) )
+	return this;
+    if ( !qstrcmp( clname, "Singleton<ActionsFileControl>" ) )
+	return (Singleton<ActionsFileControl>*)this;
+    return QObject::qt_cast( clname );
+}
+
+#include <qobjectdefs.h>
+#include <qsignalslotimp.h>
+
+// SIGNAL fileControlStatusMessage
+void ActionsFileControl::fileControlStatusMessage( const char* t0 )
+{
+    if ( signalsBlocked() )
+	return;
+    QConnectionList *clist = receivers( staticMetaObject()->signalOffset() + 0 );
+    if ( !clist )
+	return;
+    QUObject o[2];
+    static_QUType_charstar.set(o+1,t0);
+    activate_signal( clist, o );
+}
+
+bool ActionsFileControl::qt_invoke( int _id, QUObject* _o )
+{
+    switch ( _id - staticMetaObject()->slotOffset() ) {
+    case 0: onSendAsset(); break;
+    case 1: onReloadAsset(); break;
+    case 2: onRetrieveAsset(); break;
+    case 3: onBroadcastUpdate(); break;
+    case 4: onUpdateDbTemplates(); break;
+    case 5: onVerifyAsset(); break;
+    case 6: onFlush(); break;
+    case 7: onOpenFileServerTree(); break;
+    case 8: onOpenTemplateEditor(); break;
+    case 9: onOpenDatatableEditor(); break;
+    case 10: onOpenBuildoutEditor(); break;
+    case 11: onSelectedPathChanged((const std::string&)*((const std::string*)static_QUType_ptr.get(_o+1))); break;
+    default:
+	return QObject::qt_invoke( _id, _o );
+    }
+    return TRUE;
+}
+
+bool ActionsFileControl::qt_emit( int _id, QUObject* _o )
+{
+    switch ( _id - staticMetaObject()->signalOffset() ) {
+    case 0: fileControlStatusMessage((const char*)static_QUType_charstar.get(_o+1)); break;
+    default:
+	return QObject::qt_emit(_id,_o);
+    }
+    return TRUE;
+}
+#ifndef QT_NO_PROPERTIES
+
+bool ActionsFileControl::qt_property( int id, int f, QVariant* v)
+{
+    return QObject::qt_property( id, f, v);
+}
+
+bool ActionsFileControl::qt_static_property( QObject* , int , int , QVariant* ){ return FALSE; }
+#endif // QT_NO_PROPERTIES

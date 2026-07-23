@@ -479,6 +479,7 @@ void Archive::get(Archive::ReadIterator &source, ServerBuildoutAreaRow &target)
 	Archive::get(source, target.cellIndex);
 	Archive::get(source, target.position);
 	Archive::get(source, target.orientation);
+	target.scale = Vector::xyz111;
 	Archive::get(source, target.scripts);
 	Archive::get(source, target.objvars);
 }
@@ -508,6 +509,7 @@ void Archive::get(Archive::ReadIterator &source, ClientBuildoutAreaRow &target)
 	Archive::get(source, target.cellIndex);
 	Archive::get(source, target.position);
 	Archive::get(source, target.orientation);
+	target.scale = Vector::xyz111;
 	Archive::get(source, target.radius);
 	Archive::get(source, target.portalLayoutCrc);
 }

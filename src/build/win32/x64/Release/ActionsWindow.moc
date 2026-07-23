@@ -1,0 +1,176 @@
+/****************************************************************************
+** ActionsWindow meta object code from reading C++ file 'ActionsWindow.h'
+**
+** Created: Thu Jul 23 03:18:10 2026
+**      by: The Qt MOC ($Id: $)
+**
+** WARNING! All changes made in this file will be lost!
+*****************************************************************************/
+
+#include <qmetaobject.h>
+#include <qapplication.h>
+
+#include <private/qucomextra_p.h>
+#if !defined(Q_MOC_OUTPUT_REVISION) || (Q_MOC_OUTPUT_REVISION != 26)
+#error "This file was generated using the moc from 3.3.4. It"
+#error "cannot be used with the include files from this version of Qt."
+#error "(The moc has changed too much.)"
+#endif
+
+const char *ActionsWindow::className() const
+{
+    return "ActionsWindow";
+}
+
+QMetaObject *ActionsWindow::metaObj = 0;
+static QMetaObjectCleanUp cleanUp_ActionsWindow( "ActionsWindow", &ActionsWindow::staticMetaObject );
+
+#ifndef QT_NO_TRANSLATION
+QString ActionsWindow::tr( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "ActionsWindow", s, c, QApplication::DefaultCodec );
+    else
+	return QString::fromLatin1( s );
+}
+#ifndef QT_NO_TRANSLATION_UTF8
+QString ActionsWindow::trUtf8( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "ActionsWindow", s, c, QApplication::UnicodeUTF8 );
+    else
+	return QString::fromUtf8( s );
+}
+#endif // QT_NO_TRANSLATION_UTF8
+
+#endif // QT_NO_TRANSLATION
+
+QMetaObject* ActionsWindow::staticMetaObject()
+{
+    if ( metaObj )
+	return metaObj;
+    QMetaObject* parentObject = QObject::staticMetaObject();
+    static const QUParameter param_slot_0[] = {
+	{ "b", &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod slot_0 = {"onTreeBrowser", 1, param_slot_0 };
+    static const QUParameter param_slot_1[] = {
+	{ "b", &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod slot_1 = {"onObjectEditor", 1, param_slot_1 };
+    static const QUParameter param_slot_2[] = {
+	{ "b", &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod slot_2 = {"onBookmarks", 1, param_slot_2 };
+    static const QUParameter param_slot_3[] = {
+	{ "b", &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod slot_3 = {"onFavorites", 1, param_slot_3 };
+    static const QUParameter param_slot_4[] = {
+	{ "b", &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod slot_4 = {"onGroupObjectEditor", 1, param_slot_4 };
+    static const QUParameter param_slot_5[] = {
+	{ "b", &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod slot_5 = {"onFilters", 1, param_slot_5 };
+    static const QUParameter param_slot_6[] = {
+	{ "b", &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod slot_6 = {"onAdvancedCopyPaste", 1, param_slot_6 };
+    static const QUParameter param_slot_7[] = {
+	{ "b", &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod slot_7 = {"onConsole", 1, param_slot_7 };
+    static const QUParameter param_slot_8[] = {
+	{ "b", &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod slot_8 = {"onGameWindow", 1, param_slot_8 };
+    static const QUParameter param_slot_9[] = {
+	{ "b", &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod slot_9 = {"onRegionsView", 1, param_slot_9 };
+    static const QUParameter param_slot_10[] = {
+	{ "b", &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod slot_10 = {"onStackTool", 1, param_slot_10 };
+    static const QUParameter param_slot_11[] = {
+	{ "b", &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod slot_11 = {"onFileServerTree", 1, param_slot_11 };
+    static const QUParameter param_slot_12[] = {
+	{ "b", &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod slot_12 = {"onTerrainDock", 1, param_slot_12 };
+    static const QMetaData slot_tbl[] = {
+	{ "onTreeBrowser(bool)", &slot_0, QMetaData::Private },
+	{ "onObjectEditor(bool)", &slot_1, QMetaData::Private },
+	{ "onBookmarks(bool)", &slot_2, QMetaData::Private },
+	{ "onFavorites(bool)", &slot_3, QMetaData::Private },
+	{ "onGroupObjectEditor(bool)", &slot_4, QMetaData::Private },
+	{ "onFilters(bool)", &slot_5, QMetaData::Private },
+	{ "onAdvancedCopyPaste(bool)", &slot_6, QMetaData::Private },
+	{ "onConsole(bool)", &slot_7, QMetaData::Private },
+	{ "onGameWindow(bool)", &slot_8, QMetaData::Private },
+	{ "onRegionsView(bool)", &slot_9, QMetaData::Private },
+	{ "onStackTool(bool)", &slot_10, QMetaData::Private },
+	{ "onFileServerTree(bool)", &slot_11, QMetaData::Private },
+	{ "onTerrainDock(bool)", &slot_12, QMetaData::Private }
+    };
+    metaObj = QMetaObject::new_metaobject(
+	"ActionsWindow", parentObject,
+	slot_tbl, 13,
+	0, 0,
+#ifndef QT_NO_PROPERTIES
+	0, 0,
+	0, 0,
+#endif // QT_NO_PROPERTIES
+	0, 0 );
+    cleanUp_ActionsWindow.setMetaObject( metaObj );
+    return metaObj;
+}
+
+void* ActionsWindow::qt_cast( const char* clname )
+{
+    if ( !qstrcmp( clname, "ActionsWindow" ) )
+	return this;
+    if ( !qstrcmp( clname, "Singleton<ActionsWindow>" ) )
+	return (Singleton<ActionsWindow>*)this;
+    return QObject::qt_cast( clname );
+}
+
+bool ActionsWindow::qt_invoke( int _id, QUObject* _o )
+{
+    switch ( _id - staticMetaObject()->slotOffset() ) {
+    case 0: onTreeBrowser((bool)static_QUType_bool.get(_o+1)); break;
+    case 1: onObjectEditor((bool)static_QUType_bool.get(_o+1)); break;
+    case 2: onBookmarks((bool)static_QUType_bool.get(_o+1)); break;
+    case 3: onFavorites((bool)static_QUType_bool.get(_o+1)); break;
+    case 4: onGroupObjectEditor((bool)static_QUType_bool.get(_o+1)); break;
+    case 5: onFilters((bool)static_QUType_bool.get(_o+1)); break;
+    case 6: onAdvancedCopyPaste((bool)static_QUType_bool.get(_o+1)); break;
+    case 7: onConsole((bool)static_QUType_bool.get(_o+1)); break;
+    case 8: onGameWindow((bool)static_QUType_bool.get(_o+1)); break;
+    case 9: onRegionsView((bool)static_QUType_bool.get(_o+1)); break;
+    case 10: onStackTool((bool)static_QUType_bool.get(_o+1)); break;
+    case 11: onFileServerTree((bool)static_QUType_bool.get(_o+1)); break;
+    case 12: onTerrainDock((bool)static_QUType_bool.get(_o+1)); break;
+    default:
+	return QObject::qt_invoke( _id, _o );
+    }
+    return TRUE;
+}
+
+bool ActionsWindow::qt_emit( int _id, QUObject* _o )
+{
+    return QObject::qt_emit(_id,_o);
+}
+#ifndef QT_NO_PROPERTIES
+
+bool ActionsWindow::qt_property( int id, int f, QVariant* v)
+{
+    return QObject::qt_property( id, f, v);
+}
+
+bool ActionsWindow::qt_static_property( QObject* , int , int , QVariant* ){ return FALSE; }
+#endif // QT_NO_PROPERTIES

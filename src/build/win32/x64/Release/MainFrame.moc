@@ -1,0 +1,186 @@
+/****************************************************************************
+** MainFrame meta object code from reading C++ file 'MainFrame.h'
+**
+** Created: Thu Jul 23 03:18:10 2026
+**      by: The Qt MOC ($Id: $)
+**
+** WARNING! All changes made in this file will be lost!
+*****************************************************************************/
+
+#include <qmetaobject.h>
+#include <qapplication.h>
+
+#include <private/qucomextra_p.h>
+#if !defined(Q_MOC_OUTPUT_REVISION) || (Q_MOC_OUTPUT_REVISION != 26)
+#error "This file was generated using the moc from 3.3.4. It"
+#error "cannot be used with the include files from this version of Qt."
+#error "(The moc has changed too much.)"
+#endif
+
+const char *MainFrame::className() const
+{
+    return "MainFrame";
+}
+
+QMetaObject *MainFrame::metaObj = 0;
+static QMetaObjectCleanUp cleanUp_MainFrame( "MainFrame", &MainFrame::staticMetaObject );
+
+#ifndef QT_NO_TRANSLATION
+QString MainFrame::tr( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "MainFrame", s, c, QApplication::DefaultCodec );
+    else
+	return QString::fromLatin1( s );
+}
+#ifndef QT_NO_TRANSLATION_UTF8
+QString MainFrame::trUtf8( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "MainFrame", s, c, QApplication::UnicodeUTF8 );
+    else
+	return QString::fromUtf8( s );
+}
+#endif // QT_NO_TRANSLATION_UTF8
+
+#endif // QT_NO_TRANSLATION
+
+QMetaObject* MainFrame::staticMetaObject()
+{
+    if ( metaObj )
+	return metaObj;
+    QMetaObject* parentObject = QMainWindow::staticMetaObject();
+    static const QUParameter param_slot_0[] = {
+	{ 0, &static_QUType_bool, 0, QUParameter::Out },
+	{ 0, &static_QUType_ptr, "QObject", QUParameter::In },
+	{ "ev", &static_QUType_ptr, "QEvent", QUParameter::In }
+    };
+    static const QUMethod slot_0 = {"eventFilter", 3, param_slot_0 };
+    static const QUMethod slot_1 = {"updateBookmarksMenu", 0, 0 };
+    static const QUMethod slot_2 = {"updateGameMenu", 0, 0 };
+    static const QUMethod slot_3 = {"onFileExit", 0, 0 };
+    static const QMetaData slot_tbl[] = {
+	{ "eventFilter(QObject*,QEvent*)", &slot_0, QMetaData::Public },
+	{ "updateBookmarksMenu()", &slot_1, QMetaData::Private },
+	{ "updateGameMenu()", &slot_2, QMetaData::Private },
+	{ "onFileExit()", &slot_3, QMetaData::Private }
+    };
+    metaObj = QMetaObject::new_metaobject(
+	"MainFrame", parentObject,
+	slot_tbl, 4,
+	0, 0,
+#ifndef QT_NO_PROPERTIES
+	0, 0,
+	0, 0,
+#endif // QT_NO_PROPERTIES
+	0, 0 );
+    cleanUp_MainFrame.setMetaObject( metaObj );
+    return metaObj;
+}
+
+void* MainFrame::qt_cast( const char* clname )
+{
+    if ( !qstrcmp( clname, "MainFrame" ) )
+	return this;
+    return QMainWindow::qt_cast( clname );
+}
+
+bool MainFrame::qt_invoke( int _id, QUObject* _o )
+{
+    switch ( _id - staticMetaObject()->slotOffset() ) {
+    case 0: static_QUType_bool.set(_o,eventFilter((QObject*)static_QUType_ptr.get(_o+1),(QEvent*)static_QUType_ptr.get(_o+2))); break;
+    case 1: updateBookmarksMenu(); break;
+    case 2: updateGameMenu(); break;
+    case 3: onFileExit(); break;
+    default:
+	return QMainWindow::qt_invoke( _id, _o );
+    }
+    return TRUE;
+}
+
+bool MainFrame::qt_emit( int _id, QUObject* _o )
+{
+    return QMainWindow::qt_emit(_id,_o);
+}
+#ifndef QT_NO_PROPERTIES
+
+bool MainFrame::qt_property( int id, int f, QVariant* v)
+{
+    return QMainWindow::qt_property( id, f, v);
+}
+
+bool MainFrame::qt_static_property( QObject* , int , int , QVariant* ){ return FALSE; }
+#endif // QT_NO_PROPERTIES
+
+
+const char *GodClientApplication::className() const
+{
+    return "GodClientApplication";
+}
+
+QMetaObject *GodClientApplication::metaObj = 0;
+static QMetaObjectCleanUp cleanUp_GodClientApplication( "GodClientApplication", &GodClientApplication::staticMetaObject );
+
+#ifndef QT_NO_TRANSLATION
+QString GodClientApplication::tr( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "GodClientApplication", s, c, QApplication::DefaultCodec );
+    else
+	return QString::fromLatin1( s );
+}
+#ifndef QT_NO_TRANSLATION_UTF8
+QString GodClientApplication::trUtf8( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "GodClientApplication", s, c, QApplication::UnicodeUTF8 );
+    else
+	return QString::fromUtf8( s );
+}
+#endif // QT_NO_TRANSLATION_UTF8
+
+#endif // QT_NO_TRANSLATION
+
+QMetaObject* GodClientApplication::staticMetaObject()
+{
+    if ( metaObj )
+	return metaObj;
+    QMetaObject* parentObject = QApplication::staticMetaObject();
+    metaObj = QMetaObject::new_metaobject(
+	"GodClientApplication", parentObject,
+	0, 0,
+	0, 0,
+#ifndef QT_NO_PROPERTIES
+	0, 0,
+	0, 0,
+#endif // QT_NO_PROPERTIES
+	0, 0 );
+    cleanUp_GodClientApplication.setMetaObject( metaObj );
+    return metaObj;
+}
+
+void* GodClientApplication::qt_cast( const char* clname )
+{
+    if ( !qstrcmp( clname, "GodClientApplication" ) )
+	return this;
+    return QApplication::qt_cast( clname );
+}
+
+bool GodClientApplication::qt_invoke( int _id, QUObject* _o )
+{
+    return QApplication::qt_invoke(_id,_o);
+}
+
+bool GodClientApplication::qt_emit( int _id, QUObject* _o )
+{
+    return QApplication::qt_emit(_id,_o);
+}
+#ifndef QT_NO_PROPERTIES
+
+bool GodClientApplication::qt_property( int id, int f, QVariant* v)
+{
+    return QApplication::qt_property( id, f, v);
+}
+
+bool GodClientApplication::qt_static_property( QObject* , int , int , QVariant* ){ return FALSE; }
+#endif // QT_NO_PROPERTIES

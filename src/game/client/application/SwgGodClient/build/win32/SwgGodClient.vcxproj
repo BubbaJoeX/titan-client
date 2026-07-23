@@ -376,6 +376,11 @@
       <Culture>0x0409</Culture>
     </ResourceCompile>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>..\..\..\..\..\..\engine\shared\library\sharedCompression\include\public;..\..\..\..\..\..\engine\shared\library\sharedLog\include\public;..\..\..\..\..\..\game\shared\application\SwgFileControl\src\shared;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\..\..\..\external\3rd\library\vivoxSharedWrapper\Vivox.cpp">
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\..\..\..\..\external\3rd\library\vivoxSharedWrapper;..\..\..\..\..\..\external\3rd\library\vivox\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -1506,6 +1511,276 @@
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
     </ClCompile>
+    <ClCompile Include="..\..\src\AdvancedCopyPasteWidget.cpp" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="..\..\src\MakeGroundSpawnerDialog.cpp" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="..\..\src\ActionsFileControl.cpp" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="..\..\src\FileServerTreeWindow.cpp" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="..\..\src\TemplateEditorWindow.cpp" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="..\..\src\DatatableEditorWindow.cpp" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="..\..\src\BuildoutEditorWindow.cpp" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\..\game\shared\application\SwgFileControl\src\shared\FirstSwgFileControl.cpp" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">NotUsing</PrecompiledHeader>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\..\game\shared\application\SwgFileControl\src\shared\ConfigFileControl.cpp" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">NotUsing</PrecompiledHeader>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\..\game\shared\application\SwgFileControl\src\shared\FileControlClient.cpp" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">NotUsing</PrecompiledHeader>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\..\game\shared\application\SwgFileControl\src\shared\FileControlConnection.cpp" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">NotUsing</PrecompiledHeader>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\..\game\shared\application\SwgFileControl\src\shared\FileControlQueue.cpp" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">NotUsing</PrecompiledHeader>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\..\game\shared\application\SwgFileControl\src\shared\FileControlReloadHandler.cpp" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">NotUsing</PrecompiledHeader>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\..\game\shared\application\SwgFileControl\src\shared\FileControlServer.cpp" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">NotUsing</PrecompiledHeader>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\..\game\shared\application\SwgFileControl\src\shared\HotReloadManager.cpp" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">NotUsing</PrecompiledHeader>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\src\GodClientTheme.cpp" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="..\..\src\ObjvarEditDialog.cpp" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"></PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'"></PrecompiledHeader>
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Level3</WarningLevel>
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Level3</WarningLevel>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\src\StackerTool.cpp" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="..\..\src\TerrainDock.cpp" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="..\..\src\EnvironmentEditorWindow.cpp" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="..\..\src\ShaderFamilyEditorWindow.cpp" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="..\..\src\FloraFamilyEditorWindow.cpp" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="..\..\src\RadialFamilyEditorWindow.cpp" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="..\..\src\BitmapFamilyEditorWindow.cpp" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="..\..\src\GodClientTerrainEditor.cpp" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">SwgGodClient/FirstSwgGodClient.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="$(OutDir)BaseStackerTool_r.cpp" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">true</ExcludedFromBuild>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"></PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'"></PrecompiledHeader>
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Level3</WarningLevel>
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Level3</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="$(OutDir)BaseTerrainDock_r.cpp" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">true</ExcludedFromBuild>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"></PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'"></PrecompiledHeader>
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Level3</WarningLevel>
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Level3</WarningLevel>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\..\..\compile\win32\SwgGodClient\Debug\BaseBookmarkBrowser.h" />
@@ -2338,6 +2613,362 @@
       <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+    </CustomBuild>
+    <ClInclude Include="..\..\..\..\..\..\game\shared\application\SwgFileControl\src\shared\ConfigFileControl.h" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" />
+    <ClInclude Include="..\..\..\..\..\..\game\shared\application\SwgFileControl\src\shared\FileControlClient.h" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" />
+    <ClInclude Include="..\..\..\..\..\..\game\shared\application\SwgFileControl\src\shared\FileControlConnection.h" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" />
+    <ClInclude Include="..\..\..\..\..\..\game\shared\application\SwgFileControl\src\shared\FileControlQueue.h" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" />
+    <ClInclude Include="..\..\..\..\..\..\game\shared\application\SwgFileControl\src\shared\FileControlReloadHandler.h" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" />
+    <ClInclude Include="..\..\..\..\..\..\game\shared\application\SwgFileControl\src\shared\FileControlServer.h" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" />
+    <ClInclude Include="..\..\..\..\..\..\game\shared\application\SwgFileControl\src\shared\FirstSwgFileControl.h" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" />
+    <ClInclude Include="..\..\..\..\..\..\game\shared\application\SwgFileControl\src\shared\HotReloadManager.h" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" />
+    <ClInclude Include="..\..\src\GodClientTheme.h" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" />
+    <ClInclude Include="..\..\src\GodClientTerrainEditor.h" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" />
+    <ClInclude Include="$(OutDir)BaseStackerTool.h" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" />
+    <ClInclude Include="$(OutDir)BaseTerrainDock.h" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" />
+    <CustomBuild Include="..\..\src\MakeGroundSpawnerDialog.h" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="..\..\src\AdvancedCopyPasteWidget.h" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="..\..\src\ActionsFileControl.h" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="..\..\src\FileServerTreeWindow.h" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="..\..\src\TemplateEditorWindow.h" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="..\..\src\DatatableEditorWindow.h" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="..\..\src\BuildoutEditorWindow.h" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="..\..\src\StackerTool.h" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="..\..\src\TerrainDock.h" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="..\..\src\EnvironmentEditorWindow.h" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="..\..\src\ShaderFamilyEditorWindow.h" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="..\..\src\FloraFamilyEditorWindow.h" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="..\..\src\RadialFamilyEditorWindow.h" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="..\..\src\BitmapFamilyEditorWindow.h" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">moc %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">moc %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc -i %(FullPath) -o $(TargetDir)%(Filename).moc</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(TargetDir)%(Filename).moc;%(Outputs)</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="..\..\src\shared\ui\BaseStackerTool.ui" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">ui %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">ui %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\uic -o $(TargetDir)%(Filename).h %(FullPath)
+    ..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\uic -o $(TargetDir)%(Filename)_d.cpp -impl $(TargetDir)%(Filename).h %(FullPath)
+    ..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc  $(TargetDir)%(Filename).h &gt;&gt; $(TargetDir)%(Filename)_d.cpp</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\uic -o $(TargetDir)%(Filename).h %(FullPath)
+    ..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\uic -o $(TargetDir)%(Filename)_d.cpp -impl $(TargetDir)%(Filename).h %(FullPath)
+    ..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc  $(TargetDir)%(Filename).h &gt;&gt; $(TargetDir)%(Filename)_d.cpp</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(TargetDir)%(Filename).h;$(TargetDir)%(Filename)_d.cpp;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(TargetDir)%(Filename).h;$(TargetDir)%(Filename)_d.cpp;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">ui %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">ui %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\uic -o $(TargetDir)%(Filename).h %(FullPath)
+    ..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\uic -o $(TargetDir)%(Filename)_o.cpp -impl $(TargetDir)%(Filename).h %(FullPath)
+    ..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc  $(TargetDir)%(Filename).h &gt;&gt; $(TargetDir)%(Filename)_o.cpp</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\uic -o $(TargetDir)%(Filename).h %(FullPath)
+    ..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\uic -o $(TargetDir)%(Filename)_o.cpp -impl $(TargetDir)%(Filename).h %(FullPath)
+    ..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc  $(TargetDir)%(Filename).h &gt;&gt; $(TargetDir)%(Filename)_o.cpp</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">$(TargetDir)%(Filename).h;$(TargetDir)%(Filename)_o.cpp;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">$(TargetDir)%(Filename).h;$(TargetDir)%(Filename)_o.cpp;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">ui %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">ui %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\uic -o $(TargetDir)%(Filename).h %(FullPath)
+    ..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\uic -o $(TargetDir)%(Filename)_r.cpp -impl $(TargetDir)%(Filename).h %(FullPath)
+    ..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc  $(TargetDir)%(Filename).h &gt;&gt; $(TargetDir)%(Filename)_r.cpp</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\uic -o $(TargetDir)%(Filename).h %(FullPath)
+    ..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\uic -o $(TargetDir)%(Filename)_r.cpp -impl $(TargetDir)%(Filename).h %(FullPath)
+    ..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc  $(TargetDir)%(Filename).h &gt;&gt; $(TargetDir)%(Filename)_r.cpp</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(TargetDir)%(Filename).h;$(TargetDir)%(Filename)_r.cpp;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(TargetDir)%(Filename).h;$(TargetDir)%(Filename)_r.cpp;%(Outputs)</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="..\..\src\shared\ui\BaseTerrainDock.ui" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">ui %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">ui %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\uic -o $(TargetDir)%(Filename).h %(FullPath)
+    ..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\uic -o $(TargetDir)%(Filename)_d.cpp -impl $(TargetDir)%(Filename).h %(FullPath)
+    ..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc  $(TargetDir)%(Filename).h &gt;&gt; $(TargetDir)%(Filename)_d.cpp</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\uic -o $(TargetDir)%(Filename).h %(FullPath)
+    ..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\uic -o $(TargetDir)%(Filename)_d.cpp -impl $(TargetDir)%(Filename).h %(FullPath)
+    ..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc  $(TargetDir)%(Filename).h &gt;&gt; $(TargetDir)%(Filename)_d.cpp</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(TargetDir)%(Filename).h;$(TargetDir)%(Filename)_d.cpp;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(TargetDir)%(Filename).h;$(TargetDir)%(Filename)_d.cpp;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">ui %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">ui %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\uic -o $(TargetDir)%(Filename).h %(FullPath)
+    ..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\uic -o $(TargetDir)%(Filename)_o.cpp -impl $(TargetDir)%(Filename).h %(FullPath)
+    ..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc  $(TargetDir)%(Filename).h &gt;&gt; $(TargetDir)%(Filename)_o.cpp</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\uic -o $(TargetDir)%(Filename).h %(FullPath)
+    ..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\uic -o $(TargetDir)%(Filename)_o.cpp -impl $(TargetDir)%(Filename).h %(FullPath)
+    ..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc  $(TargetDir)%(Filename).h &gt;&gt; $(TargetDir)%(Filename)_o.cpp</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">$(TargetDir)%(Filename).h;$(TargetDir)%(Filename)_o.cpp;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">$(TargetDir)%(Filename).h;$(TargetDir)%(Filename)_o.cpp;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">ui %(Filename)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">ui %(Filename)</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\uic -o $(TargetDir)%(Filename).h %(FullPath)
+    ..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\uic -o $(TargetDir)%(Filename)_r.cpp -impl $(TargetDir)%(Filename).h %(FullPath)
+    ..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc  $(TargetDir)%(Filename).h &gt;&gt; $(TargetDir)%(Filename)_r.cpp</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\uic -o $(TargetDir)%(Filename).h %(FullPath)
+    ..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\uic -o $(TargetDir)%(Filename)_r.cpp -impl $(TargetDir)%(Filename).h %(FullPath)
+    ..\..\..\..\..\..\external\3rd\library\qt\3.3.4\bin\moc  $(TargetDir)%(Filename).h &gt;&gt; $(TargetDir)%(Filename)_r.cpp</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(TargetDir)%(Filename).h;$(TargetDir)%(Filename)_r.cpp;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(TargetDir)%(Filename).h;$(TargetDir)%(Filename)_r.cpp;%(Outputs)</Outputs>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>

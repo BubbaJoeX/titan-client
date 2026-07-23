@@ -1,0 +1,101 @@
+/****************************************************************************
+** SystemMessageWidget meta object code from reading C++ file 'SystemMessageWidget.h'
+**
+** Created: Thu Jul 23 03:18:10 2026
+**      by: The Qt MOC ($Id: $)
+**
+** WARNING! All changes made in this file will be lost!
+*****************************************************************************/
+
+#include <qmetaobject.h>
+#include <qapplication.h>
+
+#include <private/qucomextra_p.h>
+#if !defined(Q_MOC_OUTPUT_REVISION) || (Q_MOC_OUTPUT_REVISION != 26)
+#error "This file was generated using the moc from 3.3.4. It"
+#error "cannot be used with the include files from this version of Qt."
+#error "(The moc has changed too much.)"
+#endif
+
+const char *SystemMessageWidget::className() const
+{
+    return "SystemMessageWidget";
+}
+
+QMetaObject *SystemMessageWidget::metaObj = 0;
+static QMetaObjectCleanUp cleanUp_SystemMessageWidget( "SystemMessageWidget", &SystemMessageWidget::staticMetaObject );
+
+#ifndef QT_NO_TRANSLATION
+QString SystemMessageWidget::tr( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "SystemMessageWidget", s, c, QApplication::DefaultCodec );
+    else
+	return QString::fromLatin1( s );
+}
+#ifndef QT_NO_TRANSLATION_UTF8
+QString SystemMessageWidget::trUtf8( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "SystemMessageWidget", s, c, QApplication::UnicodeUTF8 );
+    else
+	return QString::fromUtf8( s );
+}
+#endif // QT_NO_TRANSLATION_UTF8
+
+#endif // QT_NO_TRANSLATION
+
+QMetaObject* SystemMessageWidget::staticMetaObject()
+{
+    if ( metaObj )
+	return metaObj;
+    QMetaObject* parentObject = BaseSystemMessageWidget::staticMetaObject();
+    static const QUMethod slot_0 = {"sendMessage", 0, 0 };
+    static const QMetaData slot_tbl[] = {
+	{ "sendMessage()", &slot_0, QMetaData::Public }
+    };
+    metaObj = QMetaObject::new_metaobject(
+	"SystemMessageWidget", parentObject,
+	slot_tbl, 1,
+	0, 0,
+#ifndef QT_NO_PROPERTIES
+	0, 0,
+	0, 0,
+#endif // QT_NO_PROPERTIES
+	0, 0 );
+    cleanUp_SystemMessageWidget.setMetaObject( metaObj );
+    return metaObj;
+}
+
+void* SystemMessageWidget::qt_cast( const char* clname )
+{
+    if ( !qstrcmp( clname, "SystemMessageWidget" ) )
+	return this;
+    if ( !qstrcmp( clname, "MessageDispatch::Receiver" ) )
+	return (MessageDispatch::Receiver*)this;
+    return BaseSystemMessageWidget::qt_cast( clname );
+}
+
+bool SystemMessageWidget::qt_invoke( int _id, QUObject* _o )
+{
+    switch ( _id - staticMetaObject()->slotOffset() ) {
+    case 0: sendMessage(); break;
+    default:
+	return BaseSystemMessageWidget::qt_invoke( _id, _o );
+    }
+    return TRUE;
+}
+
+bool SystemMessageWidget::qt_emit( int _id, QUObject* _o )
+{
+    return BaseSystemMessageWidget::qt_emit(_id,_o);
+}
+#ifndef QT_NO_PROPERTIES
+
+bool SystemMessageWidget::qt_property( int id, int f, QVariant* v)
+{
+    return BaseSystemMessageWidget::qt_property( id, f, v);
+}
+
+bool SystemMessageWidget::qt_static_property( QObject* , int , int , QVariant* ){ return FALSE; }
+#endif // QT_NO_PROPERTIES

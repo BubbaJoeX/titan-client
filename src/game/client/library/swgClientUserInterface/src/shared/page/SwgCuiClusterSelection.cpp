@@ -120,6 +120,25 @@ namespace
 
 	//----------------------------------------------------------------------
 
+	bool isEligibleForCharacterCreation(const CuiLoginManagerClusterInfo & clusterInfo)
+	{
+#if PRODUCTION == 1
+		if (clusterInfo.disableCharacterCreation)
+			return false;
+#endif
+
+		return clusterInfo.id != 0
+			&& clusterInfo.up
+			&& !clusterInfo.loading
+			&& (!clusterInfo.locked || clusterInfo.isAdmin)
+			&& (!clusterInfo.restricted || clusterInfo.isAdmin)
+			&& (!clusterInfo.isFull || clusterInfo.isAdmin)
+			&& !clusterInfo.getHost().empty()
+			&& clusterInfo.getPort() != 0;
+	}
+
+	//----------------------------------------------------------------------
+
 	int getTimeZoneDistance(int remoteTimeZoneSeconds)
 	{
 		int myTimeZoneSeconds = Clock::getTimeZone();
@@ -433,7 +452,8 @@ void SwgCuiClusterSelection::refreshList ()
 		//-----------------------------------------------------------------
 		//-- see if we can autoconnect to this one
 
-		if (!m_autoConnected && ConfigClientGame::getAutoConnectToCentralServer ())
+		if (!m_autoConnected && ConfigClientGame::getAutoConnectToCentralServer () &&
+			isEligibleForCharacterCreation (clusterInfo))
 		{
 			const std::string & defaultServer = ConfigClientGame::getCentralServerName ();
 			if (!_stricmp (defaultServer.c_str (), clusterInfo.name.c_str ()))
@@ -447,8 +467,55 @@ void SwgCuiClusterSelection::refreshList ()
 	} //lint !e429 //data
 
 	updateServerStatus ();
+	tryAutoSelectCreationCluster ();
 
 	//TODO smart updating of selected row if nothing selected (to handle clusters going up/down, autoselect based on population, etc.)
+}
+
+//----------------------------------------------------------------------
+
+void SwgCuiClusterSelection::tryAutoSelectCreationCluster ()
+{
+	if (m_autoConnected || m_waitingForConnection || m_proceed || m_dropFromCluster ||
+		CuiLoginManager::getConnectedClusterId () != 0)
+		return;
+
+	CuiLoginManager::ClusterInfoVector clusters;
+	CuiLoginManager::getClusterInfo (clusters);
+
+	uint32 eligibleClusterId = 0;
+	int eligibleCount = 0;
+	for (CuiLoginManager::ClusterInfoVector::const_iterator cluster = clusters.begin (); cluster != clusters.end (); ++cluster)
+	{
+		if (isEligibleForCharacterCreation (*cluster))
+		{
+			eligibleClusterId = cluster->id;
+			++eligibleCount;
+			if (eligibleCount > 1)
+				return;
+		}
+	}
+
+	// A complete LoginClusterStatus snapshot supplies up/host/port. Until then,
+	// no cluster qualifies, so transient empty/loading lists remain on this UI.
+	if (eligibleCount != 1)
+		return;
+
+	const int rowCount = m_model->GetRowCount ();
+	for (int row = 0; row < rowCount; ++row)
+	{
+		const UIData * const data = m_model->GetCellDataVisual (row, C_name);
+		long clusterId = 0;
+		if (data && data->GetPropertyLong (Properties::ClusterId, clusterId) &&
+			static_cast<uint32>(clusterId) == eligibleClusterId)
+		{
+			m_autoConnected = true;
+			m_table->SelectRow (row);
+			REPORT_LOG(true, ("Character creation auto-selected cluster %u\n", static_cast<unsigned int>(eligibleClusterId)));
+			m_okButton->Press ();
+			return;
+		}
+	}
 }
 
 //----------------------------------------------------------------------
@@ -854,13 +921,12 @@ void SwgCuiClusterSelection::update (float deltaTimeSecs)
 			return;
 		}
 
-		// Use AvatarSimple (/AvSimple) for first-time creation. AvatarCreation
-		// eagerly loadAllPlayerModels() and crashes on x64 (ExceptionHandler) while
-		// preloading player appearance LODs.
-		if (CuiLoginManager::getAvatarCount() == 0)
-			CuiTransition::startTransition(CuiMediatorTypes::ClusterSelection, CuiMediatorTypes::AvatarSimple);
-		else
-			CuiTransition::startTransition(CuiMediatorTypes::ClusterSelection, CuiMediatorTypes::AvatarSelection);
+		// ClusterSelection is entered from AvatarSelection's Create action. Continue
+		// to AvatarSimple even when this account already has characters; routing
+		// existing accounts back to AvatarSelection made creation appear to abort.
+		REPORT_LOG(true, ("Character creation navigation station %u cluster %u entering AvatarSimple\n",
+			static_cast<unsigned int>(GameNetwork::getStationId()), static_cast<unsigned int>(clusterId)));
+		CuiTransition::startTransition(CuiMediatorTypes::ClusterSelection, CuiMediatorTypes::AvatarSimple);
 
 		GameNetwork::disconnectLoginServer ();
 

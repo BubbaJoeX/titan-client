@@ -1,0 +1,533 @@
+/****************************************************************************
+** TerrainDock meta object code from reading C++ file 'TerrainDock.h'
+**
+** Created: Thu Jul 23 03:18:10 2026
+**      by: The Qt MOC ($Id: $)
+**
+** WARNING! All changes made in this file will be lost!
+*****************************************************************************/
+
+#include <qmetaobject.h>
+#include <qapplication.h>
+
+#include <private/qucomextra_p.h>
+#if !defined(Q_MOC_OUTPUT_REVISION) || (Q_MOC_OUTPUT_REVISION != 26)
+#error "This file was generated using the moc from 3.3.4. It"
+#error "cannot be used with the include files from this version of Qt."
+#error "(The moc has changed too much.)"
+#endif
+
+const char *TerrainDock::className() const
+{
+    return "TerrainDock";
+}
+
+QMetaObject *TerrainDock::metaObj = 0;
+static QMetaObjectCleanUp cleanUp_TerrainDock( "TerrainDock", &TerrainDock::staticMetaObject );
+
+#ifndef QT_NO_TRANSLATION
+QString TerrainDock::tr( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "TerrainDock", s, c, QApplication::DefaultCodec );
+    else
+	return QString::fromLatin1( s );
+}
+#ifndef QT_NO_TRANSLATION_UTF8
+QString TerrainDock::trUtf8( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "TerrainDock", s, c, QApplication::UnicodeUTF8 );
+    else
+	return QString::fromUtf8( s );
+}
+#endif // QT_NO_TRANSLATION_UTF8
+
+#endif // QT_NO_TRANSLATION
+
+QMetaObject* TerrainDock::staticMetaObject()
+{
+    if ( metaObj )
+	return metaObj;
+    QMetaObject* parentObject = BaseTerrainDock::staticMetaObject();
+    static const QUMethod slot_0 = {"onToolRaise", 0, 0 };
+    static const QUMethod slot_1 = {"onToolLower", 0, 0 };
+    static const QUMethod slot_2 = {"onToolFlatten", 0, 0 };
+    static const QUMethod slot_3 = {"onToolSmooth", 0, 0 };
+    static const QUMethod slot_4 = {"onToolNoise", 0, 0 };
+    static const QUMethod slot_5 = {"onToolSetHeight", 0, 0 };
+    static const QUMethod slot_6 = {"onToolPaintShader", 0, 0 };
+    static const QUMethod slot_7 = {"onToolPaintFlora", 0, 0 };
+    static const QUMethod slot_8 = {"onToolPlaceWater", 0, 0 };
+    static const QUMethod slot_9 = {"onToolPlaceRadial", 0, 0 };
+    static const QUMethod slot_10 = {"onToolPlaceRibbon", 0, 0 };
+    static const QUMethod slot_11 = {"onToolPlaceRoad", 0, 0 };
+    static const QUMethod slot_12 = {"onToolPlaceEnvironment", 0, 0 };
+    static const QUMethod slot_13 = {"onToolExcludeTerrain", 0, 0 };
+    static const QUMethod slot_14 = {"onToolBoundaryPolygon", 0, 0 };
+    static const QUMethod slot_15 = {"onToolBoundaryPolyline", 0, 0 };
+    static const QUMethod slot_16 = {"onToolBoundaryPolyRoad", 0, 0 };
+    static const QUMethod slot_17 = {"onToolStampBitmap", 0, 0 };
+    static const QUMethod slot_18 = {"onToolApplyEnvironmentRegion", 0, 0 };
+    static const QUMethod slot_19 = {"onOpenEnvironmentEditor", 0, 0 };
+    static const QUMethod slot_20 = {"onOpenShaderFamilyEditor", 0, 0 };
+    static const QUMethod slot_21 = {"onOpenFloraFamilyEditor", 0, 0 };
+    static const QUMethod slot_22 = {"onOpenRadialFamilyEditor", 0, 0 };
+    static const QUMethod slot_23 = {"onOpenBitmapFamilyEditor", 0, 0 };
+    static const QUMethod slot_24 = {"onApplyEnvironmentToRegion", 0, 0 };
+    static const QUMethod slot_25 = {"onToolSelect", 0, 0 };
+    static const QUParameter param_slot_26[] = {
+	{ "value", &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod slot_26 = {"onBrushSizeChanged", 1, param_slot_26 };
+    static const QUParameter param_slot_27[] = {
+	{ "value", &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod slot_27 = {"onBrushStrengthChanged", 1, param_slot_27 };
+    static const QUParameter param_slot_28[] = {
+	{ "value", &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod slot_28 = {"onRaiseLowerSpeedChanged", 1, param_slot_28 };
+    static const QUParameter param_slot_29[] = {
+	{ "value", &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod slot_29 = {"onRaiseLowerBiasChanged", 1, param_slot_29 };
+    static const QUParameter param_slot_30[] = {
+	{ "value", &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod slot_30 = {"onRaiseLowerClickRateChanged", 1, param_slot_30 };
+    static const QUParameter param_slot_31[] = {
+	{ "value", &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod slot_31 = {"onRaiseLowerJitterChanged", 1, param_slot_31 };
+    static const QUParameter param_slot_32[] = {
+	{ "index", &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod slot_32 = {"onBrushShapeChanged", 1, param_slot_32 };
+    static const QUParameter param_slot_33[] = {
+	{ "index", &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod slot_33 = {"onFalloffTypeChanged", 1, param_slot_33 };
+    static const QUParameter param_slot_34[] = {
+	{ "value", &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod slot_34 = {"onBrushFeatherChanged", 1, param_slot_34 };
+    static const QUParameter param_slot_35[] = {
+	{ "item", &static_QUType_ptr, "QListViewItem", QUParameter::In }
+    };
+    static const QUMethod slot_35 = {"onLayerSelectionChanged", 1, param_slot_35 };
+    static const QUParameter param_slot_36[] = {
+	{ "item", &static_QUType_ptr, "QListViewItem", QUParameter::In }
+    };
+    static const QUMethod slot_36 = {"onLayerDoubleClicked", 1, param_slot_36 };
+    static const QUParameter param_slot_37[] = {
+	{ "item", &static_QUType_ptr, "QListViewItem", QUParameter::In }
+    };
+    static const QUMethod slot_37 = {"onShaderSelectionChanged", 1, param_slot_37 };
+    static const QUMethod slot_38 = {"onLoadTerrain", 0, 0 };
+    static const QUMethod slot_39 = {"onSaveTerrain", 0, 0 };
+    static const QUMethod slot_40 = {"onSaveTerrainAs", 0, 0 };
+    static const QUMethod slot_41 = {"onPublishTerrainToLiveServer", 0, 0 };
+    static const QUMethod slot_42 = {"onReloadTerrain", 0, 0 };
+    static const QUMethod slot_43 = {"onUndo", 0, 0 };
+    static const QUMethod slot_44 = {"onRedo", 0, 0 };
+    static const QUMethod slot_45 = {"onClearHistory", 0, 0 };
+    static const QUParameter param_slot_46[] = {
+	{ "enabled", &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod slot_46 = {"onToggleWireframe", 1, param_slot_46 };
+    static const QUParameter param_slot_47[] = {
+	{ "enabled", &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod slot_47 = {"onToggleHeightColors", 1, param_slot_47 };
+    static const QUParameter param_slot_48[] = {
+	{ "enabled", &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod slot_48 = {"onToggleChunkGrid", 1, param_slot_48 };
+    static const QUParameter param_slot_49[] = {
+	{ "enabled", &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod slot_49 = {"onToggleBrushPreview", 1, param_slot_49 };
+    static const QUParameter param_slot_50[] = {
+	{ "text", &static_QUType_QString, 0, QUParameter::In }
+    };
+    static const QUMethod slot_50 = {"onWaterHeightChanged", 1, param_slot_50 };
+    static const QUParameter param_slot_51[] = {
+	{ "index", &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod slot_51 = {"onWaterShaderChanged", 1, param_slot_51 };
+    static const QUMethod slot_52 = {"onApplyWaterChanges", 0, 0 };
+    static const QUParameter param_slot_53[] = {
+	{ "index", &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod slot_53 = {"onFloraFamilyChanged", 1, param_slot_53 };
+    static const QUParameter param_slot_54[] = {
+	{ "index", &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod slot_54 = {"onFloraPlacementModeChanged", 1, param_slot_54 };
+    static const QUParameter param_slot_55[] = {
+	{ "index", &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod slot_55 = {"onRadialGroupChanged", 1, param_slot_55 };
+    static const QUMethod slot_56 = {"onRefreshFromScene", 0, 0 };
+    static const QUParameter param_slot_57[] = {
+	{ "item", &static_QUType_ptr, "QListViewItem", QUParameter::In }
+    };
+    static const QUMethod slot_57 = {"onGlobalShaderSelectionChanged", 1, param_slot_57 };
+    static const QUMethod slot_58 = {"onRescanGlobalShadersClicked", 0, 0 };
+    static const QUMethod slot_59 = {"onAddTerrainScanFolderClicked", 0, 0 };
+    static const QUMethod slot_60 = {"onClearTerrainScanFoldersClicked", 0, 0 };
+    static const QUMethod slot_61 = {"onMergeGlobalShaderIntoSceneClicked", 0, 0 };
+    static const QUParameter param_slot_62[] = {
+	{ "enabled", &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod slot_62 = {"onShaderColorConstantToggled", 1, param_slot_62 };
+    static const QUMethod slot_63 = {"onShaderColorConstantPickClicked", 0, 0 };
+    static const QUMethod slot_64 = {"onSelectRegion", 0, 0 };
+    static const QUMethod slot_65 = {"onCopyRegion", 0, 0 };
+    static const QUMethod slot_66 = {"onPasteRegion", 0, 0 };
+    static const QUMethod slot_67 = {"onFillRegion", 0, 0 };
+    static const QUMethod slot_68 = {"onSaveRegionLay", 0, 0 };
+    static const QUMethod slot_69 = {"onLoadRegionLay", 0, 0 };
+    static const QUMethod slot_70 = {"onImportRegionLayAtCursor", 0, 0 };
+    static const QUParameter param_slot_71[] = {
+	{ "index", &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod slot_71 = {"onRegionShapeChanged", 1, param_slot_71 };
+    static const QUMethod slot_72 = {"onMapTemplateSettingsClicked", 0, 0 };
+    static const QUMethod slot_73 = {"onAddProceduralHeightConstantLayer", 0, 0 };
+    static const QUMethod slot_74 = {"onAddProceduralShaderConstantLayer", 0, 0 };
+    static const QUMethod slot_75 = {"onAddProceduralExcludeFromRegion", 0, 0 };
+    static const QUMethod slot_76 = {"onLayerToggleActive", 0, 0 };
+    static const QUMethod slot_77 = {"onLayerPromote", 0, 0 };
+    static const QUMethod slot_78 = {"onLayerDemote", 0, 0 };
+    static const QUMethod slot_79 = {"onLayerRename", 0, 0 };
+    static const QUMethod slot_80 = {"onBeginRoad", 0, 0 };
+    static const QUMethod slot_81 = {"onBeginRibbon", 0, 0 };
+    static const QUMethod slot_82 = {"onFinalizePolyline", 0, 0 };
+    static const QUMethod slot_83 = {"onCancelPolyline", 0, 0 };
+    static const QUParameter param_slot_84[] = {
+	{ "value", &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod slot_84 = {"onPolylineWidthChanged", 1, param_slot_84 };
+    static const QUParameter param_slot_85[] = {
+	{ "value", &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod slot_85 = {"onPolylineFeatherChanged", 1, param_slot_85 };
+    static const QUParameter param_slot_86[] = {
+	{ "index", &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod slot_86 = {"onPolylineShaderChanged", 1, param_slot_86 };
+    static const QUParameter param_slot_87[] = {
+	{ "enabled", &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod slot_87 = {"onPolylineFixedHeightsToggled", 1, param_slot_87 };
+    static const QUMethod slot_88 = {"onBeginEnvironmentZone", 0, 0 };
+    static const QUMethod slot_89 = {"onFinalizePolygonDraw", 0, 0 };
+    static const QUMethod slot_90 = {"onCancelPolygonDraw", 0, 0 };
+    static const QUParameter param_slot_91[] = {
+	{ "index", &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod slot_91 = {"onEnvironmentFamilyChanged", 1, param_slot_91 };
+    static const QUParameter param_slot_92[] = {
+	{ "index", &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod slot_92 = {"onBitmapStampSelected", 1, param_slot_92 };
+    static const QUParameter param_slot_93[] = {
+	{ "value", &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod slot_93 = {"onBitmapRotationChanged", 1, param_slot_93 };
+    static const QUParameter param_slot_94[] = {
+	{ "value", &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod slot_94 = {"onBitmapScaleChanged", 1, param_slot_94 };
+    static const QUParameter param_slot_95[] = {
+	{ "enabled", &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod slot_95 = {"onBitmapAffectsHeightToggled", 1, param_slot_95 };
+    static const QUParameter param_slot_96[] = {
+	{ "enabled", &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod slot_96 = {"onBitmapAffectsShaderToggled", 1, param_slot_96 };
+    static const QUMethod slot_97 = {"onBrowseImportHeightRaster", 0, 0 };
+    static const QUMethod slot_98 = {"onApplyImportHeightRaster", 0, 0 };
+    static const QUMethod slot_99 = {"onExportToLayer", 0, 0 };
+    static const QUMethod slot_100 = {"onExportPolyline", 0, 0 };
+    static const QUMethod slot_101 = {"onImportPolyline", 0, 0 };
+    static const QUMethod slot_102 = {"clearRegionGeometryAndSelection", 0, 0 };
+    static const QUMethod slot_103 = {"onDeferredRefreshAfterSceneChange", 0, 0 };
+    static const QUMethod slot_104 = {"onDeferredTerrainGeneratorHeavyInvalidate", 0, 0 };
+    static const QUMethod slot_105 = {"onDeferredTerrainGeneratorLiveCommitAfterHeavyApply", 0, 0 };
+    static const QMetaData slot_tbl[] = {
+	{ "onToolRaise()", &slot_0, QMetaData::Public },
+	{ "onToolLower()", &slot_1, QMetaData::Public },
+	{ "onToolFlatten()", &slot_2, QMetaData::Public },
+	{ "onToolSmooth()", &slot_3, QMetaData::Public },
+	{ "onToolNoise()", &slot_4, QMetaData::Public },
+	{ "onToolSetHeight()", &slot_5, QMetaData::Public },
+	{ "onToolPaintShader()", &slot_6, QMetaData::Public },
+	{ "onToolPaintFlora()", &slot_7, QMetaData::Public },
+	{ "onToolPlaceWater()", &slot_8, QMetaData::Public },
+	{ "onToolPlaceRadial()", &slot_9, QMetaData::Public },
+	{ "onToolPlaceRibbon()", &slot_10, QMetaData::Public },
+	{ "onToolPlaceRoad()", &slot_11, QMetaData::Public },
+	{ "onToolPlaceEnvironment()", &slot_12, QMetaData::Public },
+	{ "onToolExcludeTerrain()", &slot_13, QMetaData::Public },
+	{ "onToolBoundaryPolygon()", &slot_14, QMetaData::Public },
+	{ "onToolBoundaryPolyline()", &slot_15, QMetaData::Public },
+	{ "onToolBoundaryPolyRoad()", &slot_16, QMetaData::Public },
+	{ "onToolStampBitmap()", &slot_17, QMetaData::Public },
+	{ "onToolApplyEnvironmentRegion()", &slot_18, QMetaData::Public },
+	{ "onOpenEnvironmentEditor()", &slot_19, QMetaData::Public },
+	{ "onOpenShaderFamilyEditor()", &slot_20, QMetaData::Public },
+	{ "onOpenFloraFamilyEditor()", &slot_21, QMetaData::Public },
+	{ "onOpenRadialFamilyEditor()", &slot_22, QMetaData::Public },
+	{ "onOpenBitmapFamilyEditor()", &slot_23, QMetaData::Public },
+	{ "onApplyEnvironmentToRegion()", &slot_24, QMetaData::Public },
+	{ "onToolSelect()", &slot_25, QMetaData::Public },
+	{ "onBrushSizeChanged(int)", &slot_26, QMetaData::Public },
+	{ "onBrushStrengthChanged(int)", &slot_27, QMetaData::Public },
+	{ "onRaiseLowerSpeedChanged(int)", &slot_28, QMetaData::Public },
+	{ "onRaiseLowerBiasChanged(int)", &slot_29, QMetaData::Public },
+	{ "onRaiseLowerClickRateChanged(int)", &slot_30, QMetaData::Public },
+	{ "onRaiseLowerJitterChanged(int)", &slot_31, QMetaData::Public },
+	{ "onBrushShapeChanged(int)", &slot_32, QMetaData::Public },
+	{ "onFalloffTypeChanged(int)", &slot_33, QMetaData::Public },
+	{ "onBrushFeatherChanged(int)", &slot_34, QMetaData::Public },
+	{ "onLayerSelectionChanged(QListViewItem*)", &slot_35, QMetaData::Public },
+	{ "onLayerDoubleClicked(QListViewItem*)", &slot_36, QMetaData::Public },
+	{ "onShaderSelectionChanged(QListViewItem*)", &slot_37, QMetaData::Public },
+	{ "onLoadTerrain()", &slot_38, QMetaData::Public },
+	{ "onSaveTerrain()", &slot_39, QMetaData::Public },
+	{ "onSaveTerrainAs()", &slot_40, QMetaData::Public },
+	{ "onPublishTerrainToLiveServer()", &slot_41, QMetaData::Public },
+	{ "onReloadTerrain()", &slot_42, QMetaData::Public },
+	{ "onUndo()", &slot_43, QMetaData::Public },
+	{ "onRedo()", &slot_44, QMetaData::Public },
+	{ "onClearHistory()", &slot_45, QMetaData::Public },
+	{ "onToggleWireframe(bool)", &slot_46, QMetaData::Public },
+	{ "onToggleHeightColors(bool)", &slot_47, QMetaData::Public },
+	{ "onToggleChunkGrid(bool)", &slot_48, QMetaData::Public },
+	{ "onToggleBrushPreview(bool)", &slot_49, QMetaData::Public },
+	{ "onWaterHeightChanged(const QString&)", &slot_50, QMetaData::Public },
+	{ "onWaterShaderChanged(int)", &slot_51, QMetaData::Public },
+	{ "onApplyWaterChanges()", &slot_52, QMetaData::Public },
+	{ "onFloraFamilyChanged(int)", &slot_53, QMetaData::Public },
+	{ "onFloraPlacementModeChanged(int)", &slot_54, QMetaData::Public },
+	{ "onRadialGroupChanged(int)", &slot_55, QMetaData::Public },
+	{ "onRefreshFromScene()", &slot_56, QMetaData::Public },
+	{ "onGlobalShaderSelectionChanged(QListViewItem*)", &slot_57, QMetaData::Public },
+	{ "onRescanGlobalShadersClicked()", &slot_58, QMetaData::Public },
+	{ "onAddTerrainScanFolderClicked()", &slot_59, QMetaData::Public },
+	{ "onClearTerrainScanFoldersClicked()", &slot_60, QMetaData::Public },
+	{ "onMergeGlobalShaderIntoSceneClicked()", &slot_61, QMetaData::Public },
+	{ "onShaderColorConstantToggled(bool)", &slot_62, QMetaData::Public },
+	{ "onShaderColorConstantPickClicked()", &slot_63, QMetaData::Public },
+	{ "onSelectRegion()", &slot_64, QMetaData::Public },
+	{ "onCopyRegion()", &slot_65, QMetaData::Public },
+	{ "onPasteRegion()", &slot_66, QMetaData::Public },
+	{ "onFillRegion()", &slot_67, QMetaData::Public },
+	{ "onSaveRegionLay()", &slot_68, QMetaData::Public },
+	{ "onLoadRegionLay()", &slot_69, QMetaData::Public },
+	{ "onImportRegionLayAtCursor()", &slot_70, QMetaData::Public },
+	{ "onRegionShapeChanged(int)", &slot_71, QMetaData::Public },
+	{ "onMapTemplateSettingsClicked()", &slot_72, QMetaData::Public },
+	{ "onAddProceduralHeightConstantLayer()", &slot_73, QMetaData::Public },
+	{ "onAddProceduralShaderConstantLayer()", &slot_74, QMetaData::Public },
+	{ "onAddProceduralExcludeFromRegion()", &slot_75, QMetaData::Public },
+	{ "onLayerToggleActive()", &slot_76, QMetaData::Public },
+	{ "onLayerPromote()", &slot_77, QMetaData::Public },
+	{ "onLayerDemote()", &slot_78, QMetaData::Public },
+	{ "onLayerRename()", &slot_79, QMetaData::Public },
+	{ "onBeginRoad()", &slot_80, QMetaData::Public },
+	{ "onBeginRibbon()", &slot_81, QMetaData::Public },
+	{ "onFinalizePolyline()", &slot_82, QMetaData::Public },
+	{ "onCancelPolyline()", &slot_83, QMetaData::Public },
+	{ "onPolylineWidthChanged(int)", &slot_84, QMetaData::Public },
+	{ "onPolylineFeatherChanged(int)", &slot_85, QMetaData::Public },
+	{ "onPolylineShaderChanged(int)", &slot_86, QMetaData::Public },
+	{ "onPolylineFixedHeightsToggled(bool)", &slot_87, QMetaData::Public },
+	{ "onBeginEnvironmentZone()", &slot_88, QMetaData::Public },
+	{ "onFinalizePolygonDraw()", &slot_89, QMetaData::Public },
+	{ "onCancelPolygonDraw()", &slot_90, QMetaData::Public },
+	{ "onEnvironmentFamilyChanged(int)", &slot_91, QMetaData::Public },
+	{ "onBitmapStampSelected(int)", &slot_92, QMetaData::Public },
+	{ "onBitmapRotationChanged(int)", &slot_93, QMetaData::Public },
+	{ "onBitmapScaleChanged(int)", &slot_94, QMetaData::Public },
+	{ "onBitmapAffectsHeightToggled(bool)", &slot_95, QMetaData::Public },
+	{ "onBitmapAffectsShaderToggled(bool)", &slot_96, QMetaData::Public },
+	{ "onBrowseImportHeightRaster()", &slot_97, QMetaData::Public },
+	{ "onApplyImportHeightRaster()", &slot_98, QMetaData::Public },
+	{ "onExportToLayer()", &slot_99, QMetaData::Public },
+	{ "onExportPolyline()", &slot_100, QMetaData::Public },
+	{ "onImportPolyline()", &slot_101, QMetaData::Public },
+	{ "clearRegionGeometryAndSelection()", &slot_102, QMetaData::Public },
+	{ "onDeferredRefreshAfterSceneChange()", &slot_103, QMetaData::Private },
+	{ "onDeferredTerrainGeneratorHeavyInvalidate()", &slot_104, QMetaData::Private },
+	{ "onDeferredTerrainGeneratorLiveCommitAfterHeavyApply()", &slot_105, QMetaData::Private }
+    };
+    static const QUMethod signal_0 = {"terrainGameWindowStatusChanged", 0, 0 };
+    static const QMetaData signal_tbl[] = {
+	{ "terrainGameWindowStatusChanged()", &signal_0, QMetaData::Public }
+    };
+    metaObj = QMetaObject::new_metaobject(
+	"TerrainDock", parentObject,
+	slot_tbl, 106,
+	signal_tbl, 1,
+#ifndef QT_NO_PROPERTIES
+	0, 0,
+	0, 0,
+#endif // QT_NO_PROPERTIES
+	0, 0 );
+    cleanUp_TerrainDock.setMetaObject( metaObj );
+    return metaObj;
+}
+
+void* TerrainDock::qt_cast( const char* clname )
+{
+    if ( !qstrcmp( clname, "TerrainDock" ) )
+	return this;
+    if ( !qstrcmp( clname, "MessageDispatch::Receiver" ) )
+	return (MessageDispatch::Receiver*)this;
+    return BaseTerrainDock::qt_cast( clname );
+}
+
+// SIGNAL terrainGameWindowStatusChanged
+void TerrainDock::terrainGameWindowStatusChanged()
+{
+    activate_signal( staticMetaObject()->signalOffset() + 0 );
+}
+
+bool TerrainDock::qt_invoke( int _id, QUObject* _o )
+{
+    switch ( _id - staticMetaObject()->slotOffset() ) {
+    case 0: onToolRaise(); break;
+    case 1: onToolLower(); break;
+    case 2: onToolFlatten(); break;
+    case 3: onToolSmooth(); break;
+    case 4: onToolNoise(); break;
+    case 5: onToolSetHeight(); break;
+    case 6: onToolPaintShader(); break;
+    case 7: onToolPaintFlora(); break;
+    case 8: onToolPlaceWater(); break;
+    case 9: onToolPlaceRadial(); break;
+    case 10: onToolPlaceRibbon(); break;
+    case 11: onToolPlaceRoad(); break;
+    case 12: onToolPlaceEnvironment(); break;
+    case 13: onToolExcludeTerrain(); break;
+    case 14: onToolBoundaryPolygon(); break;
+    case 15: onToolBoundaryPolyline(); break;
+    case 16: onToolBoundaryPolyRoad(); break;
+    case 17: onToolStampBitmap(); break;
+    case 18: onToolApplyEnvironmentRegion(); break;
+    case 19: onOpenEnvironmentEditor(); break;
+    case 20: onOpenShaderFamilyEditor(); break;
+    case 21: onOpenFloraFamilyEditor(); break;
+    case 22: onOpenRadialFamilyEditor(); break;
+    case 23: onOpenBitmapFamilyEditor(); break;
+    case 24: onApplyEnvironmentToRegion(); break;
+    case 25: onToolSelect(); break;
+    case 26: onBrushSizeChanged((int)static_QUType_int.get(_o+1)); break;
+    case 27: onBrushStrengthChanged((int)static_QUType_int.get(_o+1)); break;
+    case 28: onRaiseLowerSpeedChanged((int)static_QUType_int.get(_o+1)); break;
+    case 29: onRaiseLowerBiasChanged((int)static_QUType_int.get(_o+1)); break;
+    case 30: onRaiseLowerClickRateChanged((int)static_QUType_int.get(_o+1)); break;
+    case 31: onRaiseLowerJitterChanged((int)static_QUType_int.get(_o+1)); break;
+    case 32: onBrushShapeChanged((int)static_QUType_int.get(_o+1)); break;
+    case 33: onFalloffTypeChanged((int)static_QUType_int.get(_o+1)); break;
+    case 34: onBrushFeatherChanged((int)static_QUType_int.get(_o+1)); break;
+    case 35: onLayerSelectionChanged((QListViewItem*)static_QUType_ptr.get(_o+1)); break;
+    case 36: onLayerDoubleClicked((QListViewItem*)static_QUType_ptr.get(_o+1)); break;
+    case 37: onShaderSelectionChanged((QListViewItem*)static_QUType_ptr.get(_o+1)); break;
+    case 38: onLoadTerrain(); break;
+    case 39: onSaveTerrain(); break;
+    case 40: onSaveTerrainAs(); break;
+    case 41: onPublishTerrainToLiveServer(); break;
+    case 42: onReloadTerrain(); break;
+    case 43: onUndo(); break;
+    case 44: onRedo(); break;
+    case 45: onClearHistory(); break;
+    case 46: onToggleWireframe((bool)static_QUType_bool.get(_o+1)); break;
+    case 47: onToggleHeightColors((bool)static_QUType_bool.get(_o+1)); break;
+    case 48: onToggleChunkGrid((bool)static_QUType_bool.get(_o+1)); break;
+    case 49: onToggleBrushPreview((bool)static_QUType_bool.get(_o+1)); break;
+    case 50: onWaterHeightChanged((const QString&)static_QUType_QString.get(_o+1)); break;
+    case 51: onWaterShaderChanged((int)static_QUType_int.get(_o+1)); break;
+    case 52: onApplyWaterChanges(); break;
+    case 53: onFloraFamilyChanged((int)static_QUType_int.get(_o+1)); break;
+    case 54: onFloraPlacementModeChanged((int)static_QUType_int.get(_o+1)); break;
+    case 55: onRadialGroupChanged((int)static_QUType_int.get(_o+1)); break;
+    case 56: onRefreshFromScene(); break;
+    case 57: onGlobalShaderSelectionChanged((QListViewItem*)static_QUType_ptr.get(_o+1)); break;
+    case 58: onRescanGlobalShadersClicked(); break;
+    case 59: onAddTerrainScanFolderClicked(); break;
+    case 60: onClearTerrainScanFoldersClicked(); break;
+    case 61: onMergeGlobalShaderIntoSceneClicked(); break;
+    case 62: onShaderColorConstantToggled((bool)static_QUType_bool.get(_o+1)); break;
+    case 63: onShaderColorConstantPickClicked(); break;
+    case 64: onSelectRegion(); break;
+    case 65: onCopyRegion(); break;
+    case 66: onPasteRegion(); break;
+    case 67: onFillRegion(); break;
+    case 68: onSaveRegionLay(); break;
+    case 69: onLoadRegionLay(); break;
+    case 70: onImportRegionLayAtCursor(); break;
+    case 71: onRegionShapeChanged((int)static_QUType_int.get(_o+1)); break;
+    case 72: onMapTemplateSettingsClicked(); break;
+    case 73: onAddProceduralHeightConstantLayer(); break;
+    case 74: onAddProceduralShaderConstantLayer(); break;
+    case 75: onAddProceduralExcludeFromRegion(); break;
+    case 76: onLayerToggleActive(); break;
+    case 77: onLayerPromote(); break;
+    case 78: onLayerDemote(); break;
+    case 79: onLayerRename(); break;
+    case 80: onBeginRoad(); break;
+    case 81: onBeginRibbon(); break;
+    case 82: onFinalizePolyline(); break;
+    case 83: onCancelPolyline(); break;
+    case 84: onPolylineWidthChanged((int)static_QUType_int.get(_o+1)); break;
+    case 85: onPolylineFeatherChanged((int)static_QUType_int.get(_o+1)); break;
+    case 86: onPolylineShaderChanged((int)static_QUType_int.get(_o+1)); break;
+    case 87: onPolylineFixedHeightsToggled((bool)static_QUType_bool.get(_o+1)); break;
+    case 88: onBeginEnvironmentZone(); break;
+    case 89: onFinalizePolygonDraw(); break;
+    case 90: onCancelPolygonDraw(); break;
+    case 91: onEnvironmentFamilyChanged((int)static_QUType_int.get(_o+1)); break;
+    case 92: onBitmapStampSelected((int)static_QUType_int.get(_o+1)); break;
+    case 93: onBitmapRotationChanged((int)static_QUType_int.get(_o+1)); break;
+    case 94: onBitmapScaleChanged((int)static_QUType_int.get(_o+1)); break;
+    case 95: onBitmapAffectsHeightToggled((bool)static_QUType_bool.get(_o+1)); break;
+    case 96: onBitmapAffectsShaderToggled((bool)static_QUType_bool.get(_o+1)); break;
+    case 97: onBrowseImportHeightRaster(); break;
+    case 98: onApplyImportHeightRaster(); break;
+    case 99: onExportToLayer(); break;
+    case 100: onExportPolyline(); break;
+    case 101: onImportPolyline(); break;
+    case 102: clearRegionGeometryAndSelection(); break;
+    case 103: onDeferredRefreshAfterSceneChange(); break;
+    case 104: onDeferredTerrainGeneratorHeavyInvalidate(); break;
+    case 105: onDeferredTerrainGeneratorLiveCommitAfterHeavyApply(); break;
+    default:
+	return BaseTerrainDock::qt_invoke( _id, _o );
+    }
+    return TRUE;
+}
+
+bool TerrainDock::qt_emit( int _id, QUObject* _o )
+{
+    switch ( _id - staticMetaObject()->signalOffset() ) {
+    case 0: terrainGameWindowStatusChanged(); break;
+    default:
+	return BaseTerrainDock::qt_emit(_id,_o);
+    }
+    return TRUE;
+}
+#ifndef QT_NO_PROPERTIES
+
+bool TerrainDock::qt_property( int id, int f, QVariant* v)
+{
+    return BaseTerrainDock::qt_property( id, f, v);
+}
+
+bool TerrainDock::qt_static_property( QObject* , int , int , QVariant* ){ return FALSE; }
+#endif // QT_NO_PROPERTIES

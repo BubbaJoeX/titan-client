@@ -7,9 +7,11 @@ param(
 
     [string]$VisualStudioRoot,
 
-    [string]$StagePath,
+    [string]$StagePath = "D:\titan\exe\win64_rel",
 
-    [switch]$SkipQtBuild
+    [switch]$SkipQtBuild,
+
+    [switch]$NoStage
 )
 
 Set-StrictMode -Version Latest
@@ -142,8 +144,8 @@ foreach ($relativePath in $artifacts) {
     Write-Host ("x64  {0,10:N0} bytes  {1}  {2}" -f $item.Length, $hash, $path)
 }
 
-if ($StagePath) {
+if (-not $NoStage) {
     & (Join-Path $PSScriptRoot "Stage-X64GodClient.ps1") `
-        -GodClientRoot $StagePath `
+        -ClientRoot $StagePath `
         -Configuration $Configuration
 }

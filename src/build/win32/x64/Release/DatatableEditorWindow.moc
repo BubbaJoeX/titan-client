@@ -1,0 +1,157 @@
+/****************************************************************************
+** DatatableEditorWindow meta object code from reading C++ file 'DatatableEditorWindow.h'
+**
+** Created: Thu Jul 23 03:18:10 2026
+**      by: The Qt MOC ($Id: $)
+**
+** WARNING! All changes made in this file will be lost!
+*****************************************************************************/
+
+#include <qmetaobject.h>
+#include <qapplication.h>
+
+#include <private/qucomextra_p.h>
+#if !defined(Q_MOC_OUTPUT_REVISION) || (Q_MOC_OUTPUT_REVISION != 26)
+#error "This file was generated using the moc from 3.3.4. It"
+#error "cannot be used with the include files from this version of Qt."
+#error "(The moc has changed too much.)"
+#endif
+
+const char *DatatableEditorWindow::className() const
+{
+    return "DatatableEditorWindow";
+}
+
+QMetaObject *DatatableEditorWindow::metaObj = 0;
+static QMetaObjectCleanUp cleanUp_DatatableEditorWindow( "DatatableEditorWindow", &DatatableEditorWindow::staticMetaObject );
+
+#ifndef QT_NO_TRANSLATION
+QString DatatableEditorWindow::tr( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "DatatableEditorWindow", s, c, QApplication::DefaultCodec );
+    else
+	return QString::fromLatin1( s );
+}
+#ifndef QT_NO_TRANSLATION_UTF8
+QString DatatableEditorWindow::trUtf8( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "DatatableEditorWindow", s, c, QApplication::UnicodeUTF8 );
+    else
+	return QString::fromUtf8( s );
+}
+#endif // QT_NO_TRANSLATION_UTF8
+
+#endif // QT_NO_TRANSLATION
+
+QMetaObject* DatatableEditorWindow::staticMetaObject()
+{
+    if ( metaObj )
+	return metaObj;
+    QMetaObject* parentObject = QDialog::staticMetaObject();
+    static const QUMethod slot_0 = {"onSave", 0, 0 };
+    static const QUMethod slot_1 = {"onCompile", 0, 0 };
+    static const QUMethod slot_2 = {"onBrowse", 0, 0 };
+    static const QUMethod slot_3 = {"onPageFirst", 0, 0 };
+    static const QUMethod slot_4 = {"onPagePrev", 0, 0 };
+    static const QUMethod slot_5 = {"onPageNext", 0, 0 };
+    static const QUMethod slot_6 = {"onPageLast", 0, 0 };
+    static const QUMethod slot_7 = {"onAddRow", 0, 0 };
+    static const QUMethod slot_8 = {"onDeleteRow", 0, 0 };
+    static const QUMethod slot_9 = {"onAddColumn", 0, 0 };
+    static const QUMethod slot_10 = {"onDeleteColumn", 0, 0 };
+    static const QMetaData slot_tbl[] = {
+	{ "onSave()", &slot_0, QMetaData::Public },
+	{ "onCompile()", &slot_1, QMetaData::Public },
+	{ "onBrowse()", &slot_2, QMetaData::Public },
+	{ "onPageFirst()", &slot_3, QMetaData::Public },
+	{ "onPagePrev()", &slot_4, QMetaData::Public },
+	{ "onPageNext()", &slot_5, QMetaData::Public },
+	{ "onPageLast()", &slot_6, QMetaData::Public },
+	{ "onAddRow()", &slot_7, QMetaData::Public },
+	{ "onDeleteRow()", &slot_8, QMetaData::Public },
+	{ "onAddColumn()", &slot_9, QMetaData::Public },
+	{ "onDeleteColumn()", &slot_10, QMetaData::Public }
+    };
+    static const QUParameter param_signal_0[] = {
+	{ "msg", &static_QUType_charstar, 0, QUParameter::In }
+    };
+    static const QUMethod signal_0 = {"statusMessage", 1, param_signal_0 };
+    static const QMetaData signal_tbl[] = {
+	{ "statusMessage(const char*)", &signal_0, QMetaData::Public }
+    };
+    metaObj = QMetaObject::new_metaobject(
+	"DatatableEditorWindow", parentObject,
+	slot_tbl, 11,
+	signal_tbl, 1,
+#ifndef QT_NO_PROPERTIES
+	0, 0,
+	0, 0,
+#endif // QT_NO_PROPERTIES
+	0, 0 );
+    cleanUp_DatatableEditorWindow.setMetaObject( metaObj );
+    return metaObj;
+}
+
+void* DatatableEditorWindow::qt_cast( const char* clname )
+{
+    if ( !qstrcmp( clname, "DatatableEditorWindow" ) )
+	return this;
+    return QDialog::qt_cast( clname );
+}
+
+#include <qobjectdefs.h>
+#include <qsignalslotimp.h>
+
+// SIGNAL statusMessage
+void DatatableEditorWindow::statusMessage( const char* t0 )
+{
+    if ( signalsBlocked() )
+	return;
+    QConnectionList *clist = receivers( staticMetaObject()->signalOffset() + 0 );
+    if ( !clist )
+	return;
+    QUObject o[2];
+    static_QUType_charstar.set(o+1,t0);
+    activate_signal( clist, o );
+}
+
+bool DatatableEditorWindow::qt_invoke( int _id, QUObject* _o )
+{
+    switch ( _id - staticMetaObject()->slotOffset() ) {
+    case 0: onSave(); break;
+    case 1: onCompile(); break;
+    case 2: onBrowse(); break;
+    case 3: onPageFirst(); break;
+    case 4: onPagePrev(); break;
+    case 5: onPageNext(); break;
+    case 6: onPageLast(); break;
+    case 7: onAddRow(); break;
+    case 8: onDeleteRow(); break;
+    case 9: onAddColumn(); break;
+    case 10: onDeleteColumn(); break;
+    default:
+	return QDialog::qt_invoke( _id, _o );
+    }
+    return TRUE;
+}
+
+bool DatatableEditorWindow::qt_emit( int _id, QUObject* _o )
+{
+    switch ( _id - staticMetaObject()->signalOffset() ) {
+    case 0: statusMessage((const char*)static_QUType_charstar.get(_o+1)); break;
+    default:
+	return QDialog::qt_emit(_id,_o);
+    }
+    return TRUE;
+}
+#ifndef QT_NO_PROPERTIES
+
+bool DatatableEditorWindow::qt_property( int id, int f, QVariant* v)
+{
+    return QDialog::qt_property( id, f, v);
+}
+
+bool DatatableEditorWindow::qt_static_property( QObject* , int , int , QVariant* ){ return FALSE; }
+#endif // QT_NO_PROPERTIES

@@ -438,7 +438,7 @@ void MakeGroundSpawnerDialog::onAccept()
 		}
 		m_pendingCreate.isPatrol = true;
 		m_pendingCreate.waypoints = waypoints;
-		m_pendingCreate.pathType = qstringToStdString(m_patrolPathCombo ? m_patrolPathCombo->currentText() : "cycle");
+		m_pendingCreate.pathType = qstringToStdString(m_patrolPathCombo ? m_patrolPathCombo->currentText() : QString("cycle"));
 	}
 	else
 	{

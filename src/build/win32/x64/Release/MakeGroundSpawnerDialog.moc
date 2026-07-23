@@ -1,0 +1,117 @@
+/****************************************************************************
+** MakeGroundSpawnerDialog meta object code from reading C++ file 'MakeGroundSpawnerDialog.h'
+**
+** Created: Thu Jul 23 03:18:10 2026
+**      by: The Qt MOC ($Id: $)
+**
+** WARNING! All changes made in this file will be lost!
+*****************************************************************************/
+
+#include <qmetaobject.h>
+#include <qapplication.h>
+
+#include <private/qucomextra_p.h>
+#if !defined(Q_MOC_OUTPUT_REVISION) || (Q_MOC_OUTPUT_REVISION != 26)
+#error "This file was generated using the moc from 3.3.4. It"
+#error "cannot be used with the include files from this version of Qt."
+#error "(The moc has changed too much.)"
+#endif
+
+const char *MakeGroundSpawnerDialog::className() const
+{
+    return "MakeGroundSpawnerDialog";
+}
+
+QMetaObject *MakeGroundSpawnerDialog::metaObj = 0;
+static QMetaObjectCleanUp cleanUp_MakeGroundSpawnerDialog( "MakeGroundSpawnerDialog", &MakeGroundSpawnerDialog::staticMetaObject );
+
+#ifndef QT_NO_TRANSLATION
+QString MakeGroundSpawnerDialog::tr( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "MakeGroundSpawnerDialog", s, c, QApplication::DefaultCodec );
+    else
+	return QString::fromLatin1( s );
+}
+#ifndef QT_NO_TRANSLATION_UTF8
+QString MakeGroundSpawnerDialog::trUtf8( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "MakeGroundSpawnerDialog", s, c, QApplication::UnicodeUTF8 );
+    else
+	return QString::fromUtf8( s );
+}
+#endif // QT_NO_TRANSLATION_UTF8
+
+#endif // QT_NO_TRANSLATION
+
+QMetaObject* MakeGroundSpawnerDialog::staticMetaObject()
+{
+    if ( metaObj )
+	return metaObj;
+    QMetaObject* parentObject = QDialog::staticMetaObject();
+    static const QUMethod slot_0 = {"onAccept", 0, 0 };
+    static const QUMethod slot_1 = {"doCreateAndClose", 0, 0 };
+    static const QUParameter param_slot_2[] = {
+	{ "index", &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod slot_2 = {"onTypeChanged", 1, param_slot_2 };
+    static const QUMethod slot_3 = {"onPlaceWaypoints", 0, 0 };
+    static const QUMethod slot_4 = {"onPatrolWaypointChanged", 0, 0 };
+    static const QUMethod slot_5 = {"onPatrolPathChanged", 0, 0 };
+    static const QMetaData slot_tbl[] = {
+	{ "onAccept()", &slot_0, QMetaData::Private },
+	{ "doCreateAndClose()", &slot_1, QMetaData::Private },
+	{ "onTypeChanged(int)", &slot_2, QMetaData::Private },
+	{ "onPlaceWaypoints()", &slot_3, QMetaData::Private },
+	{ "onPatrolWaypointChanged()", &slot_4, QMetaData::Private },
+	{ "onPatrolPathChanged()", &slot_5, QMetaData::Private }
+    };
+    metaObj = QMetaObject::new_metaobject(
+	"MakeGroundSpawnerDialog", parentObject,
+	slot_tbl, 6,
+	0, 0,
+#ifndef QT_NO_PROPERTIES
+	0, 0,
+	0, 0,
+#endif // QT_NO_PROPERTIES
+	0, 0 );
+    cleanUp_MakeGroundSpawnerDialog.setMetaObject( metaObj );
+    return metaObj;
+}
+
+void* MakeGroundSpawnerDialog::qt_cast( const char* clname )
+{
+    if ( !qstrcmp( clname, "MakeGroundSpawnerDialog" ) )
+	return this;
+    return QDialog::qt_cast( clname );
+}
+
+bool MakeGroundSpawnerDialog::qt_invoke( int _id, QUObject* _o )
+{
+    switch ( _id - staticMetaObject()->slotOffset() ) {
+    case 0: onAccept(); break;
+    case 1: doCreateAndClose(); break;
+    case 2: onTypeChanged((int)static_QUType_int.get(_o+1)); break;
+    case 3: onPlaceWaypoints(); break;
+    case 4: onPatrolWaypointChanged(); break;
+    case 5: onPatrolPathChanged(); break;
+    default:
+	return QDialog::qt_invoke( _id, _o );
+    }
+    return TRUE;
+}
+
+bool MakeGroundSpawnerDialog::qt_emit( int _id, QUObject* _o )
+{
+    return QDialog::qt_emit(_id,_o);
+}
+#ifndef QT_NO_PROPERTIES
+
+bool MakeGroundSpawnerDialog::qt_property( int id, int f, QVariant* v)
+{
+    return QDialog::qt_property( id, f, v);
+}
+
+bool MakeGroundSpawnerDialog::qt_static_property( QObject* , int , int , QVariant* ){ return FALSE; }
+#endif // QT_NO_PROPERTIES

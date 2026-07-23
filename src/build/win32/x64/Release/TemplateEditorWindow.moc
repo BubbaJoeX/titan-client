@@ -1,0 +1,169 @@
+/****************************************************************************
+** TemplateEditorWindow meta object code from reading C++ file 'TemplateEditorWindow.h'
+**
+** Created: Thu Jul 23 03:18:10 2026
+**      by: The Qt MOC ($Id: $)
+**
+** WARNING! All changes made in this file will be lost!
+*****************************************************************************/
+
+#include <qmetaobject.h>
+#include <qapplication.h>
+
+#include <private/qucomextra_p.h>
+#if !defined(Q_MOC_OUTPUT_REVISION) || (Q_MOC_OUTPUT_REVISION != 26)
+#error "This file was generated using the moc from 3.3.4. It"
+#error "cannot be used with the include files from this version of Qt."
+#error "(The moc has changed too much.)"
+#endif
+
+const char *TemplateEditorWindow::className() const
+{
+    return "TemplateEditorWindow";
+}
+
+QMetaObject *TemplateEditorWindow::metaObj = 0;
+static QMetaObjectCleanUp cleanUp_TemplateEditorWindow( "TemplateEditorWindow", &TemplateEditorWindow::staticMetaObject );
+
+#ifndef QT_NO_TRANSLATION
+QString TemplateEditorWindow::tr( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "TemplateEditorWindow", s, c, QApplication::DefaultCodec );
+    else
+	return QString::fromLatin1( s );
+}
+#ifndef QT_NO_TRANSLATION_UTF8
+QString TemplateEditorWindow::trUtf8( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "TemplateEditorWindow", s, c, QApplication::UnicodeUTF8 );
+    else
+	return QString::fromUtf8( s );
+}
+#endif // QT_NO_TRANSLATION_UTF8
+
+#endif // QT_NO_TRANSLATION
+
+QMetaObject* TemplateEditorWindow::staticMetaObject()
+{
+    if ( metaObj )
+	return metaObj;
+    QMetaObject* parentObject = QDialog::staticMetaObject();
+    static const QUMethod slot_0 = {"onSave", 0, 0 };
+    static const QUMethod slot_1 = {"onCompile", 0, 0 };
+    static const QUMethod slot_2 = {"onBrowseServerPath", 0, 0 };
+    static const QUMethod slot_3 = {"onBrowseSharedPath", 0, 0 };
+    static const QUMethod slot_4 = {"onBrowseStringPath", 0, 0 };
+    static const QUMethod slot_5 = {"onNewTemplate", 0, 0 };
+    static const QUMethod slot_6 = {"onApplyStructuredFields", 0, 0 };
+    static const QUMethod slot_7 = {"onRefreshStringValues", 0, 0 };
+    static const QUParameter param_slot_8[] = {
+	{ "text", &static_QUType_QString, 0, QUParameter::In }
+    };
+    static const QUMethod slot_8 = {"onAppearanceChanged", 1, param_slot_8 };
+    static const QUMethod slot_9 = {"onBrowseAppearance", 0, 0 };
+    static const QUMethod slot_10 = {"onOpenScriptToolbox", 0, 0 };
+    static const QUMethod slot_11 = {"onPreviewAppearance", 0, 0 };
+    static const QUParameter param_slot_12[] = {
+	{ "text", &static_QUType_QString, 0, QUParameter::In }
+    };
+    static const QUMethod slot_12 = {"onAppearanceFilterChanged", 1, param_slot_12 };
+    static const QMetaData slot_tbl[] = {
+	{ "onSave()", &slot_0, QMetaData::Public },
+	{ "onCompile()", &slot_1, QMetaData::Public },
+	{ "onBrowseServerPath()", &slot_2, QMetaData::Public },
+	{ "onBrowseSharedPath()", &slot_3, QMetaData::Public },
+	{ "onBrowseStringPath()", &slot_4, QMetaData::Public },
+	{ "onNewTemplate()", &slot_5, QMetaData::Public },
+	{ "onApplyStructuredFields()", &slot_6, QMetaData::Public },
+	{ "onRefreshStringValues()", &slot_7, QMetaData::Public },
+	{ "onAppearanceChanged(const QString&)", &slot_8, QMetaData::Public },
+	{ "onBrowseAppearance()", &slot_9, QMetaData::Public },
+	{ "onOpenScriptToolbox()", &slot_10, QMetaData::Public },
+	{ "onPreviewAppearance()", &slot_11, QMetaData::Public },
+	{ "onAppearanceFilterChanged(const QString&)", &slot_12, QMetaData::Public }
+    };
+    static const QUParameter param_signal_0[] = {
+	{ "msg", &static_QUType_charstar, 0, QUParameter::In }
+    };
+    static const QUMethod signal_0 = {"statusMessage", 1, param_signal_0 };
+    static const QMetaData signal_tbl[] = {
+	{ "statusMessage(const char*)", &signal_0, QMetaData::Public }
+    };
+    metaObj = QMetaObject::new_metaobject(
+	"TemplateEditorWindow", parentObject,
+	slot_tbl, 13,
+	signal_tbl, 1,
+#ifndef QT_NO_PROPERTIES
+	0, 0,
+	0, 0,
+#endif // QT_NO_PROPERTIES
+	0, 0 );
+    cleanUp_TemplateEditorWindow.setMetaObject( metaObj );
+    return metaObj;
+}
+
+void* TemplateEditorWindow::qt_cast( const char* clname )
+{
+    if ( !qstrcmp( clname, "TemplateEditorWindow" ) )
+	return this;
+    return QDialog::qt_cast( clname );
+}
+
+#include <qobjectdefs.h>
+#include <qsignalslotimp.h>
+
+// SIGNAL statusMessage
+void TemplateEditorWindow::statusMessage( const char* t0 )
+{
+    if ( signalsBlocked() )
+	return;
+    QConnectionList *clist = receivers( staticMetaObject()->signalOffset() + 0 );
+    if ( !clist )
+	return;
+    QUObject o[2];
+    static_QUType_charstar.set(o+1,t0);
+    activate_signal( clist, o );
+}
+
+bool TemplateEditorWindow::qt_invoke( int _id, QUObject* _o )
+{
+    switch ( _id - staticMetaObject()->slotOffset() ) {
+    case 0: onSave(); break;
+    case 1: onCompile(); break;
+    case 2: onBrowseServerPath(); break;
+    case 3: onBrowseSharedPath(); break;
+    case 4: onBrowseStringPath(); break;
+    case 5: onNewTemplate(); break;
+    case 6: onApplyStructuredFields(); break;
+    case 7: onRefreshStringValues(); break;
+    case 8: onAppearanceChanged((const QString&)static_QUType_QString.get(_o+1)); break;
+    case 9: onBrowseAppearance(); break;
+    case 10: onOpenScriptToolbox(); break;
+    case 11: onPreviewAppearance(); break;
+    case 12: onAppearanceFilterChanged((const QString&)static_QUType_QString.get(_o+1)); break;
+    default:
+	return QDialog::qt_invoke( _id, _o );
+    }
+    return TRUE;
+}
+
+bool TemplateEditorWindow::qt_emit( int _id, QUObject* _o )
+{
+    switch ( _id - staticMetaObject()->signalOffset() ) {
+    case 0: statusMessage((const char*)static_QUType_charstar.get(_o+1)); break;
+    default:
+	return QDialog::qt_emit(_id,_o);
+    }
+    return TRUE;
+}
+#ifndef QT_NO_PROPERTIES
+
+bool TemplateEditorWindow::qt_property( int id, int f, QVariant* v)
+{
+    return QDialog::qt_property( id, f, v);
+}
+
+bool TemplateEditorWindow::qt_static_property( QObject* , int , int , QVariant* ){ return FALSE; }
+#endif // QT_NO_PROPERTIES

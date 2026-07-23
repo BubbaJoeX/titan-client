@@ -60,6 +60,7 @@ private:
 
 	void                     refreshList ();
 	void                     updateServerStatus ();
+	void                     tryAutoSelectCreationCluster ();
 
 private:
 

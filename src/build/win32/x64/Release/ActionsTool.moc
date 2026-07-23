@@ -1,0 +1,134 @@
+/****************************************************************************
+** ActionsTool meta object code from reading C++ file 'ActionsTool.h'
+**
+** Created: Thu Jul 23 03:18:10 2026
+**      by: The Qt MOC ($Id: $)
+**
+** WARNING! All changes made in this file will be lost!
+*****************************************************************************/
+
+#include <qmetaobject.h>
+#include <qapplication.h>
+
+#include <private/qucomextra_p.h>
+#if !defined(Q_MOC_OUTPUT_REVISION) || (Q_MOC_OUTPUT_REVISION != 26)
+#error "This file was generated using the moc from 3.3.4. It"
+#error "cannot be used with the include files from this version of Qt."
+#error "(The moc has changed too much.)"
+#endif
+
+const char *ActionsTool::className() const
+{
+    return "ActionsTool";
+}
+
+QMetaObject *ActionsTool::metaObj = 0;
+static QMetaObjectCleanUp cleanUp_ActionsTool( "ActionsTool", &ActionsTool::staticMetaObject );
+
+#ifndef QT_NO_TRANSLATION
+QString ActionsTool::tr( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "ActionsTool", s, c, QApplication::DefaultCodec );
+    else
+	return QString::fromLatin1( s );
+}
+#ifndef QT_NO_TRANSLATION_UTF8
+QString ActionsTool::trUtf8( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "ActionsTool", s, c, QApplication::UnicodeUTF8 );
+    else
+	return QString::fromUtf8( s );
+}
+#endif // QT_NO_TRANSLATION_UTF8
+
+#endif // QT_NO_TRANSLATION
+
+QMetaObject* ActionsTool::staticMetaObject()
+{
+    if ( metaObj )
+	return metaObj;
+    QMetaObject* parentObject = QObject::staticMetaObject();
+    static const QUMethod slot_0 = {"onSnapToGrid", 0, 0 };
+    static const QUMethod slot_1 = {"onStackObject", 0, 0 };
+    static const QUMethod slot_2 = {"onSaveAsBrush", 0, 0 };
+    static const QUMethod slot_3 = {"onCreateBrush", 0, 0 };
+    static const QUMethod slot_4 = {"onDeleteBrush", 0, 0 };
+    static const QUMethod slot_5 = {"onPasteBrushHere", 0, 0 };
+    static const QUMethod slot_6 = {"onCreatePalette", 0, 0 };
+    static const QUMethod slot_7 = {"onDeletePalette", 0, 0 };
+    static const QUMethod slot_8 = {"onShowSphereTree", 0, 0 };
+    static const QUMethod slot_9 = {"onGrabRelativeCoordinates", 0, 0 };
+    static const QUMethod slot_10 = {"onSendSystemMessage", 0, 0 };
+    static const QUMethod slot_11 = {"onRenderRangeSettings", 0, 0 };
+    static const QMetaData slot_tbl[] = {
+	{ "onSnapToGrid()", &slot_0, QMetaData::Private },
+	{ "onStackObject()", &slot_1, QMetaData::Private },
+	{ "onSaveAsBrush()", &slot_2, QMetaData::Private },
+	{ "onCreateBrush()", &slot_3, QMetaData::Private },
+	{ "onDeleteBrush()", &slot_4, QMetaData::Private },
+	{ "onPasteBrushHere()", &slot_5, QMetaData::Private },
+	{ "onCreatePalette()", &slot_6, QMetaData::Private },
+	{ "onDeletePalette()", &slot_7, QMetaData::Private },
+	{ "onShowSphereTree()", &slot_8, QMetaData::Private },
+	{ "onGrabRelativeCoordinates()", &slot_9, QMetaData::Private },
+	{ "onSendSystemMessage()", &slot_10, QMetaData::Private },
+	{ "onRenderRangeSettings()", &slot_11, QMetaData::Private }
+    };
+    metaObj = QMetaObject::new_metaobject(
+	"ActionsTool", parentObject,
+	slot_tbl, 12,
+	0, 0,
+#ifndef QT_NO_PROPERTIES
+	0, 0,
+	0, 0,
+#endif // QT_NO_PROPERTIES
+	0, 0 );
+    cleanUp_ActionsTool.setMetaObject( metaObj );
+    return metaObj;
+}
+
+void* ActionsTool::qt_cast( const char* clname )
+{
+    if ( !qstrcmp( clname, "ActionsTool" ) )
+	return this;
+    if ( !qstrcmp( clname, "Singleton<ActionsTool>" ) )
+	return (Singleton<ActionsTool>*)this;
+    return QObject::qt_cast( clname );
+}
+
+bool ActionsTool::qt_invoke( int _id, QUObject* _o )
+{
+    switch ( _id - staticMetaObject()->slotOffset() ) {
+    case 0: onSnapToGrid(); break;
+    case 1: onStackObject(); break;
+    case 2: onSaveAsBrush(); break;
+    case 3: onCreateBrush(); break;
+    case 4: onDeleteBrush(); break;
+    case 5: onPasteBrushHere(); break;
+    case 6: onCreatePalette(); break;
+    case 7: onDeletePalette(); break;
+    case 8: onShowSphereTree(); break;
+    case 9: onGrabRelativeCoordinates(); break;
+    case 10: onSendSystemMessage(); break;
+    case 11: onRenderRangeSettings(); break;
+    default:
+	return QObject::qt_invoke( _id, _o );
+    }
+    return TRUE;
+}
+
+bool ActionsTool::qt_emit( int _id, QUObject* _o )
+{
+    return QObject::qt_emit(_id,_o);
+}
+#ifndef QT_NO_PROPERTIES
+
+bool ActionsTool::qt_property( int id, int f, QVariant* v)
+{
+    return QObject::qt_property( id, f, v);
+}
+
+bool ActionsTool::qt_static_property( QObject* , int , int , QVariant* ){ return FALSE; }
+#endif // QT_NO_PROPERTIES

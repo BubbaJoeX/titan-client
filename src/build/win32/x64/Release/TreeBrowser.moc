@@ -1,0 +1,195 @@
+/****************************************************************************
+** TreeBrowser meta object code from reading C++ file 'TreeBrowser.h'
+**
+** Created: Thu Jul 23 03:18:10 2026
+**      by: The Qt MOC ($Id: $)
+**
+** WARNING! All changes made in this file will be lost!
+*****************************************************************************/
+
+#include <qmetaobject.h>
+#include <qapplication.h>
+
+#include <private/qucomextra_p.h>
+#if !defined(Q_MOC_OUTPUT_REVISION) || (Q_MOC_OUTPUT_REVISION != 26)
+#error "This file was generated using the moc from 3.3.4. It"
+#error "cannot be used with the include files from this version of Qt."
+#error "(The moc has changed too much.)"
+#endif
+
+const char *TreeBrowser::className() const
+{
+    return "TreeBrowser";
+}
+
+QMetaObject *TreeBrowser::metaObj = 0;
+static QMetaObjectCleanUp cleanUp_TreeBrowser( "TreeBrowser", &TreeBrowser::staticMetaObject );
+
+#ifndef QT_NO_TRANSLATION
+QString TreeBrowser::tr( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "TreeBrowser", s, c, QApplication::DefaultCodec );
+    else
+	return QString::fromLatin1( s );
+}
+#ifndef QT_NO_TRANSLATION_UTF8
+QString TreeBrowser::trUtf8( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "TreeBrowser", s, c, QApplication::UnicodeUTF8 );
+    else
+	return QString::fromUtf8( s );
+}
+#endif // QT_NO_TRANSLATION_UTF8
+
+#endif // QT_NO_TRANSLATION
+
+QMetaObject* TreeBrowser::staticMetaObject()
+{
+    if ( metaObj )
+	return metaObj;
+    QMetaObject* parentObject = BaseTreeBrowser::staticMetaObject();
+    static const QUMethod slot_0 = {"refreshObjects", 0, 0 };
+    static const QUMethod slot_1 = {"onObjectSelectionChanged", 0, 0 };
+    static const QUParameter param_slot_2[] = {
+	{ "item", &static_QUType_ptr, "QListViewItem", QUParameter::In }
+    };
+    static const QUMethod slot_2 = {"onObjectDoubleClicked", 1, param_slot_2 };
+    static const QUMethod slot_3 = {"onServerTemplateListSelectionChanged", 0, 0 };
+    static const QUMethod slot_4 = {"onClientTemplateListSelectionChanged", 0, 0 };
+    static const QUParameter param_slot_5[] = {
+	{ "text", &static_QUType_QString, 0, QUParameter::In }
+    };
+    static const QUMethod slot_5 = {"onObjectSearchTextChanged", 1, param_slot_5 };
+    static const QUMethod slot_6 = {"onObjectSearchClear", 0, 0 };
+    static const QMetaData slot_tbl[] = {
+	{ "refreshObjects()", &slot_0, QMetaData::Public },
+	{ "onObjectSelectionChanged()", &slot_1, QMetaData::Private },
+	{ "onObjectDoubleClicked(QListViewItem*)", &slot_2, QMetaData::Private },
+	{ "onServerTemplateListSelectionChanged()", &slot_3, QMetaData::Private },
+	{ "onClientTemplateListSelectionChanged()", &slot_4, QMetaData::Private },
+	{ "onObjectSearchTextChanged(const QString&)", &slot_5, QMetaData::Private },
+	{ "onObjectSearchClear()", &slot_6, QMetaData::Private }
+    };
+    static const QUParameter param_signal_0[] = {
+	{ 0, &static_QUType_ptr, "Object", QUParameter::In },
+	{ 0, &static_QUType_bool, 0, QUParameter::In },
+	{ 0, &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod signal_0 = {"objectDoubleClickedSignal", 3, param_signal_0 };
+    static const QUParameter param_signal_1[] = {
+	{ "name", &static_QUType_ptr, "std::string", QUParameter::In }
+    };
+    static const QUMethod signal_1 = {"serverTemplateSelectionChanged", 1, param_signal_1 };
+    static const QUParameter param_signal_2[] = {
+	{ "name", &static_QUType_ptr, "std::string", QUParameter::In }
+    };
+    static const QUMethod signal_2 = {"clientTemplateSelectionChanged", 1, param_signal_2 };
+    static const QMetaData signal_tbl[] = {
+	{ "objectDoubleClickedSignal(const Object&,bool,int)", &signal_0, QMetaData::Public },
+	{ "serverTemplateSelectionChanged(const std::string&)", &signal_1, QMetaData::Public },
+	{ "clientTemplateSelectionChanged(const std::string&)", &signal_2, QMetaData::Public }
+    };
+    metaObj = QMetaObject::new_metaobject(
+	"TreeBrowser", parentObject,
+	slot_tbl, 7,
+	signal_tbl, 3,
+#ifndef QT_NO_PROPERTIES
+	0, 0,
+	0, 0,
+#endif // QT_NO_PROPERTIES
+	0, 0 );
+    cleanUp_TreeBrowser.setMetaObject( metaObj );
+    return metaObj;
+}
+
+void* TreeBrowser::qt_cast( const char* clname )
+{
+    if ( !qstrcmp( clname, "TreeBrowser" ) )
+	return this;
+    if ( !qstrcmp( clname, "MessageDispatch::Receiver" ) )
+	return (MessageDispatch::Receiver*)this;
+    return BaseTreeBrowser::qt_cast( clname );
+}
+
+#include <qobjectdefs.h>
+#include <qsignalslotimp.h>
+
+// SIGNAL objectDoubleClickedSignal
+void TreeBrowser::objectDoubleClickedSignal( const Object& t0, bool t1, int t2 )
+{
+    if ( signalsBlocked() )
+	return;
+    QConnectionList *clist = receivers( staticMetaObject()->signalOffset() + 0 );
+    if ( !clist )
+	return;
+    QUObject o[4];
+    static_QUType_ptr.set(o+1,&t0);
+    static_QUType_bool.set(o+2,t1);
+    static_QUType_int.set(o+3,t2);
+    activate_signal( clist, o );
+}
+
+// SIGNAL serverTemplateSelectionChanged
+void TreeBrowser::serverTemplateSelectionChanged( const std::string& t0 )
+{
+    if ( signalsBlocked() )
+	return;
+    QConnectionList *clist = receivers( staticMetaObject()->signalOffset() + 1 );
+    if ( !clist )
+	return;
+    QUObject o[2];
+    static_QUType_ptr.set(o+1,&t0);
+    activate_signal( clist, o );
+}
+
+// SIGNAL clientTemplateSelectionChanged
+void TreeBrowser::clientTemplateSelectionChanged( const std::string& t0 )
+{
+    if ( signalsBlocked() )
+	return;
+    QConnectionList *clist = receivers( staticMetaObject()->signalOffset() + 2 );
+    if ( !clist )
+	return;
+    QUObject o[2];
+    static_QUType_ptr.set(o+1,&t0);
+    activate_signal( clist, o );
+}
+
+bool TreeBrowser::qt_invoke( int _id, QUObject* _o )
+{
+    switch ( _id - staticMetaObject()->slotOffset() ) {
+    case 0: refreshObjects(); break;
+    case 1: onObjectSelectionChanged(); break;
+    case 2: onObjectDoubleClicked((QListViewItem*)static_QUType_ptr.get(_o+1)); break;
+    case 3: onServerTemplateListSelectionChanged(); break;
+    case 4: onClientTemplateListSelectionChanged(); break;
+    case 5: onObjectSearchTextChanged((const QString&)static_QUType_QString.get(_o+1)); break;
+    case 6: onObjectSearchClear(); break;
+    default:
+	return BaseTreeBrowser::qt_invoke( _id, _o );
+    }
+    return TRUE;
+}
+
+bool TreeBrowser::qt_emit( int _id, QUObject* _o )
+{
+    switch ( _id - staticMetaObject()->signalOffset() ) {
+    case 0: objectDoubleClickedSignal((const Object&)*((const Object*)static_QUType_ptr.get(_o+1)),(bool)static_QUType_bool.get(_o+2),(int)static_QUType_int.get(_o+3)); break;
+    case 1: serverTemplateSelectionChanged((const std::string&)*((const std::string*)static_QUType_ptr.get(_o+1))); break;
+    case 2: clientTemplateSelectionChanged((const std::string&)*((const std::string*)static_QUType_ptr.get(_o+1))); break;
+    default:
+	return BaseTreeBrowser::qt_emit(_id,_o);
+    }
+    return TRUE;
+}
+#ifndef QT_NO_PROPERTIES
+
+bool TreeBrowser::qt_property( int id, int f, QVariant* v)
+{
+    return BaseTreeBrowser::qt_property( id, f, v);
+}
+
+bool TreeBrowser::qt_static_property( QObject* , int , int , QVariant* ){ return FALSE; }
+#endif // QT_NO_PROPERTIES

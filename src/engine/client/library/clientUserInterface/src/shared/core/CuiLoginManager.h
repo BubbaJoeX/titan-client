@@ -74,6 +74,7 @@ public:
 	static int                    getAvatarCount                  ();
 	static int                    getAvailableCharacterSlots      (uint32 clusterId);
 	static uint32                 getFirstClusterWithAvailableSlots();
+	static void                   requestAvailableCharacterSlots ();
 
 	static bool                   canCreateCharacter              ();
 	static bool                   canCreateRegularCharacter       ();

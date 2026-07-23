@@ -1,0 +1,226 @@
+/****************************************************************************
+** ActionsEdit meta object code from reading C++ file 'ActionsEdit.h'
+**
+** Created: Thu Jul 23 03:18:09 2026
+**      by: The Qt MOC ($Id: $)
+**
+** WARNING! All changes made in this file will be lost!
+*****************************************************************************/
+
+#include <qmetaobject.h>
+#include <qapplication.h>
+
+#include <private/qucomextra_p.h>
+#if !defined(Q_MOC_OUTPUT_REVISION) || (Q_MOC_OUTPUT_REVISION != 26)
+#error "This file was generated using the moc from 3.3.4. It"
+#error "cannot be used with the include files from this version of Qt."
+#error "(The moc has changed too much.)"
+#endif
+
+const char *ActionsEdit::className() const
+{
+    return "ActionsEdit";
+}
+
+QMetaObject *ActionsEdit::metaObj = 0;
+static QMetaObjectCleanUp cleanUp_ActionsEdit( "ActionsEdit", &ActionsEdit::staticMetaObject );
+
+#ifndef QT_NO_TRANSLATION
+QString ActionsEdit::tr( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "ActionsEdit", s, c, QApplication::DefaultCodec );
+    else
+	return QString::fromLatin1( s );
+}
+#ifndef QT_NO_TRANSLATION_UTF8
+QString ActionsEdit::trUtf8( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "ActionsEdit", s, c, QApplication::UnicodeUTF8 );
+    else
+	return QString::fromUtf8( s );
+}
+#endif // QT_NO_TRANSLATION_UTF8
+
+#endif // QT_NO_TRANSLATION
+
+QMetaObject* ActionsEdit::staticMetaObject()
+{
+    if ( metaObj )
+	return metaObj;
+    QMetaObject* parentObject = QObject::staticMetaObject();
+    static const QUMethod slot_0 = {"onUndo", 0, 0 };
+    static const QUMethod slot_1 = {"onRedo", 0, 0 };
+    static const QUMethod slot_2 = {"onDelete", 0, 0 };
+    static const QUMethod slot_3 = {"onCopy", 0, 0 };
+    static const QUMethod slot_4 = {"onPaste", 0, 0 };
+    static const QUMethod slot_5 = {"onPasteBrush", 0, 0 };
+    static const QUMethod slot_6 = {"onCut", 0, 0 };
+    static const QUMethod slot_7 = {"onApplyTransform", 0, 0 };
+    static const QUMethod slot_8 = {"onUnlockSelected", 0, 0 };
+    static const QUMethod slot_9 = {"onUnlockAll", 0, 0 };
+    static const QUMethod slot_10 = {"onUnlockNonStructures", 0, 0 };
+    static const QUMethod slot_11 = {"onUnlockServerOnly", 0, 0 };
+    static const QUMethod slot_12 = {"onDropToTerrain", 0, 0 };
+    static const QUMethod slot_13 = {"onRandomRotate", 0, 0 };
+    static const QUMethod slot_14 = {"onAlignToTerrain", 0, 0 };
+    static const QUMethod slot_15 = {"onRotateReset", 0, 0 };
+    static const QUMethod slot_16 = {"onRotateIncrement45", 0, 0 };
+    static const QUMethod slot_17 = {"onRotateDecrement45", 0, 0 };
+    static const QUMethod slot_18 = {"onStoreGroup1", 0, 0 };
+    static const QUMethod slot_19 = {"onRestoreGroup1", 0, 0 };
+    static const QUMethod slot_20 = {"onStoreGroup2", 0, 0 };
+    static const QUMethod slot_21 = {"onRestoreGroup2", 0, 0 };
+    static const QUMethod slot_22 = {"onStoreGroup3", 0, 0 };
+    static const QUMethod slot_23 = {"onRestoreGroup3", 0, 0 };
+    static const QUMethod slot_24 = {"onStoreGroup4", 0, 0 };
+    static const QUMethod slot_25 = {"onRestoreGroup4", 0, 0 };
+    static const QUMethod slot_26 = {"onSetTransform", 0, 0 };
+    static const QUMethod slot_27 = {"onEditTriggers", 0, 0 };
+    static const QUMethod slot_28 = {"onEditFormData", 0, 0 };
+    static const QUMethod slot_29 = {"onCopyForPOI", 0, 0 };
+    static const QUMethod slot_30 = {"onShowObjectAxes", 0, 0 };
+    static const QUMethod slot_31 = {"onToggleParticleSystemPause", 0, 0 };
+    static const QUMethod slot_32 = {"onCreateTheater", 0, 0 };
+    static const QUMethod slot_33 = {"onCreateClientDataFile", 0, 0 };
+    static const QUMethod slot_34 = {"onMakeGroundSpawner", 0, 0 };
+    static const QUMethod slot_35 = {"onToggleDropToTerrain", 0, 0 };
+    static const QUMethod slot_36 = {"onToggleAlignToTerrain", 0, 0 };
+    static const QUMethod slot_37 = {"onToggleUnrealEngineTransformGizmo", 0, 0 };
+    static const QUParameter param_slot_38[] = {
+	{ 0, &static_QUType_ptr, "std::string", QUParameter::In }
+    };
+    static const QUMethod slot_38 = {"onServerTemplateSelectionChanged", 1, param_slot_38 };
+    static const QUParameter param_slot_39[] = {
+	{ 0, &static_QUType_ptr, "std::string", QUParameter::In }
+    };
+    static const QUMethod slot_39 = {"onClientTemplateSelectionChanged", 1, param_slot_39 };
+    static const QMetaData slot_tbl[] = {
+	{ "onUndo()", &slot_0, QMetaData::Private },
+	{ "onRedo()", &slot_1, QMetaData::Private },
+	{ "onDelete()", &slot_2, QMetaData::Private },
+	{ "onCopy()", &slot_3, QMetaData::Private },
+	{ "onPaste()", &slot_4, QMetaData::Private },
+	{ "onPasteBrush()", &slot_5, QMetaData::Private },
+	{ "onCut()", &slot_6, QMetaData::Private },
+	{ "onApplyTransform()", &slot_7, QMetaData::Private },
+	{ "onUnlockSelected()", &slot_8, QMetaData::Private },
+	{ "onUnlockAll()", &slot_9, QMetaData::Private },
+	{ "onUnlockNonStructures()", &slot_10, QMetaData::Private },
+	{ "onUnlockServerOnly()", &slot_11, QMetaData::Private },
+	{ "onDropToTerrain()", &slot_12, QMetaData::Private },
+	{ "onRandomRotate()", &slot_13, QMetaData::Private },
+	{ "onAlignToTerrain()", &slot_14, QMetaData::Private },
+	{ "onRotateReset()", &slot_15, QMetaData::Private },
+	{ "onRotateIncrement45()", &slot_16, QMetaData::Private },
+	{ "onRotateDecrement45()", &slot_17, QMetaData::Private },
+	{ "onStoreGroup1()", &slot_18, QMetaData::Private },
+	{ "onRestoreGroup1()", &slot_19, QMetaData::Private },
+	{ "onStoreGroup2()", &slot_20, QMetaData::Private },
+	{ "onRestoreGroup2()", &slot_21, QMetaData::Private },
+	{ "onStoreGroup3()", &slot_22, QMetaData::Private },
+	{ "onRestoreGroup3()", &slot_23, QMetaData::Private },
+	{ "onStoreGroup4()", &slot_24, QMetaData::Private },
+	{ "onRestoreGroup4()", &slot_25, QMetaData::Private },
+	{ "onSetTransform()", &slot_26, QMetaData::Private },
+	{ "onEditTriggers()", &slot_27, QMetaData::Private },
+	{ "onEditFormData()", &slot_28, QMetaData::Private },
+	{ "onCopyForPOI()", &slot_29, QMetaData::Private },
+	{ "onShowObjectAxes()", &slot_30, QMetaData::Private },
+	{ "onToggleParticleSystemPause()", &slot_31, QMetaData::Private },
+	{ "onCreateTheater()", &slot_32, QMetaData::Private },
+	{ "onCreateClientDataFile()", &slot_33, QMetaData::Private },
+	{ "onMakeGroundSpawner()", &slot_34, QMetaData::Private },
+	{ "onToggleDropToTerrain()", &slot_35, QMetaData::Private },
+	{ "onToggleAlignToTerrain()", &slot_36, QMetaData::Private },
+	{ "onToggleUnrealEngineTransformGizmo()", &slot_37, QMetaData::Private },
+	{ "onServerTemplateSelectionChanged(const std::string&)", &slot_38, QMetaData::Public },
+	{ "onClientTemplateSelectionChanged(const std::string&)", &slot_39, QMetaData::Public }
+    };
+    metaObj = QMetaObject::new_metaobject(
+	"ActionsEdit", parentObject,
+	slot_tbl, 40,
+	0, 0,
+#ifndef QT_NO_PROPERTIES
+	0, 0,
+	0, 0,
+#endif // QT_NO_PROPERTIES
+	0, 0 );
+    cleanUp_ActionsEdit.setMetaObject( metaObj );
+    return metaObj;
+}
+
+void* ActionsEdit::qt_cast( const char* clname )
+{
+    if ( !qstrcmp( clname, "ActionsEdit" ) )
+	return this;
+    if ( !qstrcmp( clname, "Singleton<ActionsEdit>" ) )
+	return (Singleton<ActionsEdit>*)this;
+    if ( !qstrcmp( clname, "MessageDispatch::Receiver" ) )
+	return (MessageDispatch::Receiver*)this;
+    return QObject::qt_cast( clname );
+}
+
+bool ActionsEdit::qt_invoke( int _id, QUObject* _o )
+{
+    switch ( _id - staticMetaObject()->slotOffset() ) {
+    case 0: onUndo(); break;
+    case 1: onRedo(); break;
+    case 2: onDelete(); break;
+    case 3: onCopy(); break;
+    case 4: onPaste(); break;
+    case 5: onPasteBrush(); break;
+    case 6: onCut(); break;
+    case 7: onApplyTransform(); break;
+    case 8: onUnlockSelected(); break;
+    case 9: onUnlockAll(); break;
+    case 10: onUnlockNonStructures(); break;
+    case 11: onUnlockServerOnly(); break;
+    case 12: onDropToTerrain(); break;
+    case 13: onRandomRotate(); break;
+    case 14: onAlignToTerrain(); break;
+    case 15: onRotateReset(); break;
+    case 16: onRotateIncrement45(); break;
+    case 17: onRotateDecrement45(); break;
+    case 18: onStoreGroup1(); break;
+    case 19: onRestoreGroup1(); break;
+    case 20: onStoreGroup2(); break;
+    case 21: onRestoreGroup2(); break;
+    case 22: onStoreGroup3(); break;
+    case 23: onRestoreGroup3(); break;
+    case 24: onStoreGroup4(); break;
+    case 25: onRestoreGroup4(); break;
+    case 26: onSetTransform(); break;
+    case 27: onEditTriggers(); break;
+    case 28: onEditFormData(); break;
+    case 29: onCopyForPOI(); break;
+    case 30: onShowObjectAxes(); break;
+    case 31: onToggleParticleSystemPause(); break;
+    case 32: onCreateTheater(); break;
+    case 33: onCreateClientDataFile(); break;
+    case 34: onMakeGroundSpawner(); break;
+    case 35: onToggleDropToTerrain(); break;
+    case 36: onToggleAlignToTerrain(); break;
+    case 37: onToggleUnrealEngineTransformGizmo(); break;
+    case 38: onServerTemplateSelectionChanged((const std::string&)*((const std::string*)static_QUType_ptr.get(_o+1))); break;
+    case 39: onClientTemplateSelectionChanged((const std::string&)*((const std::string*)static_QUType_ptr.get(_o+1))); break;
+    default:
+	return QObject::qt_invoke( _id, _o );
+    }
+    return TRUE;
+}
+
+bool ActionsEdit::qt_emit( int _id, QUObject* _o )
+{
+    return QObject::qt_emit(_id,_o);
+}
+#ifndef QT_NO_PROPERTIES
+
+bool ActionsEdit::qt_property( int id, int f, QVariant* v)
+{
+    return QObject::qt_property( id, f, v);
+}
+
+bool ActionsEdit::qt_static_property( QObject* , int , int , QVariant* ){ return FALSE; }
+#endif // QT_NO_PROPERTIES

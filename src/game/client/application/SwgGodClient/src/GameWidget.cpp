@@ -99,7 +99,6 @@
 #include "BuildoutAreaSupport.h"
 #include "BaseGotoDialog.h"
 #include "ConfigFileControl.h"
-#include "clientGame/ConfigSwaaClient.h"
 #include "ConfigGodClient.h"
 #include "FavoritesListView.h"
 #include "FileControlClient.h"

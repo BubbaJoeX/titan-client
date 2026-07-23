@@ -3113,7 +3113,7 @@ void TerrainDock::populateLayerList()
 		{
 			m_layerListGeneratorIndices.push_back(i);
 			const char* layerName = layer->getName();
-			QString name = layerName ? layerName : QString("Layer %1").arg(i);
+			QString name = layerName ? QString::fromLatin1(layerName) : QString("Layer %1").arg(i);
 			QString type = "Layer";
 			QString active = layer->isActive() ? "Yes" : "No";
 			
@@ -3422,7 +3422,7 @@ void TerrainDock::populateShaderList(bool const skipGlobalShaderCatalogScan)
 
 		QString idStr;
 		idStr.sprintf("%d", familyId);
-		QString displayName(familyName ? familyName : QString("Family %1").arg(familyId));
+		QString displayName(familyName ? QString::fromLatin1(familyName) : QString("Family %1").arg(familyId));
 
 		new QListViewItem(m_shaderList, idStr, displayName);
 	}
@@ -3899,7 +3899,7 @@ void TerrainDock::populateFloraList()
 		const int familyId = floraGroup.getFamilyId(i);
 		const char* familyName = floraGroup.getFamilyName(familyId);
 		
-		QString name = familyName ? familyName : QString("Flora Family %1").arg(i);
+		QString name = familyName ? QString::fromLatin1(familyName) : QString("Flora Family %1").arg(i);
 		m_floraFamilyCombo->insertItem(name);
 		m_floraFamilyIds.push_back(familyId);
 	}
@@ -3932,7 +3932,7 @@ void TerrainDock::populateRadialList()
 		const int familyId = radialGroup.getFamilyId(i);
 		const char* familyName = radialGroup.getFamilyName(familyId);
 		
-		QString name = familyName ? familyName : QString("Radial Group %1").arg(i);
+		QString name = familyName ? QString::fromLatin1(familyName) : QString("Radial Group %1").arg(i);
 		m_radialGroupCombo->insertItem(name);
 		m_radialFamilyIds.push_back(familyId);
 	}

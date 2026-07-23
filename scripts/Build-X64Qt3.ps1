@@ -103,6 +103,11 @@ CONFIG += shared thread release rtti
 
 $qmake = Join-Path $qtRoot "bin\qmake.exe"
 if (-not (Test-Path -LiteralPath $qmake -PathType Leaf)) {
+    $qmakeObjectDirectory = Join-Path $qtRoot "qmake\tmp"
+    if (-not (Test-Path -LiteralPath $qmakeObjectDirectory -PathType Container)) {
+        New-Item -ItemType Directory -Path $qmakeObjectDirectory -Force | Out-Null
+    }
+
     Push-Location (Join-Path $qtRoot "qmake")
     try {
         & nmake.exe /NOLOGO

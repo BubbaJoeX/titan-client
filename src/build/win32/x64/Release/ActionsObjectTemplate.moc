@@ -1,0 +1,187 @@
+/****************************************************************************
+** ActionsObjectTemplate meta object code from reading C++ file 'ActionsObjectTemplate.h'
+**
+** Created: Thu Jul 23 03:18:10 2026
+**      by: The Qt MOC ($Id: $)
+**
+** WARNING! All changes made in this file will be lost!
+*****************************************************************************/
+
+#include <qmetaobject.h>
+#include <qapplication.h>
+
+#include <private/qucomextra_p.h>
+#if !defined(Q_MOC_OUTPUT_REVISION) || (Q_MOC_OUTPUT_REVISION != 26)
+#error "This file was generated using the moc from 3.3.4. It"
+#error "cannot be used with the include files from this version of Qt."
+#error "(The moc has changed too much.)"
+#endif
+
+const char *ActionsObjectTemplate::className() const
+{
+    return "ActionsObjectTemplate";
+}
+
+QMetaObject *ActionsObjectTemplate::metaObj = 0;
+static QMetaObjectCleanUp cleanUp_ActionsObjectTemplate( "ActionsObjectTemplate", &ActionsObjectTemplate::staticMetaObject );
+
+#ifndef QT_NO_TRANSLATION
+QString ActionsObjectTemplate::tr( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "ActionsObjectTemplate", s, c, QApplication::DefaultCodec );
+    else
+	return QString::fromLatin1( s );
+}
+#ifndef QT_NO_TRANSLATION_UTF8
+QString ActionsObjectTemplate::trUtf8( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "ActionsObjectTemplate", s, c, QApplication::UnicodeUTF8 );
+    else
+	return QString::fromUtf8( s );
+}
+#endif // QT_NO_TRANSLATION_UTF8
+
+#endif // QT_NO_TRANSLATION
+
+QMetaObject* ActionsObjectTemplate::staticMetaObject()
+{
+    if ( metaObj )
+	return metaObj;
+    QMetaObject* parentObject = QObject::staticMetaObject();
+    static const QUParameter param_slot_0[] = {
+	{ "path", &static_QUType_ptr, "std::string", QUParameter::In },
+	{ "isFile", &static_QUType_bool, 0, QUParameter::In },
+	{ "isNew", &static_QUType_bool, 0, QUParameter::In },
+	{ "isEdit", &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod slot_0 = {"onServerObjectTemplatePathSelectionChanged", 4, param_slot_0 };
+    static const QUParameter param_slot_1[] = {
+	{ 0, &static_QUType_bool, 0, QUParameter::Out },
+	{ "path", &static_QUType_ptr, "std::string", QUParameter::InOut }
+    };
+    static const QUMethod slot_1 = {"getSelectedServerObjectTemplate", 2, param_slot_1 };
+    static const QUParameter param_slot_2[] = {
+	{ "path", &static_QUType_ptr, "std::string", QUParameter::In },
+	{ "isFile", &static_QUType_bool, 0, QUParameter::In },
+	{ "isNew", &static_QUType_bool, 0, QUParameter::In },
+	{ "isEdit", &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod slot_2 = {"onClientObjectTemplatePathSelectionChanged", 4, param_slot_2 };
+    static const QUParameter param_slot_3[] = {
+	{ 0, &static_QUType_bool, 0, QUParameter::Out },
+	{ "path", &static_QUType_ptr, "std::string", QUParameter::InOut }
+    };
+    static const QUMethod slot_3 = {"getSelectedClientObjectTemplate", 2, param_slot_3 };
+    static const QUParameter param_slot_4[] = {
+	{ "filename", &static_QUType_ptr, "std::string", QUParameter::In }
+    };
+    static const QUMethod slot_4 = {"doEditFile", 1, param_slot_4 };
+    static const QUMethod slot_5 = {"onServerRevert", 0, 0 };
+    static const QUMethod slot_6 = {"onServerView", 0, 0 };
+    static const QUMethod slot_7 = {"onServerEdit", 0, 0 };
+    static const QUMethod slot_8 = {"onServerNew", 0, 0 };
+    static const QUMethod slot_9 = {"onServerSubmit", 0, 0 };
+    static const QUMethod slot_10 = {"onServerCompile", 0, 0 };
+    static const QUMethod slot_11 = {"onServerReload", 0, 0 };
+    static const QUMethod slot_12 = {"onServerReplace", 0, 0 };
+    static const QUMethod slot_13 = {"onClientRevert", 0, 0 };
+    static const QUMethod slot_14 = {"onClientView", 0, 0 };
+    static const QUMethod slot_15 = {"onClientEdit", 0, 0 };
+    static const QUMethod slot_16 = {"onClientNew", 0, 0 };
+    static const QUMethod slot_17 = {"onClientSubmit", 0, 0 };
+    static const QUMethod slot_18 = {"onClientCompile", 0, 0 };
+    static const QUMethod slot_19 = {"onClientReplace", 0, 0 };
+    static const QUMethod slot_20 = {"onServerAddToFavorites", 0, 0 };
+    static const QUMethod slot_21 = {"onClientAddToFavorites", 0, 0 };
+    static const QMetaData slot_tbl[] = {
+	{ "onServerObjectTemplatePathSelectionChanged(const std::string&,bool,bool,bool)", &slot_0, QMetaData::Public },
+	{ "getSelectedServerObjectTemplate(std::string&)", &slot_1, QMetaData::Public },
+	{ "onClientObjectTemplatePathSelectionChanged(const std::string&,bool,bool,bool)", &slot_2, QMetaData::Public },
+	{ "getSelectedClientObjectTemplate(std::string&)", &slot_3, QMetaData::Public },
+	{ "doEditFile(const std::string&)", &slot_4, QMetaData::Private },
+	{ "onServerRevert()", &slot_5, QMetaData::Private },
+	{ "onServerView()", &slot_6, QMetaData::Private },
+	{ "onServerEdit()", &slot_7, QMetaData::Private },
+	{ "onServerNew()", &slot_8, QMetaData::Private },
+	{ "onServerSubmit()", &slot_9, QMetaData::Private },
+	{ "onServerCompile()", &slot_10, QMetaData::Private },
+	{ "onServerReload()", &slot_11, QMetaData::Private },
+	{ "onServerReplace()", &slot_12, QMetaData::Private },
+	{ "onClientRevert()", &slot_13, QMetaData::Private },
+	{ "onClientView()", &slot_14, QMetaData::Private },
+	{ "onClientEdit()", &slot_15, QMetaData::Private },
+	{ "onClientNew()", &slot_16, QMetaData::Private },
+	{ "onClientSubmit()", &slot_17, QMetaData::Private },
+	{ "onClientCompile()", &slot_18, QMetaData::Private },
+	{ "onClientReplace()", &slot_19, QMetaData::Private },
+	{ "onServerAddToFavorites()", &slot_20, QMetaData::Private },
+	{ "onClientAddToFavorites()", &slot_21, QMetaData::Private }
+    };
+    metaObj = QMetaObject::new_metaobject(
+	"ActionsObjectTemplate", parentObject,
+	slot_tbl, 22,
+	0, 0,
+#ifndef QT_NO_PROPERTIES
+	0, 0,
+	0, 0,
+#endif // QT_NO_PROPERTIES
+	0, 0 );
+    cleanUp_ActionsObjectTemplate.setMetaObject( metaObj );
+    return metaObj;
+}
+
+void* ActionsObjectTemplate::qt_cast( const char* clname )
+{
+    if ( !qstrcmp( clname, "ActionsObjectTemplate" ) )
+	return this;
+    if ( !qstrcmp( clname, "Singleton<ActionsObjectTemplate>" ) )
+	return (Singleton<ActionsObjectTemplate>*)this;
+    return QObject::qt_cast( clname );
+}
+
+bool ActionsObjectTemplate::qt_invoke( int _id, QUObject* _o )
+{
+    switch ( _id - staticMetaObject()->slotOffset() ) {
+    case 0: onServerObjectTemplatePathSelectionChanged((const std::string&)*((const std::string*)static_QUType_ptr.get(_o+1)),(bool)static_QUType_bool.get(_o+2),(bool)static_QUType_bool.get(_o+3),(bool)static_QUType_bool.get(_o+4)); break;
+    case 1: static_QUType_bool.set(_o,getSelectedServerObjectTemplate((std::string&)*((std::string*)static_QUType_ptr.get(_o+1)))); break;
+    case 2: onClientObjectTemplatePathSelectionChanged((const std::string&)*((const std::string*)static_QUType_ptr.get(_o+1)),(bool)static_QUType_bool.get(_o+2),(bool)static_QUType_bool.get(_o+3),(bool)static_QUType_bool.get(_o+4)); break;
+    case 3: static_QUType_bool.set(_o,getSelectedClientObjectTemplate((std::string&)*((std::string*)static_QUType_ptr.get(_o+1)))); break;
+    case 4: doEditFile((const std::string&)*((const std::string*)static_QUType_ptr.get(_o+1))); break;
+    case 5: onServerRevert(); break;
+    case 6: onServerView(); break;
+    case 7: onServerEdit(); break;
+    case 8: onServerNew(); break;
+    case 9: onServerSubmit(); break;
+    case 10: onServerCompile(); break;
+    case 11: onServerReload(); break;
+    case 12: onServerReplace(); break;
+    case 13: onClientRevert(); break;
+    case 14: onClientView(); break;
+    case 15: onClientEdit(); break;
+    case 16: onClientNew(); break;
+    case 17: onClientSubmit(); break;
+    case 18: onClientCompile(); break;
+    case 19: onClientReplace(); break;
+    case 20: onServerAddToFavorites(); break;
+    case 21: onClientAddToFavorites(); break;
+    default:
+	return QObject::qt_invoke( _id, _o );
+    }
+    return TRUE;
+}
+
+bool ActionsObjectTemplate::qt_emit( int _id, QUObject* _o )
+{
+    return QObject::qt_emit(_id,_o);
+}
+#ifndef QT_NO_PROPERTIES
+
+bool ActionsObjectTemplate::qt_property( int id, int f, QVariant* v)
+{
+    return QObject::qt_property( id, f, v);
+}
+
+bool ActionsObjectTemplate::qt_static_property( QObject* , int , int , QVariant* ){ return FALSE; }
+#endif // QT_NO_PROPERTIES

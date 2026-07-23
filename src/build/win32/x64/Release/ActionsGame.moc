@@ -1,0 +1,161 @@
+/****************************************************************************
+** ActionsGame meta object code from reading C++ file 'ActionsGame.h'
+**
+** Created: Thu Jul 23 03:18:10 2026
+**      by: The Qt MOC ($Id: $)
+**
+** WARNING! All changes made in this file will be lost!
+*****************************************************************************/
+
+#include <qmetaobject.h>
+#include <qapplication.h>
+
+#include <private/qucomextra_p.h>
+#if !defined(Q_MOC_OUTPUT_REVISION) || (Q_MOC_OUTPUT_REVISION != 26)
+#error "This file was generated using the moc from 3.3.4. It"
+#error "cannot be used with the include files from this version of Qt."
+#error "(The moc has changed too much.)"
+#endif
+
+const char *ActionsGame::className() const
+{
+    return "ActionsGame";
+}
+
+QMetaObject *ActionsGame::metaObj = 0;
+static QMetaObjectCleanUp cleanUp_ActionsGame( "ActionsGame", &ActionsGame::staticMetaObject );
+
+#ifndef QT_NO_TRANSLATION
+QString ActionsGame::tr( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "ActionsGame", s, c, QApplication::DefaultCodec );
+    else
+	return QString::fromLatin1( s );
+}
+#ifndef QT_NO_TRANSLATION_UTF8
+QString ActionsGame::trUtf8( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "ActionsGame", s, c, QApplication::UnicodeUTF8 );
+    else
+	return QString::fromUtf8( s );
+}
+#endif // QT_NO_TRANSLATION_UTF8
+
+#endif // QT_NO_TRANSLATION
+
+QMetaObject* ActionsGame::staticMetaObject()
+{
+    if ( metaObj )
+	return metaObj;
+    QMetaObject* parentObject = QObject::staticMetaObject();
+    static const QUParameter param_slot_0[] = {
+	{ "b", &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod slot_0 = {"onToggleHud", 1, param_slot_0 };
+    static const QUParameter param_slot_1[] = {
+	{ "b", &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod slot_1 = {"onRenderWireframe", 1, param_slot_1 };
+    static const QUParameter param_slot_2[] = {
+	{ "b", &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod slot_2 = {"onRenderTextured", 1, param_slot_2 };
+    static const QUParameter param_slot_3[] = {
+	{ "b", &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod slot_3 = {"onShowObjectNames", 1, param_slot_3 };
+    static const QUParameter param_slot_4[] = {
+	{ "b", &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod slot_4 = {"onShowObjectNetworkIds", 1, param_slot_4 };
+    static const QUParameter param_slot_5[] = {
+	{ "b", &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod slot_5 = {"onToggleConsole", 1, param_slot_5 };
+    static const QUParameter param_slot_6[] = {
+	{ "b", &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod slot_6 = {"onTogglePathMap", 1, param_slot_6 };
+    static const QUMethod slot_7 = {"onShowDebugMenu", 0, 0 };
+    static const QUMethod slot_8 = {"onWatchTargetPath", 0, 0 };
+    static const QUMethod slot_9 = {"onIgnoreTargetPath", 0, 0 };
+    static const QUMethod slot_10 = {"onShowRegionBrowser", 0, 0 };
+    static const QUMethod slot_11 = {"onPurgeTerrain", 0, 0 };
+    static const QUMethod slot_12 = {"onReloadTerrain", 0, 0 };
+    static const QUMethod slot_13 = {"onSaveInteriorLayout", 0, 0 };
+    static const QMetaData slot_tbl[] = {
+	{ "onToggleHud(bool)", &slot_0, QMetaData::Private },
+	{ "onRenderWireframe(bool)", &slot_1, QMetaData::Private },
+	{ "onRenderTextured(bool)", &slot_2, QMetaData::Private },
+	{ "onShowObjectNames(bool)", &slot_3, QMetaData::Private },
+	{ "onShowObjectNetworkIds(bool)", &slot_4, QMetaData::Private },
+	{ "onToggleConsole(bool)", &slot_5, QMetaData::Private },
+	{ "onTogglePathMap(bool)", &slot_6, QMetaData::Private },
+	{ "onShowDebugMenu()", &slot_7, QMetaData::Private },
+	{ "onWatchTargetPath()", &slot_8, QMetaData::Private },
+	{ "onIgnoreTargetPath()", &slot_9, QMetaData::Private },
+	{ "onShowRegionBrowser()", &slot_10, QMetaData::Private },
+	{ "onPurgeTerrain()", &slot_11, QMetaData::Private },
+	{ "onReloadTerrain()", &slot_12, QMetaData::Private },
+	{ "onSaveInteriorLayout()", &slot_13, QMetaData::Private }
+    };
+    metaObj = QMetaObject::new_metaobject(
+	"ActionsGame", parentObject,
+	slot_tbl, 14,
+	0, 0,
+#ifndef QT_NO_PROPERTIES
+	0, 0,
+	0, 0,
+#endif // QT_NO_PROPERTIES
+	0, 0 );
+    cleanUp_ActionsGame.setMetaObject( metaObj );
+    return metaObj;
+}
+
+void* ActionsGame::qt_cast( const char* clname )
+{
+    if ( !qstrcmp( clname, "ActionsGame" ) )
+	return this;
+    if ( !qstrcmp( clname, "Singleton<ActionsGame>" ) )
+	return (Singleton<ActionsGame>*)this;
+    return QObject::qt_cast( clname );
+}
+
+bool ActionsGame::qt_invoke( int _id, QUObject* _o )
+{
+    switch ( _id - staticMetaObject()->slotOffset() ) {
+    case 0: onToggleHud((bool)static_QUType_bool.get(_o+1)); break;
+    case 1: onRenderWireframe((bool)static_QUType_bool.get(_o+1)); break;
+    case 2: onRenderTextured((bool)static_QUType_bool.get(_o+1)); break;
+    case 3: onShowObjectNames((bool)static_QUType_bool.get(_o+1)); break;
+    case 4: onShowObjectNetworkIds((bool)static_QUType_bool.get(_o+1)); break;
+    case 5: onToggleConsole((bool)static_QUType_bool.get(_o+1)); break;
+    case 6: onTogglePathMap((bool)static_QUType_bool.get(_o+1)); break;
+    case 7: onShowDebugMenu(); break;
+    case 8: onWatchTargetPath(); break;
+    case 9: onIgnoreTargetPath(); break;
+    case 10: onShowRegionBrowser(); break;
+    case 11: onPurgeTerrain(); break;
+    case 12: onReloadTerrain(); break;
+    case 13: onSaveInteriorLayout(); break;
+    default:
+	return QObject::qt_invoke( _id, _o );
+    }
+    return TRUE;
+}
+
+bool ActionsGame::qt_emit( int _id, QUObject* _o )
+{
+    return QObject::qt_emit(_id,_o);
+}
+#ifndef QT_NO_PROPERTIES
+
+bool ActionsGame::qt_property( int id, int f, QVariant* v)
+{
+    return QObject::qt_property( id, f, v);
+}
+
+bool ActionsGame::qt_static_property( QObject* , int , int , QVariant* ){ return FALSE; }
+#endif // QT_NO_PROPERTIES

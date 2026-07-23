@@ -1,0 +1,185 @@
+/****************************************************************************
+** ObjectEditor meta object code from reading C++ file 'ObjectEditor.h'
+**
+** Created: Thu Jul 23 03:18:10 2026
+**      by: The Qt MOC ($Id: $)
+**
+** WARNING! All changes made in this file will be lost!
+*****************************************************************************/
+
+#include <qmetaobject.h>
+#include <qapplication.h>
+
+#include <private/qucomextra_p.h>
+#if !defined(Q_MOC_OUTPUT_REVISION) || (Q_MOC_OUTPUT_REVISION != 26)
+#error "This file was generated using the moc from 3.3.4. It"
+#error "cannot be used with the include files from this version of Qt."
+#error "(The moc has changed too much.)"
+#endif
+
+const char *ObjectEditor::className() const
+{
+    return "ObjectEditor";
+}
+
+QMetaObject *ObjectEditor::metaObj = 0;
+static QMetaObjectCleanUp cleanUp_ObjectEditor( "ObjectEditor", &ObjectEditor::staticMetaObject );
+
+#ifndef QT_NO_TRANSLATION
+QString ObjectEditor::tr( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "ObjectEditor", s, c, QApplication::DefaultCodec );
+    else
+	return QString::fromLatin1( s );
+}
+#ifndef QT_NO_TRANSLATION_UTF8
+QString ObjectEditor::trUtf8( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "ObjectEditor", s, c, QApplication::UnicodeUTF8 );
+    else
+	return QString::fromUtf8( s );
+}
+#endif // QT_NO_TRANSLATION_UTF8
+
+#endif // QT_NO_TRANSLATION
+
+QMetaObject* ObjectEditor::staticMetaObject()
+{
+    if ( metaObj )
+	return metaObj;
+    QMetaObject* parentObject = BaseObjectEditor::staticMetaObject();
+    static const QUMethod slot_0 = {"refreshObjects", 0, 0 };
+    static const QUMethod slot_1 = {"updateObjectData", 0, 0 };
+    static const QUParameter param_slot_2[] = {
+	{ "item", &static_QUType_ptr, "QListViewItem", QUParameter::In },
+	{ "col", &static_QUType_int, 0, QUParameter::In },
+	{ "text", &static_QUType_QString, 0, QUParameter::In }
+    };
+    static const QUMethod slot_2 = {"onAttributeRenamed", 3, param_slot_2 };
+    static const QUParameter param_slot_3[] = {
+	{ "item", &static_QUType_ptr, "QListViewItem", QUParameter::In }
+    };
+    static const QUMethod slot_3 = {"onAttributeDoubleClicked", 1, param_slot_3 };
+    static const QUParameter param_slot_4[] = {
+	{ 0, &static_QUType_ptr, "QListBoxItem", QUParameter::In },
+	{ 0, &static_QUType_varptr, "\x0e", QUParameter::In }
+    };
+    static const QUMethod slot_4 = {"onCreatureSkillsContextMenuRequested", 2, param_slot_4 };
+    static const QUMethod slot_5 = {"onRevokeCreatureSkill", 0, 0 };
+    static const QUMethod slot_6 = {"onRemoveScript", 0, 0 };
+    static const QUMethod slot_7 = {"onAttachScript", 0, 0 };
+    static const QUMethod slot_8 = {"onRemoveObjvar", 0, 0 };
+    static const QUMethod slot_9 = {"onSetObjvar", 0, 0 };
+    static const QUMethod slot_10 = {"onRefreshLists", 0, 0 };
+    static const QUParameter param_slot_11[] = {
+	{ 0, &static_QUType_ptr, "QListViewItem", QUParameter::In },
+	{ 0, &static_QUType_varptr, "\x0e", QUParameter::In },
+	{ 0, &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod slot_11 = {"onScriptsListContextMenuRequested", 3, param_slot_11 };
+    static const QUParameter param_slot_12[] = {
+	{ "item", &static_QUType_ptr, "QListViewItem", QUParameter::In }
+    };
+    static const QUMethod slot_12 = {"onScriptsListDoubleClicked", 1, param_slot_12 };
+    static const QUParameter param_slot_13[] = {
+	{ 0, &static_QUType_ptr, "QListViewItem", QUParameter::In },
+	{ 0, &static_QUType_varptr, "\x0e", QUParameter::In },
+	{ 0, &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod slot_13 = {"onObjvarListContextMenuRequested", 3, param_slot_13 };
+    static const QUParameter param_slot_14[] = {
+	{ "item", &static_QUType_ptr, "QListViewItem", QUParameter::In },
+	{ "col", &static_QUType_int, 0, QUParameter::In },
+	{ "text", &static_QUType_QString, 0, QUParameter::In }
+    };
+    static const QUMethod slot_14 = {"onObjvarRenamed", 3, param_slot_14 };
+    static const QUParameter param_slot_15[] = {
+	{ "item", &static_QUType_ptr, "QListViewItem", QUParameter::In }
+    };
+    static const QUMethod slot_15 = {"onObjvarDoubleClicked", 1, param_slot_15 };
+    static const QUMethod slot_16 = {"onObjvarRenameName", 0, 0 };
+    static const QUMethod slot_17 = {"onObjvarEditValue", 0, 0 };
+    static const QMetaData slot_tbl[] = {
+	{ "refreshObjects()", &slot_0, QMetaData::Public },
+	{ "updateObjectData()", &slot_1, QMetaData::Public },
+	{ "onAttributeRenamed(QListViewItem*,int,const QString&)", &slot_2, QMetaData::Public },
+	{ "onAttributeDoubleClicked(QListViewItem*)", &slot_3, QMetaData::Public },
+	{ "onCreatureSkillsContextMenuRequested(QListBoxItem*,const QPoint&)", &slot_4, QMetaData::Public },
+	{ "onRevokeCreatureSkill()", &slot_5, QMetaData::Public },
+	{ "onRemoveScript()", &slot_6, QMetaData::Public },
+	{ "onAttachScript()", &slot_7, QMetaData::Public },
+	{ "onRemoveObjvar()", &slot_8, QMetaData::Public },
+	{ "onSetObjvar()", &slot_9, QMetaData::Public },
+	{ "onRefreshLists()", &slot_10, QMetaData::Public },
+	{ "onScriptsListContextMenuRequested(QListViewItem*,const QPoint&,int)", &slot_11, QMetaData::Public },
+	{ "onScriptsListDoubleClicked(QListViewItem*)", &slot_12, QMetaData::Public },
+	{ "onObjvarListContextMenuRequested(QListViewItem*,const QPoint&,int)", &slot_13, QMetaData::Public },
+	{ "onObjvarRenamed(QListViewItem*,int,const QString&)", &slot_14, QMetaData::Public },
+	{ "onObjvarDoubleClicked(QListViewItem*)", &slot_15, QMetaData::Public },
+	{ "onObjvarRenameName()", &slot_16, QMetaData::Public },
+	{ "onObjvarEditValue()", &slot_17, QMetaData::Public }
+    };
+    metaObj = QMetaObject::new_metaobject(
+	"ObjectEditor", parentObject,
+	slot_tbl, 18,
+	0, 0,
+#ifndef QT_NO_PROPERTIES
+	0, 0,
+	0, 0,
+#endif // QT_NO_PROPERTIES
+	0, 0 );
+    cleanUp_ObjectEditor.setMetaObject( metaObj );
+    return metaObj;
+}
+
+void* ObjectEditor::qt_cast( const char* clname )
+{
+    if ( !qstrcmp( clname, "ObjectEditor" ) )
+	return this;
+    if ( !qstrcmp( clname, "MessageDispatch::Receiver" ) )
+	return (MessageDispatch::Receiver*)this;
+    return BaseObjectEditor::qt_cast( clname );
+}
+
+bool ObjectEditor::qt_invoke( int _id, QUObject* _o )
+{
+    switch ( _id - staticMetaObject()->slotOffset() ) {
+    case 0: refreshObjects(); break;
+    case 1: updateObjectData(); break;
+    case 2: onAttributeRenamed((QListViewItem*)static_QUType_ptr.get(_o+1),(int)static_QUType_int.get(_o+2),(const QString&)static_QUType_QString.get(_o+3)); break;
+    case 3: onAttributeDoubleClicked((QListViewItem*)static_QUType_ptr.get(_o+1)); break;
+    case 4: onCreatureSkillsContextMenuRequested((QListBoxItem*)static_QUType_ptr.get(_o+1),(const QPoint&)*((const QPoint*)static_QUType_ptr.get(_o+2))); break;
+    case 5: onRevokeCreatureSkill(); break;
+    case 6: onRemoveScript(); break;
+    case 7: onAttachScript(); break;
+    case 8: onRemoveObjvar(); break;
+    case 9: onSetObjvar(); break;
+    case 10: onRefreshLists(); break;
+    case 11: onScriptsListContextMenuRequested((QListViewItem*)static_QUType_ptr.get(_o+1),(const QPoint&)*((const QPoint*)static_QUType_ptr.get(_o+2)),(int)static_QUType_int.get(_o+3)); break;
+    case 12: onScriptsListDoubleClicked((QListViewItem*)static_QUType_ptr.get(_o+1)); break;
+    case 13: onObjvarListContextMenuRequested((QListViewItem*)static_QUType_ptr.get(_o+1),(const QPoint&)*((const QPoint*)static_QUType_ptr.get(_o+2)),(int)static_QUType_int.get(_o+3)); break;
+    case 14: onObjvarRenamed((QListViewItem*)static_QUType_ptr.get(_o+1),(int)static_QUType_int.get(_o+2),(const QString&)static_QUType_QString.get(_o+3)); break;
+    case 15: onObjvarDoubleClicked((QListViewItem*)static_QUType_ptr.get(_o+1)); break;
+    case 16: onObjvarRenameName(); break;
+    case 17: onObjvarEditValue(); break;
+    default:
+	return BaseObjectEditor::qt_invoke( _id, _o );
+    }
+    return TRUE;
+}
+
+bool ObjectEditor::qt_emit( int _id, QUObject* _o )
+{
+    return BaseObjectEditor::qt_emit(_id,_o);
+}
+#ifndef QT_NO_PROPERTIES
+
+bool ObjectEditor::qt_property( int id, int f, QVariant* v)
+{
+    return BaseObjectEditor::qt_property( id, f, v);
+}
+
+bool ObjectEditor::qt_static_property( QObject* , int , int , QVariant* ){ return FALSE; }
+#endif // QT_NO_PROPERTIES

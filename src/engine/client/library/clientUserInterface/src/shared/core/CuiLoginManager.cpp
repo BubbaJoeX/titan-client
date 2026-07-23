@@ -557,7 +557,7 @@ void CuiLoginManager::receiveAvailableCharacterSlots (const std::vector<std::pai
 		{
 			std::map<uint32, int>::const_iterator const old = s_availableCharacterSlots.find (it->first);
 			if (old == s_availableCharacterSlots.end () || old->second != it->second)
-				DEBUG_REPORT_LOG(true, ("AvailableCharacterSlotsV1 cluster %lu count %d\n", it->first, it->second));
+				REPORT_LOG(true, ("AvailableCharacterSlotsV1 received cluster %lu count %d\n", it->first, it->second));
 		}
 		s_availableCharacterSlots.swap (updatedSlots);
 		Transceivers::availableCharacterSlotsChanged.emitMessage (true);
@@ -582,6 +582,17 @@ uint32 CuiLoginManager::getFirstClusterWithAvailableSlots ()
 			return it->first;
 	}
 	return 0;
+}
+
+//----------------------------------------------------------------------
+
+void CuiLoginManager::requestAvailableCharacterSlots ()
+{
+	if (GameNetwork::isConnectedToLoginServer ())
+	{
+		GenericValueTypeMessage<bool> const request ("RequestAvailableCharacterSlotsV1", true);
+		GameNetwork::sendToLoginServer (request, true);
+	}
 }
 
 //----------------------------------------------------------------------

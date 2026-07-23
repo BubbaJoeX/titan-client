@@ -1,0 +1,141 @@
+/****************************************************************************
+** ActionsScript meta object code from reading C++ file 'ActionsScript.h'
+**
+** Created: Thu Jul 23 03:18:10 2026
+**      by: The Qt MOC ($Id: $)
+**
+** WARNING! All changes made in this file will be lost!
+*****************************************************************************/
+
+#include <qmetaobject.h>
+#include <qapplication.h>
+
+#include <private/qucomextra_p.h>
+#if !defined(Q_MOC_OUTPUT_REVISION) || (Q_MOC_OUTPUT_REVISION != 26)
+#error "This file was generated using the moc from 3.3.4. It"
+#error "cannot be used with the include files from this version of Qt."
+#error "(The moc has changed too much.)"
+#endif
+
+const char *ActionsScript::className() const
+{
+    return "ActionsScript";
+}
+
+QMetaObject *ActionsScript::metaObj = 0;
+static QMetaObjectCleanUp cleanUp_ActionsScript( "ActionsScript", &ActionsScript::staticMetaObject );
+
+#ifndef QT_NO_TRANSLATION
+QString ActionsScript::tr( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "ActionsScript", s, c, QApplication::DefaultCodec );
+    else
+	return QString::fromLatin1( s );
+}
+#ifndef QT_NO_TRANSLATION_UTF8
+QString ActionsScript::trUtf8( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "ActionsScript", s, c, QApplication::UnicodeUTF8 );
+    else
+	return QString::fromUtf8( s );
+}
+#endif // QT_NO_TRANSLATION_UTF8
+
+#endif // QT_NO_TRANSLATION
+
+QMetaObject* ActionsScript::staticMetaObject()
+{
+    if ( metaObj )
+	return metaObj;
+    QMetaObject* parentObject = QObject::staticMetaObject();
+    static const QUParameter param_slot_0[] = {
+	{ "path", &static_QUType_ptr, "std::string", QUParameter::In },
+	{ "isFile", &static_QUType_bool, 0, QUParameter::In },
+	{ "isNew", &static_QUType_bool, 0, QUParameter::In },
+	{ "isEdit", &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod slot_0 = {"onScriptPathSelectionChanged", 4, param_slot_0 };
+    static const QUParameter param_slot_1[] = {
+	{ 0, &static_QUType_bool, 0, QUParameter::Out },
+	{ "path", &static_QUType_ptr, "std::string", QUParameter::InOut }
+    };
+    static const QUMethod slot_1 = {"getSelectedScript", 2, param_slot_1 };
+    static const QUParameter param_slot_2[] = {
+	{ "filename", &static_QUType_ptr, "std::string", QUParameter::In }
+    };
+    static const QUMethod slot_2 = {"doEditFile", 1, param_slot_2 };
+    static const QUMethod slot_3 = {"onRevert", 0, 0 };
+    static const QUMethod slot_4 = {"onView", 0, 0 };
+    static const QUMethod slot_5 = {"onEdit", 0, 0 };
+    static const QUMethod slot_6 = {"onNew", 0, 0 };
+    static const QUMethod slot_7 = {"onSubmit", 0, 0 };
+    static const QUMethod slot_8 = {"onCompile", 0, 0 };
+    static const QUMethod slot_9 = {"onServerReload", 0, 0 };
+    static const QMetaData slot_tbl[] = {
+	{ "onScriptPathSelectionChanged(const std::string&,bool,bool,bool)", &slot_0, QMetaData::Public },
+	{ "getSelectedScript(std::string&)", &slot_1, QMetaData::Public },
+	{ "doEditFile(const std::string&)", &slot_2, QMetaData::Private },
+	{ "onRevert()", &slot_3, QMetaData::Private },
+	{ "onView()", &slot_4, QMetaData::Private },
+	{ "onEdit()", &slot_5, QMetaData::Private },
+	{ "onNew()", &slot_6, QMetaData::Private },
+	{ "onSubmit()", &slot_7, QMetaData::Private },
+	{ "onCompile()", &slot_8, QMetaData::Private },
+	{ "onServerReload()", &slot_9, QMetaData::Private }
+    };
+    metaObj = QMetaObject::new_metaobject(
+	"ActionsScript", parentObject,
+	slot_tbl, 10,
+	0, 0,
+#ifndef QT_NO_PROPERTIES
+	0, 0,
+	0, 0,
+#endif // QT_NO_PROPERTIES
+	0, 0 );
+    cleanUp_ActionsScript.setMetaObject( metaObj );
+    return metaObj;
+}
+
+void* ActionsScript::qt_cast( const char* clname )
+{
+    if ( !qstrcmp( clname, "ActionsScript" ) )
+	return this;
+    if ( !qstrcmp( clname, "Singleton<ActionsScript>" ) )
+	return (Singleton<ActionsScript>*)this;
+    return QObject::qt_cast( clname );
+}
+
+bool ActionsScript::qt_invoke( int _id, QUObject* _o )
+{
+    switch ( _id - staticMetaObject()->slotOffset() ) {
+    case 0: onScriptPathSelectionChanged((const std::string&)*((const std::string*)static_QUType_ptr.get(_o+1)),(bool)static_QUType_bool.get(_o+2),(bool)static_QUType_bool.get(_o+3),(bool)static_QUType_bool.get(_o+4)); break;
+    case 1: static_QUType_bool.set(_o,getSelectedScript((std::string&)*((std::string*)static_QUType_ptr.get(_o+1)))); break;
+    case 2: doEditFile((const std::string&)*((const std::string*)static_QUType_ptr.get(_o+1))); break;
+    case 3: onRevert(); break;
+    case 4: onView(); break;
+    case 5: onEdit(); break;
+    case 6: onNew(); break;
+    case 7: onSubmit(); break;
+    case 8: onCompile(); break;
+    case 9: onServerReload(); break;
+    default:
+	return QObject::qt_invoke( _id, _o );
+    }
+    return TRUE;
+}
+
+bool ActionsScript::qt_emit( int _id, QUObject* _o )
+{
+    return QObject::qt_emit(_id,_o);
+}
+#ifndef QT_NO_PROPERTIES
+
+bool ActionsScript::qt_property( int id, int f, QVariant* v)
+{
+    return QObject::qt_property( id, f, v);
+}
+
+bool ActionsScript::qt_static_property( QObject* , int , int , QVariant* ){ return FALSE; }
+#endif // QT_NO_PROPERTIES

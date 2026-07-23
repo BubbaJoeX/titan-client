@@ -10,6 +10,9 @@
 
 // ======================================================================
 
+#include <qlistview.h>
+#include <qpixmap.h>
+
 /**
 * AbstractFilesystemTree is a simple tree structure that represents a typical
 * filesystem.  A node in the tree may be a folder or a file, and folder nodes

@@ -1,0 +1,119 @@
+/****************************************************************************
+** ScriptListView meta object code from reading C++ file 'ScriptListView.h'
+**
+** Created: Thu Jul 23 03:18:10 2026
+**      by: The Qt MOC ($Id: $)
+**
+** WARNING! All changes made in this file will be lost!
+*****************************************************************************/
+
+#include <qmetaobject.h>
+#include <qapplication.h>
+
+#include <private/qucomextra_p.h>
+#if !defined(Q_MOC_OUTPUT_REVISION) || (Q_MOC_OUTPUT_REVISION != 26)
+#error "This file was generated using the moc from 3.3.4. It"
+#error "cannot be used with the include files from this version of Qt."
+#error "(The moc has changed too much.)"
+#endif
+
+const char *ScriptListView::className() const
+{
+    return "ScriptListView";
+}
+
+QMetaObject *ScriptListView::metaObj = 0;
+static QMetaObjectCleanUp cleanUp_ScriptListView( "ScriptListView", &ScriptListView::staticMetaObject );
+
+#ifndef QT_NO_TRANSLATION
+QString ScriptListView::tr( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "ScriptListView", s, c, QApplication::DefaultCodec );
+    else
+	return QString::fromLatin1( s );
+}
+#ifndef QT_NO_TRANSLATION_UTF8
+QString ScriptListView::trUtf8( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "ScriptListView", s, c, QApplication::UnicodeUTF8 );
+    else
+	return QString::fromUtf8( s );
+}
+#endif // QT_NO_TRANSLATION_UTF8
+
+#endif // QT_NO_TRANSLATION
+
+QMetaObject* ScriptListView::staticMetaObject()
+{
+    if ( metaObj )
+	return metaObj;
+    QMetaObject* parentObject = QListView::staticMetaObject();
+    static const QUMethod slot_0 = {"onRefreshList", 0, 0 };
+    static const QUParameter param_slot_1[] = {
+	{ "text", &static_QUType_QString, 0, QUParameter::In }
+    };
+    static const QUMethod slot_1 = {"onSearchTextChanged", 1, param_slot_1 };
+    static const QUMethod slot_2 = {"onClearSearch", 0, 0 };
+    static const QUParameter param_slot_3[] = {
+	{ "item", &static_QUType_ptr, "QListViewItem", QUParameter::In },
+	{ "pos", &static_QUType_varptr, "\x0e", QUParameter::In },
+	{ "col", &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod slot_3 = {"onContextMenuRequested", 3, param_slot_3 };
+    static const QUMethod slot_4 = {"onSelectionChanged", 0, 0 };
+    static const QMetaData slot_tbl[] = {
+	{ "onRefreshList()", &slot_0, QMetaData::Public },
+	{ "onSearchTextChanged(const QString&)", &slot_1, QMetaData::Public },
+	{ "onClearSearch()", &slot_2, QMetaData::Public },
+	{ "onContextMenuRequested(QListViewItem*,const QPoint&,int)", &slot_3, QMetaData::Protected },
+	{ "onSelectionChanged()", &slot_4, QMetaData::Private }
+    };
+    metaObj = QMetaObject::new_metaobject(
+	"ScriptListView", parentObject,
+	slot_tbl, 5,
+	0, 0,
+#ifndef QT_NO_PROPERTIES
+	0, 0,
+	0, 0,
+#endif // QT_NO_PROPERTIES
+	0, 0 );
+    cleanUp_ScriptListView.setMetaObject( metaObj );
+    return metaObj;
+}
+
+void* ScriptListView::qt_cast( const char* clname )
+{
+    if ( !qstrcmp( clname, "ScriptListView" ) )
+	return this;
+    return QListView::qt_cast( clname );
+}
+
+bool ScriptListView::qt_invoke( int _id, QUObject* _o )
+{
+    switch ( _id - staticMetaObject()->slotOffset() ) {
+    case 0: onRefreshList(); break;
+    case 1: onSearchTextChanged((const QString&)static_QUType_QString.get(_o+1)); break;
+    case 2: onClearSearch(); break;
+    case 3: onContextMenuRequested((QListViewItem*)static_QUType_ptr.get(_o+1),(const QPoint&)*((const QPoint*)static_QUType_ptr.get(_o+2)),(int)static_QUType_int.get(_o+3)); break;
+    case 4: onSelectionChanged(); break;
+    default:
+	return QListView::qt_invoke( _id, _o );
+    }
+    return TRUE;
+}
+
+bool ScriptListView::qt_emit( int _id, QUObject* _o )
+{
+    return QListView::qt_emit(_id,_o);
+}
+#ifndef QT_NO_PROPERTIES
+
+bool ScriptListView::qt_property( int id, int f, QVariant* v)
+{
+    return QListView::qt_property( id, f, v);
+}
+
+bool ScriptListView::qt_static_property( QObject* , int , int , QVariant* ){ return FALSE; }
+#endif // QT_NO_PROPERTIES

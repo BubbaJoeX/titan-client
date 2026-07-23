@@ -264,7 +264,7 @@ m_lastSlotDiagnosticRendered (-1)
 	getCodeDataObject (TUIButton,     m_deleteButton,   "buttonDelete");
 	{
 		Unicode::String localizedCreateText;
-		m_createButton->GetText (localizedCreateText);
+		m_createButton->GetLocalText (localizedCreateText);
 		// Preserve non-English localization from @avatar_create. The English
 		// legacy caption is upgraded until the string table ships the new text.
 		if (localizedCreateText == Unicode::narrowToWide ("Create a Character"))
@@ -449,6 +449,8 @@ void SwgCuiAvatarSelection::performActivate ()
 //		reconnectLoginServer (false);
 	clearCharacterList ();
 	refreshList        (false);
+	if (m_showAvailableSlotsEnabled)
+		CuiLoginManager::requestAvailableCharacterSlots ();
 	ensureViewerBehindChrome ();
 
 	m_table->SetEnabled        (true);
@@ -676,7 +678,9 @@ void SwgCuiAvatarSelection::beginWelcomeText ()
 		return;
 
 	Unicode::String createLabel;
-	m_createButton->GetText (createLabel);
+	m_createButton->GetLocalText (createLabel);
+	if (createLabel.empty () || createLabel[0] == '@')
+		createLabel = Unicode::narrowToWide ("Create a New Character");
 	m_welcomeFullText = Unicode::narrowToWide ("Welcome to SWG: Titan. Press \"") + createLabel + Unicode::narrowToWide ("\" to start your adventure.");
 	m_welcomeElapsed = 0.0f;
 	m_welcomeComplete = false;
@@ -870,7 +874,7 @@ void SwgCuiAvatarSelection::populateAvatarViewers (bool preserveCarouselState)
 		 m_lastSlotDiagnosticCount != authoritativeAvailable ||
 		 m_lastSlotDiagnosticRendered != availableDisplayCount))
 	{
-		DEBUG_REPORT_LOG(true, ("Character selection slots cluster %lu authoritative %d rendered %d real avatars %d viewer cap %d\n",
+		REPORT_LOG(true, ("Character selection slots cluster %lu authoritative %d rendered %d real avatars %d viewer cap %d\n",
 			m_slotClusterId, authoritativeAvailable, availableDisplayCount, m_realAvatarCount, MaxAvatarViewers));
 		m_lastSlotDiagnosticClusterId = m_slotClusterId;
 		m_lastSlotDiagnosticCount = authoritativeAvailable;
@@ -2285,6 +2289,9 @@ void SwgCuiAvatarSelection::OnCheckboxSet( UIWidget *context )
 		CuiSettings::save ();
 		populateAvatarViewers (true);
 		updateAvatarSelection ();
+		REPORT_LOG(true, ("AvailableCharacterSlotsV1Request station=%u cluster=%u source=checkbox\n",
+			static_cast<unsigned int>(GameNetwork::getStationId()), static_cast<unsigned int>(m_slotClusterId)));
+		CuiLoginManager::requestAvailableCharacterSlots ();
 		return;
 	}
 

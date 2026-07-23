@@ -1,0 +1,132 @@
+/****************************************************************************
+** FilterWindow meta object code from reading C++ file 'FilterWindow.h'
+**
+** Created: Thu Jul 23 03:18:10 2026
+**      by: The Qt MOC ($Id: $)
+**
+** WARNING! All changes made in this file will be lost!
+*****************************************************************************/
+
+#include <qmetaobject.h>
+#include <qapplication.h>
+
+#include <private/qucomextra_p.h>
+#if !defined(Q_MOC_OUTPUT_REVISION) || (Q_MOC_OUTPUT_REVISION != 26)
+#error "This file was generated using the moc from 3.3.4. It"
+#error "cannot be used with the include files from this version of Qt."
+#error "(The moc has changed too much.)"
+#endif
+
+const char *FilterWindow::className() const
+{
+    return "FilterWindow";
+}
+
+QMetaObject *FilterWindow::metaObj = 0;
+static QMetaObjectCleanUp cleanUp_FilterWindow( "FilterWindow", &FilterWindow::staticMetaObject );
+
+#ifndef QT_NO_TRANSLATION
+QString FilterWindow::tr( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "FilterWindow", s, c, QApplication::DefaultCodec );
+    else
+	return QString::fromLatin1( s );
+}
+#ifndef QT_NO_TRANSLATION_UTF8
+QString FilterWindow::trUtf8( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "FilterWindow", s, c, QApplication::UnicodeUTF8 );
+    else
+	return QString::fromUtf8( s );
+}
+#endif // QT_NO_TRANSLATION_UTF8
+
+#endif // QT_NO_TRANSLATION
+
+QMetaObject* FilterWindow::staticMetaObject()
+{
+    if ( metaObj )
+	return metaObj;
+    QMetaObject* parentObject = BaseFilterWindow::staticMetaObject();
+    static const QUParameter param_slot_0[] = {
+	{ 0, &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod slot_0 = {"OnNetworkIdCheck", 1, param_slot_0 };
+    static const QUParameter param_slot_1[] = {
+	{ 0, &static_QUType_QString, 0, QUParameter::In }
+    };
+    static const QUMethod slot_1 = {"OnNetworkIdLowerChanged", 1, param_slot_1 };
+    static const QUParameter param_slot_2[] = {
+	{ 0, &static_QUType_QString, 0, QUParameter::In }
+    };
+    static const QUMethod slot_2 = {"OnNetworkIdUpperChanged", 1, param_slot_2 };
+    static const QUParameter param_slot_3[] = {
+	{ 0, &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod slot_3 = {"OnRadiusCheck", 1, param_slot_3 };
+    static const QUParameter param_slot_4[] = {
+	{ 0, &static_QUType_QString, 0, QUParameter::In }
+    };
+    static const QUMethod slot_4 = {"OnRadiusMinChanged", 1, param_slot_4 };
+    static const QUParameter param_slot_5[] = {
+	{ 0, &static_QUType_QString, 0, QUParameter::In }
+    };
+    static const QUMethod slot_5 = {"OnRadiusMaxChanged", 1, param_slot_5 };
+    static const QMetaData slot_tbl[] = {
+	{ "OnNetworkIdCheck(bool)", &slot_0, QMetaData::Private },
+	{ "OnNetworkIdLowerChanged(const QString&)", &slot_1, QMetaData::Private },
+	{ "OnNetworkIdUpperChanged(const QString&)", &slot_2, QMetaData::Private },
+	{ "OnRadiusCheck(bool)", &slot_3, QMetaData::Private },
+	{ "OnRadiusMinChanged(const QString&)", &slot_4, QMetaData::Private },
+	{ "OnRadiusMaxChanged(const QString&)", &slot_5, QMetaData::Private }
+    };
+    metaObj = QMetaObject::new_metaobject(
+	"FilterWindow", parentObject,
+	slot_tbl, 6,
+	0, 0,
+#ifndef QT_NO_PROPERTIES
+	0, 0,
+	0, 0,
+#endif // QT_NO_PROPERTIES
+	0, 0 );
+    cleanUp_FilterWindow.setMetaObject( metaObj );
+    return metaObj;
+}
+
+void* FilterWindow::qt_cast( const char* clname )
+{
+    if ( !qstrcmp( clname, "FilterWindow" ) )
+	return this;
+    return BaseFilterWindow::qt_cast( clname );
+}
+
+bool FilterWindow::qt_invoke( int _id, QUObject* _o )
+{
+    switch ( _id - staticMetaObject()->slotOffset() ) {
+    case 0: OnNetworkIdCheck((bool)static_QUType_bool.get(_o+1)); break;
+    case 1: OnNetworkIdLowerChanged((const QString&)static_QUType_QString.get(_o+1)); break;
+    case 2: OnNetworkIdUpperChanged((const QString&)static_QUType_QString.get(_o+1)); break;
+    case 3: OnRadiusCheck((bool)static_QUType_bool.get(_o+1)); break;
+    case 4: OnRadiusMinChanged((const QString&)static_QUType_QString.get(_o+1)); break;
+    case 5: OnRadiusMaxChanged((const QString&)static_QUType_QString.get(_o+1)); break;
+    default:
+	return BaseFilterWindow::qt_invoke( _id, _o );
+    }
+    return TRUE;
+}
+
+bool FilterWindow::qt_emit( int _id, QUObject* _o )
+{
+    return BaseFilterWindow::qt_emit(_id,_o);
+}
+#ifndef QT_NO_PROPERTIES
+
+bool FilterWindow::qt_property( int id, int f, QVariant* v)
+{
+    return BaseFilterWindow::qt_property( id, f, v);
+}
+
+bool FilterWindow::qt_static_property( QObject* , int , int , QVariant* ){ return FALSE; }
+#endif // QT_NO_PROPERTIES

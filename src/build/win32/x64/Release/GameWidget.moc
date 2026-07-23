@@ -1,0 +1,284 @@
+/****************************************************************************
+** GameWidget meta object code from reading C++ file 'GameWidget.h'
+**
+** Created: Thu Jul 23 03:18:10 2026
+**      by: The Qt MOC ($Id: $)
+**
+** WARNING! All changes made in this file will be lost!
+*****************************************************************************/
+
+#include <qmetaobject.h>
+#include <qapplication.h>
+
+#include <private/qucomextra_p.h>
+#if !defined(Q_MOC_OUTPUT_REVISION) || (Q_MOC_OUTPUT_REVISION != 26)
+#error "This file was generated using the moc from 3.3.4. It"
+#error "cannot be used with the include files from this version of Qt."
+#error "(The moc has changed too much.)"
+#endif
+
+const char *GameWidget::className() const
+{
+    return "GameWidget";
+}
+
+QMetaObject *GameWidget::metaObj = 0;
+static QMetaObjectCleanUp cleanUp_GameWidget( "GameWidget", &GameWidget::staticMetaObject );
+
+#ifndef QT_NO_TRANSLATION
+QString GameWidget::tr( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "GameWidget", s, c, QApplication::DefaultCodec );
+    else
+	return QString::fromLatin1( s );
+}
+#ifndef QT_NO_TRANSLATION_UTF8
+QString GameWidget::trUtf8( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "GameWidget", s, c, QApplication::UnicodeUTF8 );
+    else
+	return QString::fromUtf8( s );
+}
+#endif // QT_NO_TRANSLATION_UTF8
+
+#endif // QT_NO_TRANSLATION
+
+QMetaObject* GameWidget::staticMetaObject()
+{
+    if ( metaObj )
+	return metaObj;
+    QMetaObject* parentObject = QWidget::staticMetaObject();
+    static const QUParameter param_slot_0[] = {
+	{ "b", &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod slot_0 = {"onGameFocusAllowedChanged", 1, param_slot_0 };
+    static const QUParameter param_slot_1[] = {
+	{ "b", &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod slot_1 = {"onInteriorCameraChanged", 1, param_slot_1 };
+    static const QUMethod slot_2 = {"runGameLoop", 0, 0 };
+    static const QUMethod slot_3 = {"grabExclusiveFocus", 0, 0 };
+    static const QUParameter param_slot_4[] = {
+	{ "e", &static_QUType_ptr, "QContextMenuEvent", QUParameter::In }
+    };
+    static const QUMethod slot_4 = {"contextMenuEvent", 1, param_slot_4 };
+    static const QUMethod slot_5 = {"createObjectFromSelectedTemplate", 0, 0 };
+    static const QUParameter param_slot_6[] = {
+	{ "id", &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod slot_6 = {"onCreateTemplateFromMenu", 1, param_slot_6 };
+    static const QUMethod slot_7 = {"onAddObjectBookmark", 0, 0 };
+    static const QUMethod slot_8 = {"secondElapsed", 0, 0 };
+    static const QUParameter param_slot_9[] = {
+	{ "id", &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod slot_9 = {"onPopupItemActivated", 1, param_slot_9 };
+    static const QUParameter param_slot_10[] = {
+	{ "id", &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod slot_10 = {"onSetConditionMenuActivated", 1, param_slot_10 };
+    static const QUParameter param_slot_11[] = {
+	{ "id", &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod slot_11 = {"onMagicPaintingConditionMenuActivated", 1, param_slot_11 };
+    static const QUParameter param_slot_12[] = {
+	{ "id", &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod slot_12 = {"onMagicVideoConditionMenuActivated", 1, param_slot_12 };
+    static const QUMethod slot_13 = {"onPopupMenuShow", 0, 0 };
+    static const QUMethod slot_14 = {"onPopupMenuHide", 0, 0 };
+    static const QUMethod slot_15 = {"onTemplateMenuShow", 0, 0 };
+    static const QUParameter param_slot_16[] = {
+	{ "fps", &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod slot_16 = {"setFrameRateLimit", 1, param_slot_16 };
+    static const QMetaData slot_tbl[] = {
+	{ "onGameFocusAllowedChanged(bool)", &slot_0, QMetaData::Public },
+	{ "onInteriorCameraChanged(bool)", &slot_1, QMetaData::Public },
+	{ "runGameLoop()", &slot_2, QMetaData::Public },
+	{ "grabExclusiveFocus()", &slot_3, QMetaData::Protected },
+	{ "contextMenuEvent(QContextMenuEvent*)", &slot_4, QMetaData::Protected },
+	{ "createObjectFromSelectedTemplate()", &slot_5, QMetaData::Protected },
+	{ "onCreateTemplateFromMenu(int)", &slot_6, QMetaData::Protected },
+	{ "onAddObjectBookmark()", &slot_7, QMetaData::Protected },
+	{ "secondElapsed()", &slot_8, QMetaData::Private },
+	{ "onPopupItemActivated(int)", &slot_9, QMetaData::Private },
+	{ "onSetConditionMenuActivated(int)", &slot_10, QMetaData::Private },
+	{ "onMagicPaintingConditionMenuActivated(int)", &slot_11, QMetaData::Private },
+	{ "onMagicVideoConditionMenuActivated(int)", &slot_12, QMetaData::Private },
+	{ "onPopupMenuShow()", &slot_13, QMetaData::Private },
+	{ "onPopupMenuHide()", &slot_14, QMetaData::Private },
+	{ "onTemplateMenuShow()", &slot_15, QMetaData::Private },
+	{ "setFrameRateLimit(int)", &slot_16, QMetaData::Private }
+    };
+    static const QUParameter param_signal_0[] = {
+	{ 0, &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod signal_0 = {"gameExclusiveFocusChanged", 1, param_signal_0 };
+    static const QUParameter param_signal_1[] = {
+	{ 0, &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod signal_1 = {"interiorCameraFocusChanged", 1, param_signal_1 };
+    static const QUParameter param_signal_2[] = {
+	{ 0, &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod signal_2 = {"framesPerSecond", 1, param_signal_2 };
+    static const QUParameter param_signal_3[] = {
+	{ 0, &static_QUType_ptr, "float", QUParameter::In }
+    };
+    static const QUMethod signal_3 = {"pivotDistanceChanged", 1, param_signal_3 };
+    static const QUParameter param_signal_4[] = {
+	{ "x", &static_QUType_ptr, "float", QUParameter::In },
+	{ "y", &static_QUType_ptr, "float", QUParameter::In },
+	{ "z", &static_QUType_ptr, "float", QUParameter::In }
+    };
+    static const QUMethod signal_4 = {"cursorWorldPositionChanged", 3, param_signal_4 };
+    static const QUParameter param_signal_5[] = {
+	{ 0, &static_QUType_charstar, 0, QUParameter::In },
+	{ 0, &static_QUType_charstar, 0, QUParameter::In }
+    };
+    static const QUMethod signal_5 = {"buildoutRegionChanged", 2, param_signal_5 };
+    static const QMetaData signal_tbl[] = {
+	{ "gameExclusiveFocusChanged(bool)", &signal_0, QMetaData::Public },
+	{ "interiorCameraFocusChanged(bool)", &signal_1, QMetaData::Public },
+	{ "framesPerSecond(int)", &signal_2, QMetaData::Public },
+	{ "pivotDistanceChanged(float)", &signal_3, QMetaData::Public },
+	{ "cursorWorldPositionChanged(float,float,float)", &signal_4, QMetaData::Public },
+	{ "buildoutRegionChanged(const char*,const char*)", &signal_5, QMetaData::Public }
+    };
+    metaObj = QMetaObject::new_metaobject(
+	"GameWidget", parentObject,
+	slot_tbl, 17,
+	signal_tbl, 6,
+#ifndef QT_NO_PROPERTIES
+	0, 0,
+	0, 0,
+#endif // QT_NO_PROPERTIES
+	0, 0 );
+    cleanUp_GameWidget.setMetaObject( metaObj );
+    return metaObj;
+}
+
+void* GameWidget::qt_cast( const char* clname )
+{
+    if ( !qstrcmp( clname, "GameWidget" ) )
+	return this;
+    if ( !qstrcmp( clname, "MessageDispatch::Receiver" ) )
+	return (MessageDispatch::Receiver*)this;
+    return QWidget::qt_cast( clname );
+}
+
+// SIGNAL gameExclusiveFocusChanged
+void GameWidget::gameExclusiveFocusChanged( bool t0 )
+{
+    activate_signal_bool( staticMetaObject()->signalOffset() + 0, t0 );
+}
+
+// SIGNAL interiorCameraFocusChanged
+void GameWidget::interiorCameraFocusChanged( bool t0 )
+{
+    activate_signal_bool( staticMetaObject()->signalOffset() + 1, t0 );
+}
+
+// SIGNAL framesPerSecond
+void GameWidget::framesPerSecond( int t0 )
+{
+    activate_signal( staticMetaObject()->signalOffset() + 2, t0 );
+}
+
+#include <qobjectdefs.h>
+#include <qsignalslotimp.h>
+
+// SIGNAL pivotDistanceChanged
+void GameWidget::pivotDistanceChanged( float t0 )
+{
+    if ( signalsBlocked() )
+	return;
+    QConnectionList *clist = receivers( staticMetaObject()->signalOffset() + 3 );
+    if ( !clist )
+	return;
+    QUObject o[2];
+    static_QUType_ptr.set(o+1,&t0);
+    activate_signal( clist, o );
+}
+
+// SIGNAL cursorWorldPositionChanged
+void GameWidget::cursorWorldPositionChanged( float t0, float t1, float t2 )
+{
+    if ( signalsBlocked() )
+	return;
+    QConnectionList *clist = receivers( staticMetaObject()->signalOffset() + 4 );
+    if ( !clist )
+	return;
+    QUObject o[4];
+    static_QUType_ptr.set(o+1,&t0);
+    static_QUType_ptr.set(o+2,&t1);
+    static_QUType_ptr.set(o+3,&t2);
+    activate_signal( clist, o );
+}
+
+// SIGNAL buildoutRegionChanged
+void GameWidget::buildoutRegionChanged( const char* t0, const char* t1 )
+{
+    if ( signalsBlocked() )
+	return;
+    QConnectionList *clist = receivers( staticMetaObject()->signalOffset() + 5 );
+    if ( !clist )
+	return;
+    QUObject o[3];
+    static_QUType_charstar.set(o+1,t0);
+    static_QUType_charstar.set(o+2,t1);
+    activate_signal( clist, o );
+}
+
+bool GameWidget::qt_invoke( int _id, QUObject* _o )
+{
+    switch ( _id - staticMetaObject()->slotOffset() ) {
+    case 0: onGameFocusAllowedChanged((bool)static_QUType_bool.get(_o+1)); break;
+    case 1: onInteriorCameraChanged((bool)static_QUType_bool.get(_o+1)); break;
+    case 2: runGameLoop(); break;
+    case 3: grabExclusiveFocus(); break;
+    case 4: contextMenuEvent((QContextMenuEvent*)static_QUType_ptr.get(_o+1)); break;
+    case 5: createObjectFromSelectedTemplate(); break;
+    case 6: onCreateTemplateFromMenu((int)static_QUType_int.get(_o+1)); break;
+    case 7: onAddObjectBookmark(); break;
+    case 8: secondElapsed(); break;
+    case 9: onPopupItemActivated((int)static_QUType_int.get(_o+1)); break;
+    case 10: onSetConditionMenuActivated((int)static_QUType_int.get(_o+1)); break;
+    case 11: onMagicPaintingConditionMenuActivated((int)static_QUType_int.get(_o+1)); break;
+    case 12: onMagicVideoConditionMenuActivated((int)static_QUType_int.get(_o+1)); break;
+    case 13: onPopupMenuShow(); break;
+    case 14: onPopupMenuHide(); break;
+    case 15: onTemplateMenuShow(); break;
+    case 16: setFrameRateLimit((int)static_QUType_int.get(_o+1)); break;
+    default:
+	return QWidget::qt_invoke( _id, _o );
+    }
+    return TRUE;
+}
+
+bool GameWidget::qt_emit( int _id, QUObject* _o )
+{
+    switch ( _id - staticMetaObject()->signalOffset() ) {
+    case 0: gameExclusiveFocusChanged((bool)static_QUType_bool.get(_o+1)); break;
+    case 1: interiorCameraFocusChanged((bool)static_QUType_bool.get(_o+1)); break;
+    case 2: framesPerSecond((int)static_QUType_int.get(_o+1)); break;
+    case 3: pivotDistanceChanged((float)(*((float*)static_QUType_ptr.get(_o+1)))); break;
+    case 4: cursorWorldPositionChanged((float)(*((float*)static_QUType_ptr.get(_o+1))),(float)(*((float*)static_QUType_ptr.get(_o+2))),(float)(*((float*)static_QUType_ptr.get(_o+3)))); break;
+    case 5: buildoutRegionChanged((const char*)static_QUType_charstar.get(_o+1),(const char*)static_QUType_charstar.get(_o+2)); break;
+    default:
+	return QWidget::qt_emit(_id,_o);
+    }
+    return TRUE;
+}
+#ifndef QT_NO_PROPERTIES
+
+bool GameWidget::qt_property( int id, int f, QVariant* v)
+{
+    return QWidget::qt_property( id, f, v);
+}
+
+bool GameWidget::qt_static_property( QObject* , int , int , QVariant* ){ return FALSE; }
+#endif // QT_NO_PROPERTIES

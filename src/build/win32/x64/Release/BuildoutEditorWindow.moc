@@ -1,0 +1,236 @@
+/****************************************************************************
+** BuildoutAreaWidget meta object code from reading C++ file 'BuildoutEditorWindow.h'
+**
+** Created: Thu Jul 23 03:18:10 2026
+**      by: The Qt MOC ($Id: $)
+**
+** WARNING! All changes made in this file will be lost!
+*****************************************************************************/
+
+#include <qmetaobject.h>
+#include <qapplication.h>
+
+#include <private/qucomextra_p.h>
+#if !defined(Q_MOC_OUTPUT_REVISION) || (Q_MOC_OUTPUT_REVISION != 26)
+#error "This file was generated using the moc from 3.3.4. It"
+#error "cannot be used with the include files from this version of Qt."
+#error "(The moc has changed too much.)"
+#endif
+
+const char *BuildoutAreaWidget::className() const
+{
+    return "BuildoutAreaWidget";
+}
+
+QMetaObject *BuildoutAreaWidget::metaObj = 0;
+static QMetaObjectCleanUp cleanUp_BuildoutAreaWidget( "BuildoutAreaWidget", &BuildoutAreaWidget::staticMetaObject );
+
+#ifndef QT_NO_TRANSLATION
+QString BuildoutAreaWidget::tr( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "BuildoutAreaWidget", s, c, QApplication::DefaultCodec );
+    else
+	return QString::fromLatin1( s );
+}
+#ifndef QT_NO_TRANSLATION_UTF8
+QString BuildoutAreaWidget::trUtf8( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "BuildoutAreaWidget", s, c, QApplication::UnicodeUTF8 );
+    else
+	return QString::fromUtf8( s );
+}
+#endif // QT_NO_TRANSLATION_UTF8
+
+#endif // QT_NO_TRANSLATION
+
+QMetaObject* BuildoutAreaWidget::staticMetaObject()
+{
+    if ( metaObj )
+	return metaObj;
+    QMetaObject* parentObject = QWidget::staticMetaObject();
+    static const QUParameter param_signal_0[] = {
+	{ "selectedCount", &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod signal_0 = {"selectionChanged", 1, param_signal_0 };
+    static const QMetaData signal_tbl[] = {
+	{ "selectionChanged(int)", &signal_0, QMetaData::Public }
+    };
+    metaObj = QMetaObject::new_metaobject(
+	"BuildoutAreaWidget", parentObject,
+	0, 0,
+	signal_tbl, 1,
+#ifndef QT_NO_PROPERTIES
+	0, 0,
+	0, 0,
+#endif // QT_NO_PROPERTIES
+	0, 0 );
+    cleanUp_BuildoutAreaWidget.setMetaObject( metaObj );
+    return metaObj;
+}
+
+void* BuildoutAreaWidget::qt_cast( const char* clname )
+{
+    if ( !qstrcmp( clname, "BuildoutAreaWidget" ) )
+	return this;
+    return QWidget::qt_cast( clname );
+}
+
+// SIGNAL selectionChanged
+void BuildoutAreaWidget::selectionChanged( int t0 )
+{
+    activate_signal( staticMetaObject()->signalOffset() + 0, t0 );
+}
+
+bool BuildoutAreaWidget::qt_invoke( int _id, QUObject* _o )
+{
+    return QWidget::qt_invoke(_id,_o);
+}
+
+bool BuildoutAreaWidget::qt_emit( int _id, QUObject* _o )
+{
+    switch ( _id - staticMetaObject()->signalOffset() ) {
+    case 0: selectionChanged((int)static_QUType_int.get(_o+1)); break;
+    default:
+	return QWidget::qt_emit(_id,_o);
+    }
+    return TRUE;
+}
+#ifndef QT_NO_PROPERTIES
+
+bool BuildoutAreaWidget::qt_property( int id, int f, QVariant* v)
+{
+    return QWidget::qt_property( id, f, v);
+}
+
+bool BuildoutAreaWidget::qt_static_property( QObject* , int , int , QVariant* ){ return FALSE; }
+#endif // QT_NO_PROPERTIES
+
+
+const char *BuildoutEditorWindow::className() const
+{
+    return "BuildoutEditorWindow";
+}
+
+QMetaObject *BuildoutEditorWindow::metaObj = 0;
+static QMetaObjectCleanUp cleanUp_BuildoutEditorWindow( "BuildoutEditorWindow", &BuildoutEditorWindow::staticMetaObject );
+
+#ifndef QT_NO_TRANSLATION
+QString BuildoutEditorWindow::tr( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "BuildoutEditorWindow", s, c, QApplication::DefaultCodec );
+    else
+	return QString::fromLatin1( s );
+}
+#ifndef QT_NO_TRANSLATION_UTF8
+QString BuildoutEditorWindow::trUtf8( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "BuildoutEditorWindow", s, c, QApplication::UnicodeUTF8 );
+    else
+	return QString::fromUtf8( s );
+}
+#endif // QT_NO_TRANSLATION_UTF8
+
+#endif // QT_NO_TRANSLATION
+
+QMetaObject* BuildoutEditorWindow::staticMetaObject()
+{
+    if ( metaObj )
+	return metaObj;
+    QMetaObject* parentObject = QDialog::staticMetaObject();
+    static const QUMethod slot_0 = {"onSave", 0, 0 };
+    static const QUMethod slot_1 = {"onReloadArea", 0, 0 };
+    static const QUParameter param_slot_2[] = {
+	{ "planet", &static_QUType_QString, 0, QUParameter::In }
+    };
+    static const QUMethod slot_2 = {"onPlanetChanged", 1, param_slot_2 };
+    static const QUParameter param_slot_3[] = {
+	{ "count", &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod slot_3 = {"onSelectionChanged", 1, param_slot_3 };
+    static const QUMethod slot_4 = {"onToggleMode", 0, 0 };
+    static const QMetaData slot_tbl[] = {
+	{ "onSave()", &slot_0, QMetaData::Public },
+	{ "onReloadArea()", &slot_1, QMetaData::Public },
+	{ "onPlanetChanged(const QString&)", &slot_2, QMetaData::Public },
+	{ "onSelectionChanged(int)", &slot_3, QMetaData::Public },
+	{ "onToggleMode()", &slot_4, QMetaData::Public }
+    };
+    static const QUParameter param_signal_0[] = {
+	{ "msg", &static_QUType_charstar, 0, QUParameter::In }
+    };
+    static const QUMethod signal_0 = {"statusMessage", 1, param_signal_0 };
+    static const QMetaData signal_tbl[] = {
+	{ "statusMessage(const char*)", &signal_0, QMetaData::Public }
+    };
+    metaObj = QMetaObject::new_metaobject(
+	"BuildoutEditorWindow", parentObject,
+	slot_tbl, 5,
+	signal_tbl, 1,
+#ifndef QT_NO_PROPERTIES
+	0, 0,
+	0, 0,
+#endif // QT_NO_PROPERTIES
+	0, 0 );
+    cleanUp_BuildoutEditorWindow.setMetaObject( metaObj );
+    return metaObj;
+}
+
+void* BuildoutEditorWindow::qt_cast( const char* clname )
+{
+    if ( !qstrcmp( clname, "BuildoutEditorWindow" ) )
+	return this;
+    return QDialog::qt_cast( clname );
+}
+
+#include <qobjectdefs.h>
+#include <qsignalslotimp.h>
+
+// SIGNAL statusMessage
+void BuildoutEditorWindow::statusMessage( const char* t0 )
+{
+    if ( signalsBlocked() )
+	return;
+    QConnectionList *clist = receivers( staticMetaObject()->signalOffset() + 0 );
+    if ( !clist )
+	return;
+    QUObject o[2];
+    static_QUType_charstar.set(o+1,t0);
+    activate_signal( clist, o );
+}
+
+bool BuildoutEditorWindow::qt_invoke( int _id, QUObject* _o )
+{
+    switch ( _id - staticMetaObject()->slotOffset() ) {
+    case 0: onSave(); break;
+    case 1: onReloadArea(); break;
+    case 2: onPlanetChanged((const QString&)static_QUType_QString.get(_o+1)); break;
+    case 3: onSelectionChanged((int)static_QUType_int.get(_o+1)); break;
+    case 4: onToggleMode(); break;
+    default:
+	return QDialog::qt_invoke( _id, _o );
+    }
+    return TRUE;
+}
+
+bool BuildoutEditorWindow::qt_emit( int _id, QUObject* _o )
+{
+    switch ( _id - staticMetaObject()->signalOffset() ) {
+    case 0: statusMessage((const char*)static_QUType_charstar.get(_o+1)); break;
+    default:
+	return QDialog::qt_emit(_id,_o);
+    }
+    return TRUE;
+}
+#ifndef QT_NO_PROPERTIES
+
+bool BuildoutEditorWindow::qt_property( int id, int f, QVariant* v)
+{
+    return QDialog::qt_property( id, f, v);
+}
+
+bool BuildoutEditorWindow::qt_static_property( QObject* , int , int , QVariant* ){ return FALSE; }
+#endif // QT_NO_PROPERTIES

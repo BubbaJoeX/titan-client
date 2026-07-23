@@ -1,0 +1,161 @@
+/****************************************************************************
+** ActionsView meta object code from reading C++ file 'ActionsView.h'
+**
+** Created: Thu Jul 23 03:18:10 2026
+**      by: The Qt MOC ($Id: $)
+**
+** WARNING! All changes made in this file will be lost!
+*****************************************************************************/
+
+#include <qmetaobject.h>
+#include <qapplication.h>
+
+#include <private/qucomextra_p.h>
+#if !defined(Q_MOC_OUTPUT_REVISION) || (Q_MOC_OUTPUT_REVISION != 26)
+#error "This file was generated using the moc from 3.3.4. It"
+#error "cannot be used with the include files from this version of Qt."
+#error "(The moc has changed too much.)"
+#endif
+
+const char *ActionsView::className() const
+{
+    return "ActionsView";
+}
+
+QMetaObject *ActionsView::metaObj = 0;
+static QMetaObjectCleanUp cleanUp_ActionsView( "ActionsView", &ActionsView::staticMetaObject );
+
+#ifndef QT_NO_TRANSLATION
+QString ActionsView::tr( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "ActionsView", s, c, QApplication::DefaultCodec );
+    else
+	return QString::fromLatin1( s );
+}
+#ifndef QT_NO_TRANSLATION_UTF8
+QString ActionsView::trUtf8( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "ActionsView", s, c, QApplication::UnicodeUTF8 );
+    else
+	return QString::fromUtf8( s );
+}
+#endif // QT_NO_TRANSLATION_UTF8
+
+#endif // QT_NO_TRANSLATION
+
+QMetaObject* ActionsView::staticMetaObject()
+{
+    if ( metaObj )
+	return metaObj;
+    QMetaObject* parentObject = QObject::staticMetaObject();
+    static const QUMethod slot_0 = {"onAddCameraBookmark", 0, 0 };
+    static const QUMethod slot_1 = {"onAddObjectBookmark", 0, 0 };
+    static const QUMethod slot_2 = {"onRemoveObjectBookmark", 0, 0 };
+    static const QUMethod slot_3 = {"onCenterSelection", 0, 0 };
+    static const QUMethod slot_4 = {"onCenterGhosts", 0, 0 };
+    static const QUMethod slot_5 = {"onMoveToCursor", 0, 0 };
+    static const QUMethod slot_6 = {"onFitSelection", 0, 0 };
+    static const QUMethod slot_7 = {"onFitGhosts", 0, 0 };
+    static const QUMethod slot_8 = {"onShowTriggerVolumes", 0, 0 };
+    static const QUMethod slot_9 = {"onTurnOffSpheres", 0, 0 };
+    static const QUMethod slot_10 = {"onResetCamera", 0, 0 };
+    static const QUParameter param_slot_11[] = {
+	{ "pos", &static_QUType_ptr, "Vector", QUParameter::In },
+	{ "interpolate", &static_QUType_bool, 0, QUParameter::In },
+	{ "fit", &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod slot_11 = {"centerCameraOnPoint", 3, param_slot_11 };
+    static const QUParameter param_slot_12[] = {
+	{ "obj", &static_QUType_ptr, "Object", QUParameter::In },
+	{ "interpolate", &static_QUType_bool, 0, QUParameter::In },
+	{ "fit", &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod slot_12 = {"centerCameraOnObject", 3, param_slot_12 };
+    static const QUParameter param_slot_13[] = {
+	{ "index", &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod slot_13 = {"gotoCameraBookmark", 1, param_slot_13 };
+    static const QUParameter param_slot_14[] = {
+	{ "index", &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod slot_14 = {"gotoObjectBookmark", 1, param_slot_14 };
+    static const QMetaData slot_tbl[] = {
+	{ "onAddCameraBookmark()", &slot_0, QMetaData::Private },
+	{ "onAddObjectBookmark()", &slot_1, QMetaData::Private },
+	{ "onRemoveObjectBookmark()", &slot_2, QMetaData::Private },
+	{ "onCenterSelection()", &slot_3, QMetaData::Private },
+	{ "onCenterGhosts()", &slot_4, QMetaData::Private },
+	{ "onMoveToCursor()", &slot_5, QMetaData::Private },
+	{ "onFitSelection()", &slot_6, QMetaData::Private },
+	{ "onFitGhosts()", &slot_7, QMetaData::Private },
+	{ "onShowTriggerVolumes()", &slot_8, QMetaData::Private },
+	{ "onTurnOffSpheres()", &slot_9, QMetaData::Private },
+	{ "onResetCamera()", &slot_10, QMetaData::Private },
+	{ "centerCameraOnPoint(const Vector&,bool,int)", &slot_11, QMetaData::Public },
+	{ "centerCameraOnObject(const Object&,bool,int)", &slot_12, QMetaData::Public },
+	{ "gotoCameraBookmark(int)", &slot_13, QMetaData::Public },
+	{ "gotoObjectBookmark(int)", &slot_14, QMetaData::Public }
+    };
+    metaObj = QMetaObject::new_metaobject(
+	"ActionsView", parentObject,
+	slot_tbl, 15,
+	0, 0,
+#ifndef QT_NO_PROPERTIES
+	0, 0,
+	0, 0,
+#endif // QT_NO_PROPERTIES
+	0, 0 );
+    cleanUp_ActionsView.setMetaObject( metaObj );
+    return metaObj;
+}
+
+void* ActionsView::qt_cast( const char* clname )
+{
+    if ( !qstrcmp( clname, "ActionsView" ) )
+	return this;
+    if ( !qstrcmp( clname, "Singleton<ActionsView>" ) )
+	return (Singleton<ActionsView>*)this;
+    if ( !qstrcmp( clname, "MessageDispatch::Receiver" ) )
+	return (MessageDispatch::Receiver*)this;
+    return QObject::qt_cast( clname );
+}
+
+bool ActionsView::qt_invoke( int _id, QUObject* _o )
+{
+    switch ( _id - staticMetaObject()->slotOffset() ) {
+    case 0: onAddCameraBookmark(); break;
+    case 1: onAddObjectBookmark(); break;
+    case 2: onRemoveObjectBookmark(); break;
+    case 3: onCenterSelection(); break;
+    case 4: onCenterGhosts(); break;
+    case 5: onMoveToCursor(); break;
+    case 6: onFitSelection(); break;
+    case 7: onFitGhosts(); break;
+    case 8: onShowTriggerVolumes(); break;
+    case 9: onTurnOffSpheres(); break;
+    case 10: onResetCamera(); break;
+    case 11: centerCameraOnPoint((const Vector&)*((const Vector*)static_QUType_ptr.get(_o+1)),(bool)static_QUType_bool.get(_o+2),(int)static_QUType_int.get(_o+3)); break;
+    case 12: centerCameraOnObject((const Object&)*((const Object*)static_QUType_ptr.get(_o+1)),(bool)static_QUType_bool.get(_o+2),(int)static_QUType_int.get(_o+3)); break;
+    case 13: gotoCameraBookmark((int)static_QUType_int.get(_o+1)); break;
+    case 14: gotoObjectBookmark((int)static_QUType_int.get(_o+1)); break;
+    default:
+	return QObject::qt_invoke( _id, _o );
+    }
+    return TRUE;
+}
+
+bool ActionsView::qt_emit( int _id, QUObject* _o )
+{
+    return QObject::qt_emit(_id,_o);
+}
+#ifndef QT_NO_PROPERTIES
+
+bool ActionsView::qt_property( int id, int f, QVariant* v)
+{
+    return QObject::qt_property( id, f, v);
+}
+
+bool ActionsView::qt_static_property( QObject* , int , int , QVariant* ){ return FALSE; }
+#endif // QT_NO_PROPERTIES

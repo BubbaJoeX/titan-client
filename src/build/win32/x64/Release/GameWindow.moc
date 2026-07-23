@@ -1,0 +1,141 @@
+/****************************************************************************
+** GameWindow meta object code from reading C++ file 'GameWindow.h'
+**
+** Created: Thu Jul 23 03:18:10 2026
+**      by: The Qt MOC ($Id: $)
+**
+** WARNING! All changes made in this file will be lost!
+*****************************************************************************/
+
+#include <qmetaobject.h>
+#include <qapplication.h>
+
+#include <private/qucomextra_p.h>
+#if !defined(Q_MOC_OUTPUT_REVISION) || (Q_MOC_OUTPUT_REVISION != 26)
+#error "This file was generated using the moc from 3.3.4. It"
+#error "cannot be used with the include files from this version of Qt."
+#error "(The moc has changed too much.)"
+#endif
+
+const char *GameWindow::className() const
+{
+    return "GameWindow";
+}
+
+QMetaObject *GameWindow::metaObj = 0;
+static QMetaObjectCleanUp cleanUp_GameWindow( "GameWindow", &GameWindow::staticMetaObject );
+
+#ifndef QT_NO_TRANSLATION
+QString GameWindow::tr( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "GameWindow", s, c, QApplication::DefaultCodec );
+    else
+	return QString::fromLatin1( s );
+}
+#ifndef QT_NO_TRANSLATION_UTF8
+QString GameWindow::trUtf8( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "GameWindow", s, c, QApplication::UnicodeUTF8 );
+    else
+	return QString::fromUtf8( s );
+}
+#endif // QT_NO_TRANSLATION_UTF8
+
+#endif // QT_NO_TRANSLATION
+
+QMetaObject* GameWindow::staticMetaObject()
+{
+    if ( metaObj )
+	return metaObj;
+    QMetaObject* parentObject = BaseGameWindow::staticMetaObject();
+    static const QUParameter param_slot_0[] = {
+	{ "b", &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod slot_0 = {"onGameExclusiveFocusChanged", 1, param_slot_0 };
+    static const QUParameter param_slot_1[] = {
+	{ "b", &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod slot_1 = {"onInteriorCameraFocusChanged", 1, param_slot_1 };
+    static const QUParameter param_slot_2[] = {
+	{ "distance", &static_QUType_ptr, "float", QUParameter::In }
+    };
+    static const QUMethod slot_2 = {"onPivotDistanceChanged", 1, param_slot_2 };
+    static const QUParameter param_slot_3[] = {
+	{ 0, &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod slot_3 = {"onGameFocusAllowedChanged", 1, param_slot_3 };
+    static const QUParameter param_slot_4[] = {
+	{ "positionX", &static_QUType_ptr, "float", QUParameter::In },
+	{ "positionY", &static_QUType_ptr, "float", QUParameter::In },
+	{ "positionZ", &static_QUType_ptr, "float", QUParameter::In }
+    };
+    static const QUMethod slot_4 = {"onCursorWorldPositionChanged", 3, param_slot_4 };
+    static const QUParameter param_slot_5[] = {
+	{ 0, &static_QUType_charstar, 0, QUParameter::In },
+	{ 0, &static_QUType_charstar, 0, QUParameter::In }
+    };
+    static const QUMethod slot_5 = {"onBuildoutRegionChanged", 2, param_slot_5 };
+    static const QUMethod slot_6 = {"onTerrainGameWindowStatusChanged", 0, 0 };
+    static const QUMethod slot_7 = {"onClearRegionTerrainToolsClicked", 0, 0 };
+    static const QMetaData slot_tbl[] = {
+	{ "onGameExclusiveFocusChanged(bool)", &slot_0, QMetaData::Public },
+	{ "onInteriorCameraFocusChanged(bool)", &slot_1, QMetaData::Public },
+	{ "onPivotDistanceChanged(float)", &slot_2, QMetaData::Public },
+	{ "onGameFocusAllowedChanged(bool)", &slot_3, QMetaData::Public },
+	{ "onCursorWorldPositionChanged(float,float,float)", &slot_4, QMetaData::Public },
+	{ "onBuildoutRegionChanged(const char*,const char*)", &slot_5, QMetaData::Public },
+	{ "onTerrainGameWindowStatusChanged()", &slot_6, QMetaData::Public },
+	{ "onClearRegionTerrainToolsClicked()", &slot_7, QMetaData::Public }
+    };
+    metaObj = QMetaObject::new_metaobject(
+	"GameWindow", parentObject,
+	slot_tbl, 8,
+	0, 0,
+#ifndef QT_NO_PROPERTIES
+	0, 0,
+	0, 0,
+#endif // QT_NO_PROPERTIES
+	0, 0 );
+    cleanUp_GameWindow.setMetaObject( metaObj );
+    return metaObj;
+}
+
+void* GameWindow::qt_cast( const char* clname )
+{
+    if ( !qstrcmp( clname, "GameWindow" ) )
+	return this;
+    return BaseGameWindow::qt_cast( clname );
+}
+
+bool GameWindow::qt_invoke( int _id, QUObject* _o )
+{
+    switch ( _id - staticMetaObject()->slotOffset() ) {
+    case 0: onGameExclusiveFocusChanged((bool)static_QUType_bool.get(_o+1)); break;
+    case 1: onInteriorCameraFocusChanged((bool)static_QUType_bool.get(_o+1)); break;
+    case 2: onPivotDistanceChanged((float)(*((float*)static_QUType_ptr.get(_o+1)))); break;
+    case 3: onGameFocusAllowedChanged((bool)static_QUType_bool.get(_o+1)); break;
+    case 4: onCursorWorldPositionChanged((float)(*((float*)static_QUType_ptr.get(_o+1))),(float)(*((float*)static_QUType_ptr.get(_o+2))),(float)(*((float*)static_QUType_ptr.get(_o+3)))); break;
+    case 5: onBuildoutRegionChanged((const char*)static_QUType_charstar.get(_o+1),(const char*)static_QUType_charstar.get(_o+2)); break;
+    case 6: onTerrainGameWindowStatusChanged(); break;
+    case 7: onClearRegionTerrainToolsClicked(); break;
+    default:
+	return BaseGameWindow::qt_invoke( _id, _o );
+    }
+    return TRUE;
+}
+
+bool GameWindow::qt_emit( int _id, QUObject* _o )
+{
+    return BaseGameWindow::qt_emit(_id,_o);
+}
+#ifndef QT_NO_PROPERTIES
+
+bool GameWindow::qt_property( int id, int f, QVariant* v)
+{
+    return BaseGameWindow::qt_property( id, f, v);
+}
+
+bool GameWindow::qt_static_property( QObject* , int , int , QVariant* ){ return FALSE; }
+#endif // QT_NO_PROPERTIES
