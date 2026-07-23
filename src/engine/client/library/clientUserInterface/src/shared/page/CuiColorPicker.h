@@ -21,9 +21,11 @@ class Object;
 class PaletteArgb;
 class UIButton;
 class UIDataSource;
+struct UIMessage;
 class UILowerString;
 class UIPage;
 class UIText;
+class UITextbox;
 class UIVolumePage;
 class UIWidget;
 
@@ -73,6 +75,8 @@ public:
 
 	virtual void                  OnButtonPressed              (UIWidget * context);
 	virtual void                  OnVolumePageSelectionChanged (UIWidget * context);
+	virtual void                  OnTextboxChanged             (UIWidget * context);
+	virtual bool                  OnMessage                    (UIWidget * context, UIMessage const & msg);
 
 	void                          setTarget                    (const NetworkId & id, const std::string & var, int rangeMin, int rangeMax);
 	void                          setPalette(PaletteArgb const * palette);
@@ -116,6 +120,9 @@ private:
 
 	void                     updateValue     (int index);
 	void                     updateValue     (TangibleObject & obj, int index, PathFlags flags = PF_any);
+	void                     updateWheelFromIndex(int index);
+	void                     updateWheelSelection(long x, long y);
+	void                     updateSelectionFromTextboxes(UIWidget * context);
 	void                     revert          ();
 	void                     storeProperties ();
 
@@ -124,6 +131,12 @@ private:
 	UIButton *               m_buttonRevert;
 	UIButton *               m_buttonClose;
 	UIPage *                 m_pageSample;
+	UIPage *                 m_pageWheel;
+	UIWidget *               m_cursorWheel;
+	UITextbox *              m_textboxHtml;
+	UITextbox *              m_textR;
+	UITextbox *              m_textG;
+	UITextbox *              m_textB;
 
 	int                      m_originalSelection;
 	int                      m_rangeMin;
@@ -145,6 +158,9 @@ private:
 
 	bool                     m_changed;
 	bool                     m_userChanged;
+	bool                     m_draggingWheel;
+	bool                     m_updatingColorControls;
+	bool                     m_hasValidTarget;
 	UISize                   m_lastSize;
 
 	enum PaletteSource

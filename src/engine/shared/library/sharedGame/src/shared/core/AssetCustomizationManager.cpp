@@ -16,11 +16,19 @@
 #include "sharedFoundation/TemporaryCrcString.h"
 #include "sharedMath/PaletteArgb.h"
 #include "sharedMath/PaletteArgbList.h"
+#include "sharedObject/Appearance.h"
+#include "sharedObject/AppearanceTemplateList.h"
 #include "sharedObject/BasicRangedIntCustomizationVariable.h"
 #include "sharedObject/CustomizationData.h"
+#include "sharedObject/MemoryBlockManagedObject.h"
 #include "sharedObject/PaletteColorCustomizationVariable.h"
+#include "sharedObject/RangedIntCustomizationVariable.h"
 
+#include <ctype.h>
+#include <map>
 #include <stdlib.h>
+#include <set>
+#include <vector>
 
 // ======================================================================
 
@@ -177,6 +185,22 @@ namespace AssetCustomizationManagerNamespace
 	CrcLookupEntry  *s_crcLookupTable;
 	int              s_crcLookupEntryCount;
 
+	std::set<std::string> s_runtimeLookupBlacklist;
+
+	struct RuntimeVariableDeclaration
+	{
+		std::string variablePathName;
+		std::string paletteName;
+		int minValueInclusive;
+		int defaultValue;
+		int maxValueExclusive;
+		bool isPalette;
+	};
+
+	typedef std::vector<RuntimeVariableDeclaration> RuntimeVariableDeclarationVector;
+	typedef std::map<std::string, RuntimeVariableDeclarationVector> RuntimeVariableDeclarationMap;
+	RuntimeVariableDeclarationMap s_runtimeVariableDeclarationCache;
+
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 }
 
@@ -238,6 +262,8 @@ void AssetCustomizationManagerNamespace::remove()
 	delete [] s_crcLookupTable;
 	s_crcLookupTable      = NULL;
 	s_crcLookupEntryCount = 0;
+	s_runtimeLookupBlacklist.clear();
+	s_runtimeVariableDeclarationCache.clear();
 }
 
 // ----------------------------------------------------------------------
@@ -639,6 +665,139 @@ void AssetCustomizationManagerNamespace::addVariablesForAssetAndLinks(int assetI
 	}
 }
 
+// ----------------------------------------------------------------------
+
+namespace
+{
+	bool isSharedOwnerVariablePath(std::string const &variablePathName)
+	{
+		return (variablePathName.compare(0, 14, "/shared_owner/") == 0);
+	}
+
+	void collectRuntimeVariableCallback(std::string const &fullVariablePathName, CustomizationVariable const *customizationVariable, void *context)
+	{
+		NOT_NULL(context);
+		NOT_NULL(customizationVariable);
+		RuntimeVariableDeclarationVector * const declarations = reinterpret_cast<RuntimeVariableDeclarationVector *>(context);
+
+		PaletteColorCustomizationVariable const * const paletteVariable = dynamic_cast<PaletteColorCustomizationVariable const *>(customizationVariable);
+		if (paletteVariable)
+		{
+			PaletteArgb const * const palette = paletteVariable->fetchPalette();
+			RuntimeVariableDeclaration declaration = {fullVariablePathName, palette->getName().getString(), 0, paletteVariable->getValue(), 0, true};
+			palette->release();
+			declarations->push_back(declaration);
+			return;
+		}
+
+		RangedIntCustomizationVariable const * const rangedVariable = dynamic_cast<RangedIntCustomizationVariable const *>(customizationVariable);
+		if (rangedVariable)
+		{
+			int minRangeInclusive = 0;
+			int maxRangeExclusive = 0;
+			rangedVariable->getRange(minRangeInclusive, maxRangeExclusive);
+			RuntimeVariableDeclaration declaration = {fullVariablePathName, std::string(), minRangeInclusive, rangedVariable->getValue(), maxRangeExclusive, false};
+			declarations->push_back(declaration);
+			return;
+		}
+
+		WARNING(true, ("AssetCustomizationManager: unsupported variable type for [%s] while collecting runtime customization declarations.", fullVariablePathName.c_str()));
+	}
+
+	int addVariablesFromAppearance(CrcString const &assetName, CustomizationData &customizationData, bool skipSharedOwnerVariables)
+	{
+		char const * const assetPath = assetName.getString();
+		if (!assetPath || !*assetPath)
+			return 0;
+
+		std::string const assetKey(assetPath);
+		RuntimeVariableDeclarationMap::iterator cacheIterator = s_runtimeVariableDeclarationCache.find(assetKey);
+		if (cacheIterator == s_runtimeVariableDeclarationCache.end())
+		{
+			RuntimeVariableDeclarationVector declarations;
+			MemoryBlockManagedObject scratchObject;
+			Appearance * const appearance = AppearanceTemplateList::createAppearance(assetPath);
+			if (!appearance)
+				return 0;
+
+			scratchObject.setAppearance(appearance);
+			Appearance * const ownedAppearance = scratchObject.getAppearance();
+			if (!ownedAppearance)
+				return 0;
+
+			CustomizationData * const scratchCustomizationData = new CustomizationData(scratchObject);
+			scratchCustomizationData->fetch();
+			ownedAppearance->addCustomizationVariables(*scratchCustomizationData);
+			scratchCustomizationData->iterateOverConstVariables(collectRuntimeVariableCallback, &declarations, false);
+			scratchCustomizationData->release();
+
+			cacheIterator = s_runtimeVariableDeclarationCache.insert(std::make_pair(assetKey, declarations)).first;
+		}
+
+		int addedVariableCount = 0;
+		RuntimeVariableDeclarationVector const &declarations = cacheIterator->second;
+		for (RuntimeVariableDeclarationVector::const_iterator iterator = declarations.begin(); iterator != declarations.end(); ++iterator)
+		{
+			RuntimeVariableDeclaration const &declaration = *iterator;
+			if (skipSharedOwnerVariables && isSharedOwnerVariablePath(declaration.variablePathName))
+				continue;
+			if (customizationData.findConstVariable(declaration.variablePathName))
+				continue;
+
+			if (declaration.isPalette)
+			{
+				PaletteArgb const * const palette = PaletteArgbList::fetch(TemporaryCrcString(declaration.paletteName.c_str(), true));
+				if (!palette)
+					continue;
+				customizationData.addVariableTakeOwnership(declaration.variablePathName, new PaletteColorCustomizationVariable(palette, declaration.defaultValue));
+				palette->release();
+			}
+			else
+				customizationData.addVariableTakeOwnership(declaration.variablePathName, new BasicRangedIntCustomizationVariable(declaration.minValueInclusive, declaration.defaultValue, declaration.maxValueExclusive));
+
+			++addedVariableCount;
+		}
+
+		return addedVariableCount;
+	}
+
+	bool tryAddVariablesFromAppearance(CrcString const &assetName, CustomizationData &customizationData, bool skipSharedOwnerVariables, int &addedVariableCount)
+	{
+#if defined(PLATFORM_WIN32)
+		__try
+		{
+			addedVariableCount = addVariablesFromAppearance(assetName, customizationData, skipSharedOwnerVariables);
+			return true;
+		}
+		__except(EXCEPTION_EXECUTE_HANDLER)
+		{
+			addedVariableCount = 0;
+			return false;
+		}
+#else
+		addedVariableCount = addVariablesFromAppearance(assetName, customizationData, skipSharedOwnerVariables);
+		return true;
+#endif
+	}
+
+	bool shouldSkipRuntimeLookup(char const *assetPath)
+	{
+		if (!assetPath || !*assetPath)
+			return true;
+
+		std::string const path(assetPath);
+		std::string::size_type const dot = path.find_last_of('.');
+		if (dot == std::string::npos)
+			return false;
+
+		std::string ext = path.substr(dot);
+		for (std::string::size_type i = 0; i < ext.size(); ++i)
+			ext[i] = static_cast<char>(tolower(static_cast<unsigned char>(ext[i])));
+
+		return (ext == ".lmg") || (ext == ".mgn");
+	}
+}
+
 // ======================================================================
 // class AssetCustomizationManager: PUBLIC STATIC
 // ======================================================================
@@ -662,6 +821,8 @@ void AssetCustomizationManager::install(char const *filename)
 
 	load(iff);
 
+	s_runtimeLookupBlacklist.clear();
+	s_runtimeVariableDeclarationCache.clear();
 	s_installed = true;
 	ExitChain::add(remove, "AssetCustomizationManager");
 }
@@ -672,19 +833,29 @@ int AssetCustomizationManager::addCustomizationVariablesForAsset(CrcString const
 {
 	DEBUG_FATAL(!s_installed, ("AssetCustomizationManager not installed."));
 
-	//-- Convert asset name to internal asset id.
+	int addedVariableCount = 0;
+
+	// ACM remains the fast, deterministic declaration source, but old ACM files can
+	// contain a valid asset entry with an incomplete variable/dependency list.
 	int const assetId = lookupAssetId(assetName);
-	if (!assetId)
+	if (assetId)
+		addVariablesForAssetAndLinks(assetId, customizationData, skipSharedOwnerVariables, addedVariableCount);
+
+	// Supplement ACM from declarations exposed by the authoritative runtime
+	// appearance.  This keeps undeclared customization paths rejected.
+	int runtimeAddedVariableCount = 0;
+	char const * const assetPath = assetName.getString();
+	std::string const assetKey = assetPath ? assetPath : "";
+	if (!assetKey.empty() && !shouldSkipRuntimeLookup(assetPath) && (s_runtimeLookupBlacklist.find(assetKey) == s_runtimeLookupBlacklist.end()))
 	{
-		// Exit: there are no customization variables for this asset or its dependencies.
-		return 0;
+		if (!tryAddVariablesFromAppearance(assetName, customizationData, skipSharedOwnerVariables, runtimeAddedVariableCount))
+		{
+			s_runtimeLookupBlacklist.insert(assetKey);
+			WARNING(true, ("AssetCustomizationManager: runtime customization lookup crashed for [%s]; blacklisting runtime for this asset and using ACM fallback.", assetPath ? assetPath : "<null>"));
+		}
 	}
 
-	//-- Recursively add customization variables used directly by an asset and then check any child assets used by the asset.
-	int addedVariableCount = 0;
-	addVariablesForAssetAndLinks(assetId, customizationData, skipSharedOwnerVariables, addedVariableCount);
-
-	return addedVariableCount;
+	return addedVariableCount + runtimeAddedVariableCount;
 }
 
 // ======================================================================

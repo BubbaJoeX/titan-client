@@ -144,6 +144,7 @@ void SharedCreatureObjectTemplate::createCustomizationDataPropertyAsNeeded(Objec
 		//   this function sets it to true.
 		bool const skipSharedOwnerVariables = false;
 		AssetCustomizationManager::addCustomizationVariablesForAsset(TemporaryCrcString(getAppearanceFilename().c_str(), true), *customizationData, skipSharedOwnerVariables);
+		addCustomizationVariablesFromTemplate(*customizationData, skipSharedOwnerVariables);
 
 		//-- set up mappings for any variables which need dependent mappings
  		int numVariableMappings = getCustomizationVariableMappingCount();

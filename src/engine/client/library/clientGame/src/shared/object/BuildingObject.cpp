@@ -151,6 +151,9 @@ void BuildingObject::removeFromWorld ()
 		}
 	}
 
+	// Detach portals while their non-owning door and barrier links are valid.
+	TangibleObject::removeFromWorld ();
+
 	Objects::const_iterator ii = objectsToDelete.begin();
 	Objects::const_iterator iiEnd = objectsToDelete.end();
 
@@ -159,8 +162,6 @@ void BuildingObject::removeFromWorld ()
 		Object * const object = *ii;
 		delete object;
 	}
-
-	TangibleObject::removeFromWorld ();
 }
 
 // ----------------------------------------------------------------------

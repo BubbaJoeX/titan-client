@@ -15,6 +15,7 @@
 #include "UIMessage.h"
 #include "UIPage.h"
 #include "UIText.h"
+#include "UITextbox.h"
 #include "UIUtils.h"
 #include "UIVolumePage.h"
 #include "UnicodeUtils.h"
@@ -22,6 +23,7 @@
 #include "clientUserInterface/CuiUtils.h"
 #include "sharedFoundation/CrcLowerString.h"
 #include "sharedGame/CustomizationManager.h"
+#include "sharedMath/PackedArgb.h"
 #include "sharedMath/PaletteArgb.h"
 #include "sharedObject/CachedNetworkId.h"
 #include "sharedObject/NetworkIdManager.h"
@@ -30,6 +32,9 @@
 
 #include <list>
 #include <map>
+#include <math.h>
+#include <stdio.h>
+#include <string.h>
 
 //======================================================================
 
@@ -44,8 +49,21 @@ namespace CuiColorPickerNamespace
 	CustomizationVariable * findVariable(CustomizationData & cdata, const std::string & partialName, CuiColorPicker::PathFlags flags)
 	{
 		CustomizationVariable * cv = cdata.findVariable(partialName);
+		if (!cv && !partialName.empty())
+		{
+			if (partialName[0] == '/')
+				cv = cdata.findVariable(partialName.substr(1));
+			else
+				cv = cdata.findVariable("/" + partialName);
+		}
 
-		if (!cv)
+		bool const hasNamespace =
+			partialName.compare(0, PathPrefixes::shared_owner.size(), PathPrefixes::shared_owner) == 0 ||
+			partialName.compare(0, PathPrefixes::priv.size(), PathPrefixes::priv) == 0 ||
+			partialName.compare(0, PathPrefixes::shared_owner.size() - 1, PathPrefixes::shared_owner.substr(1)) == 0 ||
+			partialName.compare(0, PathPrefixes::priv.size() - 1, PathPrefixes::priv.substr(1)) == 0;
+
+		if (!cv && !hasNamespace)
 		{
 			if ((flags & CuiColorPicker::PF_shared) != 0)
 				cv = cdata.findVariable(PathPrefixes::shared_owner + partialName);
@@ -60,6 +78,77 @@ namespace CuiColorPickerNamespace
 //	typedef CuiColorPicker::StringIntMap StringIntMap;
 //	StringIntMap s_paletteColumnData;
 	std::map<std::string, CustomizationManager::PaletteColumns> s_paletteColumnDataTableData;
+
+	float const cs_pi = 3.14159265358979323846f;
+
+	void rgbToHsv(uint8 r, uint8 g, uint8 b, float &h, float &s, float &v)
+	{
+		float const rf = static_cast<float>(r) / 255.0f;
+		float const gf = static_cast<float>(g) / 255.0f;
+		float const bf = static_cast<float>(b) / 255.0f;
+		float const maximum = std::max(rf, std::max(gf, bf));
+		float const minimum = std::min(rf, std::min(gf, bf));
+		float const delta = maximum - minimum;
+
+		v = maximum;
+		s = maximum > 0.0f ? delta / maximum : 0.0f;
+		if (delta <= 0.00001f)
+			h = 0.0f;
+		else
+		{
+			if (maximum == rf)
+				h = (gf - bf) / delta;
+			else if (maximum == gf)
+				h = 2.0f + (bf - rf) / delta;
+			else
+				h = 4.0f + (rf - gf) / delta;
+			h *= 60.0f;
+			if (h < 0.0f)
+				h += 360.0f;
+		}
+	}
+
+	PackedArgb hsvToColor(float h, float s)
+	{
+		float const sector = h / 60.0f;
+		int const i = static_cast<int>(sector) % 6;
+		float const f = sector - static_cast<float>(static_cast<int>(sector));
+		float const p = 1.0f - s;
+		float const q = 1.0f - s * f;
+		float const t = 1.0f - s * (1.0f - f);
+		float r = 1.0f;
+		float g = 1.0f;
+		float b = 1.0f;
+
+		switch (i)
+		{
+			case 0: r = 1.0f; g = t;    b = p;    break;
+			case 1: r = q;    g = 1.0f; b = p;    break;
+			case 2: r = p;    g = 1.0f; b = t;    break;
+			case 3: r = p;    g = q;    b = 1.0f; break;
+			case 4: r = t;    g = p;    b = 1.0f; break;
+			default:r = 1.0f; g = p;    b = q;    break;
+		}
+
+		return PackedArgb(255, static_cast<uint8>(r * 255.0f + 0.5f), static_cast<uint8>(g * 255.0f + 0.5f), static_cast<uint8>(b * 255.0f + 0.5f));
+	}
+
+	bool parseHtmlColor(std::string const &text, PackedArgb &color)
+	{
+		char const *value = text.c_str();
+		if (*value == '#')
+			++value;
+		if (strlen(value) != 6)
+			return false;
+
+		unsigned int rgb = 0;
+		char trailing = 0;
+		if (sscanf(value, "%6x%c", &rgb, &trailing) != 1)
+			return false;
+
+		color = PackedArgb(255, static_cast<uint8>((rgb >> 16) & 0xff), static_cast<uint8>((rgb >> 8) & 0xff), static_cast<uint8>(rgb & 0xff));
+		return true;
+	}
 
 	std::string getBasename(const std::string & path)
 	{
@@ -103,6 +192,12 @@ m_buttonCancel(0),
 m_buttonRevert(0),
 m_buttonClose(0),
 m_pageSample(0),
+m_pageWheel(0),
+m_cursorWheel(0),
+m_textboxHtml(0),
+m_textR(0),
+m_textG(0),
+m_textB(0),
 m_originalSelection(0),
 m_rangeMin(0),
 m_rangeMax(0),
@@ -116,6 +211,10 @@ m_text(0),
 m_forceColumns(0),
 m_autoForceColumns(false),
 m_changed(false),
+m_userChanged(false),
+m_draggingWheel(false),
+m_updatingColorControls(false),
+m_hasValidTarget(false),
 m_lastSize(),
 m_paletteSource(PS_target)
 {
@@ -125,6 +224,20 @@ m_paletteSource(PS_target)
 	getCodeDataObject(TUIPage, m_pageSample, "pageSample", true);
 	getCodeDataObject(TUIWidget, m_sampleElement, "sampleElement", true);
 	getCodeDataObject(TUIWidget, m_text, "text", true);
+	getCodeDataObject(TUIPage, m_pageWheel, "pageWheel", true);
+	getCodeDataObject(TUIWidget, m_cursorWheel, "cursorWheel", true);
+	getCodeDataObject(TUITextbox, m_textboxHtml, "textboxHtml", true);
+	getCodeDataObject(TUITextbox, m_textR, "textR", true);
+	getCodeDataObject(TUITextbox, m_textG, "textG", true);
+	getCodeDataObject(TUITextbox, m_textB, "textB", true);
+
+	if (m_pageWheel)
+	{
+		m_pageWheel->SetGetsInput(true);
+		m_pageWheel->SetAbsorbsInput(true);
+		if (m_cursorWheel)
+			IGNORE_RETURN(m_pageWheel->MoveChild(m_cursorWheel, UIBaseObject::Top));
+	}
 
 	if(getButtonClose())
 		m_buttonClose = getButtonClose();
@@ -146,6 +259,12 @@ CuiColorPicker::~CuiColorPicker()
 	m_buttonRevert = 0;
 	m_buttonClose = 0;
 	m_pageSample = 0;
+	m_pageWheel = 0;
+	m_cursorWheel = 0;
+	m_textboxHtml = 0;
+	m_textR = 0;
+	m_textG = 0;
+	m_textB = 0;
 	m_text = 0;
 
 	if (m_palette)
@@ -166,6 +285,16 @@ CuiColorPicker::~CuiColorPicker()
 void CuiColorPicker::performActivate()
 {
 	handleMediatorPropertiesChanged();
+	if (m_pageWheel)
+		m_pageWheel->AddCallback(this);
+	if (m_textboxHtml)
+		m_textboxHtml->AddCallback(this);
+	if (m_textR)
+		m_textR->AddCallback(this);
+	if (m_textG)
+		m_textG->AddCallback(this);
+	if (m_textB)
+		m_textB->AddCallback(this);
 	setIsUpdating(true);
 }
 
@@ -181,6 +310,17 @@ void CuiColorPicker::performDeactivate()
 		m_buttonRevert->RemoveCallback(this);
 
 	m_volumePage->RemoveCallback(this);
+	if (m_pageWheel)
+		m_pageWheel->RemoveCallback(this);
+	if (m_textboxHtml)
+		m_textboxHtml->RemoveCallback(this);
+	if (m_textR)
+		m_textR->RemoveCallback(this);
+	if (m_textG)
+		m_textG->RemoveCallback(this);
+	if (m_textB)
+		m_textB->RemoveCallback(this);
+	m_draggingWheel = false;
 
 	storeProperties();
 
@@ -213,6 +353,163 @@ void CuiColorPicker::OnVolumePageSelectionChanged(UIWidget * context)
 
 		if (checkAndResetChanged())
 			m_userChanged = true;
+	}
+}
+
+//----------------------------------------------------------------------
+
+bool CuiColorPicker::OnMessage(UIWidget *context, UIMessage const &msg)
+{
+	if (context != m_pageWheel)
+		return true;
+
+	if (msg.Type == UIMessage::LeftMouseDown)
+	{
+		m_draggingWheel = true;
+		updateWheelSelection(msg.MouseCoords.x, msg.MouseCoords.y);
+		return false;
+	}
+	if (msg.Type == UIMessage::MouseMove && m_draggingWheel)
+	{
+		if (!msg.Modifiers.LeftMouseDown)
+			m_draggingWheel = false;
+		else
+			updateWheelSelection(msg.MouseCoords.x, msg.MouseCoords.y);
+		return false;
+	}
+	if (msg.Type == UIMessage::LeftMouseUp)
+	{
+		if (m_draggingWheel)
+			updateWheelSelection(msg.MouseCoords.x, msg.MouseCoords.y);
+		m_draggingWheel = false;
+		return false;
+	}
+
+	return true;
+}
+
+//----------------------------------------------------------------------
+
+void CuiColorPicker::OnTextboxChanged(UIWidget *context)
+{
+	if (!m_updatingColorControls)
+		updateSelectionFromTextboxes(context);
+}
+
+//----------------------------------------------------------------------
+
+void CuiColorPicker::updateSelectionFromTextboxes(UIWidget *context)
+{
+	if (!m_palette || !m_hasValidTarget)
+		return;
+
+	PackedArgb requestedColor(PackedArgb::solidWhite);
+	if (context == m_textboxHtml && m_textboxHtml)
+	{
+		Unicode::String text;
+		m_textboxHtml->GetLocalText(text);
+		if (!parseHtmlColor(Unicode::wideToNarrow(text), requestedColor))
+			return;
+	}
+	else if ((context == m_textR || context == m_textG || context == m_textB) && m_textR && m_textG && m_textB)
+	{
+		Unicode::String redText;
+		Unicode::String greenText;
+		Unicode::String blueText;
+		m_textR->GetLocalText(redText);
+		m_textG->GetLocalText(greenText);
+		m_textB->GetLocalText(blueText);
+		int const red = atoi(Unicode::wideToNarrow(redText).c_str());
+		int const green = atoi(Unicode::wideToNarrow(greenText).c_str());
+		int const blue = atoi(Unicode::wideToNarrow(blueText).c_str());
+		if (red < 0 || red > 255 || green < 0 || green > 255 || blue < 0 || blue > 255)
+			return;
+		requestedColor = PackedArgb(255, static_cast<uint8>(red), static_cast<uint8>(green), static_cast<uint8>(blue));
+	}
+	else
+		return;
+
+	int bestIndex = -1;
+	unsigned long bestDistance = 0xffffffffUL;
+	for (int i = m_rangeMin; i < m_rangeMax; ++i)
+	{
+		bool error = false;
+		PackedArgb const &candidate = m_palette->getEntry(i, error);
+		if (error)
+			continue;
+		int const dr = static_cast<int>(candidate.getR()) - static_cast<int>(requestedColor.getR());
+		int const dg = static_cast<int>(candidate.getG()) - static_cast<int>(requestedColor.getG());
+		int const db = static_cast<int>(candidate.getB()) - static_cast<int>(requestedColor.getB());
+		unsigned long const distance = static_cast<unsigned long>(dr * dr + dg * dg + db * db);
+		if (bestIndex < 0 || distance < bestDistance)
+		{
+			bestIndex = i;
+			bestDistance = distance;
+		}
+	}
+
+	if (bestIndex >= 0)
+	{
+		m_volumePage->SetSelectionIndex(bestIndex);
+		updateValue(bestIndex);
+		m_userChanged = true;
+	}
+	else
+		WARNING(true, ("CuiColorPicker: palette [%s] has no usable entries in range [%d,%d).", m_palette->getName().getString(), m_rangeMin, m_rangeMax));
+}
+
+//----------------------------------------------------------------------
+
+void CuiColorPicker::updateWheelSelection(long x, long y)
+{
+	if (!m_pageWheel || !m_palette || !m_hasValidTarget)
+		return;
+
+	UISize const size = m_pageWheel->GetSize();
+	float const centerX = static_cast<float>(size.x) * 0.5f;
+	float const centerY = static_cast<float>(size.y) * 0.5f;
+	float const radius = std::max(1.0f, static_cast<float>(std::min(size.x, size.y)) * 0.5f - 3.0f);
+	float const dx = static_cast<float>(x) - centerX;
+	float const dy = centerY - static_cast<float>(y);
+	float angle = atan2f(dy, dx);
+	if (angle < 0.0f)
+		angle += 2.0f * cs_pi;
+	float const saturation = std::min(1.0f, sqrtf(dx * dx + dy * dy) / radius);
+	PackedArgb const requestedColor = hsvToColor(angle * 180.0f / cs_pi, saturation);
+
+	int bestIndex = -1;
+	unsigned long bestDistance = 0xffffffffUL;
+	for (int i = m_rangeMin; i < m_rangeMax; ++i)
+	{
+		bool error = false;
+		PackedArgb const &candidate = m_palette->getEntry(i, error);
+		if (error)
+			continue;
+		int const dr = static_cast<int>(candidate.getR()) - static_cast<int>(requestedColor.getR());
+		int const dg = static_cast<int>(candidate.getG()) - static_cast<int>(requestedColor.getG());
+		int const db = static_cast<int>(candidate.getB()) - static_cast<int>(requestedColor.getB());
+		unsigned long const distance = static_cast<unsigned long>(dr * dr + dg * dg + db * db);
+		if (bestIndex < 0 || distance < bestDistance)
+		{
+			bestIndex = i;
+			bestDistance = distance;
+		}
+	}
+
+	if (bestIndex >= 0)
+	{
+		m_volumePage->SetSelectionIndex(bestIndex);
+		updateValue(bestIndex);
+		m_userChanged = true;
+
+		if (m_cursorWheel)
+		{
+			float const cursorDistance = saturation * radius;
+			UISize const cursorSize = m_cursorWheel->GetSize();
+			long const cursorX = static_cast<long>(centerX + cosf(angle) * cursorDistance) - cursorSize.x / 2;
+			long const cursorY = static_cast<long>(centerY - sinf(angle) * cursorDistance) - cursorSize.y / 2;
+			m_cursorWheel->SetLocation(cursorX, cursorY);
+		}
 	}
 }
 
@@ -335,11 +632,14 @@ void CuiColorPicker::updateValue(TangibleObject & obj, int index, PathFlags flag
 		{
 			if (var->getValue() != index)
 			{
-				var->setValue(index);
-				m_changed = true;
+				if (var->setValue(index) && var->getValue() == index)
+					m_changed = true;
+				else
+					WARNING(true, ("CuiColorPicker: rejected value [%d] for variable [%s].", index, m_targetVariable.c_str()));
 			}
-
 		}
+		else
+			WARNING(true, ("CuiColorPicker: variable [%s] disappeared while applying preview.", m_targetVariable.c_str()));
 		cdata->release();
 	}
 
@@ -354,7 +654,7 @@ void CuiColorPicker::updateValue(TangibleObject & obj, int index, PathFlags flag
 
 void CuiColorPicker::updateValue(int index)
 {
-	if (index >= 0)
+	if (index >= m_rangeMin && index < m_rangeMax)
 	{
 		TangibleObject * const object = m_targetObject->getPointer();
 
@@ -389,7 +689,70 @@ void CuiColorPicker::updateValue(int index)
 		Unicode::String str;
 		UIUtils::FormatInteger(str, index);
 		getPage().SetProperty(DataProperties::TargetValue, str);
+		updateWheelFromIndex(index);
 
+	}
+	else
+		WARNING(true, ("CuiColorPicker: rejected index [%d], allowed range is [%d,%d).", index, m_rangeMin, m_rangeMax));
+}
+
+//----------------------------------------------------------------------
+
+void CuiColorPicker::updateWheelFromIndex(int index)
+{
+	if (!m_palette || index < 0 || index >= m_palette->getEntryCount())
+		return;
+
+	bool error = false;
+	PackedArgb const &color = m_palette->getEntry(index, error);
+	if (error)
+	{
+		WARNING(true, ("CuiColorPicker: palette [%s] failed to return index [%d].", m_palette->getName().getString(), index));
+		return;
+	}
+
+	m_updatingColorControls = true;
+	char buffer[16];
+	if (m_textR)
+	{
+		snprintf(buffer, sizeof(buffer), "%u", static_cast<unsigned int>(color.getR()));
+		m_textR->SetLocalText(Unicode::narrowToWide(buffer));
+	}
+	if (m_textG)
+	{
+		snprintf(buffer, sizeof(buffer), "%u", static_cast<unsigned int>(color.getG()));
+		m_textG->SetLocalText(Unicode::narrowToWide(buffer));
+	}
+	if (m_textB)
+	{
+		snprintf(buffer, sizeof(buffer), "%u", static_cast<unsigned int>(color.getB()));
+		m_textB->SetLocalText(Unicode::narrowToWide(buffer));
+	}
+	if (m_textboxHtml)
+	{
+		snprintf(buffer, sizeof(buffer), "#%02X%02X%02X", color.getR(), color.getG(), color.getB());
+		m_textboxHtml->SetLocalText(Unicode::narrowToWide(buffer));
+	}
+	m_updatingColorControls = false;
+
+	if (m_pageSample)
+		m_pageSample->SetBackgroundTint(CuiUtils::convertColor(color));
+
+	if (m_pageWheel && m_cursorWheel && !m_draggingWheel)
+	{
+		float hue = 0.0f;
+		float saturation = 0.0f;
+		float value = 0.0f;
+		rgbToHsv(color.getR(), color.getG(), color.getB(), hue, saturation, value);
+		UISize const size = m_pageWheel->GetSize();
+		float const centerX = static_cast<float>(size.x) * 0.5f;
+		float const centerY = static_cast<float>(size.y) * 0.5f;
+		float const radius = std::max(1.0f, static_cast<float>(std::min(size.x, size.y)) * 0.5f - 3.0f);
+		float const angle = hue * cs_pi / 180.0f;
+		UISize const cursorSize = m_cursorWheel->GetSize();
+		m_cursorWheel->SetLocation(
+			static_cast<long>(centerX + cosf(angle) * saturation * radius) - cursorSize.x / 2,
+			static_cast<long>(centerY - sinf(angle) * saturation * radius) - cursorSize.y / 2);
 	}
 }
 
@@ -412,6 +775,7 @@ void CuiColorPicker::setTarget(const NetworkId & id, const std::string & var, in
 void CuiColorPicker::setTarget(Object * obj, const std::string & var, int rangeMin, int rangeMax)
 {
 	m_paletteSource = PS_target;
+	m_hasValidTarget = false;
 
 	*m_targetObject = dynamic_cast<TangibleObject *>(obj);
 
@@ -444,6 +808,7 @@ void CuiColorPicker::setTarget(Object * obj, const std::string & var, int rangeM
 					m_palette           = cvar->fetchPalette ();
 					m_originalSelection = cvar->getValue ();
 					cvar->getRange (actualRangeMin, actualRangeMax);
+					m_hasValidTarget = true;
 				}
 				else
 					WARNING (true, ("color picker could not find variable '%s'", m_targetVariable.c_str ()));
@@ -455,6 +820,11 @@ void CuiColorPicker::setTarget(Object * obj, const std::string & var, int rangeM
 
 	m_rangeMin = std::max (rangeMin, actualRangeMin);
 	m_rangeMax = std::min (rangeMax, actualRangeMax);
+	if (m_hasValidTarget && m_rangeMax <= m_rangeMin)
+	{
+		WARNING(true, ("CuiColorPicker::setTarget rejected empty range [%d,%d) for variable [%s].", m_rangeMin, m_rangeMax, m_targetVariable.c_str()));
+		m_hasValidTarget = false;
+	}
 
 	storeProperties();
 

@@ -12,6 +12,7 @@
 #include "sharedGame/HoverPlaneHelper.h"
 #include "sharedMath/AxialBox.h"
 #include "sharedObject/AlterResult.h"
+#include "sharedObject/BasicRangedIntCustomizationVariable.h"
 #include "sharedObject/RangedIntCustomizationVariable.h"
 #include "sharedObject/CustomizationDataProperty.h"
 #include "sharedObject/CustomizationData.h"
@@ -101,7 +102,7 @@ m_turnRateMin              (0.0f),
 m_turnRateMax              (0.0f),
 m_accelMax                 (0.0f),
 m_accelMin                 (0.0f),
-m_canStrafe                (false),
+m_canStrafe                (true),
 m_dampFactorRoll           (2.0f),
 m_dampFactorPitch          (3.0f),
 m_dampFactorGlide          (4.0f),
@@ -119,7 +120,8 @@ m_lastFrameK_w             (),
 m_hoverHeight              (hoverHeight),
 m_hoverHeightStopped       (0.1f),
 m_baseTransform_o2p        (),
-m_autoLevellingForce       (0.50f),
+m_autoLevellingForce       (0.25f),
+m_lastSpeed                (0.0f),
 m_lastTurnDeltaRoll        (0.0f),
 m_lastAccelDeltaPitch      (0.0f),
 m_customizationData        (0),
@@ -141,6 +143,8 @@ m_turnRatePercentLastFrame (0.0f)
 	}
 
 	WARNING (!m_customizationData, ("VehicleHoverDynamics parent customization data not found, physics will be borked"));
+	if (m_customizationData)
+		readParamsFromCustomizationData ();
 
 	static bool installed = false;
 	if (!installed)
@@ -205,7 +209,7 @@ float VehicleHoverDynamics::alter(float elapsedTime)
 	const float turnRateLastFrame        = deltaHeading / elapsedTime;
 
 	const float maximumTurnRate = getTurnRateForSpeedRadians (m_currentSpeed);
-	m_turnRatePercentLastFrame  = maximumTurnRate > 0.0f ? (turnRateLastFrame / maximumTurnRate) : 0.0f;
+	m_turnRatePercentLastFrame  = maximumTurnRate > 0.0f ? std::min (1.0f, turnRateLastFrame / maximumTurnRate) : 0.0f;
 	const float headingChangeFactor      = 1.0f;// + m_turnRatePercentLastFrame;
 
 	const float timeFactorRoll  = std::min (1.0f, elapsedTime * m_dampFactorRoll  * headingChangeFactor);
@@ -260,7 +264,8 @@ float VehicleHoverDynamics::alter(float elapsedTime)
 	const float targetTurnDeltaRoll = turnDeltaRoll;
 	turnDeltaRoll = linearInterpolate (m_lastTurnDeltaRoll, turnDeltaRoll, std::min (1.0f, timeFactorRoll * 2.0f));
 	m_lastTurnDeltaRoll = targetTurnDeltaRoll;
-	m_targetRoll = std::max (-PI_OVER_2, std::min (PI_OVER_2, m_targetRoll + turnDeltaRoll));
+	float const maximumBank = fabs (m_rollFactorTurn);
+	m_targetRoll = std::max (-maximumBank, std::min (maximumBank, m_targetRoll + turnDeltaRoll));
 
 	m_distancePopupThisFrame = 0.0f;
 
@@ -662,6 +667,56 @@ void VehicleHoverDynamics::setInitialParams (CustomizationData & cd,
 		}
 		else
 			WARNING (true, ("VehicleHoverDynamics customization param [%s] not found", cvd.path.c_str ()));
+	}
+}
+
+//----------------------------------------------------------------------
+
+void VehicleHoverDynamics::ensureCustomizationVariables (CustomizationData & cd)
+{
+	struct Declaration
+	{
+		char const * path;
+		int minValueInclusive;
+		int defaultValue;
+		int maxValueExclusive;
+	};
+
+	// Mirrors object/mobile/vehicle/shared_vehicle_base.tpf.  This bounded
+	// fallback is needed by clients whose currently deployed template IFF
+	// predates those declarations; it does not accept arbitrary paths.
+	static Declaration const declarations[] =
+	{
+		{"/private/index_speed_min",       0,   0, 10001},
+		{"/private/index_speed_max",       0, 150, 10001},
+		{"/private/index_turn_rate_min",   0, 180,  1001},
+		{"/private/index_turn_rate_max",   0,  90,  1001},
+		{"/private/index_accel_min",       0,  90, 10001},
+		{"/private/index_accel_max",       0,  30, 10001},
+		{"/private/index_decel",           0,  70, 10001},
+		{"/private/index_slope_mod",       0,   5,  1001},
+		{"/private/index_damp_roll",       0,  20,  1001},
+		{"/private/index_damp_pitch",      0,  30,  1001},
+		{"/private/index_damp_height",     0,  40,  1001},
+		{"/private/index_glide",           0,  25,  1001},
+		{"/private/index_banking",       -90,  45,    91},
+		{"/private/index_hover_height",    0,   5, 10001},
+		{"/private/index_auto_level",      0,  25,  1001},
+		{"/private/index_strafe",          0,   1,     2}
+	};
+
+	for (size_t i = 0; i < sizeof (declarations) / sizeof (declarations[0]); ++i)
+	{
+		Declaration const & declaration = declarations[i];
+		if (!cd.findConstVariable (declaration.path))
+		{
+			cd.addVariableTakeOwnership (
+				declaration.path,
+				new BasicRangedIntCustomizationVariable (
+					declaration.minValueInclusive,
+					declaration.defaultValue,
+					declaration.maxValueExclusive));
+		}
 	}
 }
 

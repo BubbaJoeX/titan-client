@@ -72,6 +72,7 @@ public:
 		float turnRateMax,
 		float accelMin,
 		float accelMax);
+	static void ensureCustomizationVariables (CustomizationData & cd);
 
 	static void readParamsFromCustomizationData (const CustomizationData & cd, 
 		float & speedMin,

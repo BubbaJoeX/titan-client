@@ -18,6 +18,7 @@
 #include "sharedUtility/TemplateParameter.h"
 
 
+class CustomizationData;
 class StructureFootprint;
 class Vector;
 typedef StructParam<ObjectTemplate> StructParamOT;
@@ -319,6 +320,7 @@ public:
 	// user functions
 	virtual void              postLoad(void);
 	virtual void              createCustomizationDataPropertyAsNeeded(Object &object, bool forceCreation = false) const;
+	void                      addCustomizationVariablesFromTemplate(CustomizationData &customizationData, bool skipSharedOwnerVariables) const;
 	const StructureFootprint* getStructureFootprint () const;
 
 private:

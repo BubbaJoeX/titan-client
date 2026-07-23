@@ -744,6 +744,7 @@ CreatureObject::CreatureObject(const SharedCreatureObjectTemplate * const newTem
 		CustomizationData *const cd = fetchCustomizationData();
 		if (cd)
 		{
+			VehicleHoverDynamics::ensureCustomizationVariables (*cd);
 			VehicleHoverDynamics::setInitialParams (*cd,
 				safe_cast<const SharedCreatureObjectTemplate*> (getObjectTemplate ())->getSpeedMin        (SharedCreatureObjectTemplate::MT_walk),
 				safe_cast<const SharedCreatureObjectTemplate*> (getObjectTemplate ())->getSpeed           (SharedCreatureObjectTemplate::MT_run),

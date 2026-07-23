@@ -259,6 +259,7 @@ void SharedTangibleObjectTemplate::createCustomizationDataPropertyAsNeeded(Objec
 		//   this function and sets it to false.
 		bool const skipSharedOwnerVariables = true;
 		AssetCustomizationManager::addCustomizationVariablesForAsset(TemporaryCrcString(getAppearanceFilename().c_str(), true), *customizationData, skipSharedOwnerVariables);
+		addCustomizationVariablesFromTemplate(*customizationData, skipSharedOwnerVariables);
 
 		
 #ifdef _DEBUG
@@ -349,6 +350,51 @@ void SharedTangibleObjectTemplate::createCustomizationDataPropertyAsNeeded(Objec
 	//-- release local reference to the CustomizationData instance
 	customizationData->release();
 #endif
+}
+
+// ----------------------------------------------------------------------
+
+void SharedTangibleObjectTemplate::addCustomizationVariablesFromTemplate(CustomizationData &customizationData, bool skipSharedOwnerVariables) const
+{
+	PaletteColorCustomizationVariable paletteVariableData;
+	size_t const paletteVariableCount = getPaletteColorCustomizationVariablesCount();
+	for (size_t i = 0; i < paletteVariableCount; ++i)
+	{
+		getPaletteColorCustomizationVariables(paletteVariableData, static_cast<int>(i));
+
+		std::string const &variableName = paletteVariableData.variableName;
+		if (skipSharedOwnerVariables && (variableName.compare(0, 14, "/shared_owner/") == 0))
+			continue;
+		if (customizationData.findConstVariable(variableName))
+			continue;
+
+		PaletteArgb const * const palette = PaletteArgbList::fetch(TemporaryCrcString(paletteVariableData.palettePathName.c_str(), true));
+		if (!palette)
+		{
+			WARNING(true, ("template [%s] references missing palette [%s] for customization variable [%s].",
+				DataResource::getName(), paletteVariableData.palettePathName.c_str(), variableName.c_str()));
+			continue;
+		}
+
+		customizationData.addVariableTakeOwnership(variableName, new ::PaletteColorCustomizationVariable(palette, paletteVariableData.defaultPaletteIndex));
+		palette->release();
+	}
+
+	RangedIntCustomizationVariable rangedVariableData;
+	size_t const rangedVariableCount = getRangedIntCustomizationVariablesCount();
+	for (size_t i = 0; i < rangedVariableCount; ++i)
+	{
+		getRangedIntCustomizationVariables(rangedVariableData, static_cast<int>(i));
+
+		std::string const &variableName = rangedVariableData.variableName;
+		if (skipSharedOwnerVariables && (variableName.compare(0, 14, "/shared_owner/") == 0))
+			continue;
+		if (customizationData.findConstVariable(variableName))
+			continue;
+
+		customizationData.addVariableTakeOwnership(variableName,
+			new ::BasicRangedIntCustomizationVariable(rangedVariableData.minValueInclusive, rangedVariableData.defaultValue, rangedVariableData.maxValueExclusive));
+	}
 }
 
 //@BEGIN TFD
