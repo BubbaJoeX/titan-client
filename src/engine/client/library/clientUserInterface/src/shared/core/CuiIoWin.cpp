@@ -50,6 +50,7 @@
 namespace CuiIoWinNamespace
 {
 	UIPoint s_lastMousePoint;
+	float s_mouseWheelDeltaAccumulator = 0.0f;
 	
 	int getFirstKeycodeForCommand (InputMap const & inputMap, const std::string & command, const char * name)
 	{
@@ -749,9 +750,15 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 			if (event->arg2 == 2)
 			{
 				// @todo this is a windows-specific constant relating to mousewheels
-				static const float one_over_120 = RECIP (120.0f);
+				static const float wheelDeltaPerNotch = 120.0f;
+				s_mouseWheelDeltaAccumulator += event->arg3;
+				int const wheelNotches = static_cast<int>(s_mouseWheelDeltaAccumulator / wheelDeltaPerNotch);
+				if (wheelNotches == 0)
+					return IOR_Block;
+
+				s_mouseWheelDeltaAccumulator -= static_cast<float>(wheelNotches) * wheelDeltaPerNotch;
 				msg.Type          = UIMessage::MouseWheel;
-				msg.Data          = static_cast<short>(event->arg3 * one_over_120);
+				msg.Data          = static_cast<short>(wheelNotches);
 				msg.MouseCoords.x = m_mouseCursor->getX ();
 				msg.MouseCoords.y = m_mouseCursor->getY ();
 				if (uiManager->ProcessMessage (msg))

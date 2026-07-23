@@ -28,16 +28,22 @@
 				buttonrevert='buttonRevert'
 				cursorWheel='content.pageColorWheel.pageWheel.cursorWheel'
 				Name='CodeData'
+				pageAlpha='content.pageColorWheel.pageAlpha'
 				pageColorWheel='content.pageColorWheel'
 				pagePaletteGrid='content.pagePaletteGrid'
+				pageSaturation='content.pageColorWheel.pageSaturation'
 				pagesample='content.pageColorWheel.valuesRow.pageSample'
 				pageWheel='content.pageColorWheel.pageWheel'
 				sampleElement='content.pagePaletteGrid.sampleElement'
+				sliderAlpha='content.pageColorWheel.pageAlpha.sliderAlpha'
+				sliderSaturation='content.pageColorWheel.pageSaturation.sliderSaturation'
 				Text='content.textTitle'
+				textAlpha='content.pageColorWheel.pageAlpha.textAlpha'
 				textB='content.pageColorWheel.valuesRow.textB'
 				textboxHtml='content.pageColorWheel.valuesRow.textboxHtml'
 				textG='content.pageColorWheel.valuesRow.textG'
 				textR='content.pageColorWheel.valuesRow.textR'
+				textSaturation='content.pageColorWheel.pageSaturation.textSaturation'
 				VolumePage='content.pagePaletteGrid.volumePage'
 			/>
 			<Page
@@ -108,15 +114,19 @@
 					Size='344,248'
 				>
 					<Page
+						AbsorbsInput='true'
+						GetsInput='true'
 						Location='22,4'
 						Name='pageWheel'
-						ScrollExtent='300,156'
-						Size='300,156'
+						ScrollExtent='300,136'
+						Size='300,136'
 					>
 						<Page
+							AbsorbsInput='false'
 							BackgroundColor='#FFFFFF'
 							BackgroundOpacity='1.00'
-							Location='146,78'
+							GetsInput='false'
+							Location='145,63'
 							Name='cursorWheel'
 							RStyleDefault='/Styles.New.whiteOutline.rs_default'
 							ScrollExtent='10,10'
@@ -124,18 +134,100 @@
 						/>
 						<Image
 							AbsorbsInput='false'
-							Location='75,3'
+							GetsInput='false'
+							Location='84,2'
 							Name='imgWheel'
-							ScrollExtent='150,150'
-							Size='150,150'
+							ScrollExtent='132,132'
+							Size='132,132'
 							SourceRect='0,0,256,256'
 							SourceResource='ui_color_wheel'
 						/>
 					</Page>
 					<Page
+						AbsorbsInput='true'
+						GetsInput='true'
+						Location='8,140'
+						Name='pageSaturation'
+						ScrollExtent='328,22'
+						Size='328,22'
+					>
+						<Text
+							AbsorbsInput='false'
+							Font='bold_11'
+							GetsInput='false'
+							LocalText='Saturation'
+							Location='0,2'
+							Name='labelSaturation'
+							ScrollExtent='70,18'
+							Size='70,18'
+							TextColor='#8ECAE6'
+						>Saturation</Text>
+						<Sliderbar
+							AbsorbsInput='false'
+							GetsInput='false'
+							Location='74,4'
+							Name='sliderSaturation'
+							ScrollExtent='202,14'
+							Size='202,14'
+							Style='/Styles.New.Slider.default.horizontal.style_test'
+							UpperLimit='100'
+						>
+						</Sliderbar>
+						<Text
+							AbsorbsInput='false'
+							Font='bold_11'
+							GetsInput='false'
+							LocalText='0%'
+							Location='282,2'
+							Name='textSaturation'
+							ScrollExtent='42,18'
+							Size='42,18'
+							TextAlignment='Right'
+							TextColor='#FFFFFF'
+						>0%</Text>
+					</Page>
+					<Page
+						Enabled='false'
+						Location='8,164'
+						Name='pageAlpha'
+						ScrollExtent='328,22'
+						Size='328,22'
+						Visible='false'
+					>
+						<Text
+							Font='bold_11'
+							LocalText='Alpha'
+							Location='0,2'
+							Name='labelAlpha'
+							ScrollExtent='70,18'
+							Size='70,18'
+							TextColor='#8ECAE6'
+						>Alpha</Text>
+						<Sliderbar
+							Location='74,4'
+							Name='sliderAlpha'
+							ScrollExtent='202,14'
+							Size='202,14'
+							Style='/Styles.New.Slider.default.horizontal.style_test'
+							UpperLimit='255'
+							Value='255'
+						>
+						</Sliderbar>
+						<Text
+							Font='bold_11'
+							LocalText='255'
+							Location='282,2'
+							Name='textAlpha'
+							ScrollExtent='42,18'
+							Size='42,18'
+							TextAlignment='Right'
+							TextColor='#FFFFFF'
+						>255</Text>
+					</Page>
+					<Page
 						BackgroundColor='#12242E'
 						BackgroundOpacity='0.75'
-						Location='8,168'
+						Location='8,164'
 						Name='valuesRow'
 						RStyleDefault='/Styles.New.whiteOutline.rs_default'
 						ScrollExtent='328,77'

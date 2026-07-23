@@ -63,6 +63,7 @@ namespace CuiLoginManagerNamespace
 	ClusterInfoMap    s_clusterInfo;
 	AvatarInfoMap     s_avatarInfo;
 	AddressClusterMap s_addressClusterMap;
+	std::map<uint32, int> s_availableCharacterSlots;
 	int               s_stationIdNumberJediSlot = 0;
 	int               s_stationIdNumberJediSlotCharacter = 0;
 
@@ -110,6 +111,7 @@ namespace CuiLoginManagerNamespace
 		const char * const LoginClusterStatusEx             = "LoginClusterStatusEx";
 		const char * const StationIdHasJediSlot             = "StationIdHasJediSlot";
 		const char * const EnumerateCharacterId             = "EnumerateCharacterId";
+		const char * const AvailableCharacterSlotsV1        = "AvailableCharacterSlotsV1";
 		const char * const ClientPermissionsMessage         = "ClientPermissionsMessage";
 		const char * const AccountFeatureBits               = "AccountFeatureBits";
 		const char * const ConnectionServerConnectionOpened = "ConnectionServerConnectionOpened";
@@ -131,6 +133,7 @@ namespace CuiLoginManagerNamespace
 			connectToMessage (MessageNames::LoginClusterStatusEx);	
 			connectToMessage (MessageNames::StationIdHasJediSlot);
 			connectToMessage (MessageNames::EnumerateCharacterId);
+			connectToMessage (MessageNames::AvailableCharacterSlotsV1);
 			connectToMessage (MessageNames::ClientPermissionsMessage);
 			connectToMessage (MessageNames::AccountFeatureBits);
 			connectToMessage (MessageNames::ConnectionServerConnectionClosed);
@@ -230,6 +233,15 @@ namespace CuiLoginManagerNamespace
 #else
 				CuiLoginManager::receiveEnumerateCharacterId (eci);
 #endif
+			}
+
+			//----------------------------------------------------------------------
+
+			else if (message.isType (MessageNames::AvailableCharacterSlotsV1))
+			{
+				Archive::ReadIterator ri = NON_NULL (safe_cast<const GameNetworkMessage *>(&message))->getByteStream ().begin ();
+				const GenericValueTypeMessage<std::vector<std::pair<uint32, int> > > slotsMessage (ri);
+				CuiLoginManager::receiveAvailableCharacterSlots (slotsMessage.getValue ());
 			}
 
 			//----------------------------------------------------------------------
@@ -342,6 +354,7 @@ void CuiLoginManager::remove  ()
 
 	s_clusterInfo.clear ();
 	s_addressClusterMap.clear ();
+	s_availableCharacterSlots.clear ();
 	
 	purgeCreatures();
 	s_avatarInfo.clear();
@@ -356,6 +369,7 @@ void CuiLoginManager::receiveLoginEnumCluster (const LoginEnumCluster & lec, con
 
 	s_clusterInfo.clear ();
 	s_addressClusterMap.clear ();
+	s_availableCharacterSlots.clear ();
 
 	typedef stdvector<LoginEnumClusterData>::fwd ClusterDataVector;
 
@@ -522,6 +536,41 @@ void CuiLoginManager::receiveLoginClusterStatus (const LoginClusterStatus & lcs)
 	}
 
 	Transceivers::clusterStatusChanged.emitMessage (true);
+}
+
+//----------------------------------------------------------------------
+
+void CuiLoginManager::receiveAvailableCharacterSlots (const std::vector<std::pair<uint32, int> > & slots)
+{
+	s_availableCharacterSlots.clear ();
+	for (std::vector<std::pair<uint32, int> >::const_iterator it = slots.begin (); it != slots.end (); ++it)
+	{
+		int const count = std::max (0, std::min (50, it->second));
+		WARNING (count != it->second, ("CuiLoginManager received invalid available slot count %d for cluster %lu; clamped to 0..50", it->second, it->first));
+		s_availableCharacterSlots[it->first] = count;
+	}
+
+	Transceivers::avatarListChanged.emitMessage (true);
+}
+
+//----------------------------------------------------------------------
+
+int CuiLoginManager::getAvailableCharacterSlots (uint32 clusterId)
+{
+	std::map<uint32, int>::const_iterator const it = s_availableCharacterSlots.find (clusterId);
+	return (it != s_availableCharacterSlots.end ()) ? it->second : 0;
+}
+
+//----------------------------------------------------------------------
+
+uint32 CuiLoginManager::getFirstClusterWithAvailableSlots ()
+{
+	for (std::map<uint32, int>::const_iterator it = s_availableCharacterSlots.begin (); it != s_availableCharacterSlots.end (); ++it)
+	{
+		if (it->second > 0)
+			return it->first;
+	}
+	return 0;
 }
 
 //----------------------------------------------------------------------

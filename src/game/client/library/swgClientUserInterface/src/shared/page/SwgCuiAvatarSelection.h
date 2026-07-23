@@ -5,10 +5,12 @@
 
 #include "sharedMessageDispatch/Receiver.h"
 #include "UIEventCallback.h"
+#include "Unicode.h"
 #include "clientUserInterface/CuiMediator.h"
 #include "../../../../../../engine/shared/library/sharedFoundation/include/public/sharedFoundation/NetworkId.h"
 
 class CreatureObject;
+class Object;
 class CuiMessageBox;
 class CuiWidget3dObjectListViewer;
 class UIButton;
@@ -44,6 +46,7 @@ public:
 	//-- PS UI callbacks
 	void                       OnButtonPressed           ( UIWidget *context );
 	void                       OnGenericSelectionChanged ( UIWidget *context );
+	bool                       OnMessage                 ( UIWidget *context, const UIMessage & msg );
 	void					   OnCheckboxSet             ( UIWidget *context );
 	void					   OnCheckboxUnset           ( UIWidget *context );
 
@@ -86,8 +89,23 @@ private:
 	void                       handleCreate               ();
 
 	void                       ensureViewerBehindChrome   ();
+	void                       layoutAvatarViewers        ();
+	void                       advanceCarousel           (float deltaTimeSecs);
+	void                       rotateCarousel            (int steps);
+	void                       populateAvatarViewers      ();
+	void                       selectAvatarIndex          (int index);
+	void                       playHoverAnimation         (int index);
+	int                        findViewerIndex             (UIWidget const * widget) const;
+	Object *                   getSlotPlaceholder         (int index);
+	void                       updateSlotSelectionDisplay ();
+	void                       beginWelcomeText           ();
+	void                       completeWelcomeText        ();
 
 private:
+	enum
+	{
+		MaxAvatarViewers = 10
+	};
 
 	UIButton *                 m_okButton;
 	UIButton *                 m_cancelButton;
@@ -96,10 +114,23 @@ private:
 	UIButton *                 m_deleteButton;
 
 	UIText *                   m_avatarNameText;
+	UIText *                   m_avatarDetailsText;
+	UIText *                   m_noCharactersText;
+	UIPage *                   m_actionPage;
 
 	UITable *                  m_table;
 
 	CuiWidget3dObjectListViewer * m_objectViewer;
+	CuiWidget3dObjectListViewer * m_avatarViewers[MaxAvatarViewers];
+	UIText *                      m_avatarLabels[MaxAvatarViewers];
+	CreatureObject *              m_avatarCreatures[MaxAvatarViewers];
+	int                           m_avatarViewerCount;
+	int                           m_selectedAvatarIndex;
+	float                         m_carouselPosition;
+	float                         m_carouselTargetPosition;
+	int                           m_hoveredAvatarIndex;
+	bool                          m_hoverAnimationPlayed[MaxAvatarViewers];
+	UISize                        m_lastLayoutSize;
 
 	CuiMessageBox *            m_messageBox;
 	CuiMessageBox *            m_messageBoxDeleteWait;
@@ -135,6 +166,18 @@ private:
 	SwgCuiDeleteAvatarConfirmation *  m_deleteAvatarConfirmationMediator;
 
 	UICheckbox *					  m_hideClosed;
+	UICheckbox *                      m_showAvailableSlots;
+	UIText *                          m_moreSlotsText;
+	Object *                          m_slotPlaceholders[MaxAvatarViewers];
+	int                               m_realAvatarCount;
+	int                               m_slotPlaceholderCount;
+	uint32                            m_slotClusterId;
+	bool                              m_placeholderAssetChecked;
+	bool                              m_placeholderAssetAvailable;
+	bool                              m_welcomeInitialized;
+	bool                              m_welcomeComplete;
+	float                             m_welcomeElapsed;
+	Unicode::String                   m_welcomeFullText;
 
 	bool                              m_waitForConnectionRetry;
 	bool                              m_hasAlreadyRetriedConnection;

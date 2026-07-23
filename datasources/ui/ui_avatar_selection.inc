@@ -12,15 +12,40 @@
 			buttondelete='pageSelection.buttonDelete'
 			buttonnext='pageButtonsbottom.next.buttonNext'
 			buttonPrev='pageButtonsbottom.prev.buttonPrev'
+			pageActions='pageSelection'
 			checkHideClosed='pageSelection.checkHideClosed'
+			checkShowAvailableSlots='pageSelection.checkShowAvailableSlots'
 			deleteConfirmation='deleteConfirmationBackground.deleteConfirmation'
 			exitTextOnPrev='pagebuttonsbottom.prev.exit'
 			help='pagebuttonsbottom.help.text'
 			listavatars='pageSelection.back.bg.list'
 			Name='CodeData'
 			Table='pageSelection.pageTable.table'
+			avatarLabel0='avatarLabel0'
+			avatarLabel1='avatarLabel1'
+			avatarLabel2='avatarLabel2'
+			avatarLabel3='avatarLabel3'
+			avatarLabel4='avatarLabel4'
+			avatarLabel5='avatarLabel5'
+			avatarLabel6='avatarLabel6'
+			avatarLabel7='avatarLabel7'
+			avatarLabel8='avatarLabel8'
+			avatarLabel9='avatarLabel9'
+			avatarViewer0='avatarViewer0'
+			avatarViewer1='avatarViewer1'
+			avatarViewer2='avatarViewer2'
+			avatarViewer3='avatarViewer3'
+			avatarViewer4='avatarViewer4'
+			avatarViewer5='avatarViewer5'
+			avatarViewer6='avatarViewer6'
+			avatarViewer7='avatarViewer7'
+			avatarViewer8='avatarViewer8'
+			avatarViewer9='avatarViewer9'
 			textname='textName'
-			viewerwidget='Viewer'
+			textDetails='textDetails'
+			textMoreSlots='textMoreSlots'
+			textNoCharacters='textNoCharacters'
+			viewerwidget='avatarViewer0'
 		/>
 		<Page
 			BackgroundOpacity='0.70'
@@ -542,13 +567,23 @@
 		</Page>
 		<Page
 			BackgroundColor='#0000FF'
-			Location='487,6'
+			Location='245,596'
 			Name='pageSelection'
-			PackLocation='fpf,npn'
-			PackSize='p,p'
-			ScrollExtent='533,382'
-			Size='533,382'
+			PackLocation='cfc,fff'
+			PackSize='p,f'
+			ScrollExtent='533,102'
+			Size='533,102'
 		>
+			<Checkbox
+				Color='#96F4FC'
+				LocalText='Show Available Slots'
+				Location='177,8'
+				Name='checkShowAvailableSlots'
+				PalColor='text1'
+				ScrollExtent='180,22'
+				Size='180,22'
+				Style='/Styles.New.Checkbox.Style2'
+			>Show Available Slots</Checkbox>
 			<Checkbox
 				Color='#96F4FC'
 				LocalTooltip='This option will hide characters on galaxies that are no longer available.'
@@ -561,6 +596,7 @@
 				Size='138,19'
 				Style='/Styles.New.Checkbox.Style2'
 				Tooltip='This option will hide characters on galaxies that are no longer available.'
+				Visible='false'
 			>@ui:hide_closed</Checkbox>
 			<Text
 				Font='bold_13'
@@ -577,6 +613,7 @@
 				TextAlignmentVertical='Center'
 				TextCapital='true'
 				TextColor='#97FFFF'
+				Visible='false'
 			>@avatar_available_avatars</Text>
 			<Page
 				Location='24,65'
@@ -585,6 +622,7 @@
 				RStyleDefault='rs_default'
 				ScrollExtent='485,265'
 				Size='485,265'
+				Visible='false'
 			>
 				<DataSource
 					Name='colSize'
@@ -755,7 +793,7 @@
 			</Page>
 			<Button
 				LocalText='[@avatar_delete]'
-				Location='301,341'
+				Location='301,66'
 				MinimumSize='0,19'
 				Name='buttonDelete'
 				PackLocation='fpc,fff'
@@ -766,7 +804,7 @@
 			>@avatar_delete</Button>
 			<Button
 				LocalText='[@avatar_create]'
-				Location='48,340'
+				Location='48,66'
 				MinimumSize='0,19'
 				Name='buttonCreate'
 				PackLocation='npc,fff'
@@ -782,6 +820,7 @@
 				PackSize='a,a'
 				ScrollExtent='533,382'
 				Size='533,382'
+				Visible='false'
 			>
 				<Page
 					BackgroundColor='#FFFFFF'
@@ -894,29 +933,102 @@
 		<Text
 			Font='bold_20'
 			LocalText='xxx Player Name Here'
-			Location='2,669'
+			Location='256,536'
 			Name='textName'
-			PackLocation='nfn,fff'
+			PackLocation='cfc,fff'
 			PackSize='p,f'
-			PalText='text1'
-			ScrollExtent='409,48'
-			Size='409,48'
+			PalText='header'
+			ScrollExtent='512,30'
+			Size='512,30'
 			TextAlignment='Center'
 			TextAlignmentVertical='Center'
 			TextColor='#96F4FC'
 		>xxx Player Name Here</Text>
+		<Text
+			Font='bold_13'
+			GetsInput='false'
+			Location='192,566'
+			Name='textDetails'
+			PackLocation='cfc,fff'
+			PackSize='p,f'
+			PalText='text1'
+			ScrollExtent='640,24'
+			Size='640,24'
+			TextAlignment='Center'
+			TextAlignmentVertical='Center'
+			TextColor='#96F4FC'
+		/>
+		<Text
+			BackgroundColor='#001820'
+			BackgroundOpacity='0.72'
+			BackgroundTint='#03546B'
+			DropShadow='true'
+			DropShadowAutoDetect='false'
+			DropShadowDepth='2,2'
+			Font='bold_20'
+			GetsInput='false'
+			LocalText='NOTICE: NO CHARACTERS EXIST. A SAFE PLACEHOLDER IS SHOWN; SELECT CREATE A CHARACTER TO CONTINUE.'
+			Location='112,322'
+			Margin='18,14,18,14'
+			MaxLines='3'
+			Name='textNoCharacters'
+			PackLocation='cfc,cfc'
+			PackSize='p,f'
+			PalText='text1'
+			RStyleDefault='/Styles.New.fatFrameInside_palW.rs_default'
+			ScrollExtent='800,104'
+			Size='800,104'
+			TextAlignment='Center'
+			TextAlignmentVertical='Center'
+			TextColor='#FFFFFF'
+			Visible='false'
+		>NOTICE: NO CHARACTERS EXIST. A SAFE PLACEHOLDER IS SHOWN; SELECT CREATE A CHARACTER TO CONTINUE.</Text>
+		<Text
+			DropShadow='true'
+			DropShadowDepth='1,1'
+			Font='bold_13'
+			GetsInput='false'
+			Location='362,506'
+			Name='textMoreSlots'
+			PalText='text1'
+			ScrollExtent='300,24'
+			Size='300,24'
+			TextAlignment='Center'
+			TextAlignmentVertical='Center'
+			TextColor='#96F4FC'
+			Visible='false'
+		/>
 		<CuiWidget3dObjectListViewer
 			camerafitbone='true'
 			cameraLodBias='2'
 			cameraLodBiasOverride='true'
 			cameralookat='0,1,0'
 			camerayaw='3.45'
-			dragpitchok='true'
-			fitrect='0,0,40,90'
-			Location='0,-4'
-			Name='Viewer'
-			PackSize='p,p'
-			ScrollExtent='1025,772'
-			Size='1025,772'
+			dragpitchok='false'
+			fitrect='5,2,95,98'
+			Location='402,100'
+			Name='avatarViewer0'
+			ScrollExtent='220,460'
+			Size='220,460'
+			Visible='false'
 		/>
+		<CuiWidget3dObjectListViewer camerafitbone='true' cameraLodBias='2' cameraLodBiasOverride='true' cameralookat='0,1,0' camerayaw='3.45' dragpitchok='false' fitrect='5,2,95,98' Location='402,100' Name='avatarViewer1' ScrollExtent='220,460' Size='220,460' Visible='false'/>
+		<CuiWidget3dObjectListViewer camerafitbone='true' cameraLodBias='2' cameraLodBiasOverride='true' cameralookat='0,1,0' camerayaw='3.45' dragpitchok='false' fitrect='5,2,95,98' Location='402,100' Name='avatarViewer2' ScrollExtent='220,460' Size='220,460' Visible='false'/>
+		<CuiWidget3dObjectListViewer camerafitbone='true' cameraLodBias='2' cameraLodBiasOverride='true' cameralookat='0,1,0' camerayaw='3.45' dragpitchok='false' fitrect='5,2,95,98' Location='402,100' Name='avatarViewer3' ScrollExtent='220,460' Size='220,460' Visible='false'/>
+		<CuiWidget3dObjectListViewer camerafitbone='true' cameraLodBias='2' cameraLodBiasOverride='true' cameralookat='0,1,0' camerayaw='3.45' dragpitchok='false' fitrect='5,2,95,98' Location='402,100' Name='avatarViewer4' ScrollExtent='220,460' Size='220,460' Visible='false'/>
+		<CuiWidget3dObjectListViewer camerafitbone='true' cameraLodBias='2' cameraLodBiasOverride='true' cameralookat='0,1,0' camerayaw='3.45' dragpitchok='false' fitrect='5,2,95,98' Location='402,100' Name='avatarViewer5' ScrollExtent='220,460' Size='220,460' Visible='false'/>
+		<CuiWidget3dObjectListViewer camerafitbone='true' cameraLodBias='2' cameraLodBiasOverride='true' cameralookat='0,1,0' camerayaw='3.45' dragpitchok='false' fitrect='5,2,95,98' Location='402,100' Name='avatarViewer6' ScrollExtent='220,460' Size='220,460' Visible='false'/>
+		<CuiWidget3dObjectListViewer camerafitbone='true' cameraLodBias='2' cameraLodBiasOverride='true' cameralookat='0,1,0' camerayaw='3.45' dragpitchok='false' fitrect='5,2,95,98' Location='402,100' Name='avatarViewer7' ScrollExtent='220,460' Size='220,460' Visible='false'/>
+		<CuiWidget3dObjectListViewer camerafitbone='true' cameraLodBias='2' cameraLodBiasOverride='true' cameralookat='0,1,0' camerayaw='3.45' dragpitchok='false' fitrect='5,2,95,98' Location='402,100' Name='avatarViewer8' ScrollExtent='220,460' Size='220,460' Visible='false'/>
+		<CuiWidget3dObjectListViewer camerafitbone='true' cameraLodBias='2' cameraLodBiasOverride='true' cameralookat='0,1,0' camerayaw='3.45' dragpitchok='false' fitrect='5,2,95,98' Location='402,100' Name='avatarViewer9' ScrollExtent='220,460' Size='220,460' Visible='false'/>
+		<Text Font='bold_13' GetsInput='false' Location='402,530' Name='avatarLabel0' PalText='header' ScrollExtent='220,24' Size='220,24' TextAlignment='Center' TextAlignmentVertical='Center' TextColor='#96F4FC' Visible='false'/>
+		<Text Font='bold_13' GetsInput='false' Location='402,530' Name='avatarLabel1' PalText='text1' ScrollExtent='220,24' Size='220,24' TextAlignment='Center' TextAlignmentVertical='Center' TextColor='#96F4FC' Visible='false'/>
+		<Text Font='bold_13' GetsInput='false' Location='402,530' Name='avatarLabel2' PalText='text1' ScrollExtent='220,24' Size='220,24' TextAlignment='Center' TextAlignmentVertical='Center' TextColor='#96F4FC' Visible='false'/>
+		<Text Font='bold_13' GetsInput='false' Location='402,530' Name='avatarLabel3' PalText='text1' ScrollExtent='220,24' Size='220,24' TextAlignment='Center' TextAlignmentVertical='Center' TextColor='#96F4FC' Visible='false'/>
+		<Text Font='bold_13' GetsInput='false' Location='402,530' Name='avatarLabel4' PalText='text1' ScrollExtent='220,24' Size='220,24' TextAlignment='Center' TextAlignmentVertical='Center' TextColor='#96F4FC' Visible='false'/>
+		<Text Font='bold_13' GetsInput='false' Location='402,530' Name='avatarLabel5' PalText='text1' ScrollExtent='220,24' Size='220,24' TextAlignment='Center' TextAlignmentVertical='Center' TextColor='#96F4FC' Visible='false'/>
+		<Text Font='bold_13' GetsInput='false' Location='402,530' Name='avatarLabel6' PalText='text1' ScrollExtent='220,24' Size='220,24' TextAlignment='Center' TextAlignmentVertical='Center' TextColor='#96F4FC' Visible='false'/>
+		<Text Font='bold_13' GetsInput='false' Location='402,530' Name='avatarLabel7' PalText='text1' ScrollExtent='220,24' Size='220,24' TextAlignment='Center' TextAlignmentVertical='Center' TextColor='#96F4FC' Visible='false'/>
+		<Text Font='bold_13' GetsInput='false' Location='402,530' Name='avatarLabel8' PalText='text1' ScrollExtent='220,24' Size='220,24' TextAlignment='Center' TextAlignmentVertical='Center' TextColor='#96F4FC' Visible='false'/>
+		<Text Font='bold_13' GetsInput='false' Location='402,530' Name='avatarLabel9' PalText='text1' ScrollExtent='220,24' Size='220,24' TextAlignment='Center' TextAlignmentVertical='Center' TextColor='#96F4FC' Visible='false'/>
 	</Page>

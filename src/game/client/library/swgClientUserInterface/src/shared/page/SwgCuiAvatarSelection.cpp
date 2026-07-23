@@ -29,6 +29,7 @@
 #include "clientGame/GameNetwork.h"
 #include "clientGame/RoadmapManager.h"
 #include "clientUserInterface/CuiCachedAvatarManager.h"
+#include "clientUserInterface/CuiAnimationManager.h"
 #include "clientUserInterface/CuiLoadingManager.h"
 #include "clientUserInterface/CuiLoginManager.h"
 #include "clientUserInterface/CuiLoginManagerAvatarInfo.h"
@@ -43,6 +44,7 @@
 #include "clientUserInterface/CuiTransition.h"
 #include "clientUserInterface/CuiWidget3dObjectListViewer.h"
 #include "sharedFoundation/ApplicationVersion.h"
+#include "sharedFile/TreeFile.h"
 #include "sharedFoundation/Branch.h"
 #include "sharedFoundation/Production.h"
 #include "sharedMathArchive/VectorArchive.h"
@@ -51,6 +53,8 @@
 #include "sharedNetworkMessages/CommandChannelMessages.h"
 #include "sharedNetworkMessages/DeleteCharacterMessage.h"
 #include "sharedNetworkMessages/DeleteCharacterReplyMessage.h"
+#include "sharedObject/AppearanceTemplateList.h"
+#include "sharedObject/Object.h"
 #include "sharedUtility/LocalMachineOptionManager.h"
 #include "swgClientUserInterface/SwgCuiAvatarCreationHelper.h"
 #include "swgClientUserInterface/SwgCuiDeleteAvatarConfirmation.h"
@@ -58,6 +62,9 @@
 #include "swgClientUserInterface/SwgCuiSceneSelection.h"
 #include "unicodeArchive/UnicodeArchive.h"
 #include <algorithm>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
 
 //-----------------------------------------------------------------
 
@@ -80,6 +87,8 @@ namespace
 	CuiLoginManagerAvatarInfo   s_avatarToDelete;
 
 	const Unicode::String s_unlockedSlotCharacterSuffix = Unicode::narrowToWide(" \\#FF0000[UNLOCKED SLOT]");
+	char const * const s_slotPlaceholderAppearance = "appearance/target_dummy.sat";
+	char const * const s_slotHologramShader = "shader/ui_membrane.sht";
 
 
 	Unicode::String CreateTooltipText (const CuiLoginManagerAvatarInfo & avatarInfo)
@@ -152,8 +161,17 @@ m_cancelButton           (0),
 m_createButton           (0),
 m_deleteButton           (0),
 m_avatarNameText         (0),
+m_avatarDetailsText      (0),
+m_noCharactersText       (0),
+m_actionPage             (0),
 m_table                  (0),
 m_objectViewer           (0),
+m_avatarViewerCount      (0),
+m_selectedAvatarIndex    (-1),
+m_carouselPosition       (0.0f),
+m_carouselTargetPosition (0.0f),
+m_hoveredAvatarIndex     (-1),
+m_lastLayoutSize         (0, 0),
 m_messageBox             (0),
 m_messageBoxDeleteWait   (0),
 m_messageBoxLoginWait    (0),
@@ -178,25 +196,81 @@ m_deleteAvatarConfirmationPage(NULL),
 m_deleteAvatarConfirmationMediator(NULL),
 m_waitForConnectionRetry(false),
 m_hasAlreadyRetriedConnection(false),
-m_hideClosed (NULL)
+m_hideClosed (NULL),
+m_showAvailableSlots (NULL),
+m_moreSlotsText (NULL),
+m_realAvatarCount (0),
+m_slotPlaceholderCount (0),
+m_slotClusterId (0),
+m_placeholderAssetChecked (false),
+m_placeholderAssetAvailable (false),
+m_welcomeInitialized (false),
+m_welcomeComplete (false),
+m_welcomeElapsed (0.0f),
+m_welcomeFullText ()
 {
-	UIWidget *widget = 0;
-	getCodeDataObject (TUIWidget, widget, "ViewerWidget");
-	m_objectViewer = NON_NULL (dynamic_cast<CuiWidget3dObjectListViewer *>(widget));
-	m_objectViewer->SetLocalTooltip (CuiStringIds::tooltip_viewer_3d_controls.localize ());
-	m_objectViewer->SetPropertyFloat (Properties::DefaultViewerPitch, m_objectViewer->getCameraPitch ());
-	m_objectViewer->SetPropertyFloat (Properties::DefaultViewerYaw,   m_objectViewer->getCameraYaw   ());
-	m_objectViewer->setRotationSlowsToStop(true);
+	for (int i = 0; i < MaxAvatarViewers; ++i)
+	{
+		m_avatarViewers[i] = 0;
+		m_avatarLabels[i] = 0;
+		m_avatarCreatures[i] = 0;
+		m_hoverAnimationPlayed[i] = false;
+		m_slotPlaceholders[i] = 0;
+
+		char viewerName[32];
+		char labelName[32];
+		_snprintf (viewerName, sizeof (viewerName), "avatarViewer%d", i);
+		_snprintf (labelName, sizeof (labelName), "avatarLabel%d", i);
+
+		UIWidget * widget = 0;
+		getCodeDataObject (TUIWidget, widget, viewerName, false);
+		m_avatarViewers[i] = dynamic_cast<CuiWidget3dObjectListViewer *>(widget);
+		getCodeDataObject (TUIText, m_avatarLabels[i], labelName, false);
+
+		if (m_avatarViewers[i])
+		{
+			m_avatarViewers[i]->SetLocalTooltip (CuiStringIds::tooltip_viewer_3d_controls.localize ());
+			m_avatarViewers[i]->SetPropertyFloat (Properties::DefaultViewerPitch, m_avatarViewers[i]->getCameraPitch ());
+			m_avatarViewers[i]->SetPropertyFloat (Properties::DefaultViewerYaw, m_avatarViewers[i]->getCameraYaw ());
+			m_avatarViewers[i]->setRotationSlowsToStop (true);
+			m_avatarViewers[i]->setIgnoreMouseWheel (true);
+			m_avatarViewers[i]->SetVisible (false);
+		}
+
+		if (m_avatarLabels[i])
+			m_avatarLabels[i]->SetVisible (false);
+	}
+
+	m_objectViewer = m_avatarViewers[0];
+	if (!m_objectViewer)
+	{
+		UIWidget * widget = 0;
+		getCodeDataObject (TUIWidget, widget, "ViewerWidget");
+		m_objectViewer = NON_NULL (dynamic_cast<CuiWidget3dObjectListViewer *>(widget));
+		m_avatarViewers[0] = m_objectViewer;
+	}
 
 	getCodeDataObject (TUIText,       m_avatarNameText, "textName");
+	getCodeDataObject (TUIText,       m_avatarDetailsText, "textDetails", false);
+	getCodeDataObject (TUIText,       m_noCharactersText, "textNoCharacters", false);
+	getCodeDataObject (TUIPage,       m_actionPage, "pageActions", false);
 	getCodeDataObject (TUIButton,     m_okButton,       "buttonNext");
 	getCodeDataObject (TUIButton,     m_cancelButton,   "buttonPrev");
 	getCodeDataObject (TUIButton,     m_createButton,   "buttonCreate");
 	getCodeDataObject (TUIButton,     m_deleteButton,   "buttonDelete");
 	getCodeDataObject (TUICheckbox,   m_hideClosed,     "checkHideClosed");
+	getCodeDataObject (TUICheckbox,   m_showAvailableSlots, "checkShowAvailableSlots", false);
+	getCodeDataObject (TUIText,       m_moreSlotsText, "textMoreSlots", false);
 
 	registerMediatorObject(*m_hideClosed, true);
 	m_hideClosed->SetChecked(CuiPreferences::getHideCharactersOnClosedGalaxies());
+	if (m_showAvailableSlots)
+	{
+		bool showAvailableSlots = false;
+		IGNORE_RETURN (CuiSettings::loadBoolean (getMediatorDebugName (), "showAvailableSlots", showAvailableSlots));
+		m_showAvailableSlots->SetChecked (showAvailableSlots);
+		registerMediatorObject (*m_showAvailableSlots, true);
+	}
 
 	getCodeDataObject (TUIPage,       m_deleteAvatarConfirmationPage, "deleteConfirmation");
 	m_deleteAvatarConfirmationPage->SetVisible(false);
@@ -206,11 +280,17 @@ m_hideClosed (NULL)
 	getCodeDataObject (TUITable,      m_table,          "table");
 
 	m_table->SetVisible         (false);
-	m_table->SetVisible         (true);
 
 	UITableModelDefault * const model = NON_NULL (safe_cast<UITableModelDefault *>(m_table->GetTableModel ()));
 	model->ClearData   ();
 	m_table->SelectRow (-1);
+
+	for (int i = 0; i < MaxAvatarViewers; ++i)
+	{
+		if (m_avatarViewers[i])
+			registerMediatorObject (*m_avatarViewers[i], true);
+	}
+	registerMediatorObject (getPage (), true);
 }
 
 //-----------------------------------------------------------------
@@ -231,7 +311,22 @@ SwgCuiAvatarSelection::~SwgCuiAvatarSelection ()
 	m_hideClosed    = 0;
 
 	m_avatarNameText = 0;
+	m_avatarDetailsText = 0;
+	m_noCharactersText = 0;
+	m_actionPage = 0;
+	m_showAvailableSlots = 0;
+	m_moreSlotsText = 0;
 
+	for (int i = 0; i < MaxAvatarViewers; ++i)
+	{
+		if (m_avatarViewers[i])
+			m_avatarViewers[i]->clearObjects ();
+		delete m_slotPlaceholders[i];
+		m_slotPlaceholders[i] = 0;
+		m_avatarViewers[i] = 0;
+		m_avatarLabels[i] = 0;
+		m_avatarCreatures[i] = 0;
+	}
 	m_objectViewer = 0;
 	m_messageBox = 0;
 	m_messageBoxDeleteWait = 0;
@@ -255,6 +350,15 @@ void SwgCuiAvatarSelection::performActivate ()
 	m_connectingToGame       = false;
 	m_connectionTimeout      = 0.0f;
 	m_avatarNameText->Clear ();
+	if (m_avatarDetailsText)
+		m_avatarDetailsText->Clear ();
+	if (m_noCharactersText)
+		m_noCharactersText->SetVisible (false);
+	m_selectedAvatarIndex = -1;
+	m_carouselPosition = 0.0f;
+	m_carouselTargetPosition = 0.0f;
+	m_hoveredAvatarIndex = -1;
+	m_lastLayoutSize = UISize (0, 0);
 
 	m_table->SelectRow (-1);
 
@@ -293,15 +397,24 @@ void SwgCuiAvatarSelection::performActivate ()
 	connectToMessage (Game::Messages::SCENE_CHANGED);
 
 	{
-		float f = 0.0f;
-		if (m_objectViewer->GetPropertyFloat (Properties::DefaultViewerPitch, f))
-			m_objectViewer->setCameraPitch (f);
-		if (m_objectViewer->GetPropertyFloat (Properties::DefaultViewerYaw, f))
-			m_objectViewer->setCameraYaw (f, true);
+		for (int i = 0; i < MaxAvatarViewers; ++i)
+		{
+			if (!m_avatarViewers[i])
+				continue;
+			float f = 0.0f;
+			if (m_avatarViewers[i]->GetPropertyFloat (Properties::DefaultViewerPitch, f))
+				m_avatarViewers[i]->setCameraPitch (f);
+			if (m_avatarViewers[i]->GetPropertyFloat (Properties::DefaultViewerYaw, f))
+				m_avatarViewers[i]->setCameraYaw (f, true);
+		}
 	}
 
 	m_createButton->SetEnabled (true);
-	m_objectViewer->setPaused  (false);
+	for (int i = 0; i < MaxAvatarViewers; ++i)
+	{
+		if (m_avatarViewers[i])
+			m_avatarViewers[i]->setPaused (false);
+	}
 
 	{
 		UIText* text;
@@ -324,7 +437,7 @@ void SwgCuiAvatarSelection::performActivate ()
 	ensureViewerBehindChrome ();
 
 	m_table->SetEnabled        (true);
-	m_table->SetFocus          ();
+	getPage ().SetFocus        ();
 
 	setIsUpdating (true);
 
@@ -362,7 +475,11 @@ void SwgCuiAvatarSelection::performDeactivate ()
 	m_messageBoxDeleteWait = 0;
 	m_messageBoxLoginWait  = 0;
 
-	m_objectViewer->setPaused (true);
+	for (int i = 0; i < MaxAvatarViewers; ++i)
+	{
+		if (m_avatarViewers[i])
+			m_avatarViewers[i]->setPaused (true);
+	}
 
 	disconnectAll();
 
@@ -372,7 +489,11 @@ void SwgCuiAvatarSelection::performDeactivate ()
 	m_deleteButton->RemoveCallback  (this);
 	m_table->RemoveCallback         (this);
 
-	m_objectViewer->clearObjects ();
+	for (int i = 0; i < MaxAvatarViewers; ++i)
+	{
+		if (m_avatarViewers[i])
+			m_avatarViewers[i]->clearObjects ();
+	}
 }
 
 //-----------------------------------------------------------------
@@ -432,27 +553,23 @@ void SwgCuiAvatarSelection::refreshList (bool updateSelection)
 	{
 		if (!autoConnectOk ())
 		{
-			if (oldRowSelected >= 0)
+			if (oldRowSelected >= 0 && model->GetRowCount () > 0)
 				m_table->SelectRow (std::min (oldRowSelected, static_cast<long>(model->GetRowCount () - 1L)));
-			else
+			else if (model->GetRowCount () > 0)
 				m_table->SelectRow (0);
 		}
 	}
 	
-	//-- if no avatars exist, try to create one (skip if already on a galaxy connection)
-	if (aiv.empty () && !m_autoConnected && GameNetwork::isConnectedToLoginServer () && CuiLoginManager::getConnectedClusterId () == 0)
+	if (m_table->GetLastSelectedRow () < 0)
 	{
-		m_autoConnected = true;
-		m_createButton->Press ();
-	}
-
-	else if (m_table->GetLastSelectedRow () < 0)
-	{
-		if (autoConnectOk () && ConfigClientGame::getAutoConnectToCentralServer ())
+		if (!aiv.empty () && autoConnectOk () && ConfigClientGame::getAutoConnectToCentralServer ())
 			m_createButton->Press ();
-		else if (updateSelection)
+		else if (!aiv.empty ())
 			m_table->SelectRow (0);
 	}
+
+	populateAvatarViewers ();
+	updateAvatarSelection ();
 
 	CuiCachedAvatarManager::saveCharacterList ();
 
@@ -465,11 +582,392 @@ void SwgCuiAvatarSelection::refreshList (bool updateSelection)
 
 void SwgCuiAvatarSelection::ensureViewerBehindChrome ()
 {
-	if (!m_objectViewer)
+	int const count = (m_avatarViewerCount > 0) ? m_avatarViewerCount : 1;
+	bool moved[MaxAvatarViewers] = { false };
+
+	// Move nearest-to-farthest to Bottom. Each later (farther) viewer is inserted
+	// underneath the previous viewers, leaving the front of the arc on top.
+	for (int layer = 0; layer < count; ++layer)
+	{
+		int bestIndex = -1;
+		float bestDistance = 1000.0f;
+		for (int i = 0; i < count; ++i)
+		{
+			if (moved[i] || !m_avatarViewers[i])
+				continue;
+
+			float offset = static_cast<float>(i) - m_carouselPosition;
+			if (m_avatarViewerCount > 1)
+			{
+				float const halfCount = static_cast<float>(m_avatarViewerCount) * 0.5f;
+				while (offset > halfCount)
+					offset -= static_cast<float>(m_avatarViewerCount);
+				while (offset < -halfCount)
+					offset += static_cast<float>(m_avatarViewerCount);
+			}
+
+			float const distance = fabsf (offset);
+			if (distance < bestDistance)
+			{
+				bestDistance = distance;
+				bestIndex = i;
+			}
+		}
+
+		if (bestIndex >= 0)
+		{
+			moved[bestIndex] = true;
+			CuiWidget3dObjectListViewer * const viewer = m_avatarViewers[bestIndex];
+			UIBaseObject * const p = viewer->GetParent ();
+			if (p && p->IsA (TUIPage))
+				IGNORE_RETURN (static_cast<UIPage *>(p)->MoveChild (viewer, UIBaseObject::Bottom));
+		}
+	}
+}
+
+//----------------------------------------------------------------------
+
+Object * SwgCuiAvatarSelection::getSlotPlaceholder (int index)
+{
+	if (index < 0 || index >= MaxAvatarViewers)
+		return 0;
+
+	if (!m_placeholderAssetChecked)
+	{
+		m_placeholderAssetChecked = true;
+		m_placeholderAssetAvailable = TreeFile::exists (s_slotPlaceholderAppearance);
+		WARNING (!m_placeholderAssetAvailable, ("Character selection placeholder appearance [%s] is unavailable; using label-only fallback", s_slotPlaceholderAppearance));
+	}
+
+	if (!m_placeholderAssetAvailable)
+		return 0;
+
+	if (!m_slotPlaceholders[index])
+	{
+		Object * const placeholder = new Object;
+		placeholder->setAppearance (AppearanceTemplateList::createAppearance (s_slotPlaceholderAppearance));
+		m_slotPlaceholders[index] = placeholder;
+	}
+
+	return m_slotPlaceholders[index];
+}
+
+//----------------------------------------------------------------------
+
+void SwgCuiAvatarSelection::beginWelcomeText ()
+{
+	if (!m_noCharactersText || m_welcomeInitialized)
 		return;
-	UIBaseObject * const p = m_objectViewer->GetParent ();
-	if (p && p->IsA (TUIPage))
-		IGNORE_RETURN (static_cast<UIPage *>(p)->MoveChild (m_objectViewer, UIBaseObject::Bottom));
+
+	Unicode::String createLabel;
+	m_createButton->GetText (createLabel);
+	m_welcomeFullText = Unicode::narrowToWide ("Welcome to SWG: Titan. Press \"") + createLabel + Unicode::narrowToWide ("\" to start your adventure.");
+	m_welcomeElapsed = 0.0f;
+	m_welcomeComplete = false;
+	m_welcomeInitialized = true;
+	m_noCharactersText->SetLocalText (Unicode::emptyString);
+}
+
+//----------------------------------------------------------------------
+
+void SwgCuiAvatarSelection::completeWelcomeText ()
+{
+	if (m_noCharactersText && m_welcomeInitialized && !m_welcomeComplete)
+	{
+		m_welcomeComplete = true;
+		m_noCharactersText->SetLocalText (m_welcomeFullText);
+	}
+}
+
+//----------------------------------------------------------------------
+
+void SwgCuiAvatarSelection::updateSlotSelectionDisplay ()
+{
+	m_avatarNameText->SetLocalText (Unicode::narrowToWide ("Available Character Slot"));
+	if (m_avatarDetailsText)
+		m_avatarDetailsText->SetLocalText (Unicode::narrowToWide ("Available Character Slot"));
+	m_okButton->SetEnabled (true);
+	m_deleteButton->SetEnabled (false);
+}
+
+//----------------------------------------------------------------------
+
+void SwgCuiAvatarSelection::populateAvatarViewers ()
+{
+	UITableModelDefault * const model = NON_NULL (safe_cast<UITableModelDefault *>(m_table->GetTableModel ()));
+	m_realAvatarCount = std::min (static_cast<int>(model->GetRowCount ()), static_cast<int>(MaxAvatarViewers));
+	m_avatarViewerCount = m_realAvatarCount;
+	m_slotPlaceholderCount = 0;
+
+	for (int i = 0; i < MaxAvatarViewers; ++i)
+	{
+		CuiWidget3dObjectListViewer * const viewer = m_avatarViewers[i];
+		m_avatarCreatures[i] = 0;
+		m_hoverAnimationPlayed[i] = false;
+
+		if (viewer)
+		{
+			viewer->clearObjects ();
+			viewer->setUseOverrideShader ("", false);
+			viewer->SetVisible (i < m_realAvatarCount);
+		}
+		if (m_avatarLabels[i])
+		{
+			m_avatarLabels[i]->Clear ();
+			m_avatarLabels[i]->SetVisible (i < m_realAvatarCount);
+		}
+
+		if (i >= m_realAvatarCount || !viewer)
+			continue;
+
+		UIData const * const cellData = model->GetCellDataVisual (i, 0);
+		if (!cellData)
+			continue;
+
+		std::string networkIdString;
+		long clusterId = 0;
+		cellData->GetPropertyNarrow (Properties::AvatarNetworkId, networkIdString);
+		cellData->GetPropertyLong (Properties::ClusterId, clusterId);
+
+		CreatureObject * const avatar = CuiLoginManager::getAvatarCreature (static_cast<uint32>(clusterId), NetworkId (networkIdString));
+		m_avatarCreatures[i] = avatar;
+		if (avatar)
+		{
+			avatar->setAnimationMood ("ui");
+			viewer->addObject (*avatar);
+			viewer->setCameraForceTarget (true);
+			viewer->recomputeZoom ();
+			viewer->setCameraForceTarget (false);
+		}
+
+		UIString displayName;
+		cellData->GetProperty (UITableModelDefault::DataProperties::Value, displayName);
+		if (m_avatarLabels[i])
+			m_avatarLabels[i]->SetLocalText (displayName);
+	}
+
+	int selectedRow = m_table->GetLastSelectedRow ();
+	if (selectedRow < 0 || selectedRow >= m_realAvatarCount)
+		selectedRow = 0;
+
+	m_slotClusterId = 0;
+	if (m_realAvatarCount > 0)
+	{
+		UIData const * const selectedData = model->GetCellDataVisual (selectedRow, 0);
+		long clusterId = 0;
+		if (selectedData)
+			selectedData->GetPropertyLong (Properties::ClusterId, clusterId);
+		m_slotClusterId = static_cast<uint32>(clusterId);
+	}
+	else
+		m_slotClusterId = CuiLoginManager::getFirstClusterWithAvailableSlots ();
+
+	int const authoritativeAvailable = std::max (0, CuiLoginManager::getAvailableCharacterSlots (m_slotClusterId));
+	bool const showAvailable = m_showAvailableSlots && m_showAvailableSlots->IsChecked ();
+	int const welcomePlaceholderCount = (m_realAvatarCount == 0) ? 1 : 0;
+	int const requestedAvailableCount = showAvailable ? authoritativeAvailable : 0;
+	int const availableDisplayCount = std::min (requestedAvailableCount, MaxAvatarViewers - m_realAvatarCount - welcomePlaceholderCount);
+	m_slotPlaceholderCount = welcomePlaceholderCount + std::max (0, availableDisplayCount);
+
+	for (int slot = 0; slot < m_slotPlaceholderCount; ++slot)
+	{
+		int const viewerIndex = m_realAvatarCount + slot;
+		CuiWidget3dObjectListViewer * const viewer = m_avatarViewers[viewerIndex];
+		if (!viewer)
+			continue;
+
+		viewer->SetVisible (true);
+		if (TreeFile::exists (s_slotHologramShader))
+			viewer->setUseOverrideShader (s_slotHologramShader, true);
+
+		Object * const placeholder = getSlotPlaceholder (slot);
+		if (placeholder)
+		{
+			viewer->addObject (*placeholder);
+			viewer->setCameraForceTarget (true);
+			viewer->recomputeZoom ();
+			viewer->setCameraForceTarget (false);
+		}
+
+		if (m_avatarLabels[viewerIndex])
+		{
+			m_avatarLabels[viewerIndex]->SetLocalText (Unicode::narrowToWide ((m_realAvatarCount == 0 && slot == 0) ? "CREATE A CHARACTER" : "AVAILABLE CHARACTER SLOT"));
+			m_avatarLabels[viewerIndex]->SetVisible (true);
+		}
+	}
+
+	m_avatarViewerCount = m_realAvatarCount + m_slotPlaceholderCount;
+	int const hiddenAvailableCount = std::max (0, requestedAvailableCount - availableDisplayCount);
+	if (m_moreSlotsText)
+	{
+		if (hiddenAvailableCount > 0)
+		{
+			char buffer[64];
+			_snprintf (buffer, sizeof (buffer), "%d more slots available", hiddenAvailableCount);
+			m_moreSlotsText->SetLocalText (Unicode::narrowToWide (buffer));
+			m_moreSlotsText->SetVisible (true);
+		}
+		else
+			m_moreSlotsText->SetVisible (false);
+	}
+
+	m_okButton->SetEnabled (m_avatarViewerCount > 0);
+	m_deleteButton->SetEnabled (m_realAvatarCount > 0);
+	m_createButton->SetEnabled (true);
+	if (m_noCharactersText)
+		m_noCharactersText->SetVisible (m_realAvatarCount == 0);
+
+	if (m_realAvatarCount == 0)
+		beginWelcomeText ();
+	else
+	{
+		m_welcomeInitialized = false;
+		m_welcomeComplete = false;
+	}
+
+	m_selectedAvatarIndex = (m_avatarViewerCount > 0) ? selectedRow : -1;
+	m_carouselPosition = static_cast<float>(selectedRow);
+	m_carouselTargetPosition = m_carouselPosition;
+
+	layoutAvatarViewers ();
+	ensureViewerBehindChrome ();
+}
+
+//----------------------------------------------------------------------
+
+void SwgCuiAvatarSelection::layoutAvatarViewers ()
+{
+	int const count = (m_avatarViewerCount > 0) ? m_avatarViewerCount : 1;
+	UISize const pageSize = getPage ().GetSize ();
+	long const availableWidth = std::max (640L, pageSize.x);
+	long const centerX = availableWidth / 2L;
+	long const nameY = std::max (300L, pageSize.y - 232L);
+	m_avatarNameText->SetLocation ((availableWidth - m_avatarNameText->GetWidth ()) / 2L, nameY);
+	if (m_avatarDetailsText)
+		m_avatarDetailsText->SetLocation ((availableWidth - m_avatarDetailsText->GetWidth ()) / 2L, nameY + 30L);
+	if (m_noCharactersText)
+		m_noCharactersText->SetLocation ((availableWidth - m_noCharactersText->GetWidth ()) / 2L, std::max (180L, nameY - 180L));
+	if (m_actionPage)
+		m_actionPage->SetLocation ((availableWidth - m_actionPage->GetWidth ()) / 2L, std::max (390L, pageSize.y - 172L));
+
+	float const frontWidth = static_cast<float>(std::min (430L, std::max (300L, availableWidth * 2L / 5L)));
+	float const top = static_cast<float>(std::max (54L, pageSize.y / 12L));
+	float const frontHeight = static_cast<float>(std::max (250L, nameY - static_cast<long>(top) - 8L));
+	float const horizontalRadius = static_cast<float>(availableWidth) * 0.39f;
+	float const maximumArcRadians = 1.35f;
+	float const maximumDepth = 1.0f - cosf (maximumArcRadians);
+
+	for (int i = 0; i < MaxAvatarViewers; ++i)
+	{
+		CuiWidget3dObjectListViewer * const viewer = m_avatarViewers[i];
+		UIText * const label = m_avatarLabels[i];
+		if (!viewer || i >= count)
+			continue;
+
+		float offset = static_cast<float>(i) - m_carouselPosition;
+		if (m_avatarViewerCount > 1)
+		{
+			float const halfCount = static_cast<float>(m_avatarViewerCount) * 0.5f;
+			while (offset > halfCount)
+				offset -= static_cast<float>(m_avatarViewerCount);
+			while (offset < -halfCount)
+				offset += static_cast<float>(m_avatarViewerCount);
+		}
+
+		float const angle = tanhf (offset * 0.38f) * maximumArcRadians;
+		float const depth = std::max (0.0f, std::min (1.0f, (1.0f - cosf (angle)) / maximumDepth));
+		float const scale = 1.0f - depth * 0.48f;
+		float const width = frontWidth * scale;
+		float const height = frontHeight * scale;
+		float const xCenter = static_cast<float>(centerX) + sinf (angle) * horizontalRadius;
+		float const y = top + depth * 72.0f;
+		long const xLocation = static_cast<long>(floorf (xCenter - width * 0.5f + 0.5f));
+		long const yLocation = static_cast<long>(floorf (y + 0.5f));
+		long const viewerWidth = static_cast<long>(floorf (width + 0.5f));
+		long const viewerHeight = static_cast<long>(floorf (height + 0.5f));
+
+		viewer->SetLocation (xLocation, yLocation);
+		viewer->SetSize (UISize (viewerWidth, viewerHeight));
+		viewer->SetOpacity (1.0f - depth * 0.52f);
+
+		if (label)
+		{
+			label->SetLocation (xLocation, yLocation + viewerHeight - 24L);
+			label->SetSize (UISize (viewerWidth, 22L));
+			label->SetOpacity (1.0f - depth * 0.58f);
+			label->SetVisible (m_avatarViewerCount == 0 || fabsf (offset) > 0.55f);
+		}
+	}
+
+	m_lastLayoutSize = pageSize;
+}
+
+//----------------------------------------------------------------------
+
+void SwgCuiAvatarSelection::rotateCarousel (int steps)
+{
+	if (m_avatarViewerCount <= 1 || steps == 0)
+		return;
+
+	int const maximumQueuedSteps = MaxAvatarViewers;
+	steps = std::max (-maximumQueuedSteps, std::min (maximumQueuedSteps, steps));
+
+	float const queuedDelta = m_carouselTargetPosition - m_carouselPosition;
+	float const requestedDelta = queuedDelta + static_cast<float>(steps);
+	float const boundedDelta = std::max (-static_cast<float>(maximumQueuedSteps), std::min (static_cast<float>(maximumQueuedSteps), requestedDelta));
+	m_carouselTargetPosition = m_carouselPosition + boundedDelta;
+}
+
+//----------------------------------------------------------------------
+
+void SwgCuiAvatarSelection::advanceCarousel (float deltaTimeSecs)
+{
+	if (m_avatarViewerCount <= 0)
+		return;
+
+	float const difference = m_carouselTargetPosition - m_carouselPosition;
+	float const easing = 1.0f - expf (-10.0f * std::max (0.0f, deltaTimeSecs));
+	if (fabsf (difference) > 0.001f)
+		m_carouselPosition += difference * easing;
+	else
+		m_carouselPosition = m_carouselTargetPosition;
+
+	int centeredIndex = static_cast<int>(floorf (m_carouselPosition + 0.5f));
+	centeredIndex %= m_avatarViewerCount;
+	if (centeredIndex < 0)
+		centeredIndex += m_avatarViewerCount;
+
+	if (centeredIndex != m_selectedAvatarIndex)
+	{
+		m_selectedAvatarIndex = centeredIndex;
+		if (centeredIndex < m_realAvatarCount)
+			m_table->SelectRow (centeredIndex);
+		else
+		{
+			m_refreshingCharacterList = true;
+			m_table->SelectRow (-1);
+			m_refreshingCharacterList = false;
+			updateSlotSelectionDisplay ();
+		}
+		ensureViewerBehindChrome ();
+	}
+
+	if (fabsf (difference) > 0.001f || getPage ().GetSize () != m_lastLayoutSize)
+		layoutAvatarViewers ();
+
+	if (fabsf (m_carouselTargetPosition - m_carouselPosition) <= 0.001f &&
+		m_showAvailableSlots && m_showAvailableSlots->IsChecked () &&
+		m_selectedAvatarIndex >= 0 && m_selectedAvatarIndex < m_realAvatarCount)
+	{
+		UITableModelDefault * const model = safe_cast<UITableModelDefault *>(m_table->GetTableModel ());
+		UIData const * const selectedData = model ? model->GetCellDataVisual (m_selectedAvatarIndex, 0) : 0;
+		long clusterId = 0;
+		if (selectedData && selectedData->GetPropertyLong (Properties::ClusterId, clusterId) && static_cast<uint32>(clusterId) != m_slotClusterId)
+		{
+			populateAvatarViewers ();
+			updateAvatarSelection ();
+		}
+	}
 }
 
 //----------------------------------------------------------------------
@@ -632,7 +1130,7 @@ void SwgCuiAvatarSelection::addAvatar (const CuiLoginManagerAvatarInfo & avatarI
 		}
 	}
 	
-	if (!avatarNameToUse.empty () && m_table->GetLastSelectedRow () < 0)
+	if (autoConnectOk () && !avatarNameToUse.empty () && m_table->GetLastSelectedRow () < 0)
 	{
 		if (!_stricmp (avatarNameToUse.c_str (), narrowName.c_str ()))
 		{
@@ -704,7 +1202,10 @@ void SwgCuiAvatarSelection::OnButtonPressed(UIWidget *Context)
 
 	else if (Context == m_okButton)
 	{
-		requestAvatarSelection ();
+		if (m_selectedAvatarIndex >= m_realAvatarCount && m_selectedAvatarIndex < m_avatarViewerCount)
+			handleCreate ();
+		else
+			requestAvatarSelection ();
 	}
 
 	//----------------------------------------------------------------------
@@ -737,33 +1238,159 @@ void SwgCuiAvatarSelection::OnGenericSelectionChanged (UIWidget * context)
 
 //-----------------------------------------------------------------
 
+int SwgCuiAvatarSelection::findViewerIndex (UIWidget const * widget) const
+{
+	for (int i = 0; i < MaxAvatarViewers; ++i)
+	{
+		if (widget == m_avatarViewers[i])
+			return i;
+	}
+	return -1;
+}
+
+//-----------------------------------------------------------------
+
+void SwgCuiAvatarSelection::selectAvatarIndex (int index)
+{
+	if (m_avatarViewerCount <= 0)
+		return;
+
+	if (index < 0)
+		index = m_avatarViewerCount - 1;
+	else if (index >= m_avatarViewerCount)
+		index = 0;
+
+	int targetIndex = static_cast<int>(floorf (m_carouselTargetPosition + 0.5f));
+	targetIndex %= m_avatarViewerCount;
+	if (targetIndex < 0)
+		targetIndex += m_avatarViewerCount;
+
+	int delta = index - targetIndex;
+	if (delta > m_avatarViewerCount / 2)
+		delta -= m_avatarViewerCount;
+	else if (delta < -(m_avatarViewerCount / 2))
+		delta += m_avatarViewerCount;
+
+	rotateCarousel (delta);
+	getPage ().SetFocus ();
+}
+
+//-----------------------------------------------------------------
+
+void SwgCuiAvatarSelection::playHoverAnimation (int index)
+{
+	if (index < 0 || index >= m_avatarViewerCount || m_hoverAnimationPlayed[index])
+		return;
+
+	CreatureObject * const avatar = m_avatarCreatures[index];
+	if (!avatar)
+		return;
+
+	static char const * const animations[] =
+	{
+		"cough_polite",
+		"nod_head_once",
+		"pose_proudly",
+		"rub_chin_thoughtful",
+		"scratch_head"
+	};
+
+	std::string const id = avatar->getNetworkId ().getValueString ();
+	unsigned int hash = 2166136261u;
+	for (std::string::const_iterator it = id.begin (); it != id.end (); ++it)
+		hash = (hash ^ static_cast<unsigned char>(*it)) * 16777619u;
+
+	m_hoverAnimationPlayed[index] = true;
+	IGNORE_RETURN (CuiAnimationManager::attemptPlayEmote (*avatar, 0, animations[hash % (sizeof (animations) / sizeof (animations[0]))]));
+}
+
+//-----------------------------------------------------------------
+
+bool SwgCuiAvatarSelection::OnMessage (UIWidget * context, const UIMessage & msg)
+{
+	int const viewerIndex = findViewerIndex (context);
+	if (m_realAvatarCount == 0 && m_welcomeInitialized && !m_welcomeComplete &&
+		(msg.Type == UIMessage::KeyDown || (msg.Type == UIMessage::LeftMouseDown && (context == &getPage () || viewerIndex >= 0))))
+	{
+		completeWelcomeText ();
+		return false;
+	}
+
+	if (msg.Type == UIMessage::MouseWheel && (context == &getPage () || viewerIndex >= 0))
+	{
+		rotateCarousel (-static_cast<int>(msg.Data));
+		return false;
+	}
+
+	if (viewerIndex >= 0)
+	{
+		if (msg.Type == UIMessage::LeftMouseDown)
+		{
+			selectAvatarIndex (viewerIndex);
+			return false;
+		}
+		if (msg.Type == UIMessage::MouseEnter)
+		{
+			m_hoveredAvatarIndex = viewerIndex;
+			if (fabsf (m_carouselTargetPosition - m_carouselPosition) < 0.01f)
+				playHoverAnimation (viewerIndex);
+		}
+		else if (msg.Type == UIMessage::MouseExit)
+		{
+			if (m_hoveredAvatarIndex == viewerIndex)
+				m_hoveredAvatarIndex = -1;
+			if (fabsf (m_carouselTargetPosition - m_carouselPosition) < 0.01f)
+			{
+				m_hoverAnimationPlayed[viewerIndex] = false;
+				if (m_avatarCreatures[viewerIndex])
+					m_avatarCreatures[viewerIndex]->setAnimationMood ("ui");
+			}
+		}
+	}
+
+	if (context == &getPage () && msg.Type == UIMessage::KeyDown && m_avatarViewerCount > 0)
+	{
+		if (msg.Keystroke == UIMessage::LeftArrow)
+		{
+			rotateCarousel (-1);
+			return false;
+		}
+		if (msg.Keystroke == UIMessage::RightArrow)
+		{
+			rotateCarousel (1);
+			return false;
+		}
+	}
+
+	return true;
+}
+
+//-----------------------------------------------------------------
+
 void SwgCuiAvatarSelection::updateAvatarSelection ()
 {
-	// Full-screen 3D viewer must stay at the back of AvSel's paint order; table/cell updates can
-	// disturb child list order so chrome would paint underneath (black screen + character only).
-	struct MoveViewerToBack
-	{
-		SwgCuiAvatarSelection & self;
-		explicit MoveViewerToBack (SwgCuiAvatarSelection & s) : self (s) {}
-		~MoveViewerToBack ()
-		{
-			if (self.m_objectViewer)
-				IGNORE_RETURN (self.getPage ().MoveChild (self.m_objectViewer, UIBaseObject::Bottom));
-		}
-	} moveViewerGuard (*this);
-
 	UITableModelDefault * const model = NON_NULL (safe_cast<UITableModelDefault *>(m_table->GetTableModel ()));
 
 	const int row = m_table->GetLastSelectedRow ();
 	const UIData * const cellData = (row >= 0) ? model->GetCellDataVisual (row, 0) : 0;
 	if (row < 0 || !cellData)
 	{
-		m_objectViewer->clearObjects ();
+		if (m_selectedAvatarIndex >= m_realAvatarCount && m_selectedAvatarIndex < m_avatarViewerCount)
+		{
+			updateSlotSelectionDisplay ();
+			layoutAvatarViewers ();
+			return;
+		}
+		m_selectedAvatarIndex = -1;
 		m_avatarNameText->Clear ();
+		if (m_avatarDetailsText)
+			m_avatarDetailsText->Clear ();
+		m_okButton->SetEnabled (false);
+		m_deleteButton->SetEnabled (false);
+		layoutAvatarViewers ();
 		return;
 	}
 
-	m_objectViewer->clearObjects ();
 	m_avatarNameText->Clear ();
 
 	UIString selectionName;
@@ -771,6 +1398,24 @@ void SwgCuiAvatarSelection::updateAvatarSelection ()
 	WARNING (selectionName.empty (), ("Empty selection name"));
 
 	m_avatarNameText->SetLocalText (selectionName);
+	m_selectedAvatarIndex = std::min (row, m_avatarViewerCount - 1);
+
+	if (m_avatarDetailsText)
+	{
+		Unicode::String details;
+		for (int column = 1; column <= 3; ++column)
+		{
+			UIData const * const detailCell = model->GetCellDataVisual (row, column);
+			UIString value;
+			if (detailCell && detailCell->GetProperty (UITableModelDefault::DataProperties::Value, value) && !value.empty ())
+			{
+				if (!details.empty ())
+					details += Unicode::narrowToWide ("   |   ");
+				details += value;
+			}
+		}
+		m_avatarDetailsText->SetLocalText (details);
+	}
 
 	std::string networkIdStr;
 	if (!cellData->GetPropertyNarrow (Properties::AvatarNetworkId, networkIdStr))
@@ -817,14 +1462,11 @@ void SwgCuiAvatarSelection::updateAvatarSelection ()
 				}
 			}
 		}
-			
-		m_objectViewer->addObject (*avatar);
-
-		m_objectViewer->setCameraForceTarget     (true);
-		m_objectViewer->recomputeZoom            ();
-		m_objectViewer->setCameraForceTarget     (false);
-
 	}
+
+	m_okButton->SetEnabled (avatar != 0);
+	m_deleteButton->SetEnabled (avatar != 0);
+	layoutAvatarViewers ();
 }
 
 //----------------------------------------------------------------------
@@ -833,8 +1475,16 @@ void SwgCuiAvatarSelection::update (float deltaTimeSecs)
 {
 	CuiMediator::update (deltaTimeSecs);
 
-	// Table refresh / Link() / workspace can reorder siblings; keep preview behind chrome (paint + hit-test).
-	ensureViewerBehindChrome ();
+	advanceCarousel (deltaTimeSecs);
+	if (m_realAvatarCount == 0 && m_welcomeInitialized && !m_welcomeComplete && m_noCharactersText)
+	{
+		m_welcomeElapsed += std::max (0.0f, deltaTimeSecs);
+		size_t const characterCount = static_cast<size_t>(m_welcomeElapsed * 30.0f);
+		if (characterCount >= m_welcomeFullText.size ())
+			completeWelcomeText ();
+		else
+			m_noCharactersText->SetLocalText (m_welcomeFullText.substr (0, characterCount));
+	}
 
 	if (m_dropFromCluster)
 	{
@@ -1021,6 +1671,10 @@ void SwgCuiAvatarSelection::onAvatarListChanged (bool)
 		m_waitingLoginForCreate = false;
 		handleCreate ();
 	}
+	else if (isActive ())
+	{
+		refreshList (false);
+	}
 }
 
 //-----------------------------------------------------------------------
@@ -1070,7 +1724,7 @@ void SwgCuiAvatarSelection::receiveMessage(const MessageDispatch::Emitter &, con
 	{
 		GameNetwork::setAcceptSceneCommand (false);
 		m_table->SetEnabled (true);
-		m_table->SetFocus   ();
+		getPage ().SetFocus ();
 		m_connectingToGame = false;
 		updateAvatarSelection ();
 //		reconnectLoginServer (false);
@@ -1110,7 +1764,7 @@ void SwgCuiAvatarSelection::receiveMessage(const MessageDispatch::Emitter &, con
 					m_waitingLoginForSelect = false;
 					m_waitingLoginForCreate = false;
 					m_table->SetEnabled (true);
-					m_table->SetFocus   ();
+					getPage ().SetFocus ();
 					m_connectingToGame = false;
 				}
 			}
@@ -1122,7 +1776,7 @@ void SwgCuiAvatarSelection::receiveMessage(const MessageDispatch::Emitter &, con
 			{
 				m_connectingToGame = false;
 				m_table->SetEnabled (true);
-				m_table->SetFocus   ();
+				getPage ().SetFocus ();
 				m_messageBox = 0;
 				//			m_waitingDeletion = false;
 			}
@@ -1137,7 +1791,27 @@ void SwgCuiAvatarSelection::clearCharacterList ()
 	UITableModelDefault * const model = NON_NULL (safe_cast<UITableModelDefault *>(m_table->GetTableModel ()));
 	model->ClearData ();
 
-	m_objectViewer->clearObjects ();
+	m_avatarViewerCount = 0;
+	m_realAvatarCount = 0;
+	m_slotPlaceholderCount = 0;
+	m_selectedAvatarIndex = -1;
+	m_carouselPosition = 0.0f;
+	m_carouselTargetPosition = 0.0f;
+	for (int i = 0; i < MaxAvatarViewers; ++i)
+	{
+		m_avatarCreatures[i] = 0;
+		m_hoverAnimationPlayed[i] = false;
+		if (m_avatarViewers[i])
+		{
+			m_avatarViewers[i]->clearObjects ();
+			m_avatarViewers[i]->setUseOverrideShader ("", false);
+			m_avatarViewers[i]->SetVisible (false);
+		}
+		if (m_avatarLabels[i])
+			m_avatarLabels[i]->SetVisible (false);
+	}
+	if (m_moreSlotsText)
+		m_moreSlotsText->SetVisible (false);
 }
 
 //----------------------------------------------------------------------
@@ -1448,7 +2122,15 @@ void SwgCuiAvatarSelection::handleCreate ()
 
 void SwgCuiAvatarSelection::OnCheckboxSet( UIWidget *context )
 {
-	UNREF(context);
+	if (context == m_showAvailableSlots)
+	{
+		CuiSettings::saveBoolean (getMediatorDebugName (), "showAvailableSlots", true);
+		CuiSettings::save ();
+		populateAvatarViewers ();
+		updateAvatarSelection ();
+		return;
+	}
+
 	clearCharacterList();
 	refreshList(true);
 
@@ -1457,7 +2139,15 @@ void SwgCuiAvatarSelection::OnCheckboxSet( UIWidget *context )
 
 void SwgCuiAvatarSelection::OnCheckboxUnset( UIWidget *context )
 {
-	UNREF(context);
+	if (context == m_showAvailableSlots)
+	{
+		CuiSettings::saveBoolean (getMediatorDebugName (), "showAvailableSlots", false);
+		CuiSettings::save ();
+		populateAvatarViewers ();
+		updateAvatarSelection ();
+		return;
+	}
+
 	clearCharacterList();
 	refreshList(true);
 

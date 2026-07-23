@@ -8,6 +8,9 @@
 #ifndef INCLUDED_CuiLoginManager_H
 #define INCLUDED_CuiLoginManager_H
 
+#include <utility>
+#include <vector>
+
 //======================================================================
 
 class CuiLoginManagerClusterInfo;
@@ -52,6 +55,7 @@ public:
 	static void                   receiveLoginEnumCluster         (const LoginEnumCluster & lec, const stdset<std::string>::fwd & characterCreationDisabled);
 	static void                   receiveLoginClusterStatus       (const LoginClusterStatus & lcs);
 	static void                   receiveEnumerateCharacterId     (const EnumerateCharacterId & eci);
+	static void                   receiveAvailableCharacterSlots  (const std::vector<std::pair<uint32, int> > & slots);
 	static void                   receiveClientPermissionsMessage (const ClientPermissionsMessage & cpm);
 	static void                   receiveLoginClusterStatusEx     (const LoginClusterStatusEx &msg );
 
@@ -67,6 +71,8 @@ public:
 	static void                   getClusterInfo                  (ClusterInfoVector & civ);
 	static void                   getAvatarInfo                   (AvatarInfoVector  & aiv);
 	static int                    getAvatarCount                  ();
+	static int                    getAvailableCharacterSlots      (uint32 clusterId);
+	static uint32                 getFirstClusterWithAvailableSlots();
 
 	static bool                   canCreateCharacter              ();
 	static bool                   canCreateRegularCharacter       ();

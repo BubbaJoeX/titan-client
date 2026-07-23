@@ -25,6 +25,7 @@ class UIDataSource;
 struct UIMessage;
 class UILowerString;
 class UIPage;
+class UISliderbar;
 class UIText;
 class UITextbox;
 class UIVolumePage;
@@ -124,9 +125,11 @@ private:
 	void                     updateValue     (TangibleObject & obj, int index, PathFlags flags = PF_any);
 	void                     updateWheelFromIndex(int index);
 	void                     updateWheelSelection(long x, long y);
+	void                     updateSaturationSelection(long x);
 	void                     updateSelectionFromTextboxes(UIWidget * context);
 	bool                     applyDirectColorOverride(TangibleObject &obj, PackedArgb const &color, bool enabled, PathFlags flags = PF_any);
-	void                     applyDirectColorPreview(PackedArgb const &color);
+	bool                     applyDirectColorPreview(PackedArgb const &color);
+	bool                     clearDirectColorPreview();
 	void                     updateColorControls(PackedArgb const &color);
 	void                     revert          ();
 	void                     storeProperties ();
@@ -137,8 +140,14 @@ private:
 	UIButton *               m_buttonClose;
 	UIPage *                 m_pageSample;
 	UIPage *                 m_pageWheel;
+	UIPage *                 m_pageSaturation;
+	UIPage *                 m_pageAlpha;
 	UIWidget *               m_cursorWheel;
 	UITextbox *              m_textboxHtml;
+	UISliderbar *            m_sliderSaturation;
+	UISliderbar *            m_sliderAlpha;
+	UIText *                 m_textSaturation;
+	UIText *                 m_textAlpha;
 	UITextbox *              m_textR;
 	UITextbox *              m_textG;
 	UITextbox *              m_textB;
@@ -164,11 +173,15 @@ private:
 	bool                     m_changed;
 	bool                     m_userChanged;
 	bool                     m_draggingWheel;
+	bool                     m_draggingSaturation;
 	bool                     m_updatingColorControls;
 	bool                     m_hasValidTarget;
 	bool                     m_supportsDirectColor;
+	bool                     m_supportsDirectColorAlpha;
 	bool                     m_originalDirectColorEnabled;
 	PackedArgb               m_originalDirectColor;
+	float                    m_currentHue;
+	float                    m_currentValue;
 	UISize                   m_lastSize;
 
 	enum PaletteSource
