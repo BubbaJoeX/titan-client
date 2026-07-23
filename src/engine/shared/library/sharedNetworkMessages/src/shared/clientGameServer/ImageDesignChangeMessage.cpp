@@ -116,7 +116,10 @@ void ImageDesignChangeMessage::pack(MessageQueue::Data const * const data, Archi
 		Archive::put(target, msg->getNewHairAsset());
 		Archive::put(target, msg->getHairCustomizationData());
 		Archive::put(target, msg->getDesignType());
-		Archive::put(target, msg->getStartingTime());
+		// Legacy controller wire format is 32-bit.  Do not serialize time_t
+		// directly: it is 64-bit in the x64 client and 32-bit on the server.
+		int32 const startingTime = static_cast<int32>(msg->getStartingTime());
+		Archive::put(target, startingTime);
 		Archive::put(target, msg->getDesignerRequiredCredits());
 		Archive::put(target, msg->getRecipientPaidCredits());
 		Archive::put(target, msg->getAccepted());
@@ -157,7 +160,7 @@ MessageQueue::Data* ImageDesignChangeMessage::unpack(Archive::ReadIterator & sou
 	bool tempBool = false;
 	std::string tempStr;
 	int tempInt = 0;
-	time_t tempTime = 0;
+	int32 tempTime = 0;
 
 	Archive::get(source, tempId);
 	msg->setDesignerId(tempId);

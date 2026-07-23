@@ -249,6 +249,30 @@ bool RtCameraManager::registerFeed(NetworkId const& cameraId, NetworkId const& s
 	if (!s_installed || !s_feeds || !s_screenToCamera || !s_systemAvailable)
 		return false;
 
+	if (!cameraId.isValid() || !screenId.isValid() || cameraId == screenId)
+		return false;
+
+	Object * const cameraObject = NetworkIdManager::getObjectById(cameraId);
+	Object * const screenObject = NetworkIdManager::getObjectById(screenId);
+	if (!cameraObject || !screenObject || !cameraObject->isInWorld() || !screenObject->isInWorld())
+		return false;
+
+	CellProperty * const cameraCell = cameraObject->getParentCell();
+	CellProperty * const screenCell = screenObject->getParentCell();
+	CellProperty * const worldCell = CellProperty::getWorldCellProperty();
+	if (!cameraCell || !screenCell)
+		return false;
+
+	bool const cameraIsWorld = cameraCell == worldCell;
+	bool const screenIsWorld = screenCell == worldCell;
+	if (cameraIsWorld != screenIsWorld ||
+		(!cameraIsWorld && cameraCell->getPortalProperty() != screenCell->getPortalProperty()))
+	{
+		DEBUG_REPORT_LOG(true, ("RtCameraManager: rejected cross-POB feed camera=%s screen=%s\n",
+			cameraId.getValueString().c_str(), screenId.getValueString().c_str()));
+		return false;
+	}
+
 	// Check max cameras
 	if (static_cast<int>(s_feeds->size()) >= s_maxActiveFeeds)
 	{
@@ -297,12 +321,8 @@ bool RtCameraManager::registerFeed(NetworkId const& cameraId, NetworkId const& s
 	feed.isActive = true;
 	feed.needsUpdate = true;
 
-	// Get initial camera transform from camera object
-	Object* cameraObject = NetworkIdManager::getObjectById(cameraId);
-	if (cameraObject)
-	{
-		feed.cameraTransform = cameraObject->getTransform_o2w();
-	}
+	// Both endpoints were validated above; keep initial state in world space.
+	feed.cameraTransform = cameraObject->getTransform_o2w();
 
 	s_feeds->insert(std::make_pair(cameraId, feed));
 	s_screenToCamera->insert(std::make_pair(screenId, cameraId));
@@ -808,29 +828,36 @@ void RtCameraManager::lostDevice()
 
 	// Clear the rendering flag in case we were in the middle of rendering
 	s_isRenderingRtFeed = false;
+	if (s_rtCamera)
+	{
+		s_rtCamera->setActive(false);
+		s_rtCamera->clearExcludedObjects();
+	}
 
-	DEBUG_REPORT_LOG(true, ("RtCameraManager: lostDevice - releasing render targets\n"));
+	Camera * const playerCamera = Game::getCamera();
+	Object const * const playerObject = Game::getPlayer();
+	ClientProceduralTerrainAppearance::setReferenceCamera(playerCamera);
+	GroundEnvironment::getInstance().setReferenceCamera(playerCamera);
+	GroundEnvironment::getInstance().setReferenceObject(playerObject);
+	FloraManager::setReferenceObject(playerObject);
 
-	// Reset render target to primary/backbuffer before releasing our textures
-	// This ensures the GPU is not using our render targets when we release them
+	DEBUG_REPORT_LOG(true, ("RtCameraManager: lostDevice - suspending render targets\n"));
+
+	// Stop targeting an RT camera texture before releasing any feed resources.
 	Graphics::setRenderTarget(nullptr, CF_none, 0);
-	for (TexturePool::iterator poolIt = s_renderTexturePool.begin(); poolIt != s_renderTexturePool.end(); ++poolIt)
-		if (*poolIt)
-			(*poolIt)->release();
-	s_renderTexturePool.clear();
 
 	// Save feed info for restoration
 	if (!s_feedRestoreInfo)
 		s_feedRestoreInfo = new std::vector<FeedRestoreInfo>();
 	s_feedRestoreInfo->clear();
 
-	// Release all render textures (required before device reset)
+	// Preserve feed metadata, but release every engine and appearance reference to
+	// the default-pool RT textures.  Keeping these Texture objects alive allowed a
+	// stale screen shader reference to survive scene teardown and made Reset fail
+	// with D3DERR_INVALIDCALL.
 	for (FeedMap::iterator it = s_feeds->begin(); it != s_feeds->end(); ++it)
 	{
 		RtCameraFeed& feed = it->second;
-
-		// Ensure no appearance/shader still references this render target during Reset().
-		clearScreenTextureOverride(feed.screenObjectId);
 
 		// Save info for restore
 		FeedRestoreInfo info;
@@ -841,13 +868,18 @@ void RtCameraManager::lostDevice()
 		info.isActive = feed.isActive;
 		s_feedRestoreInfo->push_back(info);
 
-		// Release the render texture
+		clearScreenTextureOverride(feed.screenObjectId);
 		if (feed.renderTexture)
 		{
-			releaseRenderTexture(feed.renderTexture);
+			feed.renderTexture->release();
 			feed.renderTexture = nullptr;
 		}
 	}
+
+	for (TexturePool::iterator it = s_renderTexturePool.begin(); it != s_renderTexturePool.end(); ++it)
+		if (*it)
+			(*it)->release();
+	s_renderTexturePool.clear();
 }
 
 // -----------------------------------------------------------------------------
@@ -857,10 +889,11 @@ void RtCameraManager::restoreDevice()
 	if (!s_installed || !s_feeds)
 		return;
 
-	DEBUG_REPORT_LOG(true, ("RtCameraManager: restoreDevice - recreating render targets\n"));
+	DEBUG_REPORT_LOG(true, ("RtCameraManager: restoreDevice - resuming render targets\n"));
 	s_systemAvailable = true;
 
-	// Recreate render textures for all feeds and force immediate refresh
+	// Recreate fresh RT textures after Reset.  TangibleObject::alter() reapplies
+	// each texture only after both linked objects are valid in the restored scene.
 	for (FeedMap::iterator it = s_feeds->begin(); it != s_feeds->end(); ++it)
 	{
 		RtCameraFeed& feed = it->second;
@@ -874,7 +907,7 @@ void RtCameraManager::restoreDevice()
 		feed.needsUpdate = true;
 		feed.updateTimer = 0.0f;
 
-		DEBUG_REPORT_LOG(s_debugRtCamera, ("RtCameraManager: Recreated render texture for camera %s\n",
+		DEBUG_REPORT_LOG(s_debugRtCamera, ("RtCameraManager: Restored render texture for camera %s\n",
 			feed.cameraObjectId.getValueString().c_str()));
 	}
 

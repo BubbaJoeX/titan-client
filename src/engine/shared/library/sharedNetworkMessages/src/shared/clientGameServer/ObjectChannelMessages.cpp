@@ -99,7 +99,15 @@ value(0)
 	addVariable(value);
 	AutoByteStream::unpack(source);
 	long int i = message.get();
-	data = ControllerMessageFactory::unpack(i, source); 
+	try
+	{
+		data = ControllerMessageFactory::unpack(i, source);
+	}
+	catch (Archive::ReadException &)
+	{
+		WARNING(true, ("ObjControllerMessage failed to unpack controller message [%ld] for object [%s].", i, networkId.get().getValueString().c_str()));
+		throw;
+	}
 	DEBUG_FATAL(networkId.get() == NetworkId::cms_invalid, ("Trying to send a controller message to networkId 0\n"));
 	char msgDetail[256] = {"\0"};
 	snprintf(msgDetail, 255, "recv.ObjControllerMessage.%u", static_cast<unsigned int>(message.get()));

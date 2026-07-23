@@ -1550,6 +1550,35 @@ sub assignNewCustomizationIdManagerEntries
 
 # ---------------------------------------------------------------------
 
+sub reserveDirectColorCustomizationIdManagerEntries
+{
+	my $cidVariableNameByIdRef = shift;
+	my $largestAssignedId = shift;
+	my %cidIdByNameMap = reverse %$cidVariableNameByIdRef;
+	my @reservedNames =
+	(
+		"/private/direct_color_0_r", "/private/direct_color_0_g", "/private/direct_color_0_b",
+		"/private/direct_color_1_r", "/private/direct_color_1_g", "/private/direct_color_1_b",
+		"/shared_owner/direct_color_0_r", "/shared_owner/direct_color_0_g", "/shared_owner/direct_color_0_b",
+		"/shared_owner/direct_color_1_r", "/shared_owner/direct_color_1_g", "/shared_owner/direct_color_1_b"
+	);
+
+	foreach my $variableName (@reservedNames)
+	{
+		if (!exists $cidIdByNameMap{$variableName})
+		{
+			my $newId = ++$largestAssignedId;
+			die "No legacy customization ids remain for reserved direct-color slot [$variableName]" if ($newId > $MAX_VALID_CUSTOMIZATION_ID);
+			$cidIdByNameMap{$variableName} = $newId;
+			$$cidVariableNameByIdRef{$newId} = $variableName;
+		}
+	}
+
+	return $largestAssignedId;
+}
+
+# ---------------------------------------------------------------------
+
 sub writeCustomizationIdManagerMif
 {
 	# Get args.
@@ -1615,6 +1644,10 @@ sub updateCustomizationIdManagerData
 {
 	# Load the customization id manager data file.
 	my ($cidVariableNameByIdRef, $largestAssignedId) = loadCustomizationIdManagerMif;
+
+	# Reserve the bounded, schema-compatible direct-color slots before asset
+	# discovery can consume the remaining legacy 7-bit customization ids.
+	$largestAssignedId = reserveDirectColorCustomizationIdManagerEntries($cidVariableNameByIdRef, $largestAssignedId);
 
 	# Add any missing entries from variable name data.
 	my $updateNeeded = assignNewCustomizationIdManagerEntries($cidVariableNameByIdRef, $largestAssignedId);

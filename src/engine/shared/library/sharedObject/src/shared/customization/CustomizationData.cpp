@@ -19,7 +19,9 @@
 #include "sharedObject/CustomizationData_RemoteDirectory.h"
 #include "sharedObject/CustomizationIdManager.h"
 #include "sharedObject/CustomizationVariable.h"
+#include "sharedObject/BasicRangedIntCustomizationVariable.h"
 #include "sharedObject/Object.h"
+#include "sharedObject/PaletteColorCustomizationVariable.h"
 #include "UnicodeUtils.h"
 
 #include <map>
@@ -276,6 +278,8 @@ CustomizationData::CustomizationData(Object &owner) :
 
 void CustomizationData::addVariableTakeOwnership(const std::string &fullVariablePathName, CustomizationVariable *variable)
 {
+	bool const isPaletteVariable = dynamic_cast<PaletteColorCustomizationVariable *>(variable) != 0;
+
 	//-- check for null variable
 	if (!variable)
 	{
@@ -307,6 +311,33 @@ void CustomizationData::addVariableTakeOwnership(const std::string &fullVariable
 
 	//-- set the variable's owner
 	variable->setOwner(this);
+
+	// Direct RGB uses two bounded slots per ownership directory.  Each channel
+	// stores (palette-variable CIM id << 8) | component, so zero means unused.
+	// Keeping these as ordinary ranged ints preserves v2 persistence/replication.
+	if (isPaletteVariable)
+	{
+		char const *prefix = 0;
+		if (fullVariablePathName.compare(0, 9, "/private/") == 0)
+			prefix = "/private/";
+		else if (fullVariablePathName.compare(0, 14, "/shared_owner/") == 0)
+			prefix = "/shared_owner/";
+
+		if (prefix)
+		{
+			char const * const slotNames[] =
+			{
+				"direct_color_0_r", "direct_color_0_g", "direct_color_0_b",
+				"direct_color_1_r", "direct_color_1_g", "direct_color_1_b"
+			};
+			for (int i = 0; i < 6; ++i)
+			{
+				std::string const slotPath = std::string(prefix) + slotNames[i];
+				if (!findConstVariable(slotPath))
+					addVariableTakeOwnership(slotPath, new BasicRangedIntCustomizationVariable(0, 0, 32768));
+			}
+		}
+	}
 }
 
 // ----------------------------------------------------------------------

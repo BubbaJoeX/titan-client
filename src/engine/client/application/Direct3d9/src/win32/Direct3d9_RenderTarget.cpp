@@ -164,11 +164,15 @@ void Direct3d9_RenderTarget::lostDevice()
 void Direct3d9_RenderTarget::setRenderTargetToPrimary()
 {
 	DEBUG_FATAL(!ms_installed, ("Direct3d9_RenderTarget not installed"));
-	NOT_NULL(ms_primarySurface);
-	NOT_NULL(ms_primaryDepthStencilSurface);
 
+	// Device-loss notification can be repeated before a successful Reset.
+	// Once the primary target is already selected (or its references have been
+	// released), there is nothing left to bind.
 	if (ms_primaryTargetSet)
 		return;
+
+	NOT_NULL(ms_primarySurface);
+	NOT_NULL(ms_primaryDepthStencilSurface);
 
 	IDirect3DDevice9 *device = NON_NULL(Direct3d9::getDevice());
 

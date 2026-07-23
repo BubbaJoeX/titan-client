@@ -13,6 +13,7 @@
 #include "UIEventCallback.h"
 #include "clientUserInterface/CuiMediator.h"
 #include "clientGame/TangibleObject.h"
+#include "sharedMath/PackedArgb.h"
 
 class CachedNetworkId;
 class CustomizationManagerPaletteColumns;
@@ -59,6 +60,7 @@ public:
 		static const UILowerString  TargetRangeMin;
 		static const UILowerString  TargetRangeMax;
 		static const UILowerString  SelectedIndex;
+		static const UILowerString  DirectColorEnabled;
 	};
 
 	enum PathFlags
@@ -123,6 +125,9 @@ private:
 	void                     updateWheelFromIndex(int index);
 	void                     updateWheelSelection(long x, long y);
 	void                     updateSelectionFromTextboxes(UIWidget * context);
+	bool                     applyDirectColorOverride(TangibleObject &obj, PackedArgb const &color, bool enabled, PathFlags flags = PF_any);
+	void                     applyDirectColorPreview(PackedArgb const &color);
+	void                     updateColorControls(PackedArgb const &color);
 	void                     revert          ();
 	void                     storeProperties ();
 
@@ -161,6 +166,9 @@ private:
 	bool                     m_draggingWheel;
 	bool                     m_updatingColorControls;
 	bool                     m_hasValidTarget;
+	bool                     m_supportsDirectColor;
+	bool                     m_originalDirectColorEnabled;
+	PackedArgb               m_originalDirectColor;
 	UISize                   m_lastSize;
 
 	enum PaletteSource

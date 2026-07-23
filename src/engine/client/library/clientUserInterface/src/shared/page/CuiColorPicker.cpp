@@ -28,7 +28,9 @@
 #include "sharedObject/CachedNetworkId.h"
 #include "sharedObject/NetworkIdManager.h"
 #include "sharedObject/CustomizationData.h"
+#include "sharedObject/CustomizationIdManager.h"
 #include "sharedObject/PaletteColorCustomizationVariable.h"
+#include "sharedObject/RangedIntCustomizationVariable.h"
 
 #include <list>
 #include <map>
@@ -73,6 +75,138 @@ namespace CuiColorPickerNamespace
 		}
 
 		return cv;
+	}
+
+	struct DirectColorChannels
+	{
+		RangedIntCustomizationVariable *red;
+		RangedIntCustomizationVariable *green;
+		RangedIntCustomizationVariable *blue;
+	};
+
+	bool getDirectColorBase(CustomizationData &data, std::string const &baseName, CuiColorPicker::PathFlags flags, std::string &prefix, int &baseId)
+	{
+		std::string fullName = baseName;
+		if (fullName.compare(0, PathPrefixes::shared_owner.size(), PathPrefixes::shared_owner) == 0)
+		{
+			if ((flags & CuiColorPicker::PF_shared) != 0)
+				prefix = PathPrefixes::shared_owner;
+			else
+			{
+				fullName = PathPrefixes::priv + fullName.substr(PathPrefixes::shared_owner.size());
+				prefix = PathPrefixes::priv;
+			}
+		}
+		else if (fullName.compare(0, PathPrefixes::priv.size(), PathPrefixes::priv) == 0)
+		{
+			if ((flags & CuiColorPicker::PF_private) != 0)
+				prefix = PathPrefixes::priv;
+			else
+			{
+				fullName = PathPrefixes::shared_owner + fullName.substr(PathPrefixes::priv.size());
+				prefix = PathPrefixes::shared_owner;
+			}
+		}
+		else
+		{
+			if (!fullName.empty() && fullName[0] == '/')
+				fullName.erase(0, 1);
+			if ((flags & CuiColorPicker::PF_shared) != 0 &&
+				dynamic_cast<PaletteColorCustomizationVariable *>(data.findVariable(PathPrefixes::shared_owner + fullName)))
+				prefix = PathPrefixes::shared_owner;
+			else if ((flags & CuiColorPicker::PF_private) != 0 &&
+				dynamic_cast<PaletteColorCustomizationVariable *>(data.findVariable(PathPrefixes::priv + fullName)))
+				prefix = PathPrefixes::priv;
+			else
+				return false;
+			fullName = prefix + fullName;
+		}
+
+		return dynamic_cast<PaletteColorCustomizationVariable *>(data.findVariable(fullName)) &&
+			CustomizationIdManager::mapStringToId(fullName.c_str(), baseId) && baseId > 0 && baseId < 128;
+	}
+
+	bool getDirectColorSlot(CustomizationData &data, std::string const &prefix, int slot, DirectColorChannels &channels)
+	{
+		char slotText[2];
+		_snprintf(slotText, sizeof(slotText), "%d", slot);
+		std::string const stem = prefix + "direct_color_" + slotText;
+		channels.red = dynamic_cast<RangedIntCustomizationVariable *>(data.findVariable(stem + "_r"));
+		channels.green = dynamic_cast<RangedIntCustomizationVariable *>(data.findVariable(stem + "_g"));
+		channels.blue = dynamic_cast<RangedIntCustomizationVariable *>(data.findVariable(stem + "_b"));
+		return channels.red && channels.green && channels.blue;
+	}
+
+	bool slotMatches(DirectColorChannels const &channels, int baseId)
+	{
+		return (channels.red->getValue() >> 8) == baseId &&
+			(channels.green->getValue() >> 8) == baseId &&
+			(channels.blue->getValue() >> 8) == baseId;
+	}
+
+	bool slotIsEmpty(DirectColorChannels const &channels)
+	{
+		return channels.red->getValue() == 0 && channels.green->getValue() == 0 && channels.blue->getValue() == 0;
+	}
+
+	bool setDirectColor(CustomizationData &data, std::string const &baseName, CuiColorPicker::PathFlags flags, PackedArgb const &color, bool enabled)
+	{
+		std::string prefix;
+		int baseId = 0;
+		if (!getDirectColorBase(data, baseName, flags, prefix, baseId))
+			return false;
+
+		DirectColorChannels emptySlot = {0, 0, 0};
+		bool haveEmptySlot = false;
+		for (int slot = 0; slot < 2; ++slot)
+		{
+			DirectColorChannels channels = {0, 0, 0};
+			if (!getDirectColorSlot(data, prefix, slot, channels))
+				continue;
+			if (slotMatches(channels, baseId))
+			{
+				if (!enabled)
+					return channels.red->setValue(0) && channels.green->setValue(0) && channels.blue->setValue(0);
+				return channels.red->setValue((baseId << 8) | color.getR()) &&
+					channels.green->setValue((baseId << 8) | color.getG()) &&
+					channels.blue->setValue((baseId << 8) | color.getB());
+			}
+			if (!haveEmptySlot && slotIsEmpty(channels))
+			{
+				emptySlot = channels;
+				haveEmptySlot = true;
+			}
+		}
+
+		if (!enabled)
+			return true;
+		if (!haveEmptySlot)
+			return false;
+		return emptySlot.red->setValue((baseId << 8) | color.getR()) &&
+			emptySlot.green->setValue((baseId << 8) | color.getG()) &&
+			emptySlot.blue->setValue((baseId << 8) | color.getB());
+	}
+
+	bool getDirectColor(CustomizationData &data, std::string const &baseName, CuiColorPicker::PathFlags flags, PackedArgb &color)
+	{
+		std::string prefix;
+		int baseId = 0;
+		if (!getDirectColorBase(data, baseName, flags, prefix, baseId))
+			return false;
+
+		for (int slot = 0; slot < 2; ++slot)
+		{
+			DirectColorChannels channels = {0, 0, 0};
+			if (getDirectColorSlot(data, prefix, slot, channels) && slotMatches(channels, baseId))
+			{
+				color = PackedArgb(255,
+					static_cast<uint8>(channels.red->getValue() & 0xff),
+					static_cast<uint8>(channels.green->getValue() & 0xff),
+					static_cast<uint8>(channels.blue->getValue() & 0xff));
+				return true;
+			}
+		}
+		return false;
 	}
 
 //	typedef CuiColorPicker::StringIntMap StringIntMap;
@@ -180,6 +314,7 @@ const UILowerString CuiColorPicker::DataProperties::TargetRangeMin = UILowerStri
 const UILowerString CuiColorPicker::DataProperties::TargetRangeMax = UILowerString("TargetRangeMax");
 const UILowerString CuiColorPicker::DataProperties::TargetValue = UILowerString("TargetValue");
 const UILowerString CuiColorPicker::DataProperties::TargetVariable = UILowerString("TargetVariable");
+const UILowerString CuiColorPicker::DataProperties::DirectColorEnabled = UILowerString("DirectColorEnabled");
 
 
 //----------------------------------------------------------------------
@@ -215,6 +350,9 @@ m_userChanged(false),
 m_draggingWheel(false),
 m_updatingColorControls(false),
 m_hasValidTarget(false),
+m_supportsDirectColor(false),
+m_originalDirectColorEnabled(false),
+m_originalDirectColor(PackedArgb::solidWhite),
 m_lastSize(),
 m_paletteSource(PS_target)
 {
@@ -348,6 +486,10 @@ void CuiColorPicker::OnVolumePageSelectionChanged(UIWidget * context)
 	if (context == m_volumePage)
 	{
 		const int index = m_volumePage->GetLastSelectedIndex();
+		TangibleObject * const object = m_targetObject->getPointer();
+		if (object)
+			IGNORE_RETURN(applyDirectColorOverride(*object, PackedArgb::solidWhite, false));
+		getPage().SetPropertyNarrow(DataProperties::DirectColorEnabled, "false");
 
 		updateValue(index);
 
@@ -408,7 +550,17 @@ void CuiColorPicker::updateSelectionFromTextboxes(UIWidget *context)
 	{
 		Unicode::String text;
 		m_textboxHtml->GetLocalText(text);
-		if (!parseHtmlColor(Unicode::wideToNarrow(text), requestedColor))
+		std::string const htmlText = Unicode::wideToNarrow(text);
+		if (_stricmp(htmlText.c_str(), "clear") == 0)
+		{
+			TangibleObject * const object = m_targetObject->getPointer();
+			if (object)
+				IGNORE_RETURN(applyDirectColorOverride(*object, PackedArgb::solidWhite, false));
+			getPage().SetPropertyNarrow(DataProperties::DirectColorEnabled, "false");
+			m_userChanged = true;
+			return;
+		}
+		if (!parseHtmlColor(htmlText, requestedColor))
 			return;
 	}
 	else if ((context == m_textR || context == m_textG || context == m_textB) && m_textR && m_textG && m_textB)
@@ -452,6 +604,7 @@ void CuiColorPicker::updateSelectionFromTextboxes(UIWidget *context)
 	{
 		m_volumePage->SetSelectionIndex(bestIndex);
 		updateValue(bestIndex);
+		applyDirectColorPreview(requestedColor);
 		m_userChanged = true;
 	}
 	else
@@ -500,6 +653,7 @@ void CuiColorPicker::updateWheelSelection(long x, long y)
 	{
 		m_volumePage->SetSelectionIndex(bestIndex);
 		updateValue(bestIndex);
+		applyDirectColorPreview(requestedColor);
 		m_userChanged = true;
 
 		if (m_cursorWheel)
@@ -711,6 +865,13 @@ void CuiColorPicker::updateWheelFromIndex(int index)
 		return;
 	}
 
+	updateColorControls(color);
+}
+
+//----------------------------------------------------------------------
+
+void CuiColorPicker::updateColorControls(PackedArgb const &color)
+{
 	m_updatingColorControls = true;
 	char buffer[16];
 	if (m_textR)
@@ -758,9 +919,48 @@ void CuiColorPicker::updateWheelFromIndex(int index)
 
 //----------------------------------------------------------------------
 
+bool CuiColorPicker::applyDirectColorOverride(TangibleObject &obj, PackedArgb const &color, bool enabledValue, PathFlags flags)
+{
+	CustomizationData * const data = obj.fetchCustomizationData();
+	if (!data)
+		return false;
+
+	bool const applied = setDirectColor(*data, m_targetVariable, flags, color, enabledValue);
+	data->release();
+	return applied;
+}
+
+//----------------------------------------------------------------------
+
+void CuiColorPicker::applyDirectColorPreview(PackedArgb const &color)
+{
+	TangibleObject * const object = m_targetObject->getPointer();
+	bool applied = object && applyDirectColorOverride(*object, color, true);
+	for (ObjectWatcherVector::iterator it = m_linkedObjects->begin(); it != m_linkedObjects->end(); ++it)
+	{
+		TangibleObject * const linkedObject = *it;
+		if (linkedObject)
+			IGNORE_RETURN(applyDirectColorOverride(*linkedObject, color, true, PF_private));
+	}
+
+	if (applied)
+	{
+		getPage().SetPropertyNarrow(DataProperties::DirectColorEnabled, "true");
+		updateColorControls(color);
+	}
+}
+
+//----------------------------------------------------------------------
+
 void CuiColorPicker::revert()
 {
 	updateValue(m_originalSelection);
+	TangibleObject * const object = m_targetObject->getPointer();
+	if (object && m_supportsDirectColor)
+		IGNORE_RETURN(applyDirectColorOverride(*object, m_originalDirectColor, m_originalDirectColorEnabled));
+	getPage().SetPropertyNarrow(DataProperties::DirectColorEnabled, m_originalDirectColorEnabled ? "true" : "false");
+	if (m_originalDirectColorEnabled)
+		updateColorControls(m_originalDirectColor);
 }
 
 //----------------------------------------------------------------------
@@ -776,6 +976,9 @@ void CuiColorPicker::setTarget(Object * obj, const std::string & var, int rangeM
 {
 	m_paletteSource = PS_target;
 	m_hasValidTarget = false;
+	m_supportsDirectColor = false;
+	m_originalDirectColorEnabled = false;
+	m_originalDirectColor = PackedArgb::solidWhite;
 
 	*m_targetObject = dynamic_cast<TangibleObject *>(obj);
 
@@ -809,6 +1012,10 @@ void CuiColorPicker::setTarget(Object * obj, const std::string & var, int rangeM
 					m_originalSelection = cvar->getValue ();
 					cvar->getRange (actualRangeMin, actualRangeMax);
 					m_hasValidTarget = true;
+					std::string directPrefix;
+					int directBaseId = 0;
+					m_supportsDirectColor = getDirectColorBase(*cdata, m_targetVariable, PF_any, directPrefix, directBaseId);
+					m_originalDirectColorEnabled = m_supportsDirectColor && getDirectColor(*cdata, m_targetVariable, PF_any, m_originalDirectColor);
 				}
 				else
 					WARNING (true, ("color picker could not find variable '%s'", m_targetVariable.c_str ()));
@@ -835,6 +1042,8 @@ void CuiColorPicker::setTarget(Object * obj, const std::string & var, int rangeM
 	m_volumePage->SetSelectionIndex(m_originalSelection);
 
 	updateValue(m_originalSelection);
+	if (m_originalDirectColorEnabled)
+		updateColorControls(m_originalDirectColor);
 
 	const UIWidget * const child = m_volumePage->GetLastSelectedChild();
 
@@ -996,6 +1205,7 @@ void CuiColorPicker::storeProperties()
 	getPage().SetPropertyNarrow(DataProperties::TargetNetworkId, networkIdString);
 	getPage().SetPropertyInteger(DataProperties::TargetRangeMin, m_rangeMin);
 	getPage().SetPropertyInteger(DataProperties::TargetRangeMax, m_rangeMax);
+	getPage().SetPropertyNarrow(DataProperties::DirectColorEnabled, m_originalDirectColorEnabled ? "true" : "false");
 }
 
 //----------------------------------------------------------------------

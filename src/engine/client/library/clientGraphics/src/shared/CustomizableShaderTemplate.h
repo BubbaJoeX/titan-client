@@ -14,6 +14,7 @@
 #include "clientGraphics/ShaderTemplate.h"
 
 class CrcString;
+class CustomizationData;
 class Iff;
 class MemoryBlockManager;
 class PackedArgb;
@@ -65,7 +66,7 @@ public:
 	const std::string             &getIntVariableName(int index) const;
 	bool                           isIntVariablePrivate(int index) const;
 
-	bool                           applyShaderSettings(const IntVector &intValues, StaticShader &shader) const;
+	bool                           applyShaderSettings(const IntVector &intValues, CustomizationData const *customizationData, StaticShader &shader) const;
 
 	const ShaderTemplate          &getBaseShaderTemplate() const;
 

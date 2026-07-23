@@ -1966,13 +1966,22 @@ void Direct3d9Namespace::removeDeviceRestoredCallback(CallbackFunction callbackF
 
 void Direct3d9Namespace::lostDevice()
 {
+	// Drop device-owned references before client callbacks release or retain
+	// default-pool resources.  In particular, an RT camera texture may still be
+	// cached as a sampler from the main-world pass.
+	Direct3d9_StateCache::lostDevice();
+	Direct3d9_RenderTarget::setRenderTargetToPrimary();
+
 	CallbackFunctions::const_iterator const iEnd = ms_deviceLostCallbacks.end();
 	for (CallbackFunctions::const_iterator i = ms_deviceLostCallbacks.begin(); i != iEnd; ++i)
 		(*(*i))();
 
+	// Render-target Texture objects can remain referenced by appearances and
+	// pools across Reset.  Release only their D3DPOOL_DEFAULT resources here;
+	// the stable engine Texture objects are repopulated after Reset.
+	Direct3d9_TextureData::lostDevice();
 	Direct3d9_DynamicVertexBufferData::lostDevice();
 	Direct3d9_DynamicIndexBufferData::lostDevice();
-	Direct3d9_StateCache::lostDevice();
 	Direct3d9_RenderTarget::lostDevice();
 	Direct3d9_ShaderImplementationData::lostDevice();
 	ms_transformDirty = true;
@@ -1989,6 +1998,7 @@ void Direct3d9Namespace::restoreDevice()
 	Direct3d9_DynamicIndexBufferData::restoreDevice();
 	Direct3d9_StateCache::restoreDevice();
 	setViewport(ms_viewportX, ms_viewportY, ms_viewportWidth, ms_viewportHeight, ms_viewportMinimumZ, ms_viewportMaximumZ);
+	Direct3d9_TextureData::restoreDevice();
 
 	CallbackFunctions::const_iterator const iEnd = ms_deviceRestoredCallbacks.end();
 	for (CallbackFunctions::const_iterator i = ms_deviceRestoredCallbacks.begin(); i != iEnd; ++i)

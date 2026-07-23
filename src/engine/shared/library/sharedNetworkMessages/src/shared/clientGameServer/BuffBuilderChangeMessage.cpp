@@ -59,7 +59,8 @@ void BuffBuilderChangeMessage::pack(MessageQueue::Data const * const data, Archi
 	{
 		Archive::put(target, msg->getBufferId());
 		Archive::put(target, msg->getRecipientId());
-		Archive::put(target, msg->getStartingTime());
+		int32 const startingTime = static_cast<int32>(msg->getStartingTime());
+		Archive::put(target, startingTime);
 		Archive::put(target, msg->getBufferRequiredCredits());
 		Archive::put(target, msg->getAccepted());
 		Archive::put(target, msg->getOrigin());
@@ -86,7 +87,7 @@ MessageQueue::Data* BuffBuilderChangeMessage::unpack(Archive::ReadIterator & sou
 	bool tempBool = false;
 	std::string tempStr;
 	int tempInt = 0;
-	time_t tempTime = 0;
+	int32 tempTime = 0;
 
 	Archive::get(source, tempId);
 	msg->setBufferId(tempId);

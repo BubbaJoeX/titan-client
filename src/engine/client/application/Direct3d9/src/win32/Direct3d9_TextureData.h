@@ -15,6 +15,7 @@ class MemoryBlockManager;
 #include "../../../../../../engine/shared/library/sharedFoundation/include/public/sharedFoundation/Tag.h"
 #include "clientGraphics/Texture.h"
 #include <d3d9.h>
+#include <vector>
 
 // ======================================================================
 
@@ -29,6 +30,8 @@ public:
 	static void remove(void);
 
 	static void releaseAllGlobalTextures();
+	static void lostDevice();
+	static void restoreDevice();
 
 	static D3DFORMAT getD3dFormat(TextureFormat textureFormat);
 
@@ -85,10 +88,12 @@ private:
 private:
 
 	typedef stdmap<Tag, GlobalTextureInfo>::fwd  GlobalTextureList;
+	typedef std::vector<Direct3d9_TextureData *> RenderTargetTextureList;
 
 	static PixelFormatInfo                   ms_pixelFormatInfoArray[TF_Count];
 	static MemoryBlockManager *ms_memoryBlockManager;
 	static GlobalTextureList                *ms_globalTextureList;
+	static RenderTargetTextureList          *ms_renderTargetTextureList;
 
 private:
 

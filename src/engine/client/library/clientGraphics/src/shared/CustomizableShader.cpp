@@ -134,7 +134,7 @@ const StaticShader &CustomizableShader::prepareToView() const
 
 	if (m_isModified)
 	{
-		bool const ok = getCustomizableShaderTemplate().applyShaderSettings(*m_intValues, const_cast<StaticShader&>(baseStaticShader));
+		bool const ok = getCustomizableShaderTemplate().applyShaderSettings(*m_intValues, m_customizationData, const_cast<StaticShader&>(baseStaticShader));
 		m_isModified = false;
 
 		if(!ok)
@@ -284,7 +284,10 @@ void CustomizableShader::handleCustomizationModification(const CustomizationData
 	//   We do not just set it because we may
 	//   have multiple CustomizationData changes, resulting in multiple
 	//   calls to this function, prior to making changes.
-	if (modified)
+	// Companion direct-color slots are not part of m_intValues, but they share
+	// this callback.  Reapply settings so setting or clearing an override is
+	// visible immediately even when the palette index itself did not change.
+	if (modified || m_customizationData)
 		m_isModified = true;
 }
 

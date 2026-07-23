@@ -1161,6 +1161,38 @@ namespace VideoStreamNamespace
 		return attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
 	}
 
+	bool isRuntimeArchitectureCompatible(char const * path, WORD & machine)
+	{
+		machine = 0;
+		HANDLE const file = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+		if (file == INVALID_HANDLE_VALUE)
+			return false;
+
+		IMAGE_DOS_HEADER dosHeader;
+		DWORD bytesRead = 0;
+		bool valid = ReadFile(file, &dosHeader, sizeof(dosHeader), &bytesRead, 0) != FALSE
+			&& bytesRead == sizeof(dosHeader)
+			&& dosHeader.e_magic == IMAGE_DOS_SIGNATURE
+			&& SetFilePointer(file, dosHeader.e_lfanew, 0, FILE_BEGIN) != INVALID_SET_FILE_POINTER;
+
+		DWORD signature = 0;
+		IMAGE_FILE_HEADER fileHeader = {};
+		if (valid)
+			valid = ReadFile(file, &signature, sizeof(signature), &bytesRead, 0) != FALSE
+				&& bytesRead == sizeof(signature)
+				&& signature == IMAGE_NT_SIGNATURE
+				&& ReadFile(file, &fileHeader, sizeof(fileHeader), &bytesRead, 0) != FALSE
+				&& bytesRead == sizeof(fileHeader);
+
+		CloseHandle(file);
+		if (!valid)
+			return false;
+
+		machine = fileHeader.Machine;
+		WORD const expectedMachine = sizeof(void *) == 8 ? IMAGE_FILE_MACHINE_AMD64 : IMAGE_FILE_MACHINE_I386;
+		return machine == expectedMachine;
+	}
+
 	void appendVlcCandidate(std::vector<std::string> & candidates, std::string const & directory)
 	{
 		if (directory.empty())
@@ -1202,6 +1234,16 @@ namespace VideoStreamNamespace
 			if (!fileExists(dllPath.c_str()))
 			{
 				DEBUG_REPORT_LOG(ms_logVideoStreamDiagnostics, ("[Titan] VideoStream: VLC candidate missing [%s]\n", dllPath.c_str()));
+				continue;
+			}
+
+			WORD machine = 0;
+			if (!isRuntimeArchitectureCompatible(dllPath.c_str(), machine))
+			{
+				lastError = ERROR_BAD_EXE_FORMAT;
+				DEBUG_REPORT_LOG(true, ("[Titan] VideoStream: rejected VLC runtime [%s]: PE machine=0x%04x, client=%s (expected 0x%04x)\n",
+					dllPath.c_str(), static_cast<unsigned int>(machine), sizeof(void *) == 8 ? "x64" : "x86",
+					static_cast<unsigned int>(sizeof(void *) == 8 ? IMAGE_FILE_MACHINE_AMD64 : IMAGE_FILE_MACHINE_I386)));
 				continue;
 			}
 
@@ -1340,6 +1382,12 @@ namespace VideoStreamNamespace
 			dirty(true),
 			settled(false),
 			frameReady(0),
+			callbacksEnabled(0),
+			callbackDepth(0),
+			decodedFrameCount(0),
+			uploadedFrameCount(0),
+			textureFailureCount(0),
+			lastFrameDiagnosticTime(0),
 			appliedTimestamp(0),
 			requestedTimestamp(0),
 			looping(false),
@@ -1365,6 +1413,12 @@ namespace VideoStreamNamespace
 		bool dirty;
 		bool settled;
 		LONG frameReady;
+		LONG callbacksEnabled;
+		LONG callbackDepth;
+		LONG decodedFrameCount;
+		LONG uploadedFrameCount;
+		LONG textureFailureCount;
+		DWORD lastFrameDiagnosticTime;
 		int appliedTimestamp;
 		int requestedTimestamp;
 		CRITICAL_SECTION bufferLock;
@@ -1594,28 +1648,51 @@ namespace VideoStreamNamespace
 	void * videoLockCallback(void * opaque, void ** planes)
 	{
 		VideoStreamRuntimeData * data = reinterpret_cast<VideoStreamRuntimeData *>(opaque);
-		if (!data || !planes || !data->videoBuffer)
+		if (!data || !planes || InterlockedCompareExchange(&data->callbacksEnabled, 0, 0) == 0)
 			return 0;
+
+		InterlockedIncrement(&data->callbackDepth);
+		if (InterlockedCompareExchange(&data->callbacksEnabled, 0, 0) == 0 || !data->videoBuffer)
+		{
+			InterlockedDecrement(&data->callbackDepth);
+			return 0;
+		}
+
 		EnterCriticalSection(&data->bufferLock);
+		if (InterlockedCompareExchange(&data->callbacksEnabled, 0, 0) == 0 || !data->videoBuffer)
+		{
+			LeaveCriticalSection(&data->bufferLock);
+			InterlockedDecrement(&data->callbackDepth);
+			return 0;
+		}
+
 		*planes = data->videoBuffer;
-		return 0;
+		return data;
 	}
 
 	void videoUnlockCallback(void * opaque, void * picture, void * const * planes)
 	{
-		UNREF(picture);
 		UNREF(planes);
 		VideoStreamRuntimeData * data = reinterpret_cast<VideoStreamRuntimeData *>(opaque);
-		if (!data)
+		if (!data || picture != data)
 			return;
-		InterlockedExchange(&data->frameReady, 1);
 		LeaveCriticalSection(&data->bufferLock);
+		InterlockedDecrement(&data->callbackDepth);
 	}
 
 	void videoDisplayCallback(void * opaque, void * picture)
 	{
-		UNREF(opaque);
-		UNREF(picture);
+		VideoStreamRuntimeData * data = reinterpret_cast<VideoStreamRuntimeData *>(opaque);
+		if (!data || picture != data)
+			return;
+
+		InterlockedIncrement(&data->callbackDepth);
+		if (InterlockedCompareExchange(&data->callbacksEnabled, 0, 0) != 0)
+		{
+			InterlockedIncrement(&data->decodedFrameCount);
+			InterlockedExchange(&data->frameReady, 1);
+		}
+		InterlockedDecrement(&data->callbackDepth);
 	}
 
 	VideoStreamRuntimeData & getVideoStreamRuntimeData(TangibleObject const * owner)
@@ -1648,16 +1725,27 @@ namespace VideoStreamNamespace
 		data.lastLibvlcAudioVolumeSet = vlcVolume;
 	}
 
-	void stopAndReleaseMediaPlayer(VideoStreamRuntimeData & data)
+	bool stopAndReleaseMediaPlayer(VideoStreamRuntimeData & data)
 	{
 		if (data.mediaPlayer && ms_vlcApi.loaded)
 		{
+			InterlockedExchange(&data.callbacksEnabled, 0);
 			applyLibvlcPlayerVolume(data, 0);
 			ms_vlcApi.pMediaPlayerStop(data.mediaPlayer);
 			ms_vlcApi.pMediaPlayerRelease(data.mediaPlayer);
 			data.mediaPlayer = 0;
+
+			DWORD const waitStarted = GetTickCount();
+			while (InterlockedCompareExchange(&data.callbackDepth, 0, 0) != 0 && GetTickCount() - waitStarted < 2000)
+				Sleep(1);
+			bool const callbacksQuiesced = InterlockedCompareExchange(&data.callbackDepth, 0, 0) == 0;
+			DEBUG_REPORT_LOG(!callbacksQuiesced,
+				("[Titan] VideoStream: frame callback did not quiesce after media player release; preserving frame storage\n"));
+			if (!callbacksQuiesced)
+				return false;
 		}
 		data.lastLibvlcAudioVolumeSet = -999;
+		return true;
 	}
 
 	void removeVideoOverlayObject(TangibleObject & owner, Object *& objectToRemove)
@@ -3213,6 +3301,7 @@ void TangibleObject::updateRemoteVideoStream()
 			{
 				Texture * const modifiableTexture = const_cast<Texture *>(runtimeData.texture);
 				modifiableTexture->copyPixels(runtimeData.videoBuffer, TF_ARGB_8888, static_cast<int>(VIDEO_WIDTH), static_cast<int>(VIDEO_HEIGHT));
+				InterlockedIncrement(&runtimeData.uploadedFrameCount);
 			}
 			else
 			{
@@ -3222,19 +3311,43 @@ void TangibleObject::updateRemoteVideoStream()
 				{
 					runtimeData.texture = newTexture;
 					appliedNewTexture = true;
+					InterlockedIncrement(&runtimeData.uploadedFrameCount);
 				}
+				else
+					InterlockedIncrement(&runtimeData.textureFailureCount);
 			}
 
 			LeaveCriticalSection(&runtimeData.bufferLock);
 
 			if (appliedNewTexture)
+			{
 				applyVideoTextureToSurfaces(runtimeData, getAppearance());
+				DEBUG_REPORT_LOG(ms_logVideoStreamDiagnostics, ("[Titan] VideoStream: created and bound %ux%u BGRA texture (pitch=%u) netId=%s\n",
+					VIDEO_WIDTH, VIDEO_HEIGHT, VIDEO_PITCH, getNetworkId().getValueString().c_str()));
+			}
+
+			if (!runtimeData.texture)
+				DEBUG_REPORT_LOG(ms_logVideoStreamDiagnostics, ("[Titan] VideoStream: texture creation failed for %ux%u TF_ARGB_8888 frame\n",
+					VIDEO_WIDTH, VIDEO_HEIGHT));
 
 			if (ms_logVideoStreamDiagnostics && tTex != 0)
 			{
 				DWORD const dt = GetTickCount() - tTex;
 				if (dt > 16)
 					DEBUG_REPORT_LOG(true, ("[Titan] VideoStream: frame texture path took %lums newTexture=%d\n", dt, appliedNewTexture ? 1 : 0));
+			}
+		}
+		if (ms_logVideoStreamDiagnostics)
+		{
+			DWORD const now = GetTickCount();
+			if (runtimeData.lastFrameDiagnosticTime == 0 || now - runtimeData.lastFrameDiagnosticTime >= 5000)
+			{
+				runtimeData.lastFrameDiagnosticTime = now;
+				DEBUG_REPORT_LOG(true, ("[Titan] VideoStream: frame status decoded=%ld uploaded=%ld textureFailures=%ld ready=%ld texture=%p\n",
+					InterlockedCompareExchange(&runtimeData.decodedFrameCount, 0, 0),
+					InterlockedCompareExchange(&runtimeData.uploadedFrameCount, 0, 0),
+					InterlockedCompareExchange(&runtimeData.textureFailureCount, 0, 0),
+					InterlockedCompareExchange(&runtimeData.frameReady, 0, 0), runtimeData.texture));
 			}
 		}
 		scheduleForAlter();
@@ -3280,7 +3393,11 @@ void TangibleObject::updateRemoteVideoStream()
 
 	if (urlChanged)
 	{
-		stopAndReleaseMediaPlayer(runtimeData);
+		if (!stopAndReleaseMediaPlayer(runtimeData))
+		{
+			runtimeData.settled = true;
+			return;
+		}
 
 		if (runtimeData.texture)
 		{
@@ -3375,6 +3492,9 @@ void TangibleObject::updateRemoteVideoStream()
 		ms_vlcApi.pVideoSetFormat(runtimeData.mediaPlayer, "BGRA", VIDEO_WIDTH, VIDEO_HEIGHT, VIDEO_PITCH);
 		ms_vlcApi.pVideoSetCallbacks(runtimeData.mediaPlayer,
 			videoLockCallback, videoUnlockCallback, videoDisplayCallback, &runtimeData);
+		InterlockedExchange(&runtimeData.callbacksEnabled, 1);
+		DEBUG_REPORT_LOG(ms_logVideoStreamDiagnostics, ("[Titan] VideoStream: callbacks configured chroma=BGRA width=%u height=%u pitch=%u buffer=%p bytes=%u\n",
+			VIDEO_WIDTH, VIDEO_HEIGHT, VIDEO_PITCH, runtimeData.videoBuffer, runtimeData.videoBufferSize));
 
 		applyLibvlcPlayerVolume(runtimeData, 0);
 		DWORD const tPlay = ms_logVideoStreamDiagnostics ? GetTickCount() : 0;
@@ -3472,7 +3592,7 @@ void TangibleObject::clearRemoteVideoStream()
 		runtimeData.resolveThread = 0;
 	}
 
-	stopAndReleaseMediaPlayer(runtimeData);
+	bool const callbacksQuiesced = stopAndReleaseMediaPlayer(runtimeData);
 
 	TangibleObject & mutableSelf = *const_cast<TangibleObject *>(runtimeData.owner);
 	removeVideoOverlayObject(mutableSelf, runtimeData.overlayObject);
@@ -3484,13 +3604,14 @@ void TangibleObject::clearRemoteVideoStream()
 		runtimeData.texture = 0;
 	}
 
-	if (runtimeData.videoBuffer)
+	if (callbacksQuiesced && runtimeData.videoBuffer)
 	{
 		delete[] runtimeData.videoBuffer;
 		runtimeData.videoBuffer = 0;
 	}
 
-	DeleteCriticalSection(&runtimeData.bufferLock);
+	if (callbacksQuiesced)
+		DeleteCriticalSection(&runtimeData.bufferLock);
 
 	runtimeData.appliedUrl.clear();
 	runtimeData.requestedUrl.clear();
@@ -3509,7 +3630,10 @@ void TangibleObject::clearRemoteVideoStream()
 	}
 
 	ms_videoStreamRuntimeDataMap.erase(runtimeIt);
-	delete heapData;
+	if (callbacksQuiesced)
+		delete heapData;
+	else
+		DEBUG_REPORT_LOG(true, ("[Titan] VideoStream: detached runtime data retained because a VLC callback is still active\n"));
 }
 
 //----------------------------------------------------------------------
@@ -4214,10 +4338,35 @@ void TangibleObject::updateRtCameraFeed()
 
 	Object * const cameraObj = NetworkIdManager::getObjectById(cameraNetId);
 	TangibleObject * const cameraTangible = TangibleObject::asTangibleObject(cameraObj);
-	if (!cameraTangible)
+	if (!cameraTangible || !cameraTangible->isInWorld())
 	{
 		// Camera not loaded yet, try again later
+		clearRtCameraFeed();
 		scheduleForAlter();
+		return;
+	}
+
+	// Never bind across a world/interior boundary or between different POBs.
+	// Such links cannot be rendered deterministically during cell streaming and
+	// were the primary source of stale camera/cell references after reconnect.
+	CellProperty * const cameraCell = cameraTangible->getParentCell();
+	CellProperty * const screenCell = getParentCell();
+	CellProperty * const worldCell = CellProperty::getWorldCellProperty();
+	if (!cameraCell || !screenCell)
+	{
+		clearRtCameraFeed();
+		scheduleForAlter();
+		return;
+	}
+
+	bool const cameraIsWorld = cameraCell == worldCell;
+	bool const screenIsWorld = screenCell == worldCell;
+	if (cameraIsWorld != screenIsWorld ||
+		(!cameraIsWorld && cameraCell->getPortalProperty() != screenCell->getPortalProperty()))
+	{
+		REPORT_LOG(true, ("RT camera: rejected cross-POB link camera=[%s] screen=[%s]\n",
+			cameraNetId.getValueString().c_str(), getNetworkId().getValueString().c_str()));
+		clearRtCameraFeed();
 		return;
 	}
 

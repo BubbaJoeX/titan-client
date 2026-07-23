@@ -29,7 +29,9 @@
 #include "sharedFoundation/MemoryBlockManager.h"
 #include "sharedObject/BasicRangedIntCustomizationVariable.h"
 #include "sharedObject/CustomizationData.h"
+#include "sharedObject/CustomizationIdManager.h"
 #include "sharedObject/PaletteColorCustomizationVariable.h"
+#include "sharedObject/RangedIntCustomizationVariable.h"
 
 #include <algorithm>
 #include <string>
@@ -80,7 +82,8 @@ public:
 	MaterialIntOperation();
 	virtual ~MaterialIntOperation();
 
-	virtual bool execute(const IntVariableFactoryVector &intVariableFactoryVector, const IntVector &intValues, Material &material) const = 0;
+	virtual bool execute(const IntVariableFactoryVector &intVariableFactoryVector, const IntVector &intValues, CustomizationData const *customizationData, Material &material) const = 0;
+	static bool getDirectColor(IntVariableFactory const &variableFactory, CustomizationData const *customizationData, VectorArgb &color);
 
 };
 
@@ -92,7 +95,7 @@ public:
 
 	AmbientMaterialIntOperation();
 
-	virtual bool execute(const IntVariableFactoryVector &intVariableFactoryVector, const IntVector &intValues, Material &material) const;
+	virtual bool execute(const IntVariableFactoryVector &intVariableFactoryVector, const IntVector &intValues, CustomizationData const *customizationData, Material &material) const;
 	void         load_0000(Iff &iff, CustomizableShaderTemplate &csTemplate);
 	void         load_0001(Iff &iff, CustomizableShaderTemplate &csTemplate);
 
@@ -109,7 +112,7 @@ public:
 
 	DiffuseMaterialIntOperation();
 
-	virtual bool execute(const IntVariableFactoryVector &intVariableFactoryVector, const IntVector &intValues, Material &material) const;
+	virtual bool execute(const IntVariableFactoryVector &intVariableFactoryVector, const IntVector &intValues, CustomizationData const *customizationData, Material &material) const;
 	void         load_0000(Iff &iff, CustomizableShaderTemplate &csTemplate);
 	void         load_0001(Iff &iff, CustomizableShaderTemplate &csTemplate);
 
@@ -126,7 +129,7 @@ public:
 
 	EmissiveMaterialIntOperation();
 
-	virtual bool execute(const IntVariableFactoryVector &intVariableFactoryVector, const IntVector &intValues, Material &material) const;
+	virtual bool execute(const IntVariableFactoryVector &intVariableFactoryVector, const IntVector &intValues, CustomizationData const *customizationData, Material &material) const;
 	void         load_0000(Iff &iff, CustomizableShaderTemplate &csTemplate);
 	void         load_0001(Iff &iff, CustomizableShaderTemplate &csTemplate);
 
@@ -149,7 +152,7 @@ public:
 	CustomizedMaterial();
 	~CustomizedMaterial();
 
-	bool applyMaterial(const IntVariableFactoryVector &intVariableFactoryVector, const IntVector &intValues, StaticShader &shader) const;
+	bool applyMaterial(const IntVariableFactoryVector &intVariableFactoryVector, const IntVector &intValues, CustomizationData const *customizationData, StaticShader &shader) const;
 
 	void load_0000(Iff &iff, CustomizableShaderTemplate &csTemplate);
 	void load_0001(Iff &iff, CustomizableShaderTemplate &csTemplate);
@@ -205,7 +208,7 @@ public:
 
 public:
 
-	bool applyCustomization(const IntVariableFactoryVector &intVariableFactoryVector, const IntVector &intValues, StaticShader &shader) const;
+	bool applyCustomization(const IntVariableFactoryVector &intVariableFactoryVector, const IntVector &intValues, CustomizationData const *customizationData, StaticShader &shader) const;
 
 private:
 
@@ -436,6 +439,43 @@ CustomizableShaderTemplate::MaterialIntOperation::~MaterialIntOperation()
 {
 }
 
+// ----------------------------------------------------------------------
+
+bool CustomizableShaderTemplate::MaterialIntOperation::getDirectColor(IntVariableFactory const &variableFactory, CustomizationData const *customizationData, VectorArgb &color)
+{
+	if (!customizationData)
+		return false;
+
+	std::string const prefix = variableFactory.isVariablePrivate() ? "/private/" : "/shared_owner/";
+	std::string const baseName = prefix + variableFactory.getVariableName();
+	int baseId = 0;
+	if (!CustomizationIdManager::mapStringToId(baseName.c_str(), baseId) || baseId <= 0 || baseId >= 128)
+		return false;
+
+	for (int slot = 0; slot < 2; ++slot)
+	{
+		char slotText[2];
+		_snprintf(slotText, sizeof(slotText), "%d", slot);
+		std::string const stem = prefix + "direct_color_" + slotText;
+		RangedIntCustomizationVariable const * const red = dynamic_cast<RangedIntCustomizationVariable const *>(customizationData->findConstVariable(stem + "_r"));
+		RangedIntCustomizationVariable const * const green = dynamic_cast<RangedIntCustomizationVariable const *>(customizationData->findConstVariable(stem + "_g"));
+		RangedIntCustomizationVariable const * const blue = dynamic_cast<RangedIntCustomizationVariable const *>(customizationData->findConstVariable(stem + "_b"));
+		if (red && green && blue &&
+			(red->getValue() >> 8) == baseId &&
+			(green->getValue() >> 8) == baseId &&
+			(blue->getValue() >> 8) == baseId)
+		{
+			color = VectorArgb(
+				1.0f,
+				static_cast<float>(red->getValue() & 0xff) / 255.0f,
+				static_cast<float>(green->getValue() & 0xff) / 255.0f,
+				static_cast<float>(blue->getValue() & 0xff) / 255.0f);
+			return true;
+		}
+	}
+	return false;
+}
+
 // ======================================================================
 // class CustomizableShaderTemplate::AmbientMaterialIntOperation
 // ======================================================================
@@ -448,7 +488,7 @@ CustomizableShaderTemplate::AmbientMaterialIntOperation::AmbientMaterialIntOpera
 
 // ----------------------------------------------------------------------
 
-bool CustomizableShaderTemplate::AmbientMaterialIntOperation::execute(const IntVariableFactoryVector &intVariableFactoryVector, const IntVector &intValues, Material &material) const
+bool CustomizableShaderTemplate::AmbientMaterialIntOperation::execute(const IntVariableFactoryVector &intVariableFactoryVector, const IntVector &intValues, CustomizationData const *customizationData, Material &material) const
 {
 	if (m_variableIndex < 0
 		|| m_variableIndex >= static_cast<int>(intValues.size())
@@ -468,7 +508,8 @@ bool CustomizableShaderTemplate::AmbientMaterialIntOperation::execute(const IntV
 	const int         paletteEntryIndex = intValues[static_cast<size_t>(m_variableIndex)];
 
 	bool error = false;
-	const VectorArgb  color(palette->getEntry(paletteEntryIndex, error));
+	VectorArgb color(palette->getEntry(paletteEntryIndex, error));
+	IGNORE_RETURN(getDirectColor(*pcvFactory, customizationData, color));
 
 	WARNING(error, ("CustomizableShaderTemplate::AmbientMaterialIntOperation::execute error"));
 
@@ -539,7 +580,7 @@ CustomizableShaderTemplate::DiffuseMaterialIntOperation::DiffuseMaterialIntOpera
 
 // ----------------------------------------------------------------------
 
-bool CustomizableShaderTemplate::DiffuseMaterialIntOperation::execute(const IntVariableFactoryVector &intVariableFactoryVector, const IntVector &intValues, Material &material) const
+bool CustomizableShaderTemplate::DiffuseMaterialIntOperation::execute(const IntVariableFactoryVector &intVariableFactoryVector, const IntVector &intValues, CustomizationData const *customizationData, Material &material) const
 {
 	if (m_variableIndex < 0
 		|| m_variableIndex >= static_cast<int>(intValues.size())
@@ -558,7 +599,8 @@ bool CustomizableShaderTemplate::DiffuseMaterialIntOperation::execute(const IntV
 	//-- set the palette color
 	const int         paletteEntryIndex = intValues[static_cast<size_t>(m_variableIndex)];
 	bool error = false;
-	const VectorArgb  color(palette->getEntry(paletteEntryIndex, error));
+	VectorArgb color(palette->getEntry(paletteEntryIndex, error));
+	IGNORE_RETURN(getDirectColor(*pcvFactory, customizationData, color));
 
 	WARNING(error, ("CustomizableShaderTemplate::DiffuseMaterialIntOperation::execute error"));
 
@@ -628,7 +670,7 @@ CustomizableShaderTemplate::EmissiveMaterialIntOperation::EmissiveMaterialIntOpe
 
 // ----------------------------------------------------------------------
 
-bool CustomizableShaderTemplate::EmissiveMaterialIntOperation::execute(const IntVariableFactoryVector &intVariableFactoryVector, const IntVector &intValues, Material &material) const
+bool CustomizableShaderTemplate::EmissiveMaterialIntOperation::execute(const IntVariableFactoryVector &intVariableFactoryVector, const IntVector &intValues, CustomizationData const *customizationData, Material &material) const
 {
 	if (m_variableIndex < 0
 		|| m_variableIndex >= static_cast<int>(intValues.size())
@@ -647,7 +689,8 @@ bool CustomizableShaderTemplate::EmissiveMaterialIntOperation::execute(const Int
 	//-- set the palette color
 	const int paletteEntryIndex = intValues[static_cast<size_t>(m_variableIndex)];
 	bool error = false;
-	const     VectorArgb color(palette->getEntry(paletteEntryIndex, error));
+	VectorArgb color(palette->getEntry(paletteEntryIndex, error));
+	IGNORE_RETURN(getDirectColor(*pcvFactory, customizationData, color));
 
 	WARNING(error, ("CustomizableShaderTemplate::EmissiveMaterialIntOperation::execute error"));
 
@@ -798,7 +841,7 @@ CustomizableShaderTemplate::CustomizedMaterial::~CustomizedMaterial()
 
 // ----------------------------------------------------------------------
 
-bool CustomizableShaderTemplate::CustomizedMaterial::applyMaterial(const IntVariableFactoryVector &intVariableFactoryVector, const IntVector &intValues, StaticShader &shader) const
+bool CustomizableShaderTemplate::CustomizedMaterial::applyMaterial(const IntVariableFactoryVector &intVariableFactoryVector, const IntVector &intValues, CustomizationData const *customizationData, StaticShader &shader) const
 {
 	//-- Ignore this customization if this material is not supported.
 	if (!shader.hasMaterial(m_materialTag))
@@ -821,7 +864,7 @@ bool CustomizableShaderTemplate::CustomizedMaterial::applyMaterial(const IntVari
 		for (IntOperationVector::const_iterator it = m_intOperationVector.begin(); it != endIt; ++it)
 		{
 			NOT_NULL(*it);
-			ok = (*it)->execute(intVariableFactoryVector, intValues, material) && ok;
+			ok = (*it)->execute(intVariableFactoryVector, intValues, customizationData, material) && ok;
 		}
 	}
 
@@ -990,7 +1033,7 @@ CustomizableShaderTemplate::TextureFactorIntOperation *CustomizableShaderTemplat
 
 // ======================================================================
 
-bool CustomizableShaderTemplate::TextureFactorIntOperation::applyCustomization(const IntVariableFactoryVector &intVariableFactoryVector, const IntVector &intValues, StaticShader &shader) const
+bool CustomizableShaderTemplate::TextureFactorIntOperation::applyCustomization(const IntVariableFactoryVector &intVariableFactoryVector, const IntVector &intValues, CustomizationData const *customizationData, StaticShader &shader) const
 {
 	// Release-time bounds guards (debug had VALIDATE_RANGE; release would AV).
 	if (m_variableIndex < 0
@@ -1020,6 +1063,41 @@ bool CustomizableShaderTemplate::TextureFactorIntOperation::applyCustomization(c
 
 	DEBUG_REPORT_LOG(ms_debugLogChanges, ("|- setting tfactor (r=%u,g=%u,b=%u,a=%u) [%d]\n", color.getR(), color.getG(), color.getB(), color.getA(), paletteEntryIndex));
 	shader.setTextureFactor(m_tfactorTag, color.getArgb());
+
+	// Apply an exact RGB override only when its encoded selector names this
+	// declared palette variable.  Clearing all three slot values immediately
+	// leaves the palette result above authoritative again.
+	if (customizationData)
+	{
+		IntVariableFactory const * const variableFactory = intVariableFactoryVector[static_cast<size_t>(m_variableIndex)];
+		std::string const prefix = variableFactory->isVariablePrivate() ? "/private/" : "/shared_owner/";
+		std::string const baseName = prefix + variableFactory->getVariableName();
+		int baseId = 0;
+		if (CustomizationIdManager::mapStringToId(baseName.c_str(), baseId) && baseId > 0 && baseId < 128)
+		{
+			for (int slot = 0; slot < 2; ++slot)
+			{
+				char slotText[2];
+				_snprintf(slotText, sizeof(slotText), "%d", slot);
+				std::string const stem = prefix + "direct_color_" + slotText;
+				RangedIntCustomizationVariable const * const red = dynamic_cast<RangedIntCustomizationVariable const *>(customizationData->findConstVariable(stem + "_r"));
+				RangedIntCustomizationVariable const * const green = dynamic_cast<RangedIntCustomizationVariable const *>(customizationData->findConstVariable(stem + "_g"));
+				RangedIntCustomizationVariable const * const blue = dynamic_cast<RangedIntCustomizationVariable const *>(customizationData->findConstVariable(stem + "_b"));
+				if (red && green && blue &&
+					(red->getValue() >> 8) == baseId &&
+					(green->getValue() >> 8) == baseId &&
+					(blue->getValue() >> 8) == baseId)
+				{
+					PackedArgb const directColor(255,
+						static_cast<uint8>(red->getValue() & 0xff),
+						static_cast<uint8>(green->getValue() & 0xff),
+						static_cast<uint8>(blue->getValue() & 0xff));
+					shader.setTextureFactor(m_tfactorTag, directColor.getArgb());
+					break;
+				}
+			}
+		}
+	}
 
 	//-- release the palette
 	palette->release();
@@ -1265,7 +1343,7 @@ bool CustomizableShaderTemplate::isIntVariablePrivate(int index) const
 
 // ----------------------------------------------------------------------
 
-bool CustomizableShaderTemplate::applyShaderSettings(const IntVector &intValues, StaticShader &shader) const
+bool CustomizableShaderTemplate::applyShaderSettings(const IntVector &intValues, CustomizationData const *customizationData, StaticShader &shader) const
 {
 	NOT_NULL(m_intVariableFactoryVector);
 
@@ -1278,7 +1356,7 @@ bool CustomizableShaderTemplate::applyShaderSettings(const IntVector &intValues,
 		for (CustomizedMaterialVector::const_iterator it = m_customizedMaterialVector->begin(); it != endIt; ++it)
 		{
 			NOT_NULL(*it);
-			ok = (*it)->applyMaterial(*m_intVariableFactoryVector, intValues, shader) && ok;
+			ok = (*it)->applyMaterial(*m_intVariableFactoryVector, intValues, customizationData, shader) && ok;
 		}
 	}
 
@@ -1300,7 +1378,7 @@ bool CustomizableShaderTemplate::applyShaderSettings(const IntVector &intValues,
 		for (TextureFactorIntOperationVector::const_iterator it = m_textureFactorIntOperationVector->begin(); it != endIt; ++it)
 		{
 			NOT_NULL(*it);
-			ok = (*it)->applyCustomization(*m_intVariableFactoryVector, intValues, shader) && ok;
+			ok = (*it)->applyCustomization(*m_intVariableFactoryVector, intValues, customizationData, shader) && ok;
 		}
 	}
 

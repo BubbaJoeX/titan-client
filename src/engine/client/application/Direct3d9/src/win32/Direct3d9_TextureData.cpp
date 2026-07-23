@@ -18,6 +18,7 @@
 #include "clientGraphics/TextureFormatInfo.h"
 
 #include <d3dx9tex.h>
+#include <algorithm>
 #include <map>
 
 // ======================================================================
@@ -29,6 +30,7 @@ const Tag TAG_ENVM = TAG(E,N,V,M);
 Direct3d9_TextureData::PixelFormatInfo     Direct3d9_TextureData::ms_pixelFormatInfoArray[TF_Count];
 MemoryBlockManager                        *Direct3d9_TextureData::ms_memoryBlockManager;
 Direct3d9_TextureData::GlobalTextureList  *Direct3d9_TextureData::ms_globalTextureList;
+Direct3d9_TextureData::RenderTargetTextureList *Direct3d9_TextureData::ms_renderTargetTextureList;
 
 static const D3DFORMAT translationTable[] =
 {
@@ -98,6 +100,7 @@ void Direct3d9_TextureData::install(void)
 	}
 
 	ms_globalTextureList = new GlobalTextureList;
+	ms_renderTargetTextureList = new RenderTargetTextureList;
 }
 
 // ----------------------------------------------------------------------
@@ -109,6 +112,13 @@ void Direct3d9_TextureData::remove(void)
 {
 	if (!ExitChain::isFataling())
 	{
+		if (ms_renderTargetTextureList)
+		{
+			DEBUG_FATAL(!ms_renderTargetTextureList->empty(), ("render target textures are still allocated in the graphics dll"));
+			delete ms_renderTargetTextureList;
+			ms_renderTargetTextureList = 0;
+		}
+
 		if (ms_memoryBlockManager)
 		{
 			DEBUG_FATAL(!ms_memoryBlockManager, ("Direct3d9_TextureData not installed"));
@@ -140,6 +150,62 @@ void Direct3d9_TextureData::releaseAllGlobalTextures(void)
 	{
 		ms_globalTextureList->begin()->second.engineTexture->release();
 		ms_globalTextureList->erase(ms_globalTextureList->begin());
+	}
+}
+
+// ----------------------------------------------------------------------
+
+void Direct3d9_TextureData::lostDevice()
+{
+	NOT_NULL(ms_renderTargetTextureList);
+
+	for (RenderTargetTextureList::iterator i = ms_renderTargetTextureList->begin(); i != ms_renderTargetTextureList->end(); ++i)
+	{
+		Direct3d9_TextureData * const textureData = *i;
+		if (textureData && textureData->m_d3dTexture)
+		{
+			IGNORE_RETURN(textureData->m_d3dTexture->Release());
+			textureData->m_d3dTexture = NULL;
+		}
+	}
+}
+
+// ----------------------------------------------------------------------
+
+void Direct3d9_TextureData::restoreDevice()
+{
+	NOT_NULL(ms_renderTargetTextureList);
+
+	IDirect3DDevice9 * const device = NON_NULL(Direct3d9::getDevice());
+	for (RenderTargetTextureList::iterator i = ms_renderTargetTextureList->begin(); i != ms_renderTargetTextureList->end(); ++i)
+	{
+		Direct3d9_TextureData * const textureData = *i;
+		if (!textureData || textureData->m_d3dTexture)
+			continue;
+
+		Texture const & engineTexture = textureData->m_engineTexture;
+		HRESULT hresult = D3DERR_INVALIDCALL;
+		if (engineTexture.isCubeMap())
+		{
+			IDirect3DCubeTexture9 *texture = NULL;
+			hresult = device->CreateCubeTexture(engineTexture.getWidth(), engineTexture.getMipmapLevelCount(), D3DUSAGE_RENDERTARGET, translationTable[textureData->m_destFormat], D3DPOOL_DEFAULT, &texture, NULL);
+			textureData->m_d3dTexture = texture;
+		}
+		else if (engineTexture.isVolumeMap())
+		{
+			IDirect3DVolumeTexture9 *texture = NULL;
+			hresult = device->CreateVolumeTexture(engineTexture.getWidth(), engineTexture.getHeight(), engineTexture.getDepth(), engineTexture.getMipmapLevelCount(), D3DUSAGE_RENDERTARGET, translationTable[textureData->m_destFormat], D3DPOOL_DEFAULT, &texture, NULL);
+			textureData->m_d3dTexture = texture;
+		}
+		else
+		{
+			IDirect3DTexture9 *texture = NULL;
+			hresult = device->CreateTexture(engineTexture.getWidth(), engineTexture.getHeight(), engineTexture.getMipmapLevelCount(), D3DUSAGE_RENDERTARGET, translationTable[textureData->m_destFormat], D3DPOOL_DEFAULT, &texture, NULL);
+			textureData->m_d3dTexture = texture;
+		}
+
+		FATAL_DX_HR("Failed to restore render target texture %s", hresult);
+		DEBUG_FATAL(!textureData->m_d3dTexture, ("Restored render target texture is null"));
 	}
 }
 
@@ -381,12 +447,26 @@ Direct3d9_TextureData::Direct3d9_TextureData(const Texture &newEngineTexture, co
 	Direct3d9_Metrics::textureMemoryTotal += m_memorySize;
 	Direct3d9_Metrics::textureMemoryCreated += m_memorySize;
 #endif
+
+	if (m_engineTexture.isRenderTarget())
+	{
+		NOT_NULL(ms_renderTargetTextureList);
+		ms_renderTargetTextureList->push_back(this);
+	}
 }
 
 // ----------------------------------------------------------------------
 
 Direct3d9_TextureData::~Direct3d9_TextureData(void)
 {
+	if (m_engineTexture.isRenderTarget() && ms_renderTargetTextureList)
+	{
+		RenderTargetTextureList::iterator const i = std::find(ms_renderTargetTextureList->begin(), ms_renderTargetTextureList->end(), this);
+		DEBUG_FATAL(i == ms_renderTargetTextureList->end(), ("render target texture is not registered"));
+		if (i != ms_renderTargetTextureList->end())
+			ms_renderTargetTextureList->erase(i);
+	}
+
 #ifdef _DEBUG
 	Direct3d9_Metrics::textureMemoryTotal -= m_memorySize;
 	Direct3d9_Metrics::textureMemoryDestroyed += m_memorySize;

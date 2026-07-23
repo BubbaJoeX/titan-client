@@ -77,8 +77,8 @@ namespace AssetCustomizationManagerNamespace
 
 	struct UsageIndexEntry
 	{
-		uint16  assetId;        //lint -esym(754, UsageIndexEntry::assetId) // error 754: (Info -- local structure member not referenced) // Wrong, accessed indirectly.
-		uint16  listStartIndex;
+		uint32  assetId;        //lint -esym(754, UsageIndexEntry::assetId) // error 754: (Info -- local structure member not referenced) // Wrong, accessed indirectly.
+		uint32  listStartIndex; // into ULST
 		uint8   count;
 	} PACKING_END_STRUCT;
 
@@ -86,8 +86,8 @@ namespace AssetCustomizationManagerNamespace
 
 	struct LinkIndexEntry
 	{
-		uint16  assetId;        //lint -esym(754, LinkIndexEntry::assetId) // error 754: (Info -- local structure member not referenced) // Wrong, accessed indirectly.
-		uint16  listStartIndex;
+		uint32  assetId;        //lint -esym(754, LinkIndexEntry::assetId) // error 754: (Info -- local structure member not referenced) // Wrong, accessed indirectly.
+		uint32  listStartIndex; // into LLST
 		uint8   count;
 	} PACKING_END_STRUCT;
 
@@ -96,7 +96,7 @@ namespace AssetCustomizationManagerNamespace
 	struct CrcLookupEntry
 	{
 		uint32  assetNameCrc;   //lint -esym(754, CrcLookupEntry::assetNameCrc) // error 754: (Info -- local structure member not referenced) // Wrong, accessed indirectly.
-		uint16  assetId;
+		uint32  assetId;
 	} PACKING_END_STRUCT;
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -128,6 +128,7 @@ namespace AssetCustomizationManagerNamespace
 
 	int                    compare_uint16(void const *lhs, void const *rhs);
 	int                    compare_uint32(void const *lhs, void const *rhs);
+	int                    compare_uint32_key_to_index_entry_asset_id(void const *keyPtr, void const *elementPtr);
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -170,13 +171,13 @@ namespace AssetCustomizationManagerNamespace
 	VariableUsage   *s_variableUsageMap;
 	int              s_maxValidVariableUsageId;
 
-	uint16          *s_variableUsageList;
+	uint32          *s_variableUsageList;
 	int              s_variableUsageListEntryCount;
 
 	UsageIndexEntry *s_usageIndex;
 	int              s_usageIndexEntryCount;
 
-	uint16          *s_linkList;
+	uint32          *s_linkList;
 	int              s_linkListEntryCount;
 
 	LinkIndexEntry  *s_linkIndex;
@@ -362,9 +363,9 @@ void AssetCustomizationManagerNamespace::load_0000(Iff &iff)
 		//-- Read variable usage list.
 		iff.enterChunk(TAG_ULST);
 		
-			s_variableUsageListEntryCount = iff.getChunkLengthLeft(sizeof(uint16));
-			s_variableUsageList           = new uint16[static_cast<size_t>(s_variableUsageListEntryCount)];
-			iff.read_uint16(s_variableUsageListEntryCount, s_variableUsageList);
+			s_variableUsageListEntryCount = iff.getChunkLengthLeft(sizeof(uint32));
+			s_variableUsageList           = new uint32[static_cast<size_t>(s_variableUsageListEntryCount)];
+			iff.read_uint32(s_variableUsageListEntryCount, s_variableUsageList);
 
 		iff.exitChunk(TAG_ULST);
 
@@ -380,9 +381,9 @@ void AssetCustomizationManagerNamespace::load_0000(Iff &iff)
 		//-- Read asset linkage list.
 		iff.enterChunk(TAG_LLST);
 		
-			s_linkListEntryCount = iff.getChunkLengthLeft(sizeof(uint16));
-			s_linkList           = new uint16[static_cast<size_t>(s_linkListEntryCount)];
-			iff.read_uint16(s_linkListEntryCount, s_linkList);
+			s_linkListEntryCount = iff.getChunkLengthLeft(sizeof(uint32));
+			s_linkList           = new uint32[static_cast<size_t>(s_linkListEntryCount)];
+			iff.read_uint32(s_linkListEntryCount, s_linkList);
 
 		iff.exitChunk(TAG_LLST);
 
@@ -492,8 +493,8 @@ AssetCustomizationManagerNamespace::UsageIndexEntry const *AssetCustomizationMan
 	VALIDATE_RANGE_INCLUSIVE_INCLUSIVE(1, assetId, s_crcLookupEntryCount);
 
 	//-- Do a binary search on the UsageIndexEntry list.
-	uint16 const key = static_cast<uint16>(assetId);
-	return static_cast<UsageIndexEntry*>(bsearch(&key, s_usageIndex, static_cast<size_t>(s_usageIndexEntryCount), sizeof(UsageIndexEntry), compare_uint16));
+	uint32 const key = static_cast<uint32>(assetId);
+	return static_cast<UsageIndexEntry const *>(bsearch(&key, s_usageIndex, static_cast<size_t>(s_usageIndexEntryCount), sizeof(UsageIndexEntry), compare_uint32_key_to_index_entry_asset_id));
 }
 
 // ----------------------------------------------------------------------
@@ -502,9 +503,9 @@ AssetCustomizationManagerNamespace::LinkIndexEntry const *AssetCustomizationMana
 {
 	VALIDATE_RANGE_INCLUSIVE_INCLUSIVE(1, assetId, s_crcLookupEntryCount);
 
-	//-- Do a binary search on the UsageIndexEntry list.
-	uint16 const key = static_cast<uint16>(assetId);
-	return static_cast<LinkIndexEntry*>(bsearch(&key, s_linkIndex, static_cast<size_t>(s_linkIndexEntryCount), sizeof(LinkIndexEntry), compare_uint16));
+	//-- Do a binary search on the LinkIndexEntry list.
+	uint32 const key = static_cast<uint32>(assetId);
+	return static_cast<LinkIndexEntry const *>(bsearch(&key, s_linkIndex, static_cast<size_t>(s_linkIndexEntryCount), sizeof(LinkIndexEntry), compare_uint32_key_to_index_entry_asset_id));
 }
 
 // ----------------------------------------------------------------------
@@ -514,7 +515,7 @@ int AssetCustomizationManagerNamespace::lookupAssetId(CrcString const &assetName
 	uint32 const key            = assetName.getCrc();
 	CrcLookupEntry const *entry = static_cast<CrcLookupEntry*>(bsearch(&key, s_crcLookupTable, static_cast<size_t>(s_crcLookupEntryCount), sizeof(CrcLookupEntry), compare_uint32));
 
-	return (entry != NULL) ? entry->assetId : 0;
+	return (entry != NULL) ? static_cast<int>(entry->assetId) : 0;
 }
 
 // ----------------------------------------------------------------------
@@ -559,6 +560,22 @@ int AssetCustomizationManagerNamespace::compare_uint32(void const *lhs, void con
 
 // ----------------------------------------------------------------------
 
+int AssetCustomizationManagerNamespace::compare_uint32_key_to_index_entry_asset_id(void const *keyPtr, void const *elementPtr)
+{
+	NOT_NULL(keyPtr);
+	NOT_NULL(elementPtr);
+
+	uint32 const key = *static_cast<uint32 const *>(keyPtr);
+	uint32 const elementAssetId = *static_cast<uint32 const *>(elementPtr);
+	if (key < elementAssetId)
+		return -1;
+	if (key > elementAssetId)
+		return 1;
+	return 0;
+}
+
+// ----------------------------------------------------------------------
+
 void AssetCustomizationManagerNamespace::addVariablesForAssetAndLinks(int assetId, CustomizationData &customizationData, bool skipSharedOwnerVariables, int &addedVariableCount)
 {
 	//-- Find variables used directly by specified asset.
@@ -575,7 +592,7 @@ void AssetCustomizationManagerNamespace::addVariablesForAssetAndLinks(int assetI
 		for (int i = startIndex; i < endIndex; ++i)
 		{
 			//-- Get variable usage info.
-			uint16 const variableUsageId = s_variableUsageList[i];
+			uint32 const variableUsageId = s_variableUsageList[i];
 
 			VariableUsage const *variableUsage = getVariableUsageFromId(variableUsageId);
 			NOT_NULL(variableUsage);
@@ -659,8 +676,8 @@ void AssetCustomizationManagerNamespace::addVariablesForAssetAndLinks(int assetI
 		for (int i = startIndex; i < endIndex; ++i)
 		{
 			//-- Get asset id for the linked asset, call this function recursively on it.
-			uint16 const dependencyAssetId = s_linkList[i];
-			addVariablesForAssetAndLinks(dependencyAssetId, customizationData, skipSharedOwnerVariables, addedVariableCount);
+			uint32 const dependencyAssetId = s_linkList[i];
+			addVariablesForAssetAndLinks(static_cast<int>(dependencyAssetId), customizationData, skipSharedOwnerVariables, addedVariableCount);
 		}
 	}
 }
