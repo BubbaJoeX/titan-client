@@ -262,6 +262,14 @@ m_lastSlotDiagnosticRendered (-1)
 	getCodeDataObject (TUIButton,     m_cancelButton,   "buttonPrev");
 	getCodeDataObject (TUIButton,     m_createButton,   "buttonCreate");
 	getCodeDataObject (TUIButton,     m_deleteButton,   "buttonDelete");
+	{
+		Unicode::String localizedCreateText;
+		m_createButton->GetText (localizedCreateText);
+		// Preserve non-English localization from @avatar_create. The English
+		// legacy caption is upgraded until the string table ships the new text.
+		if (localizedCreateText == Unicode::narrowToWide ("Create a Character"))
+			m_createButton->SetLocalText (Unicode::narrowToWide ("Create a New Character"));
+	}
 	getCodeDataObject (TUICheckbox,   m_hideClosed,     "checkHideClosed");
 	getCodeDataObject (TUICheckbox,   m_showAvailableSlots, "checkShowAvailableSlots", false);
 	getCodeDataObject (TUIText,       m_moreSlotsText, "textMoreSlots", false);
@@ -354,6 +362,7 @@ void SwgCuiAvatarSelection::performActivate ()
 
 	m_connectingToGame       = false;
 	m_connectionTimeout      = 0.0f;
+	m_avatarNameText->SetVisible (true);
 	m_avatarNameText->Clear ();
 	if (m_avatarDetailsText)
 		m_avatarDetailsText->Clear ();
@@ -668,7 +677,7 @@ void SwgCuiAvatarSelection::beginWelcomeText ()
 
 	Unicode::String createLabel;
 	m_createButton->GetText (createLabel);
-	m_welcomeFullText = Unicode::narrowToWide ("Welcome to SWG: Titan. Press *Create Character* to start your adventure.");
+	m_welcomeFullText = Unicode::narrowToWide ("Welcome to SWG: Titan. Press \"") + createLabel + Unicode::narrowToWide ("\" to start your adventure.");
 	m_welcomeElapsed = 0.0f;
 	m_welcomeComplete = false;
 	m_welcomeInitialized = true;
@@ -690,11 +699,30 @@ void SwgCuiAvatarSelection::completeWelcomeText ()
 
 void SwgCuiAvatarSelection::updateSlotSelectionDisplay ()
 {
-	m_avatarNameText->SetLocalText (Unicode::narrowToWide ("Available Character Slot"));
-	if (m_avatarDetailsText)
-		m_avatarDetailsText->SetLocalText (Unicode::narrowToWide ("Available Character Slot"));
-	m_okButton->SetEnabled (true);
+	if (m_realAvatarCount == 0)
+	{
+		m_avatarNameText->Clear ();
+		m_avatarNameText->SetVisible (false);
+		if (m_avatarDetailsText)
+		{
+			m_avatarDetailsText->Clear ();
+			m_avatarDetailsText->SetVisible (false);
+		}
+		m_okButton->SetEnabled (false);
+	}
+	else
+	{
+		m_avatarNameText->SetVisible (true);
+		m_avatarNameText->SetLocalText (Unicode::narrowToWide ("Available Character Slot"));
+		if (m_avatarDetailsText)
+		{
+			m_avatarDetailsText->Clear ();
+			m_avatarDetailsText->SetVisible (false);
+		}
+		m_okButton->SetEnabled (true);
+	}
 	m_deleteButton->SetEnabled (false);
+	m_createButton->SetEnabled (true);
 }
 
 //----------------------------------------------------------------------
@@ -790,7 +818,9 @@ void SwgCuiAvatarSelection::populateAvatarViewers (bool preserveCarouselState)
 		m_slotClusterId = CuiLoginManager::getFirstClusterWithAvailableSlots ();
 
 	int const authoritativeAvailable = std::max (0, CuiLoginManager::getAvailableCharacterSlots (m_slotClusterId));
-	bool const showAvailable = m_showAvailableSlots && m_showAvailableSlotsEnabled;
+	bool const showAvailable = m_realAvatarCount > 0 && m_showAvailableSlots && m_showAvailableSlotsEnabled;
+	if (m_showAvailableSlots)
+		m_showAvailableSlots->SetVisible (m_realAvatarCount > 0);
 	int const welcomePlaceholderCount = (m_realAvatarCount == 0) ? 1 : 0;
 	// The server count is already net remaining capacity. Only cap it by the
 	// number of viewers left after real avatars and the mandatory welcome dummy.
@@ -820,8 +850,16 @@ void SwgCuiAvatarSelection::populateAvatarViewers (bool preserveCarouselState)
 
 		if (m_avatarLabels[viewerIndex])
 		{
-			m_avatarLabels[viewerIndex]->SetLocalText (Unicode::narrowToWide ((m_realAvatarCount == 0 && slot == 0) ? "CREATE A CHARACTER" : "AVAILABLE CHARACTER SLOT"));
-			m_avatarLabels[viewerIndex]->SetVisible (true);
+			if (m_realAvatarCount == 0 && slot == 0)
+			{
+				m_avatarLabels[viewerIndex]->Clear ();
+				m_avatarLabels[viewerIndex]->SetVisible (false);
+			}
+			else
+			{
+				m_avatarLabels[viewerIndex]->SetLocalText (Unicode::narrowToWide ("AVAILABLE CHARACTER SLOT"));
+				m_avatarLabels[viewerIndex]->SetVisible (true);
+			}
 		}
 	}
 
@@ -851,7 +889,7 @@ void SwgCuiAvatarSelection::populateAvatarViewers (bool preserveCarouselState)
 			m_moreSlotsText->SetVisible (false);
 	}
 
-	m_okButton->SetEnabled (m_avatarViewerCount > 0);
+	m_okButton->SetEnabled (m_realAvatarCount > 0);
 	m_deleteButton->SetEnabled (m_realAvatarCount > 0);
 	m_createButton->SetEnabled (true);
 	if (m_noCharactersText)
@@ -1405,6 +1443,15 @@ void SwgCuiAvatarSelection::playHoverAnimation (int index)
 bool SwgCuiAvatarSelection::OnMessage (UIWidget * context, const UIMessage & msg)
 {
 	int const viewerIndex = findViewerIndex (context);
+	if (m_realAvatarCount == 0 &&
+		((msg.Type == UIMessage::LeftMouseDown && viewerIndex == 0) ||
+		 (msg.Type == UIMessage::KeyDown && msg.Keystroke == UIMessage::Enter)))
+	{
+		completeWelcomeText ();
+		handleCreate ();
+		return false;
+	}
+
 	if (m_realAvatarCount == 0 && m_welcomeInitialized && !m_welcomeComplete &&
 		(msg.Type == UIMessage::KeyDown || (msg.Type == UIMessage::LeftMouseDown && (context == &getPage () || viewerIndex >= 0))))
 	{
@@ -1487,6 +1534,7 @@ void SwgCuiAvatarSelection::updateAvatarSelection ()
 		return;
 	}
 
+	m_avatarNameText->SetVisible (true);
 	m_avatarNameText->Clear ();
 
 	UIString selectionName;
@@ -1498,6 +1546,7 @@ void SwgCuiAvatarSelection::updateAvatarSelection ()
 
 	if (m_avatarDetailsText)
 	{
+		m_avatarDetailsText->SetVisible (true);
 		Unicode::String details;
 		for (int column = 1; column <= 3; ++column)
 		{

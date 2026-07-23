@@ -75,6 +75,39 @@ namespace CustomizationDataNamespace
 
 	void  collectPersistedVariablesCallback(std::string const &fullVariablePathName, CustomizationVariable const *customizationVariable, void *context);
 	void  alterVariableCallback(std::string const &fullVariablePathName, CustomizationVariable *customizationVariable, void *context);
+
+	char const * const cs_directColorVariableNames[2][2][3] =
+	{
+		{
+			{"/private/direct_color_0_r", "/private/direct_color_0_g", "/private/direct_color_0_b"},
+			{"/private/direct_color_1_r", "/private/direct_color_1_g", "/private/direct_color_1_b"}
+		},
+		{
+			{"/shared_owner/direct_color_0_r", "/shared_owner/direct_color_0_g", "/shared_owner/direct_color_0_b"},
+			{"/shared_owner/direct_color_1_r", "/shared_owner/direct_color_1_g", "/shared_owner/direct_color_1_b"}
+		}
+	};
+
+	struct DirectColorSlotRestoreState
+	{
+		DirectColorSlotRestoreState() : invalid(false)
+		{
+			for (int i = 0; i < 3; ++i)
+			{
+				present[i] = false;
+				value[i] = 0;
+			}
+		}
+
+		bool present[3];
+		int value[3];
+		bool invalid;
+	};
+
+	std::string canonicalizeDirectColorPath(std::string const &variableName);
+	bool  getDirectColorVariableLocation(std::string const &variableName, int &bank, int &slot, int &channel);
+	bool  isReservedDirectColorVariable(std::string const &variableName);
+	void  declarePersistedDirectColorSlots(CustomizationData &customizationData, CustomizationData::ByteVector const &data);
 }
 
 using namespace CustomizationDataNamespace;
@@ -109,6 +142,134 @@ void CustomizationDataNamespace::alterVariableCallback(std::string const &fullVa
 	customizationVariable->alter(*customizationData);
 }
 
+// ----------------------------------------------------------------------
+
+std::string CustomizationDataNamespace::canonicalizeDirectColorPath(std::string const &variableName)
+{
+	std::string::size_type const firstNonSeparator = variableName.find_first_not_of(CustomizationData::cms_directorySeparator);
+	if (firstNonSeparator == std::string::npos)
+		return std::string();
+
+	return std::string(1, CustomizationData::cms_directorySeparator) + variableName.substr(firstNonSeparator);
+}
+
+// ----------------------------------------------------------------------
+
+bool CustomizationDataNamespace::getDirectColorVariableLocation(std::string const &variableName, int &bank, int &slot, int &channel)
+{
+	std::string const canonicalVariableName = canonicalizeDirectColorPath(variableName);
+	for (bank = 0; bank < 2; ++bank)
+		for (slot = 0; slot < 2; ++slot)
+			for (channel = 0; channel < 3; ++channel)
+				if (canonicalVariableName == cs_directColorVariableNames[bank][slot][channel])
+					return true;
+
+	return false;
+}
+
+// ----------------------------------------------------------------------
+
+bool CustomizationDataNamespace::isReservedDirectColorVariable(std::string const &variableName)
+{
+	int bank = 0;
+	int slot = 0;
+	int channel = 0;
+	return getDirectColorVariableLocation(variableName, bank, slot, channel);
+}
+
+// ----------------------------------------------------------------------
+
+void CustomizationDataNamespace::declarePersistedDirectColorSlots(CustomizationData &customizationData, CustomizationData::ByteVector const &data)
+{
+	int const dataSize = static_cast<int>(data.size());
+	if (dataSize < 2)
+		return;
+
+	DirectColorSlotRestoreState states[2][2];
+	int const variableCount = static_cast<int>(data[1]);
+	int currentIndex = 2;
+	std::string variableName;
+
+	for (int i = 0; i < variableCount; ++i)
+	{
+		if (currentIndex >= dataSize)
+			return;
+
+		byte const combinedVariableId = data[static_cast<CustomizationData::ByteVector::size_type>(currentIndex++)];
+		int const variableSize = ((combinedVariableId & 0x80) != 0) ? 2 : 1;
+		int const variableId = combinedVariableId & 0x7f;
+		if (currentIndex + variableSize > dataSize)
+			return;
+
+		int bank = 0;
+		int slot = 0;
+		int channel = 0;
+		if (CustomizationIdManager::mapIdToString(variableId, variableName) &&
+			getDirectColorVariableLocation(variableName, bank, slot, channel))
+		{
+			DirectColorSlotRestoreState &state = states[bank][slot];
+			if (variableSize != 2 || state.present[channel])
+				state.invalid = true;
+			else
+			{
+				state.present[channel] = true;
+				state.value[channel] =
+					static_cast<int>(data[static_cast<CustomizationData::ByteVector::size_type>(currentIndex)]) |
+					(static_cast<int>(data[static_cast<CustomizationData::ByteVector::size_type>(currentIndex + 1)]) << 8);
+			}
+		}
+
+		currentIndex += variableSize;
+	}
+
+	for (int bank = 0; bank < 2; ++bank)
+	{
+		char const * const expectedBasePrefix = bank == 0 ? "/private/" : "/shared_owner/";
+		size_t const expectedBasePrefixLength = strlen(expectedBasePrefix);
+		for (int slot = 0; slot < 2; ++slot)
+		{
+			DirectColorSlotRestoreState const &state = states[bank][slot];
+			if (state.invalid || !state.present[0] || !state.present[1] || !state.present[2])
+				continue;
+
+			int const baseId = state.value[0] >> 8;
+			if (baseId <= 0 || baseId >= 128 ||
+				(state.value[1] >> 8) != baseId ||
+				(state.value[2] >> 8) != baseId)
+				continue;
+
+			std::string baseVariableName;
+			if (!CustomizationIdManager::mapIdToString(baseId, baseVariableName))
+				continue;
+
+			std::string const canonicalBaseVariableName = canonicalizeDirectColorPath(baseVariableName);
+			if (canonicalBaseVariableName.compare(0, expectedBasePrefixLength, expectedBasePrefix) != 0)
+				continue;
+
+			CustomizationVariable const * const baseVariable = customizationData.findConstVariable(canonicalBaseVariableName);
+			if (!dynamic_cast<PaletteColorCustomizationVariable const *>(baseVariable))
+				continue;
+
+			bool validExistingDeclarations = true;
+			for (int channel = 0; channel < 3; ++channel)
+			{
+				CustomizationVariable const * const existingVariable = customizationData.findConstVariable(cs_directColorVariableNames[bank][slot][channel]);
+				if (existingVariable && !dynamic_cast<BasicRangedIntCustomizationVariable const *>(existingVariable))
+					validExistingDeclarations = false;
+			}
+			if (!validExistingDeclarations)
+				continue;
+
+			for (int channel = 0; channel < 3; ++channel)
+			{
+				char const * const slotVariableName = cs_directColorVariableNames[bank][slot][channel];
+				if (!customizationData.findConstVariable(slotVariableName))
+					customizationData.addVariableTakeOwnership(slotVariableName, new BasicRangedIntCustomizationVariable(0, 0, 32768));
+			}
+		}
+	}
+}
+
 // ======================================================================
 // struct CustomizationData::ModificationCallbackData
 // ======================================================================
@@ -133,6 +294,9 @@ bool CustomizationData::ModificationCallbackData::operator ==(const Modification
 void CustomizationData::install()
 {
 	DEBUG_FATAL(ms_installed, ("CustomizationData already installed."));
+	DEBUG_FATAL(canonicalizeDirectColorPath("private/direct_color_1_r") != "/private/direct_color_1_r", ("direct-color path canonicalization failed for legacy path."));
+	DEBUG_FATAL(canonicalizeDirectColorPath("/private/direct_color_1_r") != "/private/direct_color_1_r", ("direct-color path canonicalization failed for canonical path."));
+	DEBUG_FATAL(canonicalizeDirectColorPath("//private/direct_color_1_r") != "/private/direct_color_1_r", ("direct-color path canonicalization failed for repeated separators."));
 
 	installMemoryBlockManager();
 
@@ -278,8 +442,6 @@ CustomizationData::CustomizationData(Object &owner) :
 
 void CustomizationData::addVariableTakeOwnership(const std::string &fullVariablePathName, CustomizationVariable *variable)
 {
-	bool const isPaletteVariable = dynamic_cast<PaletteColorCustomizationVariable *>(variable) != 0;
-
 	//-- check for null variable
 	if (!variable)
 	{
@@ -311,33 +473,6 @@ void CustomizationData::addVariableTakeOwnership(const std::string &fullVariable
 
 	//-- set the variable's owner
 	variable->setOwner(this);
-
-	// Direct RGB uses two bounded slots per ownership directory.  Each channel
-	// stores (palette-variable CIM id << 8) | component, so zero means unused.
-	// Keeping these as ordinary ranged ints preserves v2 persistence/replication.
-	if (isPaletteVariable)
-	{
-		char const *prefix = 0;
-		if (fullVariablePathName.compare(0, 9, "/private/") == 0)
-			prefix = "/private/";
-		else if (fullVariablePathName.compare(0, 14, "/shared_owner/") == 0)
-			prefix = "/shared_owner/";
-
-		if (prefix)
-		{
-			char const * const slotNames[] =
-			{
-				"direct_color_0_r", "direct_color_0_g", "direct_color_0_b",
-				"direct_color_1_r", "direct_color_1_g", "direct_color_1_b"
-			};
-			for (int i = 0; i < 6; ++i)
-			{
-				std::string const slotPath = std::string(prefix) + slotNames[i];
-				if (!findConstVariable(slotPath))
-					addVariableTakeOwnership(slotPath, new BasicRangedIntCustomizationVariable(0, 0, 32768));
-			}
-		}
-	}
 }
 
 // ----------------------------------------------------------------------
@@ -1317,6 +1452,8 @@ bool CustomizationData::restoreFromByteVector_1(ByteVector const &data)
 		return false;
 	}
 
+	declarePersistedDirectColorSlots(*this, data);
+
 	bool result = true;
 
 	//-- Process each variable.
@@ -1333,6 +1470,11 @@ bool CustomizationData::restoreFromByteVector_1(ByteVector const &data)
 		// extract lower 7 bits for variable id.
 		int const variableSize = ((combinedVariableId & 0x80) != 0) ? 2 : 1;
 		int const variableId   = combinedVariableId & 0x7f;
+		if (currentIndex + variableSize > dataSize)
+		{
+			WARNING(true, ("object id [%s], template [%s] customization data truncated while reading variable id [%d].", object.getNetworkId().getValueString().c_str(), object.getObjectTemplateName(), variableId));
+			return false;
+		}
 
 		// Lookup variable name.
 		bool const foundMapping = CustomizationIdManager::mapIdToString(variableId, variableName);
@@ -1341,6 +1483,12 @@ bool CustomizationData::restoreFromByteVector_1(ByteVector const &data)
 			WARNING(true, ("object id [%s], template [%s] references unmapped variable, id=[%d], variable size = [%d], aborting load.", object.getNetworkId().getValueString().c_str(), object.getObjectTemplateName(), variableId, variableSize));
 			result = false;
 			return false;
+		}
+
+		if (isReservedDirectColorVariable(variableName) && !findConstVariable(canonicalizeDirectColorPath(variableName)))
+		{
+			currentIndex += variableSize;
+			continue;
 		}
 
 		// Get variable for name.

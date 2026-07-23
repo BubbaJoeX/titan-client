@@ -583,6 +583,7 @@
 				ScrollExtent='180,22'
 				Size='180,22'
 				Style='/Styles.New.Checkbox.Style2'
+				Visible='false'
 			>Show Available Slots</Checkbox>
 			<Checkbox
 				Color='#96F4FC'
@@ -803,7 +804,7 @@
 				Style='/Styles.New.buttons.hud.style'
 			>@avatar_delete</Button>
 			<Button
-				LocalText='[@avatar_create]'
+				LocalText='Create a New Character'
 				Location='48,66'
 				MinimumSize='0,19'
 				Name='buttonCreate'
