@@ -2108,6 +2108,7 @@
 		<include>ui_airspeeder_panel.inc</include>
 		<include>ui_decorator_camera_panel.inc</include>
 		<include>ui_city_terrain_painter.inc</include>
+		<include>ui_dynamic_bunker_floorplan.inc</include>
 		<include>ui_terraforming.inc</include>
 		<include>ui_ground_hud_all_targets.inc</include>
 		<Page

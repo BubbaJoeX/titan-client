@@ -74,6 +74,10 @@ public:
 	Portal                           *getNeighbor();
 	const Portal                     *getNeighbor() const;
 
+	// Runtime portal graph edits (dynamic bunkers / room grafting).
+	static void                       linkNeighbors(Portal *portalA, Portal *portalB);
+	void                              clearNeighbor();
+
 	Transform const                   getDoorTransform() const;
 
 	CellProperty                     *getParentCell() const;

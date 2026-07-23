@@ -130,6 +130,9 @@ namespace CuiMediatorTypes
 	MAKE_MEDIATOR_TYPE (WS_CityTerrainPainter);
 	MAKE_MEDIATOR_TYPE (WS_Terraforming);
 
+	// Dynamic bunker floorplan room assigner
+	MAKE_MEDIATOR_TYPE (WS_DynamicBunkerFloorplan);
+
 	//space
 	MAKE_MEDIATOR_TYPE (WS_ShipTargetInfo);
 	MAKE_MEDIATOR_TYPE (WS_ShipSelfInfo);

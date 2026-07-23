@@ -51,6 +51,7 @@
 #include "sharedNetworkMessages/CloseHolocronMessage.h"
 #include "sharedNetworkMessages/EditAppearanceMessage.h"
 #include "sharedNetworkMessages/EditStatsMessage.h"
+#include "sharedNetworkMessages/DynamicBunkerMessages.h"
 #include "sharedNetworkMessages/EnterStructurePlacementModeMessage.h"
 #include "sharedNetworkMessages/EnterTicketPurchaseModeMessage.h"
 #include "sharedCollision/CollisionProperty.h"
@@ -99,6 +100,7 @@
 #include "swgClientUserInterface/SwgCuiService.h"
 #include "swgClientUserInterface/SwgCuiShipComponentManagement.h"
 #include "swgClientUserInterface/SwgCuiSpaceZoneMap.h"
+#include "swgClientUserInterface/SwgCuiDynamicBunkerFloorplan.h"
 #include "swgClientUserInterface/SwgCuiStructurePlacement.h"
 #include "swgClientUserInterface/SwgCuiSystemMessage.h"
 #include "swgClientUserInterface/SwgCuiTargets.h"
@@ -456,6 +458,7 @@ void SwgCuiHudWindowManager::handlePerformActivate ()
 	connectToMessage (UnnamedMessages::ConnectionServerConnectionClosed);
 	connectToMessage (PermissionListCreateMessage::MessageType);
 	connectToMessage (EnterStructurePlacementModeMessage::cms_name);
+	connectToMessage (DynamicBunkerOpenFloorplanMessage::MessageType);
 	connectToMessage (EnterTicketPurchaseModeMessage::cms_name);
 	connectToMessage (ShowAirspeederPanelMessage::cms_name);
 	connectToMessage ("AutoPilotStatusMessage");
@@ -508,6 +511,7 @@ void SwgCuiHudWindowManager::handlePerformDeactivate ()
 	disconnectFromMessage (UnnamedMessages::ConnectionServerConnectionClosed);
 	disconnectFromMessage (PermissionListCreateMessage::MessageType);
 	disconnectFromMessage (EnterStructurePlacementModeMessage::cms_name);
+	disconnectFromMessage (DynamicBunkerOpenFloorplanMessage::MessageType);
 	disconnectFromMessage (EnterTicketPurchaseModeMessage::cms_name);
 	disconnectFromMessage (ShowAirspeederPanelMessage::cms_name);
 	disconnectFromMessage ("AutoPilotStatusMessage");
@@ -586,6 +590,19 @@ void SwgCuiHudWindowManager::receiveMessage(const MessageDispatch::Emitter & , c
 			DEBUG_WARNING (true, ("GroundScene::receiveMessage (EnterStructurePlacementModeMessage): setting structure placement data failed!"));
 			CuiMediatorFactory::deactivate (CuiMediatorTypes::StructurePlacement);
 		}
+	}
+
+	//----------------------------------------------------------------------
+
+	else if (message.isType (DynamicBunkerOpenFloorplanMessage::MessageType))
+	{
+		Archive::ReadIterator ri = NON_NULL (safe_cast<const GameNetworkMessage *>(&message))->getByteStream().begin();
+		DynamicBunkerOpenFloorplanMessage const msg(ri);
+
+		CuiMediatorFactory::activate(CuiMediatorTypes::WS_DynamicBunkerFloorplan);
+		SwgCuiDynamicBunkerFloorplan * const floorplan = safe_cast<SwgCuiDynamicBunkerFloorplan *>(NON_NULL(CuiMediatorFactory::get(CuiMediatorTypes::WS_DynamicBunkerFloorplan, false)));
+		if (floorplan)
+			floorplan->setSession(msg);
 	}
 
 	//----------------------------------------------------------------------

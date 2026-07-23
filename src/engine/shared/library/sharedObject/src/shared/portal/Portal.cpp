@@ -399,12 +399,44 @@ void Portal::setNeighbor(Portal *neighbor)
 {
 	m_neighbor = neighbor;
 	if (m_door)
-		m_door->setNeighbor(m_neighbor->m_door);
+		m_door->setNeighbor(m_neighbor ? m_neighbor->m_door : 0);
 
-	if (!m_dpvsPortal && ms_createDpvsPortalHookFunction)
+	if (m_neighbor && !m_dpvsPortal && ms_createDpvsPortalHookFunction)
 	{
 		m_dpvsPortal = (*ms_createDpvsPortalHookFunction)(this);
 		m_relativeToObject->addDpvsObject(m_dpvsPortal);
+	}
+}
+
+// ----------------------------------------------------------------------
+
+void Portal::linkNeighbors(Portal *portalA, Portal *portalB)
+{
+	NOT_NULL(portalA);
+	NOT_NULL(portalB);
+	DEBUG_FATAL(portalA == portalB, ("Portal::linkNeighbors - cannot link a portal to itself"));
+
+	if (portalA->m_neighbor && portalA->m_neighbor != portalB)
+		portalA->m_neighbor->clearNeighbor();
+	if (portalB->m_neighbor && portalB->m_neighbor != portalA)
+		portalB->m_neighbor->clearNeighbor();
+
+	portalA->setNeighbor(portalB);
+	portalB->setNeighbor(portalA);
+}
+
+// ----------------------------------------------------------------------
+
+void Portal::clearNeighbor()
+{
+	if (m_neighbor)
+	{
+		Portal *const previous = m_neighbor;
+		m_neighbor = 0;
+		if (m_door)
+			m_door->setNeighbor(0);
+		if (previous->m_neighbor == this)
+			previous->clearNeighbor();
 	}
 }
 

@@ -53,6 +53,7 @@
 #include "swgClientUserInterface/SwgCuiChatRooms.h"
 #include "swgClientUserInterface/SwgCuiCinematicConversation.h"
 #include "swgClientUserInterface/SwgCuiCityTerrainPainter.h"
+#include "swgClientUserInterface/SwgCuiDynamicBunkerFloorplan.h"
 #include "swgClientUserInterface/SwgCuiTerraforming.h"
 #include "swgClientUserInterface/SwgCuiClusterSelection.h"
 #include "swgClientUserInterface/SwgCuiCollections.h"
@@ -291,6 +292,9 @@ void SwgCuiMediatorFactorySetup::install ()
 	// City Terrain Painter
 	MAKE_SWG_CTOR_WS (CityTerrainPainter,             "/GroundHUD.CityTerrainPainter.terrainPainterWindow");
 	MAKE_SWG_CTOR_WS (Terraforming,                   "/GroundHUD.TerraformingSystem.terraformingWindow");
+
+	// Dynamic bunker floorplan (room catalog + top-down preview + snap sockets)
+	MAKE_SWG_CTOR_WS (DynamicBunkerFloorplan,         "/GroundHUD.DynamicBunkerFloorplan.floorplanWindow");
 
 	//space
 	MAKE_SWG_CTOR_WS (SpaceConversation,              "/space.convo");

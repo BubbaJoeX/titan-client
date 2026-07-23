@@ -58,7 +58,9 @@ PortalProperty::PortalProperty(Object &owner, const char *fileName)
 	m_template(NULL),
 	m_cellList(new CellList),
 	m_fixupList(NULL),
-	m_hasPassablePortalToParentCell(false)
+	m_hasPassablePortalToParentCell(false),
+	m_graftedCellMap(new GraftedCellMap),
+	m_dynamicRoomGrafts(new DynamicRoomGraftList)
 {
 #ifdef _DEBUG
 	DataLint::pushAsset(fileName);
@@ -77,6 +79,19 @@ PortalProperty::PortalProperty(Object &owner, const char *fileName)
 
 PortalProperty::~PortalProperty()
 {
+	if (m_graftedCellMap)
+	{
+		for (GraftedCellMap::iterator i = m_graftedCellMap->begin(); i != m_graftedCellMap->end(); ++i)
+		{
+			if (i->second.donorTemplate)
+				i->second.donorTemplate->release();
+		}
+		delete m_graftedCellMap;
+		m_graftedCellMap = 0;
+	}
+	delete m_dynamicRoomGrafts;
+	m_dynamicRoomGrafts = 0;
+
 	delete m_cellList;
 	delete m_fixupList;
 	if (m_template)
@@ -506,7 +521,14 @@ void PortalProperty::cellLoaded(int cellIndex, Object &cellObject, bool shouldCr
 
 int PortalProperty::getNumberOfCells() const
 {
-	return m_template->getNumberOfCells();
+	return static_cast<int>(m_cellList->size());
+}
+
+// ----------------------------------------------------------------------
+
+int PortalProperty::getBaseTemplateCellCount() const
+{
+	return m_template ? m_template->getNumberOfCells() : 0;
 }
 
 // ----------------------------------------------------------------------
@@ -559,7 +581,7 @@ CellProperty *PortalProperty::getCell(const char *desiredCellName)
 	const int numberOfCells = getNumberOfCells();
 	for (int i = 1; i < numberOfCells; ++i)
 	{
-		PortalPropertyTemplateCell const &cell = m_template->getCell(i);
+		PortalPropertyTemplateCell const &cell = getCellTemplate(i);
 		char const * const cellName = cell.getName();
 
 		if (cellName && strcmp(desiredCellName, cellName) == 0)
@@ -580,7 +602,7 @@ const CellProperty *PortalProperty::getCell(const char *cellName) const
 
 const char *PortalProperty::getCellAppearanceName(int index) const
 {
-	return m_template->getCell(index).getAppearanceName();
+	return getCellTemplate(index).getAppearanceName();
 }
 
 // ----------------------------------------------------------------------
@@ -719,6 +741,241 @@ CellProperty const * PortalProperty::findContainingCell(Vector const & position_
     }
 	
 	return cell;
+}
+
+// ----------------------------------------------------------------------
+
+PortalPropertyTemplateCell const &PortalProperty::getCellTemplate(int cellIndex) const
+{
+	NOT_NULL(m_template);
+	VALIDATE_RANGE_INCLUSIVE_EXCLUSIVE(0, cellIndex, getNumberOfCells());
+
+	if (cellIndex < m_template->getNumberOfCells())
+		return m_template->getCell(cellIndex);
+
+	NOT_NULL(m_graftedCellMap);
+	GraftedCellMap::const_iterator const i = m_graftedCellMap->find(cellIndex);
+	FATAL(i == m_graftedCellMap->end() || !i->second.donorTemplate, ("PortalProperty::getCellTemplate - missing graft for cell %d", cellIndex));
+	return i->second.donorTemplate->getCell(i->second.donorCellIndex);
+}
+
+// ----------------------------------------------------------------------
+
+bool PortalProperty::isGraftedCell(int cellIndex) const
+{
+	return m_graftedCellMap && m_graftedCellMap->find(cellIndex) != m_graftedCellMap->end();
+}
+
+// ----------------------------------------------------------------------
+
+int PortalProperty::reserveGraftedCellSlot(char const *donorPobName, int donorCellIndex)
+{
+	NOT_NULL(donorPobName);
+	NOT_NULL(m_graftedCellMap);
+	NOT_NULL(m_cellList);
+
+	PortalPropertyTemplate const *const donorTemplate = PortalPropertyTemplateList::fetch(CrcLowerString(donorPobName));
+	if (!donorTemplate)
+	{
+		WARNING(true, ("PortalProperty::reserveGraftedCellSlot - failed to fetch donor POB %s", donorPobName));
+		return -1;
+	}
+
+	if (donorCellIndex < 1 || donorCellIndex >= donorTemplate->getNumberOfCells())
+	{
+		WARNING(true, ("PortalProperty::reserveGraftedCellSlot - donor cell %d out of range for %s", donorCellIndex, donorPobName));
+		donorTemplate->release();
+		return -1;
+	}
+
+	m_cellList->push_back(NULL);
+	int const graftedCellIndex = static_cast<int>(m_cellList->size()) - 1;
+
+	GraftedCellRecord record;
+	record.donorTemplate = donorTemplate;
+	record.donorCellIndex = donorCellIndex;
+	(*m_graftedCellMap)[graftedCellIndex] = record;
+	return graftedCellIndex;
+}
+
+// ----------------------------------------------------------------------
+
+bool PortalProperty::ensureGraftedCellSlot(int graftedCellIndex, char const *donorPobName, int donorCellIndex)
+{
+	NOT_NULL(donorPobName);
+	NOT_NULL(m_graftedCellMap);
+	NOT_NULL(m_cellList);
+
+	if (graftedCellIndex < 1)
+		return false;
+
+	if (isGraftedCell(graftedCellIndex))
+		return true;
+
+	PortalPropertyTemplate const *const donorTemplate = PortalPropertyTemplateList::fetch(CrcLowerString(donorPobName));
+	if (!donorTemplate)
+	{
+		WARNING(true, ("PortalProperty::ensureGraftedCellSlot - failed to fetch donor POB %s", donorPobName));
+		return false;
+	}
+
+	if (donorCellIndex < 1 || donorCellIndex >= donorTemplate->getNumberOfCells())
+	{
+		WARNING(true, ("PortalProperty::ensureGraftedCellSlot - donor cell %d out of range for %s", donorCellIndex, donorPobName));
+		donorTemplate->release();
+		return false;
+	}
+
+	while (static_cast<int>(m_cellList->size()) <= graftedCellIndex)
+		m_cellList->push_back(NULL);
+
+	GraftedCellRecord record;
+	record.donorTemplate = donorTemplate;
+	record.donorCellIndex = donorCellIndex;
+	(*m_graftedCellMap)[graftedCellIndex] = record;
+	return true;
+}
+
+// ----------------------------------------------------------------------
+
+bool PortalProperty::linkCellPortals(int cellIndexA, int portalIndexA, int cellIndexB, int portalIndexB)
+{
+	CellProperty *const cellA = getCell(cellIndexA);
+	CellProperty *const cellB = getCell(cellIndexB);
+	if (!cellA || !cellB)
+	{
+		WARNING(true, ("PortalProperty::linkCellPortals - missing cell %d or %d", cellIndexA, cellIndexB));
+		return false;
+	}
+
+	Portal *const portalA = cellA->getPortal(portalIndexA);
+	Portal *const portalB = cellB->getPortal(portalIndexB);
+	if (!portalA || !portalB)
+	{
+		WARNING(true, ("PortalProperty::linkCellPortals - missing portal %d/%d or %d/%d", cellIndexA, portalIndexA, cellIndexB, portalIndexB));
+		return false;
+	}
+
+	Portal::linkNeighbors(portalA, portalB);
+	return true;
+}
+
+// ----------------------------------------------------------------------
+
+bool PortalProperty::computeGraftCellTransform(int hostCellIndex, int hostPortalIndex, char const *donorPobName, int donorCellIndex, int donorPortalIndex, Transform &outCellTransform_o2p) const
+{
+	NOT_NULL(donorPobName);
+
+	CellProperty const *const hostCell = getCell(hostCellIndex);
+	if (!hostCell)
+		return false;
+
+	Portal const *const hostPortal = const_cast<CellProperty *>(hostCell)->getPortal(hostPortalIndex);
+	if (!hostPortal)
+		return false;
+
+	PortalPropertyTemplate const *const donorTemplate = PortalPropertyTemplateList::fetch(CrcLowerString(donorPobName));
+	if (!donorTemplate)
+		return false;
+
+	bool ok = false;
+	if (donorCellIndex >= 1 && donorCellIndex < donorTemplate->getNumberOfCells())
+	{
+		PortalPropertyTemplateCell const &donorCell = donorTemplate->getCell(donorCellIndex);
+		PortalPropertyTemplateCell::PortalPropertyTemplateCellPortalList const *const portalList = donorCell.getPortalList();
+		if (portalList && donorPortalIndex >= 0 && donorPortalIndex < static_cast<int>(portalList->size()))
+		{
+			Transform const hostPortal_cell = hostPortal->getDoorTransform();
+			Transform hostPortal_building;
+			hostPortal_building.multiply(hostCell->getOwner().getTransform_o2p(), hostPortal_cell);
+
+			Transform flip;
+			flip.yaw_l(PI);
+
+			Transform desiredPortal_building;
+			desiredPortal_building.multiply(hostPortal_building, flip);
+
+			Transform const donorPortal_cell = (*portalList)[static_cast<size_t>(donorPortalIndex)]->getDoorTransform();
+			Transform invDonorPortal;
+			invDonorPortal.invert(donorPortal_cell);
+
+			outCellTransform_o2p.multiply(desiredPortal_building, invDonorPortal);
+			ok = true;
+		}
+	}
+
+	donorTemplate->release();
+	return ok;
+}
+
+// ----------------------------------------------------------------------
+
+bool PortalProperty::recordDynamicRoomGraft(DynamicRoomGraft const &graft)
+{
+	NOT_NULL(m_dynamicRoomGrafts);
+	for (DynamicRoomGraftList::iterator i = m_dynamicRoomGrafts->begin(); i != m_dynamicRoomGrafts->end(); ++i)
+	{
+		if (i->graftedCellIndex == graft.graftedCellIndex)
+		{
+			*i = graft;
+			return true;
+		}
+	}
+	m_dynamicRoomGrafts->push_back(graft);
+	return true;
+}
+
+// ----------------------------------------------------------------------
+
+bool PortalProperty::removeDynamicRoomGraft(int graftedCellIndex)
+{
+	NOT_NULL(m_dynamicRoomGrafts);
+	for (DynamicRoomGraftList::iterator i = m_dynamicRoomGrafts->begin(); i != m_dynamicRoomGrafts->end(); ++i)
+	{
+		if (i->graftedCellIndex == graftedCellIndex)
+		{
+			IGNORE_RETURN(m_dynamicRoomGrafts->erase(i));
+			return true;
+		}
+	}
+	return false;
+}
+
+// ----------------------------------------------------------------------
+
+PortalProperty::DynamicRoomGraftList const &PortalProperty::getDynamicRoomGrafts() const
+{
+	NOT_NULL(m_dynamicRoomGrafts);
+	return *m_dynamicRoomGrafts;
+}
+
+// ----------------------------------------------------------------------
+
+void PortalProperty::collectPortalSockets(PortalSocketInfoList &outSockets) const
+{
+	outSockets.clear();
+	int const cellCount = getNumberOfCells();
+	for (int cellIndex = 1; cellIndex < cellCount; ++cellIndex)
+	{
+		CellProperty *const cell = const_cast<PortalProperty *>(this)->getCell(cellIndex);
+		if (!cell)
+			continue;
+
+		int const portalCount = cell->getPortalCount();
+		for (int portalIndex = 0; portalIndex < portalCount; ++portalIndex)
+		{
+			Portal *const portal = cell->getPortal(portalIndex);
+			if (!portal)
+				continue;
+
+			PortalSocketInfo info;
+			info.cellIndex = cellIndex;
+			info.portalIndex = portalIndex;
+			info.passable = portal->isPassable();
+			info.open = (portal->getNeighbor() == 0);
+			outSockets.push_back(info);
+		}
+	}
 }
 
 // ======================================================================

@@ -399,6 +399,7 @@
     <ClCompile Include="..\..\src\shared\page\SwgCuiCalendarSettings.cpp" />
     <ClCompile Include="..\..\src\shared\page\SwgCuiCinematicConversation.cpp" />
     <ClCompile Include="..\..\src\shared\page\SwgCuiCityTerrainPainter.cpp" />
+    <ClCompile Include="..\..\src\shared\page\SwgCuiDynamicBunkerFloorplan.cpp" />
     <ClCompile Include="..\..\src\shared\page\SwgCuiClaimManagement.cpp" />
     <ClCompile Include="..\..\src\shared\page\SwgCuiDecoratorCameraPanel.cpp" />
     <ClCompile Include="..\..\src\shared\page\SwgCuiDecoratorSpawn.cpp" />

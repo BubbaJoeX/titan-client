@@ -275,7 +275,17 @@ void CellObject::endBaselines()
 	FATAL(container == NULL, ("CellObject container is NULL, cell=%s, container=%s", getNetworkId().getValueString().c_str(), networkId.getValueString().c_str()));
 	PortalProperty *portalProperty = container->getPortalProperty();
 	FATAL(portalProperty == NULL, ("CellObject's container's portal property is NULL"));
-	portalProperty->cellLoaded(m_cellNumber.get(), *this, true);
+
+	// Grafted dynamic-bunker cells may arrive before the graft descriptor message.
+	// Skip load here; DynamicBunkerClient will call cellLoaded once the donor POB is registered.
+	if (m_cellNumber.get() >= portalProperty->getBaseTemplateCellCount() && !portalProperty->isGraftedCell(m_cellNumber.get()))
+	{
+		WARNING(true, ("CellObject::endBaselines - deferring grafted cell %d until DynamicBunker graft arrives", m_cellNumber.get()));
+		return;
+	}
+
+	if (!portalProperty->getCell(m_cellNumber.get()))
+		portalProperty->cellLoaded(m_cellNumber.get(), *this, true);
 
 	if (ConfigClientGame::getAmbientLightInCells())
 	{
@@ -284,7 +294,7 @@ void CellObject::endBaselines()
 		m_cellLights.push_back(light);
 	}
 
-	PortalPropertyTemplateCell::LightList const *lightList = portalProperty->getPortalPropertyTemplate().getCell(m_cellNumber.get()).getLightList();
+	PortalPropertyTemplateCell::LightList const *lightList = portalProperty->getCellTemplate(m_cellNumber.get()).getLightList();
 	if (lightList)
 	{
 		PortalPropertyTemplateCell::LightList::const_iterator const iEnd = lightList->end();

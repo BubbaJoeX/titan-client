@@ -100,6 +100,7 @@
 #include "clientGame/FormManagerClient.h"
 #include "clientGame/Game.h"
 #include "clientGame/GameAnimationMessageCallback.h"
+#include "clientGame/DynamicBunkerClient.h"
 #include "clientGame/GameNetworkConnection.h"
 #include "clientGame/GamePlaybackScript.h"
 #include "clientGame/GrenadeLobActionTemplate.h"
@@ -669,6 +670,7 @@ void SetupClientGame::install (const Data &data)
 		CommunityManager::install();
 		CombatSpecialMoveVisualData::install ("combat/special_move_visuals.iff");
 		GameNetworkConnection::install();
+		DynamicBunkerClient::install();
 		AwayFromKeyBoardManager::install();
 		InputActivityManager::install();
 
