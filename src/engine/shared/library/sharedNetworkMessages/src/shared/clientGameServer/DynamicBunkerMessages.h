@@ -9,6 +9,7 @@
 #define INCLUDED_DynamicBunkerMessages_H
 
 #include "sharedMath/Transform.h"
+#include "sharedMathArchive/TransformArchive.h"
 #include "sharedNetworkMessages/GameNetworkMessage.h"
 #include "../../../../../../engine/shared/library/sharedFoundation/include/public/sharedFoundation/NetworkId.h"
 

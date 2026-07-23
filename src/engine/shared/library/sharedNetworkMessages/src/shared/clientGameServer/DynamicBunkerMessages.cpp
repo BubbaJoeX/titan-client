@@ -8,6 +8,8 @@
 #include "sharedNetworkMessages/FirstSharedNetworkMessages.h"
 #include "sharedNetworkMessages/DynamicBunkerMessages.h"
 
+#include "sharedMathArchive/TransformArchive.h"
+
 // ======================================================================
 
 char const * const DynamicBunkerGraftMessage::MessageType = "DynamicBunkerGraftMessage";
