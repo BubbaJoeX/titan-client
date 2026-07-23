@@ -59,6 +59,7 @@ public:
 
 	void                       onSceneChanged            (bool);
 	void                       onAvatarListChanged       (bool b);
+	void                       onAvailableCharacterSlotsChanged(bool b);
 	void                       onClusterStatusChanged	 (bool b);
 	void                       onDeleteAvatarConfirmation(CuiLoginManagerAvatarInfo const &info);
 
@@ -92,7 +93,7 @@ private:
 	void                       layoutAvatarViewers        ();
 	void                       advanceCarousel           (float deltaTimeSecs);
 	void                       rotateCarousel            (int steps);
-	void                       populateAvatarViewers      ();
+	void                       populateAvatarViewers      (bool preserveCarouselState = false);
 	void                       selectAvatarIndex          (int index);
 	void                       playHoverAnimation         (int index);
 	int                        findViewerIndex             (UIWidget const * widget) const;
@@ -167,6 +168,7 @@ private:
 
 	UICheckbox *					  m_hideClosed;
 	UICheckbox *                      m_showAvailableSlots;
+	bool                              m_showAvailableSlotsEnabled;
 	UIText *                          m_moreSlotsText;
 	Object *                          m_slotPlaceholders[MaxAvatarViewers];
 	int                               m_realAvatarCount;
@@ -178,6 +180,9 @@ private:
 	bool                              m_welcomeComplete;
 	float                             m_welcomeElapsed;
 	Unicode::String                   m_welcomeFullText;
+	uint32                            m_lastSlotDiagnosticClusterId;
+	int                               m_lastSlotDiagnosticCount;
+	int                               m_lastSlotDiagnosticRendered;
 
 	bool                              m_waitForConnectionRetry;
 	bool                              m_hasAlreadyRetriedConnection;

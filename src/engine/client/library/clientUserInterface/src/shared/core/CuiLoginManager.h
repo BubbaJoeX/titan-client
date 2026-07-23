@@ -36,6 +36,7 @@ public:
 		struct ClusterListChanged;
 		struct ClusterStatusChanged;
 		struct AvatarListChanged;
+		struct AvailableCharacterSlotsChanged;
 	};
 
 	typedef CuiLoginManagerClusterInfo                ClusterInfo;

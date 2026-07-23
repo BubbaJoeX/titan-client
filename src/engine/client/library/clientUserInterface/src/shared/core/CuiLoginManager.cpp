@@ -99,6 +99,7 @@ namespace CuiLoginManagerNamespace
 		MessageDispatch::Transceiver<bool,    CuiLoginManager::Messages::ClusterListChanged >     clusterListChanged;
 		MessageDispatch::Transceiver<bool,    CuiLoginManager::Messages::ClusterStatusChanged >   clusterStatusChanged;
 		MessageDispatch::Transceiver<bool,    CuiLoginManager::Messages::AvatarListChanged >      avatarListChanged;
+		MessageDispatch::Transceiver<bool,    CuiLoginManager::Messages::AvailableCharacterSlotsChanged > availableCharacterSlotsChanged;
 	}
 
 	//----------------------------------------------------------------------
@@ -542,15 +543,25 @@ void CuiLoginManager::receiveLoginClusterStatus (const LoginClusterStatus & lcs)
 
 void CuiLoginManager::receiveAvailableCharacterSlots (const std::vector<std::pair<uint32, int> > & slots)
 {
-	s_availableCharacterSlots.clear ();
+	std::map<uint32, int> updatedSlots;
 	for (std::vector<std::pair<uint32, int> >::const_iterator it = slots.begin (); it != slots.end (); ++it)
 	{
 		int const count = std::max (0, std::min (50, it->second));
 		WARNING (count != it->second, ("CuiLoginManager received invalid available slot count %d for cluster %lu; clamped to 0..50", it->second, it->first));
-		s_availableCharacterSlots[it->first] = count;
+		updatedSlots[it->first] = count;
 	}
 
-	Transceivers::avatarListChanged.emitMessage (true);
+	if (updatedSlots != s_availableCharacterSlots)
+	{
+		for (std::map<uint32, int>::const_iterator it = updatedSlots.begin (); it != updatedSlots.end (); ++it)
+		{
+			std::map<uint32, int>::const_iterator const old = s_availableCharacterSlots.find (it->first);
+			if (old == s_availableCharacterSlots.end () || old->second != it->second)
+				DEBUG_REPORT_LOG(true, ("AvailableCharacterSlotsV1 cluster %lu count %d\n", it->first, it->second));
+		}
+		s_availableCharacterSlots.swap (updatedSlots);
+		Transceivers::availableCharacterSlotsChanged.emitMessage (true);
+	}
 }
 
 //----------------------------------------------------------------------

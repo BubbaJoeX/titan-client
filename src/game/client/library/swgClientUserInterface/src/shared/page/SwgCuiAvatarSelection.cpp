@@ -198,6 +198,7 @@ m_waitForConnectionRetry(false),
 m_hasAlreadyRetriedConnection(false),
 m_hideClosed (NULL),
 m_showAvailableSlots (NULL),
+m_showAvailableSlotsEnabled (false),
 m_moreSlotsText (NULL),
 m_realAvatarCount (0),
 m_slotPlaceholderCount (0),
@@ -207,7 +208,10 @@ m_placeholderAssetAvailable (false),
 m_welcomeInitialized (false),
 m_welcomeComplete (false),
 m_welcomeElapsed (0.0f),
-m_welcomeFullText ()
+m_welcomeFullText (),
+m_lastSlotDiagnosticClusterId (0),
+m_lastSlotDiagnosticCount (-1),
+m_lastSlotDiagnosticRendered (-1)
 {
 	for (int i = 0; i < MaxAvatarViewers; ++i)
 	{
@@ -268,6 +272,7 @@ m_welcomeFullText ()
 	{
 		bool showAvailableSlots = false;
 		IGNORE_RETURN (CuiSettings::loadBoolean (getMediatorDebugName (), "showAvailableSlots", showAvailableSlots));
+		m_showAvailableSlotsEnabled = showAvailableSlots;
 		m_showAvailableSlots->SetChecked (showAvailableSlots);
 		registerMediatorObject (*m_showAvailableSlots, true);
 	}
@@ -379,6 +384,7 @@ void SwgCuiAvatarSelection::performActivate ()
 
 	m_callback->connect (*this, &SwgCuiAvatarSelection::onClusterConnection,      static_cast<CuiLoginManager::Messages::ClusterConnection *>     (0));
 	m_callback->connect (*this, &SwgCuiAvatarSelection::onAvatarListChanged,      static_cast<CuiLoginManager::Messages::AvatarListChanged*>      (0));
+	m_callback->connect (*this, &SwgCuiAvatarSelection::onAvailableCharacterSlotsChanged, static_cast<CuiLoginManager::Messages::AvailableCharacterSlotsChanged*> (0));
 	m_callback->connect (*this, &SwgCuiAvatarSelection::onClusterStatusChanged,   static_cast<CuiLoginManager::Messages::ClusterStatusChanged*>   (0));
 	m_callback->connect (*this, &SwgCuiAvatarSelection::onDeleteAvatarConfirmation, static_cast<SwgCuiDeleteAvatarConfirmation::Message::DeleteAvatarConfirmation*> (0));
 
@@ -456,6 +462,7 @@ void SwgCuiAvatarSelection::performDeactivate ()
 	m_autoConnected = true;
 
 	m_callback->disconnect (*this, &SwgCuiAvatarSelection::onAvatarListChanged,      static_cast<CuiLoginManager::Messages::AvatarListChanged*>      (0));
+	m_callback->disconnect (*this, &SwgCuiAvatarSelection::onAvailableCharacterSlotsChanged, static_cast<CuiLoginManager::Messages::AvailableCharacterSlotsChanged*> (0));
 	m_callback->disconnect (*this, &SwgCuiAvatarSelection::onClusterConnection,      static_cast<CuiLoginManager::Messages::ClusterConnection *>     (0));
 	m_callback->disconnect (*this, &SwgCuiAvatarSelection::onClusterStatusChanged,   static_cast<CuiLoginManager::Messages::ClusterStatusChanged*>   (0));
 	m_callback->disconnect (*this, &SwgCuiAvatarSelection::onDeleteAvatarConfirmation, static_cast<SwgCuiDeleteAvatarConfirmation::Message::DeleteAvatarConfirmation*> (0));
@@ -661,7 +668,7 @@ void SwgCuiAvatarSelection::beginWelcomeText ()
 
 	Unicode::String createLabel;
 	m_createButton->GetText (createLabel);
-	m_welcomeFullText = Unicode::narrowToWide ("Welcome to SWG: Titan. Press \"") + createLabel + Unicode::narrowToWide ("\" to start your adventure.");
+	m_welcomeFullText = Unicode::narrowToWide ("Welcome to SWG: Titan. Press *Create Character* to start your adventure.");
 	m_welcomeElapsed = 0.0f;
 	m_welcomeComplete = false;
 	m_welcomeInitialized = true;
@@ -692,16 +699,34 @@ void SwgCuiAvatarSelection::updateSlotSelectionDisplay ()
 
 //----------------------------------------------------------------------
 
-void SwgCuiAvatarSelection::populateAvatarViewers ()
+void SwgCuiAvatarSelection::populateAvatarViewers (bool preserveCarouselState)
 {
+	int const previousRealAvatarCount = m_realAvatarCount;
+	int const previousViewerCount = m_avatarViewerCount;
+	int const previousSelectedIndex = m_selectedAvatarIndex;
+	uint32 const previousSlotClusterId = m_slotClusterId;
+	float const previousCarouselPosition = m_carouselPosition;
+	float const previousCarouselTarget = m_carouselTargetPosition;
+
 	UITableModelDefault * const model = NON_NULL (safe_cast<UITableModelDefault *>(m_table->GetTableModel ()));
 	m_realAvatarCount = std::min (static_cast<int>(model->GetRowCount ()), static_cast<int>(MaxAvatarViewers));
+	bool const preserveRealViewers = preserveCarouselState && previousRealAvatarCount == m_realAvatarCount;
 	m_avatarViewerCount = m_realAvatarCount;
 	m_slotPlaceholderCount = 0;
 
 	for (int i = 0; i < MaxAvatarViewers; ++i)
 	{
 		CuiWidget3dObjectListViewer * const viewer = m_avatarViewers[i];
+		if (preserveRealViewers && i < m_realAvatarCount)
+		{
+			if (viewer)
+			{
+				viewer->setUseOverrideShader ("", false);
+				viewer->SetVisible (true);
+			}
+			continue;
+		}
+
 		m_avatarCreatures[i] = 0;
 		m_hoverAnimationPlayed[i] = false;
 
@@ -751,7 +776,9 @@ void SwgCuiAvatarSelection::populateAvatarViewers ()
 		selectedRow = 0;
 
 	m_slotClusterId = 0;
-	if (m_realAvatarCount > 0)
+	if (preserveCarouselState && previousSelectedIndex >= previousRealAvatarCount && previousSlotClusterId != 0)
+		m_slotClusterId = previousSlotClusterId;
+	else if (m_realAvatarCount > 0)
 	{
 		UIData const * const selectedData = model->GetCellDataVisual (selectedRow, 0);
 		long clusterId = 0;
@@ -763,8 +790,10 @@ void SwgCuiAvatarSelection::populateAvatarViewers ()
 		m_slotClusterId = CuiLoginManager::getFirstClusterWithAvailableSlots ();
 
 	int const authoritativeAvailable = std::max (0, CuiLoginManager::getAvailableCharacterSlots (m_slotClusterId));
-	bool const showAvailable = m_showAvailableSlots && m_showAvailableSlots->IsChecked ();
+	bool const showAvailable = m_showAvailableSlots && m_showAvailableSlotsEnabled;
 	int const welcomePlaceholderCount = (m_realAvatarCount == 0) ? 1 : 0;
+	// The server count is already net remaining capacity. Only cap it by the
+	// number of viewers left after real avatars and the mandatory welcome dummy.
 	int const requestedAvailableCount = showAvailable ? authoritativeAvailable : 0;
 	int const availableDisplayCount = std::min (requestedAvailableCount, MaxAvatarViewers - m_realAvatarCount - welcomePlaceholderCount);
 	m_slotPlaceholderCount = welcomePlaceholderCount + std::max (0, availableDisplayCount);
@@ -798,6 +827,17 @@ void SwgCuiAvatarSelection::populateAvatarViewers ()
 
 	m_avatarViewerCount = m_realAvatarCount + m_slotPlaceholderCount;
 	int const hiddenAvailableCount = std::max (0, requestedAvailableCount - availableDisplayCount);
+	if (showAvailable &&
+		(m_lastSlotDiagnosticClusterId != m_slotClusterId ||
+		 m_lastSlotDiagnosticCount != authoritativeAvailable ||
+		 m_lastSlotDiagnosticRendered != availableDisplayCount))
+	{
+		DEBUG_REPORT_LOG(true, ("Character selection slots cluster %lu authoritative %d rendered %d real avatars %d viewer cap %d\n",
+			m_slotClusterId, authoritativeAvailable, availableDisplayCount, m_realAvatarCount, MaxAvatarViewers));
+		m_lastSlotDiagnosticClusterId = m_slotClusterId;
+		m_lastSlotDiagnosticCount = authoritativeAvailable;
+		m_lastSlotDiagnosticRendered = availableDisplayCount;
+	}
 	if (m_moreSlotsText)
 	{
 		if (hiddenAvailableCount > 0)
@@ -825,9 +865,65 @@ void SwgCuiAvatarSelection::populateAvatarViewers ()
 		m_welcomeComplete = false;
 	}
 
-	m_selectedAvatarIndex = (m_avatarViewerCount > 0) ? selectedRow : -1;
-	m_carouselPosition = static_cast<float>(selectedRow);
-	m_carouselTargetPosition = m_carouselPosition;
+	if (preserveCarouselState && m_avatarViewerCount > 0 && previousSelectedIndex >= 0)
+	{
+		int selectedIndex = previousSelectedIndex;
+		bool const selectedWasPlaceholder = previousSelectedIndex >= previousRealAvatarCount;
+		if (selectedWasPlaceholder && previousSelectedIndex >= m_avatarViewerCount)
+		{
+			selectedIndex = 0;
+			if (m_realAvatarCount > 0)
+			{
+				float bestDistance = static_cast<float>(previousViewerCount + 1);
+				for (int realIndex = 0; realIndex < m_realAvatarCount; ++realIndex)
+				{
+					float distance = fabsf (static_cast<float>(realIndex - previousSelectedIndex));
+					if (previousViewerCount > 1)
+						distance = std::min (distance, static_cast<float>(previousViewerCount) - distance);
+					if (distance < bestDistance)
+					{
+						bestDistance = distance;
+						selectedIndex = realIndex;
+					}
+				}
+			}
+		}
+		else if (!selectedWasPlaceholder)
+			selectedIndex = std::min (selectedRow, m_realAvatarCount - 1);
+
+		selectedIndex = std::max (0, std::min (selectedIndex, m_avatarViewerCount - 1));
+		m_selectedAvatarIndex = selectedIndex;
+
+		m_refreshingCharacterList = true;
+		m_table->SelectRow (selectedIndex < m_realAvatarCount ? selectedIndex : -1);
+		m_refreshingCharacterList = false;
+
+		int const previousTargetIndex = static_cast<int>(floorf (previousCarouselTarget + 0.5f));
+		if (previousTargetIndex >= 0 && previousTargetIndex < m_avatarViewerCount)
+		{
+			m_carouselPosition = previousCarouselPosition;
+			m_carouselTargetPosition = previousCarouselTarget;
+		}
+		else
+		{
+			m_carouselPosition = previousCarouselPosition;
+			m_carouselTargetPosition = static_cast<float>(selectedIndex);
+			if (m_avatarViewerCount > 1)
+			{
+				float const halfCount = static_cast<float>(m_avatarViewerCount) * 0.5f;
+				while (m_carouselTargetPosition - m_carouselPosition > halfCount)
+					m_carouselTargetPosition -= static_cast<float>(m_avatarViewerCount);
+				while (m_carouselTargetPosition - m_carouselPosition < -halfCount)
+					m_carouselTargetPosition += static_cast<float>(m_avatarViewerCount);
+			}
+		}
+	}
+	else
+	{
+		m_selectedAvatarIndex = (m_avatarViewerCount > 0) ? selectedRow : -1;
+		m_carouselPosition = static_cast<float>(selectedRow);
+		m_carouselTargetPosition = m_carouselPosition;
+	}
 
 	layoutAvatarViewers ();
 	ensureViewerBehindChrome ();
@@ -956,7 +1052,7 @@ void SwgCuiAvatarSelection::advanceCarousel (float deltaTimeSecs)
 		layoutAvatarViewers ();
 
 	if (fabsf (m_carouselTargetPosition - m_carouselPosition) <= 0.001f &&
-		m_showAvailableSlots && m_showAvailableSlots->IsChecked () &&
+		m_showAvailableSlots && m_showAvailableSlotsEnabled &&
 		m_selectedAvatarIndex >= 0 && m_selectedAvatarIndex < m_realAvatarCount)
 	{
 		UITableModelDefault * const model = safe_cast<UITableModelDefault *>(m_table->GetTableModel ());
@@ -964,7 +1060,7 @@ void SwgCuiAvatarSelection::advanceCarousel (float deltaTimeSecs)
 		long clusterId = 0;
 		if (selectedData && selectedData->GetPropertyLong (Properties::ClusterId, clusterId) && static_cast<uint32>(clusterId) != m_slotClusterId)
 		{
-			populateAvatarViewers ();
+			populateAvatarViewers (true);
 			updateAvatarSelection ();
 		}
 	}
@@ -1677,6 +1773,17 @@ void SwgCuiAvatarSelection::onAvatarListChanged (bool)
 	}
 }
 
+//----------------------------------------------------------------------
+
+void SwgCuiAvatarSelection::onAvailableCharacterSlotsChanged (bool)
+{
+	if (isActive ())
+	{
+		populateAvatarViewers (true);
+		updateAvatarSelection ();
+	}
+}
+
 //-----------------------------------------------------------------------
 
 void SwgCuiAvatarSelection::receiveMessage(const MessageDispatch::Emitter &, const MessageDispatch::MessageBase & message)
@@ -2124,9 +2231,10 @@ void SwgCuiAvatarSelection::OnCheckboxSet( UIWidget *context )
 {
 	if (context == m_showAvailableSlots)
 	{
+		m_showAvailableSlotsEnabled = true;
 		CuiSettings::saveBoolean (getMediatorDebugName (), "showAvailableSlots", true);
 		CuiSettings::save ();
-		populateAvatarViewers ();
+		populateAvatarViewers (true);
 		updateAvatarSelection ();
 		return;
 	}
@@ -2141,9 +2249,10 @@ void SwgCuiAvatarSelection::OnCheckboxUnset( UIWidget *context )
 {
 	if (context == m_showAvailableSlots)
 	{
+		m_showAvailableSlotsEnabled = false;
 		CuiSettings::saveBoolean (getMediatorDebugName (), "showAvailableSlots", false);
 		CuiSettings::save ();
-		populateAvatarViewers ();
+		populateAvatarViewers (true);
 		updateAvatarSelection ();
 		return;
 	}
