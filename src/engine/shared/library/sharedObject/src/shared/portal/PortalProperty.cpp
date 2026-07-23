@@ -23,8 +23,12 @@
 #include "sharedObject/Portal.h"
 #include "sharedObject/PortalPropertyTemplate.h"
 #include "sharedObject/PortalPropertyTemplateList.h"
+#include "sharedFoundation/Crc.h"
+#include "sharedMath/IndexedTriangleList.h"
 
+#include <algorithm>
 #include <limits>
+#include <cstdio>
 
 // ======================================================================
 
@@ -55,20 +59,22 @@ PropertyId PortalProperty::getClassPropertyId()
 
 PortalProperty::PortalProperty(Object &owner, const char *fileName)
 : Container(getClassPropertyId(), owner),
-	m_template(NULL),
+	m_template(nullptr),
 	m_cellList(new CellList),
-	m_fixupList(NULL),
+	m_fixupList(nullptr),
 	m_hasPassablePortalToParentCell(false),
 	m_graftedCellMap(new GraftedCellMap),
-	m_dynamicRoomGrafts(new DynamicRoomGraftList)
+	m_dynamicRoomGrafts(new DynamicRoomGraftList),
+	m_customSockets(new CustomSocketList),
+	m_bridgeSegments(new BridgeSegmentList),
+	m_runtimePortalTemplates(0)
 {
 #ifdef _DEBUG
 	DataLint::pushAsset(fileName);
 #endif // _DEBUG
 
 	m_template = PortalPropertyTemplateList::fetch(CrcLowerString(fileName));
-	if (m_template)
-		m_cellList->resize(static_cast<CellList::size_type>(m_template->getNumberOfCells()), NULL);
+	m_cellList->resize(static_cast<CellList::size_type>(m_template->getNumberOfCells()), nullptr);
 
 #ifdef _DEBUG
 	DataLint::popAsset();
@@ -91,6 +97,17 @@ PortalProperty::~PortalProperty()
 	}
 	delete m_dynamicRoomGrafts;
 	m_dynamicRoomGrafts = 0;
+	delete m_customSockets;
+	m_customSockets = 0;
+	delete m_bridgeSegments;
+	m_bridgeSegments = 0;
+	if (m_runtimePortalTemplates)
+	{
+		for (size_t i = 0; i < m_runtimePortalTemplates->size(); ++i)
+			delete (*m_runtimePortalTemplates)[i];
+		delete m_runtimePortalTemplates;
+		m_runtimePortalTemplates = 0;
+	}
 
 	delete m_cellList;
 	delete m_fixupList;
@@ -153,7 +170,7 @@ void PortalProperty::addToWorld()
 		int unloaded = 0;
 		int const numberOfCells = static_cast<int>(m_cellList->size());
 		for (int i = 1; i < numberOfCells; ++i)
-			if ((*m_cellList)[static_cast<CellList::size_type>(i)] == NULL)
+			if ((*m_cellList)[static_cast<CellList::size_type>(i)] == nullptr)
 			{
 				WARNING(true, ("cell %d/%d not loaded", i, numberOfCells));
 				++unloaded;
@@ -229,7 +246,7 @@ bool PortalProperty::serverEndBaselines(int serverObjectCrc, std::vector<Object*
 		uint const numberOfCells = m_cellList->size();
 		for (uint i = 1; i < numberOfCells; ++i)
 		{
-			if ((*m_cellList)[i] == NULL)
+			if ((*m_cellList)[i] == nullptr)
 			{
 				Object *object = ms_beginCreateObjectFunction(static_cast<int>(i));
 				IGNORE_RETURN(addToContents(*object, tmp));
@@ -243,7 +260,7 @@ bool PortalProperty::serverEndBaselines(int serverObjectCrc, std::vector<Object*
 		//-- fixupObject() causes the fixedup object to get added to the world before its parent has been
 		//-- for now, we won't queue anything for fixup
 
-#if 0
+#if 0	//TODO: see above
 		// go through the cells and remove objects 
 		for (size_t cell=1 ; cell< numberOfCells; ++cell)
 		{
@@ -474,8 +491,12 @@ void PortalProperty::debugPrint(std::string &buffer) const
 void PortalProperty::createAppearance()
 {
 	Appearance * const appearance = AppearanceTemplateList::createAppearance(m_template->getExteriorAppearanceName());
-	appearance->setShadowBlobAllowed();
-	getOwner().setAppearance(appearance);
+	if (appearance != nullptr) {
+		appearance->setShadowBlobAllowed();
+		getOwner().setAppearance(appearance);
+	} else {
+		DEBUG_WARNING(true, ("FIX ME: Appearance template for PortalProperty::createAppearance missing"));
+	}
 }
 
 // ----------------------------------------------------------------------
@@ -496,16 +517,8 @@ void PortalProperty::cellLoaded(int cellIndex, Object &cellObject, bool shouldCr
 		WARNING(true, ("CellProblem for portal %s cell index %d already loaded", getOwner().getNetworkId().getValueString().c_str(), cellIndex));
 	}
 
-	// attach the cell as a child of the portal object.
-	// asChildObject MUST be true so that when the building (parent) later gets
-	// addToWorld(), Object::addToWorld iterates m_attachedObjects and adds
-	// each cell via `if ((*i)->isChildObject() && !(*i)->isInWorld())`. With
-	// asChildObject=false the cell would never be added in the multiplayer-
-	// client SceneCreate flow (cells' SceneEndBaselines arrive before the
-	// building's, so the conditional addToWorld in handleEndBaselines is
-	// skipped on the containedBy->isInWorld() check, and nothing later picks
-	// them up).
-	cellObject.attachToObject_p(&getOwner(), true);
+	// attach the cell as a child of the portal object
+	cellObject.attachToObject_p(&getOwner(), false);
 
 	// get the cell property from the cell object
 	CellProperty *cell = cellObject.getCellProperty();
@@ -549,26 +562,6 @@ const CellProperty *PortalProperty::getCell(int index) const
 
 // ----------------------------------------------------------------------
 
-#if 0
-
-int PortalProperty::getNumberOfLights(int cellIndex) const
-{
-	DEBUG_FATAL(cellIndex < 0 || cellIndex >= static_cast<int>(m_cellList->size()), ("cell index out of range"));
-	return (*m_cellDataList)[cellIndex]->getNumberOfLights();
-}
-
-// ----------------------------------------------------------------------
-
-const PortalProperty::LightData &PortalProperty::getLightData(int cellIndex, int lightIndex) const
-{
-	DEBUG_FATAL(cellIndex < 0 || cellIndex >= static_cast<int>(m_cellList->size()), ("cell index out of range"));
-	return (*m_cellDataList)[cellIndex]->getLightData(lightIndex);
-}
-
-#endif
-
-// ----------------------------------------------------------------------
-
 const PortalProperty::CellNameList &PortalProperty::getCellNames() const
 {
 	return m_template->getCellNames();
@@ -588,7 +581,7 @@ CellProperty *PortalProperty::getCell(const char *desiredCellName)
 			return (*m_cellList)[static_cast<CellList::size_type>(i)];
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 // ----------------------------------------------------------------------
@@ -788,7 +781,7 @@ int PortalProperty::reserveGraftedCellSlot(char const *donorPobName, int donorCe
 		return -1;
 	}
 
-	m_cellList->push_back(NULL);
+	m_cellList->push_back(nullptr);
 	int const graftedCellIndex = static_cast<int>(m_cellList->size()) - 1;
 
 	GraftedCellRecord record;
@@ -796,6 +789,13 @@ int PortalProperty::reserveGraftedCellSlot(char const *donorPobName, int donorCe
 	record.donorCellIndex = donorCellIndex;
 	(*m_graftedCellMap)[graftedCellIndex] = record;
 	return graftedCellIndex;
+}
+
+// ----------------------------------------------------------------------
+
+bool PortalProperty::addCellObject(Object &cellObject, ContainerErrorCode &error)
+{
+	return addToContents(cellObject, error) >= 0;
 }
 
 // ----------------------------------------------------------------------
@@ -827,7 +827,7 @@ bool PortalProperty::ensureGraftedCellSlot(int graftedCellIndex, char const *don
 	}
 
 	while (static_cast<int>(m_cellList->size()) <= graftedCellIndex)
-		m_cellList->push_back(NULL);
+		m_cellList->push_back(nullptr);
 
 	GraftedCellRecord record;
 	record.donorTemplate = donorTemplate;
@@ -862,6 +862,70 @@ bool PortalProperty::linkCellPortals(int cellIndexA, int portalIndexA, int cellI
 
 // ----------------------------------------------------------------------
 
+bool PortalProperty::unlinkCellPortal(int cellIndex, int portalIndex)
+{
+	CellProperty *const cell = getCell(cellIndex);
+	if (!cell)
+		return false;
+
+	Portal *const portal = cell->getPortal(portalIndex);
+	if (!portal)
+		return false;
+
+	portal->clearNeighbor();
+	return true;
+}
+
+// ----------------------------------------------------------------------
+
+void PortalProperty::unlinkAllCellPortals(int cellIndex)
+{
+	CellProperty *const cell = getCell(cellIndex);
+	if (!cell)
+		return;
+
+	int const portalCount = cell->getPortalCount();
+	for (int portalIndex = 0; portalIndex < portalCount; ++portalIndex)
+	{
+		Portal *const portal = cell->getPortal(portalIndex);
+		if (portal)
+			portal->clearNeighbor();
+	}
+}
+
+// ----------------------------------------------------------------------
+
+bool PortalProperty::clearLoadedCellSlot(int cellIndex)
+{
+	NOT_NULL(m_cellList);
+	if (cellIndex < 1 || cellIndex >= static_cast<int>(m_cellList->size()))
+		return false;
+
+	(*m_cellList)[static_cast<CellList::size_type>(cellIndex)] = nullptr;
+	return true;
+}
+
+// ----------------------------------------------------------------------
+
+bool PortalProperty::releaseGraftedCellSlot(int graftedCellIndex)
+{
+	NOT_NULL(m_graftedCellMap);
+	GraftedCellMap::iterator const i = m_graftedCellMap->find(graftedCellIndex);
+	if (i == m_graftedCellMap->end())
+		return false;
+
+	if (i->second.donorTemplate)
+	{
+		i->second.donorTemplate->release();
+		i->second.donorTemplate = 0;
+	}
+
+	IGNORE_RETURN(m_graftedCellMap->erase(i));
+	return true;
+}
+
+// ----------------------------------------------------------------------
+
 bool PortalProperty::computeGraftCellTransform(int hostCellIndex, int hostPortalIndex, char const *donorPobName, int donorCellIndex, int donorPortalIndex, Transform &outCellTransform_o2p) const
 {
 	NOT_NULL(donorPobName);
@@ -870,9 +934,21 @@ bool PortalProperty::computeGraftCellTransform(int hostCellIndex, int hostPortal
 	if (!hostCell)
 		return false;
 
-	Portal const *const hostPortal = const_cast<CellProperty *>(hostCell)->getPortal(hostPortalIndex);
-	if (!hostPortal)
-		return false;
+	Transform hostPortal_cell;
+	if (PortalProperty::isCustomSocketIndex(hostPortalIndex))
+	{
+		CustomSocket customSocket;
+		if (!findCustomSocket(hostCellIndex, hostPortalIndex, customSocket))
+			return false;
+		hostPortal_cell = customSocket.doorTransform_o2p;
+	}
+	else
+	{
+		Portal const *const hostPortal = const_cast<CellProperty *>(hostCell)->getPortal(hostPortalIndex);
+		if (!hostPortal)
+			return false;
+		hostPortal_cell = hostPortal->getDoorTransform();
+	}
 
 	PortalPropertyTemplate const *const donorTemplate = PortalPropertyTemplateList::fetch(CrcLowerString(donorPobName));
 	if (!donorTemplate)
@@ -885,7 +961,6 @@ bool PortalProperty::computeGraftCellTransform(int hostCellIndex, int hostPortal
 		PortalPropertyTemplateCell::PortalPropertyTemplateCellPortalList const *const portalList = donorCell.getPortalList();
 		if (portalList && donorPortalIndex >= 0 && donorPortalIndex < static_cast<int>(portalList->size()))
 		{
-			Transform const hostPortal_cell = hostPortal->getDoorTransform();
 			Transform hostPortal_building;
 			hostPortal_building.multiply(hostCell->getOwner().getTransform_o2p(), hostPortal_cell);
 
@@ -943,6 +1018,23 @@ bool PortalProperty::removeDynamicRoomGraft(int graftedCellIndex)
 
 // ----------------------------------------------------------------------
 
+bool PortalProperty::findDynamicRoomGraftForSocket(int cellIndex, int portalIndex, DynamicRoomGraft &outGraft) const
+{
+	NOT_NULL(m_dynamicRoomGrafts);
+	for (DynamicRoomGraftList::const_iterator i = m_dynamicRoomGrafts->begin(); i != m_dynamicRoomGrafts->end(); ++i)
+	{
+		if ((i->hostCellIndex == cellIndex && i->hostPortalIndex == portalIndex) ||
+			(i->graftedCellIndex == cellIndex && i->graftedPortalIndex == portalIndex))
+		{
+			outGraft = *i;
+			return true;
+		}
+	}
+	return false;
+}
+
+// ----------------------------------------------------------------------
+
 PortalProperty::DynamicRoomGraftList const &PortalProperty::getDynamicRoomGrafts() const
 {
 	NOT_NULL(m_dynamicRoomGrafts);
@@ -976,6 +1068,405 @@ void PortalProperty::collectPortalSockets(PortalSocketInfoList &outSockets) cons
 			outSockets.push_back(info);
 		}
 	}
+
+	if (m_customSockets)
+	{
+		for (CustomSocketList::const_iterator it = m_customSockets->begin(); it != m_customSockets->end(); ++it)
+		{
+			PortalSocketInfo info;
+			info.cellIndex = it->cellIndex;
+			info.portalIndex = it->socketIndex;
+			info.passable = true;
+			info.open = it->open;
+			outSockets.push_back(info);
+		}
+	}
+}
+
+// ----------------------------------------------------------------------
+
+int const PortalProperty::cms_customSocketBase = 10000;
+
+// ----------------------------------------------------------------------
+
+int PortalProperty::allocateCustomSocketIndex() const
+{
+	int nextIndex = cms_customSocketBase;
+	if (m_customSockets)
+	{
+		for (CustomSocketList::const_iterator it = m_customSockets->begin(); it != m_customSockets->end(); ++it)
+			nextIndex = std::max(nextIndex, it->socketIndex + 1);
+	}
+	return nextIndex;
+}
+
+// ----------------------------------------------------------------------
+
+bool PortalProperty::addCustomSocket(CustomSocket const &socket)
+{
+	NOT_NULL(m_customSockets);
+	for (CustomSocketList::iterator it = m_customSockets->begin(); it != m_customSockets->end(); ++it)
+	{
+		if (it->socketIndex == socket.socketIndex)
+		{
+			*it = socket;
+			if (it->materializedPortalIndex < 0)
+				it->materializedPortalIndex = -1;
+			if (it->doorwayWidth < 0.01f)
+				it->doorwayWidth = 1.0f;
+			if (it->doorwayHeight < 0.01f)
+				it->doorwayHeight = 2.0f;
+			return true;
+		}
+	}
+	CustomSocket entry = socket;
+	if (entry.materializedPortalIndex < 0)
+		entry.materializedPortalIndex = -1;
+	if (entry.doorwayWidth < 0.01f)
+		entry.doorwayWidth = 1.0f;
+	if (entry.doorwayHeight < 0.01f)
+		entry.doorwayHeight = 2.0f;
+	m_customSockets->push_back(entry);
+	return true;
+}
+
+// ----------------------------------------------------------------------
+
+bool PortalProperty::removeCustomSocket(int socketIndex)
+{
+	NOT_NULL(m_customSockets);
+	for (CustomSocketList::iterator it = m_customSockets->begin(); it != m_customSockets->end(); ++it)
+	{
+		if (it->socketIndex == socketIndex)
+		{
+			IGNORE_RETURN(m_customSockets->erase(it));
+			return true;
+		}
+	}
+	return false;
+}
+
+// ----------------------------------------------------------------------
+
+void PortalProperty::clearCustomSockets()
+{
+	NOT_NULL(m_customSockets);
+	m_customSockets->clear();
+}
+
+// ----------------------------------------------------------------------
+
+PortalProperty::CustomSocketList const &PortalProperty::getCustomSockets() const
+{
+	NOT_NULL(m_customSockets);
+	return *m_customSockets;
+}
+
+// ----------------------------------------------------------------------
+
+bool PortalProperty::findCustomSocket(int cellIndex, int portalIndex, CustomSocket &outSocket) const
+{
+	NOT_NULL(m_customSockets);
+	for (CustomSocketList::const_iterator it = m_customSockets->begin(); it != m_customSockets->end(); ++it)
+	{
+		if (it->cellIndex == cellIndex && it->socketIndex == portalIndex)
+		{
+			outSocket = *it;
+			return true;
+		}
+	}
+	return false;
+}
+
+// ----------------------------------------------------------------------
+
+bool PortalProperty::isCustomSocketIndex(int portalIndex)
+{
+	return portalIndex >= cms_customSocketBase;
+}
+
+// ----------------------------------------------------------------------
+
+bool PortalProperty::getPortalSocketTransform_o2p(int cellIndex, int portalIndex, Transform &outTransform_o2p) const
+{
+	CellProperty const *const cell = getCell(cellIndex);
+	if (!cell)
+		return false;
+
+	if (isCustomSocketIndex(portalIndex))
+	{
+		CustomSocket customSocket;
+		if (!findCustomSocket(cellIndex, portalIndex, customSocket))
+			return false;
+		outTransform_o2p.multiply(cell->getOwner().getTransform_o2p(), customSocket.doorTransform_o2p);
+		return true;
+	}
+
+	if (portalIndex < 0 || portalIndex >= cell->getPortalCount())
+		return false;
+
+	Portal const *const portal = const_cast<CellProperty *>(cell)->getPortal(portalIndex);
+	if (!portal)
+		return false;
+
+	outTransform_o2p.multiply(cell->getOwner().getTransform_o2p(), portal->getDoorTransform());
+	return true;
+}
+
+// ----------------------------------------------------------------------
+
+bool PortalProperty::getPortalNeighbor(int cellIndex, int portalIndex, int &outNeighborCellIndex, int &outNeighborPortalIndex) const
+{
+	outNeighborCellIndex = -1;
+	outNeighborPortalIndex = -1;
+
+	if (isCustomSocketIndex(portalIndex))
+		return false;
+
+	CellProperty const *const cell = getCell(cellIndex);
+	if (!cell)
+		return false;
+
+	Portal const *const portal = const_cast<CellProperty *>(cell)->getPortal(portalIndex);
+	if (!portal || !portal->getNeighbor())
+		return false;
+
+	Portal const *const neighborPortal = portal->getNeighbor();
+	CellProperty const *const neighborCell = neighborPortal->getParentCell();
+	if (!neighborCell)
+		return false;
+
+	outNeighborCellIndex = neighborCell->getCellIndex();
+	int const neighborPortalCount = neighborCell->getPortalCount();
+	for (int pi = 0; pi < neighborPortalCount; ++pi)
+	{
+		if (const_cast<CellProperty *>(neighborCell)->getPortal(pi) == neighborPortal)
+		{
+			outNeighborPortalIndex = pi;
+			return true;
+		}
+	}
+
+	return false;
+}
+
+// ----------------------------------------------------------------------
+
+bool PortalProperty::linkCustomSocketGraft(int hostCellIndex, int customSocketIndex, int graftCellIndex, int graftPortalIndex)
+{
+	CustomSocket customSocket;
+	if (!findCustomSocket(hostCellIndex, customSocketIndex, customSocket))
+		return false;
+
+	CellProperty *const hostCell = getCell(hostCellIndex);
+	if (!hostCell || !getCell(graftCellIndex))
+		return false;
+
+	int hostPortalIndex = customSocket.materializedPortalIndex;
+	if (hostPortalIndex < 0)
+	{
+		Transform customPortal_building;
+		customPortal_building.multiply(hostCell->getOwner().getTransform_o2p(), customSocket.doorTransform_o2p);
+		Vector const customPos = customPortal_building.getPosition_p();
+
+		int bestPortal = -1;
+		float bestDistSq = std::numeric_limits<float>::max();
+		int const portalCount = hostCell->getPortalCount();
+		for (int portalIndex = 0; portalIndex < portalCount; ++portalIndex)
+		{
+			Portal *const portal = hostCell->getPortal(portalIndex);
+			if (!portal || !portal->isPassable())
+			 continue;
+
+			Transform portal_building;
+			portal_building.multiply(hostCell->getOwner().getTransform_o2p(), portal->getDoorTransform());
+			Vector const delta = portal_building.getPosition_p() - customPos;
+			float const distSq = delta.magnitudeSquared();
+			if (distSq < bestDistSq)
+			{
+				bestDistSq = distSq;
+				bestPortal = portalIndex;
+			}
+		}
+
+		if (bestPortal >= 0 && bestDistSq <= 256.0f)
+			hostPortalIndex = bestPortal;
+	}
+
+	if (hostPortalIndex < 0)
+	{
+		if (!materializeCustomSocketPortal(hostCellIndex, customSocketIndex))
+			return false;
+		if (!findCustomSocket(hostCellIndex, customSocketIndex, customSocket))
+			return false;
+		hostPortalIndex = customSocket.materializedPortalIndex;
+	}
+
+	if (hostPortalIndex < 0)
+		return false;
+
+	return linkCellPortals(hostCellIndex, hostPortalIndex, graftCellIndex, graftPortalIndex);
+}
+
+// ----------------------------------------------------------------------
+
+bool PortalProperty::materializeCustomSocketPortal(int cellIndex, int customSocketIndex)
+{
+	NOT_NULL(m_customSockets);
+
+	CustomSocket * socketEntry = 0;
+	for (CustomSocketList::iterator it = m_customSockets->begin(); it != m_customSockets->end(); ++it)
+	{
+		if (it->cellIndex == cellIndex && it->socketIndex == customSocketIndex)
+		{
+			socketEntry = &(*it);
+			break;
+		}
+	}
+
+	if (!socketEntry)
+		return false;
+
+	if (socketEntry->materializedPortalIndex >= 0)
+	{
+		CellProperty * const cell = getCell(cellIndex);
+		if (cell && cell->getPortal(socketEntry->materializedPortalIndex))
+			return true;
+		socketEntry->materializedPortalIndex = -1;
+	}
+
+	CellProperty * const cell = getCell(cellIndex);
+	if (!cell)
+		return false;
+
+	float const width = socketEntry->doorwayWidth > 0.01f ? socketEntry->doorwayWidth : 1.0f;
+	float const height = socketEntry->doorwayHeight > 0.01f ? socketEntry->doorwayHeight : 2.0f;
+	float const halfWidth = width * 0.5f;
+
+	std::vector<Vector> vertices;
+	vertices.push_back(Vector(-halfWidth, 0.0f, 0.0f));
+	vertices.push_back(Vector( halfWidth, 0.0f, 0.0f));
+	vertices.push_back(Vector( halfWidth, height, 0.0f));
+	vertices.push_back(Vector(-halfWidth, height, 0.0f));
+
+	IndexedTriangleList * const geometry = new IndexedTriangleList;
+	geometry->addTriangleFan(&vertices[0], static_cast<int>(vertices.size()));
+
+	PortalPropertyTemplateCellPortal * const portalTemplate = PortalPropertyTemplateCellPortal::createRuntime(
+		geometry,
+		socketEntry->doorTransform_o2p,
+		"default");
+	if (!portalTemplate)
+	{
+		delete geometry;
+		return false;
+	}
+
+	if (!m_runtimePortalTemplates)
+		m_runtimePortalTemplates = new RuntimePortalTemplateList;
+	m_runtimePortalTemplates->push_back(portalTemplate);
+
+	int const portalIndex = cell->appendRuntimePortal(*portalTemplate);
+	if (portalIndex < 0)
+		return false;
+
+	socketEntry->materializedPortalIndex = portalIndex;
+	return true;
+}
+
+// ----------------------------------------------------------------------
+
+bool PortalProperty::markCustomSocketOpen(int cellIndex, int socketIndex, bool open)
+{
+	NOT_NULL(m_customSockets);
+	for (CustomSocketList::iterator it = m_customSockets->begin(); it != m_customSockets->end(); ++it)
+	{
+		if (it->cellIndex == cellIndex && it->socketIndex == socketIndex)
+		{
+			it->open = open;
+			return true;
+		}
+	}
+	return false;
+}
+
+// ----------------------------------------------------------------------
+
+void PortalProperty::clearBridgeSegments()
+{
+	if (m_bridgeSegments)
+		m_bridgeSegments->clear();
+}
+
+// ----------------------------------------------------------------------
+
+void PortalProperty::recordBridgeSegment(BridgeSegment const &segment)
+{
+	NOT_NULL(m_bridgeSegments);
+	for (BridgeSegmentList::iterator it = m_bridgeSegments->begin(); it != m_bridgeSegments->end(); ++it)
+	{
+		if (it->hostCellIndex == segment.hostCellIndex &&
+			it->hostPortalIndex == segment.hostPortalIndex &&
+			it->graftedCellIndex == segment.graftedCellIndex &&
+			it->graftedPortalIndex == segment.graftedPortalIndex)
+		{
+			*it = segment;
+			return;
+		}
+	}
+	m_bridgeSegments->push_back(segment);
+}
+
+// ----------------------------------------------------------------------
+
+PortalProperty::BridgeSegmentList const &PortalProperty::getBridgeSegments() const
+{
+	NOT_NULL(m_bridgeSegments);
+	return *m_bridgeSegments;
+}
+
+// ----------------------------------------------------------------------
+
+uint32 PortalProperty::computeEffectiveLayoutCrc() const
+{
+	uint32 crc = static_cast<uint32>(getCrc());
+
+	DynamicRoomGraftList const &grafts = getDynamicRoomGrafts();
+	for (size_t i = 0; i < grafts.size(); ++i)
+	{
+		DynamicRoomGraft const &graft = grafts[i];
+		crc = Crc::calculate(&graft.graftedCellIndex, sizeof(graft.graftedCellIndex), crc);
+		crc = Crc::calculate(&graft.hostCellIndex, sizeof(graft.hostCellIndex), crc);
+		crc = Crc::calculate(&graft.hostPortalIndex, sizeof(graft.hostPortalIndex), crc);
+		crc = Crc::calculate(&graft.graftedPortalIndex, sizeof(graft.graftedPortalIndex), crc);
+		crc = Crc::calculate(&graft.donorCellIndex, sizeof(graft.donorCellIndex), crc);
+		if (!graft.donorPobName.empty())
+			crc = Crc::calculate(graft.donorPobName.c_str(), static_cast<int>(graft.donorPobName.size()), crc);
+
+		uint32 donorCrc = 0;
+		if (PortalPropertyTemplate::extractPortalLayoutCrc(graft.donorPobName.c_str(), donorCrc))
+			crc = Crc::calculate(&donorCrc, sizeof(donorCrc), crc);
+	}
+
+	if (m_customSockets)
+	{
+		for (CustomSocketList::const_iterator it = m_customSockets->begin(); it != m_customSockets->end(); ++it)
+		{
+			CustomSocket const &socket = *it;
+			crc = Crc::calculate(&socket.cellIndex, sizeof(socket.cellIndex), crc);
+			crc = Crc::calculate(&socket.socketIndex, sizeof(socket.socketIndex), crc);
+			if (!socket.label.empty())
+				crc = Crc::calculate(socket.label.c_str(), static_cast<int>(socket.label.size()), crc);
+
+			Vector const pos = socket.doorTransform_o2p.getPosition_p();
+			crc = Crc::calculate(&pos, sizeof(pos), crc);
+
+			int const openFlag = socket.open ? 1 : 0;
+			crc = Crc::calculate(&openFlag, sizeof(openFlag), crc);
+		}
+	}
+
+	return crc;
 }
 
 // ======================================================================

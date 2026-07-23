@@ -258,6 +258,7 @@ MainFrame::MainFrame(QWidget *theParent, const char *theName)
 		m_terrainDockWidget = new TerrainDock(m_terrainDock, "TerrainDock Widget");
 		m_terrainDock->setWidget(m_terrainDockWidget);
 		m_terrainDock->setResizeEnabled(true);
+		m_terrainDock->setFixedExtentWidth(380);
 		QMainWindow::addDockWindow(m_terrainDock, Qt::Right);
 		m_terrainDock->setCloseMode(QDockWindow::Always);
 		m_terrainDock->hide();

@@ -41,6 +41,7 @@
 #include "clientUserInterface/CuiStringIdsTrade.h"
 #include "clientUserInterface/CuiStringVariablesManager.h"
 #include "clientUserInterface/CuiSystemMessageManager.h"
+#include "clientUserInterface/CuiMediator.h"
 #include "clientUserInterface/CuiWorkspace.h"
 #include "clientUserInterface/cuiMediatorFactory.h"
 #include "sharedFoundation/Production.h"
@@ -51,6 +52,7 @@
 #include "sharedNetworkMessages/CloseHolocronMessage.h"
 #include "sharedNetworkMessages/EditAppearanceMessage.h"
 #include "sharedNetworkMessages/EditStatsMessage.h"
+#include "clientGame/DynamicBunkerClient.h"
 #include "sharedNetworkMessages/DynamicBunkerMessages.h"
 #include "sharedNetworkMessages/EnterStructurePlacementModeMessage.h"
 #include "sharedNetworkMessages/EnterTicketPurchaseModeMessage.h"
@@ -102,6 +104,8 @@
 #include "swgClientUserInterface/SwgCuiSpaceZoneMap.h"
 #include "swgClientUserInterface/SwgCuiDynamicBunkerFloorplan.h"
 #include "swgClientUserInterface/SwgCuiStructurePlacement.h"
+#include "UIPage.h"
+#include "UIManager.h"
 #include "swgClientUserInterface/SwgCuiSystemMessage.h"
 #include "swgClientUserInterface/SwgCuiTargets.h"
 #include "swgClientUserInterface/SwgCuiTicketPurchase.h"
@@ -141,6 +145,46 @@ namespace SwgCuiHudWindowManagerNamespace
 	const std::string cms_newbieTutorialRequestCloseHolocron       ("closeHolocron");
 
 	bool ms_spaceChatVisible = true;
+
+	SwgCuiDynamicBunkerFloorplan * findDynamicBunkerFloorplan(CuiWorkspace * workspace)
+	{
+		if (SwgCuiDynamicBunkerFloorplan::getActiveInstance())
+			return SwgCuiDynamicBunkerFloorplan::getActiveInstance();
+
+		CuiWorkspace * const ws = workspace ? workspace : CuiWorkspace::getGameWorkspace();
+		if (ws)
+		{
+			SwgCuiDynamicBunkerFloorplan * const floorplan = safe_cast<SwgCuiDynamicBunkerFloorplan *>(
+				ws->findMediatorByType(typeid(SwgCuiDynamicBunkerFloorplan)));
+			if (floorplan)
+				return floorplan;
+		}
+
+		SwgCuiDynamicBunkerFloorplan * const pending = safe_cast<SwgCuiDynamicBunkerFloorplan *>(
+			CuiMediator::findPendingMediatorByType(typeid(SwgCuiDynamicBunkerFloorplan)));
+		if (pending)
+			return pending;
+
+		SwgCuiDynamicBunkerFloorplan * const existing = safe_cast<SwgCuiDynamicBunkerFloorplan *>(
+			CuiMediatorFactory::getInWorkspace(CuiMediatorTypes::WS_DynamicBunkerFloorplan, false));
+		if (existing)
+			return existing;
+
+		UIPage * const root = dynamic_cast<UIPage *>(UIManager::gUIManager().GetRootPage());
+		if (root && ws)
+		{
+			UIBaseObject * const groundHud = root->GetChild("GroundHUD");
+			UIBaseObject * const floorplanRoot = groundHud ? groundHud->GetChild("DynamicBunkerFloorplan") : 0;
+			UIBaseObject * const floorplanWindow = floorplanRoot ? floorplanRoot->GetChild("floorplanWindow") : 0;
+			if (floorplanWindow && floorplanWindow->IsA(TUIPage))
+			{
+				return safe_cast<SwgCuiDynamicBunkerFloorplan *>(
+					ws->findMediatorByPage(*safe_cast<UIPage *>(floorplanWindow)));
+			}
+		}
+
+		return 0;
+	}
 }
 
 using namespace SwgCuiHudWindowManagerNamespace;
@@ -459,6 +503,9 @@ void SwgCuiHudWindowManager::handlePerformActivate ()
 	connectToMessage (PermissionListCreateMessage::MessageType);
 	connectToMessage (EnterStructurePlacementModeMessage::cms_name);
 	connectToMessage (DynamicBunkerOpenFloorplanMessage::MessageType);
+	connectToMessage (DynamicBunkerGraftMessage::MessageType);
+	connectToMessage (DynamicBunkerUngraftMessage::MessageType);
+	connectToMessage (DynamicBunkerCustomSocketSyncMessage::MessageType);
 	connectToMessage (EnterTicketPurchaseModeMessage::cms_name);
 	connectToMessage (ShowAirspeederPanelMessage::cms_name);
 	connectToMessage ("AutoPilotStatusMessage");
@@ -512,6 +559,9 @@ void SwgCuiHudWindowManager::handlePerformDeactivate ()
 	disconnectFromMessage (PermissionListCreateMessage::MessageType);
 	disconnectFromMessage (EnterStructurePlacementModeMessage::cms_name);
 	disconnectFromMessage (DynamicBunkerOpenFloorplanMessage::MessageType);
+	disconnectFromMessage (DynamicBunkerGraftMessage::MessageType);
+	disconnectFromMessage (DynamicBunkerUngraftMessage::MessageType);
+	disconnectFromMessage (DynamicBunkerCustomSocketSyncMessage::MessageType);
 	disconnectFromMessage (EnterTicketPurchaseModeMessage::cms_name);
 	disconnectFromMessage (ShowAirspeederPanelMessage::cms_name);
 	disconnectFromMessage ("AutoPilotStatusMessage");
@@ -599,10 +649,67 @@ void SwgCuiHudWindowManager::receiveMessage(const MessageDispatch::Emitter & , c
 		Archive::ReadIterator ri = NON_NULL (safe_cast<const GameNetworkMessage *>(&message))->getByteStream().begin();
 		DynamicBunkerOpenFloorplanMessage const msg(ri);
 
-		CuiMediatorFactory::activate(CuiMediatorTypes::WS_DynamicBunkerFloorplan);
-		SwgCuiDynamicBunkerFloorplan * const floorplan = safe_cast<SwgCuiDynamicBunkerFloorplan *>(NON_NULL(CuiMediatorFactory::get(CuiMediatorTypes::WS_DynamicBunkerFloorplan, false)));
+		SwgCuiDynamicBunkerFloorplan * floorplan = SwgCuiDynamicBunkerFloorplan::getActiveInstance();
+		if (!floorplan)
+			floorplan = findDynamicBunkerFloorplan(m_workspace);
+		if (!floorplan)
+		{
+			floorplan = safe_cast<SwgCuiDynamicBunkerFloorplan *>(
+				CuiMediatorFactory::getInWorkspace(CuiMediatorTypes::WS_DynamicBunkerFloorplan, true));
+		}
+
 		if (floorplan)
-			floorplan->setSession(msg);
+		{
+			bool const sameActiveSession =
+				floorplan->isActive()
+				&& floorplan->getSessionBuildingId() == msg.getBuildingId();
+			if (!sameActiveSession)
+				DynamicBunkerClient::syncCustomSocketsFromOpenFloorplan(msg);
+			if (!floorplan->isActive())
+				floorplan->open();
+			if (!sameActiveSession)
+				floorplan->setSession(msg);
+		}
+	}
+
+	//----------------------------------------------------------------------
+
+	else if (message.isType (DynamicBunkerCustomSocketSyncMessage::MessageType))
+	{
+		Archive::ReadIterator ri = NON_NULL (safe_cast<const GameNetworkMessage *>(&message))->getByteStream().begin();
+		DynamicBunkerCustomSocketSyncMessage const msg(ri);
+
+		DynamicBunkerClient::handleCustomSocketSyncMessage(msg);
+
+		SwgCuiDynamicBunkerFloorplan * floorplan = SwgCuiDynamicBunkerFloorplan::getActiveInstance();
+		if (!floorplan)
+			floorplan = findDynamicBunkerFloorplan(m_workspace);
+		if (floorplan)
+			floorplan->notifyBuildingPortalsChanged(msg.getBuildingId());
+	}
+
+	//----------------------------------------------------------------------
+
+	else if (message.isType (DynamicBunkerGraftMessage::MessageType))
+	{
+		Archive::ReadIterator ri = NON_NULL (safe_cast<const GameNetworkMessage *>(&message))->getByteStream().begin();
+		DynamicBunkerGraftMessage const msg(ri);
+
+		SwgCuiDynamicBunkerFloorplan * const floorplan = findDynamicBunkerFloorplan(m_workspace);
+		if (floorplan)
+			floorplan->notifyBuildingPortalsChanged(msg.getBuildingId());
+	}
+
+	//----------------------------------------------------------------------
+
+	else if (message.isType (DynamicBunkerUngraftMessage::MessageType))
+	{
+		Archive::ReadIterator ri = NON_NULL (safe_cast<const GameNetworkMessage *>(&message))->getByteStream().begin();
+		DynamicBunkerUngraftMessage const msg(ri);
+
+		SwgCuiDynamicBunkerFloorplan * const floorplan = findDynamicBunkerFloorplan(m_workspace);
+		if (floorplan)
+			floorplan->notifyBuildingPortalsChanged(msg.getBuildingId());
 	}
 
 	//----------------------------------------------------------------------

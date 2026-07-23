@@ -6,6 +6,7 @@
 //======================================================================
 
 #include "swgClientUserInterface/FirstSwgClientUserInterface.h"
+#include "swgClientUserInterface/SwgCuiDynamicBunkerFloorplan.h"
 #include "swgClientUserInterface/SwgCuiHud.h"
 
 #include "clientGame/BuildingObject.h"
@@ -834,6 +835,11 @@ bool SwgCuiHud::OnMessage( UIWidget * const context, const UIMessage & msg)
 	static bool s_mouse1Down = false;
 	static bool s_mouse2Down = false;
 
+	if (msg.Type == UIMessage::LeftMouseDown)
+	{
+		if (SwgCuiDynamicBunkerFloorplan::tryConsumeWorldPlaceClick())
+			return false;
+	}
 
 	if (context == &getPage ())
 	{

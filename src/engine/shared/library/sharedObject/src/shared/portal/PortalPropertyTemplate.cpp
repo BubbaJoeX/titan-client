@@ -257,6 +257,7 @@ PortalPropertyTemplateCellPortal::PortalPropertyTemplateCellPortal(const PortalP
 	m_disabled(false),
 	m_passable(false),
 	m_geometryWindingClockwise(true),
+	m_ownsPortalGeometry(false),
 	m_portalGeometry(NULL),
 	m_doorStyle(NULL),
 	m_hasDoorHardpoint(false),
@@ -270,9 +271,62 @@ PortalPropertyTemplateCellPortal::PortalPropertyTemplateCellPortal(const PortalP
 
 // ----------------------------------------------------------------------
 
+PortalPropertyTemplateCellPortal::PortalPropertyTemplateCellPortal()
+:
+	m_disabled(false),
+	m_passable(true),
+	m_geometryWindingClockwise(true),
+	m_ownsPortalGeometry(false),
+	m_portalGeometry(NULL),
+	m_doorStyle(NULL),
+	m_hasDoorHardpoint(false),
+	m_doorHardpoint(),
+	m_plane(),
+	m_preloadManager(0)
+{
+}
+
+// ----------------------------------------------------------------------
+
+PortalPropertyTemplateCellPortal * PortalPropertyTemplateCellPortal::createRuntime(
+	IndexedTriangleList * geometry,
+	Transform const & doorTransform_o2p,
+	char const * doorStyleName)
+{
+	if (!geometry)
+		return 0;
+
+	PortalPropertyTemplateCellPortal * const result = new PortalPropertyTemplateCellPortal();
+	result->m_portalGeometry = geometry;
+	result->m_ownsPortalGeometry = true;
+	result->m_hasDoorHardpoint = true;
+	result->m_doorHardpoint = doorTransform_o2p;
+	result->m_passable = true;
+	result->m_disabled = false;
+	result->m_geometryWindingClockwise = true;
+	if (doorStyleName && doorStyleName[0])
+	{
+		size_t const len = strlen(doorStyleName) + 1;
+		result->m_doorStyle = new char[len];
+		memcpy(result->m_doorStyle, doorStyleName, len);
+	}
+	result->computePlaneEquation();
+	return result;
+}
+
+// ----------------------------------------------------------------------
+
 PortalPropertyTemplateCellPortal::~PortalPropertyTemplateCellPortal()
 {
-	m_portalGeometry = NULL;
+	if (m_ownsPortalGeometry && m_portalGeometry)
+	{
+		delete m_portalGeometry;
+		m_portalGeometry = NULL;
+	}
+	else
+	{
+		m_portalGeometry = NULL;
+	}
 	delete [] m_doorStyle;
 
 	if (m_preloadManager)

@@ -43,6 +43,8 @@ struct UIRect;
 #include "UITypes.h"
 #include "UITypeID.h"
 
+#include <typeinfo>
+
 //-----------------------------------------------------------------
 
 class CuiMediator
@@ -175,6 +177,7 @@ public:
 	void                    release                ();
 
 	static void             garbageCollect         (bool force);
+	static CuiMediator *    findPendingMediatorByType (const type_info & info);
 	static int              getRemainingMediatorCount ();
 	static void             updateAll                 (float deltaTimeSecs);
 	static void             debugPrintMediators       (std::string & str);

@@ -698,13 +698,13 @@ DPVS::Object *RenderWorldNamespace::createDpvsPortal(Portal *portal)
 	}
 	else
 	{
-		const CellProperty *targetCell = portal->getNeighbor()->getParentCell();
-		NOT_NULL(targetCell);
-		DPVS::Cell *dpvsTargetCell = targetCell->getDpvsCell();
-		NOT_NULL(dpvsTargetCell);
-
-		// create the portal
-		dpvsPortal = DPVS::PhysicalPortal::create(dpvsPortalModel, dpvsTargetCell);
+		Portal * const neighbor = portal->getNeighbor();
+		const CellProperty *targetCell = neighbor ? neighbor->getParentCell() : 0;
+		DPVS::Cell *dpvsTargetCell = targetCell ? targetCell->getDpvsCell() : 0;
+		if (dpvsTargetCell)
+			dpvsPortal = DPVS::PhysicalPortal::create(dpvsPortalModel, dpvsTargetCell);
+		else
+			dpvsPortal = DPVS::PhysicalPortal::create(dpvsPortalModel, NULL);
 	}
 
 	NOT_NULL(dpvsPortal);

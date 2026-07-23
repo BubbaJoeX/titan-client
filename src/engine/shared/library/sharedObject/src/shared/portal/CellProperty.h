@@ -23,6 +23,7 @@ class Object;
 class Portal;
 class PortalProperty;
 class PortalPropertyTemplateCell;
+class PortalPropertyTemplateCellPortal;
 class Sphere;
 class Texture;
 class Vector;
@@ -125,6 +126,7 @@ public:
 	const uint32          getCellNameCrc() const;
 	int                   getCellIndex() const;
 	int                   getPortalCount() const;
+	int                   appendRuntimePortal(PortalPropertyTemplateCellPortal const & portalTemplate);
 
 	Object               *getAppearanceObject();
 	const Object         *getAppearanceObject() const;

@@ -431,7 +431,13 @@ CuiMediator * CuiMediatorFactory::getInWorkspace            (const char * namePt
 				return mediator;
 		}
 
-		if (create)
+		if (!mediator)
+			mediator = CuiMediator::findPendingMediatorByType (ctor->getTypeId ());
+
+		if (mediator && !create)
+			return mediator;
+
+		if (create && !mediator)
 		{
 			mediator = ctor->createInto (ws->getPage ());
 			if (!mediator)

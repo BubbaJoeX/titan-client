@@ -44,6 +44,8 @@ public:
 
 	virtual void endBaselines();
 
+	void buildRadarGeometry();
+
 	void setCell(int cellNumber);
 	int  getCell() const;
 	Unicode::String const & getCellLabel() const;

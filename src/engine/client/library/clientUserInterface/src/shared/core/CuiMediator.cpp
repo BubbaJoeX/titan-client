@@ -926,6 +926,34 @@ void CuiMediator::release ()
 
 //-----------------------------------------------------------------
 
+CuiMediator * CuiMediator::findPendingMediatorByType (const type_info & info)
+{
+	for (MediatorVector::iterator it = s_mediators.begin (); it != s_mediators.end (); ++it)
+	{
+		CuiMediator * const mediator = *it;
+		if (mediator && typeid (*mediator) == info)
+			return mediator;
+	}
+
+	for (MediatorVector::iterator it = s_mediatorsToAdd.begin (); it != s_mediatorsToAdd.end (); ++it)
+	{
+		CuiMediator * const mediator = *it;
+		if (mediator && typeid (*mediator) == info)
+			return mediator;
+	}
+
+	for (MediatorVector::iterator it = s_mediatorsToAddNext.begin (); it != s_mediatorsToAddNext.end (); ++it)
+	{
+		CuiMediator * const mediator = *it;
+		if (mediator && typeid (*mediator) == info)
+			return mediator;
+	}
+
+	return 0;
+}
+
+//-----------------------------------------------------------------
+
 void CuiMediator::garbageCollect (bool force)
 {
 	for (MediatorVector::iterator it = s_mediators.begin (); it != s_mediators.end ();)
@@ -1114,6 +1142,12 @@ void CuiMediator::setRestoreRect (const UIRect & rect)
 
 void CuiMediator::registerMediatorObject (UIBaseObject & obj, bool activeCallbacks)
 {
+	if (!m_objectCallbackVector)
+	{
+		WARNING(true, ("CuiMediator::registerMediatorObject - null callback vector on [%s]", getMediatorDebugName().c_str()));
+		return;
+	}
+
 	obj.Attach (0);
 	m_objectCallbackVector->push_back (ObjectCallbackData (&obj, activeCallbacks));
 	if(isActive())

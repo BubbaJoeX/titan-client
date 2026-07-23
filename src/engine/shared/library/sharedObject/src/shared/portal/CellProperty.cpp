@@ -668,6 +668,9 @@ bool CellProperty::areAdjacent(const CellProperty *cellProperty1, const CellProp
 				{
 					// Check all the portals in this portal object
 
+					if (!iterPortalObjectList->portalList)
+						continue;
+
 					const PortalList &portalList = *(iterPortalObjectList->portalList);
 
 					PortalList::const_iterator iterPortalList = portalList.begin();
@@ -678,7 +681,16 @@ bool CellProperty::areAdjacent(const CellProperty *cellProperty1, const CellProp
 						// other side of any of the portals
 
 						const Portal * const portal = (*iterPortalList);
-						const CellProperty * const cellProperty = portal->getNeighbor()->getParentCell();
+						if (!portal)
+							continue;
+
+						const Portal * const neighborPortal = portal->getNeighbor();
+						if (!neighborPortal)
+							continue;
+
+						const CellProperty * const cellProperty = neighborPortal->getParentCell();
+						if (!cellProperty)
+							continue;
 
 						if (cellProperty == checkCellProperty)
 						{
@@ -961,6 +973,9 @@ bool CellProperty::isAdjacentTo(const CellProperty *cell) const
 
 	if(cell == NULL) return false;
 
+	if (!m_portalObjectList)
+		return false;
+
 	// ----------
 
 	const PortalObjectList::const_iterator iEnd = m_portalObjectList->end();
@@ -972,8 +987,14 @@ bool CellProperty::isAdjacentTo(const CellProperty *cell) const
 		for (PortalList::const_iterator j = portalList.begin(); j != jEnd; ++j)
 		{
 			const Portal *portal = *j;
+			if (!portal)
+				continue;
 
-			CellProperty const * const neighbor = portal->getNeighbor() ? portal->getNeighbor()->getParentCell() : 0;
+			Portal const * const neighborPortal = portal->getNeighbor();
+			if (!neighborPortal)
+				continue;
+
+			CellProperty const * const neighbor = neighborPortal->getParentCell();
 			if (neighbor == cell) 
 				return true;
 		}
@@ -1251,15 +1272,32 @@ void CellProperty::drawDebugShapes(DebugShapeRenderer * const renderer) const
 
 Portal *CellProperty::getPortal(int portalIndex)
 {
-	Portal * result = 0;
-	if(m_portalObjectList)
+	if (portalIndex < 0)
+		return 0;
+
+	if(m_portalObjectList && !m_portalObjectList->empty())
 	{
-		if(m_portalObjectList->front().portalList)
-		{
-			result = m_portalObjectList->front().portalList->operator[](static_cast<PortalList::size_type>(portalIndex));
-		}
+		PortalList * const portalList = m_portalObjectList->front().portalList;
+		if (portalList && portalIndex < static_cast<int>(portalList->size()))
+			return (*portalList)[static_cast<PortalList::size_type>(portalIndex)];
 	}
-	return result;
+	return 0;
+}
+
+// ----------------------------------------------------------------------
+
+int CellProperty::appendRuntimePortal(PortalPropertyTemplateCellPortal const & portalTemplate)
+{
+	if (!m_portalObjectList || m_portalObjectList->empty())
+		return -1;
+
+	PortalList * const portalList = m_portalObjectList->front().portalList;
+	if (!portalList)
+		return -1;
+
+	Portal * const portal = new Portal(portalTemplate, this, &getOwner());
+	portalList->push_back(portal);
+	return static_cast<int>(portalList->size()) - 1;
 }
 
 // ----------------------------------------------------------------------

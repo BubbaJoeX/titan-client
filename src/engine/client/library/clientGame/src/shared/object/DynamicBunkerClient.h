@@ -8,7 +8,12 @@
 #ifndef INCLUDED_DynamicBunkerClient_H
 #define INCLUDED_DynamicBunkerClient_H
 
+class DynamicBunkerCustomSocketSyncMessage;
 class DynamicBunkerGraftMessage;
+class DynamicBunkerOpenFloorplanMessage;
+class DynamicBunkerUngraftMessage;
+class Object;
+class PortalProperty;
 
 // ======================================================================
 
@@ -19,6 +24,10 @@ public:
 	static void install();
 	static void remove();
 	static void handleGraftMessage(DynamicBunkerGraftMessage const &message);
+	static void handleUngraftMessage(DynamicBunkerUngraftMessage const &message);
+	static void handleCustomSocketSyncMessage(DynamicBunkerCustomSocketSyncMessage const &message);
+	static void syncCustomSocketsFromOpenFloorplan(DynamicBunkerOpenFloorplanMessage const &message);
+	static void finalizeBuildingPortalChanges(Object &building, PortalProperty &portalProperty);
 
 private:
 

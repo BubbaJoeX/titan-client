@@ -334,6 +334,9 @@ private slots:
 	/// Runs after \ref Game::Messages::SCENE_CHANGED so terrain / scene pointers are stable.
 	void onDeferredRefreshAfterSceneChange();
 
+	/// Recompute QScrollView document size after the dock finishes showing (avoids blank pane).
+	void onDeferredTerrainDockScrollRelayout();
+
 	/// Applies the expensive full-map procedural invalidate after generator commits (runs next event-loop tick).
 	void onDeferredTerrainGeneratorHeavyInvalidate();
 

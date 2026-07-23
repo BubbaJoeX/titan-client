@@ -811,25 +811,30 @@ namespace
 		}
 	}
 
-	// Qt 3 uic wires the scrolled document as a direct child of QScrollView.
-	// QScrollView requires the widget to live under viewport() and be registered
-	// with addChild(); otherwise children paint but the scrolled area stays empty.
-	void wireQt3ScrollViewDocument(QWidget* documentWidget, QScrollView* scrollView)
+	int terrainDockContentHeight(QWidget* documentWidget)
 	{
-		if (!documentWidget || !scrollView)
-			return;
+		if (!documentWidget)
+			return 800;
 
-		QWidget* viewport = scrollView->viewport();
-		if (!viewport)
-			return;
+		if (QLayout* const layout = documentWidget->layout())
+			layout->activate();
 
-		if (documentWidget->parentWidget() != viewport)
-			documentWidget->reparent(viewport, QPoint(0, 0), FALSE);
+		documentWidget->adjustSize();
 
-		scrollView->addChild(documentWidget, 0, 0);
+		QSize const hint = documentWidget->sizeHint();
+		QSize const minHint = documentWidget->minimumSizeHint();
+		QRect const kids = documentWidget->childrenRect();
 
-		// Single document widget owns the scrolled extent via its sizeHint.
-		scrollView->setResizePolicy(QScrollView::Manual);
+		int h = hint.height();
+		if (minHint.height() > h)
+			h = minHint.height();
+		if (documentWidget->height() > h)
+			h = documentWidget->height();
+		if (kids.isValid() && kids.height() > h)
+			h = kids.height() + 8;
+		if (h < 200)
+			h = 800;
+		return h;
 	}
 
 	void resizeQt3ScrollViewToContents(QWidget* documentWidget, QScrollView* scrollView)
@@ -837,27 +842,89 @@ namespace
 		if (!documentWidget || !scrollView)
 			return;
 
-		documentWidget->adjustSize();
-
-		QSize const hint = documentWidget->sizeHint();
-		int w = hint.width() > 0 ? hint.width() : documentWidget->width();
-		int h = hint.height() > 0 ? hint.height() : documentWidget->height();
-		if (w <= 0)
-			w = 1;
-		if (h <= 0)
-			h = 1;
-
 		int const kMaxTerrainDockContentWidth = 525;
+		int const kMinTerrainDockContentWidth = 300;
+
+		int w = kMinTerrainDockContentWidth;
 		int const vw = scrollView->visibleWidth();
-		// Match document width to the viewport so controls do not sit under the vertical scrollbar.
-		if (vw > 0)
+		if (vw >= kMinTerrainDockContentWidth)
 			w = std::min(kMaxTerrainDockContentWidth, vw);
-		else
-			w = std::min(kMaxTerrainDockContentWidth, w);
+		else if (documentWidget->sizeHint().width() > w)
+			w = std::min(kMaxTerrainDockContentWidth, documentWidget->sizeHint().width());
+
+		int const h = terrainDockContentHeight(documentWidget);
 
 		scrollView->resizeContents(w, h);
 		documentWidget->resize(w, h);
+		scrollView->moveChild(documentWidget, 0, 0);
 		scrollView->updateScrollBars();
+		documentWidget->show();
+	}
+
+	// UIC nests m_scrollAreaContents under QScrollView incorrectly for win64 Qt3;
+	// the viewport stays empty. Replace that host with a hand-built QScrollView.
+	bool rebuildTerrainDockScrollHost(QWidget* dockRoot, QWidget* documentWidget, QScrollView*& scrollView)
+	{
+		if (!dockRoot || !documentWidget || !scrollView)
+			return false;
+
+		QVBoxLayout* const rootLayout = dynamic_cast<QVBoxLayout*>(dockRoot->layout());
+		if (!rootLayout)
+			return false;
+
+		// Already rebuilt once this session.
+		if (scrollView->name() && qstrcmp(scrollView->name(), "m_contentScrollView_live") == 0)
+		{
+			resizeQt3ScrollViewToContents(documentWidget, scrollView);
+			return true;
+		}
+
+		QScrollView* const oldScroll = scrollView;
+		documentWidget->hide();
+		documentWidget->reparent(dockRoot, QPoint(0, 0), FALSE);
+		rootLayout->remove(oldScroll);
+		oldScroll->hide();
+
+		QScrollView* const fresh = new QScrollView(dockRoot, "m_contentScrollView_live");
+		fresh->setVScrollBarMode(QScrollView::Auto);
+		fresh->setHScrollBarMode(QScrollView::AlwaysOff);
+		fresh->setResizePolicy(QScrollView::Manual);
+		fresh->viewport()->setBackgroundMode(Qt::PaletteBackground);
+
+		documentWidget->reparent(fresh->viewport(), QPoint(0, 0), FALSE);
+		fresh->addChild(documentWidget, 0, 0);
+		documentWidget->show();
+
+		rootLayout->addWidget(fresh);
+		scrollView = fresh;
+		resizeQt3ScrollViewToContents(documentWidget, fresh);
+		return true;
+	}
+
+	void wireQt3ScrollViewDocument(QWidget* documentWidget, QScrollView* scrollView)
+	{
+		if (!documentWidget || !scrollView)
+			return;
+
+		QWidget* const viewport = scrollView->viewport();
+		if (!viewport)
+			return;
+
+		if (documentWidget->parentWidget() != viewport)
+		{
+			documentWidget->hide();
+			documentWidget->reparent(viewport, QPoint(0, 0), FALSE);
+			scrollView->addChild(documentWidget, 0, 0);
+			documentWidget->show();
+		}
+		else
+		{
+			scrollView->addChild(documentWidget, 0, 0);
+			if (!documentWidget->isVisible())
+				documentWidget->show();
+		}
+
+		scrollView->setResizePolicy(QScrollView::Manual);
 	}
 }
 
@@ -952,11 +1019,13 @@ TerrainDock::TerrainDock(QWidget* parent, const char* name)
 	initializeUI();
 	loadTerrainShaderScanRootsFromSettings();
 
+	setMinimumSize(300, 400);
 	setMaximumWidth(525);
+	setSizePolicy(QSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding));
 
-	wireQt3ScrollViewDocument(m_scrollAreaContents, m_contentScrollView);
-	resizeQt3ScrollViewToContents(m_scrollAreaContents, m_contentScrollView);
-	
+	// Drop the broken UIC scroll host and rebuild so controls actually paint.
+	IGNORE_RETURN(rebuildTerrainDockScrollHost(this, m_scrollAreaContents, m_contentScrollView));
+
 	m_callback = new MessageDispatch::Callback;
 	
 	connectToMessage(Game::Messages::SCENE_CHANGED);
@@ -1338,11 +1407,13 @@ void TerrainDock::receiveMessage(const MessageDispatch::Emitter&, const MessageD
 void TerrainDock::showEvent(QShowEvent* event)
 {
 	BaseTerrainDock::showEvent(event);
-	resizeQt3ScrollViewToContents(m_scrollAreaContents, m_contentScrollView);
+	IGNORE_RETURN(rebuildTerrainDockScrollHost(this, m_scrollAreaContents, m_contentScrollView));
 	// Do not scan/load other .trn files here (rebuildGlobalShaderCatalog): bad or huge trees AV or hang.
 	// User clicks "Rescan..." or changes scene for a full global catalog rebuild.
 	refreshFromScene(true);
 	syncGodClientEditorBrushSettings();
+	// Layout often settles one tick after the dock becomes visible; refresh scroll extents then.
+	IGNORE_RETURN(QTimer::singleShot(0, this, SLOT(onDeferredTerrainDockScrollRelayout())));
 }
 
 // ----------------------------------------------------------------------
@@ -2477,6 +2548,12 @@ void TerrainDock::tryAutoSaveTerrainBeforeSceneChange()
 void TerrainDock::onDeferredRefreshAfterSceneChange()
 {
 	refreshFromScene(true);
+}
+
+void TerrainDock::onDeferredTerrainDockScrollRelayout()
+{
+	IGNORE_RETURN(rebuildTerrainDockScrollHost(this, m_scrollAreaContents, m_contentScrollView));
+	resizeQt3ScrollViewToContents(m_scrollAreaContents, m_contentScrollView);
 }
 
 void TerrainDock::onReloadTerrain()

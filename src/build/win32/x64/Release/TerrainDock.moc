@@ -1,7 +1,7 @@
 /****************************************************************************
 ** TerrainDock meta object code from reading C++ file 'TerrainDock.h'
 **
-** Created: Thu Jul 23 03:18:10 2026
+** Created: Thu Jul 23 04:08:43 2026
 **      by: The Qt MOC ($Id: $)
 **
 ** WARNING! All changes made in this file will be lost!
@@ -256,8 +256,9 @@ QMetaObject* TerrainDock::staticMetaObject()
     static const QUMethod slot_101 = {"onImportPolyline", 0, 0 };
     static const QUMethod slot_102 = {"clearRegionGeometryAndSelection", 0, 0 };
     static const QUMethod slot_103 = {"onDeferredRefreshAfterSceneChange", 0, 0 };
-    static const QUMethod slot_104 = {"onDeferredTerrainGeneratorHeavyInvalidate", 0, 0 };
-    static const QUMethod slot_105 = {"onDeferredTerrainGeneratorLiveCommitAfterHeavyApply", 0, 0 };
+    static const QUMethod slot_104 = {"onDeferredTerrainDockScrollRelayout", 0, 0 };
+    static const QUMethod slot_105 = {"onDeferredTerrainGeneratorHeavyInvalidate", 0, 0 };
+    static const QUMethod slot_106 = {"onDeferredTerrainGeneratorLiveCommitAfterHeavyApply", 0, 0 };
     static const QMetaData slot_tbl[] = {
 	{ "onToolRaise()", &slot_0, QMetaData::Public },
 	{ "onToolLower()", &slot_1, QMetaData::Public },
@@ -363,8 +364,9 @@ QMetaObject* TerrainDock::staticMetaObject()
 	{ "onImportPolyline()", &slot_101, QMetaData::Public },
 	{ "clearRegionGeometryAndSelection()", &slot_102, QMetaData::Public },
 	{ "onDeferredRefreshAfterSceneChange()", &slot_103, QMetaData::Private },
-	{ "onDeferredTerrainGeneratorHeavyInvalidate()", &slot_104, QMetaData::Private },
-	{ "onDeferredTerrainGeneratorLiveCommitAfterHeavyApply()", &slot_105, QMetaData::Private }
+	{ "onDeferredTerrainDockScrollRelayout()", &slot_104, QMetaData::Private },
+	{ "onDeferredTerrainGeneratorHeavyInvalidate()", &slot_105, QMetaData::Private },
+	{ "onDeferredTerrainGeneratorLiveCommitAfterHeavyApply()", &slot_106, QMetaData::Private }
     };
     static const QUMethod signal_0 = {"terrainGameWindowStatusChanged", 0, 0 };
     static const QMetaData signal_tbl[] = {
@@ -372,7 +374,7 @@ QMetaObject* TerrainDock::staticMetaObject()
     };
     metaObj = QMetaObject::new_metaobject(
 	"TerrainDock", parentObject,
-	slot_tbl, 106,
+	slot_tbl, 107,
 	signal_tbl, 1,
 #ifndef QT_NO_PROPERTIES
 	0, 0,
@@ -505,8 +507,9 @@ bool TerrainDock::qt_invoke( int _id, QUObject* _o )
     case 101: onImportPolyline(); break;
     case 102: clearRegionGeometryAndSelection(); break;
     case 103: onDeferredRefreshAfterSceneChange(); break;
-    case 104: onDeferredTerrainGeneratorHeavyInvalidate(); break;
-    case 105: onDeferredTerrainGeneratorLiveCommitAfterHeavyApply(); break;
+    case 104: onDeferredTerrainDockScrollRelayout(); break;
+    case 105: onDeferredTerrainGeneratorHeavyInvalidate(); break;
+    case 106: onDeferredTerrainGeneratorLiveCommitAfterHeavyApply(); break;
     default:
 	return BaseTerrainDock::qt_invoke( _id, _o );
     }

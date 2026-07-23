@@ -321,108 +321,7 @@ void CellObject::endBaselines()
 	}
 
 	//-- build the radar shape
-	{
-		const CellProperty* const cellProperty = getCellProperty ();
-		if (cellProperty)
-		{
-			const Floor* const floor = cellProperty->getFloor ();
-			if (floor)
-			{
-				const FloorMesh* const floorMesh = floor->getFloorMesh ();
-				if (floorMesh)
-				{
-					std::vector<Vector> vertices;
-					floorMesh->getVertices (vertices);
-
-					std::vector<int> indices;
-					floorMesh->getIndices (indices);
-
-					m_radarShape = new IndexedTriangleList;
-					m_radarShape->addIndexedTriangleList (&vertices [0], static_cast<int> (vertices.size ()), &indices [0], static_cast<int> (indices.size ()));
-				}
-			}
-		}
-	}
-
-	//-- build the radar edges
-	{
-		const CellProperty* const cellProperty = getCellProperty ();
-		if (cellProperty)
-		{
-			const Floor* const floor = cellProperty->getFloor ();
-			if (floor)
-			{
-				const FloorMesh* const floorMesh = floor->getFloorMesh ();
-				if (floorMesh)
-				{
-					m_radarEdges = new std::vector<Vector>;
-
-					int i;
-					for (i = 0; i < floorMesh->getTriCount (); ++i)
-					{
-						const FloorTri& floorTri = floorMesh->getFloorTri (i);
-
-						int j;
-						for (j = 0; j < 3; ++j)
-						{
-							if (!floorTri.isCrossable (j) && floorTri.getPortalId (j) == -1)
-							{
-								const Vector& v0 = floorMesh->getVertex (floorTri.getCornerIndex (j));
-								m_radarEdges->push_back (v0);
-
-								const Vector& v1 = floorMesh->getVertex (floorTri.getCornerIndex (j + 1));
-								m_radarEdges->push_back (v1);
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-
-	//-- build the radar portal edges
-	{
-		const CellProperty* const cellProperty = getCellProperty ();
-		if (cellProperty)
-		{
-			int i;
-			for (i = 0; i < cellProperty->getNumberOfPortalObjects (); ++i)
-			{
-				const CellProperty::PortalObjectEntry& portalObjectEntry = cellProperty->getPortalObject (i);
-
-				uint j;
-				for (j = 0; j < portalObjectEntry.portalList->size (); ++j)
-				{
-					const Portal* const portal = (*portalObjectEntry.portalList) [j];
-					if (portal && portal->getNeighbor () && portal->getNeighbor ()->getParentCell () == CellProperty::getWorldCellProperty ())
-					{
-						IndexedTriangleList const & portalGeometry = portal->getGeometry ();
-						std::vector<Vector> const & vertices = portalGeometry.getVertices();
-						std::vector<int> const & indices = portalGeometry.getIndices();
-						uint const numberOfFaces = indices.size() / 3;
-
-						if (!m_radarPortalEdges)
-							m_radarPortalEdges = new std::vector<Vector>;
-
-						//-- we found a portal to the outside world
-						for (uint faceIndex = 0, index = 0; faceIndex < numberOfFaces; ++faceIndex)
-						{
-							Vector const & v0 = vertices[indices[index++]];
-							Vector const & v1 = vertices[indices[index++]];
-							Vector const & v2 = vertices[indices[index++]];
-
-							m_radarPortalEdges->push_back(v0);
-							m_radarPortalEdges->push_back(v1);
-							m_radarPortalEdges->push_back(v1);
-							m_radarPortalEdges->push_back(v2);
-							m_radarPortalEdges->push_back(v2);
-							m_radarPortalEdges->push_back(v0);
-						}
-					}
-				}
-			}	
-		}
-	}
+	buildRadarGeometry();
 
 	//-- hook up the cell property's environment texture
 	{
@@ -438,6 +337,92 @@ void CellObject::endBaselines()
 			cellProperty->setFogEnabled (interiorEnvironmentBlock->getFogEnabled ());
 			cellProperty->setFogColor (interiorEnvironmentBlock->getFogColor ());
 			cellProperty->setFogDensity (interiorEnvironmentBlock->getFogDensity ());
+		}
+	}
+}
+
+// ----------------------------------------------------------------------
+
+void CellObject::buildRadarGeometry()
+{
+	delete m_radarShape;
+	m_radarShape = 0;
+	delete m_radarEdges;
+	m_radarEdges = 0;
+	delete m_radarPortalEdges;
+	m_radarPortalEdges = 0;
+
+	const CellProperty* const cellProperty = getCellProperty();
+	if (!cellProperty)
+		return;
+
+	const Floor* const floor = cellProperty->getFloor();
+	if (!floor)
+		return;
+
+	const FloorMesh* const floorMesh = floor->getFloorMesh();
+	if (!floorMesh)
+		return;
+
+	std::vector<Vector> vertices;
+	floorMesh->getVertices(vertices);
+
+	std::vector<int> indices;
+	floorMesh->getIndices(indices);
+
+	if (!vertices.empty() && !indices.empty())
+	{
+		m_radarShape = new IndexedTriangleList;
+		m_radarShape->addIndexedTriangleList(&vertices[0], static_cast<int>(vertices.size()), &indices[0], static_cast<int>(indices.size()));
+	}
+
+	m_radarEdges = new std::vector<Vector>;
+	for (int i = 0; i < floorMesh->getTriCount(); ++i)
+	{
+		const FloorTri& floorTri = floorMesh->getFloorTri(i);
+		for (int j = 0; j < 3; ++j)
+		{
+			if (!floorTri.isCrossable(j) && floorTri.getPortalId(j) == -1)
+			{
+				const Vector& v0 = floorMesh->getVertex(floorTri.getCornerIndex(j));
+				m_radarEdges->push_back(v0);
+
+				const Vector& v1 = floorMesh->getVertex(floorTri.getCornerIndex(j + 1));
+				m_radarEdges->push_back(v1);
+			}
+		}
+	}
+
+	for (int i = 0; i < cellProperty->getNumberOfPortalObjects(); ++i)
+	{
+		const CellProperty::PortalObjectEntry& portalObjectEntry = cellProperty->getPortalObject(i);
+		for (uint j = 0; j < portalObjectEntry.portalList->size(); ++j)
+		{
+			const Portal* const portal = (*portalObjectEntry.portalList)[j];
+			if (portal && portal->getNeighbor() && portal->getNeighbor()->getParentCell() == CellProperty::getWorldCellProperty())
+			{
+				IndexedTriangleList const & portalGeometry = portal->getGeometry();
+				std::vector<Vector> const & portalVertices = portalGeometry.getVertices();
+				std::vector<int> const & portalIndices = portalGeometry.getIndices();
+				uint const numberOfFaces = portalIndices.size() / 3;
+
+				if (!m_radarPortalEdges)
+					m_radarPortalEdges = new std::vector<Vector>;
+
+				for (uint faceIndex = 0, index = 0; faceIndex < numberOfFaces; ++faceIndex)
+				{
+					Vector const & v0 = portalVertices[portalIndices[index++]];
+					Vector const & v1 = portalVertices[portalIndices[index++]];
+					Vector const & v2 = portalVertices[portalIndices[index++]];
+
+					m_radarPortalEdges->push_back(v0);
+					m_radarPortalEdges->push_back(v1);
+					m_radarPortalEdges->push_back(v1);
+					m_radarPortalEdges->push_back(v2);
+					m_radarPortalEdges->push_back(v2);
+					m_radarPortalEdges->push_back(v0);
+				}
+			}
 		}
 	}
 }

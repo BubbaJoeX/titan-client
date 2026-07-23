@@ -18,12 +18,15 @@ class Object;
 class Portal;
 class PortalPropertyTemplate;
 class PortalPropertyTemplateCell;
+class PortalPropertyTemplateCellPortal;
 class Vector;
 
 #include "sharedObject/Container.h"
 #include "sharedMath/Transform.h"
 
+#include <map>
 #include <string>
+#include <vector>
 
 // ======================================================================
 
@@ -41,9 +44,9 @@ public:
 
 public:
 
-	typedef stdvector<Portal *>::fwd        PortalList;
-	typedef stdvector<const char *>::fwd    CellNameList;
-	typedef stdvector<Vector>::fwd          VertexList;
+	typedef std::vector<Portal *>        PortalList;
+	typedef std::vector<const char *>    CellNameList;
+	typedef std::vector<Vector>          VertexList;
 
 	typedef Object *(*BeginCreateObjectFunction)(int cellIndex);
 	typedef void    (*EndCreateObjectFunction)(Object *newObject);
@@ -73,7 +76,7 @@ public:
 	virtual int                   getTypeId() const;
 	virtual void                  debugPrint(std::string &buffer) const;
 
-	bool                          serverEndBaselines(int crc,stdvector<Object*>::fwd &unfixables, bool authoritative);
+	bool                          serverEndBaselines(int crc,std::vector<Object*> &unfixables, bool authoritative);
 
 	const PortalPropertyTemplate &getPortalPropertyTemplate() const;
 	int                           getCrc() const;
@@ -114,18 +117,72 @@ public:
 		std::string donorPobName;
 	};
 
-	typedef stdvector<DynamicRoomGraft>::fwd DynamicRoomGraftList;
+	typedef std::vector<DynamicRoomGraft> DynamicRoomGraftList;
 
 	int                           getBaseTemplateCellCount() const;
 	PortalPropertyTemplateCell const &getCellTemplate(int cellIndex) const;
 	bool                          isGraftedCell(int cellIndex) const;
 	int                           reserveGraftedCellSlot(char const *donorPobName, int donorCellIndex);
 	bool                          ensureGraftedCellSlot(int graftedCellIndex, char const *donorPobName, int donorCellIndex);
+	bool                          addCellObject(Object &cellObject, ContainerErrorCode &error);
 	bool                          linkCellPortals(int cellIndexA, int portalIndexA, int cellIndexB, int portalIndexB);
+	bool                          unlinkCellPortal(int cellIndex, int portalIndex);
+	void                          unlinkAllCellPortals(int cellIndex);
+	bool                          clearLoadedCellSlot(int cellIndex);
+	bool                          releaseGraftedCellSlot(int graftedCellIndex);
 	bool                          computeGraftCellTransform(int hostCellIndex, int hostPortalIndex, char const *donorPobName, int donorCellIndex, int donorPortalIndex, Transform &outCellTransform_o2p) const;
 	bool                          recordDynamicRoomGraft(DynamicRoomGraft const &graft);
 	bool                          removeDynamicRoomGraft(int graftedCellIndex);
+	bool                          findDynamicRoomGraftForSocket(int cellIndex, int portalIndex, DynamicRoomGraft &outGraft) const;
 	DynamicRoomGraftList const   &getDynamicRoomGrafts() const;
+
+	static int const              cms_customSocketBase;
+
+	struct CustomSocket
+	{
+		int         cellIndex;
+		int         socketIndex;
+		std::string label;
+		Transform   doorTransform_o2p;
+		bool        open;
+		int         materializedPortalIndex;
+		float       doorwayWidth;
+		float       doorwayHeight;
+	};
+
+	typedef std::vector<CustomSocket> CustomSocketList;
+
+	struct BridgeSegment
+	{
+		int       hostCellIndex;
+		int       hostPortalIndex;
+		int       graftedCellIndex;
+		int       graftedPortalIndex;
+		Transform transform_o2p;
+		float     length;
+		float     width;
+		float     height;
+	};
+
+	typedef std::vector<BridgeSegment> BridgeSegmentList;
+
+	int                           allocateCustomSocketIndex() const;
+	bool                          addCustomSocket(CustomSocket const &socket);
+	bool                          removeCustomSocket(int socketIndex);
+	void                          clearCustomSockets();
+	CustomSocketList const       &getCustomSockets() const;
+	bool                          findCustomSocket(int cellIndex, int portalIndex, CustomSocket &outSocket) const;
+	static bool                   isCustomSocketIndex(int portalIndex);
+	uint32                        computeEffectiveLayoutCrc() const;
+	bool                          getPortalSocketTransform_o2p(int cellIndex, int portalIndex, Transform &outTransform_o2p) const;
+	bool                          getPortalNeighbor(int cellIndex, int portalIndex, int &outNeighborCellIndex, int &outNeighborPortalIndex) const;
+	bool                          linkCustomSocketGraft(int hostCellIndex, int customSocketIndex, int graftCellIndex, int graftPortalIndex);
+	bool                          materializeCustomSocketPortal(int cellIndex, int customSocketIndex);
+	bool                          markCustomSocketOpen(int cellIndex, int socketIndex, bool open);
+
+	void                          clearBridgeSegments();
+	void                          recordBridgeSegment(BridgeSegment const &segment);
+	BridgeSegmentList const      &getBridgeSegments() const;
 
 	struct PortalSocketInfo
 	{
@@ -135,7 +192,7 @@ public:
 		bool passable;
 	};
 
-	typedef stdvector<PortalSocketInfo>::fwd PortalSocketInfoList;
+	typedef std::vector<PortalSocketInfo> PortalSocketInfoList;
 	void                          collectPortalSockets(PortalSocketInfoList &outSockets) const;
 
 private:
@@ -151,8 +208,8 @@ private:
 		Object    *m_obj;
 		Transform  m_transform;
 	};
-	typedef stdvector<FixupRec>::fwd        FixupList;
-	typedef stdvector<CellProperty*>::fwd   CellList;
+	typedef std::vector<FixupRec>        FixupList;
+	typedef std::vector<CellProperty*>   CellList;
 
 	struct GraftedCellRecord
 	{
@@ -160,7 +217,8 @@ private:
 		int                           donorCellIndex;
 	};
 
-	typedef stdmap<int, GraftedCellRecord>::fwd GraftedCellMap;
+	typedef std::map<int, GraftedCellRecord> GraftedCellMap;
+	typedef std::vector<PortalPropertyTemplateCellPortal *> RuntimePortalTemplateList;
 
 private:
 
@@ -176,6 +234,9 @@ private:
 	bool                           m_hasPassablePortalToParentCell;
 	GraftedCellMap                *m_graftedCellMap;
 	DynamicRoomGraftList          *m_dynamicRoomGrafts;
+	CustomSocketList              *m_customSockets;
+	BridgeSegmentList             *m_bridgeSegments;
+	RuntimePortalTemplateList     *m_runtimePortalTemplates;
 };
 
 // ======================================================================
