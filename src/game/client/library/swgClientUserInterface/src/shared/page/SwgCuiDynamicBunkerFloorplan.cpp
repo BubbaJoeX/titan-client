@@ -30,8 +30,11 @@
 #include "sharedFoundation/CrcLowerString.h"
 #include "sharedGame/SharedObjectTemplate.h"
 #include "sharedCollision/Floor.h"
+#include "sharedCollision/FloorMesh.h"
+#include "sharedCollision/BaseExtent.h"
 #include "sharedFile/Iff.h"
 #include "sharedMath/AxialBox.h"
+#include "sharedMath/Triangle3d.h"
 #include "sharedObject/Appearance.h"
 #include "sharedObject/AppearanceTemplate.h"
 #include "sharedObject/AppearanceTemplateList.h"
@@ -39,6 +42,7 @@
 #include "sharedObject/ObjectTemplateList.h"
 #include "sharedObject/PortalPropertyTemplateList.h"
 #include "clientGame/GameNetwork.h"
+#include "clientGraphics/RenderWorld.h"
 #include "sharedNetworkMessages/DynamicBunkerMessages.h"
 #include "sharedMath/Transform.h"
 #include "sharedMath/Vector.h"
@@ -59,6 +63,7 @@
 #include <cmath>
 #include <cctype>
 #include <cstdio>
+#include <limits>
 #include <map>
 #include <set>
 #include <sstream>
@@ -66,25 +71,43 @@
 namespace SwgCuiDynamicBunkerFloorplanNamespace
 {
 	char const * const s_placePointMarkerAppearance = "appearance/godclient_space_waypoint_generic.apt";
+	char const * const s_placePointMarkerAppearanceFallback = "appearance/godclient_space_waypoint_patrol.apt";
 
-	Object * createPlacePointMarker(Vector const & worldPos)
+	Object * createPlacePointMarker(Vector const & worldPos, CellProperty * parentCell)
 	{
-		Appearance * const app = AppearanceTemplateList::createAppearance(s_placePointMarkerAppearance);
+		Appearance * app = AppearanceTemplateList::createAppearance(s_placePointMarkerAppearance);
+		if (!app)
+			app = AppearanceTemplateList::createAppearance(s_placePointMarkerAppearanceFallback);
 		if (!app)
 			return 0;
 
 		Object * const marker = new Object;
 		marker->setAppearance(app);
-		marker->setScale(Vector(0.35f, 0.35f, 0.35f));
+		marker->setScale(Vector(1.0f, 1.0f, 1.0f));
+
+		CellProperty * cell = parentCell;
+		if (!cell)
+		{
+			Object const * const player = Game::getPlayer();
+			if (player)
+			cell = const_cast<CellProperty *>(player->getParentCell());
+		}
+		if (cell)
+			marker->setParentCell(cell);
+
 		marker->setPosition_w(worldPos);
+		RenderWorld::addObjectNotifications(*marker);
+		marker->addToWorld();
 		IGNORE_RETURN(marker->alter(0.0f));
 		marker->conclude();
 		return marker;
 	}
 
-	bool pickWorldPointFromScreen(int mouseX, int mouseY, Vector & outWorldPoint, NetworkId & outCellNetworkId)
+	bool pickWorldPointFromScreen(int mouseX, int mouseY, Vector & outWorldPoint, NetworkId & outCellNetworkId, Vector * outWorldNormal = 0)
 	{
 		outCellNetworkId = NetworkId::cms_invalid;
+		if (outWorldNormal)
+			*outWorldNormal = Vector::zero;
 
 		Camera const * const camera = Game::getCamera();
 		if (!camera)
@@ -113,6 +136,8 @@ namespace SwgCuiDynamicBunkerFloorplanNamespace
 			return false;
 
 		outWorldPoint = info.getPoint();
+		if (outWorldNormal)
+			*outWorldNormal = info.getNormal();
 
 		Object const * const hitObject = info.getObject();
 		if (hitObject)
@@ -129,11 +154,6 @@ namespace SwgCuiDynamicBunkerFloorplanNamespace
 		return true;
 	}
 
-	float snapYawToCardinal45(float yaw)
-	{
-		float const snap = 0.78539816339f;
-		return floorf(yaw / snap + 0.5f) * snap;
-	}
 	void ensureListDataSource(UIList * list, char const * name)
 	{
 		if (!list)
@@ -306,16 +326,21 @@ namespace SwgCuiDynamicBunkerFloorplanNamespace
 		if (!cell)
 			return;
 
+		Object const & cellOwner = cell->getOwner();
+		if (!cellOwner.getPortalProperty())
+			return;
+
 		float cMinX = 0.0f;
 		float cMaxX = 0.0f;
 		float cMinZ = 0.0f;
 		float cMaxZ = 0.0f;
 
-		Transform const cellTransform = cell->getOwner().getTransform_o2p();
+		Transform const cellTransform = cellOwner.getTransform_o2p();
 		Floor const * const floor = cell->getFloor();
-		if (floor && floor->getExtent_p())
+		BaseExtent const * const extent = floor ? floor->getExtent_p() : 0;
+		if (extent)
 		{
-			AxialBox const ab = floor->getExtent_p()->getBoundingBox();
+			AxialBox const ab = extent->getBoundingBox();
 			bool firstCorner = true;
 			for (int corner = 0; corner < 8; ++corner)
 			{
@@ -364,14 +389,145 @@ namespace SwgCuiDynamicBunkerFloorplanNamespace
 
 	bool canResolveSocketTransform(PortalProperty const & portalProperty, int cellIndex, int portalIndex)
 	{
-		if (cellIndex < 1)
+		if (cellIndex < 1 || cellIndex >= portalProperty.getNumberOfCells())
 			return false;
 
-		if (!portalProperty.getCell(cellIndex))
+		CellProperty const * const cell = portalProperty.getCell(cellIndex);
+		if (!cell)
+			return false;
+
+		Object const & cellOwner = cell->getOwner();
+		if (!cellOwner.isInitialized() || cellOwner.getCellProperty() != cell)
 			return false;
 
 		Transform portalTransform;
 		return portalProperty.getPortalSocketTransform_o2p(cellIndex, portalIndex, portalTransform);
+	}
+
+	enum SocketFlowRole
+	{
+		SocketFlowOpen,
+		SocketFlowOut,
+		SocketFlowIn,
+		SocketFlowLinked
+	};
+
+	SocketFlowRole getSocketFlowRole(PortalProperty const * portalProperty, DynamicBunkerOpenFloorplanMessage::SocketEntry const & socket)
+	{
+		if (portalProperty)
+		{
+			PortalProperty::DynamicRoomGraft graft;
+			if (portalProperty->findDynamicRoomGraftForSocket(socket.cellIndex, socket.portalIndex, graft))
+			{
+				if (graft.hostCellIndex == socket.cellIndex && graft.hostPortalIndex == socket.portalIndex)
+					return SocketFlowOut;
+				return SocketFlowIn;
+			}
+		}
+
+		if (socket.open)
+			return SocketFlowOpen;
+
+		if (socket.linkedCellIndex >= 0)
+			return SocketFlowLinked;
+
+		return SocketFlowOpen;
+	}
+
+	bool isSocketHostSide(PortalProperty const * portalProperty, DynamicBunkerOpenFloorplanMessage::SocketEntry const & socket)
+	{
+		SocketFlowRole const role = getSocketFlowRole(portalProperty, socket);
+		return role == SocketFlowOpen || role == SocketFlowOut;
+	}
+
+	char const * getSocketFlowTag(SocketFlowRole role)
+	{
+		switch (role)
+		{
+		case SocketFlowOpen:   return "OPEN";
+		case SocketFlowOut:    return "OUT";
+		case SocketFlowIn:     return "IN";
+		case SocketFlowLinked: return "LINK";
+		default:               return "?";
+		}
+	}
+
+	void resolveGraftLinkEndpoints(
+		PortalProperty const * portalProperty,
+		DynamicBunkerOpenFloorplanMessage::SocketEntry const & socketA,
+		DynamicBunkerOpenFloorplanMessage::SocketEntry const & socketB,
+		int socketIndexA,
+		int socketIndexB,
+		int & outSocketIndex,
+		int & inSocketIndex)
+	{
+		outSocketIndex = socketIndexA;
+		inSocketIndex = socketIndexB;
+
+		if (!portalProperty)
+			return;
+
+		PortalProperty::DynamicRoomGraft graft;
+		if (portalProperty->findDynamicRoomGraftForSocket(socketA.cellIndex, socketA.portalIndex, graft))
+		{
+			if (graft.graftedCellIndex == socketA.cellIndex)
+			{
+				outSocketIndex = socketIndexB;
+				inSocketIndex = socketIndexA;
+			}
+			return;
+		}
+
+		if (portalProperty->findDynamicRoomGraftForSocket(socketB.cellIndex, socketB.portalIndex, graft)
+			&& graft.graftedCellIndex == socketB.cellIndex)
+		{
+			outSocketIndex = socketIndexA;
+			inSocketIndex = socketIndexB;
+		}
+	}
+
+	void resolveSocketMapCoordinates(PortalProperty const & portalProperty, DynamicBunkerOpenFloorplanMessage::SocketList & sockets)
+	{
+		for (size_t i = 0; i < sockets.size(); ++i)
+		{
+			DynamicBunkerOpenFloorplanMessage::SocketEntry & entry = sockets[i];
+			if (isfinite(entry.mapX) && isfinite(entry.mapZ))
+				continue;
+
+			Transform portalTransform;
+			if (portalProperty.getPortalSocketTransform_o2p(entry.cellIndex, entry.portalIndex, portalTransform))
+			{
+				entry.mapX = portalTransform.getPosition_p().x;
+				entry.mapZ = portalTransform.getPosition_p().z;
+				continue;
+			}
+
+			if (PortalProperty::isCustomSocketIndex(entry.portalIndex))
+			{
+				PortalProperty::CustomSocket customSocket;
+				CellProperty const * const cell = portalProperty.getCell(entry.cellIndex);
+				if (cell && portalProperty.findCustomSocket(entry.cellIndex, entry.portalIndex, customSocket))
+				{
+					Transform portalBuilding;
+					portalBuilding.multiply(cell->getOwner().getTransform_o2p(), customSocket.doorTransform_o2p);
+					entry.mapX = portalBuilding.getPosition_p().x;
+					entry.mapZ = portalBuilding.getPosition_p().z;
+					continue;
+				}
+			}
+
+			CellProperty const * const cell = portalProperty.getCell(entry.cellIndex);
+			if (cell)
+			{
+				Object const & cellOwner = cell->getOwner();
+				if (cellOwner.isInitialized() && cellOwner.getCellProperty() == cell)
+				{
+					Vector const cellPos = cellOwner.getTransform_o2p().getPosition_p();
+					entry.mapX = cellPos.x;
+					entry.mapZ = cellPos.z;
+				}
+			}
+		}
 	}
 
 	void buildLocalSocketEntries(PortalProperty const & portalProperty, DynamicBunkerOpenFloorplanMessage::SocketList & socketEntries)
@@ -391,21 +547,31 @@ namespace SwgCuiDynamicBunkerFloorplanNamespace
 			entry.linkedCellIndex = -1;
 			entry.linkedPortalIndex = -1;
 			entry.custom = PortalProperty::isCustomSocketIndex(socket.portalIndex);
-			entry.mapX = 0.0f;
-			entry.mapZ = 0.0f;
+			entry.mapX = std::numeric_limits<float>::quiet_NaN();
+			entry.mapZ = std::numeric_limits<float>::quiet_NaN();
 
 			PortalProperty::DynamicRoomGraft graft;
-			if (portalProperty.findDynamicRoomGraftForSocket(socket.cellIndex, socket.portalIndex, graft))
+			bool const hasGraft = portalProperty.findDynamicRoomGraftForSocket(socket.cellIndex, socket.portalIndex, graft);
+			if (hasGraft)
 			{
 				entry.open = false;
-				entry.linkedCellIndex = graft.graftedCellIndex;
-				entry.linkedPortalIndex = graft.graftedPortalIndex;
+				if (graft.hostCellIndex == socket.cellIndex && graft.hostPortalIndex == socket.portalIndex)
+				{
+					entry.linkedCellIndex = graft.graftedCellIndex;
+					entry.linkedPortalIndex = graft.graftedPortalIndex;
+				}
+				else
+				{
+					entry.linkedCellIndex = graft.hostCellIndex;
+					entry.linkedPortalIndex = graft.hostPortalIndex;
+				}
 			}
-			else if (!entry.custom)
+			else if (!entry.custom && canResolveSocketTransform(portalProperty, socket.cellIndex, socket.portalIndex))
 			{
 				int linkedCell = -1;
 				int linkedPortal = -1;
-				if (portalProperty.getPortalNeighbor(socket.cellIndex, socket.portalIndex, linkedCell, linkedPortal))
+				if (portalProperty.getPortalNeighbor(socket.cellIndex, socket.portalIndex, linkedCell, linkedPortal)
+					&& portalProperty.getCell(linkedCell))
 				{
 					entry.linkedCellIndex = linkedCell;
 					entry.linkedPortalIndex = linkedPortal;
@@ -418,6 +584,20 @@ namespace SwgCuiDynamicBunkerFloorplanNamespace
 			{
 				entry.mapX = portalTransform.getPosition_p().x;
 				entry.mapZ = portalTransform.getPosition_p().z;
+			}
+			else
+			{
+				CellProperty const * const cell = portalProperty.getCell(socket.cellIndex);
+				if (cell)
+				{
+					Object const & cellOwner = cell->getOwner();
+					if (cellOwner.isInitialized() && cellOwner.getCellProperty() == cell)
+					{
+						Vector const cellPos = cellOwner.getTransform_o2p().getPosition_p();
+						entry.mapX = cellPos.x;
+						entry.mapZ = cellPos.z;
+					}
+				}
 			}
 
 			char label[160];
@@ -437,11 +617,81 @@ namespace SwgCuiDynamicBunkerFloorplanNamespace
 			if (entry.linkedCellIndex >= 0)
 			{
 				char linkBuf[96];
-				snprintf(linkBuf, sizeof(linkBuf), " -> cell %d / portal %d", entry.linkedCellIndex, entry.linkedPortalIndex);
+				if (hasGraft)
+				{
+					if (graft.hostCellIndex == socket.cellIndex && graft.hostPortalIndex == socket.portalIndex)
+						snprintf(linkBuf, sizeof(linkBuf), " -> IN c%d/p%d", entry.linkedCellIndex, entry.linkedPortalIndex);
+					else
+						snprintf(linkBuf, sizeof(linkBuf), " -> OUT c%d/p%d", entry.linkedCellIndex, entry.linkedPortalIndex);
+				}
+				else
+				{
+					snprintf(linkBuf, sizeof(linkBuf), " -> c%d/p%d", entry.linkedCellIndex, entry.linkedPortalIndex);
+				}
 				strncat(label, linkBuf, sizeof(label) - strlen(label) - 1);
+			}
+			else if (entry.custom)
+			{
+				strncat(label, " (OUT snap)", sizeof(label) - strlen(label) - 1);
 			}
 			entry.label = label;
 			socketEntries.push_back(entry);
+		}
+
+		resolveSocketMapCoordinates(portalProperty, socketEntries);
+	}
+
+	void createMapCellOverlays(
+		UIPage * canvas,
+		std::vector<UIPage *> & overlays,
+		PortalProperty const & portalProperty,
+		LayoutMapProjection const & proj)
+	{
+		if (!canvas)
+			return;
+
+		int const cellCount = portalProperty.getNumberOfCells();
+		for (int cellIndex = 1; cellIndex < cellCount; ++cellIndex)
+		{
+			CellProperty const * const cell = portalProperty.getCell(cellIndex);
+			if (!cell)
+				continue;
+
+			float cMinX = 0.0f;
+			float cMaxX = 0.0f;
+			float cMinZ = 0.0f;
+			float cMaxZ = 0.0f;
+			bool haveCellBounds = false;
+			accumulateCellO2pBounds(cell, cMinX, cMaxX, cMinZ, cMaxZ, haveCellBounds);
+			if (!haveCellBounds)
+				continue;
+
+			float px0 = 0.0f;
+			float py0 = 0.0f;
+			float px1 = 0.0f;
+			float py1 = 0.0f;
+			proj.mapO2pToCanvas(cMinX, cMinZ, px0, py1);
+			proj.mapO2pToCanvas(cMaxX, cMaxZ, px1, py0);
+
+			float const left = std::min(px0, px1);
+			float const top = std::min(py0, py1);
+			float const width = std::max(4.0f, std::abs(px1 - px0));
+			float const height = std::max(4.0f, std::abs(py1 - py0));
+
+			UIPage * cellOverlay = new UIPage;
+			cellOverlay->SetName("mapCell");
+			if (portalProperty.isGraftedCell(cellIndex))
+				cellOverlay->SetBackgroundColor(UIColor(48, 112, 72, 96));
+			else
+				cellOverlay->SetBackgroundColor(UIColor(48, 72, 96, 96));
+			cellOverlay->SetLocation(UIPoint(static_cast<UIScalar>(left), static_cast<UIScalar>(top)));
+			cellOverlay->SetSize(UISize(static_cast<UIScalar>(width), static_cast<UIScalar>(height)));
+			cellOverlay->SetVisible(true);
+			cellOverlay->SetEnabled(false);
+			cellOverlay->SetGetsInput(false);
+			canvas->AddChild(cellOverlay);
+			cellOverlay->Link();
+			overlays.push_back(cellOverlay);
 		}
 	}
 
@@ -561,6 +811,7 @@ SwgCuiDynamicBunkerFloorplan::SwgCuiDynamicBunkerFloorplan(UIPage & page)
 	m_viewer(0),
 	m_layoutMapViewer(0),
 	m_layoutMapCanvas(0),
+	m_mapNodeTemplate(0),
 	m_tabs(0),
 	m_buildingId(),
 	m_terminalId(),
@@ -576,7 +827,11 @@ SwgCuiDynamicBunkerFloorplan::SwgCuiDynamicBunkerFloorplan(UIPage & page)
 	m_placePoint1_cell(),
 	m_placePoint0_w(),
 	m_placePoint1_w(),
+	m_placeWallNormal_cell(),
+	m_hasPlaceWallNormal(false),
 	m_portalDoorTransform_cell(),
+	m_placeDoorwayWidth(1.0f),
+	m_placeDoorwayHeight(2.0f),
 	m_placePointMarkers(),
 	m_rooms(),
 	m_sockets(),
@@ -591,6 +846,8 @@ SwgCuiDynamicBunkerFloorplan::SwgCuiDynamicBunkerFloorplan(UIPage & page)
 	m_pendingCreateSnapCellIndex(-1),
 	m_trackedPlaceCellIndex(-1),
 	m_hasServerRoomCatalog(false),
+	m_deferredFloorMapRefresh(false),
+	m_deferredPortalNotifyBuildingId(),
 	m_nextMapButtonId(0),
 	m_overlayCallbackPage(0)
 {
@@ -612,6 +869,7 @@ SwgCuiDynamicBunkerFloorplan::SwgCuiDynamicBunkerFloorplan(UIPage & page)
 	getCodeDataObject(TUIText, m_textLayoutHint, "textLayoutHint", true);
 	getCodeDataObject(TUIText, m_textPlaceHint, "textPlaceHint", true);
 	getCodeDataObject(TUIPage, m_layoutMapCanvas, "layoutMapCanvas", true);
+	getCodeDataObject(TUIButton, m_mapNodeTemplate, "mapNodeTemplate", true);
 	getCodeDataObject(TUITabbedPane, m_tabs, "tabs", true);
 
 	UIWidget * viewerWidget = 0;
@@ -698,6 +956,7 @@ SwgCuiDynamicBunkerFloorplan::~SwgCuiDynamicBunkerFloorplan()
 	m_viewer = 0;
 	m_layoutMapViewer = 0;
 	m_layoutMapCanvas = 0;
+	m_mapNodeTemplate = 0;
 	m_tabs = 0;
 }
 
@@ -755,6 +1014,20 @@ void SwgCuiDynamicBunkerFloorplan::update(float deltaTimeSecs)
 	if (!isActive())
 		return;
 
+	if (m_deferredPortalNotifyBuildingId.isValid())
+	{
+		NetworkId const buildingId = m_deferredPortalNotifyBuildingId;
+		m_deferredPortalNotifyBuildingId = NetworkId::cms_invalid;
+		notifyBuildingPortalsChanged(buildingId);
+	}
+
+	if (m_deferredFloorMapRefresh)
+	{
+		m_deferredFloorMapRefresh = false;
+		if (m_tabs && m_tabs->GetActiveTab() == 1)
+			refreshFloorMap();
+	}
+
 	int const playerCell = resolvePlayerCellIndex();
 	if (playerCell != m_trackedPlaceCellIndex)
 		updatePlaceCellDisplay();
@@ -783,6 +1056,7 @@ void SwgCuiDynamicBunkerFloorplan::performDeactivate()
 		m_viewer->setPaused(true);
 	if (m_layoutMapViewer)
 		m_layoutMapViewer->setPaused(true);
+	clearFloorMapNodes();
 }
 
 // ----------------------------------------------------------------------
@@ -811,13 +1085,13 @@ void SwgCuiDynamicBunkerFloorplan::setSession(DynamicBunkerOpenFloorplanMessage 
 
 	if (refreshingSameBuilding)
 	{
-		refreshFloorMap();
+		requestFloorMapRefresh();
 		if (m_selectedSocketRow >= 0)
 			selectSocketByIndex(m_selectedSocketRow);
 		return;
 	}
 
-	refreshFloorMap();
+	requestFloorMapRefresh();
 	m_needsUiRefresh = false;
 }
 
@@ -912,7 +1186,7 @@ void SwgCuiDynamicBunkerFloorplan::refreshUiFromSession()
 	rebuildSocketsFromLocalBuilding();
 	refreshRoomList();
 	refreshSocketList();
-	refreshFloorMap();
+	requestFloorMapRefresh();
 	updatePreview();
 	updateActionButtons();
 	updatePlaceCellDisplay();
@@ -925,6 +1199,13 @@ void SwgCuiDynamicBunkerFloorplan::refreshUiFromSession()
 
 // ----------------------------------------------------------------------
 
+void SwgCuiDynamicBunkerFloorplan::deferPortalNotify(NetworkId const & buildingId)
+{
+	m_deferredPortalNotifyBuildingId = buildingId;
+}
+
+// ----------------------------------------------------------------------
+
 void SwgCuiDynamicBunkerFloorplan::notifyBuildingPortalsChanged(NetworkId const & buildingId)
 {
 	if (!isActive())
@@ -933,6 +1214,14 @@ void SwgCuiDynamicBunkerFloorplan::notifyBuildingPortalsChanged(NetworkId const 
 	NetworkId const sessionBuilding = resolveBuildingId();
 	if (sessionBuilding != buildingId && m_buildingId != buildingId)
 		return;
+
+	Object * const buildingObject = NetworkIdManager::getObjectById(sessionBuilding);
+	PortalProperty * const portalProperty = buildingObject ? buildingObject->getPortalProperty() : 0;
+	if (buildingObject && portalProperty)
+	{
+		DynamicBunkerClient::tryLinkAllPendingGrafts(*buildingObject, *portalProperty);
+		DynamicBunkerClient::finalizeBuildingPortalChanges(*buildingObject, *portalProperty);
+	}
 
 	int const previousSocketRow = m_selectedSocketRow;
 	int const pendingCreateSnapCell = m_pendingCreateSnapCellIndex;
@@ -954,7 +1243,7 @@ void SwgCuiDynamicBunkerFloorplan::notifyBuildingPortalsChanged(NetworkId const 
 					&& PortalProperty::isCustomSocketIndex(socket.portalIndex))
 				{
 					selectSocketByIndex(i);
-					refreshFloorMap();
+					requestFloorMapRefresh();
 					char buf[256];
 					snprintf(buf, sizeof(buf),
 						"Custom snap added in room %d (portal %d). Pick a catalog room and Assign.",
@@ -968,13 +1257,13 @@ void SwgCuiDynamicBunkerFloorplan::notifyBuildingPortalsChanged(NetworkId const 
 			selectSocketByIndex(previousSocketRow);
 		else if (!m_sockets.empty())
 			selectSocketByIndex(static_cast<int>(m_sockets.size()) - 1);
-		refreshFloorMap();
+		requestFloorMapRefresh();
 		return;
 	}
 
 	refreshSocketList();
 	updateActionButtons();
-	refreshFloorMap();
+	requestFloorMapRefresh();
 
 	if (pendingCreateSnapCell > 0)
 	{
@@ -1028,30 +1317,6 @@ void SwgCuiDynamicBunkerFloorplan::rebuildSocketsFromLocalBuilding()
 		{
 			m_selectedSocketRow = static_cast<int>(i);
 			break;
-		}
-	}
-}
-
-// ----------------------------------------------------------------------
-
-void SwgCuiDynamicBunkerFloorplan::updateSocketMapCoordsFromLocalBuilding()
-{
-	Object * const building = NetworkIdManager::getObjectById(resolveBuildingId());
-	PortalProperty * const portalProperty = building ? building->getPortalProperty() : 0;
-	if (!portalProperty)
-		return;
-
-	for (size_t i = 0; i < m_sockets.size(); ++i)
-	{
-		DynamicBunkerOpenFloorplanMessage::SocketEntry & socket = m_sockets[i];
-		if (!canResolveSocketTransform(*portalProperty, socket.cellIndex, socket.portalIndex))
-			continue;
-
-		Transform portalTransform;
-		if (portalProperty->getPortalSocketTransform_o2p(socket.cellIndex, socket.portalIndex, portalTransform))
-		{
-			socket.mapX = portalTransform.getPosition_p().x;
-			socket.mapZ = portalTransform.getPosition_p().z;
 		}
 	}
 }
@@ -1113,6 +1378,20 @@ void SwgCuiDynamicBunkerFloorplan::OnTabbedPaneChanged(UIWidget * context)
 {
 	UNREF(context);
 	updateActionButtons();
+	if (m_tabs && m_tabs->GetActiveTab() == 1)
+	{
+		rebuildSocketsFromLocalBuilding();
+		requestFloorMapRefresh();
+	}
+	else
+		clearFloorMapNodes();
+}
+
+// ----------------------------------------------------------------------
+
+void SwgCuiDynamicBunkerFloorplan::requestFloorMapRefresh()
+{
+	m_deferredFloorMapRefresh = true;
 }
 
 // ----------------------------------------------------------------------
@@ -1138,13 +1417,7 @@ void SwgCuiDynamicBunkerFloorplan::OnGenericSelectionChanged(UIWidget * context)
 		m_selectedSocketRow = m_listSockets ? m_listSockets->GetLastSelectedRow() : -1;
 		if (m_selectedSocketRow >= 0 && m_selectedSocketRow < static_cast<int>(m_sockets.size()))
 		{
-			m_selectedCellIndex = m_sockets[static_cast<size_t>(m_selectedSocketRow)].cellIndex;
-			m_selectedPortalIndex = m_sockets[static_cast<size_t>(m_selectedSocketRow)].portalIndex;
-			char buf[160];
-			snprintf(buf, sizeof(buf), "Snap socket cell %d portal %d (%s).",
-				m_selectedCellIndex, m_selectedPortalIndex,
-				m_sockets[static_cast<size_t>(m_selectedSocketRow)].open ? "OPEN" : "linked - Replace or Unassign");
-			updateStatus(buf);
+			selectSocketByIndex(m_selectedSocketRow);
 		}
 		updateActionButtons();
 	}
@@ -1224,23 +1497,27 @@ void SwgCuiDynamicBunkerFloorplan::refreshSocketList()
 	if (!m_listSockets)
 		return;
 
+	Object const * const building = NetworkIdManager::getObjectById(resolveBuildingId());
+	PortalProperty const * const portalProperty = building ? building->getPortalProperty() : 0;
+
 	ensureListDataSource(m_listSockets, "dsSockets");
 	m_listSockets->Clear();
 	for (size_t i = 0; i < m_sockets.size(); ++i)
 	{
 		DynamicBunkerOpenFloorplanMessage::SocketEntry const & socket = m_sockets[i];
+		SocketFlowRole const role = getSocketFlowRole(portalProperty, socket);
 		char buf[256];
 		if (socket.linkedCellIndex >= 0)
 		{
-			snprintf(buf, sizeof(buf), "%s  c%d/p%d -> c%d/p%d",
-				socket.open ? "[OPEN]" : "[LINKED]",
+			snprintf(buf, sizeof(buf), "[%s] c%d/p%d -> c%d/p%d",
+				getSocketFlowTag(role),
 				socket.cellIndex, socket.portalIndex,
 				socket.linkedCellIndex, socket.linkedPortalIndex);
 		}
 		else
 		{
-			snprintf(buf, sizeof(buf), "%s  c%d/p%d  %s",
-				socket.open ? "[OPEN]" : "[LINKED]",
+			snprintf(buf, sizeof(buf), "[%s] c%d/p%d  %s",
+				getSocketFlowTag(role),
 				socket.cellIndex, socket.portalIndex,
 				socket.label.c_str());
 		}
@@ -1327,14 +1604,18 @@ void SwgCuiDynamicBunkerFloorplan::updateActionButtons()
 	bool const hasSocket = (m_selectedSocketRow >= 0 && m_selectedSocketRow < static_cast<int>(m_sockets.size()));
 	bool const open = selectedSocketIsOpen();
 
+	Object const * const building = NetworkIdManager::getObjectById(resolveBuildingId());
+	PortalProperty const * const portalProperty = building ? building->getPortalProperty() : 0;
+	bool const hostSide = hasSocket && isSocketHostSide(portalProperty, m_sockets[static_cast<size_t>(m_selectedSocketRow)]);
+
 	if (m_buttonAssign)
 	{
-		m_buttonAssign->SetEnabled(hasSocket && m_selectedRoomIndex >= 0);
+		m_buttonAssign->SetEnabled(hostSide && m_selectedRoomIndex >= 0);
 		m_buttonAssign->SetLocalText(Unicode::narrowToWide(open || !hasSocket ? "Assign" : "Replace"));
 		m_buttonAssign->SetText(Unicode::narrowToWide(open || !hasSocket ? "Assign" : "Replace"));
 	}
 	if (m_buttonUnassign)
-		m_buttonUnassign->SetEnabled(hasSocket && !open);
+		m_buttonUnassign->SetEnabled(hostSide && !open);
 	if (m_buttonCreatePortal)
 		m_buttonCreatePortal->SetEnabled(m_placePointsReady || (m_selectedPlaceWall >= 0 && m_selectedPlaceWall != 4));
 }
@@ -1351,11 +1632,18 @@ void SwgCuiDynamicBunkerFloorplan::assignSelectedRoom()
 
 	if (m_selectedSocketRow < 0 || m_selectedSocketRow >= static_cast<int>(m_sockets.size()))
 	{
-		updateStatus("Select a snap point first.");
+		updateStatus("Select an OUT portal (yellow OPEN or orange OUT) first.");
 		return;
 	}
 
+	Object const * const building = NetworkIdManager::getObjectById(resolveBuildingId());
+	PortalProperty const * const portalProperty = building ? building->getPortalProperty() : 0;
 	DynamicBunkerOpenFloorplanMessage::SocketEntry const & socket = m_sockets[static_cast<size_t>(m_selectedSocketRow)];
+	if (!isSocketHostSide(portalProperty, socket))
+	{
+		updateStatus("Select the OUT (bunker) side of the portal, not the IN graft entrance.");
+		return;
+	}
 	DynamicBunkerOpenFloorplanMessage::RoomEntry const & room = m_rooms[static_cast<size_t>(m_selectedRoomIndex)];
 
 	DynamicBunkerAssignRoomMessage const msg(
@@ -1367,7 +1655,7 @@ void SwgCuiDynamicBunkerFloorplan::assignSelectedRoom()
 	GameNetwork::send(msg, true);
 
 	char buf[256];
-	snprintf(buf, sizeof(buf), "%s '%s' on cell %d portal %d...",
+	snprintf(buf, sizeof(buf), "%s '%s' at OUT portal c%d/p%d...",
 		socket.open ? "Assigning" : "Replacing with",
 		room.displayName.c_str(), socket.cellIndex, socket.portalIndex);
 	updateStatus(buf);
@@ -1379,11 +1667,18 @@ void SwgCuiDynamicBunkerFloorplan::unassignSelectedSocket()
 {
 	if (m_selectedSocketRow < 0 || m_selectedSocketRow >= static_cast<int>(m_sockets.size()))
 	{
-		updateStatus("Select a linked snap point first.");
+		updateStatus("Select the OUT side of a linked portal first.");
 		return;
 	}
 
+	Object const * const building = NetworkIdManager::getObjectById(resolveBuildingId());
+	PortalProperty const * const portalProperty = building ? building->getPortalProperty() : 0;
 	DynamicBunkerOpenFloorplanMessage::SocketEntry const & socket = m_sockets[static_cast<size_t>(m_selectedSocketRow)];
+	if (!isSocketHostSide(portalProperty, socket))
+	{
+		updateStatus("Unassign from the orange OUT portal, not the cyan IN graft entrance.");
+		return;
+	}
 	if (socket.open)
 	{
 		updateStatus("That snap point is already open.");
@@ -1415,19 +1710,20 @@ void SwgCuiDynamicBunkerFloorplan::updateStatus(char const * text)
 
 void SwgCuiDynamicBunkerFloorplan::clearFloorMapNodes()
 {
+	clearLayoutMapOverlay();
+
 	UIEventCallback * const callback = dynamic_cast<UIEventCallback *>(this);
 	for (size_t i = 0; i < m_mapNodeButtons.size(); ++i)
 	{
-		if (m_mapNodeButtons[i])
-		{
-			if (callback && isActive() && m_mapNodeButtons[i]->HasCallback(callback))
-				m_mapNodeButtons[i]->RemoveCallback(callback);
-			unregisterMediatorObject(*m_mapNodeButtons[i]);
-			if (m_layoutMapCanvas)
-				m_layoutMapCanvas->RemoveChild(m_mapNodeButtons[i]);
-			delete m_mapNodeButtons[i];
-			m_mapNodeButtons[i] = 0;
-		}
+		UIWidget * const node = m_mapNodeButtons[i];
+		if (!node)
+			continue;
+
+		if (callback && node->HasCallback(callback))
+			node->RemoveCallback(callback);
+		if (m_layoutMapCanvas && node->GetParent() == m_layoutMapCanvas)
+			m_layoutMapCanvas->RemoveChild(node);
+		node->Destroy();
 	}
 	m_mapNodeButtons.clear();
 	m_mapNodeSocketIndices.clear();
@@ -1441,15 +1737,12 @@ void SwgCuiDynamicBunkerFloorplan::clearLayoutMapOverlay()
 	{
 		if (m_mapCellOverlays[i])
 		{
-			if (m_layoutMapCanvas)
+			if (m_layoutMapCanvas && m_mapCellOverlays[i]->GetParent() == m_layoutMapCanvas)
 				m_layoutMapCanvas->RemoveChild(m_mapCellOverlays[i]);
-			delete m_mapCellOverlays[i];
+			m_mapCellOverlays[i]->Destroy();
 		}
 	}
 	m_mapCellOverlays.clear();
-
-	if (m_layoutMapViewer)
-		m_layoutMapViewer->clearObjects();
 }
 
 // ----------------------------------------------------------------------
@@ -1532,38 +1825,73 @@ void SwgCuiDynamicBunkerFloorplan::createMapButton(int socketIndex, float canvas
 	if (!m_layoutMapCanvas || socketIndex < 0 || socketIndex >= static_cast<int>(m_sockets.size()))
 		return;
 
+	if (!isfinite(canvasX) || !isfinite(canvasY))
+		return;
+
+	UIScalar const canvasW = m_layoutMapCanvas->GetWidth();
+	UIScalar const canvasH = m_layoutMapCanvas->GetHeight();
+	float const nodeSize = 34.0f;
+	if (canvasW < nodeSize || canvasH < nodeSize)
+		return;
+
+	canvasX = std::max(0.0f, std::min(canvasX - nodeSize * 0.5f, static_cast<float>(canvasW) - nodeSize));
+	canvasY = std::max(0.0f, std::min(canvasY - nodeSize * 0.5f, static_cast<float>(canvasH) - nodeSize));
+
 	DynamicBunkerOpenFloorplanMessage::SocketEntry const & socket = m_sockets[static_cast<size_t>(socketIndex)];
 
-	UIButton * const node = new UIButton;
-	char name[32];
-	snprintf(name, sizeof(name), "mapNode%d_%d", socketIndex, m_nextMapButtonId++);
-	node->SetName(name);
-	if (m_buttonAssign && m_buttonAssign->GetStyle())
+	Object const * const building = NetworkIdManager::getObjectById(resolveBuildingId());
+	PortalProperty const * const portalProperty = building ? building->getPortalProperty() : 0;
+	SocketFlowRole const role = getSocketFlowRole(portalProperty, socket);
+
+	UIPage * node = new UIPage;
+	node->SetName("mapNode");
+
+	char label[16];
+	snprintf(label, sizeof(label), "%s", getSocketFlowTag(role));
+
+	UIText * const nodeLabel = new UIText;
+	nodeLabel->SetName("label");
+	nodeLabel->SetPreLocalized(true);
+	nodeLabel->SetLocalText(Unicode::narrowToWide(label));
+	nodeLabel->SetText(Unicode::narrowToWide(label));
+	nodeLabel->SetTextColor(UIColor::white);
+	nodeLabel->SetLocation(UIPoint(2, 8));
+	nodeLabel->SetSize(UISize(30, 16));
+	nodeLabel->SetEnabled(false);
+
+	switch (role)
 	{
-		UIButtonStyle * const style = dynamic_cast<UIButtonStyle *>(m_buttonAssign->GetStyle());
-		if (style)
-			node->SetStyle(style);
+	case SocketFlowOpen:
+		if (socket.custom)
+			node->SetBackgroundColor(UIColor(160, 96, 208, 224));
+		else
+			node->SetBackgroundColor(UIColor(224, 192, 64, 224));
+		break;
+	case SocketFlowOut:
+		node->SetBackgroundColor(UIColor(224, 140, 64, 224));
+		break;
+	case SocketFlowIn:
+		node->SetBackgroundColor(UIColor(64, 180, 224, 224));
+		break;
+	default:
+		node->SetBackgroundColor(UIColor(64, 192, 96, 224));
+		break;
 	}
 
-	char label[64];
-	snprintf(label, sizeof(label), "%d:%d", socket.cellIndex, socket.portalIndex);
-	node->SetLocalText(Unicode::narrowToWide(label));
-	node->SetText(Unicode::narrowToWide(label));
+	if (m_selectedSocketRow == socketIndex)
+		node->SetBackgroundColor(UIColor(255, 255, 255, 240));
 
-	if (socket.custom)
-		node->SetBackgroundColor(UIColor(160, 96, 208, 224));
-	else if (socket.open)
-		node->SetBackgroundColor(UIColor(224, 192, 64, 224));
-	else
-		node->SetBackgroundColor(UIColor(64, 192, 96, 224));
-
-	float const nodeHalf = 17.0f;
-	node->SetLocation(UIPoint(static_cast<UIScalar>(canvasX - nodeHalf), static_cast<UIScalar>(canvasY - nodeHalf)));
-	node->SetSize(UISize(34, 34));
+	node->SetLocation(UIPoint(static_cast<UIScalar>(canvasX), static_cast<UIScalar>(canvasY)));
+	node->SetSize(UISize(static_cast<UIScalar>(nodeSize), static_cast<UIScalar>(nodeSize)));
+	node->SetVisible(true);
 	node->SetEnabled(true);
+	node->SetGetsInput(true);
+
+	node->AddChild(nodeLabel);
+	nodeLabel->Link();
 
 	m_layoutMapCanvas->AddChild(node);
-	registerWidget(node);
+	node->Link();
 	m_mapNodeButtons.push_back(node);
 	m_mapNodeSocketIndices.push_back(socketIndex);
 }
@@ -1604,26 +1932,36 @@ void SwgCuiDynamicBunkerFloorplan::updateLayoutMapViewer()
 
 void SwgCuiDynamicBunkerFloorplan::refreshFloorMap()
 {
-	if (!m_layoutMapCanvas || m_sockets.empty())
+	if (!m_layoutMapCanvas || !isActive())
+		return;
+
+	if (m_tabs && m_tabs->GetActiveTab() != 1)
+		return;
+
+	UIScalar canvasW = m_layoutMapCanvas->GetWidth();
+	UIScalar canvasH = m_layoutMapCanvas->GetHeight();
+	if (canvasW < 16.0f || canvasH < 16.0f)
 	{
-		clearFloorMapNodes();
-		clearLayoutMapOverlay();
-		if (m_layoutMapViewer)
-			m_layoutMapViewer->SetVisible(false);
+		canvasW = 856.0f;
+		canvasH = 456.0f;
+	}
+	if (canvasW < 16.0f || canvasH < 16.0f)
+	{
+		m_deferredFloorMapRefresh = true;
 		return;
 	}
 
-	Object * const building = NetworkIdManager::getObjectById(resolveBuildingId());
-	if (building && building->getPortalProperty())
-		updateSocketMapCoordsFromLocalBuilding();
+	Object const * const building = NetworkIdManager::getObjectById(resolveBuildingId());
+	PortalProperty const * const portalProperty = building ? building->getPortalProperty() : 0;
+	if (portalProperty)
+		resolveSocketMapCoordinates(*portalProperty, m_sockets);
 
-	clearFloorMapNodes();
-	clearLayoutMapOverlay();
-
-	if (m_layoutMapViewer)
+	if (m_sockets.empty() && !portalProperty)
 	{
-		m_layoutMapViewer->SetVisible(false);
-		m_layoutMapViewer->setPaused(true);
+		clearFloorMapNodes();
+		if (m_textLayoutHint)
+			m_textLayoutHint->SetText(Unicode::narrowToWide("No portal sockets yet. Use Place Portal to add a custom snap."));
+		return;
 	}
 
 	float boundsMinX = 0.0f;
@@ -1632,92 +1970,77 @@ void SwgCuiDynamicBunkerFloorplan::refreshFloorMap()
 	float boundsMaxZ = 0.0f;
 	bool haveBounds = false;
 
-	PortalProperty * const portalProperty = building ? building->getPortalProperty() : 0;
 	if (portalProperty)
 	{
 		int const cellCount = portalProperty->getNumberOfCells();
 		for (int cellIndex = 1; cellIndex < cellCount; ++cellIndex)
 		{
-			CellProperty * const cell = portalProperty->getCell(cellIndex);
-			if (!cell)
-				continue;
-
-			accumulateCellO2pBounds(cell, boundsMinX, boundsMaxX, boundsMinZ, boundsMaxZ, haveBounds);
+			CellProperty const * const cell = portalProperty->getCell(cellIndex);
+			if (cell)
+				accumulateCellO2pBounds(cell, boundsMinX, boundsMaxX, boundsMinZ, boundsMaxZ, haveBounds);
 		}
 	}
 
+	std::vector<bool> socketPlottable(m_sockets.size(), false);
 	for (size_t i = 0; i < m_sockets.size(); ++i)
 	{
+		DynamicBunkerOpenFloorplanMessage::SocketEntry const & socket = m_sockets[i];
+		if (!isfinite(socket.mapX) || !isfinite(socket.mapZ))
+			continue;
+
+		socketPlottable[i] = true;
+
 		if (!haveBounds)
 		{
-			boundsMinX = boundsMaxX = m_sockets[i].mapX;
-			boundsMinZ = boundsMaxZ = m_sockets[i].mapZ;
+			boundsMinX = boundsMaxX = socket.mapX;
+			boundsMinZ = boundsMaxZ = socket.mapZ;
 			haveBounds = true;
 		}
 		else
 		{
-			boundsMinX = std::min(boundsMinX, m_sockets[i].mapX);
-			boundsMaxX = std::max(boundsMaxX, m_sockets[i].mapX);
-			boundsMinZ = std::min(boundsMinZ, m_sockets[i].mapZ);
-			boundsMaxZ = std::max(boundsMaxZ, m_sockets[i].mapZ);
+			boundsMinX = std::min(boundsMinX, socket.mapX);
+			boundsMaxX = std::max(boundsMaxX, socket.mapX);
+			boundsMinZ = std::min(boundsMinZ, socket.mapZ);
+			boundsMaxZ = std::max(boundsMaxZ, socket.mapZ);
 		}
 	}
 
-	if (!haveBounds)
-		return;
+	clearFloorMapNodes();
 
-	UIScalar const canvasW = m_layoutMapCanvas->GetWidth();
-	UIScalar const canvasH = m_layoutMapCanvas->GetHeight();
+	if (!haveBounds)
+	{
+		if (m_textLayoutHint)
+			m_textLayoutHint->SetText(Unicode::narrowToWide("Layout map unavailable until building cells are loaded."));
+		return;
+	}
+
+	if (m_textLayoutHint)
+		m_textLayoutHint->SetText(Unicode::narrowToWide("Yellow OPEN = assign here. Orange OUT -> Cyan IN. Green = graft room. Click a node."));
+
 	LayoutMapProjection const proj = LayoutMapProjection::build(
 		boundsMinX, boundsMaxX, boundsMinZ, boundsMaxZ,
 		static_cast<float>(canvasW), static_cast<float>(canvasH));
 
 	if (portalProperty)
 	{
-		int const cellCount = portalProperty->getNumberOfCells();
-		for (int cellIndex = 1; cellIndex < cellCount; ++cellIndex)
+		updateLayoutMapViewer();
+		if (m_layoutMapViewer)
 		{
-			CellProperty * const cell = portalProperty->getCell(cellIndex);
-			if (!cell)
-				continue;
-
-			float cellMinX = boundsMinX;
-			float cellMaxX = boundsMaxX;
-			float cellMinZ = boundsMinZ;
-			float cellMaxZ = boundsMaxZ;
-			bool cellHaveBounds = false;
-			accumulateCellO2pBounds(cell, cellMinX, cellMaxX, cellMinZ, cellMaxZ, cellHaveBounds);
-			if (!cellHaveBounds)
-				continue;
-
-			float tileX0 = 0.0f;
-			float tileY0 = 0.0f;
-			float tileX1 = 0.0f;
-			float tileY1 = 0.0f;
-			proj.mapO2pToCanvas(cellMinX, cellMinZ, tileX0, tileY0);
-			proj.mapO2pToCanvas(cellMaxX, cellMaxZ, tileX1, tileY1);
-
-			float const left = std::min(tileX0, tileX1);
-			float const top = std::min(tileY0, tileY1);
-			float const pixelW = std::max(12.0f, fabs(tileX1 - tileX0));
-			float const pixelH = std::max(12.0f, fabs(tileY1 - tileY0));
-
-			UIPage * const tile = new UIPage;
-			char tileName[32];
-			snprintf(tileName, sizeof(tileName), "cellTile%d", cellIndex);
-			tile->SetName(tileName);
-			tile->SetBackgroundColor(UIColor(48, 80, 96, 180));
-			tile->SetLocation(UIPoint(static_cast<UIScalar>(left), static_cast<UIScalar>(top)));
-			tile->SetSize(UISize(static_cast<UIScalar>(pixelW), static_cast<UIScalar>(pixelH)));
-			m_layoutMapCanvas->AddChild(tile);
-			m_mapCellOverlays.push_back(tile);
+			m_layoutMapViewer->SetVisible(true);
+			m_layoutMapViewer->setPaused(false);
 		}
+		createMapCellOverlays(m_layoutMapCanvas, m_mapCellOverlays, *portalProperty, proj);
 	}
 
+	size_t const maxMapNodes = 128;
 	std::vector<bool> used(m_sockets.size(), false);
+	size_t mapNodeCount = 0;
 	for (size_t i = 0; i < m_sockets.size(); ++i)
 	{
-		if (used[i])
+		if (mapNodeCount >= maxMapNodes)
+			break;
+
+		if (used[i] || !socketPlottable[i])
 			continue;
 
 		DynamicBunkerOpenFloorplanMessage::SocketEntry const & socket = m_sockets[i];
@@ -1729,28 +2052,57 @@ void SwgCuiDynamicBunkerFloorplan::refreshFloorMap()
 		float pixelY = 0.0f;
 		proj.mapO2pToCanvas(socket.mapX, socket.mapZ, pixelX, pixelY);
 
-		if (peerIndex >= 0 && peerIndex != static_cast<int>(i) && !used[static_cast<size_t>(peerIndex)])
+		if (peerIndex >= 0
+			&& peerIndex != static_cast<int>(i)
+			&& peerIndex < static_cast<int>(m_sockets.size())
+			&& socketPlottable[static_cast<size_t>(peerIndex)]
+			&& !used[static_cast<size_t>(peerIndex)])
 		{
 			DynamicBunkerOpenFloorplanMessage::SocketEntry const & peer = m_sockets[static_cast<size_t>(peerIndex)];
 			float peerPixelX = 0.0f;
 			float peerPixelY = 0.0f;
 			proj.mapO2pToCanvas(peer.mapX, peer.mapZ, peerPixelX, peerPixelY);
 
-			float dx = peerPixelX - pixelX;
-			float dy = peerPixelY - pixelY;
+			int outIndex = static_cast<int>(i);
+			int inIndex = peerIndex;
+			resolveGraftLinkEndpoints(
+				portalProperty,
+				socket,
+				peer,
+				static_cast<int>(i),
+				peerIndex,
+				outIndex,
+				inIndex);
+
+			float outPixelX = pixelX;
+			float outPixelY = pixelY;
+			float inPixelX = peerPixelX;
+			float inPixelY = peerPixelY;
+			if (outIndex == peerIndex)
+			{
+				outPixelX = peerPixelX;
+				outPixelY = peerPixelY;
+				inPixelX = pixelX;
+				inPixelY = pixelY;
+			}
+
+			float dx = inPixelX - outPixelX;
+			float dy = inPixelY - outPixelY;
 			float const len = sqrtf(dx * dx + dy * dy);
 			if (len > 4.0f)
 			{
 				float const normX = dx / len;
 				float const normY = dy / len;
 				float const pixelOffset = 16.0f;
-				createMapButton(static_cast<int>(i), pixelX - normX * pixelOffset, pixelY - normY * pixelOffset);
-				createMapButton(peerIndex, peerPixelX + normX * pixelOffset, peerPixelY + normY * pixelOffset);
+				createMapButton(outIndex, outPixelX - normX * pixelOffset, outPixelY - normY * pixelOffset);
+				createMapButton(inIndex, inPixelX + normX * pixelOffset, inPixelY + normY * pixelOffset);
+				mapNodeCount += 2;
 			}
 			else
 			{
-				createMapButton(static_cast<int>(i), pixelX - 18.0f, pixelY);
-				createMapButton(peerIndex, peerPixelX + 18.0f, peerPixelY);
+				createMapButton(outIndex, outPixelX - 18.0f, outPixelY);
+				createMapButton(inIndex, inPixelX + 18.0f, inPixelY);
+				mapNodeCount += 2;
 			}
 
 			used[i] = true;
@@ -1759,6 +2111,7 @@ void SwgCuiDynamicBunkerFloorplan::refreshFloorMap()
 		else
 		{
 			createMapButton(static_cast<int>(i), pixelX, pixelY);
+			++mapNodeCount;
 			used[i] = true;
 		}
 	}
@@ -1778,23 +2131,47 @@ void SwgCuiDynamicBunkerFloorplan::selectSocketByIndex(int socketIndex)
 	if (m_listSockets)
 		m_listSockets->SelectRow(socketIndex);
 
-	char buf[256];
+	Object const * const building = NetworkIdManager::getObjectById(resolveBuildingId());
+	PortalProperty const * const portalProperty = building ? building->getPortalProperty() : 0;
 	DynamicBunkerOpenFloorplanMessage::SocketEntry const & socket = m_sockets[static_cast<size_t>(socketIndex)];
-	if (socket.linkedCellIndex >= 0)
+	SocketFlowRole const role = getSocketFlowRole(portalProperty, socket);
+
+	char buf[256];
+	switch (role)
 	{
-		snprintf(buf, sizeof(buf), "Selected c%d/p%d -> c%d/p%d (%s).",
+	case SocketFlowOpen:
+		snprintf(buf, sizeof(buf),
+			"OUT portal c%d/p%d is open — pick a catalog room and Assign.",
+			socket.cellIndex, socket.portalIndex);
+		break;
+	case SocketFlowOut:
+		snprintf(buf, sizeof(buf),
+			"OUT portal c%d/p%d -> IN c%d/p%d. Replace or Unassign here.",
 			socket.cellIndex, socket.portalIndex,
-			socket.linkedCellIndex, socket.linkedPortalIndex,
-			socket.open ? "open" : "linked");
-	}
-	else
-	{
-		snprintf(buf, sizeof(buf), "Selected c%d/p%d (%s).",
-			socket.cellIndex, socket.portalIndex,
-			socket.open ? "open" : "linked");
+			socket.linkedCellIndex, socket.linkedPortalIndex);
+		break;
+	case SocketFlowIn:
+		snprintf(buf, sizeof(buf),
+			"IN portal c%d/p%d (grafted room). Select the orange OUT side to Replace or Unassign.",
+			socket.cellIndex, socket.portalIndex);
+		break;
+	default:
+		if (socket.linkedCellIndex >= 0)
+		{
+			snprintf(buf, sizeof(buf),
+				"Linked portal c%d/p%d -> c%d/p%d.",
+				socket.cellIndex, socket.portalIndex,
+				socket.linkedCellIndex, socket.linkedPortalIndex);
+		}
+		else
+		{
+			snprintf(buf, sizeof(buf), "Portal c%d/p%d.", socket.cellIndex, socket.portalIndex);
+		}
+		break;
 	}
 	updateStatus(buf);
 	updateActionButtons();
+	requestFloorMapRefresh();
 }
 
 // ----------------------------------------------------------------------
@@ -1873,14 +2250,15 @@ bool SwgCuiDynamicBunkerFloorplan::handleWorldPlaceClick(int mouseX, int mouseY)
 	s_lastHandledClickTime = now;
 
 	Vector worldPoint;
+	Vector worldNormal;
 	NetworkId cellNetworkId;
-	if (!pickWorldPointFromScreen(mouseX, mouseY, worldPoint, cellNetworkId))
+	if (!pickWorldPointFromScreen(mouseX, mouseY, worldPoint, cellNetworkId, &worldNormal))
 	{
 		updateStatus("Could not pick a surface. Aim at the wall or floor and click again.");
 		return false;
 	}
 
-	addPlacePoint(worldPoint, cellNetworkId);
+	addPlacePoint(worldPoint, cellNetworkId, &worldNormal);
 	return true;
 }
 
@@ -1888,6 +2266,23 @@ bool SwgCuiDynamicBunkerFloorplan::handleWorldPlaceClick(int mouseX, int mouseY)
 
 bool SwgCuiDynamicBunkerFloorplan::OnMessage(UIWidget * /*context*/, UIMessage const & msg)
 {
+	if (msg.Type == UIMessage::LeftMouseDown && m_tabs && m_tabs->GetActiveTab() == 1 && m_layoutMapCanvas)
+	{
+		UIWidget * hit = dynamic_cast<UIWidget *>(m_layoutMapCanvas->GetWidgetFromPoint(msg.MouseCoords, false));
+		while (hit && hit != m_layoutMapCanvas)
+		{
+			for (size_t i = 0; i < m_mapNodeButtons.size(); ++i)
+			{
+				if (hit == m_mapNodeButtons[i])
+				{
+					selectSocketByIndex(m_mapNodeSocketIndices[i]);
+					return false;
+				}
+			}
+			hit = dynamic_cast<UIWidget *>(hit->GetParent());
+		}
+	}
+
 	if (msg.Type == UIMessage::KeyDown && msg.Keystroke == UIMessage::Escape && m_placingPortalPoints)
 	{
 		cancelPlacePointsMode();
@@ -1962,6 +2357,8 @@ void SwgCuiDynamicBunkerFloorplan::cancelPlacePointsMode()
 	m_placingPortalPoints = false;
 	m_placePointCount = 0;
 	m_placePointsReady = false;
+	m_hasPlaceWallNormal = false;
+	m_placeWallNormal_cell = Vector::zero;
 	if (s_activePlacePointsInstance == this)
 		s_activePlacePointsInstance = 0;
 	clearPlacePointMarkers();
@@ -1991,7 +2388,7 @@ void SwgCuiDynamicBunkerFloorplan::startPlacePointsMode()
 	CuiManager::setPointerToggledOn(false);
 	if (m_buttonPlacePoints)
 		m_buttonPlacePoints->SetEnabled(false);
-	updateStatus("Click the top-left corner of the doorway in the world, then the bottom-right.");
+	updateStatus("Click two horizontal corners (left/right) on the wall you want to walk through.");
 }
 
 // ----------------------------------------------------------------------
@@ -2000,19 +2397,92 @@ void SwgCuiDynamicBunkerFloorplan::updatePlacePointVisuals()
 {
 	clearPlacePointMarkers();
 
+	CellProperty * parentCell = 0;
+	Object const * const player = Game::getPlayer();
+	if (player)
+		parentCell = const_cast<CellProperty *>(player->getParentCell());
+
+	Object * const building = NetworkIdManager::getObjectById(resolveBuildingId());
+	PortalProperty * const portalProperty = building ? building->getPortalProperty() : 0;
+	int const cellIndex = resolvePlaceCellIndex();
+	if (portalProperty && cellIndex >= 1)
+	{
+		CellProperty * const cellProperty = portalProperty->getCell(cellIndex);
+		if (cellProperty)
+			parentCell = cellProperty;
+	}
+
 	if (m_placePointCount >= 1)
 	{
-		Object * const marker = createPlacePointMarker(m_placePoint0_w);
+		Object * const marker = createPlacePointMarker(m_placePoint0_w, parentCell);
 		if (marker)
 			m_placePointMarkers.push_back(marker);
 	}
 	if (m_placePointCount >= 2)
 	{
-		Object * const marker = createPlacePointMarker(m_placePoint1_w);
+		Object * const marker = createPlacePointMarker(m_placePoint1_w, parentCell);
+		if (marker)
+			m_placePointMarkers.push_back(marker);
+	}
+
+	if (!m_placePointsReady || !portalProperty || cellIndex < 1)
+		return;
+
+	CellProperty * const cellProperty = portalProperty->getCell(cellIndex);
+	CellObject * const cellObject = cellProperty ? CellObject::asCellObject(&cellProperty->getOwner()) : 0;
+	if (!cellObject)
+		return;
+
+	Vector const pos = m_portalDoorTransform_cell.getPosition_p();
+	Vector const axisI = m_portalDoorTransform_cell.getLocalFrameI_p();
+	Vector const axisJ = m_portalDoorTransform_cell.getLocalFrameJ_p();
+	float const halfWidth = m_placeDoorwayWidth * 0.5f;
+	Vector const corners_cell[4] = {
+		pos - axisI * halfWidth,
+		pos + axisI * halfWidth,
+		pos + axisI * halfWidth + axisJ * m_placeDoorwayHeight,
+		pos - axisI * halfWidth + axisJ * m_placeDoorwayHeight
+	};
+
+	for (size_t ci = 0; ci < 4; ++ci)
+	{
+		Object * const marker = createPlacePointMarker(cellObject->rotateTranslate_o2w(corners_cell[ci]), cellProperty);
 		if (marker)
 			m_placePointMarkers.push_back(marker);
 	}
 }
+
+// ----------------------------------------------------------------------
+
+// ----------------------------------------------------------------------
+
+namespace SwgCuiDynamicBunkerFloorplanNamespace
+{
+	Vector computeCellFloorCenter_cell(CellProperty const * cell)
+	{
+		if (!cell)
+			return Vector::zero;
+
+		Floor const * const floor = cell->getFloor();
+		if (!floor)
+			return Vector::zero;
+
+		FloorMesh const * const mesh = floor->getFloorMesh();
+		if (!mesh)
+			return Vector::zero;
+
+		AxialBox box;
+		for (int tri = 0; tri < mesh->getTriCount(); ++tri)
+		{
+			Triangle3d const T = mesh->getTriangle(tri);
+			for (int c = 0; c < 3; ++c)
+				box.add(T.getCorner(c));
+		}
+		return box.getCenter();
+	}
+}
+
+using namespace SwgCuiDynamicBunkerFloorplanNamespace;
 
 // ----------------------------------------------------------------------
 
@@ -2021,7 +2491,10 @@ void SwgCuiDynamicBunkerFloorplan::computePortalTransformFromCorners(
 	Vector const & corner1_cell,
 	Transform & outTransform_cell,
 	float & outDoorwayWidth,
-	float & outDoorwayHeight)
+	float & outDoorwayHeight,
+	Vector const * wallNormal_cell,
+	Vector const * playerPos_cell,
+	Vector const * cellInteriorCenter_cell)
 {
 	float const minX = std::min(corner0_cell.x, corner1_cell.x);
 	float const maxX = std::max(corner0_cell.x, corner1_cell.x);
@@ -2031,49 +2504,102 @@ void SwgCuiDynamicBunkerFloorplan::computePortalTransformFromCorners(
 	float const maxZ = std::max(corner0_cell.z, corner1_cell.z);
 
 	Vector const center((minX + maxX) * 0.5f, (minY + maxY) * 0.5f, (minZ + maxZ) * 0.5f);
-	float const spanX = maxX - minX;
-	float const spanZ = maxZ - minZ;
-	outDoorwayHeight = std::max(0.5f, maxY - minY);
+	outDoorwayHeight = std::max(2.0f, maxY - minY);
 
-	Vector widthDir;
+	Vector const up(0.0f, 1.0f, 0.0f);
+	Vector const cornerSpan = corner1_cell - corner0_cell;
+
+	Vector wallNormal;
+	bool hasWallNormal = false;
+	if (wallNormal_cell && wallNormal_cell->magnitude() > 0.01f)
+	{
+		wallNormal = *wallNormal_cell;
+		wallNormal.y = 0.0f;
+		if (wallNormal.normalize() > 0.01f)
+			hasWallNormal = true;
+	}
+
+	Vector right;
 	Vector portalNormal;
 
-	if (spanX >= spanZ)
+	if (hasWallNormal)
 	{
-		outDoorwayWidth = std::max(0.5f, spanX);
-		widthDir = Vector(1.0f, 0.0f, 0.0f);
-		portalNormal = Vector(0.0f, 0.0f, 1.0f);
+		portalNormal = wallNormal;
+		right = up.cross(portalNormal);
+		if (right.normalize() < 0.01f)
+			right = Vector(-portalNormal.z, 0.0f, portalNormal.x);
 	}
 	else
 	{
-		outDoorwayWidth = std::max(0.5f, spanZ);
-		widthDir = Vector(0.0f, 0.0f, 1.0f);
-		portalNormal = Vector(1.0f, 0.0f, 0.0f);
-	}
-
-	Object const * const player = Game::getPlayer();
-	if (player)
-	{
-		CellProperty const * const playerCell = player->getParentCell();
-		if (playerCell && !playerCell->isWorldCell())
+		Vector widthDir = cornerSpan;
+		widthDir.y = 0.0f;
+		if (widthDir.normalize() > 0.01f)
 		{
-			Vector const playerPos_cell = playerCell->getOwner().rotateTranslate_w2o(player->getPosition_w());
-			Vector toPlayer = playerPos_cell - center;
-			toPlayer.y = 0.0f;
-			if (toPlayer.normalize() > 0.01f && portalNormal.dot(toPlayer) < 0.0f)
-				portalNormal = -portalNormal;
+			right = widthDir;
+			portalNormal = Vector(-right.z, 0.0f, right.x);
+			if (portalNormal.normalize() < 0.01f)
+				portalNormal = Vector(0.0f, 0.0f, 1.0f);
+		}
+		else
+		{
+			float const spanX = maxX - minX;
+			float const spanZ = maxZ - minZ;
+			if (spanX >= spanZ)
+			{
+				right = Vector(1.0f, 0.0f, 0.0f);
+				portalNormal = Vector(0.0f, 0.0f, 1.0f);
+			}
+			else
+			{
+				right = Vector(0.0f, 0.0f, 1.0f);
+				portalNormal = Vector(1.0f, 0.0f, 0.0f);
+			}
 		}
 	}
 
-	float const yaw = snapYawToCardinal45(atan2f(portalNormal.x, portalNormal.z));
-	portalNormal = Vector(sinf(yaw), 0.0f, cosf(yaw));
-	widthDir = Vector(portalNormal.z, 0.0f, -portalNormal.x);
-	if (widthDir.normalize() < 0.01f)
-		widthDir = Vector(1.0f, 0.0f, 0.0f);
+	float doorwayWidth = fabsf(cornerSpan.dot(right));
+	if (doorwayWidth < 0.25f)
+	{
+		float const spanX = maxX - minX;
+		float const spanZ = maxZ - minZ;
+		doorwayWidth = std::max(0.5f, std::max(spanX, spanZ));
+	}
+	outDoorwayWidth = std::max(0.5f, doorwayWidth);
 
-	Vector const up(0.0f, 1.0f, 0.0f);
-	outTransform_cell.setLocalFrameIJK_p(widthDir, up, portalNormal);
-	outTransform_cell.setPosition_p(center);
+	if (cornerSpan.dot(right) < 0.0f)
+		right = -right;
+
+	if (cellInteriorCenter_cell)
+	{
+		Vector outward = center - *cellInteriorCenter_cell;
+		outward.y = 0.0f;
+		if (outward.normalize() > 0.01f && portalNormal.dot(outward) < 0.0f)
+		{
+			portalNormal = -portalNormal;
+			right = up.cross(portalNormal);
+			if (right.normalize() < 0.01f)
+				right = Vector(-portalNormal.z, 0.0f, portalNormal.x);
+			if (cornerSpan.dot(right) < 0.0f)
+				right = -right;
+		}
+	}
+	else if (playerPos_cell)
+	{
+		Vector toPlayer = *playerPos_cell - center;
+		toPlayer.y = 0.0f;
+		if (toPlayer.normalize() > 0.01f && portalNormal.dot(toPlayer) > 0.0f)
+		{
+			portalNormal = -portalNormal;
+			right = up.cross(portalNormal);
+			if (right.normalize() < 0.01f)
+				right = Vector(-portalNormal.z, 0.0f, portalNormal.x);
+			if (cornerSpan.dot(right) < 0.0f)
+				right = -right;
+		}
+	}
+
+	outTransform_cell.setLocalFrameIJK_p(right, up, portalNormal);
+	outTransform_cell.setPosition_p(Vector(center.x, minY, center.z));
 }
 
 // ----------------------------------------------------------------------
@@ -2082,18 +2608,50 @@ void SwgCuiDynamicBunkerFloorplan::computePortalTransformFromPlacePoints()
 {
 	float doorwayWidth = 1.0f;
 	float doorwayHeight = 2.0f;
-	computePortalTransformFromCorners(m_placePoint0_cell, m_placePoint1_cell, m_portalDoorTransform_cell, doorwayWidth, doorwayHeight);
+	Vector const * wallNormal = m_hasPlaceWallNormal ? &m_placeWallNormal_cell : 0;
+	Vector playerPos_cell;
+	Vector const * playerPos = 0;
+	Object const * const player = Game::getPlayer();
+	if (player)
+	{
+		CellProperty const * const playerCell = player->getParentCell();
+		if (playerCell && !playerCell->isWorldCell())
+		{
+			playerPos_cell = playerCell->getOwner().rotateTranslate_w2o(player->getPosition_w());
+			playerPos = &playerPos_cell;
+		}
+	}
+	Vector cellCenter_cell;
+	Vector const * cellCenter = 0;
+	Object * const building = NetworkIdManager::getObjectById(resolveBuildingId());
+	PortalProperty * const portalProperty = building ? building->getPortalProperty() : 0;
+	int const cellIndex = resolvePlaceCellIndex();
+	if (portalProperty && cellIndex >= 1)
+	{
+		CellProperty * const cell = portalProperty->getCell(cellIndex);
+		if (cell)
+		{
+			cellCenter_cell = computeCellFloorCenter_cell(cell);
+			cellCenter = &cellCenter_cell;
+		}
+	}
+	computePortalTransformFromCorners(
+		m_placePoint0_cell, m_placePoint1_cell,
+		m_portalDoorTransform_cell, doorwayWidth, doorwayHeight,
+		wallNormal, playerPos, cellCenter);
+	m_placeDoorwayWidth = doorwayWidth;
+	m_placeDoorwayHeight = doorwayHeight;
 	m_placePointsReady = true;
 }
 
 // ----------------------------------------------------------------------
 
-void SwgCuiDynamicBunkerFloorplan::addPlacePoint(Vector const & worldPoint, NetworkId const & cellNetworkId)
+void SwgCuiDynamicBunkerFloorplan::addPlacePoint(Vector const & worldPoint, NetworkId const & cellNetworkId, Vector const * worldNormal)
 {
 	if (!m_placingPortalPoints)
 		return;
 
-	int const cellIndex = resolvePlaceCellIndex();
+	int cellIndex = resolvePlaceCellIndex();
 	if (cellIndex < 1)
 	{
 		updateStatus("Stand inside a building room before placing points.");
@@ -2108,8 +2666,18 @@ void SwgCuiDynamicBunkerFloorplan::addPlacePoint(Vector const & worldPoint, Netw
 		return;
 	}
 
-	CellProperty * const cellProperty = portalProperty->getCell(cellIndex);
-	CellObject * const cellObject = cellProperty ? CellObject::asCellObject(&cellProperty->getOwner()) : 0;
+	CellObject * cellObject = 0;
+	if (cellNetworkId.isValid())
+	{
+		cellObject = CellObject::asCellObject(NetworkIdManager::getObjectById(cellNetworkId));
+		if (cellObject && cellObject->getCellProperty())
+			cellIndex = cellObject->getCellProperty()->getCellIndex();
+	}
+	if (!cellObject)
+	{
+		CellProperty * const cellProperty = portalProperty->getCell(cellIndex);
+		cellObject = cellProperty ? CellObject::asCellObject(&cellProperty->getOwner()) : 0;
+	}
 	if (!cellObject)
 	{
 		updateStatus("Target cell is not loaded. Stand in that cell and try again.");
@@ -2129,6 +2697,28 @@ void SwgCuiDynamicBunkerFloorplan::addPlacePoint(Vector const & worldPoint, Netw
 
 	Vector const point_cell = cellObject->rotateTranslate_w2o(worldPoint);
 
+	if (worldNormal && worldNormal->magnitude() > 0.01f)
+	{
+		Vector normal_cell = cellObject->rotate_w2o(*worldNormal);
+		normal_cell.y = 0.0f;
+		if (normal_cell.normalize() > 0.01f)
+		{
+			// Hit normal points back into this cell; portal leads through the wall into the graft.
+			normal_cell = -normal_cell;
+			if (!m_hasPlaceWallNormal)
+			{
+				m_placeWallNormal_cell = normal_cell;
+				m_hasPlaceWallNormal = true;
+			}
+			else
+			{
+				m_placeWallNormal_cell = (m_placeWallNormal_cell + normal_cell) * 0.5f;
+				if (m_placeWallNormal_cell.normalize() < 0.01f)
+					m_hasPlaceWallNormal = false;
+			}
+		}
+	}
+
 	if (m_placePointCount == 0)
 	{
 		m_placePoint0_w = worldPoint;
@@ -2136,7 +2726,7 @@ void SwgCuiDynamicBunkerFloorplan::addPlacePoint(Vector const & worldPoint, Netw
 		m_placePointCount = 1;
 		m_placePointsReady = false;
 		updatePlacePointVisuals();
-		updateStatus("First corner set. Click the opposite doorway corner in the world.");
+		updateStatus("First corner set. Click the opposite doorway corner on the same wall.");
 		return;
 	}
 
@@ -2155,7 +2745,7 @@ void SwgCuiDynamicBunkerFloorplan::addPlacePoint(Vector const & worldPoint, Netw
 		if (m_buttonPlacePoints)
 			m_buttonPlacePoints->SetEnabled(true);
 		updateActionButtons();
-		updateStatus("Both corners set. Click Create Snap to add the custom portal socket.");
+		updateStatus("Doorway set. Create Snap adds a walk-through portal into the next room.");
 		return;
 	}
 
@@ -2166,10 +2756,22 @@ void SwgCuiDynamicBunkerFloorplan::addPlacePoint(Vector const & worldPoint, Netw
 	m_placePoint1_cell = Vector();
 	m_placePointCount = 1;
 	m_placePointsReady = false;
+	m_hasPlaceWallNormal = false;
+	m_placeWallNormal_cell = Vector::zero;
+	if (worldNormal && worldNormal->magnitude() > 0.01f)
+	{
+		Vector normal_cell = cellObject->rotate_w2o(*worldNormal);
+		normal_cell.y = 0.0f;
+		if (normal_cell.normalize() > 0.01f)
+		{
+			m_placeWallNormal_cell = -normal_cell;
+			m_hasPlaceWallNormal = true;
+		}
+	}
 	m_placingPortalPoints = true;
 	s_activePlacePointsInstance = this;
 	updatePlacePointVisuals();
-	updateStatus("Restarting placement. Click the opposite doorway corner in the world.");
+	updateStatus("Restarting placement. Click the opposite doorway corner on the wall.");
 }
 
 // ----------------------------------------------------------------------
@@ -2199,7 +2801,36 @@ void SwgCuiDynamicBunkerFloorplan::createCustomSocket()
 
 	float doorwayWidth = 1.0f;
 	float doorwayHeight = 2.0f;
-	computePortalTransformFromCorners(m_placePoint0_cell, m_placePoint1_cell, m_portalDoorTransform_cell, doorwayWidth, doorwayHeight);
+	Vector playerPos_cell;
+	Vector const * playerPos = 0;
+	Object const * const player = Game::getPlayer();
+	if (player)
+	{
+		CellProperty const * const playerCell = player->getParentCell();
+		if (playerCell && !playerCell->isWorldCell())
+		{
+			playerPos_cell = playerCell->getOwner().rotateTranslate_w2o(player->getPosition_w());
+			playerPos = &playerPos_cell;
+		}
+	}
+	Vector const * wallNormal = m_hasPlaceWallNormal ? &m_placeWallNormal_cell : 0;
+	Vector cellCenter_cell;
+	Vector const * cellCenter = 0;
+	Object * const building = NetworkIdManager::getObjectById(buildingId);
+	PortalProperty * const portalProperty = building ? building->getPortalProperty() : 0;
+	if (portalProperty)
+	{
+		CellProperty * const cell = portalProperty->getCell(cellIndex);
+		if (cell)
+		{
+			cellCenter_cell = computeCellFloorCenter_cell(cell);
+			cellCenter = &cellCenter_cell;
+		}
+	}
+	computePortalTransformFromCorners(
+		m_placePoint0_cell, m_placePoint1_cell,
+		m_portalDoorTransform_cell, doorwayWidth, doorwayHeight,
+		wallNormal, playerPos, cellCenter);
 	Transform const doorTransform = m_portalDoorTransform_cell;
 	char label[64];
 	snprintf(label, sizeof(label), "custom_%d_%d", cellIndex, static_cast<int>(m_sockets.size()));

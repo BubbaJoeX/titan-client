@@ -65,6 +65,7 @@ namespace OverheadMapNamespace
 	const VectorArgb cms_radarColorExteriorTangible (0.33f, 0.f, 1.f, 0.f);
 	const VectorArgb cms_radarColorExteriorIntangible (0.33f, 0.5f, 1.f, 0.f);
 	const VectorArgb cms_radarColorInterior (0.25f, 1.f, 1.f, 1.f);
+	const VectorArgb cms_radarColorGraftedInterior (0.35f, 0.75f, 0.45f, 1.f);
 	const VectorArgb cms_radarColorCurrentCellInterior (0.50f, 0.8f, 0.8f, 1.f);
 	const VectorArgb cms_radarColorEdges (0.5f, 1.f, 1.f, 0.f);
 	const VectorArgb cms_radarColorPortals (1.f, 0.f, 0.f, 1.f);
@@ -516,6 +517,28 @@ void OverheadMap::render () const
 					}
 				}
 
+				// Dynamic bunker graft cells may not appear in areAdjacent() until portal
+				// neighbors are fully linked; include loaded graft/host pairs explicitly.
+				if (portalProperty)
+				{
+					PortalProperty::DynamicRoomGraftList const &grafts = portalProperty->getDynamicRoomGrafts();
+					for (size_t graftIndex = 0; graftIndex < grafts.size(); ++graftIndex)
+					{
+						PortalProperty::DynamicRoomGraft const &graft = grafts[graftIndex];
+						CellProperty const * const hostCell = portalProperty->getCell(graft.hostCellIndex);
+						CellProperty const * const graftCell = portalProperty->getCell(graft.graftedCellIndex);
+						if (!hostCell || !graftCell)
+							continue;
+
+						bool const hostListed = std::find(m_radarCellList->begin(), m_radarCellList->end(), hostCell) != m_radarCellList->end();
+						bool const graftListed = std::find(m_radarCellList->begin(), m_radarCellList->end(), graftCell) != m_radarCellList->end();
+						if (hostListed && !graftListed)
+							m_radarCellList->push_back(graftCell);
+						else if (graftListed && !hostListed)
+							m_radarCellList->push_back(hostCell);
+					}
+				}
+
 				//-- check all cells against the player's y position.  if the player's y position +- 5m doesn't intersect with the cell's boundary then take it off the list
 				{
 					const Vector playerPosition_p = player->getPosition_p();
@@ -551,6 +574,7 @@ void OverheadMap::render () const
 
 			//-- render all cells
 			{
+				const PortalProperty* const portalProperty = startCell ? startCell->getPortalProperty () : 0;
 				uint i;
 				for (i = 0; i < m_radarCellList->size (); ++i)
 				{
@@ -562,10 +586,14 @@ void OverheadMap::render () const
 						{
 							if (cellObject->getRadarShape ())
 							{
+								VectorArgb interiorColor = cms_radarColorInterior;
+								if (portalProperty && portalProperty->isGraftedCell(cellProperty->getCellIndex()))
+									interiorColor = cms_radarColorGraftedInterior;
+
 								if(cellProperty == startCell)
 									renderIndexedTriangleList (cellObject->getTransform_o2w (), cellObject->getScale (), cellObject->getRadarShape (), VectorArgb(cms_radarColorCurrentCellInterior.a * CuiPreferences::getOverheadMapOpacity(), cms_radarColorCurrentCellInterior.r, cms_radarColorCurrentCellInterior.g, cms_radarColorCurrentCellInterior.b));	
 								else
-									renderIndexedTriangleList (cellObject->getTransform_o2w (), cellObject->getScale (), cellObject->getRadarShape (), VectorArgb(cms_radarColorInterior.a * CuiPreferences::getOverheadMapOpacity(), cms_radarColorInterior.r, cms_radarColorInterior.g, cms_radarColorInterior.b));
+									renderIndexedTriangleList (cellObject->getTransform_o2w (), cellObject->getScale (), cellObject->getRadarShape (), VectorArgb(interiorColor.a * CuiPreferences::getOverheadMapOpacity(), interiorColor.r, interiorColor.g, interiorColor.b));
 							}
 							if (cellObject->getRadarEdges ())
 								renderLineList (cellObject->getTransform_o2w (), *cellObject->getRadarEdges (), VectorArgb(cms_radarColorEdges.a * CuiPreferences::getOverheadMapOpacity(), cms_radarColorEdges.r, cms_radarColorEdges.g, cms_radarColorEdges.b));
@@ -604,6 +632,88 @@ void OverheadMap::render () const
 								}					
 							}
 
+						}
+					}
+				}
+			}
+
+			// Dynamic bunker graft links: OUT (host) -> IN (donor room)
+			if (startCell)
+			{
+				const PortalProperty* const portalProperty = startCell->getPortalProperty ();
+				if (portalProperty)
+				{
+					Transform const building_o2w = portalProperty->getOwner ().getTransform_o2w ();
+					PortalProperty::DynamicRoomGraftList const & grafts = portalProperty->getDynamicRoomGrafts();
+					VectorArgb const linkColor(0.85f, 1.0f, 0.65f, 0.15f);
+					VectorArgb const arrowColor(0.95f, 1.0f, 0.85f, 0.25f);
+
+					for (size_t graftIndex = 0; graftIndex < grafts.size(); ++graftIndex)
+					{
+						PortalProperty::DynamicRoomGraft const & graft = grafts[graftIndex];
+						Transform hostPortal_o2p;
+						Transform graftPortal_o2p;
+						if (!portalProperty->getPortalSocketTransform_o2p(graft.hostCellIndex, graft.hostPortalIndex, hostPortal_o2p))
+							continue;
+						if (!portalProperty->getPortalSocketTransform_o2p(graft.graftedCellIndex, graft.graftedPortalIndex, graftPortal_o2p))
+							continue;
+
+						Transform hostPortal_o2w;
+						Transform graftPortal_o2w;
+						hostPortal_o2w.multiply(building_o2w, hostPortal_o2p);
+						graftPortal_o2w.multiply(building_o2w, graftPortal_o2p);
+						Vector host_w = hostPortal_o2w.getPosition_p();
+						Vector graft_w = graftPortal_o2w.getPosition_p();
+						host_w.y = 0.0f;
+						graft_w.y = 0.0f;
+
+						std::vector<Vector> linkLine;
+						linkLine.push_back(host_w);
+						linkLine.push_back(graft_w);
+						renderLineList(Transform::identity, linkLine, VectorArgb(linkColor.a * CuiPreferences::getOverheadMapOpacity(), linkColor.r, linkColor.g, linkColor.b));
+
+						Vector hostOut = hostPortal_o2w.getLocalFrameK_p();
+						hostOut.y = 0.0f;
+						Vector graftIn = graftPortal_o2w.getLocalFrameK_p();
+						graftIn.y = 0.0f;
+						graftIn = -graftIn;
+
+						bool const hasHostOut = hostOut.normalize() > 0.01f;
+						bool const hasGraftIn = graftIn.normalize() > 0.01f;
+
+						if (hasHostOut)
+						{
+							Vector const perp(-hostOut.z, 0.0f, hostOut.x);
+							Vector const tip = host_w + hostOut * 1.5f;
+							std::vector<Vector> arrow;
+							arrow.push_back(tip);
+							arrow.push_back(tip - hostOut * 0.9f + perp * 0.55f);
+							arrow.push_back(tip - hostOut * 0.9f - perp * 0.55f);
+							arrow.push_back(tip);
+							renderLineStrip(Transform::identity, arrow, VectorArgb(arrowColor.a * CuiPreferences::getOverheadMapOpacity(), arrowColor.r, arrowColor.g, arrowColor.b));
+						}
+
+						if (CuiPreferences::getOverheadMapShowLabels())
+						{
+							Vector outLabelPos = hasHostOut ? host_w + hostOut * 1.5f : host_w;
+							CuiTextManager::TextEnqueueInfo outInfo;
+							if (m_radarCamera->projectInWorldSpace(outLabelPos, &outInfo.screenVect.x, &outInfo.screenVect.y, &outInfo.screenVect.z))
+							{
+								outInfo.backgroundOpacity = 0.f;
+								outInfo.textSize = 0.45f;
+								outInfo.textColor = UIColor(255, 180, 96, 255);
+								CuiTextManager::enqueueText(Unicode::narrowToWide("OUT"), outInfo);
+							}
+
+							Vector inLabelPos = hasGraftIn ? graft_w + graftIn * 1.5f : graft_w;
+							CuiTextManager::TextEnqueueInfo inInfo;
+							if (m_radarCamera->projectInWorldSpace(inLabelPos, &inInfo.screenVect.x, &inInfo.screenVect.y, &inInfo.screenVect.z))
+							{
+								inInfo.backgroundOpacity = 0.f;
+								inInfo.textSize = 0.45f;
+								inInfo.textColor = UIColor(96, 200, 255, 255);
+								CuiTextManager::enqueueText(Unicode::narrowToWide("IN"), inInfo);
+							}
 						}
 					}
 				}

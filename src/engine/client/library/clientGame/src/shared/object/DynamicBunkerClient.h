@@ -27,6 +27,8 @@ public:
 	static void handleUngraftMessage(DynamicBunkerUngraftMessage const &message);
 	static void handleCustomSocketSyncMessage(DynamicBunkerCustomSocketSyncMessage const &message);
 	static void syncCustomSocketsFromOpenFloorplan(DynamicBunkerOpenFloorplanMessage const &message);
+	static void onCellLoaded(Object &building, PortalProperty &portalProperty, int cellIndex);
+	static void tryLinkAllPendingGrafts(Object &building, PortalProperty &portalProperty);
 	static void finalizeBuildingPortalChanges(Object &building, PortalProperty &portalProperty);
 
 private:

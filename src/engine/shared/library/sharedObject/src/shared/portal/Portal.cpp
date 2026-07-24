@@ -124,15 +124,23 @@ Portal::~Portal()
 {
 	if (m_door)
 	{
-		// Door objects are children of the portal owner and can remain scheduled
-		// until that object hierarchy is deleted.  Break their non-owning portal
-		// links before destroying DPVS state so DoorObject::alter() cannot call
-		// setClosed() through a stale Portal.
 		DoorObject * const neighborDoor = m_door->getNeighbor();
 		if (neighborDoor)
-			neighborDoor->setNeighbor(NULL);
-		m_door->setNeighbor(NULL);
-		m_door->setPortal(NULL);
+			neighborDoor->setNeighbor(0);
+		m_door->setNeighbor(0);
+		m_door->setPortal(0);
+
+		DoorObject * const door = m_door;
+		m_door = 0;
+		for (int i = 0; i < door->getNumberOfDrawnDoors(); ++i)
+		{
+			Object * const drawnDoor = door->getDrawnDoor(i);
+			if (drawnDoor)
+				drawnDoor->kill();
+		}
+		if (door->getBarrier())
+			door->getBarrier()->kill();
+		door->kill();
 	}
 
 	if (m_dpvsPortal)
@@ -146,7 +154,6 @@ Portal::~Portal()
 	m_relativeToObject = NULL;
 	m_neighbor = NULL;
 	m_parentCell = NULL;
-	m_door = NULL;
 	delete m_appearance;
 }
 
@@ -310,6 +317,8 @@ void Portal::createDoor ()
 		info.m_closeEndEffect   = ms_doorStyleTable->getStringValue(17,row);
 		info.m_portalGeometry   = m_template.m_portalGeometry;
 		info.m_alwaysOpen       = false;
+		if (m_template.m_runtimeDoorAlwaysOpen)
+			info.m_alwaysOpen = true;
 	}
 
 	m_door = new DoorObject(info, this);

@@ -10,9 +10,12 @@
 #include "sharedObject/PortalProperty.h"
 
 #include "sharedCollision/DoorObject.h"
+#include "sharedCollision/Distance3d.h"
 #include "sharedCollision/Floor.h"
 #include "sharedCollision/FloorManager.h"
 #include "sharedCollision/FloorLocator.h"
+#include "sharedCollision/FloorMesh.h"
+#include "sharedCollision/FloorTri.h"
 #include "sharedDebug/DataLint.h"
 #include "sharedFile/Iff.h"
 #include "sharedObject/Appearance.h"
@@ -24,7 +27,10 @@
 #include "sharedObject/PortalPropertyTemplate.h"
 #include "sharedObject/PortalPropertyTemplateList.h"
 #include "sharedFoundation/Crc.h"
+#include "sharedMath/AxialBox.h"
 #include "sharedMath/IndexedTriangleList.h"
+#include "sharedMath/Segment3d.h"
+#include "sharedMath/Triangle3d.h"
 
 #include <algorithm>
 #include <limits>
@@ -508,13 +514,108 @@ char const *PortalProperty::getExteriorFloorName() const
 
 // ----------------------------------------------------------------------
 
+namespace PortalPropertyNamespace
+{
+	int findBestDonorTemplatePortal(
+		PortalPropertyTemplateCell const &donorCell,
+		Transform const &desiredPortal_building,
+		Transform const &hostPortal_building,
+		int preferredIndex)
+	{
+		PortalPropertyTemplateCell::PortalPropertyTemplateCellPortalList const *const portalList = donorCell.getPortalList();
+		if (!portalList || portalList->empty())
+			return -1;
+
+		Vector const hostNormal = hostPortal_building.getLocalFrameK_p();
+		Vector const hostPos = hostPortal_building.getPosition_p();
+
+		int bestIndex = -1;
+		float bestScore = -std::numeric_limits<float>::max();
+
+		for (size_t portalIndex = 0; portalIndex < portalList->size(); ++portalIndex)
+		{
+			PortalPropertyTemplateCellPortal const *const portalTemplate = (*portalList)[portalIndex];
+			if (!portalTemplate || !portalTemplate->isPassable())
+				continue;
+
+			Transform const donorPortal_cell = portalTemplate->getDoorTransform(false);
+			Transform invDonorPortal;
+			invDonorPortal.invert(donorPortal_cell);
+
+			Transform graftTransform;
+			graftTransform.multiply(desiredPortal_building, invDonorPortal);
+
+			Vector const toGraft = graftTransform.getPosition_p() - hostPos;
+			float score = toGraft.dot(hostNormal);
+			if (static_cast<int>(portalIndex) == preferredIndex)
+				score += 0.25f;
+
+			if (score > bestScore)
+			{
+				bestScore = score;
+				bestIndex = static_cast<int>(portalIndex);
+			}
+		}
+
+		if (bestIndex >= 0)
+			return bestIndex;
+
+		if (preferredIndex >= 0 && preferredIndex < static_cast<int>(portalList->size()))
+			return preferredIndex;
+
+		return 0;
+	}
+
+	int resolveTemplateCellPortalIndex(PortalPropertyTemplateCell const &donorCell, int preferredIndex)
+	{
+		PortalPropertyTemplateCell::PortalPropertyTemplateCellPortalList const *const portalList = donorCell.getPortalList();
+		if (!portalList || portalList->empty())
+			return -1;
+
+		if (preferredIndex >= 0 && preferredIndex < static_cast<int>(portalList->size()))
+			return preferredIndex;
+
+		return 0;
+	}
+}
+
+using namespace PortalPropertyNamespace;
+
+// ----------------------------------------------------------------------
+
+int PortalProperty::resolveCellPortalIndex(CellProperty const *cell, int preferredIndex)
+{
+	if (!cell)
+		return -1;
+
+	if (preferredIndex >= 0 && const_cast<CellProperty *>(cell)->getPortal(preferredIndex))
+		return preferredIndex;
+
+	int const portalCount = cell->getPortalCount();
+	for (int portalIndex = 0; portalIndex < portalCount; ++portalIndex)
+	{
+		Portal *const portal = const_cast<CellProperty *>(cell)->getPortal(portalIndex);
+		if (portal && portal->isPassable())
+			return portalIndex;
+	}
+
+	return -1;
+}
+
+// ----------------------------------------------------------------------
+
 void PortalProperty::cellLoaded(int cellIndex, Object &cellObject, bool shouldCreateAppearance)
 {
 	DEBUG_FATAL(cellIndex < 1 || cellIndex >= static_cast<int>(m_cellList->size()), ("invalid cell index %d/%d", cellIndex, static_cast<int>(m_cellList->size())));
-	DEBUG_FATAL((*m_cellList)[static_cast<CellList::size_type>(cellIndex)], ("cell already loaded"));
-	if ((*m_cellList)[static_cast<CellList::size_type>(cellIndex)])
+
+	CellProperty *const existingCell = (*m_cellList)[static_cast<CellList::size_type>(cellIndex)];
+	if (existingCell)
 	{
+		if (&existingCell->getOwner() == &cellObject)
+			return;
+
 		WARNING(true, ("CellProblem for portal %s cell index %d already loaded", getOwner().getNetworkId().getValueString().c_str(), cellIndex));
+		return;
 	}
 
 	// attach the cell as a child of the portal object
@@ -549,7 +650,18 @@ int PortalProperty::getBaseTemplateCellCount() const
 CellProperty *PortalProperty::getCell(int index)
 {
 	VALIDATE_RANGE_INCLUSIVE_EXCLUSIVE(0, index, getNumberOfCells());
-	return (*m_cellList)[static_cast<CellList::size_type>(index)];
+	CellProperty *const cell = (*m_cellList)[static_cast<CellList::size_type>(index)];
+	if (!cell)
+		return 0;
+
+	Object &cellOwner = cell->getOwner();
+	if (!cellOwner.isInitialized() || cellOwner.getCellProperty() != cell)
+	{
+		(*m_cellList)[static_cast<CellList::size_type>(index)] = 0;
+		return 0;
+	}
+
+	return cell;
 }
 
 // ----------------------------------------------------------------------
@@ -557,7 +669,15 @@ CellProperty *PortalProperty::getCell(int index)
 const CellProperty *PortalProperty::getCell(int index) const
 {
 	VALIDATE_RANGE_INCLUSIVE_EXCLUSIVE(0, index, getNumberOfCells());
-	return (*m_cellList)[static_cast<CellList::size_type>(index)];
+	CellProperty const *const cell = (*m_cellList)[static_cast<CellList::size_type>(index)];
+	if (!cell)
+		return 0;
+
+	Object const &cellOwner = cell->getOwner();
+	if (!cellOwner.isInitialized() || cellOwner.getCellProperty() != cell)
+		return 0;
+
+	return cell;
 }
 
 // ----------------------------------------------------------------------
@@ -878,19 +998,34 @@ bool PortalProperty::unlinkCellPortal(int cellIndex, int portalIndex)
 
 // ----------------------------------------------------------------------
 
+bool PortalProperty::unlinkHostPortal(int cellIndex, int portalIndex)
+{
+	if (isCustomSocketIndex(portalIndex))
+	{
+		CustomSocket customSocket;
+		if (!findCustomSocket(cellIndex, portalIndex, customSocket))
+			return false;
+		if (customSocket.materializedPortalIndex < 0)
+			return true;
+		return unlinkCellPortal(cellIndex, customSocket.materializedPortalIndex);
+	}
+
+	return unlinkCellPortal(cellIndex, portalIndex);
+}
+
+// ----------------------------------------------------------------------
+
 void PortalProperty::unlinkAllCellPortals(int cellIndex)
 {
 	CellProperty *const cell = getCell(cellIndex);
 	if (!cell)
 		return;
 
-	int const portalCount = cell->getPortalCount();
-	for (int portalIndex = 0; portalIndex < portalCount; ++portalIndex)
-	{
-		Portal *const portal = cell->getPortal(portalIndex);
-		if (portal)
-			portal->clearNeighbor();
-	}
+	Object & cellOwner = cell->getOwner();
+	if (!cellOwner.isInitialized() || cellOwner.getCellProperty() != cell)
+		return;
+
+	cell->clearAllPortalNeighbors();
 }
 
 // ----------------------------------------------------------------------
@@ -926,29 +1061,19 @@ bool PortalProperty::releaseGraftedCellSlot(int graftedCellIndex)
 
 // ----------------------------------------------------------------------
 
-bool PortalProperty::computeGraftCellTransform(int hostCellIndex, int hostPortalIndex, char const *donorPobName, int donorCellIndex, int donorPortalIndex, Transform &outCellTransform_o2p) const
+bool PortalProperty::computeGraftCellTransform(int hostCellIndex, int hostPortalIndex, char const *donorPobName, int donorCellIndex, int donorPortalIndex, Transform &outCellTransform_o2p, int *outResolvedDonorPortalIndex) const
 {
 	NOT_NULL(donorPobName);
 
-	CellProperty const *const hostCell = getCell(hostCellIndex);
-	if (!hostCell)
+	if (outResolvedDonorPortalIndex)
+		*outResolvedDonorPortalIndex = -1;
+
+	if (!getCell(hostCellIndex))
 		return false;
 
-	Transform hostPortal_cell;
-	if (PortalProperty::isCustomSocketIndex(hostPortalIndex))
-	{
-		CustomSocket customSocket;
-		if (!findCustomSocket(hostCellIndex, hostPortalIndex, customSocket))
-			return false;
-		hostPortal_cell = customSocket.doorTransform_o2p;
-	}
-	else
-	{
-		Portal const *const hostPortal = const_cast<CellProperty *>(hostCell)->getPortal(hostPortalIndex);
-		if (!hostPortal)
-			return false;
-		hostPortal_cell = hostPortal->getDoorTransform();
-	}
+	Transform hostPortal_building;
+	if (!getPortalSocketTransform_o2p(hostCellIndex, hostPortalIndex, hostPortal_building))
+		return false;
 
 	PortalPropertyTemplate const *const donorTemplate = PortalPropertyTemplateList::fetch(CrcLowerString(donorPobName));
 	if (!donorTemplate)
@@ -959,22 +1084,25 @@ bool PortalProperty::computeGraftCellTransform(int hostCellIndex, int hostPortal
 	{
 		PortalPropertyTemplateCell const &donorCell = donorTemplate->getCell(donorCellIndex);
 		PortalPropertyTemplateCell::PortalPropertyTemplateCellPortalList const *const portalList = donorCell.getPortalList();
-		if (portalList && donorPortalIndex >= 0 && donorPortalIndex < static_cast<int>(portalList->size()))
+
+		Transform flip;
+		flip.yaw_l(PI);
+
+		Transform desiredPortal_building;
+		desiredPortal_building.multiply(hostPortal_building, flip);
+
+		int const resolvedDonorPortal = findBestDonorTemplatePortal(
+			donorCell, desiredPortal_building, hostPortal_building, donorPortalIndex);
+
+		if (portalList && resolvedDonorPortal >= 0 && resolvedDonorPortal < static_cast<int>(portalList->size()))
 		{
-			Transform hostPortal_building;
-			hostPortal_building.multiply(hostCell->getOwner().getTransform_o2p(), hostPortal_cell);
-
-			Transform flip;
-			flip.yaw_l(PI);
-
-			Transform desiredPortal_building;
-			desiredPortal_building.multiply(hostPortal_building, flip);
-
-			Transform const donorPortal_cell = (*portalList)[static_cast<size_t>(donorPortalIndex)]->getDoorTransform();
+			Transform const donorPortal_cell = (*portalList)[static_cast<size_t>(resolvedDonorPortal)]->getDoorTransform(false);
 			Transform invDonorPortal;
 			invDonorPortal.invert(donorPortal_cell);
 
 			outCellTransform_o2p.multiply(desiredPortal_building, invDonorPortal);
+			if (outResolvedDonorPortalIndex)
+				*outResolvedDonorPortalIndex = resolvedDonorPortal;
 			ok = true;
 		}
 	}
@@ -1046,16 +1174,35 @@ PortalProperty::DynamicRoomGraftList const &PortalProperty::getDynamicRoomGrafts
 void PortalProperty::collectPortalSockets(PortalSocketInfoList &outSockets) const
 {
 	outSockets.clear();
-	int const cellCount = getNumberOfCells();
+	int const cellCount = getBaseTemplateCellCount();
 	for (int cellIndex = 1; cellIndex < cellCount; ++cellIndex)
 	{
 		CellProperty *const cell = const_cast<PortalProperty *>(this)->getCell(cellIndex);
 		if (!cell)
 			continue;
 
+		Object const & cellOwner = cell->getOwner();
+		if (!cellOwner.isInitialized() || cellOwner.getCellProperty() != cell)
+			continue;
+
 		int const portalCount = cell->getPortalCount();
 		for (int portalIndex = 0; portalIndex < portalCount; ++portalIndex)
 		{
+			if (m_customSockets)
+			{
+				bool skipPortal = false;
+				for (CustomSocketList::const_iterator it = m_customSockets->begin(); it != m_customSockets->end(); ++it)
+				{
+					if (it->cellIndex == cellIndex && it->materializedPortalIndex == portalIndex)
+					{
+						skipPortal = true;
+						break;
+					}
+				}
+				if (skipPortal)
+					continue;
+			}
+
 			Portal *const portal = cell->getPortal(portalIndex);
 			if (!portal)
 				continue;
@@ -1078,6 +1225,45 @@ void PortalProperty::collectPortalSockets(PortalSocketInfoList &outSockets) cons
 			info.portalIndex = it->socketIndex;
 			info.passable = true;
 			info.open = it->open;
+			outSockets.push_back(info);
+		}
+	}
+
+	if (m_dynamicRoomGrafts)
+	{
+		for (DynamicRoomGraftList::const_iterator gi = m_dynamicRoomGrafts->begin(); gi != m_dynamicRoomGrafts->end(); ++gi)
+		{
+			DynamicRoomGraft const & graft = *gi;
+			CellProperty *const graftCell = const_cast<PortalProperty *>(this)->getCell(graft.graftedCellIndex);
+			if (!graftCell)
+				continue;
+
+			Object const & graftCellOwner = graftCell->getOwner();
+			if (!graftCellOwner.isInitialized() || graftCellOwner.getCellProperty() != graftCell)
+				continue;
+
+			int const graftPortalIndex = PortalProperty::resolveCellPortalIndex(graftCell, graft.graftedPortalIndex);
+			if (graftPortalIndex < 0)
+				continue;
+
+			bool alreadyListed = false;
+			for (size_t si = 0; si < outSockets.size(); ++si)
+			{
+				if (outSockets[si].cellIndex == graft.graftedCellIndex && outSockets[si].portalIndex == graftPortalIndex)
+				{
+					alreadyListed = true;
+					break;
+				}
+			}
+			if (alreadyListed)
+				continue;
+
+			Portal *const graftPortal = graftCell->getPortal(graftPortalIndex);
+			PortalSocketInfo info;
+			info.cellIndex = graft.graftedCellIndex;
+			info.portalIndex = graftPortalIndex;
+			info.passable = graftPortal ? graftPortal->isPassable() : true;
+			info.open = !graftPortal || graftPortal->getNeighbor() == 0;
 			outSockets.push_back(info);
 		}
 	}
@@ -1109,9 +1295,9 @@ bool PortalProperty::addCustomSocket(CustomSocket const &socket)
 	{
 		if (it->socketIndex == socket.socketIndex)
 		{
+			int const preservedPortalIndex = it->materializedPortalIndex;
 			*it = socket;
-			if (it->materializedPortalIndex < 0)
-				it->materializedPortalIndex = -1;
+			it->materializedPortalIndex = preservedPortalIndex;
 			if (it->doorwayWidth < 0.01f)
 				it->doorwayWidth = 1.0f;
 			if (it->doorwayHeight < 0.01f)
@@ -1120,8 +1306,7 @@ bool PortalProperty::addCustomSocket(CustomSocket const &socket)
 		}
 	}
 	CustomSocket entry = socket;
-	if (entry.materializedPortalIndex < 0)
-		entry.materializedPortalIndex = -1;
+	entry.materializedPortalIndex = -1;
 	if (entry.doorwayWidth < 0.01f)
 		entry.doorwayWidth = 1.0f;
 	if (entry.doorwayHeight < 0.01f)
@@ -1189,8 +1374,15 @@ bool PortalProperty::isCustomSocketIndex(int portalIndex)
 
 bool PortalProperty::getPortalSocketTransform_o2p(int cellIndex, int portalIndex, Transform &outTransform_o2p) const
 {
+	if (cellIndex < 1 || cellIndex >= getNumberOfCells())
+		return false;
+
 	CellProperty const *const cell = getCell(cellIndex);
 	if (!cell)
+		return false;
+
+	Object const &cellOwner = cell->getOwner();
+	if (!cellOwner.isInitialized() || cellOwner.getCellProperty() != cell)
 		return false;
 
 	if (isCustomSocketIndex(portalIndex))
@@ -1227,6 +1419,9 @@ bool PortalProperty::getPortalNeighbor(int cellIndex, int portalIndex, int &outN
 	if (!cell)
 		return false;
 
+	if (portalIndex < 0 || portalIndex >= cell->getPortalCount())
+		return false;
+
 	Portal const *const portal = const_cast<CellProperty *>(cell)->getPortal(portalIndex);
 	if (!portal || !portal->getNeighbor())
 		return false;
@@ -1259,54 +1454,242 @@ bool PortalProperty::linkCustomSocketGraft(int hostCellIndex, int customSocketIn
 		return false;
 
 	CellProperty *const hostCell = getCell(hostCellIndex);
-	if (!hostCell || !getCell(graftCellIndex))
+	CellProperty *const graftCell = getCell(graftCellIndex);
+	if (!hostCell || !graftCell)
 		return false;
 
-	int hostPortalIndex = customSocket.materializedPortalIndex;
+	if (!materializeCustomSocketPortal(hostCellIndex, customSocketIndex))
+		return false;
+	if (!findCustomSocket(hostCellIndex, customSocketIndex, customSocket))
+		return false;
+
+	int const hostPortalIndex = customSocket.materializedPortalIndex;
 	if (hostPortalIndex < 0)
+		return false;
+
+	int const resolvedGraftPortal = PortalProperty::resolveCellPortalIndex(graftCell, graftPortalIndex);
+	if (resolvedGraftPortal < 0)
+		return false;
+
+	return linkCellPortals(hostCellIndex, hostPortalIndex, graftCellIndex, resolvedGraftPortal);
+}
+
+// ----------------------------------------------------------------------
+
+namespace PortalPropertyMaterializeNamespace
+{
+	Vector computeCellFloorCenter(CellProperty const & cell)
 	{
-		Transform customPortal_building;
-		customPortal_building.multiply(hostCell->getOwner().getTransform_o2p(), customSocket.doorTransform_o2p);
-		Vector const customPos = customPortal_building.getPosition_p();
+		Floor const * const floor = cell.getFloor();
+		if (!floor)
+			return Vector::zero;
 
-		int bestPortal = -1;
-		float bestDistSq = std::numeric_limits<float>::max();
-		int const portalCount = hostCell->getPortalCount();
-		for (int portalIndex = 0; portalIndex < portalCount; ++portalIndex)
+		FloorMesh const * const floorMesh = floor->getFloorMesh();
+		if (!floorMesh)
+			return Vector::zero;
+
+		AxialBox box;
+		for (int tri = 0; tri < floorMesh->getTriCount(); ++tri)
 		{
-			Portal *const portal = hostCell->getPortal(portalIndex);
-			if (!portal || !portal->isPassable())
-			 continue;
+			Triangle3d const T = floorMesh->getTriangle(tri);
+			for (int c = 0; c < 3; ++c)
+				box.add(T.getCorner(c));
+		}
+		return box.getCenter();
+	}
 
-			Transform portal_building;
-			portal_building.multiply(hostCell->getOwner().getTransform_o2p(), portal->getDoorTransform());
-			Vector const delta = portal_building.getPosition_p() - customPos;
-			float const distSq = delta.magnitudeSquared();
-			if (distSq < bestDistSq)
+	void ensurePortalTransformOutward(CellProperty const & cell, Transform & doorTransform)
+	{
+		Vector const cellCenter = computeCellFloorCenter(cell);
+		Vector const pos = doorTransform.getPosition_p();
+		Vector outward = pos - cellCenter;
+		outward.y = 0.0f;
+		if (outward.normalize() < 0.01f)
+			return;
+
+		Vector axisI = doorTransform.getLocalFrameI_p();
+		Vector axisK = doorTransform.getLocalFrameK_p();
+		if (axisK.dot(outward) < 0.0f)
+		{
+			axisI = -axisI;
+			axisK = -axisK;
+			doorTransform.setLocalFrameIJK_p(axisI, Vector(0.0f, 1.0f, 0.0f), axisK);
+		}
+	}
+
+	char const * pickRuntimeDoorStyle(Transform const & doorTransform)
+	{
+		Vector const axisI = doorTransform.getLocalFrameI_p();
+		if (fabsf(axisI.x) >= fabsf(axisI.z))
+			return "door_bunker_rebel_x_axis";
+		return "poi_all_impl_bunker_int_door";
+	}
+
+	bool snapCustomSocketTransformToFloorBoundary(CellProperty const & cell, Transform & doorTransform)
+	{
+		Floor const * const floor = cell.getFloor();
+		if (!floor)
+			return false;
+
+		FloorMesh const * const floorMeshConst = floor->getFloorMesh();
+		if (!floorMeshConst)
+			return false;
+
+		FloorMesh const & floorMesh = *floorMeshConst;
+
+		Vector const axisI = doorTransform.getLocalFrameI_p();
+		Vector const portalPos = doorTransform.getPosition_p();
+		float const floorY = portalPos.y;
+
+		bool found = false;
+		Vector bestA;
+		Vector bestB;
+		float bestDist = std::numeric_limits<float>::max();
+
+		for (int tri = 0; tri < floorMesh.getTriCount(); ++tri)
+		{
+			FloorTri const & F = floorMesh.getFloorTri(tri);
+			Triangle3d const T = floorMesh.getTriangle(tri);
+			for (int edge = 0; edge < 3; ++edge)
 			{
-				bestDistSq = distSq;
-				bestPortal = portalIndex;
+				if (F.getNeighborIndex(edge) != -1)
+					continue;
+
+				Vector const a = T.getCorner(edge);
+				Vector const b = T.getCorner(edge + 1);
+				Vector edgeDir = b - a;
+				edgeDir.y = 0.0f;
+				float const edgeLen = edgeDir.magnitude();
+				if (edgeLen < 0.25f)
+					continue;
+				edgeDir /= edgeLen;
+
+				if (fabsf(edgeDir.dot(axisI)) < 0.85f)
+					continue;
+
+				Vector const edgeMid = (a + b) * 0.5f;
+				Vector toEdge = edgeMid - portalPos;
+				toEdge.y = 0.0f;
+				float const dist = toEdge.magnitude();
+				if (dist < bestDist && dist < 3.0f)
+				{
+					found = true;
+					bestA = a;
+					bestB = b;
+					bestDist = dist;
+				}
 			}
 		}
 
-		if (bestPortal >= 0 && bestDistSq <= 256.0f)
-			hostPortalIndex = bestPortal;
+		if (!found)
+			return false;
+
+		Vector const edgeMid = (bestA + bestB) * 0.5f;
+		doorTransform.setPosition_p(Vector(edgeMid.x, floorY, edgeMid.z));
+		ensurePortalTransformOutward(cell, doorTransform);
+		return true;
 	}
 
-	if (hostPortalIndex < 0)
+	bool flagBoundaryEdgesDirect(
+		FloorMesh * floorMesh,
+		Transform const & doorTransform,
+		float doorwayWidth,
+		int portalIndex)
 	{
-		if (!materializeCustomSocketPortal(hostCellIndex, customSocketIndex))
+		if (!floorMesh)
 			return false;
-		if (!findCustomSocket(hostCellIndex, customSocketIndex, customSocket))
-			return false;
-		hostPortalIndex = customSocket.materializedPortalIndex;
+
+		Vector const axisI = doorTransform.getLocalFrameI_p();
+		Vector const pos = doorTransform.getPosition_p();
+		float const halfWidth = doorwayWidth * 0.5f;
+		Vector const portalBottomA = pos - axisI * halfWidth;
+		Vector const portalBottomB = pos + axisI * halfWidth;
+
+		bool flagged = false;
+		for (int tri = 0; tri < floorMesh->getTriCount(); ++tri)
+		{
+			FloorTri & F = floorMesh->getFloorTri(tri);
+			Triangle3d const T = floorMesh->getTriangle(tri);
+			for (int edge = 0; edge < 3; ++edge)
+			{
+				if (F.getNeighborIndex(edge) != -1)
+					continue;
+
+				Vector const a = T.getCorner(edge);
+				Vector const b = T.getCorner(edge + 1);
+				Vector edgeDir = b - a;
+				edgeDir.y = 0.0f;
+				if (edgeDir.normalize() < 0.01f)
+					continue;
+
+				if (fabsf(fabsf(edgeDir.dot(axisI)) - 1.0f) > 0.2f)
+					continue;
+
+				Vector const edgeMid = (a + b) * 0.5f;
+				Vector toEdge = edgeMid - pos;
+				toEdge.y = 0.0f;
+				if (toEdge.magnitude() > 1.5f)
+					continue;
+
+				Segment3d const portalSeg(portalBottomA, portalBottomB);
+				Vector const aProj = Distance3d::ClosestPointSeg(a, portalSeg);
+				Vector const bProj = Distance3d::ClosestPointSeg(b, portalSeg);
+				if ((a - aProj).magnitude() < 0.15f && (b - bProj).magnitude() < 0.15f)
+				{
+					F.setPortalId(edge, portalIndex);
+					flagged = true;
+				}
+			}
+		}
+
+		return flagged;
 	}
 
-	if (hostPortalIndex < 0)
-		return false;
+	bool flagPortalEdgesRobust(
+		FloorMesh * floorMesh,
+		Transform const & doorTransform,
+		float doorwayWidth,
+		float doorwayHeight,
+		int portalIndex)
+	{
+		if (!floorMesh)
+			return false;
 
-	return linkCellPortals(hostCellIndex, hostPortalIndex, graftCellIndex, graftPortalIndex);
+		floorMesh->clearPortalEdges(portalIndex);
+
+		float const halfWidth = doorwayWidth * 0.5f;
+		Vector const axisI = doorTransform.getLocalFrameI_p();
+		Vector const axisJ = doorTransform.getLocalFrameJ_p();
+		Vector const axisK = doorTransform.getLocalFrameK_p();
+		Vector const pos = doorTransform.getPosition_p();
+
+		float const offsetsK[] = { 0.0f, 0.05f, -0.05f, 0.1f, -0.1f, 0.15f, -0.15f, 0.25f, -0.25f, 0.35f, -0.35f, 0.5f, -0.5f };
+		float const offsetsI[] = { 0.0f, 0.05f, -0.05f, 0.1f, -0.1f, 0.15f, -0.15f };
+		float const offsetsJ[] = { 0.0f, -0.05f, 0.05f, -0.1f, 0.1f };
+
+		for (size_t oj = 0; oj < sizeof(offsetsJ) / sizeof(offsetsJ[0]); ++oj)
+		{
+			for (size_t oi = 0; oi < sizeof(offsetsI) / sizeof(offsetsI[0]); ++oi)
+			{
+				for (size_t ok = 0; ok < sizeof(offsetsK) / sizeof(offsetsK[0]); ++ok)
+				{
+					Vector const base = pos + axisJ * offsetsJ[oj] + axisI * offsetsI[oi] + axisK * offsetsK[ok];
+					VectorVector nudged;
+					nudged.push_back(base - axisI * halfWidth);
+					nudged.push_back(base + axisI * halfWidth);
+					nudged.push_back(base + axisI * halfWidth + axisJ * doorwayHeight);
+					nudged.push_back(base - axisI * halfWidth + axisJ * doorwayHeight);
+					if (floorMesh->flagPortalEdges(nudged, portalIndex))
+						return true;
+				}
+			}
+		}
+
+		return flagBoundaryEdgesDirect(floorMesh, doorTransform, doorwayWidth, portalIndex);
+	}
 }
+
+using namespace PortalPropertyMaterializeNamespace;
 
 // ----------------------------------------------------------------------
 
@@ -1327,14 +1710,6 @@ bool PortalProperty::materializeCustomSocketPortal(int cellIndex, int customSock
 	if (!socketEntry)
 		return false;
 
-	if (socketEntry->materializedPortalIndex >= 0)
-	{
-		CellProperty * const cell = getCell(cellIndex);
-		if (cell && cell->getPortal(socketEntry->materializedPortalIndex))
-			return true;
-		socketEntry->materializedPortalIndex = -1;
-	}
-
 	CellProperty * const cell = getCell(cellIndex);
 	if (!cell)
 		return false;
@@ -1343,19 +1718,32 @@ bool PortalProperty::materializeCustomSocketPortal(int cellIndex, int customSock
 	float const height = socketEntry->doorwayHeight > 0.01f ? socketEntry->doorwayHeight : 2.0f;
 	float const halfWidth = width * 0.5f;
 
-	std::vector<Vector> vertices;
-	vertices.push_back(Vector(-halfWidth, 0.0f, 0.0f));
-	vertices.push_back(Vector( halfWidth, 0.0f, 0.0f));
-	vertices.push_back(Vector( halfWidth, height, 0.0f));
-	vertices.push_back(Vector(-halfWidth, height, 0.0f));
+	Transform doorTransform = socketEntry->doorTransform_o2p;
+	ensurePortalTransformOutward(*cell, doorTransform);
+	IGNORE_RETURN(snapCustomSocketTransformToFloorBoundary(*cell, doorTransform));
+	ensurePortalTransformOutward(*cell, doorTransform);
+	socketEntry->doorTransform_o2p = doorTransform;
+
+	Vector const pos = doorTransform.getPosition_p();
+	Vector const axisI = doorTransform.getLocalFrameI_p();
+	Vector const axisJ = doorTransform.getLocalFrameJ_p();
+
+	std::vector<Vector> cellVertices;
+	cellVertices.reserve(4);
+	cellVertices.push_back(pos - axisI * halfWidth);
+	cellVertices.push_back(pos + axisI * halfWidth);
+	cellVertices.push_back(pos + axisI * halfWidth + axisJ * height);
+	cellVertices.push_back(pos - axisI * halfWidth + axisJ * height);
 
 	IndexedTriangleList * const geometry = new IndexedTriangleList;
-	geometry->addTriangleFan(&vertices[0], static_cast<int>(vertices.size()));
+	geometry->addTriangleFan(&cellVertices[0], static_cast<int>(cellVertices.size()));
 
+	char const * const doorStyle = pickRuntimeDoorStyle(doorTransform);
 	PortalPropertyTemplateCellPortal * const portalTemplate = PortalPropertyTemplateCellPortal::createRuntime(
 		geometry,
-		socketEntry->doorTransform_o2p,
-		"default");
+		Transform::identity,
+		doorStyle,
+		true);
 	if (!portalTemplate)
 	{
 		delete geometry;
@@ -1366,11 +1754,37 @@ bool PortalProperty::materializeCustomSocketPortal(int cellIndex, int customSock
 		m_runtimePortalTemplates = new RuntimePortalTemplateList;
 	m_runtimePortalTemplates->push_back(portalTemplate);
 
-	int const portalIndex = cell->appendRuntimePortal(*portalTemplate);
-	if (portalIndex < 0)
-		return false;
+	int portalIndex = socketEntry->materializedPortalIndex;
+	if (portalIndex >= 0 && portalIndex < cell->getPortalCount() && cell->getPortal(portalIndex))
+	{
+		if (!cell->replaceRuntimePortal(portalIndex, *portalTemplate))
+		{
+			portalIndex = cell->appendRuntimePortal(*portalTemplate);
+			if (portalIndex < 0)
+				return false;
+		}
+	}
+	else
+	{
+		portalIndex = cell->appendRuntimePortal(*portalTemplate);
+		if (portalIndex < 0)
+			return false;
+	}
 
 	socketEntry->materializedPortalIndex = portalIndex;
+
+	Portal * const portal = cell->getPortal(portalIndex);
+	Floor * const floor = cell->getFloor();
+	FloorMesh const * const floorMeshConst = floor ? floor->getFloorMesh() : 0;
+	if (portal && floorMeshConst)
+	{
+		FloorMesh * const floorMesh = const_cast<FloorMesh *>(floorMeshConst);
+		if (!flagPortalEdgesRobust(floorMesh, doorTransform, width, height, portalIndex))
+		{
+			WARNING(true, ("PortalProperty::materializeCustomSocketPortal - failed to flag floor edges for portal %d in cell %d", portalIndex, cellIndex));
+		}
+	}
+
 	return true;
 }
 

@@ -465,6 +465,24 @@ void FloorMesh::clearPortalEdges ( void )
 
 // ----------------------------------------------------------------------
 
+void FloorMesh::clearPortalEdges ( int portalId )
+{
+	if (portalId < 0)
+		return;
+
+	for (int i = 0; i < getTriCount(); ++i)
+	{
+		FloorTri & F = getFloorTri(i);
+		for (int edge = 0; edge < 3; ++edge)
+		{
+			if (F.getPortalId(edge) == portalId)
+				F.setPortalId(edge, -1);
+		}
+	}
+}
+
+// ----------------------------------------------------------------------
+
 void FloorMesh::setAppearance ( Appearance const * appearance )
 {
 	m_appearance = appearance;

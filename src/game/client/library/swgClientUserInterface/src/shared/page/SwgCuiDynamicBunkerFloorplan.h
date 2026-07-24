@@ -104,6 +104,8 @@ public:
 
 	void notifyBuildingPortalsChanged(NetworkId const & buildingId);
 
+	void deferPortalNotify(NetworkId const & buildingId);
+
 	NetworkId getSessionBuildingId() const;
 
 	// Called from SwgCuiHud when the player clicks the world view while placing portal corners.
@@ -127,8 +129,6 @@ private:
 
 	void rebuildSocketsFromLocalBuilding();
 
-	void updateSocketMapCoordsFromLocalBuilding();
-
 	void buildLocalRoomCatalog();
 
 	void refreshRoomList();
@@ -136,6 +136,8 @@ private:
 	void refreshSocketList();
 
 	void refreshFloorMap();
+
+	void requestFloorMapRefresh();
 
 	void clearFloorMapNodes();
 
@@ -165,7 +167,7 @@ private:
 
 	void clearPlacePointMarkers();
 
-	void addPlacePoint(Vector const & worldPoint, NetworkId const & cellNetworkId);
+	void addPlacePoint(Vector const & worldPoint, NetworkId const & cellNetworkId, Vector const * worldNormal = 0);
 
 	bool handleWorldPlaceClick(int mouseX, int mouseY);
 
@@ -195,7 +197,15 @@ private:
 
 	void computeWallTransform(int wallIndex, Transform & outTransform_o2p) const;
 
-	static void computePortalTransformFromCorners(Vector const & corner0_cell, Vector const & corner1_cell, Transform & outTransform_cell, float & outDoorwayWidth, float & outDoorwayHeight);
+	static void computePortalTransformFromCorners(
+		Vector const & corner0_cell,
+		Vector const & corner1_cell,
+		Transform & outTransform_cell,
+		float & outDoorwayWidth,
+		float & outDoorwayHeight,
+		Vector const * wallNormal_cell = 0,
+		Vector const * playerPos_cell = 0,
+		Vector const * cellInteriorCenter_cell = 0);
 
 	void registerWidget(UIBaseObject * widget);
 
@@ -241,6 +251,8 @@ private:
 
 	UIPage * m_layoutMapCanvas;
 
+	UIButton * m_mapNodeTemplate;
+
 	UITabbedPane * m_tabs;
 
 
@@ -273,7 +285,15 @@ private:
 
 	Vector m_placePoint1_w;
 
+	Vector m_placeWallNormal_cell;
+
+	bool m_hasPlaceWallNormal;
+
 	Transform m_portalDoorTransform_cell;
+
+	float m_placeDoorwayWidth;
+
+	float m_placeDoorwayHeight;
 
 	std::vector<Object *> m_placePointMarkers;
 
@@ -291,7 +311,7 @@ private:
 
 	std::vector<int> m_filteredRoomIndices;
 
-	std::vector<UIButton *> m_mapNodeButtons;
+	std::vector<UIWidget *> m_mapNodeButtons;
 
 	std::vector<int> m_mapNodeSocketIndices;
 
@@ -310,6 +330,10 @@ private:
 	int m_trackedPlaceCellIndex;
 
 	bool m_hasServerRoomCatalog;
+
+	bool m_deferredFloorMapRefresh;
+
+	NetworkId m_deferredPortalNotifyBuildingId;
 
 	int m_nextMapButtonId;
 

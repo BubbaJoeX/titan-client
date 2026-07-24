@@ -155,7 +155,7 @@
 				<!-- Layout map tab -->
 				<Page GetsInput='true' Location='0,0' Name='pageLayout' ScrollExtent='880,520' Size='880,520' Visible='false'>
 					<Text Enabled='false' Font='bold_13' LocalText='Top-down layout — click a node to select a portal for assign/unassign.' Location='12,8' Name='textLayoutHint' ScrollExtent='856,20' Size='856,20' TextColor='#E8F4FF'>Top-down layout — click a node to select a portal for assign/unassign.</Text>
-					<Text Enabled='false' Font='bold_11' LocalText='Yellow = open   Green = linked   Purple = custom snap' Location='12,30' ScrollExtent='856,16' Size='856,16' TextColor='#C8D0D8'>Yellow = open   Green = linked   Purple = custom snap</Text>
+					<Text Enabled='false' Font='bold_11' LocalText='Yellow OPEN = assign   Orange OUT -> Cyan IN   Purple = custom snap' Location='12,30' ScrollExtent='856,16' Size='856,16' TextColor='#C8D0D8'>Yellow OPEN = assign   Orange OUT -&gt; Cyan IN   Purple = custom snap</Text>
 					<Page
 						BackgroundColor='#0A1218'
 						BackgroundOpacity='0.98'
@@ -165,6 +165,16 @@
 						ScrollExtent='856,456'
 						Size='856,456'
 					>
+						<Button
+							Enabled='false'
+							LocalText='0:0'
+							Location='-100,-100'
+							Name='mapNodeTemplate'
+							ScrollExtent='34,34'
+							Size='34,34'
+							Style='/Styles.New.buttons.hud.style'
+							Visible='false'
+						>0:0</Button>
 						<CuiWidget3dObjectListViewer
 							BackgroundColor='#0A1218'
 							BackgroundOpacity='0.0'
@@ -191,7 +201,7 @@
 
 				<!-- Place portal tab -->
 				<Page GetsInput='true' Location='0,0' Name='pagePlace' ScrollExtent='880,520' Size='880,520' Visible='false'>
-					<Text Enabled='false' Font='bold_13' LocalText='Place two corners in-world to define a custom portal doorway (vertical / 45-degree walls).' Location='12,8' Name='textPlaceHint' ScrollExtent='856,20' Size='856,20' TextColor='#E8F4FF'>Place two corners in-world to define a custom portal doorway (vertical / 45-degree walls).</Text>
+					<Text Enabled='false' Font='bold_13' LocalText='Mark a doorway in your current room — the snap faces the next room you will walk into.' Location='12,8' Name='textPlaceHint' ScrollExtent='856,20' Size='856,20' TextColor='#E8F4FF'>Mark a doorway in your current room — the snap faces the next room you will walk into.</Text>
 					<Text Enabled='false' Font='bold_11' LocalText='Current room (updates when you walk into another cell):' Location='12,34' ScrollExtent='400,16' Size='400,16' TextColor='#C8D0D8'>Current room (updates when you walk into another cell):</Text>
 					<Textbox
 						Enabled='false'
@@ -206,7 +216,7 @@
 						TextColor='#E8F4FF'
 					>--</Textbox>
 					<Button LocalText='Place Points' Location='110,50' Name='buttonPlacePoints' ScrollExtent='120,32' Size='120,32' Style='/Styles.New.buttons.hud.style'>Place Points</Button>
-					<Text Enabled='false' Font='bold_11' LocalText='Click Place Points, then click two doorway corners in the world (top-left, then bottom-right). Spheres mark each corner. Use Create Snap when both are set.' Location='12,92' ScrollExtent='856,48' Size='856,48' TextColor='#A0B8C8'>Click Place Points, then click two doorway corners in the world (top-left, then bottom-right). Spheres mark each corner. Use Create Snap when both are set.</Text>
+					<Text Enabled='false' Font='bold_11' LocalText='Click Place Points, then click two corners on the wall opening (walk-through direction is away from you). Assign attaches the next room through this portal.' Location='12,92' ScrollExtent='856,48' Size='856,48' TextColor='#A0B8C8'>Click Place Points, then click two corners on the wall opening (walk-through direction is away from you). Assign attaches the next room through this portal.</Text>
 					<Page BackgroundColor='#0A1218' BackgroundOpacity='0.95' Location='120,160' Name='placeGrid' RStyleDefault='/Styles.New.whiteOutline.rs_default' ScrollExtent='320,320' Size='320,320' Visible='false'>
 						<Button LocalText='NW' Location='20,20' Name='placeWall0' ScrollExtent='60,60' Size='60,60' Style='/Styles.New.buttons.hud.style'>NW</Button>
 						<Button LocalText='N' Location='130,20' Name='placeWall1' ScrollExtent='60,60' Size='60,60' Style='/Styles.New.buttons.hud.style'>N</Button>

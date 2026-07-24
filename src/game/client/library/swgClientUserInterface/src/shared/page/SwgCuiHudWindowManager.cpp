@@ -684,7 +684,9 @@ void SwgCuiHudWindowManager::receiveMessage(const MessageDispatch::Emitter & , c
 		SwgCuiDynamicBunkerFloorplan * floorplan = SwgCuiDynamicBunkerFloorplan::getActiveInstance();
 		if (!floorplan)
 			floorplan = findDynamicBunkerFloorplan(m_workspace);
-		if (floorplan)
+		if (floorplan && floorplan->isActive())
+			floorplan->deferPortalNotify(msg.getBuildingId());
+		else if (floorplan)
 			floorplan->notifyBuildingPortalsChanged(msg.getBuildingId());
 	}
 
@@ -695,8 +697,12 @@ void SwgCuiHudWindowManager::receiveMessage(const MessageDispatch::Emitter & , c
 		Archive::ReadIterator ri = NON_NULL (safe_cast<const GameNetworkMessage *>(&message))->getByteStream().begin();
 		DynamicBunkerGraftMessage const msg(ri);
 
-		SwgCuiDynamicBunkerFloorplan * const floorplan = findDynamicBunkerFloorplan(m_workspace);
-		if (floorplan)
+		SwgCuiDynamicBunkerFloorplan * floorplan = SwgCuiDynamicBunkerFloorplan::getActiveInstance();
+		if (!floorplan)
+			floorplan = findDynamicBunkerFloorplan(m_workspace);
+		if (floorplan && floorplan->isActive())
+			floorplan->deferPortalNotify(msg.getBuildingId());
+		else if (floorplan)
 			floorplan->notifyBuildingPortalsChanged(msg.getBuildingId());
 	}
 
@@ -707,8 +713,12 @@ void SwgCuiHudWindowManager::receiveMessage(const MessageDispatch::Emitter & , c
 		Archive::ReadIterator ri = NON_NULL (safe_cast<const GameNetworkMessage *>(&message))->getByteStream().begin();
 		DynamicBunkerUngraftMessage const msg(ri);
 
-		SwgCuiDynamicBunkerFloorplan * const floorplan = findDynamicBunkerFloorplan(m_workspace);
-		if (floorplan)
+		SwgCuiDynamicBunkerFloorplan * floorplan = SwgCuiDynamicBunkerFloorplan::getActiveInstance();
+		if (!floorplan)
+			floorplan = findDynamicBunkerFloorplan(m_workspace);
+		if (floorplan && floorplan->isActive())
+			floorplan->deferPortalNotify(msg.getBuildingId());
+		else if (floorplan)
 			floorplan->notifyBuildingPortalsChanged(msg.getBuildingId());
 	}
 

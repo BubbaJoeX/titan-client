@@ -25,6 +25,7 @@
 #include "sharedObject/NetworkIdManager.h"
 #include "sharedObject/ObjectNotification.h"
 #include "sharedObject/Portal.h"
+#include "sharedObject/PortalProperty.h"
 #include "sharedObject/PortalPropertyTemplate.h"
 #include "sharedUtility/Location.h"
 
@@ -397,6 +398,9 @@ CellProperty::~CellProperty()
 		delete portalList;
 	}
 
+	if (m_portalProperty && m_cellIndex >= 1)
+		const_cast<PortalProperty *>(m_portalProperty)->clearLoadedCellSlot(m_cellIndex);
+
 	m_portalProperty = NULL;
 	delete m_appearanceObject;
 	delete m_portalObjectList;
@@ -459,6 +463,10 @@ void CellProperty::initialize(const PortalProperty &portalProperty, int cellInde
 
 	m_cellIndex = cellIndex;
 	m_cellName = cellTemplate.getName();
+	if (!m_cellName || !m_cellName[0])
+		m_cellName = cellTemplate.getAppearanceName();
+	if (!m_cellName || !m_cellName[0])
+		m_cellName = "dynamic_cell";
 	m_cellNameCrc = Crc::normalizeAndCalculate(m_cellName);
 }
 
@@ -591,15 +599,45 @@ int CellProperty::getPortalCount() const
 {
 	int counter = 0;
 
+	if (!m_portalObjectList)
+		return 0;
+
 	const PortalObjectList::const_iterator iEnd = m_portalObjectList->end();
 	for (PortalObjectList::const_iterator i = m_portalObjectList->begin(); i != iEnd; ++i)
 	{
+		if (!i->portalList)
+			continue;
+
 		const PortalList &portalList   = *i->portalList;
 
 		counter += static_cast<int>(portalList.size());
 	}
 
 	return counter;
+}
+
+// ----------------------------------------------------------------------
+
+void CellProperty::clearAllPortalNeighbors()
+{
+	if (!m_portalObjectList)
+		return;
+
+	const PortalObjectList::const_iterator iEnd = m_portalObjectList->end();
+	for (PortalObjectList::const_iterator i = m_portalObjectList->begin(); i != iEnd; ++i)
+	{
+		if (!i->portalList)
+			continue;
+
+		PortalList &portalList = *i->portalList;
+		PortalList::iterator const jEnd = portalList.end();
+		for (PortalList::iterator j = portalList.begin(); j != jEnd; ++j)
+		{
+			Portal *const portal = *j;
+			if (portal)
+				portal->clearNeighbor();
+		}
+	}
 }
 
 // ----------------------------------------------------------------------
@@ -1298,6 +1336,29 @@ int CellProperty::appendRuntimePortal(PortalPropertyTemplateCellPortal const & p
 	Portal * const portal = new Portal(portalTemplate, this, &getOwner());
 	portalList->push_back(portal);
 	return static_cast<int>(portalList->size()) - 1;
+}
+
+// ----------------------------------------------------------------------
+
+bool CellProperty::replaceRuntimePortal(int portalIndex, PortalPropertyTemplateCellPortal const & portalTemplate)
+{
+	if (!m_portalObjectList || m_portalObjectList->empty())
+		return false;
+
+	PortalList * const portalList = m_portalObjectList->front().portalList;
+	if (!portalList || portalIndex < 0 || portalIndex >= static_cast<int>(portalList->size()))
+		return false;
+
+	Portal * const oldPortal = (*portalList)[static_cast<PortalList::size_type>(portalIndex)];
+	if (oldPortal)
+	{
+		oldPortal->clearNeighbor();
+		oldPortal->removeFromDpvs();
+		delete oldPortal;
+	}
+
+	(*portalList)[static_cast<PortalList::size_type>(portalIndex)] = new Portal(portalTemplate, this, &getOwner());
+	return true;
 }
 
 // ----------------------------------------------------------------------

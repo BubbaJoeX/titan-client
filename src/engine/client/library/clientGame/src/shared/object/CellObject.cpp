@@ -11,6 +11,7 @@
 
 #include "clientGame/ClientObjectTemplate.h"
 #include "clientGame/ConfigClientGame.h"
+#include "clientGame/DynamicBunkerClient.h"
 #include "clientGame/ShipObject.h"
 #include "clientGraphics/Light.h"
 #include "clientGraphics/RenderWorld.h"
@@ -286,6 +287,8 @@ void CellObject::endBaselines()
 
 	if (!portalProperty->getCell(m_cellNumber.get()))
 		portalProperty->cellLoaded(m_cellNumber.get(), *this, true);
+
+	DynamicBunkerClient::onCellLoaded(*container, *portalProperty, m_cellNumber.get());
 
 	if (ConfigClientGame::getAmbientLightInCells())
 	{

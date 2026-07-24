@@ -123,88 +123,165 @@ namespace DynamicBunkerClientNamespace
 
 
 
-	void addBridgeVisual(Object & building, Transform const & bridgeTransform, float /*length*/)
+	void addBridgeVisual(Object & building, PortalProperty::BridgeSegment const & segment)
 	{
 		Appearance * const app = AppearanceTemplateList::createAppearance(s_bridgeAppearance);
 		if (!app)
 			return;
 
+		Transform worldTransform;
+		worldTransform.multiply(building.getTransform_o2w(), segment.transform_o2p);
+
 		Object * const bridgeObject = new Object;
 		bridgeObject->setAppearance(app);
-		bridgeObject->setTransform_o2w(bridgeTransform);
+		bridgeObject->setTransform_o2w(worldTransform);
+		float const scaleAlong = std::max(0.25f, segment.length / 4.0f);
+		float const scaleWidth = std::max(0.25f, segment.width / 2.5f);
+		float const scaleHeight = std::max(0.25f, segment.height / 3.0f);
+		bridgeObject->setScale(Vector(scaleWidth, scaleHeight, scaleAlong));
 		IGNORE_RETURN(bridgeObject->alter(0.0f));
 		bridgeObject->conclude();
 
 		s_buildingBridges[building.getNetworkId()].push_back(bridgeObject);
 	}
 
+	void recordBridgeForGraft(Object & building, PortalProperty & portalProperty, PortalProperty::DynamicRoomGraft const & graft)
+	{
+		UNREF(building);
+		Transform hostTransform;
+		Transform graftTransform;
+		if (!getPortalBuildingTransform(portalProperty, graft.hostCellIndex, graft.hostPortalIndex, hostTransform))
+			return;
+
+		CellProperty *const graftCell = portalProperty.getCell(graft.graftedCellIndex);
+		int const resolvedGraftPortal = PortalProperty::resolveCellPortalIndex(graftCell, graft.graftedPortalIndex);
+		if (resolvedGraftPortal < 0)
+			return;
+		if (!getPortalBuildingTransform(portalProperty, graft.graftedCellIndex, resolvedGraftPortal, graftTransform))
+			return;
+
+		float width = 2.5f;
+		float height = 3.0f;
+		if (PortalProperty::isCustomSocketIndex(graft.hostPortalIndex))
+		{
+			PortalProperty::CustomSocket customSocket;
+			if (portalProperty.findCustomSocket(graft.hostCellIndex, graft.hostPortalIndex, customSocket))
+			{
+				width = std::max(0.5f, customSocket.doorwayWidth);
+				height = std::max(0.5f, customSocket.doorwayHeight);
+			}
+		}
+
+		Vector const delta = graftTransform.getPosition_p() - hostTransform.getPosition_p();
+		float const gap = delta.magnitude();
+		if (gap < 0.05f)
+			return;
+
+		PortalProperty::BridgeSegment segment;
+		segment.hostCellIndex = graft.hostCellIndex;
+		segment.hostPortalIndex = graft.hostPortalIndex;
+		segment.graftedCellIndex = graft.graftedCellIndex;
+		segment.graftedPortalIndex = resolvedGraftPortal;
+		segment.transform_o2p.setPosition_p((hostTransform.getPosition_p() + graftTransform.getPosition_p()) * 0.5f);
+		if (gap > 0.01f)
+			segment.transform_o2p.yaw_l(atan2f(delta.x, delta.z));
+		segment.length = std::max(0.5f, gap);
+		segment.width = width;
+		segment.height = height;
+		portalProperty.recordBridgeSegment(segment);
+	}
+
 
 
 	void refreshBridgesFromPortalProperty(Object & building, PortalProperty & portalProperty)
 	{
-
 		clearBuildingBridges(building.getNetworkId());
 
-
+		portalProperty.clearBridgeSegments();
+		PortalProperty::DynamicRoomGraftList const & grafts = portalProperty.getDynamicRoomGrafts();
+		for (size_t i = 0; i < grafts.size(); ++i)
+			recordBridgeForGraft(building, portalProperty, grafts[i]);
 
 		PortalProperty::BridgeSegmentList const & bridges = portalProperty.getBridgeSegments();
-
 		for (size_t i = 0; i < bridges.size(); ++i)
+			addBridgeVisual(building, bridges[i]);
+	}
 
-			addBridgeVisual(building, bridges[i].transform_o2p, bridges[i].length);
+	bool isGraftAlreadyLinked(PortalProperty const &portalProperty, PortalProperty::DynamicRoomGraft const &graft)
+	{
+		if (!portalProperty.getCell(graft.hostCellIndex) || !portalProperty.getCell(graft.graftedCellIndex))
+			return false;
 
+		CellProperty const *const graftCell = portalProperty.getCell(graft.graftedCellIndex);
+		int const resolvedGraftPortal = PortalProperty::resolveCellPortalIndex(graftCell, graft.graftedPortalIndex);
+		if (resolvedGraftPortal < 0)
+			return false;
 
+		int linkedCell = -1;
+		int linkedPortal = -1;
 
-		if (!bridges.empty())
-
-			return;
-
-
-
-		PortalProperty::DynamicRoomGraftList const & grafts = portalProperty.getDynamicRoomGrafts();
-
-		for (size_t i = 0; i < grafts.size(); ++i)
-
+		if (PortalProperty::isCustomSocketIndex(graft.hostPortalIndex))
 		{
-
-			PortalProperty::DynamicRoomGraft const & graft = grafts[i];
-
-			Transform hostTransform;
-
-			Transform graftTransform;
-
-			if (!getPortalBuildingTransform(portalProperty, graft.hostCellIndex, graft.hostPortalIndex, hostTransform))
-
-				continue;
-
-			if (!getPortalBuildingTransform(portalProperty, graft.graftedCellIndex, graft.graftedPortalIndex, graftTransform))
-
-				continue;
-
-
-
-			Vector const delta = graftTransform.getPosition_p() - hostTransform.getPosition_p();
-
-			float const gap = delta.magnitude();
-
-			if (gap < 0.75f)
-
-				continue;
-
-
-
-			Transform bridgeTransform;
-
-			bridgeTransform.setPosition_p((hostTransform.getPosition_p() + graftTransform.getPosition_p()) * 0.5f);
-
-			if (gap > 0.01f)
-
-				bridgeTransform.yaw_l(atan2f(delta.x, delta.z));
-
-			addBridgeVisual(building, bridgeTransform, gap);
-
+			PortalProperty::CustomSocket customSocket;
+			if (!portalProperty.findCustomSocket(graft.hostCellIndex, graft.hostPortalIndex, customSocket))
+				return false;
+			if (customSocket.open || customSocket.materializedPortalIndex < 0)
+				return false;
+			if (!portalProperty.getPortalNeighbor(graft.hostCellIndex, customSocket.materializedPortalIndex, linkedCell, linkedPortal))
+				return false;
+		}
+		else if (!portalProperty.getPortalNeighbor(graft.hostCellIndex, graft.hostPortalIndex, linkedCell, linkedPortal))
+		{
+			return false;
 		}
 
+		return linkedCell == graft.graftedCellIndex && linkedPortal == resolvedGraftPortal;
+	}
+
+	bool linkGraftRecord(PortalProperty &portalProperty, PortalProperty::DynamicRoomGraft const &graft)
+	{
+		if (!portalProperty.getCell(graft.hostCellIndex) || !portalProperty.getCell(graft.graftedCellIndex))
+			return false;
+
+		if (isGraftAlreadyLinked(portalProperty, graft))
+			return false;
+
+		CellProperty *const graftCell = portalProperty.getCell(graft.graftedCellIndex);
+		int const resolvedGraftPortal = PortalProperty::resolveCellPortalIndex(graftCell, graft.graftedPortalIndex);
+		if (resolvedGraftPortal < 0)
+			return false;
+
+		if (PortalProperty::isCustomSocketIndex(graft.hostPortalIndex))
+		{
+			if (!portalProperty.linkCustomSocketGraft(graft.hostCellIndex, graft.hostPortalIndex, graft.graftedCellIndex, resolvedGraftPortal))
+				return false;
+			IGNORE_RETURN(portalProperty.markCustomSocketOpen(graft.hostCellIndex, graft.hostPortalIndex, false));
+			return true;
+		}
+
+		return portalProperty.linkCellPortals(graft.hostCellIndex, graft.hostPortalIndex, graft.graftedCellIndex, resolvedGraftPortal);
+	}
+
+	void materializeAllCustomSockets(PortalProperty &portalProperty)
+	{
+		PortalProperty::CustomSocketList const &sockets = portalProperty.getCustomSockets();
+		for (size_t i = 0; i < sockets.size(); ++i)
+		{
+			PortalProperty::CustomSocket const &socket = sockets[i];
+			CellProperty * const cell = portalProperty.getCell(socket.cellIndex);
+			if (!cell)
+				continue;
+
+			if (socket.materializedPortalIndex >= 0)
+				continue;
+
+			IGNORE_RETURN(portalProperty.materializeCustomSocketPortal(socket.cellIndex, socket.socketIndex));
+		}
+	}
+
+	void prepareGraftPortalLinking(PortalProperty &portalProperty)
+	{
+		materializeAllCustomSockets(portalProperty);
 	}
 
 
@@ -405,62 +482,17 @@ void DynamicBunkerClient::handleGraftMessage(DynamicBunkerGraftMessage const &me
 
 	Object *const cellObject = NetworkIdManager::getObjectById(message.getCellId());
 
-	if (cellObject && !portalProperty->getCell(message.getGraftedCellIndex()))
-
+	if (cellObject)
 	{
-
-		portalProperty->cellLoaded(message.getGraftedCellIndex(), *cellObject, true);
-
+		if (!portalProperty->getCell(message.getGraftedCellIndex()))
+			portalProperty->cellLoaded(message.getGraftedCellIndex(), *cellObject, true);
 		cellObject->setTransform_o2p(message.getCellTransform());
-
 	}
 
-
-
-	if (portalProperty->getCell(message.getHostCellIndex()) && portalProperty->getCell(message.getGraftedCellIndex()))
-
-	{
-
-		if (!portalProperty->linkCellPortals(
-
-			message.getHostCellIndex(),
-
-			message.getHostPortalIndex(),
-
-			message.getGraftedCellIndex(),
-
-			message.getGraftedPortalIndex()))
-
-		{
-
-			if (PortalProperty::isCustomSocketIndex(message.getHostPortalIndex()))
-
-			{
-
-				IGNORE_RETURN(portalProperty->linkCustomSocketGraft(
-
-					message.getHostCellIndex(),
-
-					message.getHostPortalIndex(),
-
-					message.getGraftedCellIndex(),
-
-					message.getGraftedPortalIndex()));
-
-				IGNORE_RETURN(portalProperty->markCustomSocketOpen(message.getHostCellIndex(), message.getHostPortalIndex(), false));
-
-			}
-
-		}
-
-	}
-
-
-
+	prepareGraftPortalLinking(*portalProperty);
+	DynamicBunkerClient::tryLinkAllPendingGrafts(*buildingObject, *portalProperty);
 	refreshBridgesFromPortalProperty(*buildingObject, *portalProperty);
-
 	finalizeBuildingPortalChanges(*buildingObject, *portalProperty);
-
 }
 
 
@@ -501,9 +533,24 @@ void DynamicBunkerClient::handleUngraftMessage(DynamicBunkerUngraftMessage const
 
 
 
-	IGNORE_RETURN(portalProperty->unlinkCellPortal(message.getHostCellIndex(), message.getHostPortalIndex()));
+	if (PortalProperty::isCustomSocketIndex(message.getHostPortalIndex()))
+	{
+		IGNORE_RETURN(portalProperty->unlinkHostPortal(message.getHostCellIndex(), message.getHostPortalIndex()));
+	}
+	else
+	{
+		IGNORE_RETURN(portalProperty->unlinkCellPortal(message.getHostCellIndex(), message.getHostPortalIndex()));
+	}
 
-	portalProperty->unlinkAllCellPortals(message.getGraftedCellIndex());
+	Object *const graftedCellObject = message.getCellId().isValid()
+		? NetworkIdManager::getObjectById(message.getCellId())
+		: 0;
+	if (graftedCellObject)
+	{
+		CellProperty *const graftedCell = graftedCellObject->getCellProperty();
+		if (graftedCell)
+			graftedCell->clearAllPortalNeighbors();
+	}
 
 	IGNORE_RETURN(portalProperty->clearLoadedCellSlot(message.getGraftedCellIndex()));
 
@@ -568,6 +615,9 @@ void DynamicBunkerClient::handleCustomSocketSyncMessage(DynamicBunkerCustomSocke
 	socket.doorwayHeight = message.getDoorwayHeight();
 
 	IGNORE_RETURN(portalProperty->addCustomSocket(socket));
+	IGNORE_RETURN(portalProperty->materializeCustomSocketPortal(socket.cellIndex, socket.socketIndex));
+	tryLinkAllPendingGrafts(*buildingObject, *portalProperty);
+	finalizeBuildingPortalChanges(*buildingObject, *portalProperty);
 }
 
 
@@ -625,9 +675,39 @@ void DynamicBunkerClient::syncCustomSocketsFromOpenFloorplan(DynamicBunkerOpenFl
 		socket.doorwayHeight = entry.doorwayHeight;
 
 		IGNORE_RETURN(portalProperty->addCustomSocket(socket));
-
 	}
 
+	prepareGraftPortalLinking(*portalProperty);
+	tryLinkAllPendingGrafts(*buildingObject, *portalProperty);
+	finalizeBuildingPortalChanges(*buildingObject, *portalProperty);
+}
+
+
+
+// ----------------------------------------------------------------------
+
+
+
+void DynamicBunkerClient::tryLinkAllPendingGrafts(Object &building, PortalProperty &portalProperty)
+{
+	UNREF(building);
+	PortalProperty::DynamicRoomGraftList const &grafts = portalProperty.getDynamicRoomGrafts();
+	for (size_t i = 0; i < grafts.size(); ++i)
+		DynamicBunkerClientNamespace::linkGraftRecord(portalProperty, grafts[i]);
+}
+
+
+
+// ----------------------------------------------------------------------
+
+
+
+void DynamicBunkerClient::onCellLoaded(Object &building, PortalProperty &portalProperty, int cellIndex)
+{
+	UNREF(cellIndex);
+	prepareGraftPortalLinking(portalProperty);
+	tryLinkAllPendingGrafts(building, portalProperty);
+	finalizeBuildingPortalChanges(building, portalProperty);
 }
 
 
@@ -643,18 +723,16 @@ void DynamicBunkerClient::finalizeBuildingPortalChanges(Object &building, Portal
 	int const cellCount = portalProperty.getNumberOfCells();
 
 	for (int cellIndex = 1; cellIndex < cellCount; ++cellIndex)
-
 	{
-
 		CellProperty *const cell = portalProperty.getCell(cellIndex);
-
 		if (!cell)
-
 			continue;
 
+		Object &cellOwner = cell->getOwner();
+		if (!cellOwner.isInitialized() || cellOwner.getCellProperty() != cell)
+			continue;
 
-
-		CellObject *const cellObject = CellObject::asCellObject(&cell->getOwner());
+		CellObject *const cellObject = CellObject::asCellObject(&cellOwner);
 
 		if (cellObject)
 
@@ -666,6 +744,7 @@ void DynamicBunkerClient::finalizeBuildingPortalChanges(Object &building, Portal
 
 	refreshBridgesFromPortalProperty(building, portalProperty);
 
+	IGNORE_RETURN(building.alter(0.0f));
 }
 
 

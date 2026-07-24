@@ -131,6 +131,7 @@ public:
 	void    addFallthroughTris      ( IntVector const & triIDs );
 	bool    flagPortalEdges         ( VectorVector const & portalVerts, int portalId );
 	void    clearPortalEdges        ( void );
+	void    clearPortalEdges        ( int portalId );
 
 	// ----------
 

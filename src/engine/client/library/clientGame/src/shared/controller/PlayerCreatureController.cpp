@@ -3205,8 +3205,15 @@ void PlayerCreatureController::updateBuildingAndCellInformation(CreatureObject c
 
 	if (owner && owner->isInWorld() && !owner->isInWorldCell() && owner->getParentCell()) 
 	{
-		TemporaryCrcString cellNameCrc(owner->getParentCell()->getCellName(), true);
-		m_cellNameCrc = cellNameCrc.getCrc();
+		CellProperty const * const parentCell = owner->getParentCell();
+		char const * const cellName = parentCell->getCellName();
+		if (cellName && cellName[0] != '\0')
+		{
+			TemporaryCrcString cellNameCrc(cellName, true);
+			m_cellNameCrc = cellNameCrc.getCrc();
+		}
+		else
+			m_cellNameCrc = parentCell->getCellNameCrc();
 
 		Object const * const building = ContainerInterface::getTopmostContainer(*owner, false);
 		if (building)

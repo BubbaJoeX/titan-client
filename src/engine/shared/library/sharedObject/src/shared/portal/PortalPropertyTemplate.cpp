@@ -276,6 +276,7 @@ PortalPropertyTemplateCellPortal::PortalPropertyTemplateCellPortal()
 	m_disabled(false),
 	m_passable(true),
 	m_geometryWindingClockwise(true),
+	m_runtimeDoorAlwaysOpen(false),
 	m_ownsPortalGeometry(false),
 	m_portalGeometry(NULL),
 	m_doorStyle(NULL),
@@ -291,7 +292,8 @@ PortalPropertyTemplateCellPortal::PortalPropertyTemplateCellPortal()
 PortalPropertyTemplateCellPortal * PortalPropertyTemplateCellPortal::createRuntime(
 	IndexedTriangleList * geometry,
 	Transform const & doorTransform_o2p,
-	char const * doorStyleName)
+	char const * doorStyleName,
+	bool doorAlwaysOpen)
 {
 	if (!geometry)
 		return 0;
@@ -299,11 +301,12 @@ PortalPropertyTemplateCellPortal * PortalPropertyTemplateCellPortal::createRunti
 	PortalPropertyTemplateCellPortal * const result = new PortalPropertyTemplateCellPortal();
 	result->m_portalGeometry = geometry;
 	result->m_ownsPortalGeometry = true;
-	result->m_hasDoorHardpoint = true;
+	result->m_hasDoorHardpoint = false;
 	result->m_doorHardpoint = doorTransform_o2p;
 	result->m_passable = true;
 	result->m_disabled = false;
 	result->m_geometryWindingClockwise = true;
+	result->m_runtimeDoorAlwaysOpen = doorAlwaysOpen;
 	if (doorStyleName && doorStyleName[0])
 	{
 		size_t const len = strlen(doorStyleName) + 1;
@@ -503,6 +506,13 @@ Transform const PortalPropertyTemplateCellPortal::getDoorTransform(bool useDoorH
 	}
 
 	return doorTransform;
+}
+
+// ----------------------------------------------------------------------
+
+bool PortalPropertyTemplateCellPortal::isPassable() const
+{
+	return m_passable && !m_disabled;
 }
 
 // ----------------------------------------------------------------------
