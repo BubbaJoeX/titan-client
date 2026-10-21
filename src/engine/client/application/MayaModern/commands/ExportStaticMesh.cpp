@@ -22,6 +22,7 @@
 #include <maya/MFnDependencyNode.h>
 #include <maya/MFnMesh.h>
 #include <maya/MFnTransform.h>
+#include <maya/MItDag.h>
 #include <maya/MGlobal.h>
 #include <maya/MItDependencyGraph.h>
 #include <maya/MObjectHandle.h>
@@ -56,6 +57,9 @@
 #endif
 
 namespace fs = std::filesystem;
+
+// -collision flag of the running exportStaticMesh (empty: use the root's swgCollisionExtent, default box)
+static std::string s_collisionOverride;
 
 namespace
 {
@@ -1899,7 +1903,10 @@ namespace
             {
                 const std::string swgPath = getStringAttr(sgFn, "swgShaderPath");
                 if (!swgPath.empty())
-                    shaderTemplateName = swgPath;
+                {
+                    const std::string tree = toGameTreeRelativePath(swgPath);
+                    shaderTemplateName = tree.empty() ? swgPath : tree;
+                }
             }
 
             const bool uvDirectThisSg = shadingGroupExportUvDirect(sgObj, false);
@@ -2038,8 +2045,13 @@ void* ExportStaticMesh::creator()
 MStatus ExportStaticMesh::doIt(const MArgList& args)
 {
     MStatus status;
+    s_collisionOverride.clear();
+    struct ClearOverride { ~ClearOverride() { s_collisionOverride.clear(); } } clearOnExit;  // translator exports keep the default
     std::string outputPath;
     bool objExportDirectUvCmd = false;
+    bool oneToOneCmd = true;
+    bool oneToOneSpecified = false;
+    bool rebuildShadersCmd = false;
 
     for (unsigned i = 0; i < args.length(&status); ++i)
     {
@@ -2057,6 +2069,17 @@ MStatus ExportStaticMesh::doIt(const MArgList& args)
             (void)args.asString(i + 1, &status);
             if (status) ++i;
         }
+        else if (argName == "-collision" && i + 1 < args.length(&status))
+        {
+            const MString mode = args.asString(i + 1, &status);
+            if (status) ++i;
+            if (mode != "box" && mode != "none")
+            {
+                MGlobal::displayError("exportStaticMesh: -collision must be box or none");
+                return MS::kFailure;
+            }
+            s_collisionOverride = mode.asChar();
+        }
         else if (argName == "-legacyTriangleFlip" || argName == "-legacyTriFlip")
         {
             MGlobal::displayWarning(
@@ -2066,11 +2089,21 @@ MStatus ExportStaticMesh::doIt(const MArgList& args)
         {
             objExportDirectUvCmd = true;
         }
+        else if (argName == "-oneToOne")
+        {
+            oneToOneCmd = true;
+            oneToOneSpecified = true;
+        }
+        else if (argName == "-rebuildShaders")
+        {
+            rebuildShadersCmd = true;
+        }
     }
 
     MDagPath dagPath;
+    MDagPath rootPath;
     bool meshWithoutShader = false;
-    if (StaticMeshExportPipeline::findExportMeshFromActiveSelection(dagPath, meshWithoutShader) != MS::kSuccess)
+    if (StaticMeshExportPipeline::findExportMeshFromActiveSelection(dagPath, meshWithoutShader, &rootPath) != MS::kSuccess)
     {
         if (meshWithoutShader)
         {
@@ -2083,9 +2116,10 @@ MStatus ExportStaticMesh::doIt(const MArgList& args)
         return MS::kFailure;
     }
 
-    const StaticMeshTransferOptions options = StaticMeshTransferOptions::fromExportCommandFlags(objExportDirectUvCmd);
+    const StaticMeshTransferOptions options = StaticMeshTransferOptions::fromExportCommandFlags(
+        objExportDirectUvCmd, oneToOneSpecified ? oneToOneCmd : true, rebuildShadersCmd);
     std::string outMeshPath, outAptPath;
-    if (!StaticMeshExportPipeline::exportMesh(dagPath, outputPath, options, outMeshPath, outAptPath))
+    if (!StaticMeshExportPipeline::exportMesh(dagPath, outputPath, options, outMeshPath, outAptPath, &rootPath))
         return MS::kFailure;
 
     MGlobal::displayInfo(MString("Exported mesh: ") + outMeshPath.c_str());
@@ -2095,7 +2129,8 @@ MStatus ExportStaticMesh::doIt(const MArgList& args)
 }
 
 bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::string& outputPathOverride,
-    std::string& outMeshPath, std::string& outAptPath, const StaticMeshTransferOptions& options)
+    std::string& outMeshPath, std::string& outAptPath, const StaticMeshTransferOptions& options,
+    const MDagPath* exportRoot)
 {
     MStatus status;
     outMeshPath.clear();
@@ -2123,8 +2158,12 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
             "SwgMsh export: writing legacy 1-V UVs for SWG Viewer (objExportDirectUv=1 affects Maya re-import only).");
     }
 
+    // Export root: the selected transform (all mesh shapes below it are combined, its other child transforms
+    // are hardpoints). Without one, fall back to the mesh's own transform.
     MDagPath transformPath = shapePath;
-    if (transformPath.hasFn(MFn::kMesh))
+    if (exportRoot && exportRoot->isValid() && !exportRoot->node().hasFn(MFn::kMesh))
+        transformPath = *exportRoot;
+    else if (transformPath.hasFn(MFn::kMesh))
         transformPath.pop();
 
     MFnDagNode transformFn(transformPath, &status);
@@ -2232,8 +2271,8 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
     }
 
     {
-        // Every material slot that receives geometry gets a fresh .sht + published DDS from Maya (1:1 with viewport),
-        // not a second-hand clone from DATA_ROOT. swgShaderPath (when set) is only the clone *prototype* (effect layout).
+        // Default is 1:1: reuse imported swgShaderPath and copy the original .sht + textures + effect.
+        // -rebuildShaders / oneToOne=0 clones a new viewport-matched .sht (legacy authoring path).
         bool anyShaderRebuildFailed = false;
         unsigned geomMaterialCount = 0;
         for (unsigned si = 0; si < exportShaderSlots.size(); ++si)
@@ -2256,6 +2295,44 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
             if (!stSG) continue;
 
             const std::string swgShaderPrototype = getStringAttr(sgFn, "swgShaderPath");
+            if (options.oneToOne && !swgShaderPrototype.empty())
+            {
+                const std::string copied = ShaderExporter::copyOriginalShaderToExportTree(swgShaderPrototype);
+                std::string tree = toGameTreeRelativePath(swgShaderPrototype);
+                if (tree.empty() && !copied.empty())
+                    tree = toGameTreeRelativePath(copied);
+                if (!copied.empty() && !tree.empty())
+                {
+                    g.shaderTemplateName = tree;
+                    pushUniquePath(exportedShaderAbsPaths, copied);
+                    const std::string extraSlots = getStringAttr(sgFn, "swgTextureSlots");
+                    if (!extraSlots.empty())
+                    {
+                        size_t start = 0;
+                        while (start < extraSlots.size())
+                        {
+                            const size_t semi = extraSlots.find(';', start);
+                            const std::string tok = extraSlots.substr(start,
+                                (semi == std::string::npos) ? std::string::npos : (semi - start));
+                            const size_t eq = tok.find('=');
+                            if (eq != std::string::npos && eq + 1 < tok.size())
+                                ExportDirectoryBootstrap::bootstrapTextureTreeFile(tok.substr(eq + 1));
+                            if (semi == std::string::npos)
+                                break;
+                            start = semi + 1;
+                        }
+                    }
+                    const std::string swgTex = getStringAttr(sgFn, "swgTexturePath");
+                    if (!swgTex.empty())
+                        ExportDirectoryBootstrap::bootstrapTextureTreeFile(swgTex);
+                    std::cerr << "[ExportStaticMesh] 1:1 shader: " << tree << "\n";
+                    MGlobal::displayInfo(MString("SwgMayaEditor: 1:1 export reused original shader ") + tree.c_str());
+                    continue;
+                }
+                MGlobal::displayWarning(MString("SwgMayaEditor: 1:1 shader copy failed for \"")
+                    + swgShaderPrototype.c_str() + "\" — rebuilding viewport shader.");
+            }
+
             const bool hue = getHueableFromSg(sgFn);
 
             const std::string texBase =
@@ -2492,6 +2569,19 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
     }
 
     StaticMeshWriter writer;
+    {
+        // collision slot: -collision flag, else a swgCollisionExtent ("box"/"none") string on the export root
+        std::string mode = s_collisionOverride;
+        if (mode.empty())
+        {
+            MFnDependencyNode rootFn(transformPath.node());
+            MPlug plug = rootFn.findPlug("swgCollisionExtent", true);
+            MString value;
+            if (!plug.isNull() && plug.getValue(value) == MS::kSuccess)
+                mode = value.asChar();
+        }
+        writer.setCollisionBox(mode != "none");
+    }
 
     for (unsigned i = 0; i < exportShaderSlots.size(); ++i)
     {
@@ -2550,7 +2640,7 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
             if (!status) continue;
             MFnDagNode childFn(childObj, &status);
             if (!status) continue;
-            if (childFn.typeId(&status) != MFn::kTransform) continue;
+            if (!childObj.hasFn(MFn::kTransform)) continue;  // typeId() is an MTypeId, never an MFn::Type
 
             MDagPath childPath;
             if (!childFn.getPath(childPath)) continue;
@@ -2565,6 +2655,17 @@ bool ExportStaticMesh::performExport(const MDagPath& meshDagPath, const std::str
             hpNameLower.toLowerCase();
             if (hpNameLower == "hardpoints")
                 continue;
+
+            // Geometry under the root is exported as mesh, not as a hardpoint (multi-shape roots).
+            {
+                bool holdsMesh = false;
+                MItDag meshIt;
+                meshIt.reset(childPath, MItDag::kDepthFirst, MFn::kMesh);
+                for (; !meshIt.isDone() && !holdsMesh; meshIt.next())
+                    holdsMesh = true;
+                if (holdsMesh)
+                    continue;
+            }
 
             if (hpName == "floor_component")
             {

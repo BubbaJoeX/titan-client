@@ -20,6 +20,7 @@
 #include <maya/MFnDependencyNode.h>
 #include <maya/MFnTransform.h>
 #include <maya/MMatrix.h>
+#include <maya/MTransformationMatrix.h>
 #include <maya/MFnNumericAttribute.h>
 #include <maya/MFnTypedAttribute.h>
 #include <maya/MGlobal.h>
@@ -119,6 +120,7 @@ namespace
     static const Tag TAG_CRC = TAG3(C,R,C);
     static const Tag TAG_PGRF = TAG(P,G,R,F);
     static const Tag TAG_LGHT = TAG(L,G,H,T);
+    static const Tag TAG_NULL = TAG(N,U,L,L);
 
     /// Matches `PortalPropertyTemplateCellLight::Type` / LGHT chunk int8.
     enum PobCellLightType
@@ -181,7 +183,7 @@ namespace
             }
             iff.enterForm(TAG_0000);
             iff.enterChunk(TAG_VERT);
-            const int numVerts = iff.getChunkLengthLeft(12) / 12;
+            const int numVerts = iff.getChunkLengthLeft(12);  // returns element count, not bytes
             if (numVerts < 0 || numVerts > 65536)
             {
                 pobLog("IDTL: invalid vertex count %d", numVerts);
@@ -195,7 +197,7 @@ namespace
                 iff.read_floatVector(numVerts, vertices.data());
             iff.exitChunk(TAG_VERT);
             iff.enterChunk(TAG_INDX);
-            const int numIndices = iff.getChunkLengthLeft(4) / 4;
+            const int numIndices = iff.getChunkLengthLeft(4);  // returns element count, not bytes
             if (numIndices < 0 || numIndices > 196608)
             {
                 pobLog("IDTL: invalid index count %d", numIndices);
@@ -237,18 +239,7 @@ namespace
     {
         if (iff.getNumberOfBlocksLeft() <= 0)
             return;
-        if (iff.isCurrentForm())
-        {
-            iff.enterForm();
-            while (iff.getNumberOfBlocksLeft() > 0)
-                skipOneIffBlock(iff);
-            iff.exitForm();
-        }
-        else
-        {
-            iff.enterChunk();
-            iff.exitChunk();
-        }
+        iff.goForward(1, true);
     }
 
     static std::string resolveTreeFilePath(const std::string& treeFilePath, const std::string& inputFilename)
@@ -264,8 +255,7 @@ namespace
             return normalized;
 
         std::string probe = normalized;
-        if (probe.find("appearance/") != 0 && probe.find("shader/") != 0 &&
-            probe.find("texture/") != 0 && probe.find("effect/") != 0)
+        if (!hasTreeFilePrefix(probe))
             probe = "appearance/" + probe;
 
         if (!inputFilename.empty())
@@ -416,17 +406,6 @@ namespace
         return pd;
     }
 
-    static void engineTransformToMayaMatrix(const Transform& t, MMatrix& out)
-    {
-        const Transform::matrix_t& mm = t.getMatrix();
-        for (int row = 0; row < 3; ++row)
-            for (int col = 0; col < 4; ++col)
-                out[row][col] = static_cast<double>(mm[row][col]);
-        out[3][0] = 0.0;
-        out[3][1] = 0.0;
-        out[3][2] = 0.0;
-        out[3][3] = 1.0;
-    }
 
     static void addPortalAuthoringAttrs(MFnDependencyNode& transformDepFn, const PortalData& pd)
     {
@@ -520,6 +499,9 @@ namespace
 
         meshShapePath.pop(1);
         outPortalTransformPath = meshShapePath;
+        // createMesh names the shape; give the transform the portal name so the Outliner shows p0, p1, ...
+        MFnDagNode(outPortalTransformPath.node()).setName(MString(portalName));
+        MFnDagNode(outPortalTransformPath.child(0)).setName(MString(portalName) + "Shape");
         MFnDependencyNode transformDepFn(outPortalTransformPath.node());
         addPortalAuthoringAttrs(transformDepFn, pd);
 
@@ -559,6 +541,23 @@ namespace
             p.setFloat(v);
     }
 
+    /// Maya point lights have no SWG-style attenuation plugs; add them so exportPob can write them back.
+    static void ensureFloatAttr(MObject node, const char* name, float v)
+    {
+        MFnDependencyNode dep(node);
+        MPlug p = dep.findPlug(name, true);
+        if (p.isNull())
+        {
+            MFnNumericAttribute nAttr;
+            MObject a = nAttr.create(name, name, MFnNumericData::kFloat);
+            nAttr.setStorable(true);
+            if (dep.addAttribute(a))
+                p = dep.findPlug(name, true);
+        }
+        if (!p.isNull())
+            p.setFloat(v);
+    }
+
     static void trySetBoolPlug(MObject node, const char* plugName, bool v)
     {
         MFnDependencyNode dep(node);
@@ -588,6 +587,15 @@ namespace
     {
         lightFn.setColor(MColor(L.diffuse.r, L.diffuse.g, L.diffuse.b));
         lightFn.setIntensity(1.0f);
+        // No Maya equivalent for these; exportPob writes them back verbatim.
+        MObject shape = lightFn.object();
+        ensureFloatAttr(shape, "swgDiffuseAlpha", L.diffuse.a);
+        ensureFloatAttr(shape, "swgSpecularR", L.specular.r);
+        ensureFloatAttr(shape, "swgSpecularG", L.specular.g);
+        ensureFloatAttr(shape, "swgSpecularB", L.specular.b);
+        ensureFloatAttr(shape, "swgSpecularAlpha", L.specular.a);
+        // Keep Viewport 2.0 on default lights so cell LGHT nodes do not black-out textures.
+        trySetBoolPlug(lightFn.object(), "illuminatesByDefault", false);
         if (L.type != PobLight_ambient)
         {
             trySetSpecularRgb(lightFn.object(), L.specular.r, L.specular.g, L.specular.b);
@@ -595,13 +603,13 @@ namespace
         }
     }
 
-    /// Parents cell LGHT under `lights` group (like engine `PortalPropertyTemplateCell` LGHT). Does not apply engine `yaw_l(PI)` (that is a runtime load fix for legacy Maya exports).
+    /// Parents cell LGHT under `lights` group (like engine `PortalPropertyTemplateCell` LGHT), one transform per
+    /// light so exportPob reads each back. Does not apply engine `yaw_l(PI)` (a runtime load fix for legacy Maya exports).
     static MStatus createCellLightRepresentations(MObject cellObj, const std::vector<PobCellLight>& lights)
     {
         if (lights.empty())
             return MS::kSuccess;
         MStatus st;
-        MFnTransform cellFn(cellObj);
         MObject lightsGroup;
         st = createNamedChildTransform(cellObj, "lights", lightsGroup);
         if (!st || lightsGroup.isNull())
@@ -610,61 +618,51 @@ namespace
         for (size_t i = 0; i < lights.size(); ++i)
         {
             const PobCellLight& L = lights[i];
+            if (L.type != PobLight_ambient && L.type != PobLight_parallel && L.type != PobLight_point)
+            {
+                pobLog("  Unknown cell light type %d, skipped", L.type);
+                continue;
+            }
             char nameBuf[48];
             sprintf(nameBuf, "cellLight_%zu", i);
+
+            // MFnLight::create(parent) adds only a shape under `parent`, so give each light its own transform.
+            MFnTransform xfFn;
+            MObject xfObj = xfFn.create(lightsGroup, &st);
+            if (!st)
+                continue;
+            xfFn.setName(MString(nameBuf));
+            // ambient lights ignore it, but keep their transform too so re-export is faithful
+            xfFn.set(MTransformationMatrix(PobAuthoring::engineTransformToMayaSceneMatrix(L.transform)));
 
             if (L.type == PobLight_ambient)
             {
                 MFnAmbientLight fn;
-                MObject shape = fn.create(lightsGroup, true, false, &st);
-                if (!st)
-                    continue;
-                applyPobLightColors(fn, L);
-                MFnDagNode dag(shape);
-                MDagPath path;
-                dag.getPath(path);
-                path.pop(1);
-                MFnTransform(path).setName(MString(nameBuf));
+                fn.create(xfObj, true, false, &st);
+                if (st)
+                    applyPobLightColors(fn, L);
             }
             else if (L.type == PobLight_parallel)
             {
                 MFnDirectionalLight fn;
-                MObject shape = fn.create(lightsGroup, true, false, &st);
-                if (!st)
-                    continue;
-                applyPobLightColors(fn, L);
-                MFnDagNode dag(shape);
-                MDagPath path;
-                dag.getPath(path);
-                path.pop(1);
-                MFnTransform tf(path);
-                tf.setName(MString(nameBuf));
-                MMatrix m;
-                engineTransformToMayaMatrix(L.transform, m);
-                tf.set(m);
-            }
-            else if (L.type == PobLight_point)
-            {
-                MFnPointLight fn;
-                MObject shape = fn.create(lightsGroup, true, false, &st);
-                if (!st)
-                    continue;
-                applyPobLightColors(fn, L);
-                trySetFloatPlug(shape, "constantAttenuation", L.constantAttenuation);
-                trySetFloatPlug(shape, "linearAttenuation", L.linearAttenuation);
-                trySetFloatPlug(shape, "quadraticAttenuation", L.quadraticAttenuation);
-                MFnDagNode dag(shape);
-                MDagPath path;
-                dag.getPath(path);
-                path.pop(1);
-                MFnTransform tf(path);
-                tf.setName(MString(nameBuf));
-                MMatrix m;
-                engineTransformToMayaMatrix(L.transform, m);
-                tf.set(m);
+                fn.create(xfObj, true, false, &st);
+                if (st)
+                    applyPobLightColors(fn, L);
             }
             else
-                pobLog("  Unknown cell light type %d, skipped", L.type);
+            {
+                MFnPointLight fn;
+                MObject shape = fn.create(xfObj, true, false, &st);
+                if (st)
+                {
+                    applyPobLightColors(fn, L);
+                    ensureFloatAttr(shape, "constantAttenuation", L.constantAttenuation);
+                    ensureFloatAttr(shape, "linearAttenuation", L.linearAttenuation);
+                    ensureFloatAttr(shape, "quadraticAttenuation", L.quadraticAttenuation);
+                }
+            }
+            if (!st)
+                pobLog("  cell light %zu: create failed", i);
         }
         return MS::kSuccess;
     }
@@ -840,7 +838,8 @@ MStatus ImportPob::doIt(const MArgList& args)
         iff.enterChunk(TAG_DATA);
         cellPortalCount = iff.read_int32();
         const bool pobCellCanSeeWorldInFile = iff.read_bool8() != 0;
-        if (cellVersion >= 5)
+        // PortalPropertyTemplateCell::load_0004/0005 both carry the name
+        if (cellVersion >= 4)
             cellName = iff.read_stdstring();
         else
             { char buf[32]; sprintf(buf, "cell_%d", i); cellName = buf; }
@@ -886,8 +885,30 @@ MStatus ImportPob::doIt(const MArgList& args)
 
         if (cellVersion >= 5 && iff.getNumberOfBlocksLeft() > 0 && iff.isCurrentForm())
         {
+            // Collision extent (ExtentList: NULL / CMSH / CMPT / EXBX ...). Not editable here; keep it verbatim
+            // as hex on the cell so exportPob writes it back (otherwise interior wall collision is lost).
+            if (iff.getCurrentName() != TAG_NULL)
+            {
+                int rawSize = 0;
+                const byte* raw = iff.getCurrentBlockRawData(rawSize);
+                static const char kHex[] = "0123456789abcdef";
+                std::string hex;
+                hex.reserve(static_cast<size_t>(rawSize) * 2);
+                for (int b = 0; b < rawSize; ++b)
+                {
+                    hex.push_back(kHex[raw[b] >> 4]);
+                    hex.push_back(kHex[raw[b] & 15]);
+                }
+                MFnDependencyNode cellDep(cellTransforms[static_cast<size_t>(i)]);
+                MFnTypedAttribute tAttr;
+                MObject attrObj = tAttr.create("pobCellCollisionExtent", "pcce", MFnData::kString);
+                tAttr.setStorable(true);
+                tAttr.setHidden(true);
+                if (cellDep.addAttribute(attrObj))
+                    cellDep.findPlug("pobCellCollisionExtent", true).setValue(MString(hex.c_str()));
+            }
             iff.enterForm();
-            iff.exitForm();
+            iff.exitForm(true);
         }
 
         std::vector<PortalData> cellPortalData;
@@ -932,7 +953,10 @@ MStatus ImportPob::doIt(const MArgList& args)
         iff.exitForm(cellVersionTag);
         iff.exitForm(TAG_CELL);
 
-        if (floorName.empty() && !appearanceName.empty())
+        // A floor guessed from the appearance name is preview-only: it is not in the file, so it must not become
+        // floor0.external_reference (exportPob would then reference a floor the building never had).
+        const bool floorFromFile = !floorName.empty();
+        if (!floorFromFile && !appearanceName.empty())
             floorName = deriveFloorFromAppearance(appearanceName);
 
         pobLog("Cell r%d: appearance=%s floor=%s portals=%zu", i, appearanceName.c_str(), floorName.c_str(), cellPortalData.size());
@@ -970,8 +994,9 @@ MStatus ImportPob::doIt(const MArgList& args)
             pobLog("  Loading mesh: %s -> %s", appearanceName.c_str(), resolvedPath.c_str());
             status = importLodMeshFile(resolvedPath, parentCellPath);
             SwgImportTrace::stagef("cell r%d importLodMesh %s", i, status ? "OK" : "FAILED");
-            pobLog("  importLodMesh %s", status ? "OK" : "FAILED");
-            if (status && !meshTransformObj.isNull())
+            pobLog("  importLodMesh %s", status ? "OK" : "FAILED (reference kept, no preview)");
+            // Keep the tree path even when the preview fails, or exportPob would write an empty appearance.
+            if (!meshTransformObj.isNull())
             {
                 MFnDependencyNode meshDepFn(meshTransformObj);
                 MPlug plug = meshDepFn.findPlug("external_reference", true);
@@ -1036,77 +1061,47 @@ MStatus ImportPob::doIt(const MArgList& args)
 
             SwgImportTrace::stagef("cell r%d floor resolved: %s", i, resolvedFloor.c_str());
 
-            if (!MayaUtility::fileExists(resolvedFloor))
+            // floor0 always carries the tree path so exportPob writes it back, even when the .flr is not on
+            // disk here; a preview mesh (when the file loads) goes underneath it. Guessed floors use
+            // floor_preview, which exportPob ignores.
+            MObject floor0Obj;
+            if (collisionTransformObj.isNull() ||
+                !createNamedChildTransform(collisionTransformObj, floorFromFile ? "floor0" : "floor_preview", floor0Obj))
             {
-                pobLog("  Floor file not found, skipping: %s", resolvedFloor.c_str());
+                pobLog("  Missing collision group; floor reference dropped: %s", floorName.c_str());
             }
             else
             {
-                SwgImportTrace::stagef("cell r%d floor load begin: %s", i, resolvedFloor.c_str());
-                pobLog("  Loading floor: %s", floorName.c_str());
-                if (collisionTransformObj.isNull())
+                if (floorFromFile)
                 {
-                    pobLog("  Missing collision group");
+                    MFnDependencyNode floorDepFn(floor0Obj);
+                    MPlug plug = floorDepFn.findPlug("external_reference", true);
+                    if (plug.isNull())
+                    {
+                        MFnTypedAttribute tAttr;
+                        MObject attrObj = tAttr.create("external_reference", "extref", MFnData::kString);
+                        tAttr.setStorable(true);
+                        if (floorDepFn.addAttribute(attrObj))
+                            plug = floorDepFn.findPlug("external_reference", true);
+                    }
+                    if (!plug.isNull())
+                        plug.setValue(MString(floorName.c_str()));
+                }
+
+                if (!MayaUtility::fileExists(resolvedFloor))
+                {
+                    pobLog("  Floor file not found (reference kept, no preview): %s", resolvedFloor.c_str());
                 }
                 else
                 {
+                    SwgImportTrace::stagef("cell r%d floor load begin: %s", i, resolvedFloor.c_str());
+                    pobLog("  Loading floor: %s", floorName.c_str());
                     MDagPath floorMeshPath;
-                    MStatus flrStatus = FlrTranslator::createMeshFromFlr(resolvedFloor.c_str(), "floor0", collisionTransformObj, floorMeshPath);
+                    MStatus flrStatus = FlrTranslator::createMeshFromFlr(resolvedFloor.c_str(), "floor0_mesh", floor0Obj, floorMeshPath);
                     if (flrStatus)
-                    {
                         pobLog("    Floor mesh loaded: %s", resolvedFloor.c_str());
-                        MDagPath floorTransformPath = floorMeshPath;
-                        if (floorTransformPath.hasFn(MFn::kMesh)) floorTransformPath.pop(1);
-                        MFnDependencyNode floorDepFn(floorTransformPath.node());
-                        MPlug plug = floorDepFn.findPlug("external_reference", true);
-                        if (plug.isNull())
-                        {
-                            MFnTypedAttribute tAttr;
-                            MObject attrObj = tAttr.create("external_reference", "extref", MFnData::kString);
-                            tAttr.setStorable(true);
-                            if (floorDepFn.addAttribute(attrObj))
-                                plug = floorDepFn.findPlug("external_reference", true);
-                        }
-                        if (!plug.isNull())
-                            plug.setValue(MString(floorName.c_str()));
-                    }
                     else
-                    {
-                        pobLog("    Floor load failed, using fallback plane: %s", resolvedFloor.c_str());
-                        MFloatPointArray verts;
-                        verts.append(MFloatPoint(0.5f, 0.0f, 0.5f));
-                        verts.append(MFloatPoint(-0.5f, 0.0f, 0.5f));
-                        verts.append(MFloatPoint(-0.5f, 0.0f, -0.5f));
-                        verts.append(MFloatPoint(0.5f, 0.0f, -0.5f));
-                        MIntArray counts;
-                        counts.append(4);
-                        MIntArray connects;
-                        connects.append(0);
-                        connects.append(1);
-                        connects.append(2);
-                        connects.append(3);
-                        MFnMesh meshFn;
-                        MObject floorShape = meshFn.create(4, 1, verts, counts, connects, collisionTransformObj, &status);
-                        if (status && !floorShape.isNull())
-                        {
-                            meshFn.setName(MString("floor0"));
-                            MDagPath floorPath;
-                            MFnDagNode(floorShape).getPath(floorPath);
-                            if (floorPath.hasFn(MFn::kMesh)) floorPath.pop(1);
-                            MFnDependencyNode fallbackDepFn(floorPath.node());
-                            MPlug fallbackPlug = fallbackDepFn.findPlug("external_reference", true);
-                            if (fallbackPlug.isNull())
-                            {
-                                MFnTypedAttribute tAttr;
-                                MObject attrObj = tAttr.create("external_reference", "extref", MFnData::kString);
-                                tAttr.setStorable(true);
-                                if (fallbackDepFn.addAttribute(attrObj))
-                                    fallbackPlug = fallbackDepFn.findPlug("external_reference", true);
-                            }
-                            if (!fallbackPlug.isNull())
-                                fallbackPlug.setValue(MString(floorName.c_str()));
-                        }
-                    }
+                        pobLog("    Floor load failed (reference kept, no preview): %s", resolvedFloor.c_str());
                 }
             }
             SwgImportTrace::stagef("cell r%d floor done", i);
@@ -1131,6 +1126,8 @@ MStatus ImportPob::doIt(const MArgList& args)
     iff.exitForm(TAG_PRTO);
 
     pobLog("Import complete: %s", rootName.c_str());
+    MayaSceneBuilder::scheduleImportedTextureRebind();
+    MGlobal::displayInfo("SwgMayaEditor 20260829j: ImportPob finished");
     SwgImportTrace::stage("importPob complete");
     SwgImportTrace::stage("importPob returning");
     return MS::kSuccess;

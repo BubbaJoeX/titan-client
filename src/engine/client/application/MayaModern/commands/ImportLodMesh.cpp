@@ -35,86 +35,7 @@ namespace lod_path_helpers
 
     std::string resolveTreeFilePath(const std::string& treeFilePath, const std::string& inputFilename)
     {
-        if (treeFilePath.empty())
-            return std::string();
-
-        std::string absProbe = treeFilePath;
-        for (auto& c : absProbe)
-            if (c == '\\')
-                c = '/';
-        if (absProbe.size() >= 2 && std::isalpha(static_cast<unsigned char>(absProbe[0])) && absProbe[1] == ':')
-            return absProbe;
-        if (!absProbe.empty() && absProbe[0] == '/')
-            return absProbe;
-
-        std::string baseDir;
-
-        const char* envExportRoot = getenv("TITAN_EXPORT_ROOT");
-        if (envExportRoot && envExportRoot[0])
-        {
-            baseDir = envExportRoot;
-            if (!baseDir.empty() && baseDir.back() != '\\' && baseDir.back() != '/')
-                baseDir += '/';
-        }
-        else
-        {
-            const char* envDataRoot = getenv("TITAN_DATA_ROOT");
-            if (envDataRoot && envDataRoot[0])
-            {
-                baseDir = envDataRoot;
-                if (!baseDir.empty() && baseDir.back() != '\\' && baseDir.back() != '/')
-                    baseDir += '/';
-            }
-            else
-            {
-                std::string normalizedInput = inputFilename;
-                for (size_t i = 0; i < normalizedInput.size(); ++i)
-                    if (normalizedInput[i] == '\\') normalizedInput[i] = '/';
-
-                size_t cgPos = normalizedInput.find("compiled/game/");
-                if (cgPos != std::string::npos)
-                    baseDir = normalizedInput.substr(0, cgPos + 14);
-                else
-                {
-                    size_t firstSlash = treeFilePath.find_first_of("/\\");
-                    if (firstSlash != std::string::npos)
-                    {
-                        std::string firstComponent = "/" + treeFilePath.substr(0, firstSlash + 1);
-                        size_t pos = normalizedInput.find(firstComponent);
-                        if (pos != std::string::npos)
-                            baseDir = normalizedInput.substr(0, pos + 1);
-                    }
-                }
-
-                if (baseDir.empty())
-                {
-                    size_t lastSlash = normalizedInput.find_last_of('/');
-                    if (lastSlash != std::string::npos)
-                        baseDir = normalizedInput.substr(0, lastSlash + 1);
-                }
-            }
-        }
-
-        std::string pathToResolve = treeFilePath;
-        {
-            std::string normalizedInput = inputFilename;
-            for (size_t i = 0; i < normalizedInput.size(); ++i)
-                if (normalizedInput[i] == '\\') normalizedInput[i] = '/';
-            size_t cgPos = normalizedInput.find("compiled/game/");
-            if (cgPos != std::string::npos)
-            {
-                std::string afterCg = normalizedInput.substr(cgPos + 14);
-                if (afterCg.find("appearance/") == 0)
-                {
-                    if (pathToResolve.find("appearance/") != 0 && pathToResolve.find("appearance\\") != 0)
-                        pathToResolve = std::string("appearance/") + pathToResolve;
-                }
-            }
-        }
-        std::string resolved = baseDir + pathToResolve;
-        for (size_t i = 0; i < resolved.size(); ++i)
-            if (resolved[i] == '\\') resolved[i] = '/';
-        return resolved;
+        return resolveTreeAssetPath(treeFilePath, inputFilename, "appearance/");
     }
 
     std::string resolveMeshPath(const std::string& basePath)
@@ -124,14 +45,17 @@ namespace lod_path_helpers
         if (path.size() >= 4)
         {
             const std::string ext = path.substr(path.size() - 4);
-            if (ext == ".msh" || ext == ".shp" || ext == ".mgn") return path;
+            if (ext == ".msh" || ext == ".shp" || ext == ".mgn" || ext == ".lmg") return path;
         }
         Iff iff;
+        // SAT MSGN / LMG children are usually .mgn (skeletal). Try that before static .msh.
+        if (iff.open((path + ".mgn").c_str(), true))
+            return path + ".mgn";
         if (iff.open((path + ".shp").c_str(), true))
             return path + ".shp";
         if (iff.open((path + ".msh").c_str(), true))
             return path + ".msh";
-        return path + ".msh";
+        return path + ".mgn";
     }
 
     std::string resolveSkmgPathThroughWrappers(std::string path)
@@ -244,12 +168,12 @@ namespace
         iff.enterForm(TAG_IDTL);
         iff.enterForm(TAG_0000);
         iff.enterChunk(TAG_VERT);
-        const int numVerts = iff.getChunkLengthLeft(12) / 12;
+        const int numVerts = iff.getChunkLengthLeft(12);  // returns element count, not bytes
         vertices.resize(static_cast<size_t>(numVerts));
         iff.read_floatVector(numVerts, vertices.data());
         iff.exitChunk(TAG_VERT);
         iff.enterChunk(TAG_INDX);
-        const int numIndices = iff.getChunkLengthLeft(4) / 4;
+        const int numIndices = iff.getChunkLengthLeft(4);  // returns element count, not bytes
         indices.resize(static_cast<size_t>(numIndices));
         for (int j = 0; j < numIndices; ++j)
             indices[static_cast<size_t>(j)] = iff.read_int32();

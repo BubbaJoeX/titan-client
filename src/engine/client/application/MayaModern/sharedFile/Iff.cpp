@@ -21,6 +21,8 @@
 #include "Quaternion.h"
 
 #include <cstdio>
+#include <cstring>
+#include <iostream>
 #include <string>
 
 // ======================================================================
@@ -138,11 +140,14 @@ bool IffNamespace::isValid(byte const *memory, int length)
 bool Iff::isValid(char const * fileName)
 {
     std::shared_ptr<AbstractFile> file = std::make_shared<StdioFile>(fileName, "rb");
-    if (!file)
+    // fopen failure leaves a null FILE*; seeking it lands in the CRT invalid-parameter handler, which hangs Maya.
+    if (!file->isOpen())
         return false;
 
     // read in the file
     int const fileLength = file->length();
+    if (fileLength <= 0)
+        return false;
     byte *data = file->readEntireFileAndClose();
     file = nullptr;
 
@@ -509,7 +514,8 @@ Tag Iff::getFirstTag(int depth) const
     {
         char buf[1024];
         sprintf( buf, "read overflow depth=[%d] length=[%d] used=[%d] want=[%d]", depth, stack[depth].length, stack[depth].used, isizeof(Tag) + isizeof(uint32) );
-        IFF_FATAL(true, buf);
+        std::cerr << "[Iff] " << buf << std::endl;
+        return 0;
     }
     memcpy(&t, data + stack[depth].start + stack[depth].used, sizeof(t));
 
@@ -523,6 +529,15 @@ Tag Iff::getFirstTag(int depth) const
  * @param depth  [IN] depth of target block containing the block for which the client wants length info
  * @param offset  [IN] offset of target block within containing block
  */
+
+const byte *Iff::getCurrentBlockRawData(int &outSize) const
+{
+    NOT_NULL(data);
+    outSize = static_cast<int>(sizeof(Tag) + sizeof(uint32)) + getLength(stackDepth);
+    return data + stack[stackDepth].start + stack[stackDepth].used;
+}
+
+// ----------------------------------------------------------------------
 
 int Iff::getLength(int depth, int offset) const
 {
@@ -1017,9 +1032,21 @@ int Iff::getNumberOfBlocksLeft(void) const
 
     IFF_DEBUG_FATAL(inChunk, "in chunk");
 
-    // count the number of times we can advance the used amount by the block size
-    for (result = 0, offset = 0; stack[stackDepth].used+offset < stack[stackDepth].length; ++result, offset += (getLength(stackDepth, offset) + isizeof(Tag) + isizeof(uint32)))
-        ;
+    const int header = isizeof(Tag) + isizeof(uint32);
+    const int remain0 = stack[stackDepth].length - stack[stackDepth].used;
+    if (remain0 < header)
+        return 0;
+
+    for (result = 0, offset = 0; stack[stackDepth].used + offset + header <= stack[stackDepth].length; ++result)
+    {
+        const int blockLen = getLength(stackDepth, offset);
+        const int step = blockLen + header;
+        if (step <= 0)
+            break;
+        if (stack[stackDepth].used + offset + step > stack[stackDepth].length)
+            break;
+        offset += step;
+    }
 
     return result;
 }
@@ -1201,7 +1228,8 @@ void Iff::exitForm(Tag name, bool mayNotBeAtEndOfForm)
 void Iff::exitForm(bool mayNotBeAtEndOfForm)
 {
     UNREF(mayNotBeAtEndOfForm);
-    IFF_DEBUG_FATAL(stackDepth == 0, ("exiting root"));
+    if (stackDepth <= 0)
+        return;
     IFF_DEBUG_FATAL(!mayNotBeAtEndOfForm && !atEndOfForm(), ("exiting form but not at the end of it"));
     IFF_DEBUG_FATAL(inChunk, ("exit form called within a chunk"));
 
@@ -1417,15 +1445,35 @@ int Iff::getChunkLengthLeft(int elementSize) const
 
 void Iff::read_misc(void *readData, int readLength)
 {
-    NOT_NULL(readData);
-    NOT_NULL(data);
-    DEBUG_FATAL(!inChunk, ("not in chunk"));
+    if (!readData || readLength <= 0)
+        return;
+    if (!data || !inChunk)
+    {
+        memset(readData, 0, static_cast<size_t>(readLength));
+        return;
+    }
 
     Stack &s = stack[stackDepth];
+    if (s.used < 0 || s.length < 0 || s.used > s.length)
+    {
+        memset(readData, 0, static_cast<size_t>(readLength));
+        return;
+    }
 
-    DEBUG_FATAL(s.used+readLength > s.length, ("overflow %d/%d in file [%s]", s.used+readLength, s.length, getFileName()));
-    memcpy(readData, data+s.start+s.used, readLength);
+    const int available = s.length - s.used;
+    if (available < readLength || s.start + s.used + readLength > length)
+    {
+        FATAL(true, ("Iff read overflow %d/%d in file [%s]", s.used + readLength, s.length, getFileName()));
+        const int copyN = available > 0 ? (available < readLength ? available : readLength) : 0;
+        if (copyN > 0 && s.start + s.used + copyN <= length)
+            memcpy(readData, data + s.start + s.used, static_cast<size_t>(copyN));
+        if (copyN < readLength)
+            memset(static_cast<char*>(readData) + copyN, 0, static_cast<size_t>(readLength - copyN));
+        s.used = s.length;
+        return;
+    }
 
+    memcpy(readData, data + s.start + s.used, static_cast<size_t>(readLength));
     s.used += readLength;
 }
 

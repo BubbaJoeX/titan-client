@@ -4,6 +4,8 @@
 #include <maya/MObject.h>
 #include <maya/MStatus.h>
 #include <maya/MDagPath.h>
+#include <maya/MEulerRotation.h>
+#include <maya/MVector.h>
 
 #include <map>
 #include <string>
@@ -79,13 +81,24 @@ public:
         const std::string& texturePath,
         MObject& outShadingGroup,
         const std::string& swgShaderPath = std::string(),
-        const std::string& swgTexturePath = std::string());
+        const std::string& swgTexturePath = std::string(),
+        const std::string& soeEffectName = std::string(),
+        const std::string& swgTextureSlots = std::string());
 
     /// Assigns per mesh instance (same .sht on two imports each get their own shading network / texture bind).
     static MStatus assignMaterials(
         const MDagPath& meshPath,
         const std::vector<ShaderGroupData>& shaderGroups,
         const std::string& inputFilePath);
+
+    /// File>Import remaps fileTextureName; re-apply swgResolvedTexture on idle.
+    static void scheduleImportedTextureRebind();
+
+    /// MtoA/Arnold viewport override paints Lamberts neon green. Force VP2 + maps.
+    static void forceVp2TexturedViewport();
+
+    /// After skinCluster, re-bind stored SAT shading groups (Maya drops initialShadingGroup otherwise).
+    static void reapplyStoredShading(const MDagPath& meshPath);
 
     /// Green Lambert shared by POB floor + portal preview meshes (idempotent).
     static MStatus assignPobCollisionPreviewMaterial(const MDagPath& meshShapePath);
@@ -100,7 +113,7 @@ public:
         const std::string& meshName,
         MDagPath& outMeshPath);
 
-    /// Maya 2027 / Arnold expect UVs on map1 with explicit set + assignUVs + syncObject.
+    /// Write face UVs onto the mesh default set (map1). Do not use createUVSetDataMesh on DAG meshes.
     static MStatus applyMap1Uvs(
         MFnMesh& meshFn,
         const MFloatArray& uArray,
@@ -141,6 +154,13 @@ public:
         float frame;
         float value;
     };
+    /// Record a joint's current rotate/translate as its skeleton bind pose (swgBindRotate / swgBindTranslate,
+    /// rotate in radians in the joint's rotation order). Animation import/export measure deltas from it.
+    static void storeJointBind(const MDagPath& jointPath);
+
+    /// The joint's recorded bind pose; false (and the current values) when none was recorded.
+    static bool getJointBind(const MDagPath& jointPath, MEulerRotation& outRotate, MVector& outTranslate);
+
     struct QuatKeyframe
     {
         float frame;

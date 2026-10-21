@@ -151,7 +151,13 @@ bool StaticMeshWriter::write(Iff& iff) const
     if (tryComputeVertexBounds(m_shaderGroups, boxMin, boxMax))
     {
         writeBoxExtentChunk(iff, boxMin, boxMax);
-        writeBoxExtentChunk(iff, boxMin, boxMax);
+        if (m_collisionBox)
+            writeBoxExtentChunk(iff, boxMin, boxMax);
+        else
+        {
+            iff.insertForm(TAG_NULL);
+            iff.exitForm(TAG_NULL);
+        }
     }
     else
     {

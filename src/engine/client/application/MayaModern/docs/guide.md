@@ -164,7 +164,7 @@ The published diffuse DDS is bound to the prototype’s **primary diffuse TXM sl
 ## Build output and deploying (Windows)
 
 - **Release output**: `MayaModern/build/Release/SwgMayaEditor.mll` plus `.mel` scripts copied next to it by the build.
-- **Install into Maya** (`…/maya/2027/plugins/`): `scripts/Deploy-ToMayaPlugIns.ps1` or CMake target `swgDeployMayaPlugins` with `SWG_MAYA_PLUGIN_INSTALL_DIR`.
+- **Install into Maya** (`…/maya/2027/plug-ins/`): `scripts/Deploy-ToMayaPlugIns.ps1` or CMake target `swgDeployMayaPlugins` with `SWG_MAYA_PLUGIN_INSTALL_DIR`.
 - **Quit Maya** (or `unloadPlugin SwgMayaEditor`) before copying the `.mll`. Reload after deploy.
 
 ---
@@ -428,10 +428,43 @@ exportPob -i "appearance/building/cantina";
 
 | Flag | Description             |
 | ---- | ----------------------- |
-| `-i` | Output path (required). |
+| `-i` | Output path (required). Relative paths resolve against the **import** data root (`TITAN_DATA_ROOT`) — pass an absolute path to write elsewhere. Returns the written path. |
 
 
 **Selection**: Select the POB root or a cell.
+
+What is written, per cell `rN` (cells are numbered by `N`, not Outliner order; `r0..rN` must have no gaps):
+
+- **Portals** — every transform under `rN|portals` with `buildingPortalIndex`; geometry is the child mesh with a `portal` attribute, **including the portal transform's translate/rotate** (relative to the cell). Quads/n-gons are triangulated. Both halves of a doorway share one index; their geometry should overlap (`validatePob` reports halves that don't). The `portalClockwise=1` cell must sit on the portal's front side — for a `connectPobCells` quad that is local **-Z** (the quad is built X-mirrored), so rotate the pair until -Z points into the `-to` cell. Inverted doors make `Portal::testPenetration` move the camera/player into the wrong cell (the Viewer then draws one interior room instead of the shell); `pob_inspect` in SwgMayaMCP flags them.
+- **Appearance / floor** — `rN|mesh.external_reference` and `rN|collision|floor0.external_reference`.
+- **canSeeWorld** — `pobCellCanSeeWorld` when present (imported files); otherwise only cells with a portal to `r0` (r0 itself is `false`, as in 639 of 641 stock files).
+- **Lights** — each light transform under `rN|lights` (ambient / directional / point), position and orientation relative to the cell. Diffuse alpha and specular come from `swgDiffuseAlpha` / `swgSpecular{R,G,B,Alpha}` on the light shape (set by `importPob`); new lights default to the stock convention (alpha 0, specular = diffuse; ambient specular 0).
+- **Collision extent** — carried over verbatim from `importPob` (`pobCellCollisionExtent`, e.g. CMSH wall collision); new cells get an empty (`NULL`) extent.
+
+Round-trip status: `importPob` → `exportPob` reproduces portal geometry, cell names/appearances/floors, portal flags, lights and collision extents of stock buildings (checked on 25+ v3/v4 files).
+
+### Floor export (SwgFlr)
+
+```mel
+select -r "|myBuilding|r1|collision|floor0";
+file -force -type "SwgFlr" -exportSelected "D:/exported/appearance/collision/my_r1_floor0.flr";
+```
+
+Writes FLOR v0006 the way the engine's `FloorMesh::compile` would: merges coincident vertices, triangulates, links neighbours (shared edges become **crossable**, boundaries **uncrossable**), assigns part tags (connected pieces), orients triangles to face up and writes the boundary-edge list (`BEDG`, which the client requires after `TRIS`). When the mesh sits inside a POB cell, vertices are written in cell space and boundary edges lying on that cell's portals get the portal index — that is what lets players walk through a doorway, so put floor vertices at the door jambs. No path graph is written.
+
+### swg_pob_exportStructure (one-shot building export)
+
+```mel
+swg_pob_exportStructure("|myBuilding", "D:/exported", "my_building");
+```
+
+From `pobAuthoring.mel` (auto-sourced with the plug-in). Calls `setBaseDir`, then:
+
+1. each `rN|mesh` with real geometry → `exportStaticMesh` to `appearance/<base>_rN.apt` (child transforms are frozen first; `pob_placeholder_*` meshes are excluded) and sets `external_reference`;
+2. each `rN|collision|floor0` with a mesh → `appearance/collision/<base>_rN_collision_floor0.flr` and sets `external_reference`;
+3. `validatePob`, then `exportPob` → `appearance/<base>.pob`. Returns the `.pob` path.
+
+The SwgMayaMCP server (`support/MCP/SwgMayaMCP`) wraps this as `pob_export_structure` and can generate whole buildings (`pob_build`).
 
 ### Skeletal mesh, animation, LOD, and SAT export (status)
 
@@ -499,7 +532,7 @@ Use Maya's **File > Import** or **File > Export** with these file types. The **F
 | .msh / .apt | `SwgMsh`                    | SWG static mesh (*.msh *.apt)     | Yes    | Yes    |
 | .skt        | `SwgSkt`                    | SWG skeleton (*.skt)              | Yes    | Yes    |
 | .ans        | `SwgAns`                    | SWG animation (*.ans)             | Yes    | Yes    |
-| .flr        | `SwgFlr`                    | SWG floor (*.flr)                 | Yes    | No     |
+| .flr        | `SwgFlr`                    | SWG floor (*.flr)                 | Yes    | Yes    |
 | .sat        | `SwgSat`                    | SWG skeletal appearance (*.sat)   | Yes    | Yes    |
 | .pob        | `SwgPob`                    | SWG portal object (*.pob)         | Yes    | Yes    |
 | .lod        | `SwgLod`                    | SWG LOD container (*.lod)         | Yes    | Yes    |

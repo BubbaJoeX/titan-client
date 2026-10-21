@@ -691,28 +691,67 @@ MStatus MshTranslator::importMeshFromPathImpl(const char* fileName, const MStrin
                         polygonCounts.length());
 
                     MFnMesh mesh;
-                    mesh.create(totalVerticesInMesh, (totalPolygonsInMesh / 3), vertexArray, polygonCounts, polygonConnects, parentTransform.object(), &createStatus);
+                    const int numFaces = totalPolygonsInMesh / 3;
+                    const bool havePerVertUvs = (uArray.length() == static_cast<unsigned>(totalVerticesInMesh)
+                        && vArray.length() == uArray.length()
+                        && uArray.length() > 0);
+                    if (havePerVertUvs)
+                    {
+                        mesh.create(totalVerticesInMesh, numFaces, vertexArray, polygonCounts, polygonConnects,
+                            uArray, vArray, parentTransform.object(), &createStatus);
+                    }
+                    else
+                    {
+                        mesh.create(totalVerticesInMesh, numFaces, vertexArray, polygonCounts, polygonConnects,
+                            parentTransform.object(), &createStatus);
+                    }
                     std::string shaderBaseName = MayaSceneBuilder::stripSGSuffixFromShaderName(shaderName);
                     mesh.setName(MayaUtility::parseFileNameToNodeName(shaderBaseName).c_str());
 
                     if (createStatus == MS::kSuccess)
                     {
-                        if (uArray.length() == static_cast<unsigned>(totalVerticesInMesh) && uArray.length() > 0)
+                        MDagPath meshPath;
+                        if (mesh.getPath(meshPath) != MS::kSuccess || !meshPath.isValid())
+                            MDagPath::getAPathTo(mesh.object(), meshPath);
+                        if (meshPath.isValid() && meshPath.hasFn(MFn::kTransform))
+                            meshPath.extendToShape();
+
+                        if (uArray.length() > 0 && vArray.length() > 0)
                         {
                             MIntArray uvCounts, uvIds;
-                            const int numFaces = totalPolygonsInMesh / 3;
+                            const int nuv = static_cast<int>(uArray.length());
                             for (int faceId = 0; faceId < numFaces; ++faceId)
                             {
                                 uvCounts.append(3);
-                                uvIds.append(polygonConnects[faceId * 3 + 0]);
-                                uvIds.append(polygonConnects[faceId * 3 + 1]);
-                                uvIds.append(polygonConnects[faceId * 3 + 2]);
+                                for (int c = 0; c < 3; ++c)
+                                {
+                                    int id = polygonConnects[faceId * 3 + c];
+                                    if (id < 0 || id >= nuv)
+                                        id = 0;
+                                    uvIds.append(id);
+                                }
                             }
-                            MayaSceneBuilder::applyMap1Uvs(mesh, uArray, vArray, uvCounts, uvIds);
-                            mshLog("    UVs applied: %d vertices", totalVerticesInMesh);
+                            MStatus uvStatus = MS::kFailure;
+                            if (meshPath.isValid() && meshPath.hasFn(MFn::kMesh))
+                            {
+                                MFnMesh uvMesh(meshPath, &uvStatus);
+                                if (uvStatus)
+                                    uvStatus = MayaSceneBuilder::applyMap1Uvs(uvMesh, uArray, vArray, uvCounts, uvIds);
+                            }
+                            if (!uvStatus)
+                                uvStatus = MayaSceneBuilder::applyMap1Uvs(mesh, uArray, vArray, uvCounts, uvIds);
+                            mshLog("    UVs %s: uvCount=%u verts=%d createWithUv=%s",
+                                uvStatus ? "applied" : "FAILED",
+                                uArray.length(),
+                                totalVerticesInMesh,
+                                havePerVertUvs ? "yes" : "no");
                         }
-                        MDagPath meshPath;
-                        mesh.getPath(meshPath);
+                        else
+                        {
+                            mshLog("    UV skip: no texcoords in VTXA (verts=%d)", totalVerticesInMesh);
+                            MGlobal::displayInfo(MString("SwgMayaEditor: no VTXA UVs for ")
+                                + shaderName + " verts=" + totalVerticesInMesh);
+                        }
                         MayaSceneBuilder::ShaderGroupData sg;
                         sg.shaderTemplateName = shaderName;
                         for (int idx = 0; idx + 2 < totalPolygonsInMesh; idx += 3)
@@ -723,13 +762,15 @@ MStatus MshTranslator::importMeshFromPathImpl(const char* fileName, const MStrin
                             tri.indices[2] = polygonConnects[idx + 2];
                             sg.triangles.push_back(tri);
                         }
-                        if (!sg.triangles.empty())
+                        if (!sg.triangles.empty() && meshPath.isValid() && meshPath.hasFn(MFn::kMesh))
                         {
-                            mshLog("    assignMaterials: %s", shaderName);
+                            mshLog("    assignMaterials: %s path=%s", shaderName, meshPath.fullPathName().asChar());
                             std::vector<MayaSceneBuilder::ShaderGroupData> groups(1, sg);
                             MayaSceneBuilder::assignMaterials(meshPath, groups, pathToLoad.c_str());
                             mshLog("    assignMaterials done");
                         }
+                        else if (!sg.triangles.empty())
+                            mshLog("    assignMaterials SKIPPED (no mesh dag path) shader=%s", shaderName);
                     }
                 }
                 catch (const std::exception& e)
@@ -918,6 +959,7 @@ MStatus MshTranslator::writer (const MFileObject& file, const MString& options, 
     }
 
     MDagPath dagPath;
+    MDagPath rootPath;
     bool foundMesh = false;
     bool meshWithoutShader = false;
     for (unsigned si = 0; si < sel.length(); ++si)
@@ -927,6 +969,7 @@ MStatus MshTranslator::writer (const MFileObject& file, const MString& options, 
         MDagPath meshPath;
         if (MayaUtility::findFirstMeshShapeWithShadersInHierarchy(dagPath, meshPath))
         {
+            rootPath = dagPath;
             dagPath = meshPath;
             foundMesh = true;
             break;
@@ -956,7 +999,7 @@ MStatus MshTranslator::writer (const MFileObject& file, const MString& options, 
     const char* filePath = file.expandedFullName().asChar();
     const StaticMeshTransferOptions exportOpts = StaticMeshTransferOptions::fromSwgMshOptionsString(options);
     std::string outMeshPath, outAptPath;
-    if (!StaticMeshExportPipeline::exportMesh(dagPath, filePath, exportOpts, outMeshPath, outAptPath))
+    if (!StaticMeshExportPipeline::exportMesh(dagPath, filePath, exportOpts, outMeshPath, outAptPath, &rootPath))
     {
         std::cerr << "[MshTranslator] Export: performExport failed" << std::endl;
         MGlobal::displayError(

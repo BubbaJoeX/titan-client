@@ -1,5 +1,6 @@
 #include "ExportPob.h"
 #include "ImportPathResolver.h"
+#include "PobAuthoringShared.h"
 
 #include "Iff.h"
 #include "Tag.h"
@@ -20,11 +21,13 @@
 #include <maya/MItMeshPolygon.h>
 #include <maya/MObject.h>
 #include <maya/MPlug.h>
+#include <maya/MPoint.h>
 #include <maya/MSelectionList.h>
 #include <maya/MFnLight.h>
 #include <maya/MFnMatrixData.h>
 
 #include <algorithm>
+#include <cstdlib>
 #include <map>
 #include <string>
 #include <vector>
@@ -43,6 +46,7 @@ namespace
     static const Tag TAG_CRC = TAG3(C,R,C);
     static const Tag TAG_NULL = TAG(N,U,L,L);
     static const Tag TAG_LGHT = TAG(L,G,H,T);
+    static const Tag TAG_CMSH = TAG(C,M,S,H);
 
     struct PortalGeometry
     {
@@ -79,6 +83,8 @@ namespace
         std::string appearanceName;
         std::string floorName;
         bool canSeeWorldCell = false;
+        std::vector<byte> collisionExtent;  // raw IFF block (ExtentList) carried over from importPob
+        PortalGeometry collisionMesh;       // authored rN|collision|extent meshes -> CMSH
         std::vector<PortalInfo> portals;
         std::vector<PobCellLightOut> lights;
     };
@@ -121,6 +127,7 @@ namespace
         return !fn.findPlug("portal", true).isNull();
     }
 
+    /// Inverse of PobAuthoring::applyDoorHardpointAttributes: the doorHardpointMatrix attr holds the engine 3x4 verbatim.
     static Transform mayaMatrixToEngineTransform(const MMatrix& m)
     {
         Transform t = Transform::identity;
@@ -133,24 +140,12 @@ namespace
         return t;
     }
 
-    static void tryGetSpecularRgb(MObject lightShape, float& r, float& g, float& b)
+    static bool getFloatAttr(MObject node, const char* attrName, float& out)
     {
-        r = g = b = 0.f;
-        MFnDependencyNode dep(lightShape);
-        MPlug sc = dep.findPlug("specularColor", true);
-        if (!sc.isNull() && sc.isCompound() && sc.numChildren() >= 3)
-        {
-            sc.child(0).getValue(r);
-            sc.child(1).getValue(g);
-            sc.child(2).getValue(b);
-            return;
-        }
-        MPlug pr = dep.findPlug("specularColorR", true);
-        if (!pr.isNull()) pr.getValue(r);
-        MPlug pg = dep.findPlug("specularColorG", true);
-        if (!pg.isNull()) pg.getValue(g);
-        MPlug pb = dep.findPlug("specularColorB", true);
-        if (!pb.isNull()) pb.getValue(b);
+        MFnDependencyNode fn(node);
+        MPlug plug = fn.findPlug(attrName, true);
+        if (plug.isNull()) return false;
+        return plug.getValue(out) == MS::kSuccess;
     }
 
     static void readDoorHardpointFromLegacyChild(MObject portalTransformObj, PortalInfo& pi)
@@ -164,7 +159,7 @@ namespace
             if (cfn.name() != "doorHardpoint") continue;
             pi.hasDoorHardpoint = true;
             MFnTransform tfn(ch);
-            pi.doorTransform = mayaMatrixToEngineTransform(tfn.transformationMatrix());
+            pi.doorTransform = PobAuthoring::mayaSceneMatrixToEngineTransform(tfn.transformationMatrix());
             return;
         }
     }
@@ -197,7 +192,10 @@ namespace
         readDoorHardpointFromLegacyChild(portalTransformObj, pi);
     }
 
-    static bool extractMeshGeometry(MDagPath meshPath, PortalGeometry& geom)
+    /// Portal verts are written in building space. `toCell` maps the shape's object space into its cell
+    /// (portal transform + `portals` group), so moved/rotated portal transforms export where they sit,
+    /// while cell layout offsets (viewport-only spacing) are ignored.
+    static bool extractMeshGeometry(MDagPath meshPath, const MMatrix& toCell, PortalGeometry& geom)
     {
         if (!meshPath.hasFn(MFn::kMesh))
             meshPath.extendToShape();
@@ -210,22 +208,23 @@ namespace
         geom.vertices.resize(static_cast<size_t>(points.length()));
         for (unsigned i = 0; i < points.length(); ++i)
         {
-            geom.vertices[static_cast<size_t>(i)].x = -points[i].x;
-            geom.vertices[static_cast<size_t>(i)].y = points[i].y;
-            geom.vertices[static_cast<size_t>(i)].z = points[i].z;
+            const MPoint p = MPoint(points[i]) * toCell;
+            geom.vertices[static_cast<size_t>(i)].x = static_cast<float>(-p.x);
+            geom.vertices[static_cast<size_t>(i)].y = static_cast<float>(p.y);
+            geom.vertices[static_cast<size_t>(i)].z = static_cast<float>(p.z);
         }
 
+        // Triangulate quads / n-gons (polyCreateFacet and plane primitives give quads).
         MItMeshPolygon polyIt(meshPath);
         for (; !polyIt.isDone(); polyIt.next())
         {
-            if (polyIt.polygonVertexCount() != 3) return false;
             MIntArray verts;
             polyIt.getVertices(verts);
-            if (verts.length() >= 3)
+            for (unsigned t = 1; t + 1 < verts.length(); ++t)
             {
                 geom.indices.push_back(verts[0]);
-                geom.indices.push_back(verts[1]);
-                geom.indices.push_back(verts[2]);
+                geom.indices.push_back(verts[t]);
+                geom.indices.push_back(verts[t + 1]);
             }
         }
         return !geom.vertices.empty() && geom.indices.size() >= 3;
@@ -317,6 +316,20 @@ MStatus ExportPob::doIt(const MArgList& args)
         return MS::kFailure;
     }
 
+    // Cell index = N in rN (portalTargetCell refers to it), not Outliner order.
+    std::stable_sort(cellObjs.begin(), cellObjs.end(), [](const MObject& a, const MObject& b) {
+        return std::atoi(MFnDagNode(a).name().asChar() + 1) < std::atoi(MFnDagNode(b).name().asChar() + 1);
+    });
+    for (size_t i = 0; i < cellObjs.size(); ++i)
+    {
+        if (std::atoi(MFnDagNode(cellObjs[i]).name().asChar() + 1) != static_cast<int>(i))
+        {
+            std::cerr << "ExportPob: cells must be numbered r0..r" << (cellObjs.size() - 1)
+                      << " without gaps (found " << MFnDagNode(cellObjs[i]).name().asChar() << " at index " << i << ")" << std::endl;
+            return MS::kFailure;
+        }
+    }
+
     std::map<int, PortalGeometry> portalGeometries;
     std::vector<CellData> cells;
     std::vector<bool> cellUsesImportedSeeWorld(cellObjs.size(), false);
@@ -331,20 +344,30 @@ MStatus ExportPob::doIt(const MArgList& args)
             std::string pcn;
             if (getStringAttr(cellObjs[cellIdx], "pobCellName", pcn) && !pcn.empty())
                 cell.name = pcn;
+            std::string hex;
+            if (getStringAttr(cellObjs[cellIdx], "pobCellCollisionExtent", hex) && hex.size() >= 16 && hex.size() % 2 == 0)
+            {
+                cell.collisionExtent.resize(hex.size() / 2);
+                for (size_t b = 0; b < cell.collisionExtent.size(); ++b)
+                    cell.collisionExtent[b] = static_cast<byte>(std::strtoul(hex.substr(b * 2, 2).c_str(), nullptr, 16));
+            }
         }
         cell.canSeeWorldCell = false;
         {
             MFnDependencyNode cellNodeDep(cellObjs[cellIdx]);
+            // Without an explicit attr, only cells portalled to r0 see the world (set below); r0 itself does
+            // not (639 of 641 stock .pob files).
             if (!cellNodeDep.findPlug("pobCellCanSeeWorld", true).isNull())
             {
                 cellUsesImportedSeeWorld[cellIdx] = true;
                 getBoolAttr(cellObjs[cellIdx], "pobCellCanSeeWorld", cell.canSeeWorldCell);
             }
-            else if (cellIdx == 0)
-                cell.canSeeWorldCell = true;
         }
 
         MFnDagNode cellFn(cellObjs[cellIdx]);
+        MDagPath cellPath;
+        cellFn.getPath(cellPath);
+        const MMatrix cellInverse = cellPath.inclusiveMatrixInverse();
         for (unsigned j = 0; j < cellFn.childCount(); ++j)
         {
             MObject child = cellFn.child(j);
@@ -391,9 +414,18 @@ MStatus ExportPob::doIt(const MArgList& args)
                         MFnDagNode(meshChild).getPath(meshPath);
                         if (!hasPortalAttr(meshPath)) continue;
                         PortalGeometry geom;
-                        if (extractMeshGeometry(meshPath, geom))
-                            portalGeometries[pi.portalIndex] = geom;
+                        if (extractMeshGeometry(meshPath, meshPath.inclusiveMatrix() * cellInverse, geom))
+                        {
+                            // Both sides of a portal share one IDTL; first (counter-clockwise preferred) wins.
+                            if (!pi.clockwise || portalGeometries.find(pi.portalIndex) == portalGeometries.end())
+                                portalGeometries[pi.portalIndex] = geom;
+                        }
                         break;
+                    }
+                    if (pi.portalIndex < 0)
+                    {
+                        std::cerr << "ExportPob: " << portalFn.name().asChar() << " has negative buildingPortalIndex, skipped" << std::endl;
+                        continue;
                     }
                     cell.portals.push_back(pi);
                 }
@@ -431,17 +463,30 @@ MStatus ExportPob::doIt(const MArgList& args)
                     MStatus lstat;
                     const MColor c = lfn.color(&lstat);
                     const float intens = lfn.intensity(&lstat);
-                    L.diffuse.set(1.f, c.r * intens, c.g * intens, c.b * intens);
-                    float sr = 0.f, sg = 0.f, sb = 0.f;
-                    tryGetSpecularRgb(shapeObj, sr, sg, sb);
-                    L.specular.set(1.f, sr, sg, sb);
-
-                    if (L.type == 0)
-                        L.transform = Transform::identity;
-                    else
+                    // Alpha and specular have no Maya light equivalent: importPob keeps them in swg* attrs.
+                    // Authored lights follow the dominant stock convention (diffuse alpha 0; specular = diffuse
+                    // for parallel/point, (1,0,0,0) for ambient).
+                    float diffuseAlpha = 0.f;
+                    getFloatAttr(shapeObj, "swgDiffuseAlpha", diffuseAlpha);
+                    L.diffuse.set(diffuseAlpha, c.r * intens, c.g * intens, c.b * intens);
+                    float sr = 0.f, sg = 0.f, sb = 0.f, sa = 0.f;
+                    if (getFloatAttr(shapeObj, "swgSpecularR", sr))
                     {
-                        MFnTransform tfn(xfmObj);
-                        L.transform = mayaMatrixToEngineTransform(tfn.transformationMatrix());
+                        getFloatAttr(shapeObj, "swgSpecularG", sg);
+                        getFloatAttr(shapeObj, "swgSpecularB", sb);
+                        getFloatAttr(shapeObj, "swgSpecularAlpha", sa);
+                        L.specular.set(sa, sr, sg, sb);
+                    }
+                    else if (L.type == 0)
+                        L.specular.set(1.f, 0.f, 0.f, 0.f);
+                    else
+                        L.specular = L.diffuse;
+
+                    {
+                        // cell-relative, so viewport layout offsets on rN do not leak into the light
+                        MDagPath lightXformPath;
+                        MFnDagNode(xfmObj).getPath(lightXformPath);
+                        L.transform = PobAuthoring::mayaSceneMatrixToEngineTransform(lightXformPath.inclusiveMatrix() * cellInverse);
                     }
 
                     if (L.type == 2)
@@ -462,13 +507,40 @@ MStatus ExportPob::doIt(const MArgList& args)
             {
                 for (unsigned k = 0; k < childFn.childCount(); ++k)
                 {
-                    MObject floorObj = childFn.child(k);
-                    MFnDagNode floorFn(floorObj);
-                    if (floorFn.name() != "floor0") continue;
-                    getStringAttr(floorObj, "external_reference", cell.floorName);
-                    for (unsigned m = 0; m < floorFn.childCount() && cell.floorName.empty(); ++m)
-                        getStringAttr(floorFn.child(m), "external_reference", cell.floorName);
-                    break;
+                    MObject colObj = childFn.child(k);
+                    MFnDagNode colFn(colObj);
+                    if (colFn.name() == "floor0")
+                    {
+                        getStringAttr(colObj, "external_reference", cell.floorName);
+                        for (unsigned m = 0; m < colFn.childCount() && cell.floorName.empty(); ++m)
+                            getStringAttr(colFn.child(m), "external_reference", cell.floorName);
+                    }
+                    else if (colFn.name() == "extent")
+                    {
+                        // Collision mesh (CMSH): every mesh below rN|collision|extent, in cell space.
+                        MDagPath extentPath;
+                        colFn.getPath(extentPath);
+                        MItDag it;
+                        it.reset(extentPath, MItDag::kDepthFirst, MFn::kMesh);
+                        for (; !it.isDone(); it.next())
+                        {
+                            MDagPath shapePath;
+                            it.getPath(shapePath);
+                            if (MFnDagNode(shapePath).isIntermediateObject()) continue;
+                            PortalGeometry part;
+                            if (!extractMeshGeometry(shapePath, shapePath.inclusiveMatrix() * cellInverse, part)) continue;
+                            const int base = static_cast<int>(cell.collisionMesh.vertices.size());
+                            cell.collisionMesh.vertices.insert(cell.collisionMesh.vertices.end(), part.vertices.begin(), part.vertices.end());
+                            // X is mirrored on export; swap two corners so the engine normal cross(B-A, C-A)
+                            // points where the Maya face points (stock CMSH faces the player's side).
+                            for (size_t t = 0; t + 2 < part.indices.size(); t += 3)
+                            {
+                                cell.collisionMesh.indices.push_back(base + part.indices[t]);
+                                cell.collisionMesh.indices.push_back(base + part.indices[t + 2]);
+                                cell.collisionMesh.indices.push_back(base + part.indices[t + 1]);
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -476,10 +548,18 @@ MStatus ExportPob::doIt(const MArgList& args)
         cells.push_back(cell);
     }
 
+    // Size the portal table from both geometry and cell references so every PRTL index is in range.
     int numberOfPortals = 0;
     for (const auto& p : portalGeometries)
         if (p.first >= numberOfPortals)
             numberOfPortals = p.first + 1;
+    for (const auto& c : cells)
+        for (const auto& pi : c.portals)
+            if (pi.portalIndex >= numberOfPortals)
+                numberOfPortals = pi.portalIndex + 1;
+    for (int i = 0; i < numberOfPortals; ++i)
+        if (portalGeometries.find(i) == portalGeometries.end())
+            std::cerr << "ExportPob: warning: portal " << i << " has no mesh with a 'portal' attribute; writing degenerate geometry" << std::endl;
 
     std::vector<int> clockwiseCell(numberOfPortals, -1);
     std::vector<int> counterClockwiseCell(numberOfPortals, -1);
@@ -553,8 +633,26 @@ MStatus ExportPob::doIt(const MArgList& args)
             iff.insertChunkString(cell.floorName.c_str());
         iff.exitChunk(TAG_DATA);
 
-        iff.insertForm(TAG_NULL);
-        iff.exitForm(TAG_NULL);
+        // Collision extent: verbatim from import (pobCellCollisionExtent), an authored collision mesh
+        // (rN|collision|extent -> CMSH/0000/IDTL, the stock layout), or an empty NULL extent.
+        if (!cell.collisionExtent.empty())
+        {
+            Iff extent(static_cast<int>(cell.collisionExtent.size()), cell.collisionExtent.data(), false);
+            iff.insertIff(&extent);
+        }
+        else if (cell.collisionMesh.indices.size() >= 3)
+        {
+            iff.insertForm(TAG_CMSH);
+            iff.insertForm(TAG_0000);
+            writeIdtl(iff, cell.collisionMesh);
+            iff.exitForm(TAG_0000);
+            iff.exitForm(TAG_CMSH);
+        }
+        else
+        {
+            iff.insertForm(TAG_NULL);
+            iff.exitForm(TAG_NULL);
+        }
 
         for (const auto& pi : cell.portals)
         {
@@ -613,5 +711,6 @@ MStatus ExportPob::doIt(const MArgList& args)
         return MS::kFailure;
     }
 
+    setResult(MString(filename.c_str()));
     return MS::kSuccess;
 }

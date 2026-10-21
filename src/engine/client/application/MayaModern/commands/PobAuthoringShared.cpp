@@ -2,6 +2,7 @@
 
 #include "MayaSceneBuilder.h"
 #include "Transform.h"
+#include "Vector.h"
 
 #include <maya/MFn.h>
 #include <maya/MFnDagNode.h>
@@ -66,6 +67,38 @@ namespace PobAuthoring
         MObject mdObj = md.create(m);
         if (!matPl.isNull())
             matPl.setValue(mdObj);
+    }
+
+    MMatrix engineTransformToMayaSceneMatrix(const Transform& t)
+    {
+        // engine column c (local axis / position) becomes Maya row c; X is mirrored on both sides.
+        static const double s[3] = {-1.0, 1.0, 1.0};
+        const Transform::matrix_t& e = t.getMatrix();
+        MMatrix m;
+        for (int r = 0; r < 3; ++r)
+            for (int c = 0; c < 3; ++c)
+                m[c][r] = static_cast<double>(e[r][c]) * s[r] * s[c];
+        for (int r = 0; r < 3; ++r)
+        {
+            m[r][3] = 0.0;
+            m[3][r] = static_cast<double>(e[r][3]) * s[r];
+        }
+        m[3][3] = 1.0;
+        return m;
+    }
+
+    Transform mayaSceneMatrixToEngineTransform(const MMatrix& m)
+    {
+        static const double s[3] = {-1.0, 1.0, 1.0};
+        Vector axes[3];
+        for (int c = 0; c < 3; ++c)
+            axes[c] = Vector(static_cast<float>(m[c][0] * s[0] * s[c]),
+                             static_cast<float>(m[c][1] * s[1] * s[c]),
+                             static_cast<float>(m[c][2] * s[2] * s[c]));
+        Transform t = Transform::identity;
+        t.setLocalFrameIJK_p(axes[0], axes[1], axes[2]);
+        t.setPosition_p(Vector(static_cast<float>(m[3][0] * s[0]), static_cast<float>(m[3][1]), static_cast<float>(m[3][2])));
+        return t;
     }
 
     bool isCellName(const MString& n)
@@ -282,6 +315,9 @@ namespace PobAuthoring
 
         meshShapePath.pop(1);
         outPortalTransformPath = meshShapePath;
+        // createMesh names the shape; give the transform the requested name so the Outliner shows it.
+        MFnDagNode(outPortalTransformPath.node()).setName(MString(portalTransformName.c_str()));
+        MFnDagNode(outPortalTransformPath.child(0)).setName(MString((portalTransformName + "Shape").c_str()));
         MFnDependencyNode transformDepFn(outPortalTransformPath.node());
         addPortalAuthoringAttrs(transformDepFn, portalIndex, clockwise, targetCell, disabled, passable, doorStyle);
 

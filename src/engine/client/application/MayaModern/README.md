@@ -35,7 +35,7 @@ Unload the plugin in Maya before overwriting the `.mll` on Windows.
 .\scripts\Deploy-ToMayaPlugIns.ps1
 ```
 
-Defaults to `%USERPROFILE%\Documents\maya\2027\plugins\`.
+Copies `build\Release` (`.mll`, `.pdb`, companion `.mel`/`.py`, `swg_mocap\`) to `Documents\maya\2027\plugins` — the folder on `MAYA_PLUG_IN_PATH` in the recommended `Maya.env` — or pass `-MayaPlugInsDir "C:\Program Files\Autodesk\Maya2027\bin\plug-ins"` (admin). Close Maya first; the loaded `.mll` is locked.
 
 Place **`SwgMayaEditor.cfg`** next to the `.mll` (nvtt path, optional `gameDataRoot`, shader prototypes). The plugin also loads `SwgMayaEditor.cfg` from the Maya working directory if present.
 
@@ -48,7 +48,6 @@ loadPlugin "SwgMayaEditor";
 ```
 TITAN_DATA_ROOT=D:/titan/data/sku.0/sys.client/compiled/game
 TITAN_EXPORT_ROOT=D:/exported
-MAYA_PLUG_IN_PATH=C:/Users/you/Documents/maya/2027/plugins
 PATH=%PATH%;C:/Program Files/NVIDIA Corporation/NVIDIA Texture Tools
 ```
 
@@ -56,7 +55,9 @@ PATH=%PATH%;C:/Program Files/NVIDIA Corporation/NVIDIA Texture Tools
 
 ## POB authoring (buildings)
 
-See [docs/guide.md](docs/guide.md) and the quick table in [docs/README.md](docs/README.md). Commands: `createPobTemplate`, `layoutPobCells`, `connectPobCells`, `addPobPortal`, `validatePob`, `exportPob`. MEL helpers: `pobAuthoring.mel`.
+See [docs/guide.md](docs/guide.md) and the quick table in [docs/README.md](docs/README.md). Commands: `createPobTemplate`, `layoutPobCells`, `connectPobCells`, `addPobPortal`, `validatePob`, `exportPob`. MEL helpers: `pobAuthoring.mel` (auto-sourced with the plug-in), including the one-shot `swg_pob_exportStructure(root, exportRoot, base)` → per-cell `.apt`/`.msh`, `.flr` floors and the `.pob`.
+
+To generate a building from a room layout (walls, doors, floors with portal edges, lights) and export it in one go, use the **SwgMayaMCP** server in `support/MCP/SwgMayaMCP` (`pob_build` + `pob_export_structure`); it runs against interactive Maya or a headless `mayapy`.
 
 ---
 
@@ -72,7 +73,7 @@ See [docs/guide.md](docs/guide.md) and the quick table in [docs/README.md](docs/
 | `.pob` | Yes | Yes | Portal object |
 | `.lod` / `.lmg` | Yes | Yes | LOD containers |
 | `.sht` | Yes | Yes | Shader template |
-| `.flr` | Yes | No | Floor |
+| `.flr` | Yes | Yes | Floor (export: compiled FLOR v0006 with neighbours + portal edges) |
 | `.dds` | Yes | No | Texture (export via nvtt from TGA/PNG) |
 
 Full matrix: [docs/manual.md](docs/manual.md). Roadmap: [docs/todo.txt](docs/todo.txt).

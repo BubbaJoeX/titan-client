@@ -34,7 +34,7 @@
 - [x] mgn - Skeletal mesh (SKMG); import + export (writer: skinned mesh selection)
 - [x] skt - Skeleton; import + export
 - [x] ans - Animation (KFAT/CKAT); import + export
-- [x] flr - Floor import (export N/A)
+- [x] flr - Floor import + export (compiled FLOR v0006: neighbours, crossable edges, part tags, portal edges)
 - [x] sat - Skeletal appearance; import + export
 - [x] pob - Portal object; import + export
 - [x] lod / lmg - LOD containers; import + export
@@ -84,17 +84,18 @@
 
 ### POB authoring commands (plugin)
 - [x] createPobTemplate, layoutPobCells, addPobPortal, connectPobCells, duplicatePobCell, reportPobPortals, validatePob (see guide.md; PobExtendedCommands)
-- [x] pobAuthoring.mel helpers (source from build/Release next to .mll)
+- [x] validatePob returns its report (setResult) and flags portal halves that do not overlap
+- [x] pobAuthoring.mel helpers (auto-sourced from the plug-in folder)
 
 ### Export (round-trip status)
-- [x] exportPob
+- [x] exportPob (portal transforms baked, n-gons triangulated, cells sorted by rN, lights in cell space, collision extents + light alpha/specular preserved)
 - [x] exportStaticMesh (msh/apt + shader TGA→DDS + multi-shape combine)
 - [x] exportSkeleton
 - [x] exportShader (.sht)
 - [x] .mgn / .ans / .sat / .lod / .lmg via File > Export Selection and registered translators (verify per-asset in QA)
 - [ ] Export mesh with lightsaber - .lsb generator (not in plugin)
 - [ ] Export mgn with ship - cockpit/*.iff bundle (legacy scope)
-- [ ] Export structure one-shot - pob/flr/msh/sht/sfp single command (partial: exportPob + exportStaticMesh separately)
+- [x] Export structure one-shot - swg_pob_exportStructure: per-cell msh/apt (+sht/dds), per-cell flr, pob (sfp footprint still separate)
 - [ ] Reexport command (batch / convenience)
 
 ### Commands
@@ -114,6 +115,16 @@
 ### ANS / animation behavior (recent)
 - [x] Rotation keyframes: delta quaternion path aligned with legacy exporter expectations
 - [x] Import prep: clear keys + bind pose restore; skip hardpoints (hold_* / swgHardpointParent) from cutKey/dagPose and from anim application
+- [x] Joint rotation order: MFnTransform::rotationOrder() (MTransformationMatrix enum) was cast to MEulerRotation's enum - every XYZ joint was converted as YZX (SwgAnimMath::eulerOrderOf)
+- [x] Deltas composed in engine space (rotate = mirror(delta * bind)), static rotations included (SwgAnimMath.h)
+- [x] importSkeleton records the skeleton bind per joint (swgBindRotate / swgBindTranslate); import resets and export measures deltas from it (export no longer treats the first frame as bind)
+- [x] Import keys every whole frame with the engine's slerp between file keys (linear Euler curves drifted far from the engine between sparse CKAT keys)
+- [x] importAnimation re-applies the clip's fps + range after Maya's file import restores the scene's (keys had landed on 0.8-frame steps)
+- [x] Export: playback range only (no default 0-200 padding), skeleton joint names (root, not root__all_b_l0), redundant keys dropped (0.0015 rad / 0.5 mm)
+- [x] importSkeletalMesh: skin bound before blend targets; targets added with blendShape -frontOfChain (body/head skins were left unbound)
+- [x] Verified: stock CKAT -> export -> reimport within 0.0015 rad / 0.5 mm on every joint and frame (SwgMayaMCP examples/ans_roundtrip.py); authored test clip examples/make_test_animation.py
+- [ ] Export CKAT (compressed) - KFAT only today
+- [ ] Customisable body shaders: hum_m body/head get no shading group on import
 
 ---
 
@@ -121,6 +132,17 @@
 
 ### Import Gaps
 - [ ] Import Components (.cmp) - component appearance with hardpoints
+
+### POB round-trip (fixed)
+- [x] importPob: IDTL portal geometry was read as 0 verts (getChunkLengthLeft returns elements, not bytes) - every portal became a placeholder quad
+- [x] importPob: CELL 0004 names, floor/appearance references kept when the file is missing, guessed floors preview-only
+- [x] importPob: one transform per cell light (was: all shapes under one transform), engine<->Maya matrix (transpose + X mirror)
+- [x] importPob: collision extents (CMSH/CMPT/EXBX...) stored on the cell and re-exported verbatim
+- [x] Companion MEL auto-sourcing (MFnPlugin::loadPath is the plug-in folder, not the .mll path)
+- [x] Iff::isValid on a missing file no longer seeks a null FILE* (hung Maya when a LOD referenced a missing .msh)
+- [x] Plug-in WARNING() messages are formatted (were printed as raw "%s" format strings)
+- [x] Deploy-ToMayaPlugIns.ps1: builds from build/ (Debug optional), Documents plugins by default, moves a locked .mll aside
+- [x] Verified: stock .pob import -> export reproduces structure (portals, cells, refs, lights, extents) on 25+ files
 
 ### Export Gaps / Parity
 - [ ] Export mesh with lightsaber (.lsb)

@@ -42,7 +42,7 @@ SwgMayaEditor is a Maya 2027 plugin that enables complete round-trip editing of 
 - **Compile** shader source code (uses existing `.sht` templates)
 - **Generate** collision meshes automatically (must be authored separately)
 - **Create** new skeleton rigs from scratch (import existing `.skt` first, then modify)
-- **Export** floor files (`.flr`) — import only
+- **Export** floor files (`.flr`) — compiled FLOR v0006 (see guide.md, Floor export)
 - **Export** DDS textures directly — uses NVIDIA Texture Tools for TGA→DDS conversion
 - **Handle** encrypted or compressed game archives — work with extracted files only
 
@@ -168,7 +168,7 @@ exportStaticMesh;
 | `.lod`    | LOD mesh container           | ✅      | ✅      | `SwgLod` |
 | `.lmg`    | Skeletal LOD container       | ✅      | ✅      | `SwgLmg` |
 | `.sht`    | Shader template              | ✅      | ✅      | Command  |
-| `.flr`    | Floor collision              | ✅      | ❌      | `SwgFlr` |
+| `.flr`    | Floor collision              | ✅      | ✅      | `SwgFlr` |
 | `.dds`    | DDS texture                  | ✅      | ❌      | `SwgDds` |
 
 

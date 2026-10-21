@@ -12,7 +12,7 @@ Markdown for the **SwgMayaEditor** Maya 2027 plugin lives in this folder. Read i
 | **Export a static mesh / sign / prop with textures** | [guide.md — Static mesh export](guide.md#static-mesh-export-swgmsh) |
 | Day-to-day MEL commands and translators | [guide.md](guide.md) |
 | Deep import/export behavior, coordinates, limitations | [manual.md](manual.md) |
-| POB (building) commands at a glance | [../README.md#pob-authoring-buildings--apartments](../README.md#pob-authoring-buildings--apartments) |
+| POB (building) commands at a glance | [../README.md#pob-authoring-buildings](../README.md#pob-authoring-buildings) |
 | ANS animation IFF layout (technical) | [ans-format.md](ans-format.md) |
 | Parity checklist / roadmap | [todo.txt](todo.txt) |
 

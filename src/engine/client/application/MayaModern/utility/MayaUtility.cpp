@@ -275,9 +275,11 @@ namespace
     static void collectMeshShapesForStaticMeshExportRecursive(const MDagPath& curr, std::vector<MDagPath>& out)
     {
         MStatus st;
-        if (curr.hasFn(MFn::kMesh))
+        // Test the node itself: MDagPath::hasFn is also true for a transform whose shape is a mesh, which
+        // stopped the walk at the first mesh transform and dropped its siblings' geometry.
+        if (curr.node().hasFn(MFn::kMesh))
         {
-            if (!MayaUtility::meshShapeExcludedFromStaticMeshExport(curr))
+            if (!MFnDagNode(curr).isIntermediateObject() && !MayaUtility::meshShapeExcludedFromStaticMeshExport(curr))
                 out.push_back(curr);
             return;
         }
@@ -305,7 +307,7 @@ void MayaUtility::collectMeshShapesForStaticMeshExport(const MDagPath& root, std
 {
     outMeshPaths.clear();
     MDagPath start = root;
-    if (start.hasFn(MFn::kMesh))
+    if (start.node().hasFn(MFn::kMesh))
     {
         if (!meshShapeExcludedFromStaticMeshExport(start))
             outMeshPaths.push_back(start);

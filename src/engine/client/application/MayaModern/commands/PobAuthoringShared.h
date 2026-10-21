@@ -2,6 +2,7 @@
 #define SWGMAYAEDITOR_POBAUTHORINGSHARED_H
 
 #include <maya/MFnDependencyNode.h>
+#include <maya/MMatrix.h>
 #include <maya/MObject.h>
 #include <maya/MDagPath.h>
 #include <maya/MStatus.h>
@@ -28,7 +29,13 @@ namespace PobAuthoring
                                  int targetCell, bool disabled, bool passable, const std::string& doorStyle);
 
     /// Door hardpoint for export: **data only** (bool + matrix), no DAG geometry/locator child.
+    /// The matrix attr holds the engine 3x4 verbatim (not a Maya scene matrix).
     void applyDoorHardpointAttributes(MObject portalTransformObj, bool enabled, const Transform& doorTransform);
+
+    /// Engine transform (column vectors, translation in column 3, left-handed) <-> Maya scene matrix
+    /// (row vectors, translation in row 3, X mirrored like all mesh data). Use for real DAG transforms (lights).
+    MMatrix engineTransformToMayaSceneMatrix(const Transform& t);
+    Transform mayaSceneMatrixToEngineTransform(const MMatrix& m);
 
     /// Parses `r0`, `r12` -> 0, 12; otherwise -1.
     int cellIndexFromRName(const MString& n);

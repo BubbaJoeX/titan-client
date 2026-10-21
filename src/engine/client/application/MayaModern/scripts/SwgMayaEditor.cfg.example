@@ -1,0 +1,26 @@
+[SwgMayaEditor]
+; Loaded from the plugin directory on loadPlugin SwgMayaEditor (then the Maya working directory).
+; Deploy-ToMayaPlugIns.ps1 installs this as SwgMayaEditor.cfg next to the .mll when none exists there.
+; Paths use forward or backslashes; forward slashes are safest in .cfg files. Quote values that contain
+; spaces: unquoted values are split on whitespace (multi-value keys) and only the last piece is used.
+
+; PNG/TGA/JPG → DDS (required for static mesh shader export)
+nvttExporterPath = "C:/Program Files/NVIDIA Corporation/NVIDIA Texture Tools/nvtt_export.exe"
+
+; Same as TITAN_DATA_ROOT — used when bootstrapping prototype effect/texture files
+gameDataRoot = D:/titan/data/sku.0/sys.client/compiled/game
+
+; Optional fallbacks if setBaseDir was not run this session
+dataRootDir = D:/exported
+appearanceWriteDir = D:/exported/appearance/
+shaderTemplateWriteDir = D:/exported/shader/
+textureWriteDir = D:/exported/texture/
+skeletonTemplateWriteDir = D:/exported/appearance/skeleton/
+
+; Default opaque prototype when swgShaderPath is empty on the material
+shaderPrototypeSht = shader/defaultshader.sht
+
+; Set 1 to copy the source image beside each published .dds as texture/<name>_src.<ext>
+textureMirrorSourceBesideDds = 0
+
+verboseLogging = false

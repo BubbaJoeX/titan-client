@@ -6,7 +6,7 @@
 #include <maya/MSelectionList.h>
 
 MStatus StaticMeshExportPipeline::findExportMeshFromActiveSelection(
-    MDagPath& outMeshShapePath, bool& outMeshWithoutShader)
+    MDagPath& outMeshShapePath, bool& outMeshWithoutShader, MDagPath* outRootPath)
 {
     outMeshWithoutShader = false;
 
@@ -25,6 +25,8 @@ MStatus StaticMeshExportPipeline::findExportMeshFromActiveSelection(
         if (MayaUtility::findFirstMeshShapeWithShadersInHierarchy(dagPath, meshPath))
         {
             outMeshShapePath = meshPath;
+            if (outRootPath)
+                *outRootPath = dagPath;
             return MS::kSuccess;
         }
         if (MayaUtility::findFirstMeshShapeInHierarchy(dagPath, meshPath))
@@ -38,8 +40,9 @@ bool StaticMeshExportPipeline::exportMesh(
     const std::string& outputPathOverride,
     const StaticMeshTransferOptions& options,
     std::string& outMeshTreePath,
-    std::string& outAptTreePath)
+    std::string& outAptTreePath,
+    const MDagPath* exportRoot)
 {
     ExportStaticMesh cmd;
-    return cmd.performExport(meshShapePath, outputPathOverride, outMeshTreePath, outAptTreePath, options);
+    return cmd.performExport(meshShapePath, outputPathOverride, outMeshTreePath, outAptTreePath, options, exportRoot);
 }

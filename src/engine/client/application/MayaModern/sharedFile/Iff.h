@@ -127,6 +127,8 @@ public:
     // raw data retrieval
     const byte *getRawData(void) const;
     int         getRawDataSize(void) const;
+    /// Bytes of the block at the current read position, header included (copy it out before the Iff changes).
+    const byte *getCurrentBlockRawData(int &outSize) const;
 
     void formatLocation(char *buffer, int bufferLength) const;
 

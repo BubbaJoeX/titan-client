@@ -9,6 +9,8 @@
 #define INCLUDED_FoundationTypes_H
 
 #include <cfloat>
+#include <cstdarg>
+#include <cstdio>
 #include <iostream>
 #include <windows.h>
 
@@ -103,31 +105,34 @@ static void InternalMessage(const char *format, int extraFlags, va_list va, int 
 #define WARNING(a, b) ((a) ? LINEINFO("[SWG MAYA PLUG-IN] ***WARNING***"), Warning b : NOP)
 static void Warning(const char *format, ...)
 {
-    std::cerr << format << std::endl;
-    LOG_F(ERROR, "%s", format);
-}
-
-// error -> a bug that is bad and will halt the current progress then show a popup
-// code behind FATAL is responsible for actually cancelling the process!!
-#define FATAL(a, b) ((a) ? LINEINFO("[SWG MAYA PLUG-IN] ***ERROR***"), Fatal b : NOP) // we'll let old SWG FATALs work this way too
-static void Fatal(const char *format, ...)
-{
+    char msg[2048];
     va_list va;
     va_start(va, format);
-    InternalMessage(format, 0, va);
+    vsnprintf(msg, sizeof(msg), format, va);
     va_end(va);
-    LOG_F(ERROR, "%s", format);
 
-    backward::StackTrace st;
-    st.load_here(12);
-    backward::Printer p;
-    p.print(st);
-    MessageBoxA( // trigger an actual popup window because this is a bad thing we need to tell people about
-            nullptr,
-            "ERROR: SWG Maya Plug-In encountered an error. Check Output Window for more information.",
-            "SWG Maya Plug-In",
-            MB_ICONERROR | MB_OK
-    );
+    std::cerr << msg << std::endl;
+    LOG_F(WARNING, "%s", msg);
+}
+
+// error -> log and continue. Do not MessageBox: import loops (IFF/shader/POB) would lock Maya.
+#define FATAL(a, b) ((a) ? LINEINFO("[SWG MAYA PLUG-IN] ***ERROR***"), Fatal b : NOP)
+static void Fatal(const char *format, ...)
+{
+    char msg[2048];
+    va_list va;
+    va_start(va, format);
+    vsnprintf(msg, sizeof(msg), format, va);
+    va_end(va);
+
+    std::cerr << "[SWG MAYA PLUG-IN] FATAL: " << msg << std::endl;
+    LOG_F(ERROR, "%s", msg);
+#ifdef _WIN32
+    OutputDebugStringA("[SWG MAYA PLUG-IN] FATAL: ");
+    OutputDebugStringA(msg);
+    OutputDebugStringA("\n");
+#endif
+
 }
 
 // ======================================================================

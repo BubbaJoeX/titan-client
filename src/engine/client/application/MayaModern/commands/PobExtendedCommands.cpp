@@ -5,7 +5,11 @@
 #include <maya/MDagPath.h>
 #include <maya/MFnDependencyNode.h>
 #include <maya/MFnDagNode.h>
+#include <maya/MFnMesh.h>
 #include <maya/MFnTransform.h>
+#include <maya/MFloatPointArray.h>
+#include <maya/MMatrix.h>
+#include <maya/MPoint.h>
 #include <maya/MGlobal.h>
 #include <maya/MItDag.h>
 #include <maya/MObject.h>
@@ -73,6 +77,35 @@ namespace
         MString v;
         if (p.getValue(v) != MS::kSuccess) return true;
         return v.length() == 0;
+    }
+
+    /// Centroid of the portal mesh under `portalXform`, in the space of its rN cell (what exportPob writes).
+    static bool portalCentroidInCell(const MDagPath& portalXform, MObject pobRoot, MPoint& out)
+    {
+        MDagPath cellPath = portalXform;
+        while (cellPath.length() > 1)
+        {
+            MDagPath parent = cellPath;
+            parent.pop(1);
+            if (parent.node() == pobRoot) break;
+            cellPath = parent;
+        }
+        MDagPath shapePath = portalXform;
+        if (shapePath.extendToShape() != MS::kSuccess || !shapePath.hasFn(MFn::kMesh))
+            return false;
+        MFloatPointArray pts;
+        if (MFnMesh(shapePath).getPoints(pts, MSpace::kObject) != MS::kSuccess || pts.length() == 0)
+            return false;
+        double sx = 0.0, sy = 0.0, sz = 0.0;
+        for (unsigned i = 0; i < pts.length(); ++i)
+        {
+            sx += pts[i].x;
+            sy += pts[i].y;
+            sz += pts[i].z;
+        }
+        const double n = static_cast<double>(pts.length());
+        out = MPoint(sx / n, sy / n, sz / n) * (shapePath.inclusiveMatrix() * cellPath.inclusiveMatrixInverse());
+        return true;
     }
 
     static MObject resolveCellFromSelectionFirst(MDagPath& outCellPath)
@@ -216,6 +249,25 @@ MStatus ValidatePob::doIt(const MArgList& args)
             report += s.c_str();
             report += "\n";
         }
+        if (cnt == 2u)
+        {
+            MSelectionList pair;
+            MDagPath a, b;
+            MPoint ca, cb;
+            if (pair.add(kv.second[0].c_str()) == MS::kSuccess && pair.add(kv.second[1].c_str()) == MS::kSuccess &&
+                pair.getDagPath(0, a) == MS::kSuccess && pair.getDagPath(1, b) == MS::kSuccess &&
+                portalCentroidInCell(a, rootPath.node(), ca) && portalCentroidInCell(b, rootPath.node(), cb))
+            {
+                const double d = ca.distanceTo(cb);
+                if (d > 0.01)
+                {
+                    char l[256];
+                    sprintf(l, "  index %d: the two portal halves are %.3f m apart in building space (should overlap)\n", kv.first, d);
+                    report += l;
+                    ++portalIssues;
+                }
+            }
+        }
     }
 
     char sum[256];
@@ -223,6 +275,7 @@ MStatus ValidatePob::doIt(const MArgList& args)
             cells.size(), cellIssues, portalIssues);
     report += sum;
     MGlobal::displayInfo(report);
+    setResult(report);
     return MS::kSuccess;
 }
 

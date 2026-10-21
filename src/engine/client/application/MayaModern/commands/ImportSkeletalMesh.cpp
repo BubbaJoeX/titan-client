@@ -151,6 +151,8 @@ namespace
             return false;
         if (findJoint(jointMap, tn, out))
             return true;
+        if (findJoint(jointMap, toLower(tn), out))
+            return true;
         if (findJoint(jointMap, stripUnderscores(tn), out))
             return true;
         if (findJoint(jointMap, getJointShortName(tn), out))
@@ -244,7 +246,7 @@ MStatus ImportSkeletalMesh::doIt(const MArgList& args)
         const std::string rawInput = inputFilename;
         inputFilename = resolveImportPath(inputFilename);
         inputFilename = resolveSkmgPathThroughWrappers(inputFilename);
-        MGlobal::displayInfo(MString("ImportSkeletalMesh: input=") + rawInput.c_str()
+        MGlobal::displayInfo(MString("SwgMayaEditor 20260831k ImportSkeletalMesh: input=") + rawInput.c_str()
             + " -> resolved=" + inputFilename.c_str());
     }
     if (!skeletonFilename.empty())
@@ -253,7 +255,7 @@ MStatus ImportSkeletalMesh::doIt(const MArgList& args)
     Iff iff;
     if (!iff.open(inputFilename.c_str(), false))
     {
-        MGlobal::displayError(MString("ImportSkeletalMesh: failed to open: ") + inputFilename.c_str());
+        MGlobal::displayInfo(MString("ImportSkeletalMesh: failed to open: ") + inputFilename.c_str());
         std::cerr << "ImportSkeletalMesh: failed to open " << inputFilename << std::endl;
         return MS::kFailure;
     }
@@ -262,7 +264,7 @@ MStatus ImportSkeletalMesh::doIt(const MArgList& args)
     if (topFormTag != TAG_SKMG)
     {
         char topStr[5]; ConvertTagToString(topFormTag, topStr);
-        MGlobal::displayError(MString("ImportSkeletalMesh: expected FORM SKMG but found FORM ") + topStr
+        MGlobal::displayInfo(MString("ImportSkeletalMesh: expected FORM SKMG but found FORM ") + topStr
             + " in " + inputFilename.c_str());
         std::cerr << "ImportSkeletalMesh: expected FORM SKMG but found FORM " << topStr << std::endl;
         return MS::kFailure;
@@ -274,7 +276,7 @@ MStatus ImportSkeletalMesh::doIt(const MArgList& args)
     {
         char formName[5];
         ConvertTagToString(versionTag, formName);
-        MGlobal::displayError(
+        MGlobal::displayInfo(
             MString("ImportSkeletalMesh: unsupported SKMG version ") + formName
             + " (expected 0002, 0003, or 0004). File may be corrupt or a newer format.");
         std::cerr << "ImportSkeletalMesh: unsupported SKMG version " << formName << std::endl;
@@ -312,6 +314,23 @@ MStatus ImportSkeletalMesh::doIt(const MArgList& args)
     zonesThisOccludesCount  = iff.read_int16();
     occlusionLayer          = iff.read_int16();
     iff.exitChunk(TAG_INFO);
+
+    if (skeletonTemplateCount < 0 || skeletonTemplateCount > 32
+        || transformNameCount < 0 || transformNameCount > 4096
+        || positionCount < 0 || positionCount > 500000
+        || transformWeightDataCount < 0 || transformWeightDataCount > 4000000
+        || normalCount < 0 || normalCount > 2000000
+        || perShaderDataCount < 0 || perShaderDataCount > 256
+        || blendTargetCount < 0 || blendTargetCount > 4096)
+    {
+        MGlobal::displayInfo(MString(
+            "ImportSkeletalMesh: SKMG INFO counts are not a supported SWG/mixed layout (pos=")
+            + static_cast<int>(positionCount) + ", shaders=" + static_cast<int>(perShaderDataCount)
+            + "). Refusing to parse to avoid a Maya crash.");
+        iff.exitForm(versionTag, true);
+        iff.exitForm(TAG_SKMG, true);
+        return MS::kFailure;
+    }
 
     std::vector<SwgTrtsIo::Header> trtsAccum;
 
@@ -558,12 +577,13 @@ MStatus ImportSkeletalMesh::doIt(const MArgList& args)
             (void)iff.read_int16();
         iff.exitChunk(TAG_ZTO);
     }
-    while (iff.getNumberOfBlocksLeft() > 0 && !iff.isCurrentForm())
+    int skipGuard = 0;
+    while (iff.getNumberOfBlocksLeft() > 0 && !iff.isCurrentForm() && skipGuard++ < 256)
     {
-        iff.enterChunk();
-        iff.exitChunk();
+        if (!iff.goForward(1, true))
+            break;
     }
-    while (iff.getNumberOfBlocksLeft() > 0 && iff.isCurrentForm() && iff.getCurrentName() != TAG_PSDT)
+    while (iff.getNumberOfBlocksLeft() > 0 && iff.isCurrentForm() && iff.getCurrentName() != TAG_PSDT && skipGuard++ < 256)
     {
         if (iff.getCurrentName() == TAG_TRTS)
         {
@@ -571,28 +591,15 @@ MStatus ImportSkeletalMesh::doIt(const MArgList& args)
             std::string terr;
             if (!SwgTrtsIo::consumeTrtsFromEnteredForm(iff, trtsAccum, terr))
             {
-                MGlobal::displayError(MString("ImportSkeletalMesh: TRTS: ") + terr.c_str());
+                MGlobal::displayInfo(MString("ImportSkeletalMesh: TRTS: ") + terr.c_str());
                 iff.exitForm(versionTag);
                 iff.exitForm(TAG_SKMG);
                 return MS::kFailure;
             }
             continue;
         }
-        iff.enterForm();
-        while (!iff.atEndOfForm())
-        {
-            if (iff.isCurrentForm())
-            {
-                iff.enterForm();
-                iff.exitForm();
-            }
-            else
-            {
-                iff.enterChunk();
-                iff.exitChunk();
-            }
-        }
-        iff.exitForm();
+        if (!iff.goForward(1, true))
+            break;
     }
 
     std::vector<MayaSceneBuilder::ShaderGroupData> shaderGroups;
@@ -610,10 +617,18 @@ MStatus ImportSkeletalMesh::doIt(const MArgList& args)
         int32 shaderVertexCount = 0;
         iff.enterChunk(TAG_PIDX);
         shaderVertexCount = iff.read_int32();
+        {
+            const int maxIdx = iff.getChunkLengthLeft(4);
+            if (shaderVertexCount < 0 || (maxIdx >= 0 && shaderVertexCount > maxIdx))
+            {
+                MGlobal::displayInfo(MString("ImportSkeletalMesh: PIDX count ") + static_cast<int>(shaderVertexCount) + " exceeds chunk; skipped");
+                shaderVertexCount = 0;
+            }
+        }
         sg.positionIndices.reserve(static_cast<size_t>(shaderVertexCount));
         for (int32 i = 0; i < shaderVertexCount; ++i)
             sg.positionIndices.push_back(static_cast<int>(iff.read_int32()));
-        iff.exitChunk(TAG_PIDX);
+        iff.exitChunk(TAG_PIDX, true);
 
         if (iff.getNumberOfBlocksLeft() > 0 && !iff.isCurrentForm() && iff.getCurrentName() == TAG_NIDX)
         {
@@ -701,7 +716,11 @@ MStatus ImportSkeletalMesh::doIt(const MArgList& args)
                 {
                     iff.enterChunk(TAG_ITL);
                     const int32 triCount = iff.read_int32();
-                    for (int32 t = 0; t < triCount; ++t)
+                    const int maxTris = iff.getChunkLengthLeft(12);
+                    const int32 useCount = (triCount < 0 || (maxTris >= 0 && triCount > maxTris)) ? 0 : triCount;
+                    if (useCount == 0 && triCount != 0)
+                        MGlobal::displayInfo(MString("ImportSkeletalMesh: ITL count ") + static_cast<int>(triCount) + " exceeds chunk; skipped");
+                    for (int32 t = 0; t < useCount; ++t)
                     {
                         MayaSceneBuilder::TriangleData tri;
                         tri.indices[0] = static_cast<int>(iff.read_int32());
@@ -709,13 +728,17 @@ MStatus ImportSkeletalMesh::doIt(const MArgList& args)
                         tri.indices[2] = static_cast<int>(iff.read_int32());
                         sg.triangles.push_back(tri);
                     }
-                    iff.exitChunk(TAG_ITL);
+                    iff.exitChunk(TAG_ITL, true);
                 }
                 else if (primTag == TAG_OITL)
                 {
                     iff.enterChunk(TAG_OITL);
                     const int32 triCount = iff.read_int32();
-                    for (int32 t = 0; t < triCount; ++t)
+                    const int maxTris = iff.getChunkLengthLeft(14);
+                    const int32 useCount = (triCount < 0 || (maxTris >= 0 && triCount > maxTris)) ? 0 : triCount;
+                    if (useCount == 0 && triCount != 0)
+                        MGlobal::displayInfo(MString("ImportSkeletalMesh: OITL count ") + static_cast<int>(triCount) + " exceeds chunk; skipped");
+                    for (int32 t = 0; t < useCount; ++t)
                     {
                         iff.read_int16();
                         MayaSceneBuilder::TriangleData tri;
@@ -724,20 +747,12 @@ MStatus ImportSkeletalMesh::doIt(const MArgList& args)
                         tri.indices[2] = static_cast<int>(iff.read_int32());
                         sg.triangles.push_back(tri);
                     }
-                    iff.exitChunk(TAG_OITL);
+                    iff.exitChunk(TAG_OITL, true);
                 }
                 else
                 {
-                    if (iff.isCurrentForm())
-                    {
-                        iff.enterForm();
-                        iff.exitForm();
-                    }
-                    else
-                    {
-                        iff.enterChunk();
-                        iff.exitChunk();
-                    }
+                    if (!iff.goForward(1, true))
+                        break;
                 }
             }
             iff.exitForm(TAG_PRIM);
@@ -759,7 +774,7 @@ MStatus ImportSkeletalMesh::doIt(const MArgList& args)
                 std::string terr;
                 if (!SwgTrtsIo::consumeTrtsFromEnteredForm(iff, trtsAccum, terr))
                 {
-                    MGlobal::displayError(MString("ImportSkeletalMesh: TRTS: ") + terr.c_str());
+                    MGlobal::displayInfo(MString("ImportSkeletalMesh: TRTS: ") + terr.c_str());
                     iff.exitForm(versionTag);
                     iff.exitForm(TAG_SKMG);
                     return MS::kFailure;
@@ -774,7 +789,7 @@ MStatus ImportSkeletalMesh::doIt(const MArgList& args)
             err += ", triangles=";
             err += totalTriangles;
             err += "). Parser may be out of sync with this .lmg/.mgn (check Script Editor / stderr).";
-            MGlobal::displayError(err);
+            MGlobal::displayInfo(err);
             std::cerr << "ImportSkeletalMesh: no geometry positions=" << positionCount << " groups=" << shaderGroups.size()
                 << " triangles=" << totalTriangles << " perShaderDataCount=" << perShaderDataCount << std::endl;
             return MS::kFailure;
@@ -787,7 +802,7 @@ MStatus ImportSkeletalMesh::doIt(const MArgList& args)
         std::string terr;
         if (!SwgTrtsIo::consumeTrtsFromEnteredForm(iff, trtsAccum, terr))
         {
-            MGlobal::displayError(MString("ImportSkeletalMesh: TRTS: ") + terr.c_str());
+            MGlobal::displayInfo(MString("ImportSkeletalMesh: TRTS: ") + terr.c_str());
             iff.exitForm(versionTag);
             iff.exitForm(TAG_SKMG);
             return MS::kFailure;
@@ -833,21 +848,13 @@ MStatus ImportSkeletalMesh::doIt(const MArgList& args)
                 transformPath.pop(1);
 
             MFnDagNode transformFn(transformPath);
-            MString parentCmd = "parent \"";
-            parentCmd += transformFn.fullPathName();
-            parentCmd += "\" \"";
-            parentCmd += parentDag.fullPathName();
-            parentCmd += "\"";
-            status = MGlobal::executeCommand(parentCmd);
+            MFnDagNode parentFn(parentDag);
+            status = parentFn.addChild(transformPath.node());
             if (status)
             {
-                std::string newPath = parentDag.fullPathName().asChar();
-                newPath += "|";
-                newPath += transformFn.name().asChar();
-                sel.clear();
-                sel.add(MString(newPath.c_str()));
-                if (sel.length() > 0)
-                    sel.getDagPath(0, meshPath);
+                MDagPath newPath;
+                if (transformFn.getPath(newPath) == MS::kSuccess)
+                    meshPath = newPath;
             }
         }
     }
@@ -859,18 +866,20 @@ MStatus ImportSkeletalMesh::doIt(const MArgList& args)
         SwgTrtsIo::applyBindingsToTransform(trtsTransformPath, trtsAccum, inputFilename.c_str());
     }
 
+    MGlobal::displayInfo("ImportSkeletalMesh: assigning materials");
     status = MayaSceneBuilder::assignMaterials(meshPath, shaderGroups, inputFilename);
     if (!status)
         std::cerr << "ImportSkeletalMesh: failed to assign materials" << std::endl;
+    else
+        MGlobal::displayInfo("ImportSkeletalMesh: materials assigned");
 
-    if (!blendTargets.empty())
+    const bool needJoints = !transformNames.empty();
+    if (!needJoints && !blendTargets.empty())
     {
         status = MayaSceneBuilder::createBlendShapes(meshPath, blendTargets);
         if (!status)
             std::cerr << "ImportSkeletalMesh: failed to create blend shapes" << std::endl;
     }
-
-    const bool needJoints = !transformNames.empty();
     if (needJoints)
     {
         std::vector<MDagPath> jointPaths;
@@ -973,17 +982,29 @@ MStatus ImportSkeletalMesh::doIt(const MArgList& args)
 
         if (jointPaths.empty() && transformWeightDataCount > 0)
         {
-            MGlobal::displayWarning(MString(
+            MGlobal::displayInfo(MString(
                 "ImportSkeletalMesh: no joints matched mesh transform names; mesh imported without skinCluster. "
                 "Check skeleton import (LOD l0 uses root names like joint__basename_l0) vs SKMG XFNM."));
         }
 
         if (!jointPaths.empty())
         {
-            int maxInf = (maxTransformsPerVertex > 0) ? maxTransformsPerVertex : 8;
-            status = MayaSceneBuilder::createSkinCluster(meshPath, jointPaths, transformNames, weightHeaders, weightData, maxInf);
+            MGlobal::displayInfo(MString("ImportSkeletalMesh: binding skinCluster verts=")
+                + static_cast<int>(weightHeaders.size()) + " joints=" + static_cast<int>(jointPaths.size()));
+            status = MayaSceneBuilder::createSkinCluster(
+                meshPath, jointPaths, transformNames, weightHeaders, weightData, maxTransformsPerVertex);
             if (!status)
-                std::cerr << "ImportSkeletalMesh: failed to create skin cluster" << std::endl;
+                std::cerr << "ImportSkeletalMesh: failed to create skinCluster" << std::endl;
+            MayaSceneBuilder::reapplyStoredShading(meshPath);
+        }
+
+        // Blend targets after the skin: they go in front of the deformer chain (applied to the bind-pose mesh)
+        if (!blendTargets.empty())
+        {
+            status = MayaSceneBuilder::createBlendShapes(meshPath, blendTargets);
+            if (!status)
+                std::cerr << "ImportSkeletalMesh: failed to create blend shapes" << std::endl;
+            MayaSceneBuilder::reapplyStoredShading(meshPath);   // the new deformer resets per-face assignments
         }
 
         if (!hardpointsAsAttributes)

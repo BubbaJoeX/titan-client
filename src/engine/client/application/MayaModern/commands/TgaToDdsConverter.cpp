@@ -9,6 +9,7 @@
 
 #include <cstdio>
 #include <cstring>
+#include <iostream>
 #include <string>
 #include <vector>
 
@@ -59,8 +60,11 @@ namespace
 std::string TgaToDdsConverter::getNvttExporterPath()
 {
     const char* cfg = ConfigFile::getKeyString("SwgMayaEditor", "nvttExporterPath", "");
-    if (cfg && cfg[0])
+    if (cfg && cfg[0] && MayaUtility::fileExists(cfg))
         return cfg;
+    if (cfg && cfg[0])
+        std::cerr << "[TgaToDds] nvttExporterPath \"" << cfg << "\" does not exist (quote paths containing spaces in "
+                     "SwgMayaEditor.cfg); trying the default install locations" << std::endl;
 #ifdef _WIN32
     static const char* kCandidates[] = {
         "C:\\Program Files\\NVIDIA Corporation\\NVIDIA Texture Tools\\nvtt_export.exe",

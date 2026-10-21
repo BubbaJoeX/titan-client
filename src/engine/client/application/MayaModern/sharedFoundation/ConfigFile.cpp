@@ -341,7 +341,7 @@ bool ConfigFile::loadFile(const char *file)
     }
     else
     {
-        WARNING (true, ("ConfigFile::loadFile %s", file));
+        WARNING (true, ("ConfigFile::loadFile: cannot open %s", file));
         return false;
     }
 }

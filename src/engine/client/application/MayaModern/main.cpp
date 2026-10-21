@@ -36,15 +36,17 @@ namespace
         if (!st || loadPath.length() == 0)
             return;
 
+        // loadPath() is the plug-in's folder (not the .mll path); tolerate a file path anyway.
         std::string dir(loadPath.asChar());
         for (char& c : dir)
             if (c == '\\')
                 c = '/';
-        const size_t slash = dir.find_last_of('/');
-        if (slash == std::string::npos)
-            return;
+        if (dir.size() > 4 && _stricmp(dir.c_str() + dir.size() - 4, ".mll") == 0)
+            dir.resize(dir.find_last_of('/'));
+        if (!dir.empty() && dir.back() == '/')
+            dir.pop_back();
 
-        const std::string cfgPath = dir.substr(0, slash + 1) + "SwgMayaEditor.cfg";
+        const std::string cfgPath = dir + "/SwgMayaEditor.cfg";
         if (ConfigFile::loadFile(cfgPath.c_str()))
             MGlobal::displayInfo(MString("SwgMayaEditor: loaded config ") + cfgPath.c_str());
     }
@@ -83,6 +85,7 @@ namespace
 #include "commands/SwgMakeVehicle.h"
 #include "commands/SwgLightsaberToolkit.h"
 #include "commands/SwgVehicleToolkit.h"
+#include "commands/SwgMocapSuite.h"
 
 #include "ConfigFile.h"
 #include "Globals.h"
@@ -114,7 +117,8 @@ static const char* const kCompanionMelFiles[] =
             "pobFillerFromMesh.mel",
             "swgLightsaberToolkit.mel",
             "swgVehicleToolkit.mel",
-            "swgKeepFrameZeroKeys.mel"
+            "swgKeepFrameZeroKeys.mel",
+            "swgMocapSuite.mel"
         };
 
 void sourceCompanionMelScripts(const MFnPlugin& plugin)
@@ -126,19 +130,27 @@ void sourceCompanionMelScripts(const MFnPlugin& plugin)
         return;
     }
 
+    // loadPath() is the plug-in's directory (not the .mll path); tolerate a file path anyway.
     std::string dir(loadPath.asChar());
-    const size_t slash = dir.find_last_of("\\/");
-    if (slash == std::string::npos)
-    {
-        return;
-    }
-    dir.resize(slash + 1);
     for (char& c : dir)
     {
         if (c == '\\')
         {
             c = '/';
         }
+    }
+    if (dir.size() > 4 && _stricmp(dir.c_str() + dir.size() - 4, ".mll") == 0)
+    {
+        const size_t slash = dir.find_last_of('/');
+        if (slash == std::string::npos)
+        {
+            return;
+        }
+        dir.resize(slash);
+    }
+    if (!dir.empty() && dir.back() != '/')
+    {
+        dir += '/';
     }
 
     // Use MGlobal::sourceFile — embedding paths in executeCommand("if (`filetest -f \"...\") { source \"...\"; }")
@@ -203,7 +215,18 @@ static Translator* TRANSLATORS[] =
 
 PLUGIN_EXPORT MStatus initializePlugin(MObject obj)
 {
-    MFnPlugin plugin(obj, "SWGMayaEditor", "1.0", "Any");
+    MFnPlugin plugin(obj, "SWGMayaEditor", "20260831k", "Any");
+
+    MGlobal::displayInfo(MString("SwgMayaEditor 20260831k loaded from ") + plugin.loadPath()
+        + " -- File>Import type must be SwgSat (not SAT/ACIS)");
+    MGlobal::executeCommandOnIdle(
+        "catchQuiet(`setAttr -type \"string\" defaultRenderGlobals.currentRenderer \"mayaHardware2\"`);"
+        "string $p[] = `getPanel -type modelPanel`;"
+        "for ($i = 0; $i < size($p); ++$i) {"
+        "  catchQuiet(`modelEditor -e -rendererName \"vp2Renderer\" $p[$i]`);"
+        "  catchQuiet(`modelEditor -e -displayAppearance \"smoothShaded\" -displayTextures true -udm false $p[$i]`);"
+        "}"
+        "catchQuiet(`DisplayShadedAndTextured`);");
 
     //---- First we're setting up Maya's log for API Errors
     MGlobal::startErrorLogging();
@@ -349,6 +372,12 @@ PLUGIN_EXPORT MStatus initializePlugin(MObject obj)
     status = plugin.registerCommand("swgVehicleToolkit", SwgVehicleToolkit::creator);
     if (!status) { std::cerr << "ERROR: Unable to register swgVehicleToolkit" << std::endl; return status; }
 
+    status = plugin.registerCommand("swgMocapSuite", SwgMocapSuite::creator);
+    if (!status) { std::cerr << "ERROR: Unable to register swgMocapSuite" << std::endl; return status; }
+
+    status = plugin.registerCommand("swgFixSatViewport", SwgFixSatViewport::creator);
+    if (!status) { std::cerr << "ERROR: Unable to register swgFixSatViewport" << std::endl; return status; }
+
     return MS::kSuccess;
 }
 
@@ -368,6 +397,8 @@ PLUGIN_EXPORT MStatus uninitializePlugin(MObject obj)
         }
     }
 
+    plugin.deregisterCommand("swgFixSatViewport");
+    plugin.deregisterCommand("swgMocapSuite");
     plugin.deregisterCommand("swgVehicleToolkit");
     plugin.deregisterCommand("swgLightsaberToolkit");
     plugin.deregisterCommand("swgMakeVehicle");

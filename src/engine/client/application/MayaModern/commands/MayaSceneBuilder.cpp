@@ -1,4 +1,9 @@
 #include "MayaSceneBuilder.h"
+#include "ImportPathResolver.h"
+#include "ImportShader.h"
+#include "ImportSat.h"
+#include "MayaUtility.h"
+#include "SwgAnimMath.h"
 
 #include "Vector.h"
 
@@ -7,6 +12,8 @@
 #include <maya/MFnDagNode.h>
 #include <maya/MFnDependencyNode.h>
 #include <maya/MFnTypedAttribute.h>
+#include <maya/MFnNumericAttribute.h>
+#include <maya/MFnNumericData.h>
 #include <maya/MFnIkJoint.h>
 #include <maya/MDagPath.h>
 #include <maya/MFn.h>
@@ -17,6 +24,8 @@
 #include <maya/MColor.h>
 #include <maya/MFnSkinCluster.h>
 #include <maya/MFnTransform.h>
+#include <maya/MFnMatrixData.h>
+#include <maya/MMatrix.h>
 #include <maya/MGlobal.h>
 #include <maya/MObject.h>
 #include <maya/MSelectionList.h>
@@ -26,12 +35,18 @@
 #include <maya/MFloatPointArray.h>
 #include <maya/MFloatArray.h>
 #include <maya/MIntArray.h>
+#include <maya/MStringArray.h>
+#include <maya/MDoubleArray.h>
 #include <maya/MPlug.h>
 #include <maya/MPlugArray.h>
 #include <maya/MDGModifier.h>
 #include <maya/MNamespace.h>
+#include <maya/MEventMessage.h>
+#include <maya/MItDependencyNodes.h>
+#include <maya/MMessage.h>
 
 #include <atomic>
+#include <cstdlib>
 #include <cmath>
 #include <cstdarg>
 #include <cstdio>
@@ -89,19 +104,35 @@ namespace
 
     static MString map1UvSetName("map1");
 
-    static void ensureMap1UvSetExists(MFnMesh& meshFn)
+    /// Maya 2027 OCIO rejects colorSpace "sRGB" (needs "sRGB - Texture" / "Raw"). An invalid
+    /// space leaves the file node in error and VP2 shows defaultColor (medium gray).
+    /// Do not pin uvSetName — an empty/missing map1 also falls back to defaultColor.
+    static void bindMayaFileTexturePath(MFnDependencyNode& fileFn, const MString& path)
     {
-        MStringArray uvSetNames;
-        meshFn.getUVSetNames(uvSetNames);
-        for (unsigned i = 0; i < uvSetNames.length(); ++i)
-        {
-            if (uvSetNames[i] == map1UvSetName)
-                return;
-        }
+        if (path.length() == 0)
+            return;
+        MPlug dest = fileFn.findPlug("fileTextureName", true);
+        if (dest.isNull())
+            return;
+        dest.setString(path);
 
-        MStatus uvSetStatus = meshFn.createUVSetDataMesh(map1UvSetName);
-        if (!uvSetStatus)
-            meshFn.createUVSet(map1UvSetName, nullptr, nullptr);
+        MPlug ignoreCs = fileFn.findPlug("ignoreColorSpaceFileRules", true);
+        if (!ignoreCs.isNull())
+            ignoreCs.setBool(true);
+        MPlug colorSpace = fileFn.findPlug("colorSpace", true);
+        if (!colorSpace.isNull())
+            colorSpace.setString("sRGB - Texture");
+
+        MPlug uvPlug = fileFn.findPlug("uvSetName", true);
+        if (!uvPlug.isNull())
+            uvPlug.setString("");
+
+        MPlug disable = fileFn.findPlug("disableFileLoad", true);
+        if (!disable.isNull())
+        {
+            disable.setBool(true);
+            disable.setBool(false);
+        }
     }
 }
 
@@ -115,21 +146,85 @@ MStatus MayaSceneBuilder::applyMap1Uvs(
     if (uArray.length() == 0 || vArray.length() == 0 || uvCounts.length() == 0 || uvIds.length() == 0)
         return MS::kSuccess;
 
-    ensureMap1UvSetExists(meshFn);
+    const int nPoly = meshFn.numPolygons();
+    if (nPoly <= 0 || uvCounts.length() != static_cast<unsigned>(nPoly))
+    {
+        MGlobal::displayInfo(MString("MayaSceneBuilder: UV skip (poly=")
+            + nPoly + " uvCounts=" + static_cast<int>(uvCounts.length()) + ")");
+        return MS::kSuccess;
+    }
+    unsigned idNeed = 0;
+    for (unsigned i = 0; i < uvCounts.length(); ++i)
+        idNeed += static_cast<unsigned>(uvCounts[i]);
+    if (idNeed != uvIds.length())
+    {
+        MGlobal::displayInfo(MString("MayaSceneBuilder: UV skip (idNeed=")
+            + static_cast<int>(idNeed) + " uvIds=" + static_cast<int>(uvIds.length()) + ")");
+        return MS::kSuccess;
+    }
 
-    if (meshFn.numUVs(map1UvSetName) > static_cast<int>(uArray.length()))
-        meshFn.clearUVs(&map1UvSetName);
+    // DAG meshes from MFnMesh::create() already have a default UV set (usually map1).
+    // createUVSetDataMesh is for MFnMeshData only — calling it on a scene mesh leaves map1
+    // empty and makes named setUVs/assignUVs fail (swallowed, so chairs stay gray).
+    MStringArray uvSetNames;
+    meshFn.getUVSetNames(uvSetNames);
+    MString setName = map1UvSetName;
+    bool haveSet = false;
+    for (unsigned i = 0; i < uvSetNames.length(); ++i)
+    {
+        if (uvSetNames[i] == map1UvSetName)
+        {
+            haveSet = true;
+            break;
+        }
+    }
+    if (!haveSet && uvSetNames.length() > 0)
+    {
+        setName = uvSetNames[0];
+        haveSet = true;
+    }
+    if (!haveSet)
+    {
+        MStatus createSet = meshFn.createUVSet(setName);
+        if (!createSet)
+            MGlobal::displayWarning(MString("MayaSceneBuilder: createUVSet failed: ") + createSet.errorString());
+    }
 
-    MStatus status = meshFn.setUVs(uArray, vArray, &map1UvSetName);
+    MIntArray safeIds(uvIds);
+    const int nuv = static_cast<int>(uArray.length());
+    for (unsigned i = 0; i < safeIds.length(); ++i)
+    {
+        if (safeIds[i] < 0 || safeIds[i] >= nuv)
+            safeIds[i] = 0;
+    }
+
+    meshFn.clearUVs(&setName);
+
+    auto tryWrite = [&](const MString* name) -> MStatus {
+        MStatus st = meshFn.setUVs(uArray, vArray, name);
+        if (!st)
+            return st;
+        return meshFn.assignUVs(uvCounts, safeIds, name);
+    };
+
+    MStatus status = tryWrite(&setName);
     if (!status)
-        return status;
-
-    status = meshFn.assignUVs(uvCounts, uvIds, &map1UvSetName);
+        status = tryWrite(nullptr);
     if (!status)
+    {
+        MGlobal::displayWarning(MString("MayaSceneBuilder: setUVs/assignUVs failed: ")
+            + status.errorString()
+            + " uvs=" + nuv
+            + " faces=" + nPoly);
         return status;
+    }
 
-    meshFn.setCurrentUVSetName(map1UvSetName);
+    meshFn.setCurrentUVSetName(setName);
+    meshFn.updateSurface();
     meshFn.syncObject();
+    MGlobal::displayInfo(MString("MayaSceneBuilder: UVs applied set=") + setName
+        + " count=" + meshFn.numUVs(setName)
+        + " faces=" + nPoly);
     return MS::kSuccess;
 }
 
@@ -171,11 +266,19 @@ MStatus MayaSceneBuilder::createMesh(
             {
                 if (pi0 >= 0 && pi0 < static_cast<int>(group.positionIndices.size()))
                     pi0 = group.positionIndices[static_cast<size_t>(pi0)];
+                else
+                    continue;
                 if (pi1 >= 0 && pi1 < static_cast<int>(group.positionIndices.size()))
                     pi1 = group.positionIndices[static_cast<size_t>(pi1)];
+                else
+                    continue;
                 if (pi2 >= 0 && pi2 < static_cast<int>(group.positionIndices.size()))
                     pi2 = group.positionIndices[static_cast<size_t>(pi2)];
+                else
+                    continue;
             }
+            if (pi0 < 0 || pi0 >= vertexCount || pi1 < 0 || pi1 >= vertexCount || pi2 < 0 || pi2 >= vertexCount)
+                continue;
             polygonConnects[static_cast<unsigned>(triIdx * 3 + 0)] = pi0;
             polygonConnects[static_cast<unsigned>(triIdx * 3 + 1)] = pi1;
             polygonConnects[static_cast<unsigned>(triIdx * 3 + 2)] = pi2;
@@ -183,9 +286,17 @@ MStatus MayaSceneBuilder::createMesh(
         }
     }
 
+    if (triIdx <= 0)
+    {
+        std::cerr << "MayaSceneBuilder: no valid triangles for mesh " << meshName << std::endl;
+        return MS::kFailure;
+    }
+    polygonCounts.setLength(static_cast<unsigned>(triIdx));
+    polygonConnects.setLength(static_cast<unsigned>(triIdx * 3));
+
     MFnMesh meshFn;
     MObject meshObj = meshFn.create(
-        vertexCount, totalTriangles, vertexArray,
+        vertexCount, triIdx, vertexArray,
         polygonCounts, polygonConnects, MObject::kNullObj, &status);
     if (!status)
     {
@@ -224,11 +335,27 @@ MStatus MayaSceneBuilder::createMesh(
         for (size_t sg = 0; sg < shaderGroups.size(); ++sg)
         {
             const ShaderGroupData& group = shaderGroups[sg];
-            if (!group.uvs.empty())
-            {
-                for (size_t t = 0; t < group.triangles.size(); ++t)
+            auto remapPos = [&](int localIdx) -> int {
+                int pi = localIdx;
+                if (!group.positionIndices.empty())
                 {
-                    uvCounts.append(3);
+                    if (pi < 0 || pi >= static_cast<int>(group.positionIndices.size()))
+                        return -1;
+                    pi = group.positionIndices[static_cast<size_t>(pi)];
+                }
+                if (pi < 0 || pi >= vertexCount)
+                    return -1;
+                return pi;
+            };
+            for (size_t t = 0; t < group.triangles.size(); ++t)
+            {
+                if (remapPos(group.triangles[t].indices[0]) < 0
+                    || remapPos(group.triangles[t].indices[1]) < 0
+                    || remapPos(group.triangles[t].indices[2]) < 0)
+                    continue;
+                uvCounts.append(3);
+                if (!group.uvs.empty())
+                {
                     for (int v = 0; v < 3; ++v)
                     {
                         int uvIdx = group.triangles[t].indices[v];
@@ -238,12 +365,8 @@ MStatus MayaSceneBuilder::createMesh(
                             uvIds.append(0);
                     }
                 }
-            }
-            else
-            {
-                for (size_t t = 0; t < group.triangles.size(); ++t)
+                else
                 {
-                    uvCounts.append(3);
                     uvIds.append(0);
                     uvIds.append(0);
                     uvIds.append(0);
@@ -277,35 +400,12 @@ namespace SceneBuilderHelpers
 
     std::string resolveShaderPath(const std::string& shaderTemplateName, const std::string& inputFilePath)
     {
-        std::string normalizedInput = inputFilePath;
-        for (size_t i = 0; i < normalizedInput.size(); ++i)
-            if (normalizedInput[i] == '\\') normalizedInput[i] = '/';
-        std::string baseDir;
-        const char* envDataRoot = getenv("TITAN_DATA_ROOT");
-        if (envDataRoot && envDataRoot[0])
-        {
-            baseDir = envDataRoot;
-            if (!baseDir.empty() && baseDir.back() != '/') baseDir += '/';
-        }
-        else
-        {
-            size_t cgPos = normalizedInput.find("compiled/game/");
-            if (cgPos != std::string::npos)
-            {
-                baseDir = normalizedInput.substr(0, cgPos + 14);
-                if (!baseDir.empty() && baseDir.back() != '/') baseDir += '/';
-            }
-        }
-        if (baseDir.empty()) return std::string();
         std::string shaderName = stripSGSuffix(shaderTemplateName);
-        if (shaderName.find("shader/") != 0 && shaderName.find("shader\\") != 0)
-            shaderName = std::string("shader/") + shaderName;
-        std::string resolved = baseDir + shaderName;
-        for (size_t i = 0; i < resolved.size(); ++i)
-            if (resolved[i] == '\\') resolved[i] = '/';
-        if (resolved.size() < 4 || resolved.compare(resolved.size() - 4, 4, ".sht") != 0)
-            resolved += ".sht";
-        return resolved;
+        if (shaderName.empty())
+            return std::string();
+        if (shaderName.size() < 4 || shaderName.compare(shaderName.size() - 4, 4, ".sht") != 0)
+            shaderName += ".sht";
+        return resolveTreeAssetPath(shaderName, inputFilePath, "shader/");
     }
 
     bool shaderFileExists(const std::string& path)
@@ -346,55 +446,73 @@ std::string MayaSceneBuilder::stripSGSuffixFromShaderName(const std::string& nam
     return name;
 }
 
+namespace
+{
+    /// A shadingEngine made with createNode is not in renderPartition, so renderers (Maya Software, Arnold,
+    /// batch) skip it even though the viewport shows it; `sets -renderable true` would have added it.
+    void addToRenderPartition(MObject sgObj)
+    {
+        MFnDependencyNode sgFn(sgObj);
+        MPlug partition = sgFn.findPlug("partition", true);
+        if (partition.isNull() || partition.isConnected())
+            return;
+        MGlobal::executeCommand("connectAttr -na \"" + sgFn.name() + ".partition\" renderPartition.sets", false, false);
+    }
+}
+
 MStatus MayaSceneBuilder::createMaterial(
     const std::string& shaderName,
     const std::string& texturePath,
     MObject& outShadingGroup,
     const std::string& swgShaderPath,
-    const std::string& swgTexturePath)
+    const std::string& swgTexturePath,
+    const std::string& soeEffectName,
+    const std::string& swgTextureSlots)
 {
     MStatus status;
-    MStringArray result;
-    MString cmd = "shadingNode -asShader lambert -n \"";
-    cmd += shaderName.c_str();
-    cmd += "\"";
-    status = MGlobal::executeCommand(cmd, result);
-    if (!status || result.length() == 0) return MS::kFailure;
-
-    MString shaderNodeName = result[0];
     if (texturePath.empty())
         shaderLog("createMaterial: %s with NO texture (gray default)", shaderName.c_str());
-    cmd = "setAttr ";
-    cmd += shaderNodeName;
-    cmd += ".color 0.5 0.5 0.5";
-    MGlobal::executeCommand(cmd);
-    cmd = "setAttr ";
-    cmd += shaderNodeName;
-    cmd += ".ambientColor 0.2 0.2 0.2";
-    MGlobal::executeCommand(cmd);
-    cmd = "sets -renderable true -noSurfaceShader true -empty -name \"";
-    cmd += shaderNodeName;
-    cmd += "SG\"";
-    status = MGlobal::executeCommand(cmd, result);
-    if (!status || result.length() == 0) return MS::kFailure;
 
-    MString sgName = result[0];
-    cmd = "connectAttr -f ";
-    cmd += shaderNodeName;
-    cmd += ".outColor ";
-    cmd += sgName;
-    cmd += ".surfaceShader";
-    MGlobal::executeCommand(cmd);
-    MString partCmd = "listConnections -source true -destination false \"";
-    partCmd += sgName;
-    partCmd += ".partition\"";
-    MStringArray partConns;
-    if (!MGlobal::executeCommand(partCmd, partConns, false, false) || partConns.length() == 0)
+    MFnLambertShader lambertFn;
+    MObject shaderObj = lambertFn.create(true, &status);
+    if (!status)
+        return status;
+    lambertFn.setName(shaderName.c_str(), &status);
+    lambertFn.setColor(MColor(0.5f, 0.5f, 0.5f));
+    lambertFn.setTransparency(MColor(0.0f, 0.0f, 0.0f));
     {
-        cmd = "connectAttr -f ";
-        cmd += sgName;
-        cmd += ".partition \":renderPartition.sets\" -na";
-        MGlobal::executeCommand(cmd, false, false);
+        MPlug amb = lambertFn.findPlug("ambientColor", true);
+        if (!amb.isNull() && amb.numChildren() >= 3)
+        {
+            amb.child(0).setFloat(0.65f);
+            amb.child(1).setFloat(0.65f);
+            amb.child(2).setFloat(0.65f);
+        }
+    }
+    const MString shaderNodeName = lambertFn.name();
+
+    MDGModifier sgMod;
+    MObject sgObj = sgMod.createNode("shadingEngine", &status);
+    if (!status)
+        return status;
+    status = sgMod.doIt();
+    if (!status)
+        return status;
+    MFnDependencyNode sgFn(sgObj);
+    sgFn.setName(shaderNodeName + "SG");
+    addToRenderPartition(sgObj);
+
+    {
+        MDGModifier connectMod;
+        MPlug outColor = lambertFn.findPlug("outColor", true);
+        MPlug surfaceShader = sgFn.findPlug("surfaceShader", true);
+        if (outColor.isNull() || surfaceShader.isNull())
+            return MS::kFailure;
+        status = connectMod.connect(outColor, surfaceShader);
+        if (status)
+            status = connectMod.doIt();
+        if (!status)
+            return status;
     }
 
     if (!texturePath.empty())
@@ -403,78 +521,126 @@ MStatus MayaSceneBuilder::createMaterial(
         for (size_t i = 0; i < pathToUse.size(); ++i)
             if (pathToUse[i] == '\\') pathToUse[i] = '/';
 
-        cmd = "shadingNode -asTexture file -name \"";
-        cmd += shaderName.c_str();
-        cmd += "_tex\"";
-        status = MGlobal::executeCommand(cmd, result);
-        if (status && result.length() > 0)
+        if (!MayaUtility::fileExists(pathToUse))
         {
-            MString texNodeName = result[0];
-            cmd = "setAttr -type \"string\" ";
-            cmd += texNodeName;
-            cmd += ".fileTextureName \"";
-            cmd += pathToUse.c_str();
-            cmd += "\"";
-            status = MGlobal::executeCommand(cmd);
-            if (!status)
-                std::cerr << "ImportShader: setAttr fileTextureName FAILED for " << pathToUse << "\n";
-            cmd = "setAttr -type \"string\" ";
-            cmd += texNodeName;
-            cmd += ".colorSpace \"sRGB\"";
-            MGlobal::executeCommand(cmd);
-            cmd = "setAttr ";
-            cmd += texNodeName;
-            cmd += ".ignoreColorSpaceFileRules 1";
-            MGlobal::executeCommand(cmd);
+            const std::string win = resolveWindowsMayaAbsolutePath(pathToUse);
+            if (!win.empty() && MayaUtility::fileExists(win))
+                pathToUse = win;
+        }
+        for (char& c : pathToUse)
+            if (c == '\\')
+                c = '/';
+
+        MFnDependencyNode fileFn;
+        MObject fileObj = fileFn.create("file", (shaderName + "_tex").c_str(), &status);
+        if (status)
+        {
+            bindMayaFileTexturePath(fileFn, pathToUse.c_str());
             {
-                MSelectionList texSel;
-                if (texSel.add(texNodeName) == MS::kSuccess)
+                MPlug ail = fileFn.findPlug("alphaIsLuminance", true);
+                if (!ail.isNull())
+                    ail.setBool(false);
+            }
+            MPlug fileNamePlug = fileFn.findPlug("fileTextureName", true);
+            if (!fileNamePlug.isNull())
+            {
+                MString now;
+                fileNamePlug.getValue(now);
+                if (now.length() == 0)
+                    std::cerr << "ImportShader: setAttr fileTextureName FAILED for " << pathToUse << "\n";
+            }
+
+            {
+                MFnTypedAttribute tAttr;
+                MObject a = tAttr.create("swgResolvedTexture", "swgResolvedTexture", MFnData::kString);
+                if (fileFn.addAttribute(a))
                 {
-                    MObject texObj;
-                    if (texSel.getDependNode(0, texObj) == MS::kSuccess)
-                    {
-                        MFnDependencyNode texFn(texObj);
-                        MPlug uvPlug = texFn.findPlug("uvSetName", false);
-                        if (!uvPlug.isNull())
-                            uvPlug.setValue(MString("map1"));
-                    }
+                    MPlug p = fileFn.findPlug("swgResolvedTexture", true);
+                    if (!p.isNull())
+                        p.setValue(MString(pathToUse.c_str()));
                 }
             }
-            cmd = "connectAttr -f ";
-            cmd += texNodeName;
-            cmd += ".outColor ";
-            cmd += shaderNodeName;
-            cmd += ".color";
-            MGlobal::executeCommand(cmd);
-            // Opaque diffuse: do not connect transparency (avoids white/washed appearance from alpha)
+
+            // One connection per modifier. A single failed optional plug used to abort outUV too.
+            MFnDependencyNode placeFn;
+            MObject placeObj = placeFn.create("place2dTexture", (shaderName + "_p2d").c_str(), &status);
+            if (status && !placeObj.isNull())
+            {
+                auto connectOne = [&](const char* src, const char* dst) {
+                    MPlug a = placeFn.findPlug(src, true);
+                    MPlug b = fileFn.findPlug(dst, true);
+                    if (a.isNull() || b.isNull() || b.isConnected())
+                        return;
+                    MDGModifier mod;
+                    if (mod.connect(a, b) == MS::kSuccess)
+                        mod.doIt();
+                };
+                connectOne("outUV", "uvCoord");
+                connectOne("outUvFilterSize", "uvFilterSize");
+                connectOne("coverage", "coverage");
+                connectOne("translateFrame", "translateFrame");
+                connectOne("rotateFrame", "rotateFrame");
+                connectOne("mirrorU", "mirrorU");
+                connectOne("mirrorV", "mirrorV");
+                connectOne("stagger", "stagger");
+                connectOne("wrapU", "wrapU");
+                connectOne("wrapV", "wrapV");
+                connectOne("repeatUV", "repeatUV");
+                connectOne("offset", "offset");
+                connectOne("rotateUV", "rotateUV");
+                connectOne("noiseUV", "noiseUV");
+            }
+
+            MDGModifier texMod;
+            MPlug texOut = fileFn.findPlug("outColor", true);
+            MPlug lambertColor = lambertFn.findPlug("color", true);
+            if (!texOut.isNull() && !lambertColor.isNull())
+            {
+                if (texMod.connect(texOut, lambertColor) == MS::kSuccess)
+                    texMod.doIt();
+            }
+            // Leave lambert color at mid-gray. Setting it to white made SAT meshes look
+            // "default white" whenever VP2 failed to sample the file node (top-left TGA / OCIO).
         }
     }
 
-    MSelectionList selList;
-    selList.add(sgName);
-    selList.getDependNode(0, outShadingGroup);
+    outShadingGroup = sgObj;
 
-    if (!swgShaderPath.empty() || !swgTexturePath.empty())
+    if (!swgShaderPath.empty() || !swgTexturePath.empty() || !soeEffectName.empty() || !swgTextureSlots.empty())
     {
-        MFnDependencyNode sgFn(outShadingGroup);
-        auto setStrAttr = [&](const char* name, const std::string& val) {
+        auto setStrAttrOn = [](MFnDependencyNode& fn, const char* name, const std::string& val) {
             if (val.empty()) return;
-            MPlug p = sgFn.findPlug(name, true);
+            MPlug p = fn.findPlug(name, true);
             if (p.isNull())
             {
                 MFnTypedAttribute tAttr;
                 MObject a = tAttr.create(name, name, MFnData::kString);
-                if (sgFn.addAttribute(a))
+                if (fn.addAttribute(a))
                 {
-                    p = sgFn.findPlug(name, true);
+                    p = fn.findPlug(name, true);
                     if (!p.isNull()) p.setValue(MString(val.c_str()));
                 }
             }
             else
                 p.setValue(MString(val.c_str()));
         };
-        setStrAttr("swgShaderPath", swgShaderPath);
-        setStrAttr("swgTexturePath", swgTexturePath);
+        MFnDependencyNode sgFn(outShadingGroup);
+        setStrAttrOn(sgFn, "swgShaderPath", swgShaderPath);
+        setStrAttrOn(sgFn, "swgTexturePath", swgTexturePath);
+        setStrAttrOn(sgFn, "swgTextureSlots", swgTextureSlots);
+        setStrAttrOn(sgFn, "soe_effectName", soeEffectName);
+
+        MSelectionList surfSel;
+        if (surfSel.add(shaderNodeName) == MS::kSuccess)
+        {
+            MObject surfObj;
+            if (surfSel.getDependNode(0, surfObj) == MS::kSuccess)
+            {
+                MFnDependencyNode surfFn(surfObj);
+                setStrAttrOn(surfFn, "soe_effectName", soeEffectName);
+                setStrAttrOn(surfFn, "soe_effect", soeEffectName);
+            }
+        }
     }
 
     return MS::kSuccess;
@@ -520,6 +686,7 @@ MStatus MayaSceneBuilder::assignPobCollisionPreviewMaterial(const MDagPath& mesh
             return status;
         MFnDependencyNode sgDepFn(sgObj);
         sgDepFn.setName(kSgName);
+        addToRenderPartition(sgObj);
 
         MDGModifier connectMod;
         MFnDependencyNode lambertDep(lambertObj);
@@ -561,9 +728,11 @@ MStatus MayaSceneBuilder::assignMaterials(
     // Per-mesh only: same shader template on another mesh must import again (own texture / nodes). A global cache
     // reused SGs across imports and forced the second mesh green or wrong texture.
     std::map<std::string, std::string> shaderToActualSgName;
+    std::map<std::string, MObject> shaderToSgObj;
     const std::string meshTok = SceneBuilderHelpers::nextMaterialImportInstanceToken();
 
     int faceOffset = 0;
+    std::string storedFaceSgs;
     MDagPath meshShapePath = meshPath;
     if (meshShapePath.hasFn(MFn::kTransform))
         meshShapePath.extendToShape();
@@ -574,6 +743,8 @@ MStatus MayaSceneBuilder::assignMaterials(
         const ShaderGroupData& group = shaderGroups[sgIdx];
         int faceCount = static_cast<int>(group.triangles.size());
         if (faceCount == 0) continue;
+        MGlobal::displayInfo(MString("MayaSceneBuilder: material ") + static_cast<int>(sgIdx + 1)
+            + "/" + static_cast<int>(shaderGroups.size()) + " " + group.shaderTemplateName.c_str());
 
         std::string rawName = group.shaderTemplateName;
         size_t lastSlash = rawName.find_last_of("/\\");
@@ -622,20 +793,18 @@ MStatus MayaSceneBuilder::assignMaterials(
 
                 if (!useDefault)
                 {
-                    MString importCmd = "importShader -i \"";
-                    importCmd += resolvedShaderFile.c_str();
-                    importCmd += "\" -materialBase \"";
-                    importCmd += materialInstanceBase.c_str();
-                    importCmd += "\"";
-                    MStringArray importResult;
-                    if (MGlobal::executeCommand(importCmd, importResult, false, false) && importResult.length() > 0)
+                    shaderLog("assignMaterials: importFromPath %s base=%s", resolvedShaderFile.c_str(), materialInstanceBase.c_str());
+                    MString importedSg;
+                    MObject importedObj;
+                    if (ImportShader::importFromPath(resolvedShaderFile, materialInstanceBase, importedSg, &importedObj) == MS::kSuccess && importedSg.length() > 0)
                     {
-                        sgNodeName = importResult[0];
+                        sgNodeName = importedSg;
                         shaderToActualSgName[cacheKey] = sgNodeName.asChar();
+                        shaderToSgObj[cacheKey] = importedObj;
                     }
                     else
                     {
-                        shaderLog("assignMaterials: importShader FAILED for %s", resolvedShaderFile.c_str());
+                        shaderLog("assignMaterials: importFromPath FAILED for %s", resolvedShaderFile.c_str());
                         useDefault = true;
                     }
                 }
@@ -645,48 +814,396 @@ MStatus MayaSceneBuilder::assignMaterials(
                     MObject dummySG;
                     createMaterial(materialInstanceBase, std::string(), dummySG);
                     MFnDependencyNode fn(dummySG);
-                    sgNodeName = fn.name();
+                    sgNodeName = fn.absoluteName();
+                    if (sgNodeName.length() == 0)
+                        sgNodeName = fn.name();
                     shaderToActualSgName[cacheKey] = sgNodeName.asChar();
+                    shaderToSgObj[cacheKey] = dummySG;
                 }
             }
             else
             {
                 shaderToActualSgName[cacheKey] = sgNodeName.asChar();
+                shaderToSgObj[cacheKey] = sgObj;
             }
         }
 
         MObject shadingGroupObj;
         MStatus setStatus = MS::kFailure;
-        if (findDependNode(sgNodeName, shadingGroupObj))
+        auto objIt = shaderToSgObj.find(cacheKey);
+        if (objIt != shaderToSgObj.end() && !objIt->second.isNull())
+            shadingGroupObj = objIt->second;
+        if (shadingGroupObj.isNull())
+            findDependNode(sgNodeName, shadingGroupObj);
+        if (!shadingGroupObj.isNull())
         {
-            MIntArray faceIds;
-            faceIds.setLength(static_cast<unsigned>(faceCount));
-            for (int f = 0; f < faceCount; ++f)
-                faceIds[f] = faceOffset + f;
-
-            MFnSingleIndexedComponent compFn;
-            MObject compObj = compFn.create(MFn::kMeshPolygonComponent, &setStatus);
-            if (setStatus)
-                setStatus = compFn.addElements(faceIds);
+            MFnSet setFn(shadingGroupObj, &setStatus);
             if (setStatus)
             {
-                MFnSet setFn(shadingGroupObj, &setStatus);
-                if (setStatus)
-                    setStatus = setFn.addMember(meshShapePath, compObj);
+                MIntArray faceIds;
+                faceIds.setLength(static_cast<unsigned>(faceCount));
+                for (int f = 0; f < faceCount; ++f)
+                    faceIds[f] = faceOffset + f;
+
+                // Static MSH/APT: one mesh per shader. Face-component addMember often fails
+                // after parented create() / File>Import namespace — bind the whole shape first.
+                if (shaderGroups.size() == 1)
+                {
+                    setStatus = setFn.addMember(meshShapePath);
+                    if (!setStatus)
+                        setStatus = setFn.addMember(meshShapePath.node());
+                    if (setStatus)
+                        shaderLog("assignMaterials: whole-mesh sg=%s mesh=%s", sgNodeName.asChar(), meshShapePath.fullPathName().asChar());
+                }
+                if (!setStatus)
+                {
+                    MFnSingleIndexedComponent compFn;
+                    MObject compObj = compFn.create(MFn::kMeshPolygonComponent, &setStatus);
+                    if (setStatus)
+                        setStatus = compFn.addElements(faceIds);
+                    if (setStatus)
+                        setStatus = setFn.addMember(meshShapePath, compObj);
+                }
+                if (!setStatus)
+                {
+                    setStatus = setFn.addMember(meshShapePath);
+                    if (!setStatus)
+                        setStatus = setFn.addMember(meshShapePath.node());
+                    if (setStatus)
+                        shaderLog("assignMaterials: whole-mesh fallback sg=%s mesh=%s", sgNodeName.asChar(), meshShapePath.fullPathName().asChar());
+                }
             }
         }
 
+        {
+            MString faceCmd = "sets -e -forceElement ";
+            faceCmd += sgNodeName;
+            faceCmd += " \"";
+            faceCmd += meshShapePath.fullPathName();
+            faceCmd += ".f[";
+            faceCmd += faceOffset;
+            faceCmd += ":";
+            faceCmd += (faceOffset + faceCount - 1);
+            faceCmd += "]\"";
+            MGlobal::executeCommand(faceCmd, false, false);
+            if (!storedFaceSgs.empty())
+                storedFaceSgs += ';';
+            storedFaceSgs += sgNodeName.asChar();
+            storedFaceSgs += ' ';
+            storedFaceSgs += std::to_string(faceOffset);
+            storedFaceSgs += ' ';
+            storedFaceSgs += std::to_string(faceCount);
+        }
+
         if (setStatus)
+        {
             shaderLog("assignMaterials: assigned %s to %s faces %d-%d", sgNodeName.asChar(), meshShapePath.fullPathName().asChar(), faceOffset, faceOffset + faceCount - 1);
+            MGlobal::displayInfo(MString("MayaSceneBuilder: assigned ") + sgNodeName
+                + " -> " + meshShapePath.fullPathName());
+        }
         else
         {
             shaderLog("assignMaterials: MFnSet addMember FAILED sg=%s mesh=%s", sgNodeName.asChar(), meshShapePath.fullPathName().asChar());
+            MGlobal::displayWarning(MString("MayaSceneBuilder: shading group NOT bound sg=")
+                + sgNodeName + " mesh=" + meshShapePath.fullPathName());
             std::cerr << "MayaSceneBuilder: MFnSet addMember failed sg=" << sgNodeName.asChar() << " mesh=" << meshShapePath.fullPathName().asChar() << "\n";
         }
 
         faceOffset += faceCount;
     }
+
+    {
+        MFnMesh meshFn(meshShapePath);
+        meshFn.updateSurface();
+        meshFn.syncObject();
+    }
+    if (!storedFaceSgs.empty())
+    {
+        MDagPath xf = meshShapePath;
+        if (xf.hasFn(MFn::kMesh) && xf.length() > 0)
+            xf.pop(1);
+        MFnDependencyNode xfFn(xf.node());
+        MPlug existing = xfFn.findPlug("swgFaceShading", true);
+        if (existing.isNull())
+        {
+            MFnTypedAttribute tAttr;
+            MObject a = tAttr.create("swgFaceShading", "swgFaceShading", MFnData::kString);
+            tAttr.setStorable(true);
+            if (xfFn.addAttribute(a))
+                existing = xfFn.findPlug("swgFaceShading", true);
+        }
+        if (!existing.isNull())
+            existing.setValue(MString(storedFaceSgs.c_str()));
+    }
+    scheduleImportedTextureRebind();
     return MS::kSuccess;
+}
+
+void MayaSceneBuilder::reapplyStoredShading(const MDagPath& meshPath)
+{
+    // the visible shape: once a skinCluster/blendShape exists the transform also holds an intermediate
+    // "...Orig" mesh, and extendToShape() no longer picks one
+    MDagPath xf = meshPath;
+    if (xf.hasFn(MFn::kMesh) && xf.length() > 0)
+        xf.pop(1);
+    MDagPath shape = meshPath;
+    for (unsigned c = 0; c < xf.childCount(); ++c)
+    {
+        MDagPath child = xf;
+        child.push(xf.child(c));
+        if (child.hasFn(MFn::kMesh) && !MFnDagNode(child).isIntermediateObject())
+        {
+            shape = child;
+            break;
+        }
+    }
+    MFnDependencyNode xfFn(xf.node());
+    MPlug p = xfFn.findPlug("swgFaceShading", true);
+    if (p.isNull())
+        return;
+    MString blob;
+    p.getValue(blob);
+    const std::string s = blob.asChar();
+    size_t i = 0;
+    while (i < s.size())
+    {
+        size_t semi = s.find(';', i);
+        if (semi == std::string::npos)
+            semi = s.size();
+        const std::string rec = s.substr(i, semi - i);
+        int start = 0;
+        int count = 0;
+        std::string sg;
+        {
+            size_t sp1 = rec.find(' ');
+            size_t sp2 = rec.rfind(' ');
+            if (sp1 != std::string::npos && sp2 != std::string::npos && sp2 > sp1)
+            {
+                sg = rec.substr(0, sp1);
+                start = atoi(rec.substr(sp1 + 1, sp2 - sp1 - 1).c_str());
+                count = atoi(rec.substr(sp2 + 1).c_str());
+            }
+        }
+        if (!sg.empty() && count > 0)
+        {
+            // (was wrapped in catchQuiet("..."): catchQuiet evaluates an expression, so the quoted command
+            // string never ran and per-face materials were lost once a skin/blend deformer was added)
+            MString cmd = "sets -e -forceElement ";
+            cmd += sg.c_str();
+            cmd += " \"";
+            cmd += shape.fullPathName();
+            cmd += ".f[";
+            cmd += start;
+            cmd += ":";
+            cmd += (start + count - 1);
+            cmd += "]\"";
+            if (!MGlobal::executeCommand(cmd, false, false))
+                std::cerr << "MayaSceneBuilder: could not reassign " << sg << " to " << shape.fullPathName().asChar() << std::endl;
+        }
+        i = semi + 1;
+    }
+    scheduleImportedTextureRebind();
+}
+
+namespace
+{
+    MCallbackId s_textureRebindCb = 0;
+
+    void rebindImportedFileTextures(void*)
+    {
+        if (s_textureRebindCb)
+        {
+            MMessage::removeCallback(s_textureRebindCb);
+            s_textureRebindCb = 0;
+        }
+        int rebound = 0;
+        MItDependencyNodes it(MFn::kFileTexture);
+        for (; !it.isDone(); it.next())
+        {
+            MFnDependencyNode fn(it.thisNode());
+            MPlug src = fn.findPlug("swgResolvedTexture", true);
+            if (src.isNull())
+                continue;
+            MString path;
+            src.getValue(path);
+            if (path.length() == 0)
+                continue;
+            MPlug dest = fn.findPlug("fileTextureName", true);
+            if (dest.isNull())
+                continue;
+            bindMayaFileTexturePath(fn, path);
+            ++rebound;
+        }
+        MayaSceneBuilder::forceVp2TexturedViewport();
+        if (rebound > 0)
+            MGlobal::executeCommand(
+                "python(\"from swg_mocap.maya_bridge import fix_sat_viewport; fix_sat_viewport()\")",
+                false);
+            MGlobal::displayInfo(MString("SwgMayaEditor 20260831k: rebound ") + rebound + " file textures + MAIN PNG + VP2");
+    }
+}
+
+void MayaSceneBuilder::forceVp2TexturedViewport()
+{
+    // Arnold's viewport override draws untranslated Maya Lamberts as solid neon green.
+    MGlobal::executeCommand(
+        "catchQuiet(`setAttr -type \"string\" defaultRenderGlobals.currentRenderer \"mayaHardware2\"`);"
+        "string $p[] = `getPanel -type modelPanel`;"
+        "for ($i = 0; $i < size($p); ++$i) {"
+        "  catchQuiet(`modelEditor -e -rendererName \"vp2Renderer\" $p[$i]`);"
+        "  catchQuiet(`modelEditor -e -rnm \"vp2Renderer\" $p[$i]`);"
+        "  catchQuiet(`modelEditor -e -displayAppearance \"smoothShaded\" -displayTextures true -udm false $p[$i]`);"
+        "}"
+        "catchQuiet(`DisplayShadedAndTextured`);",
+        false);
+}
+
+void MayaSceneBuilder::scheduleImportedTextureRebind()
+{
+    if (s_textureRebindCb)
+        return;
+    s_textureRebindCb = MEventMessage::addEventCallback("idle", rebindImportedFileTextures);
+}
+
+namespace
+{
+    MObject findMeshShapeUnder(const MObject& obj)
+    {
+        if (obj.isNull())
+            return obj;
+        if (obj.hasFn(MFn::kMesh))
+            return obj;
+        if (obj.hasFn(MFn::kTransform))
+        {
+            MFnDagNode dag(obj);
+            for (unsigned i = 0; i < dag.childCount(); ++i)
+            {
+                const MObject child = dag.child(i);
+                if (child.hasFn(MFn::kMesh))
+                    return child;
+            }
+        }
+        return MObject::kNullObj;
+    }
+
+    /// Insert a skinCluster with Maya API only. MEL skinCluster deadlocks File>Import / HumanIK.
+    MStatus createSkinClusterApi(
+        const MDagPath& meshPath,
+        const std::vector<MDagPath>& jointPaths,
+        int maxInfluencesPerVertex,
+        MObject& outSkin)
+    {
+        outSkin = MObject::kNullObj;
+        MStatus status;
+
+        MDagPath shapePath = meshPath;
+        if (shapePath.hasFn(MFn::kTransform))
+        {
+            status = shapePath.extendToShape();
+            if (!status)
+                return status;
+        }
+        if (!shapePath.hasFn(MFn::kMesh))
+            return MS::kFailure;
+
+        MFnMesh copier;
+        MObject origObj = copier.copy(shapePath.node(), shapePath.transform(), &status);
+        if (!status)
+            return status;
+        origObj = findMeshShapeUnder(origObj);
+        if (origObj.isNull())
+            return MS::kFailure;
+
+        MFnDagNode origDag(origObj);
+        origDag.setIntermediateObject(true);
+        origDag.setName(MFnDagNode(shapePath).name() + "Orig");
+
+        MDGModifier createMod;
+        MObject skinObj = createMod.createNode("skinCluster", &status);
+        if (!status)
+            return status;
+        status = createMod.doIt();
+        if (!status)
+            return status;
+
+        MFnDependencyNode skinDep(skinObj);
+        {
+            MPlug maxInf = skinDep.findPlug("maxInfluences", true);
+            if (!maxInf.isNull())
+                maxInf.setInt(maxInfluencesPerVertex);
+            MPlug useMax = skinDep.findPlug("maintainMaxInfluences", true);
+            if (!useMax.isNull())
+                useMax.setBool(true);
+            MPlug normalize = skinDep.findPlug("normalizeWeights", true);
+            if (!normalize.isNull())
+                normalize.setInt(1);
+        }
+
+        MDGModifier conn;
+        MPlug origWorld = origDag.findPlug("worldMesh", true);
+        if (origWorld.isNull())
+            return MS::kFailure;
+        origWorld = origWorld.elementByLogicalIndex(0);
+        MPlug input = skinDep.findPlug("input", true);
+        if (input.isNull())
+            return MS::kFailure;
+        MPlug inputGeom = input.elementByLogicalIndex(0).child(0);
+        MPlug outputGeom = skinDep.findPlug("outputGeometry", true);
+        if (outputGeom.isNull())
+            return MS::kFailure;
+        outputGeom = outputGeom.elementByLogicalIndex(0);
+        MFnDagNode meshDag(shapePath);
+        MPlug inMesh = meshDag.findPlug("inMesh", true);
+        if (inMesh.isNull())
+            return MS::kFailure;
+        status = conn.connect(origWorld, inputGeom);
+        if (status)
+            status = conn.connect(outputGeom, inMesh);
+        if (!status)
+            return status;
+
+        MPlug matArr = skinDep.findPlug("matrix", true);
+        MPlug preArr = skinDep.findPlug("bindPreMatrix", true);
+        if (matArr.isNull() || preArr.isNull())
+            return MS::kFailure;
+
+        for (size_t i = 0; i < jointPaths.size(); ++i)
+        {
+            MFnDagNode jn(jointPaths[i]);
+            MPlug worldMat = jn.findPlug("worldMatrix", true);
+            if (worldMat.isNull())
+                return MS::kFailure;
+            worldMat = worldMat.elementByLogicalIndex(0);
+            status = conn.connect(worldMat, matArr.elementByLogicalIndex(static_cast<unsigned>(i)));
+            if (!status)
+                return status;
+
+            MFnMatrixData matData;
+            MObject invObj = matData.create(jointPaths[i].inclusiveMatrixInverse(), &status);
+            if (status)
+                preArr.elementByLogicalIndex(static_cast<unsigned>(i)).setValue(invObj);
+        }
+
+        MPlug geomMat = skinDep.findPlug("geomMatrix", true);
+        if (!geomMat.isNull())
+        {
+            MFnMatrixData matData;
+            MObject gm = matData.create(shapePath.inclusiveMatrix(), &status);
+            if (status)
+                geomMat.setValue(gm);
+        }
+
+        status = conn.doIt();
+        if (!status)
+            return status;
+
+        MFnSet setFn(skinObj, &status);
+        if (status)
+            setFn.addMember(shapePath.node());
+
+        outSkin = skinObj;
+        return MS::kSuccess;
+    }
 }
 
 MStatus MayaSceneBuilder::createSkinCluster(
@@ -767,72 +1284,80 @@ MStatus MayaSceneBuilder::createSkinCluster(
             transformToJoint[static_cast<int>(t)] = it->second;
     }
 
-    char miBuf[32];
-    sprintf(miBuf, "%d", maxInfluencesPerVertex);
-    MString melCmd = "skinCluster -tsb -mi ";
-    melCmd += miBuf;
-    melCmd += " ";
-    for (size_t j = 0; j < jointPaths.size(); ++j)
-    {
-        MFnDagNode dagFn(jointPaths[j]);
-        melCmd += dagFn.fullPathName();
-        melCmd += " ";
-    }
-    {
-        MFnDagNode meshDagFn(meshPath);
-        melCmd += meshDagFn.fullPathName();
-    }
-
-    MStringArray melResult;
-    MStatus status = MGlobal::executeCommand(melCmd, melResult);
-    if (!status || melResult.length() == 0) return MS::kFailure;
-
-    MSelectionList selList;
-    selList.add(melResult[0]);
     MObject skinClusterObj;
-    selList.getDependNode(0, skinClusterObj);
+    MStatus status = createSkinClusterApi(meshPath, jointPaths, maxInfluencesPerVertex, skinClusterObj);
+    if (!status || skinClusterObj.isNull())
+    {
+        MGlobal::displayInfo(MString("MayaSceneBuilder: API skinCluster failed: ") + status.errorString());
+        return status ? MS::kFailure : status;
+    }
 
     MFnSkinCluster skinFn(skinClusterObj, &status);
     if (!status) return status;
 
     MDagPath meshShapePath = meshPath;
-    meshShapePath.extendToShape();
+    if (meshShapePath.hasFn(MFn::kTransform))
+        meshShapePath.extendToShape();
+
+    const unsigned nVerts = static_cast<unsigned>(weightHeaders.size());
+    const unsigned nInf = static_cast<unsigned>(jointPaths.size());
+    if (nVerts == 0 || nInf == 0)
+        return MS::kSuccess;
+
+    MIntArray influenceIndices;
+    influenceIndices.setLength(nInf);
+    for (unsigned i = 0; i < nInf; ++i)
+    {
+        MStatus idxSt;
+        const unsigned mayaIdx = skinFn.indexForInfluenceObject(jointPaths[i], &idxSt);
+        influenceIndices[i] = static_cast<int>(idxSt ? mayaIdx : i);
+    }
+
+    MDoubleArray allWeights;
+    allWeights.setLength(nVerts * nInf);
+    for (unsigned i = 0; i < allWeights.length(); ++i)
+        allWeights[i] = 0.0;
 
     int weightOffset = 0;
-    for (size_t v = 0; v < weightHeaders.size(); ++v)
+    for (unsigned v = 0; v < nVerts; ++v)
     {
-        int numWeights = weightHeaders[v];
-        MIntArray influenceIndices;
-        MDoubleArray weights;
+        const int numWeights = (v < weightHeaders.size()) ? weightHeaders[v] : 0;
         double weightSum = 0.0;
-
         for (int w = 0; w < numWeights && (weightOffset + w) < static_cast<int>(weightData.size()); ++w)
         {
             const SkinWeight& sw = weightData[static_cast<size_t>(weightOffset + w)];
             auto it = transformToJoint.find(sw.transformIndex);
-            if (it != transformToJoint.end())
-            {
-                influenceIndices.append(static_cast<int>(it->second));
-                double wval = static_cast<double>(sw.weight);
-                weights.append(wval);
-                weightSum += wval;
-            }
+            if (it == transformToJoint.end() || it->second >= nInf)
+                continue;
+            const double wval = static_cast<double>(sw.weight);
+            allWeights[v * nInf + static_cast<unsigned>(it->second)] += wval;
+            weightSum += wval;
         }
-
-        if (influenceIndices.length() > 0)
+        if (weightSum > 0.0 && std::fabs(weightSum - 1.0) > 1e-6)
         {
-            if (weightSum > 0.0 && std::fabs(weightSum - 1.0) > 1e-6)
-            {
-                for (unsigned int i = 0; i < weights.length(); ++i)
-                    weights[i] /= weightSum;
-            }
-            MFnSingleIndexedComponent singleVertComp;
-            MObject singleVert = singleVertComp.create(MFn::kMeshVertComponent);
-            singleVertComp.addElement(static_cast<int>(v));
-            skinFn.setWeights(meshShapePath, singleVert, influenceIndices, weights, true);
+            for (unsigned i = 0; i < nInf; ++i)
+                allWeights[v * nInf + i] /= weightSum;
         }
         weightOffset += numWeights;
     }
+
+    MFnSingleIndexedComponent vertComp;
+    MObject vertObj = vertComp.create(MFn::kMeshVertComponent, &status);
+    if (!status)
+        return status;
+    status = vertComp.setCompleteData(static_cast<int>(nVerts));
+    if (!status)
+        return status;
+
+    status = skinFn.setWeights(meshShapePath, vertObj, influenceIndices, allWeights, false);
+    if (!status)
+    {
+        MGlobal::displayInfo("MayaSceneBuilder: setWeights failed");
+        return status;
+    }
+
+    MGlobal::displayInfo(MString("MayaSceneBuilder: skinCluster API bind verts=")
+        + static_cast<int>(nVerts) + " joints=" + static_cast<int>(nInf));
     return MS::kSuccess;
 }
 
@@ -1092,43 +1617,26 @@ MStatus MayaSceneBuilder::createBlendShapes(
     if (targetShapeObjects.length() == 0)
         return MS::kSuccess;
 
-    MFnBlendShapeDeformer blendFn;
-    MObject blendObj = blendFn.create(shapePath.node(), MFnBlendShapeDeformer::kLocalOrigin, &status);
-    if (!status)
-    {
-        std::cerr << "MayaSceneBuilder::createBlendShapes: failed to create blend shape deformer" << std::endl;
-        for (unsigned int i = 0; i < targetShapeObjects.length(); ++i)
-        {
-            MFnDagNode dagFn(targetShapeObjects[i]);
-            if (!dagFn.isFromReferencedFile())
-            {
-                MString deleteCmd = "delete \"";
-                deleteCmd += dagFn.fullPathName();
-                deleteCmd += "\"";
-                MGlobal::executeCommand(deleteCmd);
-            }
-        }
-        return status;
-    }
-
+    // blendShape -frontOfChain: the morphs deform the bind-pose mesh ahead of any skinCluster (the engine
+    // applies blend targets before skinning), and the command wires the deformer chain itself - the API
+    // addTarget wants mesh shapes and left a half-built deformer that blocked the later skin bind.
+    MString cmd = "blendShape -frontOfChain -origin local -name \"";
+    cmd += MFnDagNode(shapePath.transform()).name() + "_blendShape\"";
+    MStringArray targetPaths;
     for (unsigned int i = 0; i < targetShapeObjects.length(); ++i)
     {
-        status = blendFn.addTarget(shapePath.node(), static_cast<int>(i), targetShapeObjects[i], 1.0);
-        if (!status)
-        {
-            std::cerr << "MayaSceneBuilder::createBlendShapes: addTarget failed for index " << i << std::endl;
-        }
-        MFnDagNode dagFn(targetShapeObjects[i]);
-        if (!dagFn.isFromReferencedFile())
-        {
-            MString deleteCmd = "delete \"";
-            deleteCmd += dagFn.fullPathName();
-            deleteCmd += "\"";
-            MGlobal::executeCommand(deleteCmd);
-        }
+        const MString path = MFnDagNode(targetShapeObjects[i]).fullPathName();
+        targetPaths.append(path);
+        cmd += " \"" + path + "\"";
     }
-
-    return MS::kSuccess;
+    cmd += " \"" + shapePath.fullPathName() + "\"";
+    status = MGlobal::executeCommand(cmd, false, false);
+    if (!status)
+        std::cerr << "MayaSceneBuilder::createBlendShapes: blendShape failed for " << shapePath.fullPathName().asChar()
+                  << std::endl;
+    for (unsigned int i = 0; i < targetPaths.length(); ++i)
+        MGlobal::executeCommand("delete \"" + targetPaths[i] + "\"", false, false);
+    return status;
 }
 
 MStatus MayaSceneBuilder::createJointHierarchy(
@@ -1178,6 +1686,12 @@ MStatus MayaSceneBuilder::createJointHierarchy(
         }
         jointFn.setName(MString(jointName.c_str()), &status);
 
+        {
+            MPlug radiusPlug = jointFn.findPlug("radius", true);
+            if (!radiusPlug.isNull())
+                radiusPlug.setDouble(0.12);
+        }
+
         jointFn.setRotationOrder(jroToTransformOrder(jd.rotationOrder), false);
 
         double tx, ty, tz;
@@ -1206,11 +1720,74 @@ MStatus MayaSceneBuilder::createJointHierarchy(
             std::cerr << "MayaSceneBuilder: failed to get dag path for joint " << jd.name << std::endl;
             return status;
         }
+        storeJointBind(dagPath);
         outJointPaths[i] = dagPath;
     }
 
-    MGlobal::executeCommand("jointDisplayScale 0.07");
     return MS::kSuccess;
+}
+
+namespace
+{
+    void setDouble3Attr(MObject node, const char* longName, const char* shortName, double a, double b, double c)
+    {
+        MFnDependencyNode depFn(node);
+        if (!depFn.hasAttribute(longName))
+        {
+            MFnNumericAttribute nAttr;
+            MObject attr = nAttr.create(longName, shortName, MFnNumericData::k3Double);
+            nAttr.setKeyable(false);
+            nAttr.setStorable(true);
+            depFn.addAttribute(attr);
+        }
+        MPlug plug = depFn.findPlug(longName, true);
+        if (plug.isNull() || plug.numChildren() != 3)
+            return;
+        plug.child(0).setDouble(a);
+        plug.child(1).setDouble(b);
+        plug.child(2).setDouble(c);
+    }
+
+    bool getDouble3Attr(MObject node, const char* longName, double& a, double& b, double& c)
+    {
+        MFnDependencyNode depFn(node);
+        if (!depFn.hasAttribute(longName))
+            return false;
+        MPlug plug = depFn.findPlug(longName, true);
+        if (plug.isNull() || plug.numChildren() != 3)
+            return false;
+        a = plug.child(0).asDouble();
+        b = plug.child(1).asDouble();
+        c = plug.child(2).asDouble();
+        return true;
+    }
+}
+
+void MayaSceneBuilder::storeJointBind(const MDagPath& jointPath)
+{
+    MFnIkJoint jointFn(jointPath.node());
+    MEulerRotation r;
+    jointFn.getRotation(r);
+    const MVector t = jointFn.getTranslation(MSpace::kTransform);
+    setDouble3Attr(jointPath.node(), "swgBindRotate", "sbr", r.x, r.y, r.z);
+    setDouble3Attr(jointPath.node(), "swgBindTranslate", "sbt", t.x, t.y, t.z);
+}
+
+bool MayaSceneBuilder::getJointBind(const MDagPath& jointPath, MEulerRotation& outRotate, MVector& outTranslate)
+{
+    MFnIkJoint jointFn(jointPath.node());
+    const MEulerRotation::RotationOrder order = SwgAnimMath::eulerOrderOf(jointFn);
+    double rx, ry, rz, tx, ty, tz;
+    if (getDouble3Attr(jointPath.node(), "swgBindRotate", rx, ry, rz)
+        && getDouble3Attr(jointPath.node(), "swgBindTranslate", tx, ty, tz))
+    {
+        outRotate = MEulerRotation(rx, ry, rz, order);
+        outTranslate = MVector(tx, ty, tz);
+        return true;
+    }
+    jointFn.getRotation(outRotate);
+    outTranslate = jointFn.getTranslation(MSpace::kTransform);
+    return false;
 }
 
 namespace
@@ -1265,10 +1842,6 @@ MStatus MayaSceneBuilder::setKeyframesFromDeltas(
 
     const double fpsVal = (fps > 0.0f) ? static_cast<double>(fps) : 30.0;
 
-    // Frame 0 bind-pose keyframe prevents jolt when play starts (Maya holds first key before playback)
-    MTime time0(0.0, MTime::kSeconds);
-    animCurveFn.addKeyframe(time0, bindPoseValue);
-
     for (size_t k = 0; k < deltaKeyframes.size(); ++k)
     {
         double deltaVal = static_cast<double>(deltaKeyframes[k].value);
@@ -1279,12 +1852,12 @@ MStatus MayaSceneBuilder::setKeyframesFromDeltas(
         MTime time(timeVal, MTime::kSeconds);
         animCurveFn.addKeyframe(time, finalVal);
     }
-    // Clamped tangents prevent spline overshoot (avoids twitching)
+    // Linear tangents: the engine interpolates linearly between keys
     const unsigned int numKeys = animCurveFn.numKeys();
     for (unsigned int i = 0; i < numKeys; ++i)
     {
-        animCurveFn.setInTangentType(i, MFnAnimCurve::kTangentClamped);
-        animCurveFn.setOutTangentType(i, MFnAnimCurve::kTangentClamped);
+        animCurveFn.setInTangentType(i, MFnAnimCurve::kTangentLinear);
+        animCurveFn.setOutTangentType(i, MFnAnimCurve::kTangentLinear);
     }
     return MS::kSuccess;
 }
@@ -1317,61 +1890,54 @@ MStatus MayaSceneBuilder::setRotationKeyframesFromDeltas(
     if (!status)
         return status;
 
-    MEulerRotation::RotationOrder rotOrder = static_cast<MEulerRotation::RotationOrder>(jointFn.rotationOrder());
+    MEulerRotation::RotationOrder rotOrder = SwgAnimMath::eulerOrderOf(jointFn);
     const double fpsVal = (fps > 0.0f) ? static_cast<double>(fps) : 30.0;
 
-    // Frame 0 bind-pose keyframe (Maya bind pose, no conversion needed)
-    MEulerRotation bindEuler = bindQuat.asEulerRotation();
-    bindEuler.reorderIt(rotOrder);
-    MTime time0(0.0, MTime::kSeconds);
-    rxCurve.addKeyframe(time0, bindEuler.x);
-    ryCurve.addKeyframe(time0, bindEuler.y);
-    rzCurve.addKeyframe(time0, bindEuler.z);
+    // The engine plays rotation = delta * bind in engine space; Maya's rotate is the X-mirror of that
+    // (see SwgAnimMath.h). The bind is the skeleton's, recorded at import (else the current pose).
+    MEulerRotation bindEuler;
+    MVector bindTranslate;
+    getJointBind(jointPath, bindEuler, bindTranslate);
+    const SwgAnimMath::Quat bindEngine = SwgAnimMath::engineFromMaya(bindEuler);
 
-    MQuaternion prevFinalQ = bindQuat;
-
-    // Import rotation keyframes using the same approach as legacy MayaExporter:
-    // final = delta * bindPose (quaternion multiplication)
-    // Then convert to Euler with Y,Z negation for coordinate system
+    // The file keys are sparse and the engine slerps between them; three linear Euler curves would not
+    // follow that path, so key every whole frame with the engine's own interpolation.
+    auto keyDelta = [&](size_t k) {
+        const QuatKeyframe& qk = deltaKeyframes[k];
+        return SwgAnimMath::Quat(qk.rotation[3], qk.rotation[0], qk.rotation[1], qk.rotation[2]).normalized();
+    };
+    MEulerRotation prevEuler = bindEuler;
+    auto addKey = [&](double frame, const SwgAnimMath::Quat& delta) {
+        const SwgAnimMath::Quat finalEngine = (delta * bindEngine).normalized();
+        const MEulerRotation e = SwgAnimMath::mayaFromEngine(finalEngine, rotOrder, &prevEuler);
+        prevEuler = e;
+        const MTime time(frame / fpsVal, MTime::kSeconds);
+        rxCurve.addKeyframe(time, e.x);
+        ryCurve.addKeyframe(time, e.y);
+        rzCurve.addKeyframe(time, e.z);
+    };
     for (size_t k = 0; k < deltaKeyframes.size(); ++k)
     {
-        const QuatKeyframe& qk = deltaKeyframes[k];
-        const double timeVal = static_cast<double>(qk.frame) / fpsVal;
-        MTime time(timeVal, MTime::kSeconds);
-
-        // Delta quaternion from .ans file: stored as [x, y, z, w] in our struct
-        MQuaternion deltaQ(qk.rotation[0], qk.rotation[1], qk.rotation[2], qk.rotation[3]);
-
-        // Apply delta to bind pose (this is how the game engine does it)
-        MQuaternion finalQ = deltaQ * bindQuat;
-
-        // Quaternion sign flip for interpolation continuity (prevents flipping)
-        const double dot = prevFinalQ.w * finalQ.w + prevFinalQ.x * finalQ.x +
-                           prevFinalQ.y * finalQ.y + prevFinalQ.z * finalQ.z;
-        if (dot < 0.0)
-            finalQ = MQuaternion(-finalQ.x, -finalQ.y, -finalQ.z, -finalQ.w);
-        prevFinalQ = finalQ;
-
-        // Convert to Euler and apply coordinate conversion (negate Y, Z)
-        MEulerRotation finalEuler = finalQ.asEulerRotation();
-        finalEuler.reorderIt(rotOrder);
-
-        // Coordinate system conversion: Maya Y,Z are negated relative to game
-        rxCurve.addKeyframe(time, finalEuler.x);
-        ryCurve.addKeyframe(time, -finalEuler.y);
-        rzCurve.addKeyframe(time, -finalEuler.z);
+        const double f0 = static_cast<double>(deltaKeyframes[k].frame);
+        addKey(f0, keyDelta(k));
+        if (k + 1 < deltaKeyframes.size())
+        {
+            const double f1 = static_cast<double>(deltaKeyframes[k + 1].frame);
+            for (double f = std::floor(f0) + 1.0; f < f1 - 1e-6; f += 1.0)
+                addKey(f, SwgAnimMath::slerp(keyDelta(k), keyDelta(k + 1), (f - f0) / (f1 - f0)));
+        }
     }
 
-    // Clamped tangents prevent spline overshoot between keyframes (avoids bending/twitching)
+    // Linear tangents: the engine interpolates linearly between keys
     const unsigned int numKeys = rxCurve.numKeys();
     for (unsigned int i = 0; i < numKeys; ++i)
     {
-        rxCurve.setInTangentType(i, MFnAnimCurve::kTangentClamped);
-        rxCurve.setOutTangentType(i, MFnAnimCurve::kTangentClamped);
-        ryCurve.setInTangentType(i, MFnAnimCurve::kTangentClamped);
-        ryCurve.setOutTangentType(i, MFnAnimCurve::kTangentClamped);
-        rzCurve.setInTangentType(i, MFnAnimCurve::kTangentClamped);
-        rzCurve.setOutTangentType(i, MFnAnimCurve::kTangentClamped);
+        rxCurve.setInTangentType(i, MFnAnimCurve::kTangentLinear);
+        rxCurve.setOutTangentType(i, MFnAnimCurve::kTangentLinear);
+        ryCurve.setInTangentType(i, MFnAnimCurve::kTangentLinear);
+        ryCurve.setOutTangentType(i, MFnAnimCurve::kTangentLinear);
+        rzCurve.setInTangentType(i, MFnAnimCurve::kTangentLinear);
+        rzCurve.setOutTangentType(i, MFnAnimCurve::kTangentLinear);
     }
     return MS::kSuccess;
 }

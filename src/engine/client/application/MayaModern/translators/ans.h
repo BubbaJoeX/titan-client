@@ -141,6 +141,10 @@ public:
     
     // creates instances of the translator
     static void* creator();
+
+    /// fps / frame count of the last .ans the reader applied (Maya's file import puts the scene's time unit and
+    /// playback range back afterwards, so importAnimation re-applies them). False when nothing is pending.
+    static bool takeLastImportTiming(float& outFps, int& outFrameCount);
     
     // the extension of the file
     [[nodiscard]] MString defaultExtension () const override;

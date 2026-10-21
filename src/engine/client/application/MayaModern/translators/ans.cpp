@@ -1,7 +1,10 @@
 #include "ans.h"
+#include "SwgAnimMath.h"
+#include "MayaCompoundString.h"
 #include "SwgTranslatorNames.h"
 
 #include "Iff.h"
+#include "Crc.h"
 #include "Tag.h"
 #include "Globals.h"
 #include "MayaUtility.h"
@@ -137,26 +140,29 @@ static void collectSceneJoints(MSelectionList& allJointSel, MSelectionList& bind
 
 static void restoreBindPoseOnJoints(const MSelectionList& bindRestoreSel)
 {
-    if (bindRestoreSel.length() == 0)
-        return;
-    MGlobal::setActiveSelectionList(bindRestoreSel);
-    MStatus st = MGlobal::executeCommand("dagPose -restore -global -bindPose");
-    if (!st)
-        ANS_WARN("dagPose failed - bind pose may not be restored correctly");
-    MGlobal::clearSelectionList();
+    // the skeleton's own bind (recorded by importSkeleton); joints without one keep their pose
+    for (unsigned i = 0; i < bindRestoreSel.length(); ++i)
+    {
+        MDagPath path;
+        if (!bindRestoreSel.getDagPath(i, path))
+            continue;
+        MEulerRotation r;
+        MVector t;
+        if (!MayaSceneBuilder::getJointBind(path, r, t))
+            continue;
+        MFnIkJoint jointFn(path.node());
+        jointFn.setRotation(r);
+        jointFn.setTranslation(t, MSpace::kTransform);
+    }
 }
 
 static void resetAnimationTrackAndBindPose()
 {
     ANS_LOG("resetting animation track and bind pose...");
 
-    MGlobal::executeCommand("playback -state 0");
-
+    MAnimControl::stop();
     const MTime zero(0.0, MTime::kSeconds);
     MAnimControl::setCurrentTime(zero);
-    MAnimControl::setMinMaxTime(zero, zero);
-    MAnimControl::setAnimationStartEndTime(zero, zero);
-    MGlobal::executeCommand("playbackOptions -minTime 0 -maxTime 1 -animationStartTime 0 -animationEndTime 1");
 
     MSelectionList allJointSel;
     MSelectionList bindRestoreSel;
@@ -165,14 +171,16 @@ static void resetAnimationTrackAndBindPose()
     if (allJointSel.length() > 0)
     {
         MGlobal::setActiveSelectionList(allJointSel);
-        MGlobal::executeCommand("delete -animation");
-        MGlobal::executeCommand("cutKey -clear");
+        MGlobal::executeCommand("cutKey -clear -attribute translate -attribute rotate");
         MGlobal::clearSelectionList();
     }
 
     restoreBindPoseOnJoints(bindRestoreSel);
     MAnimControl::setCurrentTime(zero);
 }
+
+static float s_lastImportFps = 0.0f;
+static int s_lastImportFrameCount = -1;
 
 } // namespace
 
@@ -242,6 +250,16 @@ inline Quaternion AnsTranslator::FullCompressedQuaternion::expand() const
 // ======================================================================
 
 // creates an instance of the AnsTranslator
+bool AnsTranslator::takeLastImportTiming(float& outFps, int& outFrameCount)
+{
+    if (s_lastImportFrameCount < 0)
+        return false;
+    outFps = s_lastImportFps;
+    outFrameCount = s_lastImportFrameCount;
+    s_lastImportFrameCount = -1;
+    return true;
+}
+
 void* AnsTranslator::creator()
 {
     return new AnsTranslator();
@@ -942,7 +960,9 @@ MStatus AnsTranslator::reader (const MFileObject& file, const MString& options, 
                     ++matchedCount;
                     MStatus status;
                     MFnIkJoint jointFn(jointPath.node());
-                    MVector bindTranslation = jointFn.getTranslation(MSpace::kTransform);
+                    MEulerRotation bindRotate;
+                    MVector bindTranslation;
+                    MayaSceneBuilder::getJointBind(jointPath, bindRotate, bindTranslation);
 
                     if (ti.hasAnimatedRotations)
                     {
@@ -969,14 +989,11 @@ MStatus AnsTranslator::reader (const MFileObject& file, const MString& options, 
                     {
                         ANS_LOG("[%s] rot static ch=%d", ti.jointName.c_str(), ti.rotationChannelIndex);
                         const FullCompressedQuaternion& sr = staticRotations[static_cast<size_t>(ti.rotationChannelIndex)];
-                        Quaternion deltaQ = sr.expand();
-                        MQuaternion bindQuat;
-                        jointFn.getRotation(bindQuat, MSpace::kTransform);
-                        MQuaternion mq(deltaQ.x, deltaQ.y, deltaQ.z, deltaQ.w);
-                        MQuaternion finalQ = mq * bindQuat;
-                        MEulerRotation finalEuler = finalQ.asEulerRotation();
-                        finalEuler.reorderIt(static_cast<MEulerRotation::RotationOrder>(jointFn.rotationOrder()));
-                        jointFn.setRotation(MEulerRotation(finalEuler.x, -finalEuler.y, -finalEuler.z));
+                        const Quaternion deltaQ = sr.expand();
+                        const SwgAnimMath::Quat delta(deltaQ.w, deltaQ.x, deltaQ.y, deltaQ.z);
+                        const SwgAnimMath::Quat finalEngine = delta * SwgAnimMath::engineFromMaya(bindRotate);
+                        jointFn.setRotation(SwgAnimMath::mayaFromEngine(finalEngine,
+                            SwgAnimMath::eulerOrderOf(jointFn), &bindRotate));
                     }
 
                     // Translation (delta from bind: final = bind + delta; X negated for engine coords)
@@ -1110,6 +1127,8 @@ MStatus AnsTranslator::reader (const MFileObject& file, const MString& options, 
                 MAnimControl::setMinMaxTime(startTime, endTime);
                 MAnimControl::setCurrentTime(startTime);
                 ANS_LOG("time range: 0 - %d frames (%.1f fps)", frameCount, framesPerSecond);
+                s_lastImportFps = fpsForTime;
+                s_lastImportFrameCount = frameCount;
                 {
                     const double startVal = startTime.as(MTime::uiUnit());
                     const double endVal = endTime.as(MTime::uiUnit());
@@ -1125,55 +1144,6 @@ MStatus AnsTranslator::reader (const MFileObject& file, const MString& options, 
     }
 }
 
-namespace {
-
-// Grows [ioMinTU, ioMaxTU] to include key times on anim curves feeding the joint (rotate/translate etc.).
-static void expandExportRangeWithJointAnimCurves(const MDagPath& jointPath, MTime::Unit uiUnit,
-    double& ioMinTU, double& ioMaxTU)
-{
-    MStatus st;
-    MFnDependencyNode dep(jointPath.node(), &st);
-    if (!st)
-        return;
-
-    static const char* attrs[] = {
-        "rotateX", "rotateY", "rotateZ",
-        "translateX", "translateY", "translateZ",
-        "jointOrientX", "jointOrientY", "jointOrientZ",
-        "scaleX", "scaleY", "scaleZ",
-    };
-
-    for (const char* attr : attrs)
-    {
-        if (!dep.hasAttribute(attr))
-            continue;
-        MPlug p = dep.findPlug(attr, true, &st);
-        if (!st || p.isNull())
-            continue;
-
-        MPlugArray srcConns;
-        p.connectedTo(srcConns, true, false);
-        for (unsigned i = 0; i < srcConns.length(); ++i)
-        {
-            MObject node = srcConns[i].node();
-            if (node.isNull())
-                continue;
-            MFnAnimCurve acFn(node, &st);
-            if (!st)
-                continue;
-
-            const unsigned nk = acFn.numKeys();
-            for (unsigned k = 0; k < nk; ++k)
-            {
-                const double tu = acFn.time(k).as(uiUnit);
-                ioMinTU = std::min(ioMinTU, tu);
-                ioMaxTU = std::max(ioMaxTU, tu);
-            }
-        }
-    }
-}
-
-} // namespace
 
 /**
  * Handles writing out (exporting) the animation
@@ -1183,6 +1153,217 @@ static void expandExportRangeWithJointAnimCurves(const MDagPath& jointPath, MTim
  * @param mode the access mode of the file
  * @return the status of the operation
  */
+namespace {
+
+// KFAT 0003 -> CKAT 0001, following the engine's AnimationCompressor::createCompressedIff_0003 (same per-channel
+// optimal formats, 16-bit counts/frames, messages and locomotion carried over) so exports match stock clips.
+bool compressKfatToCkat(Iff& in, Iff& out)
+{
+    const Tag TAG_KFAT_ = TAG(K,F,A,T), TAG_CKAT_ = TAG(C,K,A,T), TAG_0003_ = TAG(0,0,0,3), TAG_0001_ = TAG(0,0,0,1);
+    const Tag TAG_INFO_ = TAG(I,N,F,O), TAG_XFRM_ = TAG(X,F,R,M), TAG_XFIN_ = TAG(X,F,I,N), TAG_AROT_ = TAG(A,R,O,T);
+    const Tag TAG_QCHN_ = TAG(Q,C,H,N), TAG_SROT_ = TAG(S,R,O,T), TAG_ATRN_ = TAG(A,T,R,N), TAG_CHNL_ = TAG(C,H,N,L);
+    const Tag TAG_STRN_ = TAG(S,T,R,N), TAG_MSGS_ = TAG(M,S,G,S), TAG_MESG_ = TAG(M,E,S,G), TAG_LOCT_ = TAG(L,O,C,T);
+    const Tag TAG_LOCR_ = TAG(L,O,C,R);
+
+    CompressedQuaternion::install();   // compression tables (otherwise only the reader builds them)
+
+    in.enterForm(TAG_KFAT_);
+    out.insertForm(TAG_CKAT_);
+    in.enterForm(TAG_0003_);
+    out.insertForm(TAG_0001_);
+
+    in.enterChunk(TAG_INFO_);
+    out.insertChunk(TAG_INFO_);
+    out.insertChunkData(in.read_float());
+    out.insertChunkData(static_cast<int16>(in.read_int32()));
+    const int transformCount = static_cast<int>(in.read_int32());
+    out.insertChunkData(static_cast<int16>(transformCount));
+    const int rotationCount = static_cast<int>(in.read_int32());
+    out.insertChunkData(static_cast<int16>(rotationCount));
+    const int staticRotationCount = static_cast<int>(in.read_int32());
+    out.insertChunkData(static_cast<int16>(staticRotationCount));
+    const int translationCount = static_cast<int>(in.read_int32());
+    out.insertChunkData(static_cast<int16>(translationCount));
+    const int staticTranslationCount = static_cast<int>(in.read_int32());
+    out.insertChunkData(static_cast<int16>(staticTranslationCount));
+    out.exitChunk(TAG_INFO_);
+    in.exitChunk(TAG_INFO_);
+
+    in.enterForm(TAG_XFRM_);
+    out.insertForm(TAG_XFRM_);
+    char name[256];
+    for (int t = 0; t < transformCount; ++t)
+    {
+        in.enterChunk(TAG_XFIN_);
+        out.insertChunk(TAG_XFIN_);
+        in.read_string(name, sizeof(name) - 1);
+        out.insertChunkString(name);
+        out.insertChunkData(in.read_int8());
+        out.insertChunkData(static_cast<int16>(in.read_int32()));
+        out.insertChunkData(static_cast<uint8>(in.read_uint32()));
+        for (int j = 0; j < 3; ++j)
+            out.insertChunkData(static_cast<int16>(in.read_int32()));
+        out.exitChunk(TAG_XFIN_);
+        in.exitChunk(TAG_XFIN_);
+    }
+    out.exitForm(TAG_XFRM_);
+    in.exitForm(TAG_XFRM_);
+
+    auto writeCompressedChannel = [&](const std::vector<int16>& frames, const CompressedQuaternion::QuaternionVector& rotations) {
+        uint8 xf, yf, zf;
+        CompressedQuaternion::getOptimalCompressionFormat(rotations, xf, yf, zf);
+        CompressedQuaternion::CompressedQuaternionVector compressed;
+        CompressedQuaternion::compressRotations(rotations, xf, yf, zf, compressed);
+        out.insertChunkData(static_cast<int16>(rotations.size()));
+        out.insertChunkData(xf);
+        out.insertChunkData(yf);
+        out.insertChunkData(zf);
+        for (size_t k = 0; k < rotations.size(); ++k)
+        {
+            out.insertChunkData(frames[k]);
+            out.insertChunkData(compressed[k].getCompressedValue());
+        }
+    };
+
+    if (rotationCount > 0)
+    {
+        in.enterForm(TAG_AROT_);
+        out.insertForm(TAG_AROT_);
+        for (int i = 0; i < rotationCount; ++i)
+        {
+            in.enterChunk(TAG_QCHN_);
+            std::vector<int16> frames;
+            CompressedQuaternion::QuaternionVector rotations;
+            const int keyCount = static_cast<int>(in.read_int32());
+            for (int k = 0; k < keyCount; ++k)
+            {
+                frames.push_back(static_cast<int16>(in.read_int32()));
+                rotations.push_back(in.read_floatQuaternion());
+            }
+            in.exitChunk(TAG_QCHN_);
+            out.insertChunk(TAG_QCHN_);
+            writeCompressedChannel(frames, rotations);
+            out.exitChunk(TAG_QCHN_);
+        }
+        out.exitForm(TAG_AROT_);
+        in.exitForm(TAG_AROT_);
+    }
+    else if (in.enterForm(TAG_AROT_, true))
+        in.exitForm(TAG_AROT_);
+
+    if (staticRotationCount > 0)
+    {
+        in.enterChunk(TAG_SROT_);
+        out.insertChunk(TAG_SROT_);
+        for (int i = 0; i < staticRotationCount; ++i)
+        {
+            const Quaternion rotation = in.read_floatQuaternion();
+            const uint8 xf = CompressedQuaternion::getOptimalCompressionFormat(rotation.x, rotation.x);
+            const uint8 yf = CompressedQuaternion::getOptimalCompressionFormat(rotation.y, rotation.y);
+            const uint8 zf = CompressedQuaternion::getOptimalCompressionFormat(rotation.z, rotation.z);
+            out.insertChunkData(xf);
+            out.insertChunkData(yf);
+            out.insertChunkData(zf);
+            out.insertChunkData(CompressedQuaternion(rotation, xf, yf, zf).getCompressedValue());
+        }
+        out.exitChunk(TAG_SROT_);
+        in.exitChunk(TAG_SROT_);
+    }
+    else if (in.enterChunk(TAG_SROT_, true))
+        in.exitChunk(TAG_SROT_);
+
+    if (translationCount > 0)
+    {
+        in.enterForm(TAG_ATRN_);
+        out.insertForm(TAG_ATRN_);
+        for (int i = 0; i < translationCount; ++i)
+        {
+            in.enterChunk(TAG_CHNL_);
+            out.insertChunk(TAG_CHNL_);
+            const int keyCount = static_cast<int>(in.read_int32());
+            out.insertChunkData(static_cast<int16>(keyCount));
+            for (int k = 0; k < keyCount; ++k)
+            {
+                out.insertChunkData(static_cast<int16>(in.read_int32()));
+                out.insertChunkData(in.read_float());
+            }
+            out.exitChunk(TAG_CHNL_);
+            in.exitChunk(TAG_CHNL_);
+        }
+        out.exitForm(TAG_ATRN_);
+        in.exitForm(TAG_ATRN_);
+    }
+    else if (in.enterForm(TAG_ATRN_, true))
+        in.exitForm(TAG_ATRN_);
+
+    if (staticTranslationCount > 0)
+    {
+        in.enterChunk(TAG_STRN_);
+        out.insertChunk(TAG_STRN_);
+        for (int i = 0; i < staticTranslationCount; ++i)
+            out.insertChunkData(in.read_float());
+        out.exitChunk(TAG_STRN_);
+        in.exitChunk(TAG_STRN_);
+    }
+    else if (in.enterChunk(TAG_STRN_, true))
+        in.exitChunk(TAG_STRN_);
+
+    if (in.enterForm(TAG_MSGS_, true))
+    {
+        out.insertForm(TAG_MSGS_);
+        in.enterChunk(TAG_INFO_);
+        out.insertChunk(TAG_INFO_);
+        out.insertChunkData(in.read_int16());
+        out.exitChunk(TAG_INFO_);
+        in.exitChunk(TAG_INFO_);
+        while (!in.atEndOfForm())
+        {
+            in.enterChunk(TAG_MESG_);
+            out.insertChunk(TAG_MESG_);
+            while (in.getChunkLengthLeft(1))
+                out.insertChunkData(in.read_uint8());
+            out.exitChunk(TAG_MESG_);
+            in.exitChunk(TAG_MESG_);
+        }
+        out.exitForm(TAG_MSGS_);
+        in.exitForm(TAG_MSGS_);
+    }
+
+    if (in.enterChunk(TAG_LOCT_, true))
+    {
+        out.insertChunk(TAG_LOCT_);
+        while (in.getChunkLengthLeft(1))
+            out.insertChunkData(in.read_uint8());
+        out.exitChunk(TAG_LOCT_);
+        in.exitChunk(TAG_LOCT_);
+    }
+
+    if (in.enterChunk(TAG_LOCR_, true))
+    {
+        // locomotion rotation becomes a compressed QCHN at the end of the form (as the engine reads it)
+        std::vector<int16> frames;
+        CompressedQuaternion::QuaternionVector rotations;
+        const int keyCount = static_cast<int>(in.read_int16());
+        for (int k = 0; k < keyCount; ++k)
+        {
+            frames.push_back(in.read_int16());
+            rotations.push_back(in.read_floatQuaternion());
+        }
+        in.exitChunk(TAG_LOCR_);
+        out.insertChunk(TAG_QCHN_);
+        writeCompressedChannel(frames, rotations);
+        out.exitChunk(TAG_QCHN_);
+    }
+
+    out.exitForm(TAG_0001_);
+    in.exitForm(TAG_0003_, true);
+    out.exitForm(TAG_CKAT_);
+    in.exitForm(TAG_KFAT_, true);
+    return true;
+}
+
+} // namespace
+
 MStatus AnsTranslator::writer (const MFileObject& file, const MString& options, MPxFileTranslator::FileAccessMode mode)
 {
     MString mpath = file.expandedFullName();
@@ -1208,17 +1389,10 @@ MStatus AnsTranslator::writer (const MFileObject& file, const MString& options, 
         return MS::kFailure;
     }
 
+    // Export range = the playback range (the clip). Keys outside it are ignored, like the engine would.
     const MTime::Unit uiUnit = MTime::uiUnit();
     double minTU = MAnimControl::minTime().as(uiUnit);
     double maxTU = MAnimControl::maxTime().as(uiUnit);
-    {
-        MTime a = MAnimControl::animationStartTime();
-        minTU = std::min(minTU, a.as(uiUnit));
-        MTime b = MAnimControl::animationEndTime();
-        maxTU = std::max(maxTU, b.as(uiUnit));
-    }
-    for (const MDagPath& jp : joints)
-        expandExportRangeWithJointAnimCurves(jp, uiUnit, minTU, maxTU);
 
     int firstFrame = static_cast<int>(std::floor(minTU));
     int lastFrame = static_cast<int>(std::ceil(maxTU));
@@ -1231,54 +1405,50 @@ MStatus AnsTranslator::writer (const MFileObject& file, const MString& options, 
     const int frameCount = lastFrame - firstFrame;
 
     float fps = static_cast<float>(MTime(1.0, MTime::kSeconds).as(uiUnit));
-    ANS_LOG("export time range (playback + animation range + joint curve keys): %.3f - %.3f ui -> frames %d - %d (%.1f fps, span=%d)",
+    ANS_LOG("export time range (playback range): %.3f - %.3f ui -> frames %d - %d (%.1f fps, span=%d)",
         minTU, maxTU, firstFrame, lastFrame, fps, frameCount);
     ANS_LOG("found %zu joints", joints.size());
 
-    // Go to bind pose (frame 0 or first frame) to capture bind pose data
+    // Bind pose: the skeleton's (recorded by importSkeleton / importSkeletalMesh). Deltas are measured from it
+    // in engine space, so a clip may start in any pose. Joints without one fall back to the first frame.
     MAnimControl::setCurrentTime(MTime(static_cast<double>(firstFrame), MTime::uiUnit()));
 
-    // Capture bind pose for each joint
     struct JointBindPose {
         std::string name;
-        Quaternion rotation;
-        float tx, ty, tz;
+        SwgAnimMath::Quat rotation;     // engine space
+        float tx, ty, tz;               // engine space
     };
     std::vector<JointBindPose> bindPoses;
     bindPoses.reserve(joints.size());
+    int unboundJoints = 0;
 
     for (const MDagPath& jp : joints)
     {
-        MFnIkJoint jointFn(jp.node(), &status);
-        if (!status) continue;
-
         JointBindPose bp;
-        // Get short name (without namespace or path)
-        MString fullName = jp.partialPathName();
-        std::string nameStr(fullName.asChar());
-        size_t lastPipe = nameStr.rfind('|');
-        if (lastPipe != std::string::npos) nameStr = nameStr.substr(lastPipe + 1);
-        size_t nsColon = nameStr.rfind(':');
+        // skeleton joint name: short name without namespace, and a root's "__<skeleton file>" suffix dropped
+        MFnDagNode dagFn(jp);
+        std::string nameStr(dagFn.name().asChar());
+        const size_t nsColon = nameStr.rfind(':');
         if (nsColon != std::string::npos) nameStr = nameStr.substr(nsColon + 1);
+        MayaCompoundString compound(MString(nameStr.c_str()));
+        if (compound.getComponentCount() > 1)
+            nameStr = compound.getComponentString(0).asChar();
         bp.name = nameStr;
 
-        // Get rotation and convert to game coordinates
-        MEulerRotation mayaRot;
-        jointFn.getRotation(mayaRot);
-        // Game convention: negate Y and Z euler angles
-        Quaternion qx(static_cast<float>(mayaRot.x), Vector::unitX);
-        Quaternion qy(static_cast<float>(-mayaRot.y), Vector::unitY);
-        Quaternion qz(static_cast<float>(-mayaRot.z), Vector::unitZ);
-        bp.rotation = qz * (qy * qx); // XYZ order
-
-        // Get translation and convert to game coordinates (negate X)
-        MVector mayaTrans = jointFn.getTranslation(MSpace::kTransform);
-        bp.tx = static_cast<float>(-mayaTrans.x);
-        bp.ty = static_cast<float>(mayaTrans.y);
-        bp.tz = static_cast<float>(mayaTrans.z);
-
+        MEulerRotation bindRotate;
+        MVector bindTranslate;
+        if (!MayaSceneBuilder::getJointBind(jp, bindRotate, bindTranslate))
+            ++unboundJoints;
+        bp.rotation = SwgAnimMath::engineFromMaya(bindRotate);
+        bp.tx = static_cast<float>(-bindTranslate.x);
+        bp.ty = static_cast<float>(bindTranslate.y);
+        bp.tz = static_cast<float>(bindTranslate.z);
         bindPoses.push_back(bp);
     }
+    if (unboundJoints > 0)
+        ANS_WARN("%d joint(s) have no recorded skeleton bind (swgBindRotate/swgBindTranslate) - their pose at frame "
+                 "%d is used as the bind. Import the skeleton with importSkeleton so deltas match the .skt.",
+                 unboundJoints, firstFrame);
 
     // Data structures for animation channels
     struct RotationChannel {
@@ -1304,6 +1474,32 @@ MStatus AnsTranslator::writer (const MFileObject& file, const MString& options, 
     };
     std::vector<TransformInfo> transformInfos;
 
+    // translation keys the engine's linear interpolation reproduces within 0.5 mm are dropped
+    auto reducedKeys = [](const std::vector<float>& samples, int frameCount) {
+        std::vector<std::pair<int, float>> keys;
+        keys.emplace_back(0, samples[0]);
+        int lastKept = 0;
+        for (int f = 1; f < frameCount; ++f)
+        {
+            bool needed = false;
+            for (int g = lastKept + 1; g <= f && !needed; ++g)
+            {
+                const float t = static_cast<float>(g - lastKept) / static_cast<float>(f + 1 - lastKept);
+                const float interp = samples[static_cast<size_t>(lastKept)]
+                    + (samples[static_cast<size_t>(f + 1)] - samples[static_cast<size_t>(lastKept)]) * t;
+                needed = std::abs(interp - samples[static_cast<size_t>(g)]) > 0.0005f;
+            }
+            if (needed)
+            {
+                keys.emplace_back(f, samples[static_cast<size_t>(f)]);
+                lastKept = f;
+            }
+        }
+        if (frameCount > 0)
+            keys.emplace_back(frameCount, samples[static_cast<size_t>(frameCount)]);
+        return keys;
+    };
+
     // For each joint, sample animation and determine if animated or static
     for (size_t ji = 0; ji < joints.size(); ++ji)
     {
@@ -1325,14 +1521,16 @@ MStatus AnsTranslator::writer (const MFileObject& file, const MString& options, 
 
             MEulerRotation mayaRot;
             jointFn.getRotation(mayaRot);
-            Quaternion qx(static_cast<float>(mayaRot.x), Vector::unitX);
-            Quaternion qy(static_cast<float>(-mayaRot.y), Vector::unitY);
-            Quaternion qz(static_cast<float>(-mayaRot.z), Vector::unitZ);
-            Quaternion animRot = qz * (qy * qx);
-
-            // Compute delta from bind pose: delta = anim * bind.conjugate()
-            Quaternion deltaRot = animRot * bp.rotation.getComplexConjugate();
-            rotSamples.push_back(deltaRot);
+            // engine plays rotation = delta * bind  =>  delta = anim * conj(bind)
+            SwgAnimMath::Quat d = (SwgAnimMath::engineFromMaya(mayaRot) * bp.rotation.conjugate()).normalized();
+            if (!rotSamples.empty())
+            {
+                const Quaternion& p = rotSamples.back();
+                if (d.dot(SwgAnimMath::Quat(p.w, p.x, p.y, p.z)) < 0.0)
+                    d = d.negated();
+            }
+            rotSamples.push_back(Quaternion(static_cast<float>(d.w), static_cast<float>(d.x), static_cast<float>(d.y),
+                                            static_cast<float>(d.z)));
 
             MVector mayaTrans = jointFn.getTranslation(MSpace::kTransform);
             float animTx = static_cast<float>(-mayaTrans.x);
@@ -1380,8 +1578,28 @@ MStatus AnsTranslator::writer (const MFileObject& file, const MString& options, 
         {
             ti.rotationChannelIndex = static_cast<int>(rotChannels.size());
             RotationChannel rc;
-            for (int f = 0; f <= frameCount; ++f)
-                rc.keys.emplace_back(f, rotSamples[static_cast<size_t>(f)]);
+            auto toQ = [](const Quaternion& q) { return SwgAnimMath::Quat(q.w, q.x, q.y, q.z); };
+            int lastKept = 0;
+            rc.keys.emplace_back(0, rotSamples[0]);
+            for (int f = 1; f < frameCount; ++f)
+            {
+                // keep f if dropping it would let interpolation from the last key to f+1 miss any frame between
+                bool needed = false;
+                for (int g = lastKept + 1; g <= f && !needed; ++g)
+                {
+                    const double t = static_cast<double>(g - lastKept) / static_cast<double>(f + 1 - lastKept);
+                    const SwgAnimMath::Quat interp = SwgAnimMath::slerp(toQ(rotSamples[static_cast<size_t>(lastKept)]),
+                                                                        toQ(rotSamples[static_cast<size_t>(f + 1)]), t);
+                    needed = SwgAnimMath::angleBetween(interp, toQ(rotSamples[static_cast<size_t>(g)])) > 0.0015;
+                }
+                if (needed)
+                {
+                    rc.keys.emplace_back(f, rotSamples[static_cast<size_t>(f)]);
+                    lastKept = f;
+                }
+            }
+            if (frameCount > 0)
+                rc.keys.emplace_back(frameCount, rotSamples[static_cast<size_t>(frameCount)]);
             rotChannels.push_back(rc);
         }
         else
@@ -1395,8 +1613,7 @@ MStatus AnsTranslator::writer (const MFileObject& file, const MString& options, 
             ti.translationMask |= 0x08; // SATCCF_xTranslation
             ti.xTransChannelIndex = static_cast<int>(transXChannels.size());
             TranslationChannel tc;
-            for (int f = 0; f <= frameCount; ++f)
-                tc.keys.emplace_back(f, txSamples[static_cast<size_t>(f)]);
+            tc.keys = reducedKeys(txSamples, frameCount);
             transXChannels.push_back(tc);
         }
         else
@@ -1410,8 +1627,7 @@ MStatus AnsTranslator::writer (const MFileObject& file, const MString& options, 
             ti.translationMask |= 0x10; // SATCCF_yTranslation
             ti.yTransChannelIndex = static_cast<int>(transYChannels.size());
             TranslationChannel tc;
-            for (int f = 0; f <= frameCount; ++f)
-                tc.keys.emplace_back(f, tySamples[static_cast<size_t>(f)]);
+            tc.keys = reducedKeys(tySamples, frameCount);
             transYChannels.push_back(tc);
         }
         else
@@ -1425,8 +1641,7 @@ MStatus AnsTranslator::writer (const MFileObject& file, const MString& options, 
             ti.translationMask |= 0x20; // SATCCF_zTranslation
             ti.zTransChannelIndex = static_cast<int>(transZChannels.size());
             TranslationChannel tc;
-            for (int f = 0; f <= frameCount; ++f)
-                tc.keys.emplace_back(f, tzSamples[static_cast<size_t>(f)]);
+            tc.keys = reducedKeys(tzSamples, frameCount);
             transZChannels.push_back(tc);
         }
         else
@@ -1437,6 +1652,20 @@ MStatus AnsTranslator::writer (const MFileObject& file, const MString& options, 
 
         transformInfos.push_back(ti);
     }
+
+    // The engine binary-searches an animation's transforms by name: names lowercase (the skeleton side is a
+    // CrcLowerString) and entries sorted in CrcString order (crc, then strcmp) - KeyframeSkeletalAnimationTemplate::
+    // getTransformIndex. Any other order and joints silently keep their bind pose in game.
+    for (TransformInfo& ti : transformInfos)
+        std::transform(ti.name.begin(), ti.name.end(), ti.name.begin(),
+                       [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    std::sort(transformInfos.begin(), transformInfos.end(), [](const TransformInfo& a, const TransformInfo& b) {
+        const uint32 ca = Crc::calculate(a.name.c_str());
+        const uint32 cb = Crc::calculate(b.name.c_str());
+        if (ca != cb)
+            return ca < cb;
+        return std::strcmp(a.name.c_str(), b.name.c_str()) < 0;
+    });
 
     // Merge all translation channels into one vector
     std::vector<TranslationChannel> allTransChannels;
@@ -1725,13 +1954,29 @@ MStatus AnsTranslator::writer (const MFileObject& file, const MString& options, 
     }
     iff.exitForm(TAG_KFAT);
 
-    if (!iff.write(fileName))
+    // CKAT (compressed, what stock clips use) by default; file -options "format=kfat" keeps the uncompressed form
+    const bool writeKfat = std::string(options.asChar()).find("format=kfat") != std::string::npos;
+    if (writeKfat)
     {
-        ANS_WARN("failed to write file: %s", fileName);
-        return MS::kFailure;
+        if (!iff.write(fileName))
+        {
+            ANS_WARN("failed to write file: %s", fileName);
+            return MS::kFailure;
+        }
+    }
+    else
+    {
+        Iff kfat(iff.getRawDataSize(), iff.getRawData(), false);
+        Iff ckat(512 * 1024);
+        compressKfatToCkat(kfat, ckat);
+        if (!ckat.write(fileName))
+        {
+            ANS_WARN("failed to write file: %s", fileName);
+            return MS::kFailure;
+        }
     }
 
-    ANS_LOG("export complete: %s (%d frames, %zu joints)", fileName, frameCount, joints.size());
+    ANS_LOG("export complete: %s (%s, %d frames, %zu joints)", fileName, writeKfat ? "KFAT" : "CKAT", frameCount, joints.size());
     return MS::kSuccess;
 }
 
