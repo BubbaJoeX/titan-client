@@ -18,6 +18,9 @@ struct StaticMeshWriterShaderGroup
     std::vector<float> positions;
     std::vector<float> normals;
     std::vector<float> uvs;
+    /// Optional per-vertex ARGB (color0). Prelit c_ effects multiply by it; leave empty for lit a_ effects.
+    std::vector<uint32_t> colors;
+    bool useColors = false;  // set when any contributing Maya mesh has a colour set
     std::vector<uint16_t> indices;
 };
 

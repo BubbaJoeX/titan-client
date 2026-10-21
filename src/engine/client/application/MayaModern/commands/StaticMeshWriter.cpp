@@ -241,8 +241,9 @@ bool StaticMeshWriter::write(Iff& iff) const
         iff.insertForm(TAG_0003);
 
         iff.insertChunk(TAG_INFO);
-        iff.insertChunkData(static_cast<uint32>(VB_FLAGS));
         const int32_t vertCount = static_cast<int32>(sg.positions.size() / 3);
+        const bool hasColors = sg.useColors && sg.colors.size() >= static_cast<size_t>(vertCount) && vertCount > 0;
+        iff.insertChunkData(static_cast<uint32>(VB_FLAGS | (hasColors ? VertexBufferFormat::F_color0 : 0)));
         iff.insertChunkData(vertCount);
         iff.exitChunk(TAG_INFO);
 
@@ -251,6 +252,9 @@ bool StaticMeshWriter::write(Iff& iff) const
         {
             iff.insertChunkFloatVector(Vector(sg.positions[v*3], sg.positions[v*3+1], sg.positions[v*3+2]));
             iff.insertChunkFloatVector(Vector(sg.normals[v*3], sg.normals[v*3+1], sg.normals[v*3+2]));
+            // Vertex format order: position, normal, color0, texture coordinates.
+            if (hasColors)
+                iff.insertChunkData(static_cast<uint32>(sg.colors[v]));
             // Client .msh stores V as (1 - Maya viewport V) — matches legacy MayaExporter / stock assets.
             // ExportStaticMesh applies LegacyOneMinusV unless swgExportUvDirect on the shading group.
             if (sg.uvs.size() >= static_cast<size_t>(v * 2 + 1))

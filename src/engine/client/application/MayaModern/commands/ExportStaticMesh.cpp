@@ -1884,6 +1884,8 @@ namespace
             return false;
 
         const MString uvSetName = chooseExportUvSetName(meshFn, shaderObjs, faceToShader);
+        // Baked vertex lighting for prelit (c_) effects: the current colour set becomes color0.
+        const bool meshHasColors = meshFn.numColorSets() > 0;
 
         MItMeshPolygon polyIt(shapePath, MObject::kNullObj, &status);
         if (!status)
@@ -1944,6 +1946,25 @@ namespace
                 return {0.0f, 0.0f};
             };
 
+            if (meshHasColors)
+                sg.useColors = true;
+            auto getColor = [&](int meshVert) -> uint32_t {
+                if (!meshHasColors || !polyIt.hasColor())
+                    return 0xffffffffu;
+                for (unsigned i = 0; i < polyIt.polygonVertexCount(&status); ++i)
+                {
+                    if (polyIt.vertexIndex(static_cast<int>(i), &status) == meshVert)
+                    {
+                        MColor c;
+                        if (polyIt.getColor(c, static_cast<int>(i)) != MS::kSuccess)
+                            break;
+                        auto b8 = [](float f) { return static_cast<uint32_t>(std::max(0.f, std::min(1.f, f)) * 255.f + 0.5f); };
+                        return (b8(c.a) << 24) | (b8(c.r) << 16) | (b8(c.g) << 8) | b8(c.b);
+                    }
+                }
+                return 0xffffffffu;
+            };
+
             for (unsigned t = 0; t + 2 < triVerts.length(); t += 3)
             {
                 const int v0 = triVerts[t];
@@ -1980,6 +2001,7 @@ namespace
                         static_cast<float>(u), static_cast<float>(v), sgUvStorage, outU, outV);
                     sg.uvs.push_back(outU);
                     sg.uvs.push_back(outV);
+                    sg.colors.push_back(getColor(vi));
 
                     return static_cast<uint16_t>(base);
                 };

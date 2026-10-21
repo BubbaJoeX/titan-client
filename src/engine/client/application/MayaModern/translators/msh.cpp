@@ -39,6 +39,7 @@
 #include <maya/MFloatArray.h>
 #include <maya/MFloatPointArray.h>
 #include <maya/MFnMesh.h>
+#include <maya/MColorArray.h>
 
 #include <ios>
 #include <iostream>
@@ -361,6 +362,7 @@ MStatus MshTranslator::importMeshFromPathImpl(const char* fileName, const MStrin
         MIntArray polygonConnects;
         MFloatArray uArray;
         MFloatArray vArray;
+        MColorArray colorArray;     // color0 (prelit vertex lighting of c_ effects), one per vertex
         int totalVerticesInMesh = 0;
         int totalPolygonsInMesh = 0;
 
@@ -573,7 +575,9 @@ MStatus MshTranslator::importMeshFromPathImpl(const char* fileName, const MStrin
                                         }
                                         if(vbf.hasColor0())
                                         {
-                                            IGNORE_RETURN(iff.read_uint32());
+                                            const uint32 argb = iff.read_uint32();
+                                            colorArray.append(MColor(((argb >> 16) & 0xff) / 255.0f, ((argb >> 8) & 0xff) / 255.0f,
+                                                                     (argb & 0xff) / 255.0f, ((argb >> 24) & 0xff) / 255.0f));
                                         }
                                         if(vbf.hasColor1())
                                         {
@@ -752,6 +756,20 @@ MStatus MshTranslator::importMeshFromPathImpl(const char* fileName, const MStrin
                             MGlobal::displayInfo(MString("SwgMayaEditor: no VTXA UVs for ")
                                 + shaderName + " verts=" + totalVerticesInMesh);
                         }
+                        // color0 -> colour set "swgPrelit" (ExportStaticMesh writes the current colour set back as color0)
+                        if (colorArray.length() == static_cast<unsigned>(totalVerticesInMesh) && meshPath.isValid()
+                            && meshPath.hasFn(MFn::kMesh))
+                        {
+                            MFnMesh colMesh(meshPath);
+                            MString setName("swgPrelit");
+                            colMesh.createColorSetWithName(setName);
+                            colMesh.setCurrentColorSetName(setName);
+                            MIntArray vids;
+                            for (int v = 0; v < totalVerticesInMesh; ++v)
+                                vids.append(v);
+                            if (colMesh.setVertexColors(colorArray, vids) == MS::kSuccess)
+                                mshLog("    color0: %u vertex colours -> swgPrelit", colorArray.length());
+                        }
                         MayaSceneBuilder::ShaderGroupData sg;
                         sg.shaderTemplateName = shaderName;
                         for (int idx = 0; idx + 2 < totalPolygonsInMesh; idx += 3)
@@ -790,6 +808,7 @@ MStatus MshTranslator::importMeshFromPathImpl(const char* fileName, const MStrin
                 polygonConnects.clear();
                 uArray.clear();
                 vArray.clear();
+                colorArray.clear();
             }
 
             iff.exitForm(spsInnerTag);
