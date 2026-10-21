@@ -20,7 +20,8 @@ public:
         const std::string& outputPath,
         std::string& outMeshPath,
         std::string& outAptPath,
-        const StaticMeshTransferOptions& options);
+        const StaticMeshTransferOptions& options,
+        const class MDagPath* exportRoot = nullptr);
 };
 
 #endif
