@@ -620,7 +620,7 @@ xxx Description goes into this field with all the other text ok you can stop now
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='616,430'
 						Size='616,430'
 					>

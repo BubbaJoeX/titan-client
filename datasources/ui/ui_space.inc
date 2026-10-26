@@ -1632,7 +1632,7 @@ asdf
 						GetsInput='false'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='370,240'
 						Size='370,240'
 					>

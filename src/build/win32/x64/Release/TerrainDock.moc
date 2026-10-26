@@ -1,7 +1,7 @@
 /****************************************************************************
 ** TerrainDock meta object code from reading C++ file 'TerrainDock.h'
 **
-** Created: Thu Jul 23 04:08:43 2026
+** Created: Sat Oct 24 08:59:26 2026
 **      by: The Qt MOC ($Id: $)
 **
 ** WARNING! All changes made in this file will be lost!
@@ -258,7 +258,16 @@ QMetaObject* TerrainDock::staticMetaObject()
     static const QUMethod slot_103 = {"onDeferredRefreshAfterSceneChange", 0, 0 };
     static const QUMethod slot_104 = {"onDeferredTerrainDockScrollRelayout", 0, 0 };
     static const QUMethod slot_105 = {"onDeferredTerrainGeneratorHeavyInvalidate", 0, 0 };
-    static const QUMethod slot_106 = {"onDeferredTerrainGeneratorLiveCommitAfterHeavyApply", 0, 0 };
+    static const QUParameter param_slot_106[] = {
+	{ "on", &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod slot_106 = {"onPenPressureStrengthToggled", 1, param_slot_106 };
+    static const QUParameter param_slot_107[] = {
+	{ "on", &static_QUType_bool, 0, QUParameter::In }
+    };
+    static const QUMethod slot_107 = {"onPenPressureSizeToggled", 1, param_slot_107 };
+    static const QUMethod slot_108 = {"onTabletSettingsClicked", 0, 0 };
+    static const QUMethod slot_109 = {"onDeferredTerrainGeneratorLiveCommitAfterHeavyApply", 0, 0 };
     static const QMetaData slot_tbl[] = {
 	{ "onToolRaise()", &slot_0, QMetaData::Public },
 	{ "onToolLower()", &slot_1, QMetaData::Public },
@@ -366,7 +375,10 @@ QMetaObject* TerrainDock::staticMetaObject()
 	{ "onDeferredRefreshAfterSceneChange()", &slot_103, QMetaData::Private },
 	{ "onDeferredTerrainDockScrollRelayout()", &slot_104, QMetaData::Private },
 	{ "onDeferredTerrainGeneratorHeavyInvalidate()", &slot_105, QMetaData::Private },
-	{ "onDeferredTerrainGeneratorLiveCommitAfterHeavyApply()", &slot_106, QMetaData::Private }
+	{ "onPenPressureStrengthToggled(bool)", &slot_106, QMetaData::Private },
+	{ "onPenPressureSizeToggled(bool)", &slot_107, QMetaData::Private },
+	{ "onTabletSettingsClicked()", &slot_108, QMetaData::Private },
+	{ "onDeferredTerrainGeneratorLiveCommitAfterHeavyApply()", &slot_109, QMetaData::Private }
     };
     static const QUMethod signal_0 = {"terrainGameWindowStatusChanged", 0, 0 };
     static const QMetaData signal_tbl[] = {
@@ -374,7 +386,7 @@ QMetaObject* TerrainDock::staticMetaObject()
     };
     metaObj = QMetaObject::new_metaobject(
 	"TerrainDock", parentObject,
-	slot_tbl, 107,
+	slot_tbl, 110,
 	signal_tbl, 1,
 #ifndef QT_NO_PROPERTIES
 	0, 0,
@@ -509,7 +521,10 @@ bool TerrainDock::qt_invoke( int _id, QUObject* _o )
     case 103: onDeferredRefreshAfterSceneChange(); break;
     case 104: onDeferredTerrainDockScrollRelayout(); break;
     case 105: onDeferredTerrainGeneratorHeavyInvalidate(); break;
-    case 106: onDeferredTerrainGeneratorLiveCommitAfterHeavyApply(); break;
+    case 106: onPenPressureStrengthToggled((bool)static_QUType_bool.get(_o+1)); break;
+    case 107: onPenPressureSizeToggled((bool)static_QUType_bool.get(_o+1)); break;
+    case 108: onTabletSettingsClicked(); break;
+    case 109: onDeferredTerrainGeneratorLiveCommitAfterHeavyApply(); break;
     default:
 	return BaseTerrainDock::qt_invoke( _id, _o );
     }

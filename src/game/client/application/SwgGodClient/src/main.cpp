@@ -7,6 +7,7 @@
 
 #include "SwgGodClient/FirstSwgGodClient.h"
 
+#include "GodClientPen.h"
 #include "MainFrame.h"
 #include "SplashScreen.h"
 
@@ -16,6 +17,16 @@
 #include <windows.h>
 #include <cstdio>
 #endif
+
+// ======================================================================
+// Ask NVIDIA Optimus / AMD PowerXpress laptops to run the god client on the discrete GPU; the drivers read these
+// exports from the executable, and without them a Direct3D 9 application defaults to the integrated GPU.
+
+extern "C"
+{
+	__declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
+	__declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
+}
 
 // ======================================================================
 
@@ -36,6 +47,9 @@ int main(int argc, char ** argv)
 #endif
 
 	GodClientApplication application(argc, argv);
+
+	// pen tablet state comes from the application event filter; settings load through QSettings
+	GodClientPen::install();
 
 	//show a splash screen until we get the main window ready
 	const QRect screen = QApplication::desktop()->screenGeometry();
@@ -60,6 +74,7 @@ int main(int argc, char ** argv)
 	// run the event loop — detach main widget before stack destruction (Qt3 main widget pointer)
 	const int rc = application.exec();
 	application.setMainWidget(nullptr);
+	GodClientPen::remove();
 	return rc;
 }
 

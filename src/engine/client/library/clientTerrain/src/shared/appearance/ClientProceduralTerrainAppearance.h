@@ -404,6 +404,10 @@ public:
 
 	static void          setReferenceCamera (Camera const * referenceCamera);
 
+	static void          setForceRenderEntireMapEnabled (bool enabled);
+	static bool          getForceRenderEntireMapEnabled ();
+	static bool          isForceRenderEntireMapComplete ();
+
 	static void          setShowPassable(bool b);
 	static bool          isShowPassable();
 

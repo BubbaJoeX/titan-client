@@ -28,6 +28,12 @@
 
 #ifdef PLATFORM_WIN32 //@todo code reorg
 #include "sharedFoundation/WindowsWrapper.h"
+#include <mmsystem.h>
+#pragma comment(lib, "winmm.lib")
+#endif
+
+#ifndef CREATE_WAITABLE_TIMER_HIGH_RESOLUTION
+#define CREATE_WAITABLE_TIMER_HIGH_RESOLUTION 0x00000002
 #endif
 
 // ======================================================================
@@ -61,7 +67,14 @@ namespace ClockNamespace
 	real ms_realFrequency; // periodically calibrated clock frequency, updated from clock thread
 	real ms_frameFrequency; // clock frequency being used during the current frame, updated from realFrequency each frame
 	real ms_frameRateLimit;
-	
+
+	// frame limiter waits: Sleep() rounds up to the 15.6 ms system tick unless the process asks for a finer timer
+	// resolution (per process since Windows 10 2004), which capped a 144 fps limit at ~60 fps and made frame times
+	// uneven. The limiter sleeps on a high-resolution waitable timer (or 1 ms Sleep) and spins the last fraction.
+	bool   ms_timerPeriodSet;
+	HANDLE ms_frameLimitTimer;
+	real   ms_frameLimitSpinSeconds;
+
 	static const double cms_secondsPerMillisecond = 0.001;
 
 #if PRODUCTION == 0
@@ -116,6 +129,16 @@ void Clock::install(bool newUseSleep, bool useRecalibrationThread)
 
 	ms_realFrequency = static_cast<real>(frequency);
 	ms_frameFrequency = ms_realFrequency;
+
+	ms_timerPeriodSet = (timeBeginPeriod(1) == TIMERR_NOERROR);
+	ms_frameLimitTimer = CreateWaitableTimerExW(NULL, NULL, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, TIMER_ALL_ACCESS);
+	ms_frameLimitSpinSeconds = 0.0003f;
+	if (!ms_frameLimitTimer)
+	{
+		// before Windows 10 1803: a plain timer follows the 1 ms timer period, so leave a wider spin margin
+		ms_frameLimitTimer = CreateWaitableTimerExW(NULL, NULL, 0, TIMER_ALL_ACCESS);
+		ms_frameLimitSpinSeconds = 0.0015f;
+	}
 
 	if (ConfigSharedFoundation::getFrameRateLimit() != 0.0f)
 		setFrameRateLimit(ConfigSharedFoundation::getFrameRateLimit());
@@ -176,6 +199,18 @@ void Clock::remove(void)
 		ms_mutex.leave();
 		ms_shutdownEvent.signal();
 		ms_threadHandle->wait();
+	}
+
+	if (ms_frameLimitTimer)
+	{
+		IGNORE_RETURN(CloseHandle(ms_frameLimitTimer));
+		ms_frameLimitTimer = NULL;
+	}
+
+	if (ms_timerPeriodSet)
+	{
+		IGNORE_RETURN(timeEndPeriod(1));
+		ms_timerPeriodSet = false;
 	}
 }
 
@@ -410,6 +445,7 @@ void Clock::limitFrameRate(void)
 	if (ms_frameRateLimit)
 	{
 		__int64 const frameRateLimitTicks = static_cast<__int64>(ms_frameFrequency / ms_frameRateLimit);
+		__int64 const spinTicks = static_cast<__int64>(ms_frameFrequency * ms_frameLimitSpinSeconds);
 		__int64 newPoll, delta;
 
 		for (;;)
@@ -423,13 +459,27 @@ void Clock::limitFrameRate(void)
 			if (delta >= frameRateLimitTicks)
 				break;
 
-			//@todo it looks like if delta is huge we will sleep a looong time.  shouldn't we check delta and the frameRatelimit before sleeping?
-			if (ms_useSleep)
+			// sleep until just short of the deadline, then spin the rest so the frame ends on time
+			__int64 const sleepTicks = frameRateLimitTicks - delta - spinTicks;
+			if (ms_useSleep && sleepTicks > 0)
 			{
-				const DWORD sleepTicks = static_cast<DWORD>(static_cast<real>((frameRateLimitTicks - delta) / ms_frameFrequency) * 1000.0f);
-				if (sleepTicks > 2)
-					Sleep(sleepTicks);
+				if (ms_frameLimitTimer)
+				{
+					// relative due time in 100 ns units
+					LARGE_INTEGER dueTime;
+					dueTime.QuadPart = -static_cast<LONGLONG>(static_cast<double>(sleepTicks) * 10000000.0 / ms_frameFrequency);
+					if (dueTime.QuadPart < 0 && SetWaitableTimer(ms_frameLimitTimer, &dueTime, 0, NULL, NULL, FALSE))
+						IGNORE_RETURN(WaitForSingleObject(ms_frameLimitTimer, INFINITE));
+				}
+				else
+				{
+					DWORD const sleepMilliseconds = static_cast<DWORD>(static_cast<double>(sleepTicks) * 1000.0 / ms_frameFrequency);
+					if (sleepMilliseconds > 0)
+						Sleep(sleepMilliseconds);
+				}
 			}
+			else
+				YieldProcessor();
 		}
 	}
 }

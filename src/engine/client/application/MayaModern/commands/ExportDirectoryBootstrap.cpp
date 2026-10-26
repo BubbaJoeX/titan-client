@@ -188,6 +188,26 @@ bool ExportDirectoryBootstrap::bootstrapTextureTreeFile(const std::string& textu
     return copyBootstrapIfMissing(rel, destAbs);
 }
 
+bool ExportDirectoryBootstrap::bootstrapShaderTreeFile(const std::string& shaderTreeRel)
+{
+    if (shaderTreeRel.empty())
+        return false;
+    std::string rel = shaderTreeRel;
+    for (char& c : rel)
+        if (c == '\\')
+            c = '/';
+    while (!rel.empty() && (rel[0] == '/' || rel[0] == '\\'))
+        rel.erase(0, 1);
+    if (rel.compare(0, 7, "shader/") != 0)
+        rel = std::string("shader/") + rel;
+    if (rel.size() < 4 || rel.compare(rel.size() - 4, 4, ".sht") != 0)
+        rel += ".sht";
+    const std::string destAbs = absPathUnderDataRoot(rel);
+    if (destAbs.empty())
+        return false;
+    return copyBootstrapIfMissing(rel, destAbs);
+}
+
 void ExportDirectoryBootstrap::syncFromAppearanceRoot(const std::string& appearanceRootDir)
 {
     const std::string root = dataRootFromAppearanceDir(appearanceRootDir);

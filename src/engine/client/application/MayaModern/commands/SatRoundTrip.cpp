@@ -230,7 +230,8 @@ bool parseTailAfterSkti(Iff& iff, SatRoundTripData& out)
 		iff.exitChunk(TAG_APAG);
 	}
 
-	while (!iff.atEndOfForm())
+	int trailGuard = 0;
+	while (!iff.atEndOfForm() && trailGuard++ < 1024)
 	{
 		if (iff.isCurrentForm())
 		{
@@ -586,7 +587,7 @@ bool deserializePayload(const std::string& raw, SatRoundTripData& d)
 	return false;
 }
 
-bool createMetadataNode(const std::string& mayaBasename, const std::string& payloadUtf8)
+bool createMetadataNode(const std::string& mayaBasename, const std::string& payloadUtf8, const std::string& sourcePath)
 {
 	MStatus st;
 	MFnTransform fn;
@@ -615,6 +616,27 @@ bool createMetadataNode(const std::string& mayaBasename, const std::string& payl
 	if (!st)
 		return false;
 	plug.setString(MString(payloadUtf8.c_str()));
+
+	if (!sourcePath.empty())
+	{
+		std::string fwd = sourcePath;
+		for (char& c : fwd)
+			if (c == '\\')
+				c = '/';
+		MFnTypedAttribute srcTAttr;
+		const MObject srcAttr = srcTAttr.create("swgSatSourcePath", "sssp", MFnData::kString, MObject::kNullObj, &st);
+		if (st)
+		{
+			srcTAttr.setStorable(true);
+			srcTAttr.setKeyable(false);
+			if (dep.addAttribute(srcAttr))
+			{
+				MPlug srcPlug = dep.findPlug("swgSatSourcePath", true, &st);
+				if (st)
+					srcPlug.setString(MString(fwd.c_str()));
+			}
+		}
+	}
 
 	MGlobal::displayInfo(MString("SWG SAT: stored round-trip metadata on ") + MString(nodeName.c_str()) + MString(" (attribute swgSmatRoundTrip)."));
 	return true;

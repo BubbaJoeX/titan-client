@@ -571,6 +571,7 @@ parent.pageButtonsBottom.visible=true'
 					GetsInput='false'
 					Location='15,11'
 					MaximumSize='179,20'
+					Visible='false'
 					Name='runner'
 					Opacity='0.20'
 					PackLocation='nfn,fff'
@@ -585,7 +586,7 @@ parent.pageButtonsBottom.visible=true'
 					Size='125,16'
 				>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='6,2'
@@ -598,7 +599,7 @@ parent.pageButtonsBottom.visible=true'
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='23,2'
@@ -611,7 +612,7 @@ parent.pageButtonsBottom.visible=true'
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='40,2'
@@ -623,7 +624,7 @@ parent.pageButtonsBottom.visible=true'
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='57,2'
@@ -635,7 +636,7 @@ parent.pageButtonsBottom.visible=true'
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='74,2'
@@ -648,7 +649,7 @@ parent.pageButtonsBottom.visible=true'
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='91,2'
@@ -706,6 +707,7 @@ parent.pageButtonsBottom.visible=true'
 					GetsInput='false'
 					Location='21,11'
 					MaximumSize='179,20'
+					Visible='false'
 					Name='runner'
 					Opacity='0.20'
 					PackLocation='nfn,fff'
@@ -721,7 +723,7 @@ parent.pageButtonsBottom.visible=true'
 					Size='125,16'
 				>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='6,2'
@@ -734,7 +736,7 @@ parent.pageButtonsBottom.visible=true'
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='23,2'
@@ -747,7 +749,7 @@ parent.pageButtonsBottom.visible=true'
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='40,2'
@@ -759,7 +761,7 @@ parent.pageButtonsBottom.visible=true'
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='57,2'
@@ -771,7 +773,7 @@ parent.pageButtonsBottom.visible=true'
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='74,2'
@@ -784,7 +786,7 @@ parent.pageButtonsBottom.visible=true'
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='91,2'

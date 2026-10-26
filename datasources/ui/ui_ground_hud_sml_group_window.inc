@@ -170,7 +170,7 @@
 				>100</Text>
 				<Page
 					BackgroundColor='#FFFFFF'
-					BackgroundTint='#00D6FB'
+					BackgroundTint='#2381D8'
 					Location='2,2'
 					MaximumSize='128,128'
 					MinimumSize='31,34'
@@ -542,7 +542,7 @@
 					/>
 				</VolumePage>
 				<Image
-					Color='#54E4FE'
+					Color='#6CABE6'
 					LocalTooltip='tooltip'
 					Location='238,2'
 					MaximumSize='20,20'

@@ -1,0 +1,30 @@
+// Canonical plugin: C:/Program Files/Autodesk/Maya2027/bin/plug-ins/SwgMayaEditor.mll
+// Force VP2 so Arnold does not paint Lamberts neon green.
+global proc swgEnsureMayaEditorPlugin()
+{
+    string $want = "C:/Program Files/Autodesk/Maya2027/bin/plug-ins/SwgMayaEditor.mll";
+    if (`filetest -f $want`)
+    {
+        if (`pluginInfo -q -loaded "SwgMayaEditor"`)
+        {
+            string $have = `pluginInfo -q -path "SwgMayaEditor"`;
+            $have = `substituteAllString $have "\\" "/"`;
+            if ($have != $want)
+                catchQuiet(`unloadPlugin -force "SwgMayaEditor"`);
+        }
+        if (!`pluginInfo -q -loaded "SwgMayaEditor"`)
+            catchQuiet(`loadPlugin $want`);
+    }
+
+    catchQuiet(`setAttr -type "string" defaultRenderGlobals.currentRenderer "mayaHardware2"`);
+    string $p[] = `getPanel -type modelPanel`;
+    int $i;
+    for ($i = 0; $i < size($p); ++$i)
+    {
+        catchQuiet(`modelEditor -e -rendererName "vp2Renderer" $p[$i]`);
+        catchQuiet(`modelEditor -e -displayAppearance "smoothShaded" -displayTextures true -udm false $p[$i]`);
+    }
+    catchQuiet(`DisplayShadedAndTextured`);
+}
+
+evalDeferred "swgEnsureMayaEditorPlugin";

@@ -40,6 +40,7 @@
 #include <qinputdialog.h>
 #include <qmessagebox.h>
 #include <qspinbox.h>
+#include <qstatusbar.h>
 
 #include <sstream>
 
@@ -113,6 +114,12 @@ createClientDataFile (0),
 m_toggleDropToTerrain (0),
 m_toggleAlignToTerrain (0),
 m_toggleUnrealEngineTransformGizmo (0),
+copyTransform(0),
+pastePosition(0),
+pasteRotation(0),
+pasteTransform(0),
+selectSameTemplate(0),
+placeLastTemplate(0),
 m_selectedServerTemplate(),
 m_selectedClientTemplate()
 {
@@ -240,6 +247,31 @@ m_selectedClientTemplate()
 	m_toggleUnrealEngineTransformGizmo = new ActionHack("Unreal Engine Transform Gizmo", QIconSet(), "Unreal-style &Transform Gizmo", 0, p, "toggle_unreal_transform_gizmo", true);
 	IGNORE_RETURN(connect(m_toggleUnrealEngineTransformGizmo, SIGNAL(toggled(bool)), this, SLOT(onToggleUnrealEngineTransformGizmo())));
 
+	//-- transform clipboard: copy one object's placement, paste parts of it onto the selection (as ghosts)
+	copyTransform                    = new ActionHack("Copy Transform",  IL_PIXMAP(hi16_action_editcopy),  "Copy Trans&form",   QT_ACCEL3(CTRL,SHIFT,Key_C), p, "copy_transform");
+	IGNORE_RETURN(connect(copyTransform, SIGNAL(activated()), this, SLOT(onCopyTransform())));
+
+	pastePosition                    = new ActionHack("Paste Position",  IL_PIXMAP(hi16_action_editpaste), "Paste &Position",   QT_ACCEL3(CTRL,SHIFT,Key_V), p, "paste_position");
+	IGNORE_RETURN(connect(pastePosition, SIGNAL(activated()), this, SLOT(onPastePosition())));
+
+	pasteRotation                    = new ActionHack("Paste Rotation",  IL_PIXMAP(hi16_action_editpaste), "Paste R&otation",   QT_ACCEL3(CTRL,ALT,Key_V), p, "paste_rotation");
+	IGNORE_RETURN(connect(pasteRotation, SIGNAL(activated()), this, SLOT(onPasteRotation())));
+
+	pasteTransform                   = new ActionHack("Paste Transform", IL_PIXMAP(hi16_action_editpaste), "Paste Position, Rotation && Scale", 0, p, "paste_transform");
+	IGNORE_RETURN(connect(pasteTransform, SIGNAL(activated()), this, SLOT(onPasteTransform())));
+
+	selectSameTemplate               = new ActionHack("Select All With Same Template", QIconSet(), "Select All With Same Te&mplate", QT_ACCEL3(CTRL,SHIFT,Key_M), p, "select_same_template");
+	IGNORE_RETURN(connect(selectSameTemplate, SIGNAL(activated()), this, SLOT(onSelectSameTemplate())));
+
+	placeLastTemplate                = new ActionHack("Place Last Template At Cursor", IL_PIXMAP(hi16_action_window_new), "Place &Last Template At Cursor", QT_ACCEL3(CTRL,SHIFT,Key_N), p, "place_last_template");
+	placeLastTemplate->setEnabled(false);
+
+	copyTransform->setEnabled (false);
+	pastePosition->setEnabled (false);
+	pasteRotation->setEnabled (false);
+	pasteTransform->setEnabled(false);
+	selectSameTemplate->setEnabled(false);
+
 	//create a group of rotation axes actions, start in Yaw mode
 	rotateModeGroup = new QActionGroup(p, "rotate mode group", true);
 	rotateModeGroup->setUsesDropDown(true);
@@ -325,6 +357,12 @@ ActionsEdit::~ActionsEdit()
 	m_toggleDropToTerrain = 0;
 	m_toggleAlignToTerrain = 0;
 	m_toggleUnrealEngineTransformGizmo = 0;
+	copyTransform = 0;
+	pastePosition = 0;
+	pasteRotation = 0;
+	pasteTransform = 0;
+	selectSameTemplate = 0;
+	placeLastTemplate = 0;
 }
 
 //-----------------------------------------------------------------
@@ -333,6 +371,11 @@ ActionsEdit::~ActionsEdit()
  */
 void ActionsEdit::onUndo() const
 {
+	//-- with a terrain tool armed, Ctrl+Z undoes terrain strokes first
+	TerrainDock* const terrainDock(MainFrame::getInstance().getTerrainDock());
+	if (terrainDock && terrainDock->tryConsumeUndoShortcut())
+		return;
+
 	if(!ModificationHistory::getInstance().undo())
 	{
 		QApplication::beep();
@@ -346,6 +389,10 @@ void ActionsEdit::onUndo() const
  */
 void ActionsEdit::onRedo() const
 {
+	TerrainDock* const terrainDock(MainFrame::getInstance().getTerrainDock());
+	if (terrainDock && terrainDock->tryConsumeRedoShortcut())
+		return;
+
 	if(!ModificationHistory::getInstance().redo())
 	{
 		QApplication::beep();
@@ -647,6 +694,92 @@ void ActionsEdit::onToggleAlignToTerrain() const
 void ActionsEdit::onToggleUnrealEngineTransformGizmo() const
 {
 	GodClientData::getInstance().toggleUnrealEngineTransformGizmo();
+}
+
+//-----------------------------------------------------------------
+/**
+ * Copy the primary selection's position, rotation and scale; the text also goes on the
+ * system clipboard ("x y z heading h scale sx sy sz") for scripts and console commands.
+ */
+void ActionsEdit::onCopyTransform() const
+{
+	GodClientData & gcd = GodClientData::getInstance();
+	if(!gcd.copySelectionTransform())
+	{
+		QApplication::beep();
+		return;
+	}
+
+	std::string const text(gcd.describeCopiedTransform());
+	QApplication::clipboard()->setText(text.c_str());
+	MainFrame::getInstance().statusBar()->message(QString("Copied transform: ") + text.c_str());
+
+	bool const canPaste = !gcd.getSelectionEmpty();
+	pastePosition->setEnabled (canPaste);
+	pasteRotation->setEnabled (canPaste);
+	pasteTransform->setEnabled(canPaste);
+}
+
+//-----------------------------------------------------------------
+
+void ActionsEdit::internalPasteTransform(bool const position, bool const rotation, bool const scale, char const * const what) const
+{
+	int const pasted = GodClientData::getInstance().pasteSelectionTransform(position, rotation, scale);
+	if(pasted == 0)
+	{
+		QApplication::beep();
+		return;
+	}
+
+	QString msg;
+	msg.sprintf("Pasted %s onto %d object(s); apply with Ctrl+T or Space.", what, pasted);
+	MainFrame::getInstance().statusBar()->message(msg);
+}
+
+//-----------------------------------------------------------------
+
+void ActionsEdit::onPastePosition() const
+{
+	internalPasteTransform(true, false, false, "position");
+}
+
+//-----------------------------------------------------------------
+
+void ActionsEdit::onPasteRotation() const
+{
+	internalPasteTransform(false, true, false, "rotation");
+}
+
+//-----------------------------------------------------------------
+
+void ActionsEdit::onPasteTransform() const
+{
+	internalPasteTransform(true, true, true, "position, rotation and scale");
+}
+
+//-----------------------------------------------------------------
+/**
+ * Add every loaded object that shares the primary selection's template to the selection.
+ */
+void ActionsEdit::onSelectSameTemplate() const
+{
+	GodClientData & gcd = GodClientData::getInstance();
+
+	GodClientData::ObjectList_t selection;
+	gcd.getSelection(selection);
+	ClientObject const * const primary = selection.empty() ? 0 : selection.front();
+	char const * const templateName = primary ? primary->getTemplateName() : 0;
+	if(!templateName)
+	{
+		QApplication::beep();
+		return;
+	}
+
+	int const added = gcd.selectObjectsWithTemplate(templateName);
+
+	QString msg;
+	msg.sprintf("Selected %d more object(s) built from %s", added, templateName);
+	MainFrame::getInstance().statusBar()->message(msg);
 }
 
 //-----------------------------------------------------------------
@@ -965,6 +1098,13 @@ void ActionsEdit::setSelectionControlsEnabled(bool b)
 	rotateIncrement45->setEnabled(b);
 	rotateDecrement45->setEnabled(b);
 	ActionsTool::getInstance().m_saveAsBrush->setEnabled      (b);
+
+	copyTransform->setEnabled     (b);
+	selectSameTemplate->setEnabled(b);
+	bool const canPasteTransform = b && GodClientData::getInstance().hasCopiedTransform();
+	pastePosition->setEnabled (canPasteTransform);
+	pasteRotation->setEnabled (canPasteTransform);
+	pasteTransform->setEnabled(canPasteTransform);
 }
 
 //-----------------------------------------------------------------

@@ -45,6 +45,8 @@
 #include <qpushbutton.h>
 #include <qtimer.h>
 
+#include <set>
+
 // ======================================================================
 
 namespace
@@ -133,6 +135,32 @@ namespace
 		ObjectListItem();
 	};
 
+	//-- a refresh is queued for the objects added since the last one: a zone load or a busy area adds objects every
+	//   frame, and rebuilding the list for each of them stalled the editor
+	bool s_refreshQueued = false;
+	int const cs_addedObjectsRefreshDelayMs = 250;
+
+	//-- the same test refreshObjects used with buildout names, without building a name string per object
+	bool isSameBuildoutArea(BuildoutArea const * a, BuildoutArea const * b)
+	{
+		return a == b || (a && b && a->areaName == b->areaName);
+	}
+
+	//-- drop the items whose objects have left the world (they are deleted soon after), without rescanning the world
+	void removeItemsOfObjectsNotInWorld(QListView & objectList)
+	{
+		for(QListViewItem* item = objectList.firstChild(); item; )
+		{
+			ObjectListItem* const moli = dynamic_cast<ObjectListItem*>(item);
+			item = item->nextSibling();
+			if(moli && !World::existsInWorld(moli->m_objPtr))
+			{
+				objectList.takeItem(moli);
+				delete moli;
+			}
+		}
+	}
+
 	ObjectListItem* findObjectItem(QListViewItem* item, const ClientObject* obj)
 	{
 		while(item)
@@ -219,13 +247,15 @@ TreeBrowser::~TreeBrowser()
 
 void TreeBrowser::refreshObjects()
 {
+	s_refreshQueued = false;
+
 	QListViewItem* item = 0;
-	std::vector<const ClientObject*> previousList;
-	std::vector<const ClientObject*> currentList;
+	std::set<const ClientObject*> previousObjects;
+	std::set<const ClientObject*> currentObjects;
 	for(item = m_objectList->firstChild(); item; item = item->nextSibling())
 	{
 		ObjectListItem* const moli = dynamic_cast<ObjectListItem*>(item);
-		previousList.push_back(moli->m_objPtr);
+		IGNORE_RETURN(previousObjects.insert(moli->m_objPtr));
 	}
 
 	m_updatingSelectionFromWorld = true;
@@ -244,8 +274,10 @@ void TreeBrowser::refreshObjects()
 		m_updatingSelectionFromWorld = false;
 		return;
 	}
-	const std::string playerBuildoutName 
-		= SharedBuildoutAreaManager::getBuildoutNameForPosition(Game::getSceneId().c_str(), player->getPosition_w(), false);
+	std::string const & sceneId = Game::getSceneId();
+	Vector const playerPosition = player->getPosition_w();
+	BuildoutArea const * const playerBuildoutArea
+		= SharedBuildoutAreaManager::findBuildoutAreaAtPosition(sceneId, playerPosition.x, playerPosition.z, false);
 	const CellProperty * const playerCell = player->getParentCell();
 
 	//show all tangibles (buildings, stormtroopers, etc.)
@@ -262,9 +294,9 @@ void TreeBrowser::refreshObjects()
 				bool inSameBuildoutOrNotInWorldCell = true;
 				if(playerCell->isWorldCell())
 				{
-					const std::string objectBuildoutName = 
-						SharedBuildoutAreaManager::getBuildoutNameForPosition(Game::getSceneId().c_str(), obj->getPosition_w(), false);
-					inSameBuildoutOrNotInWorldCell = (objectBuildoutName == playerBuildoutName);
+					Vector const objectPosition = obj->getPosition_w();
+					inSameBuildoutOrNotInWorldCell = isSameBuildoutArea(
+						SharedBuildoutAreaManager::findBuildoutAreaAtPosition(sceneId, objectPosition.x, objectPosition.z, false), playerBuildoutArea);
 				}
 				
 				if(inSameBuildoutOrNotInWorldCell)
@@ -276,11 +308,11 @@ void TreeBrowser::refreshObjects()
 						//only add the item to the listview if passes our filters
 						if(FilterManager::validate(*obj))
 						{
-							if(std::find(previousList.begin(), previousList.end(), obj) == previousList.end())
+							if(previousObjects.find(obj) == previousObjects.end())
 							{
 								IGNORE_RETURN(new ObjectListItem(m_objectList,obj));
 							}
-							currentList.push_back(obj);
+							IGNORE_RETURN(currentObjects.insert(obj));
 						}	
 					}
 				}
@@ -302,9 +334,9 @@ void TreeBrowser::refreshObjects()
 				bool inSameBuildoutOrNotInWorldCell = true;
 				if(playerCell->isWorldCell())
 				{
-					const std::string objectBuildoutName = 
-						SharedBuildoutAreaManager::getBuildoutNameForPosition(Game::getSceneId().c_str(), obj->getPosition_w(), false);
-					inSameBuildoutOrNotInWorldCell = (objectBuildoutName == playerBuildoutName);
+					Vector const objectPosition = obj->getPosition_w();
+					inSameBuildoutOrNotInWorldCell = isSameBuildoutArea(
+						SharedBuildoutAreaManager::findBuildoutAreaAtPosition(sceneId, objectPosition.x, objectPosition.z, false), playerBuildoutArea);
 				}
 				
 				if(inSameBuildoutOrNotInWorldCell)
@@ -316,11 +348,11 @@ void TreeBrowser::refreshObjects()
 						//only add the item to the listview if passes our filters
 						if(FilterManager::validate(*obj))
 						{
-							if(std::find(previousList.begin(), previousList.end(), obj) == previousList.end())
+							if(previousObjects.find(obj) == previousObjects.end())
 							{
 								IGNORE_RETURN(new ObjectListItem(m_objectList,obj));
 							}
-							currentList.push_back(obj);
+							IGNORE_RETURN(currentObjects.insert(obj));
 						}
 					}
 				}
@@ -328,25 +360,15 @@ void TreeBrowser::refreshObjects()
 		}
 	}
 
-	if(!previousList.empty())
+	if(!previousObjects.empty())
 	{
-		//previousList holds every in the list from last frame, currentList holds everything in this frame, look for leftovers and delete
-		std::vector<const ClientObject*>  difference;
-		for(std::vector<const ClientObject*>::iterator it = previousList.begin(); it != previousList.end(); ++it)
-		{
-			if(std::find(currentList.begin(), currentList.end(), *it) == currentList.end())
-			{
-				difference.push_back(*it);
-			}
-		}
-	
+		//previousObjects holds everything in the list from last time, currentObjects everything that belongs in it now: delete the leftovers
 		for(item = m_objectList->firstChild(); item; )
 		{
 			ObjectListItem* moli = dynamic_cast<ObjectListItem*>(item);
 			const ClientObject* objPtr = moli->m_objPtr;
-			std::vector<const ClientObject*>::iterator it2 = std::find(difference.begin(), difference.end(),objPtr);
 			item = item->nextSibling();
-			if(it2 != difference.end())
+			if(currentObjects.find(objPtr) == currentObjects.end())
 			{
 				m_objectList->takeItem(moli);
 				delete moli;
@@ -548,11 +570,16 @@ void TreeBrowser::receiveMessage(const MessageDispatch::Emitter& , const Message
 {
 	if(message.isType(World::Messages::OBJECT_ADDED))
 	{
-		refreshObjects();
+		//-- one refresh for all the objects added in the next moment
+		if(!s_refreshQueued)
+		{
+			s_refreshQueued = true;
+			QTimer::singleShot(cs_addedObjectsRefreshDelayMs, this, SLOT(refreshObjects()));
+		}
 	}
 	else if(message.isType(World::Messages::OBJECT_REMOVED))
 	{
-		refreshObjects();
+		removeItemsOfObjectsNotInWorld(*m_objectList);
 	}
 	else if(message.isType(GodClientData::Messages::SELECTION_CHANGED))
 	{

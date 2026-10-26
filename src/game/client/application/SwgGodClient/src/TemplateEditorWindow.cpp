@@ -10,6 +10,7 @@
 #include "TemplateEditorWindow.moc"
 
 #include "ActionHack.h"
+#include "ActionsObjectTemplate.h"
 #include "ActionsScript.h"
 #include "ActionsWindow.h"
 #include "MainFrame.h"
@@ -1414,32 +1415,38 @@ void TemplateEditorWindow::onCompile()
 		return;
 	}
 
-	std::string tpfPath;
+	// Compile both halves that exist on disk: the shared one reloads in this client,
+	// the server one on the server.
+	std::vector<std::string> tpfPaths;
+	if (!m_currentSharedPath.empty())
+		tpfPaths.push_back(m_currentSharedPath);
 	if (!m_currentServerPath.empty())
-		tpfPath = m_currentServerPath;
-	else if (!m_currentSharedPath.empty())
-		tpfPath = m_currentSharedPath;
-	else
-		tpfPath = m_serverPathEdit->text().latin1();
+		tpfPaths.push_back(m_currentServerPath);
+	if (tpfPaths.empty() && !m_serverPathEdit->text().isEmpty())
+		tpfPaths.push_back(m_serverPathEdit->text().latin1());
 
-	if (tpfPath.empty())
+	if (tpfPaths.empty())
 	{
 		QMessageBox::warning(this, "Template Editor", "No template path available for compilation.");
 		return;
 	}
 
-	m_statusLabel->setText(QString("Compiling: %1").arg(tpfPath.c_str()));
-
-	if (runTemplateCompiler(tpfPath))
+	int queued = 0;
+	for (size_t i = 0; i < tpfPaths.size(); ++i)
 	{
-		m_statusLabel->setText("Compilation successful.");
-		emit statusMessage("Template compiled successfully.");
-		MainFrame::getInstance().textToConsole(("TemplateEditor: Compiled " + tpfPath).c_str());
+		if (runTemplateCompiler(tpfPaths[i]))
+			++queued;
+	}
+
+	if (queued > 0)
+	{
+		m_statusLabel->setText(QString("Compiling %1 template(s); results in the Console.").arg(queued));
+		emit statusMessage("Template compile started.");
 	}
 	else
 	{
-		m_statusLabel->setText("Compilation failed. Check console for details.");
-		QMessageBox::warning(this, "Template Editor", "TemplateCompiler failed. Check the console output.");
+		m_statusLabel->setText("Nothing compiled. Check the Console for details.");
+		QMessageBox::warning(this, "Template Editor", "Could not start the template compile. Check the Console output.");
 	}
 }
 
@@ -1488,12 +1495,14 @@ bool TemplateEditorWindow::saveToFile(const std::string & path, const std::strin
 
 // ----------------------------------------------------------------------
 
+/**
+ * Queue the .tpf on the shared ObjectTemplate compile (ActionsObjectTemplate), which runs
+ * [GodClient] templateCompileCommand in the background and reloads the result.
+ * @return false if the compile could not be queued
+ */
 bool TemplateEditorWindow::runTemplateCompiler(const std::string & tpfPath)
 {
-	char command[2048];
-	snprintf(command, sizeof(command), "TemplateCompiler -compile \"%s\"", tpfPath.c_str());
-	int result = system(command);
-	return (result == 0);
+	return ActionsObjectTemplate::getInstance().compileTemplate(tpfPath);
 }
 
 // ======================================================================

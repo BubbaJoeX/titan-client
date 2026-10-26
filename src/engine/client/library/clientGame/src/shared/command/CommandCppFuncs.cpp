@@ -275,6 +275,7 @@ namespace CommandCppFuncsNamespace
 	void commandFuncUnequipAppearance(Command const & command, NetworkId const & actor, NetworkId const & target, Unicode::String const & params);
 
 	void commandFuncAppearanceTab(Command const & command, NetworkId const & actor, NetworkId const & target, Unicode::String const & params);
+	void commandFuncCompanionTab(Command const & command, NetworkId const & actor, NetworkId const & target, Unicode::String const & params);
 
 	void commandFuncQuestBuilder(Command const & command, NetworkId const & actor, NetworkId const & target, Unicode::String const & params);
 	void commandFuncOpenStorytellerRecipe(Command const & command, NetworkId const & actor, NetworkId const & target, Unicode::String const & params);
@@ -2494,6 +2495,15 @@ void CommandCppFuncsNamespace::commandFuncAppearanceTab(Command const & command,
 	CuiActionManager::performAction(CuiActions::appearanceTab, params);
 }
 
+void CommandCppFuncsNamespace::commandFuncCompanionTab(Command const & command, NetworkId const & actor, NetworkId const & target, Unicode::String const & params)
+{
+	UNREF(actor);
+	UNREF(target);
+	UNREF(command);
+
+	CuiActionManager::performAction(CuiActions::companionTab, params);
+}
+
 void CommandCppFuncsNamespace::commandFuncQuestBuilder(Command const & command, NetworkId const & actor, NetworkId const & target, Unicode::String const & params)
 {
 	UNREF(actor);
@@ -2666,6 +2676,7 @@ void CommandCppFuncs::install()
 	CommandTable::addCppFunction("ooc", commandFuncToggleOutOfCharacter);
 
 	CommandTable::addCppFunction("appearanceTab", commandFuncAppearanceTab);
+	CommandTable::addCppFunction("companionTab", commandFuncCompanionTab);
 	CommandTable::addCppFunction("chronicleQuestBuilder", commandFuncQuestBuilder);
 	CommandTable::addCppFunction("openStorytellerRecipe", commandFuncOpenStorytellerRecipe);
 	CommandTable::addCppFunction("gcwInfo", commandFuncGCWInfo);

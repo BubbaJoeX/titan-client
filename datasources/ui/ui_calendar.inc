@@ -12,11 +12,11 @@
 			BackgroundOpacity='0.95'
 			BackgroundTint='#00D6FB'
 			Location='112,84'
-			MinimumSize='750,550'
+			MinimumSize='750,516'
 			Name='calendarWindow'
 			PalBgTint='back1'
-			ScrollExtent='750,550'
-			Size='750,550'
+			ScrollExtent='750,516'
+			Size='750,516'
 			UserMovable='true'
 		>
 			<Data
@@ -178,7 +178,7 @@
 					ScrollExtent='62,18'
 					Size='62,18'
 					TextAlignment='Center'
-					TextColor='#96F4FC'
+					TextColor='#A4CBEE'
 				>Mon</Text>
 				<Text
 					Enabled='false'
@@ -189,7 +189,7 @@
 					ScrollExtent='62,18'
 					Size='62,18'
 					TextAlignment='Center'
-					TextColor='#96F4FC'
+					TextColor='#A4CBEE'
 				>Tue</Text>
 				<Text
 					Enabled='false'
@@ -200,7 +200,7 @@
 					ScrollExtent='62,18'
 					Size='62,18'
 					TextAlignment='Center'
-					TextColor='#96F4FC'
+					TextColor='#A4CBEE'
 				>Wed</Text>
 				<Text
 					Enabled='false'
@@ -211,7 +211,7 @@
 					ScrollExtent='62,18'
 					Size='62,18'
 					TextAlignment='Center'
-					TextColor='#96F4FC'
+					TextColor='#A4CBEE'
 				>Thu</Text>
 				<Text
 					Enabled='false'
@@ -222,7 +222,7 @@
 					ScrollExtent='62,18'
 					Size='62,18'
 					TextAlignment='Center'
-					TextColor='#96F4FC'
+					TextColor='#A4CBEE'
 				>Fri</Text>
 				<Text
 					Enabled='false'
@@ -665,7 +665,7 @@
 					Name='lblEventsHeader'
 					ScrollExtent='198,16'
 					Size='198,16'
-					TextColor='#96F4FC'
+					TextColor='#A4CBEE'
 				>Events:</Text>
 				<DataSource
 					Name='dataEvents'
@@ -727,7 +727,7 @@
 					TextColor='#97FFFF'
 				>Event Title</Text>
 				<Text
-					Color='#96F4FC'
+					Color='#A4CBEE'
 					Font='bold_11'
 					LocalText='Type:'
 					Location='8,32'
@@ -738,7 +738,7 @@
 					TextColor='#97FFFF'
 				>Type:</Text>
 				<Text
-					Color='#96F4FC'
+					Color='#A4CBEE'
 					Font='bold_11'
 					LocalText='Time:'
 					Location='8,50'
@@ -836,7 +836,7 @@
 					TextColor='#00FF00'
 				>[G] Guild</Text>
 				<Page
-					BackgroundColor='#00BFFF'
+					BackgroundColor='#2480DB'
 					BackgroundOpacity='1.00'
 					Location='350,9'
 					Name='cityColor'
@@ -850,7 +850,7 @@
 					Name='lblCity'
 					ScrollExtent='70,20'
 					Size='70,20'
-					TextColor='#00BFFF'
+					TextColor='#2480DB'
 				>[C] City</Text>
 			</Page>
 			<Button
@@ -866,8 +866,8 @@
 				Name='bg'
 				PackLocation='nfn,nfn'
 				PackSize='a,a'
-				ScrollExtent='750,550'
-				Size='750,550'
+				ScrollExtent='750,516'
+				Size='750,516'
 			>
 				<Page
 					Location='738,8'
@@ -935,7 +935,7 @@
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='749,550'
 						Size='749,550'
 					>
@@ -1118,7 +1118,7 @@
 				Size='476,70'
 			>
 				<Text
-					Color='#96F4FC'
+					Color='#A4CBEE'
 					Font='bold_11'
 					LocalText='Event Title:'
 					Location='8,6'
@@ -1155,7 +1155,7 @@
 				Size='476,76'
 			>
 				<Text
-					Color='#96F4FC'
+					Color='#A4CBEE'
 					Font='bold_11'
 					LocalText='Description:'
 					Location='8,6'
@@ -1193,7 +1193,7 @@
 				Size='230,68'
 			>
 				<Text
-					Color='#96F4FC'
+					Color='#A4CBEE'
 					Font='bold_11'
 					LocalText='Event Type:'
 					Location='8,6'
@@ -1204,7 +1204,7 @@
 					TextColor='#97FFFF'
 				>Event Type:</Text>
 				<ComboBox
-					BackgroundOpacity='0.70'
+					BackgroundOpacity='1.00'
 					ButtonMargin='2,2,2,0'
 					ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 					ButtonWidth='10'
@@ -1256,7 +1256,7 @@
 				Size='230,76'
 			>
 				<Text
-					Color='#96F4FC'
+					Color='#A4CBEE'
 					Font='bold_11'
 					LocalText='Date / Time:'
 					Location='8,6'
@@ -1309,7 +1309,7 @@
 				Size='230,68'
 			>
 				<Text
-					Color='#96F4FC'
+					Color='#A4CBEE'
 					Font='bold_11'
 					LocalText='Duration:'
 					Location='8,6'
@@ -1320,7 +1320,7 @@
 					TextColor='#97FFFF'
 				>Duration:</Text>
 				<ComboBox
-					BackgroundOpacity='0.70'
+					BackgroundOpacity='1.00'
 					ButtonMargin='2,2,2,0'
 					ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 					ButtonWidth='10'
@@ -1385,7 +1385,7 @@
 				Visible='false'
 			>
 				<Text
-					Color='#96F4FC'
+					Color='#A4CBEE'
 					Font='bold_11'
 					LocalText='Server Event:'
 					Location='8,6'
@@ -1396,7 +1396,7 @@
 					TextColor='#97FFFF'
 				>Server Event:</Text>
 				<ComboBox
-					BackgroundOpacity='0.70'
+					BackgroundOpacity='1.00'
 					ButtonMargin='2,2,2,0'
 					ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 					ButtonWidth='10'
@@ -1448,7 +1448,7 @@
 				Size='476,50'
 			>
 				<Checkbox
-					Color='#96F4FC'
+					Color='#A4CBEE'
 					Location='8,14'
 					MinimumSize='0,22'
 					Name='chkBroadcast'
@@ -1457,7 +1457,7 @@
 					Style='/Styles.New.Checkbox2.Style'
 				>Broadcast when event starts</Checkbox>
 				<Checkbox
-					Color='#96F4FC'
+					Color='#A4CBEE'
 					Location='260,14'
 					MinimumSize='0,22'
 					Name='chkRecurring'
@@ -1479,7 +1479,7 @@
 				Visible='false'
 			>
 				<Text
-					Color='#96F4FC'
+					Color='#A4CBEE'
 					Font='bold_11'
 					LocalText='Repeat:'
 					Location='8,6'
@@ -1490,7 +1490,7 @@
 					TextColor='#97FFFF'
 				>Repeat:</Text>
 				<ComboBox
-					BackgroundOpacity='0.70'
+					BackgroundOpacity='1.00'
 					ButtonMargin='2,2,2,0'
 					ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 					ButtonWidth='10'
@@ -1542,7 +1542,7 @@
 				Size='230,68'
 			>
 				<Text
-					Color='#96F4FC'
+					Color='#A4CBEE'
 					Font='bold_11'
 					LocalText='Event Image:'
 					Location='8,6'
@@ -1553,7 +1553,7 @@
 					TextColor='#97FFFF'
 				>Event Image:</Text>
 				<ComboBox
-					BackgroundOpacity='0.70'
+					BackgroundOpacity='1.00'
 					ButtonMargin='2,2,2,0'
 					ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 					ButtonWidth='10'
@@ -1662,7 +1662,7 @@
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='499,500'
 						Size='499,500'
 					>
@@ -1831,7 +1831,7 @@
 			<Page
 				BackgroundColor='#FFFFFF'
 				BackgroundOpacity='0.50'
-				BackgroundTint='#00354F'
+				BackgroundTint='#0B2744'
 				Location='12,38'
 				Name='textureSection'
 				RStyleDefault='/Styles.New.whiteOutline.rs_default'
@@ -1846,7 +1846,7 @@
 					Name='lblTexture'
 					ScrollExtent='150,18'
 					Size='150,18'
-					TextColor='#96F4FC'
+					TextColor='#A4CBEE'
 				>Background Texture:</Text>
 				<Textbox
 					BackgroundOpacity='0.40'
@@ -1863,7 +1863,7 @@
 			<Page
 				BackgroundColor='#FFFFFF'
 				BackgroundOpacity='0.50'
-				BackgroundTint='#00354F'
+				BackgroundTint='#0B2744'
 				Location='12,102'
 				Name='rectSection'
 				RStyleDefault='/Styles.New.whiteOutline.rs_default'
@@ -1878,7 +1878,7 @@
 					Name='lblRect'
 					ScrollExtent='150,18'
 					Size='150,18'
-					TextColor='#96F4FC'
+					TextColor='#A4CBEE'
 				>Source Rectangle:</Text>
 				<Text
 					Enabled='false'
@@ -1979,7 +1979,7 @@
 			<Page
 				BackgroundColor='#FFFFFF'
 				BackgroundOpacity='0.50'
-				BackgroundTint='#00354F'
+				BackgroundTint='#0B2744'
 				Location='12,184'
 				Name='previewSection'
 				RStyleDefault='/Styles.New.whiteOutline.rs_default'
@@ -1994,7 +1994,7 @@
 					Name='lblPreview'
 					ScrollExtent='100,18'
 					Size='100,18'
-					TextColor='#96F4FC'
+					TextColor='#A4CBEE'
 				>Preview:</Text>
 				<Page
 					BackgroundOpacity='0.60'
@@ -2110,7 +2110,7 @@
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='399,360'
 						Size='399,360'
 					>
@@ -2305,7 +2305,7 @@
 					Size='360,18'
 				>Type: Staff Event</Text>
 				<Text
-					Color='#96F4FC'
+					Color='#A4CBEE'
 					Font='bold_11'
 					LocalText='Date: March 7, 2026'
 					Location='8,28'
@@ -2314,7 +2314,7 @@
 					Size='360,18'
 				>Date: March 7, 2026</Text>
 				<Text
-					Color='#96F4FC'
+					Color='#A4CBEE'
 					Font='bold_11'
 					LocalText='Time: 12:00 - Duration: 1h'
 					Location='8,48'
@@ -2335,7 +2335,7 @@
 				Size='376,100'
 			>
 				<Text
-					Color='#96F4FC'
+					Color='#A4CBEE'
 					Font='bold_11'
 					LocalText='Description:'
 					Location='8,6'
@@ -2467,7 +2467,7 @@
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='399,400'
 						Size='399,400'
 					>

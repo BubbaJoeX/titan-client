@@ -277,6 +277,8 @@ set(SOURCE_FILES
         commands/SwgLightsaberToolkit.h
         commands/SwgVehicleToolkit.cpp
         commands/SwgVehicleToolkit.h
+        commands/SwgMocapSuite.cpp
+        commands/SwgMocapSuite.h
         commands/ShaderExporter.cpp
         commands/ShaderExporter.h
         )
@@ -356,6 +358,12 @@ add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_CURRENT_SOURCE_DIR}/scripts/swgSplitMeshFourQuadrants.py
         $<TARGET_FILE_DIR:${CMAKE_PROJECT_NAME}>/swgSplitMeshFourQuadrants.py
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_CURRENT_SOURCE_DIR}/scripts/swgMocapSuite.mel
+        $<TARGET_FILE_DIR:${CMAKE_PROJECT_NAME}>/swgMocapSuite.mel
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/scripts/swg_mocap
+        $<TARGET_FILE_DIR:${CMAKE_PROJECT_NAME}>/swg_mocap
     COMMENT "Copying MEL scripts to plugin directory"
 )
 

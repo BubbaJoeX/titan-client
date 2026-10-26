@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 
+#include <zlib.h>
+
 #if defined(_WIN32)
 #include <sys/stat.h>
 #else
@@ -61,6 +63,12 @@ namespace
 #pragma pack(pop)
 
     // DXGI_FORMAT (subset). BC5 = two-channel normals (common for *_n.dds as FourCC ATI2 or DX10).
+    const unsigned long DXGI_FORMAT_BC1_UNORM = 71;
+    const unsigned long DXGI_FORMAT_BC1_UNORM_SRGB = 72;
+    const unsigned long DXGI_FORMAT_BC2_UNORM = 74;
+    const unsigned long DXGI_FORMAT_BC2_UNORM_SRGB = 75;
+    const unsigned long DXGI_FORMAT_BC3_UNORM = 77;
+    const unsigned long DXGI_FORMAT_BC3_UNORM_SRGB = 78;
     const unsigned long DXGI_FORMAT_BC5_TYPELESS = 80;
     const unsigned long DXGI_FORMAT_BC5_UNORM = 83;
     const unsigned long DXGI_FORMAT_BC5_SNORM = 84;
@@ -296,6 +304,94 @@ namespace
         }
     }
 
+    void flattenBgraAlpha(unsigned char* bgra, int width, int height)
+    {
+        const int n = width * height;
+        for (int i = 0; i < n; ++i)
+            bgra[static_cast<size_t>(i) * 4u + 3u] = 255;
+    }
+
+    unsigned int pngBe32(unsigned int v)
+    {
+        return ((v & 0xff000000u) >> 24) | ((v & 0x00ff0000u) >> 8) |
+               ((v & 0x0000ff00u) << 8) | ((v & 0x000000ffu) << 24);
+    }
+
+    bool writePngChunk(FILE* f, const char type[4], const unsigned char* data, size_t n)
+    {
+        const unsigned int lenBe = pngBe32(static_cast<unsigned int>(n));
+        if (fwrite(&lenBe, 4, 1, f) != 1)
+            return false;
+        if (fwrite(type, 4, 1, f) != 1)
+            return false;
+        unsigned long crc = crc32(0L, reinterpret_cast<const Bytef*>(type), 4);
+        if (n > 0)
+        {
+            if (fwrite(data, 1, n, f) != n)
+                return false;
+            crc = crc32(crc, data, static_cast<uInt>(n));
+        }
+        const unsigned int crcBe = pngBe32(static_cast<unsigned int>(crc & 0xfffffffful));
+        return fwrite(&crcBe, 4, 1, f) == 1;
+    }
+
+    /// Top-down BGRA → 8-bit PNG. flattenAlpha writes RGB (no alpha) so VP2 cannot treat gloss as opacity.
+    bool writePng(const char* path, int width, int height, const unsigned char* bgraPixels, bool flattenAlpha)
+    {
+        FILE* f = fopen(path, "wb");
+        if (!f)
+            return false;
+        static const unsigned char sig[8] = { 137, 80, 78, 71, 13, 10, 26, 10 };
+        if (fwrite(sig, 1, 8, f) != 8)
+        {
+            fclose(f);
+            return false;
+        }
+
+        const int bpp = flattenAlpha ? 3 : 4;
+        std::vector<unsigned char> raw(static_cast<size_t>(height) * static_cast<size_t>(1 + width * bpp));
+        size_t o = 0;
+        for (int y = 0; y < height; ++y)
+        {
+            raw[o++] = 0;
+            const unsigned char* row = bgraPixels + static_cast<size_t>(y) * static_cast<size_t>(width) * 4u;
+            for (int x = 0; x < width; ++x)
+            {
+                raw[o++] = row[x * 4 + 2];
+                raw[o++] = row[x * 4 + 1];
+                raw[o++] = row[x * 4 + 0];
+                if (!flattenAlpha)
+                    raw[o++] = row[x * 4 + 3];
+            }
+        }
+
+        uLongf destLen = compressBound(static_cast<uLong>(raw.size()));
+        std::vector<unsigned char> zbuf(static_cast<size_t>(destLen));
+        if (compress(zbuf.data(), &destLen, raw.data(), static_cast<uLong>(raw.size())) != Z_OK)
+        {
+            fclose(f);
+            return false;
+        }
+        zbuf.resize(static_cast<size_t>(destLen));
+
+        unsigned char ihdr[13] = {};
+        const unsigned int wBe = pngBe32(static_cast<unsigned int>(width));
+        const unsigned int hBe = pngBe32(static_cast<unsigned int>(height));
+        std::memcpy(ihdr + 0, &wBe, 4);
+        std::memcpy(ihdr + 4, &hBe, 4);
+        ihdr[8] = 8;
+        ihdr[9] = flattenAlpha ? 2 : 6;
+        if (!writePngChunk(f, "IHDR", ihdr, 13) ||
+            !writePngChunk(f, "IDAT", zbuf.data(), zbuf.size()) ||
+            !writePngChunk(f, "IEND", nullptr, 0))
+        {
+            fclose(f);
+            return false;
+        }
+        fclose(f);
+        return true;
+    }
+
     bool writeTga(const char* path, int width, int height, const unsigned char* bgraPixels)
     {
         FILE* f = fopen(path, "wb");
@@ -309,9 +405,9 @@ namespace
         header[14] = height & 0xFF;
         header[15] = (height >> 8) & 0xFF;
         header[16] = 32;  // 32 bpp (BGRA order in payload)
-        // Bits 0–3: attribute (alpha) channel depth = 8. Bit 5: top-left origin (not bottom-up).
-        // Without alpha depth = 8, GIMP and others treat A as fully opaque or ignore premultiplication hints.
-        header[17] = static_cast<unsigned char>(8 | (1 << 5));
+        // Bits 0–3: alpha depth = 8. Bit 5 must stay 0 (bottom-left). Maya VP2 rejects top-left TGA
+        // (descriptor 0x28) and shows file.defaultColor — uniform medium gray — instead of the map.
+        header[17] = 8;
 
         if (fwrite(header, 1, 18, f) != 18)
         {
@@ -320,7 +416,7 @@ namespace
         }
 
         const int rowSize = width * 4;
-        for (int y = 0; y < height; ++y)
+        for (int y = height - 1; y >= 0; --y)
         {
             if (fwrite(bgraPixels + y * rowSize, 1, static_cast<size_t>(rowSize), f) != static_cast<size_t>(rowSize))
             {
@@ -344,7 +440,7 @@ namespace
     }
 }
 
-std::string DdsToTgaConverter::convertToTga(const std::string& ddsPath, const std::string& outputDir)
+std::string DdsToTgaConverter::convertToTga(const std::string& ddsPath, const std::string& outputDir, bool flattenAlpha)
 {
     if (!isDdsPath(ddsPath))
     {
@@ -406,8 +502,14 @@ std::string DdsToTgaConverter::convertToTga(const std::string& ddsPath, const st
 
     const int width = static_cast<int>(header.dwWidth);
     const int height = static_cast<int>(header.dwHeight);
+    if (width <= 0 || height <= 0 || width > 16384 || height > 16384)
+    {
+        std::cerr << "[DdsToTga] Rejecting DDS with invalid size " << width << "x" << height << ": " << ddsPath << "\n";
+        fclose(f);
+        return std::string();
+    }
     const int outStride = width * 4;
-    std::vector<unsigned char> outPixels(static_cast<size_t>(width * height * 4));
+    std::vector<unsigned char> outPixels(static_cast<size_t>(width) * static_cast<size_t>(height) * 4u);
 
     // 0=unsupported, 1=DXT1, 2=DXT3/BC2, 3=DXT5/BC3, 4=uncompressed RGBA, 5=BC5/ATI2
     int format = 0;
@@ -425,24 +527,36 @@ std::string DdsToTgaConverter::convertToTga(const std::string& ddsPath, const st
             format = 5;
         else if (header.ddspf.dwFourCC == MakeFourCC('D', 'X', '1', '0'))
         {
-            if (dxgiFormat == DXGI_FORMAT_BC5_TYPELESS || dxgiFormat == DXGI_FORMAT_BC5_UNORM ||
+            if (dxgiFormat == DXGI_FORMAT_BC1_UNORM || dxgiFormat == DXGI_FORMAT_BC1_UNORM_SRGB)
+                format = 1;
+            else if (dxgiFormat == DXGI_FORMAT_BC2_UNORM || dxgiFormat == DXGI_FORMAT_BC2_UNORM_SRGB)
+                format = 2;
+            else if (dxgiFormat == DXGI_FORMAT_BC3_UNORM || dxgiFormat == DXGI_FORMAT_BC3_UNORM_SRGB)
+                format = 3;
+            else if (dxgiFormat == DXGI_FORMAT_BC5_TYPELESS || dxgiFormat == DXGI_FORMAT_BC5_UNORM ||
                 dxgiFormat == DXGI_FORMAT_BC5_SNORM)
                 format = 5;
         }
     }
     else if (header.ddspf.dwRGBBitCount == 32)
     {
-        //32-bit packed: require RGB masks (DDPF_RGB and/or DDPF_ALPHAPIXELS).
-        const bool hasRgbFlag = (header.ddspf.dwFlags & 0x40) != 0;
-        const bool hasAlphaFlag = (header.ddspf.dwFlags & 0x1) != 0;
-        if (hasRgbFlag || hasAlphaFlag)
+        // Mixed-in game DDS often omit DDPF_RGB (0x40) even when masks are valid A8R8G8B8.
+        unsigned long rMask = header.ddspf.dwRBitMask;
+        unsigned long gMask = header.ddspf.dwGBitMask;
+        unsigned long bMask = header.ddspf.dwBBitMask;
+        if (!rMask && !gMask && !bMask)
         {
-            const unsigned long rMask = header.ddspf.dwRBitMask;
-            const unsigned long gMask = header.ddspf.dwGBitMask;
-            const unsigned long bMask = header.ddspf.dwBBitMask;
-            if (rMask && gMask && bMask)
-                format = 4;
+            rMask = 0x00FF0000UL;
+            gMask = 0x0000FF00UL;
+            bMask = 0x000000FFUL;
+            header.ddspf.dwRBitMask = rMask;
+            header.ddspf.dwGBitMask = gMask;
+            header.ddspf.dwBBitMask = bMask;
+            if (!header.ddspf.dwABitMask)
+                header.ddspf.dwABitMask = 0xFF000000UL;
         }
+        if (rMask && gMask && bMask)
+            format = 4;
     }
 
     if (format == 0)
@@ -569,6 +683,24 @@ std::string DdsToTgaConverter::convertToTga(const std::string& ddsPath, const st
                          "opacity; checkerboard means low alpha values, not missing RGB.\n";
     }
 
+    if (flattenAlpha)
+        flattenBgraAlpha(outPixels.data(), width, height);
+
+    std::string pngPath = tgaPath;
+    {
+        const size_t dot = pngPath.find_last_of('.');
+        if (dot != std::string::npos && dot > pngPath.find_last_of("/\\"))
+            pngPath = pngPath.substr(0, dot) + ".png";
+        else
+            pngPath += ".png";
+    }
+    if (writePng(pngPath.c_str(), width, height, outPixels.data(), flattenAlpha))
+    {
+        std::cerr << "[DdsToTga] Maya PNG: " << width << "x" << height << " -> " << pngPath
+            << (flattenAlpha ? " (opaque MAIN)" : "") << "\n";
+        return pngPath;
+    }
+
     if (!writeTga(tgaPath.c_str(), width, height, outPixels.data()))
     {
         std::cerr << "[DdsToTga] Failed to write TGA: " << tgaPath << "\n";
@@ -578,4 +710,151 @@ std::string DdsToTgaConverter::convertToTga(const std::string& ddsPath, const st
     std::cerr << "[DdsToTga] Converted OK: " << width << "x" << height << " -> " << tgaPath << "\n";
 
     return tgaPath;
+}
+
+std::string DdsToTgaConverter::mayaSafeImagePath(const std::string& imagePath, const std::string& outputDir, bool flattenAlpha)
+{
+    if (imagePath.empty())
+        return std::string();
+
+    std::string path = imagePath;
+    for (char& c : path)
+        if (c == '\\')
+            c = '/';
+
+    const auto endsWith = [](const std::string& s, const char* ext) -> bool {
+        const size_t n = std::strlen(ext);
+        if (s.size() < n)
+            return false;
+        for (size_t i = 0; i < n; ++i)
+        {
+            char a = s[s.size() - n + i];
+            char b = ext[i];
+            if (a >= 'A' && a <= 'Z')
+                a = static_cast<char>(a + ('a' - 'A'));
+            if (b >= 'A' && b <= 'Z')
+                b = static_cast<char>(b + ('a' - 'A'));
+            if (a != b)
+                return false;
+        }
+        return true;
+    };
+    if (isDdsPath(path))
+        return convertToTga(path, outputDir, flattenAlpha);
+
+    if (!endsWith(path, ".tga"))
+        return path;
+
+    FILE* f = fopen(path.c_str(), "rb");
+    if (!f)
+        return path;
+
+    unsigned char header[18] = {};
+    if (fread(header, 1, 18, f) != 18)
+    {
+        fclose(f);
+        return path;
+    }
+    const int idLen = header[0];
+    const int imgType = header[2];
+    const int width = header[12] | (header[13] << 8);
+    const int height = header[14] | (header[15] << 8);
+    const int bpp = header[16];
+    const unsigned char desc = header[17];
+    const bool topLeft = (desc & 0x20) != 0;
+    if (imgType != 2 || (bpp != 24 && bpp != 32) || width <= 0 || height <= 0)
+    {
+        fclose(f);
+        return path;
+    }
+    // 0x08 32-bit game TGAs are VP2-readable but DXT5 gloss lives in alpha (body max ~61).
+    // Returning them as-is makes Lambert/VP2 treat the character as transparent.
+    if (!topLeft && !flattenAlpha)
+    {
+        fclose(f);
+        return path;
+    }
+    if (idLen > 0)
+        fseek(f, idLen, SEEK_CUR);
+
+    const int srcStride = width * (bpp / 8);
+    std::vector<unsigned char> src(static_cast<size_t>(srcStride) * static_cast<size_t>(height));
+    if (fread(src.data(), 1, src.size(), f) != src.size())
+    {
+        fclose(f);
+        return path;
+    }
+    fclose(f);
+
+    std::vector<unsigned char> bgra(static_cast<size_t>(width) * static_cast<size_t>(height) * 4u);
+    for (int y = 0; y < height; ++y)
+    {
+        const int srcY = topLeft ? y : (height - 1 - y);
+        const unsigned char* row = src.data() + static_cast<size_t>(srcY) * static_cast<size_t>(srcStride);
+        unsigned char* dst = bgra.data() + static_cast<size_t>(y) * static_cast<size_t>(width) * 4u;
+        for (int x = 0; x < width; ++x)
+        {
+            if (bpp == 32)
+            {
+                dst[x * 4 + 0] = row[x * 4 + 0];
+                dst[x * 4 + 1] = row[x * 4 + 1];
+                dst[x * 4 + 2] = row[x * 4 + 2];
+                dst[x * 4 + 3] = flattenAlpha ? 255 : row[x * 4 + 3];
+            }
+            else
+            {
+                dst[x * 4 + 0] = row[x * 3 + 0];
+                dst[x * 4 + 1] = row[x * 3 + 1];
+                dst[x * 4 + 2] = row[x * 3 + 2];
+                dst[x * 4 + 3] = 255;
+            }
+        }
+    }
+
+    std::string outPath;
+    if (!outputDir.empty())
+    {
+        outPath = outputDir;
+        if (outPath.back() != '/' && outPath.back() != '\\')
+            outPath += '/';
+        outPath += getBaseNameNoExt(path) + ".png";
+    }
+    else
+    {
+        outPath = path;
+        const size_t dot = outPath.find_last_of('.');
+        if (dot != std::string::npos && dot > outPath.find_last_of("/\\"))
+            outPath.resize(dot);
+        outPath += "_maya.png";
+    }
+
+    {
+        std::string a = outPath;
+        std::string b = path;
+        for (char& c : a)
+            if (c == '\\') c = '/';
+        for (char& c : b)
+            if (c == '\\') c = '/';
+        for (char& c : a)
+            if (c >= 'A' && c <= 'Z') c = static_cast<char>(c + ('a' - 'A'));
+        for (char& c : b)
+            if (c >= 'A' && c <= 'Z') c = static_cast<char>(c + ('a' - 'A'));
+        if (a == b)
+        {
+            const size_t dot = outPath.find_last_of('.');
+            if (dot != std::string::npos && dot > outPath.find_last_of("/\\"))
+                outPath = outPath.substr(0, dot) + "_maya.png";
+            else
+                outPath += "_maya.png";
+        }
+    }
+
+    if (writePng(outPath.c_str(), width, height, bgra.data(), flattenAlpha))
+    {
+        std::cerr << "[DdsToTga] Maya-safe albedo PNG: " << path << " -> " << outPath
+            << (flattenAlpha ? " (opaque MAIN)" : "") << "\n";
+        return outPath;
+    }
+    std::cerr << "[DdsToTga] Failed to write PNG for Maya: " << path << "\n";
+    return path;
 }

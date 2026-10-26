@@ -146,7 +146,8 @@ void SwgCuiLoginScreen::performActivate ()
 	setInputToggleActive   (false);
 
 #if PRODUCTION == 1
-	m_devButton->SetVisible (false);
+	//-- the God Client keeps Load Scene in release builds: it edits offline scenes as well as live ones
+	m_devButton->SetVisible (Game::isGodClient ());
 #endif
 
 	connectToMessage (LoginConnection::Messages::LoginConnectionOpened);

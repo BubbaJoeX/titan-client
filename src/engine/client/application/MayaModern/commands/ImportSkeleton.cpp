@@ -9,6 +9,7 @@
 #include <maya/MDagPath.h>
 #include <maya/MFnDagNode.h>
 #include <maya/MFnIkJoint.h>
+#include <maya/MFnTransform.h>
 #include <maya/MGlobal.h>
 #include <maya/MObject.h>
 #include <maya/MSelectionList.h>
@@ -50,6 +51,11 @@ namespace
         iff.enterChunk(TAG_INFO);
         const int32 jointCount = iff.read_int32();
         iff.exitChunk(TAG_INFO);
+        if (jointCount < 0 || jointCount > 512)
+        {
+            std::cerr << "ImportSkeleton: invalid joint count " << jointCount << std::endl;
+            return false;
+        }
 
         joints.resize(static_cast<size_t>(jointCount));
 
@@ -229,11 +235,21 @@ MStatus ImportSkeleton::doIt(const MArgList& args)
     else if (topTag == TAG_SLOD)
     {
         iff.enterForm(TAG_SLOD);
-        iff.enterForm(TAG_V000);
+        if (!iff.enterForm(TAG_V000, true))
+        {
+            std::cerr << "ImportSkeleton: unsupported SLOD version (expected 0000)" << std::endl;
+            iff.exitForm(TAG_SLOD, true);
+            return MS::kFailure;
+        }
 
         iff.enterChunk(TAG_INFO);
         const int16 levelCount = iff.read_int16();
         iff.exitChunk(TAG_INFO);
+        if (levelCount < 1 || levelCount > 16)
+        {
+            std::cerr << "ImportSkeleton: invalid SLOD level count " << levelCount << std::endl;
+            return MS::kFailure;
+        }
 
         std::string baseName = filename;
         const auto lastSlash = baseName.find_last_of("\\/");
@@ -243,30 +259,14 @@ MStatus ImportSkeleton::doIt(const MArgList& args)
         if (dot != std::string::npos)
             baseName = baseName.substr(0, dot);
 
-        MObject lodGroupParent;
+        MFnTransform groupFn;
+        MObject groupObj = groupFn.create(MObject::kNullObj, &status);
+        if (!status)
         {
-            MString melCmd = "group -em -n \"";
-            melCmd += baseName.c_str();
-            melCmd += "\"";
-            MStringArray result;
-            status = MGlobal::executeCommand(melCmd, result);
-            if (!status)
-            {
-                std::cerr << "ImportSkeleton: failed to create LOD group" << std::endl;
-                return MS::kFailure;
-            }
-
-            melCmd = "createNode lodGroup -p \"";
-            melCmd += result[0];
-            melCmd += "\"";
-            MGlobal::executeCommand(melCmd);
-
-            MSelectionList sel;
-            sel.add(result[0]);
-            MObject lodGroupObj;
-            sel.getDependNode(0, lodGroupObj);
-            lodGroupParent = lodGroupObj;
+            std::cerr << "ImportSkeleton: failed to create LOD group" << std::endl;
+            return MS::kFailure;
         }
+        groupFn.setName(baseName.c_str(), &status);
 
         for (int16 level = 0; level < levelCount; ++level)
         {
@@ -279,23 +279,14 @@ MStatus ImportSkeleton::doIt(const MArgList& args)
 
             char lodLevelName[32];
             sprintf(lodLevelName, "l%d", static_cast<int>(level));
-            MString melCmd = "createNode transform -n \"";
-            melCmd += lodLevelName;
-            melCmd += "\" -p \"";
-            melCmd += baseName.c_str();
-            melCmd += "\"";
-            MStringArray lodResult;
-            status = MGlobal::executeCommand(melCmd, lodResult);
+            MFnTransform lodFn;
+            MObject lodLevelObj = lodFn.create(groupObj, &status);
             if (!status)
             {
                 std::cerr << "ImportSkeleton: failed to create LOD level " << level << std::endl;
                 return MS::kFailure;
             }
-
-            MSelectionList lodSel;
-            lodSel.add(lodResult[0]);
-            MObject lodLevelObj;
-            lodSel.getDependNode(0, lodLevelObj);
+            lodFn.setName(lodLevelName, &status);
 
             char levelSuffix[32];
             sprintf(levelSuffix, "_l%d", static_cast<int>(level));

@@ -45,6 +45,8 @@ public:
 
 	static Appearance               *createAppearance(const char *fileName);
 
+	static bool                      flush(const char *fileName);
+
 	static const char*               getDefaultAppearanceTemplateName();
 
 	static void garbageCollect ();

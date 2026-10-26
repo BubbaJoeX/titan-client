@@ -61,13 +61,19 @@
 #undef TRY_FOR_SSE
 // Was `#define TRY_FOR_SSE WIN32`. The SSE fast path below
 // (_fillDot3VertexBufferHard_sse) is implemented in x86 inline asm
-// which MSVC doesn't accept on x64. Gate on _M_IX86 so the x64 build
-// uses the scalar reference implementation; rewriting with SSE
-// intrinsics is a future port.
+// which MSVC doesn't accept on x64. Gate on _M_IX86; the x64 build
+// skins with the SSE2 intrinsics below (SKIN_WITH_SSE2).
 #define TRY_FOR_SSE _M_IX86
 
 #if TRY_FOR_SSE
 #include "sharedMath/SseMath.h"
+#endif
+
+#if defined(_M_X64)
+#define SKIN_WITH_SSE2 1
+#include <emmintrin.h>
+#else
+#define SKIN_WITH_SSE2 0
 #endif
 
 // ==============================================================================
@@ -88,6 +94,75 @@ namespace SofwareBlendSkeletalShaderPrimitiveNamespace
 
 		float pad;
 	};
+
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+#if SKIN_WITH_SSE2
+	// PoseModelTransform::matrix holds columns: the rotated x, y, z axes (w = 0) and the translation (w = 1).
+	// A vertex skins to c0*x + c1*y + c2*z (+ c3); soft skinning sums the weighted columns of its transforms
+	// first and transforms position, normal and dot3 once with the sum. The matrices are loaded unaligned
+	// because the transform array comes from the engine allocator.
+	struct SkinTransform
+	{
+		__m128 c0;
+		__m128 c1;
+		__m128 c2;
+		__m128 c3;
+	};
+
+	inline void loadSkinTransform(SkinTransform &result, PoseModelTransform const &transform)
+	{
+		result.c0 = _mm_loadu_ps(transform.matrix[0]);
+		result.c1 = _mm_loadu_ps(transform.matrix[1]);
+		result.c2 = _mm_loadu_ps(transform.matrix[2]);
+		result.c3 = _mm_loadu_ps(transform.matrix[3]);
+	}
+
+	inline void loadWeightedSkinTransform(SkinTransform &result, PoseModelTransform const &transform, float weight)
+	{
+		__m128 const w = _mm_set1_ps(weight);
+		result.c0 = _mm_mul_ps(_mm_loadu_ps(transform.matrix[0]), w);
+		result.c1 = _mm_mul_ps(_mm_loadu_ps(transform.matrix[1]), w);
+		result.c2 = _mm_mul_ps(_mm_loadu_ps(transform.matrix[2]), w);
+		result.c3 = _mm_mul_ps(_mm_loadu_ps(transform.matrix[3]), w);
+	}
+
+	inline void addWeightedSkinTransform(SkinTransform &result, PoseModelTransform const &transform, float weight)
+	{
+		__m128 const w = _mm_set1_ps(weight);
+		result.c0 = _mm_add_ps(result.c0, _mm_mul_ps(_mm_loadu_ps(transform.matrix[0]), w));
+		result.c1 = _mm_add_ps(result.c1, _mm_mul_ps(_mm_loadu_ps(transform.matrix[1]), w));
+		result.c2 = _mm_add_ps(result.c2, _mm_mul_ps(_mm_loadu_ps(transform.matrix[2]), w));
+		result.c3 = _mm_add_ps(result.c3, _mm_mul_ps(_mm_loadu_ps(transform.matrix[3]), w));
+	}
+
+	inline __m128 skinPoint(SkinTransform const &transform, Vector const &v)
+	{
+		__m128 const xy = _mm_add_ps(_mm_mul_ps(transform.c0, _mm_set1_ps(v.x)), _mm_mul_ps(transform.c1, _mm_set1_ps(v.y)));
+		return _mm_add_ps(xy, _mm_add_ps(_mm_mul_ps(transform.c2, _mm_set1_ps(v.z)), transform.c3));
+	}
+
+	inline __m128 skinVector(SkinTransform const &transform, Vector const &v)
+	{
+		__m128 const xy = _mm_add_ps(_mm_mul_ps(transform.c0, _mm_set1_ps(v.x)), _mm_mul_ps(transform.c1, _mm_set1_ps(v.y)));
+		return _mm_add_ps(xy, _mm_mul_ps(transform.c2, _mm_set1_ps(v.z)));
+	}
+
+	// write x, y, z only: the vertex fields that follow are not rewritten every frame
+	inline void storeVector(void *destination, __m128 v)
+	{
+		float *const d = static_cast<float *>(destination);
+		_mm_storel_pi(reinterpret_cast<__m64 *>(d), v);
+		_mm_store_ss(d + 2, _mm_movehl_ps(v, v));
+	}
+
+	inline Vector toVector(__m128 v)
+	{
+		float f[4];
+		_mm_storeu_ps(f, v);
+		return Vector(f[0], f[1], f[2]);
+	}
+#endif
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -1571,6 +1646,75 @@ void SoftwareBlendSkeletalShaderPrimitive::fillVertexBuffer(int transformCount, 
 	const SourceVertex *sourceVectors = m_sourceVectors;
 	const TransformData *transformData = m_transformData;
 
+#if SKIN_WITH_SSE2
+#ifdef _DEBUG
+	if (!GraphicsDebugFlags::renderVertexMatrices)
+#endif
+	{
+		VertexBufferDescriptor const &descriptor = *NON_NULL(destVertexIt.getDescriptor());
+		byte *vertex = static_cast<byte *>(destVertexIt.getDataPointer());
+		int const vertexSize = descriptor.vertexSize;
+		int const offsetPosition = descriptor.offsetPosition;
+		int const offsetNormal = descriptor.offsetNormal;
+		int const offsetDot3 = m_hasDot3Vector ? descriptor.offsetTextureCoordinateSet[m_dot3TextureCoordinateSetIndex] : 0;
+		const Dot3Vector *const sourceDot3Vectors = m_hasDot3Vector ? NON_NULL(m_sourceDot3Vectors) : 0;
+
+		__m128 extentMin = _mm_set1_ps(std::numeric_limits<float>::max());
+		__m128 extentMax = _mm_set1_ps(-std::numeric_limits<float>::max());
+
+		for (int i = 0; i < m_vertexCount; ++i, ++sourceVectors, vertex += vertexSize)
+		{
+			//-- Blend the vertex's transforms.
+			const TransformData &firstTransformData = sourceVectors->m_firstTransformData;
+			VALIDATE_RANGE_INCLUSIVE_EXCLUSIVE(0, firstTransformData.m_transformIndex, transformCount);
+
+			SkinTransform blend;
+			loadWeightedSkinTransform(blend, transformArray[firstTransformData.m_transformIndex], firstTransformData.m_transformWeight);
+
+			for (int j = sourceVectors->m_extraTransformDataCount; j > 0; --j, ++transformData)
+			{
+				VALIDATE_RANGE_INCLUSIVE_EXCLUSIVE(0, transformData->m_transformIndex, transformCount);
+				addWeightedSkinTransform(blend, transformArray[transformData->m_transformIndex], transformData->m_transformWeight);
+			}
+
+			//-- Write out render geometry.
+			__m128 const blendPosition = skinPoint(blend, sourceVectors->m_position);
+			storeVector(vertex + offsetPosition, blendPosition);
+			storeVector(vertex + offsetNormal, skinVector(blend, sourceVectors->m_normal));
+
+			if (sourceDot3Vectors)
+			{
+				const Dot3Vector &sourceDot3 = sourceDot3Vectors[i];
+				float *const dot3 = reinterpret_cast<float *>(vertex + offsetDot3);
+				storeVector(dot3, skinVector(blend, sourceDot3.m_dot3Vector));
+				dot3[3] = sourceDot3.m_flipState;
+			}
+
+			if ((i & 1) != 0)
+			{
+				extentMin = _mm_min_ps(extentMin, blendPosition);
+				extentMax = _mm_max_ps(extentMax, blendPosition);
+			}
+		}
+
+		destVertexIt += m_vertexCount;
+
+		if (updateExtentsThisFrame)
+		{
+			// the box of the odd vertices is the box of its two corners
+			if (m_vertexCount > 1)
+			{
+				m_boxExtent.updateMinAndMax(toVector(extentMin));
+				m_boxExtent.updateMinAndMax(toVector(extentMax));
+			}
+
+			m_boxExtent.calculateCenterAndRadius();
+		}
+
+		return;
+	}
+#endif
+
 	if (m_hasDot3Vector)
 	{
 		NOT_NULL(m_sourceDot3Vectors);
@@ -2179,6 +2323,28 @@ void _fillVertexBufferHard_sse(const fill_vb_work *const w)
 
 void fill_vb_work::fillDot3VertexBufferHard() const
 {
+#if SKIN_WITH_SSE2
+	__m128 extentMin = _mm_set1_ps(std::numeric_limits<float>::max());
+	__m128 extentMax = _mm_set1_ps(-std::numeric_limits<float>::max());
+	SkinTransform transform;
+
+	for (; m_sourceVectors != m_sourceVectorsEnd; ++m_sourceVectors, ++m_sourceDot3Vectors, viter += vertexSize, dot3viter += vertexSize)
+	{
+		loadSkinTransform(transform, transformArray[m_sourceVectors->m_firstTransformData.m_transformIndex]);
+
+		__m128 const skinnedPosition = skinPoint(transform, m_sourceVectors->m_position);
+		extentMin = _mm_min_ps(extentMin, skinnedPosition);
+		extentMax = _mm_max_ps(extentMax, skinnedPosition);
+
+		storeVector(viter + 0, skinnedPosition);
+		storeVector(viter + 12, skinVector(transform, m_sourceVectors->m_normal));
+		storeVector(dot3viter, skinVector(transform, m_sourceDot3Vectors->m_dot3Vector));
+		*(float *)(dot3viter + 12) = m_sourceDot3Vectors->m_flipState;
+	}
+
+	minVector = toVector(extentMin);
+	maxVector = toVector(extentMax);
+#else
 	//--------------------------------------------------------------------------------------------
 	//-- Skin position, normal and dot3.
 	while (m_sourceVectors!=m_sourceVectorsEnd)
@@ -2213,10 +2379,31 @@ void fill_vb_work::fillDot3VertexBufferHard() const
 		dot3viter+=vertexSize;
 		// ------------------------------
 	}
+#endif
 }
 
 void fill_vb_work::fillVertexBufferHard() const
 {
+#if SKIN_WITH_SSE2
+	__m128 extentMin = _mm_set1_ps(std::numeric_limits<float>::max());
+	__m128 extentMax = _mm_set1_ps(-std::numeric_limits<float>::max());
+	SkinTransform transform;
+
+	for (; m_sourceVectors != m_sourceVectorsEnd; ++m_sourceVectors, viter += vertexSize)
+	{
+		loadSkinTransform(transform, transformArray[m_sourceVectors->m_firstTransformData.m_transformIndex]);
+
+		__m128 const skinnedPosition = skinPoint(transform, m_sourceVectors->m_position);
+		extentMin = _mm_min_ps(extentMin, skinnedPosition);
+		extentMax = _mm_max_ps(extentMax, skinnedPosition);
+
+		storeVector(viter + 0, skinnedPosition);
+		storeVector(viter + 12, skinVector(transform, m_sourceVectors->m_normal));
+	}
+
+	minVector = toVector(extentMin);
+	maxVector = toVector(extentMax);
+#else
 	//--------------------------------------------------------------------------------------------
 	//-- Skin position, normal and dot3.
 	while (m_sourceVectors!=m_sourceVectorsEnd)
@@ -2244,6 +2431,7 @@ void fill_vb_work::fillVertexBufferHard() const
 		viter+=vertexSize;
 		// ------------------------------
 	}
+#endif
 }
 
 // ============================================================================

@@ -32,6 +32,10 @@
 #include "ObjectEditor.h"
 #include "ServerCommander.h"
 #include "SystemMessageWidget.h"
+#include "SatelliteMapGeneratorDialog.h"
+#include "CommandPaletteDialog.h"
+#include "TabletSettingsDialog.h"
+#include "clientGraphics/ScreenShotHelper.h"
 #include "TreeBrowser.h"
 #include "Unicode.h"
 #include "sharedTerrain/TerrainObject.h"
@@ -44,6 +48,7 @@
 #include <qslider.h>
 #include <qinputdialog.h>
 #include <qmessagebox.h>
+#include <qstatusbar.h>
 #include <qworkspace.h>
 #include <algorithm>
 
@@ -62,7 +67,12 @@ ActionsTool::ActionsTool()
   m_getSphereTree(0),
   m_grabRelativeCoordinates(0),
 	m_sendSystemMessage(0),
-	m_renderRangeSettings(0)
+	m_renderRangeSettings(0),
+	m_satelliteMapGenerator(0),
+	m_tabletSettings(0),
+	m_commandPalette(0),
+	m_keyboardShortcuts(0),
+	m_screenshot(0)
 {
 	QWidget * const p = &MainFrame::getInstance();
 
@@ -79,6 +89,11 @@ ActionsTool::ActionsTool()
 	m_grabRelativeCoordinates = new ActionHack("Grab Relative Coordinates", IL_PIXMAP(hi16_action_random_rotate), "Grab Relative Coordinates", 0, p, "grab_relative_coords");
 	m_sendSystemMessage       = new ActionHack("Send a System Message",     IL_PIXMAP(hi16_action_editpaste),     "Send a System Message",     0, p, "send_system_message");
 	m_renderRangeSettings     = new ActionHack("Render Range Settings",     IL_PIXMAP(hi16_action_gear),          "Render Range Settings...",  0, p, "render_range_settings");
+	m_satelliteMapGenerator   = new ActionHack("Satellite Map Generator",   IL_PIXMAP(hi16_action_gear),          "Satellite &Map Generator...", 0, p, "satellite_map_generator");
+	m_tabletSettings          = new ActionHack("Pen Tablet Settings",       IL_PIXMAP(hi16_action_gear),          "Pen &Tablet Settings...",     0, p, "tablet_settings");
+	m_commandPalette          = new ActionHack("Command Palette",           QIconSet(),                           "&Command Palette...",         QT_ACCEL2(CTRL,Key_K), p, "command_palette");
+	m_keyboardShortcuts       = new ActionHack("Keyboard Shortcuts",        QIconSet(),                           "&Keyboard Shortcuts...",      0, p, "keyboard_shortcuts");
+	m_screenshot              = new ActionHack("Save Viewport Screenshot",  QIconSet(),                           "Save Viewport Scree&nshot",   QT_ACCEL(Key_F12), p, "save_viewport_screenshot");
 
 	//connect them to slots
 	IGNORE_RETURN(connect(m_snapToGrid,              SIGNAL(activated()), this, SLOT(onSnapToGrid())));
@@ -93,6 +108,11 @@ ActionsTool::ActionsTool()
 	IGNORE_RETURN(connect(m_grabRelativeCoordinates, SIGNAL(activated()), this, SLOT(onGrabRelativeCoordinates())));
 	IGNORE_RETURN(connect(m_sendSystemMessage,       SIGNAL(activated()), this, SLOT(onSendSystemMessage())));
 	IGNORE_RETURN(connect(m_renderRangeSettings,     SIGNAL(activated()), this, SLOT(onRenderRangeSettings())));
+	IGNORE_RETURN(connect(m_satelliteMapGenerator,   SIGNAL(activated()), this, SLOT(onSatelliteMapGenerator())));
+	IGNORE_RETURN(connect(m_tabletSettings,          SIGNAL(activated()), this, SLOT(onTabletSettings())));
+	IGNORE_RETURN(connect(m_commandPalette,          SIGNAL(activated()), this, SLOT(onCommandPalette())));
+	IGNORE_RETURN(connect(m_keyboardShortcuts,       SIGNAL(activated()), this, SLOT(onKeyboardShortcuts())));
+	IGNORE_RETURN(connect(m_screenshot,              SIGNAL(activated()), this, SLOT(onScreenshot())));
 }
 
 //----------------------------------------------------------------------
@@ -110,6 +130,11 @@ ActionsTool::~ActionsTool()
 	m_grabRelativeCoordinates = 0;
 	m_sendSystemMessage       = 0;
 	m_renderRangeSettings     = 0;
+	m_satelliteMapGenerator   = 0;
+	m_tabletSettings          = 0;
+	m_commandPalette          = 0;
+	m_keyboardShortcuts       = 0;
+	m_screenshot              = 0;
 }
 
 //----------------------------------------------------------------------
@@ -436,6 +461,57 @@ void ActionsTool::onRenderRangeSettings() const
 	LODManager::setLODDistance(2, objectLodDistance3);
 	LODManager::setMinimumCoverage(objectMinimumCoverage);
 	applyObjectUpdateRangeCap(objectUpdateRangeCap);
+}
+
+//-----------------------------------------------------------------
+
+void ActionsTool::onSatelliteMapGenerator() const
+{
+	SatelliteMapGeneratorDialog * const dlg = new SatelliteMapGeneratorDialog(&MainFrame::getInstance(), "SatelliteMapGeneratorDialog");
+	dlg->show();
+	dlg->raise();
+	dlg->setActiveWindow();
+}
+
+//-----------------------------------------------------------------
+
+void ActionsTool::onTabletSettings() const
+{
+	TabletSettingsDialog::run(&MainFrame::getInstance());
+}
+
+//-----------------------------------------------------------------
+
+void ActionsTool::onCommandPalette() const
+{
+	CommandPaletteDialog::run(&MainFrame::getInstance(), &MainFrame::getInstance(), false);
+}
+
+//-----------------------------------------------------------------
+
+void ActionsTool::onKeyboardShortcuts() const
+{
+	CommandPaletteDialog::run(&MainFrame::getInstance(), &MainFrame::getInstance(), true);
+}
+
+//-----------------------------------------------------------------
+
+/**
+ * F12: write the 3D view to screenshots/ next to the executable (format from the graphics config).
+ */
+void ActionsTool::onScreenshot() const
+{
+	if (!ScreenShotHelper::screenShot())
+	{
+		MainFrame::getInstance().statusBar()->message("Screenshot failed", 4000);
+		return;
+	}
+
+	char directory[MAX_PATH];
+	if (GetFullPathNameA("screenshots", sizeof(directory), directory, 0) == 0)
+		strcpy(directory, "screenshots");
+
+	MainFrame::getInstance().statusBar()->message(QString("Screenshot saved to ") + directory, 6000);
 }
 
 //-----------------------------------------------------------------

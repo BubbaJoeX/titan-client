@@ -658,7 +658,8 @@ void SwgCuiInventory::setContainerObject (ClientObject * containerObject, const 
 		break;
 	case IT_LOOT:
 		{		
-			getPage().SetLocation(Graphics::getFrameBufferMaxWidth() - 410, Graphics::getFrameBufferMaxHeight() / 2L - 130);			
+			// UI canvas size, not the frame buffer: above 100% UI scale the frame buffer put the loot window off screen
+			getPage().SetLocation(Graphics::getUiCanvasWidth() - 410, Graphics::getUiCanvasHeight() / 2L - 130);
 			if(m_eqMediator)
 				m_eqMediator->deactivate();
 			getPage().SetSize(UISize(400, 245));

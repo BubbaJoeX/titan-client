@@ -48,6 +48,7 @@
 #include "sharedFoundation/Crc.h"
 
 #include "GodClientData.h"
+#include "GodClientPen.h"
 #include "GodClientTerrainEditor.h"
 #include "EnvironmentEditorWindow.h"
 #include "ShaderFamilyEditorWindow.h"
@@ -57,6 +58,7 @@
 #include "MainFrame.h"
 #include "GameWidget.h"
 #include "ConsoleWindow.h"
+#include "TabletSettingsDialog.h"
 
 #include <qfiledialog.h>
 #include <qinputdialog.h>
@@ -84,6 +86,7 @@
 #include <qfile.h>
 #include <qfileinfo.h>
 #include <qsettings.h>
+#include <qstatusbar.h>
 #include <qtimer.h>
 #if defined(_MSC_VER)
 #include <windows.h>
@@ -1014,7 +1017,12 @@ TerrainDock::TerrainDock(QWidget* parent, const char* name)
   m_importHeightRasterPointsLabel(0),
   m_importHeightRasterPointsSpin(0),
   m_importHeightRasterInvertCheck(0),
-  m_importHeightRasterApplyButton(0)
+  m_importHeightRasterApplyButton(0),
+  m_penPressureStrengthCheck(0),
+  m_penPressureSizeCheck(0),
+  m_penPressureLabel(0),
+  m_tabletSettingsButton(0),
+  m_penPressureShown(-2)
 {
 	initializeUI();
 	loadTerrainShaderScanRootsFromSettings();
@@ -1367,6 +1375,7 @@ void TerrainDock::initializeUI()
 		polishTerrainDockWideControls(m_scrollAreaContents);
 
 	createImportHeightRasterSection();
+	createPenTabletRow();
 
 	updateToolButtonStates();
 	updateUndoRedoState();
@@ -1964,6 +1973,139 @@ void TerrainDock::createImportHeightRasterSection()
 	IGNORE_RETURN(connect(m_importHeightRasterApplyButton, SIGNAL(clicked()), this, SLOT(onApplyImportHeightRaster())));
 
 	updateEnvironmentAuthoringControls();
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::createPenTabletRow()
+{
+	if (m_penPressureStrengthCheck || !m_brushGroup || !m_brushGroupLayout)
+		return;
+
+	QHBoxLayout* const penRow = new QHBoxLayout(0, 0, 6);
+
+	QLabel* const penLabel = new QLabel(QString::fromLatin1("Pen pressure:"), m_brushGroup);
+	m_penPressureStrengthCheck = new QCheckBox(QString::fromLatin1("Strength"), m_brushGroup);
+	m_penPressureSizeCheck = new QCheckBox(QString::fromLatin1("Size"), m_brushGroup);
+	m_penPressureLabel = new QLabel(m_brushGroup);
+	m_penPressureLabel->setMinimumWidth(56);
+	m_tabletSettingsButton = new QPushButton(QString::fromLatin1("Tablet..."), m_brushGroup);
+
+	QToolTip::add(m_penPressureStrengthCheck, QString::fromLatin1("Pen pressure scales strength: raise/lower speed, flatten, smooth, noise, paint and flora density."));
+	QToolTip::add(m_penPressureSizeCheck, QString::fromLatin1("Pen pressure scales the brush size (the slider is the size at full pressure)."));
+	QToolTip::add(m_penPressureLabel, QString::fromLatin1("Live pen pressure (Windows Ink)."));
+	QToolTip::add(m_tabletSettingsButton, QString::fromLatin1("Pen tablet settings: pressure curve, lightest touch, eraser, barrel button camera, Windows Ink gestures."));
+
+	penRow->addWidget(penLabel);
+	penRow->addWidget(m_penPressureStrengthCheck);
+	penRow->addWidget(m_penPressureSizeCheck);
+	penRow->addStretch(1);
+	penRow->addWidget(m_penPressureLabel);
+	penRow->addWidget(m_tabletSettingsButton);
+	m_brushGroupLayout->addLayout(penRow);
+
+	refreshPenTabletRow();
+
+	IGNORE_RETURN(connect(m_penPressureStrengthCheck, SIGNAL(toggled(bool)), this, SLOT(onPenPressureStrengthToggled(bool))));
+	IGNORE_RETURN(connect(m_penPressureSizeCheck, SIGNAL(toggled(bool)), this, SLOT(onPenPressureSizeToggled(bool))));
+	IGNORE_RETURN(connect(m_tabletSettingsButton, SIGNAL(clicked()), this, SLOT(onTabletSettingsClicked())));
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::refreshPenTabletRow()
+{
+	if (!m_penPressureStrengthCheck || !m_penPressureSizeCheck || !m_penPressureLabel)
+		return;
+
+	GodClientPen::Settings const & settings = GodClientPen::getSettings();
+
+	if (m_penPressureStrengthCheck->isChecked() != settings.pressureToStrength)
+	{
+		bool const wasBlocked = m_penPressureStrengthCheck->signalsBlocked();
+		m_penPressureStrengthCheck->blockSignals(true);
+		m_penPressureStrengthCheck->setChecked(settings.pressureToStrength);
+		m_penPressureStrengthCheck->blockSignals(wasBlocked);
+	}
+	if (m_penPressureSizeCheck->isChecked() != settings.pressureToSize)
+	{
+		bool const wasBlocked = m_penPressureSizeCheck->signalsBlocked();
+		m_penPressureSizeCheck->blockSignals(true);
+		m_penPressureSizeCheck->setChecked(settings.pressureToSize);
+		m_penPressureSizeCheck->blockSignals(wasBlocked);
+	}
+	m_penPressureStrengthCheck->setEnabled(settings.enabled);
+	m_penPressureSizeCheck->setEnabled(settings.enabled);
+
+	// -1 no pen yet, 101 pen lifted, else pressure percent
+	GodClientPen::State const & state = GodClientPen::getState();
+	int shown = -1;
+	if (GodClientPen::hasSeenPen())
+		shown = state.inContact ? static_cast<int>(state.pressure * 100.0f + 0.5f) : 101;
+
+	if (shown == m_penPressureShown)
+		return;
+
+	m_penPressureShown = shown;
+	QString text;
+	if (shown < 0)
+		text = QString::fromLatin1("no pen");
+	else if (shown > 100)
+		text = QString::fromLatin1("lifted");
+	else
+		text.sprintf("%d%%", shown);
+	m_penPressureLabel->setText(text);
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::applyPenDynamics() const
+{
+	if (!GodClientTerrainEditor::isInstalled())
+		return;
+
+	float strengthScale = 1.0f;
+	float sizeScale = 1.0f;
+	bool invert = false;
+
+	if (GodClientPen::getSettings().enabled && GodClientPen::isPenEvent())
+	{
+		// The eraser also shows on the hover ring; pressure only counts with the pen down.
+		invert = GodClientPen::isBrushInverted();
+		if (GodClientPen::getState().inContact)
+		{
+			strengthScale = GodClientPen::getBrushStrengthScale();
+			sizeScale = GodClientPen::getBrushSizeScale();
+		}
+	}
+
+	GodClientTerrainEditor::getInstance().setBrushDynamics(strengthScale, sizeScale, invert);
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::onPenPressureStrengthToggled(bool const on)
+{
+	GodClientPen::Settings settings(GodClientPen::getSettings());
+	settings.pressureToStrength = on;
+	GodClientPen::setSettings(settings);
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::onPenPressureSizeToggled(bool const on)
+{
+	GodClientPen::Settings settings(GodClientPen::getSettings());
+	settings.pressureToSize = on;
+	GodClientPen::setSettings(settings);
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::onTabletSettingsClicked()
+{
+	TabletSettingsDialog::run(this);
+	refreshPenTabletRow();
 }
 
 // ----------------------------------------------------------------------
@@ -6883,6 +7025,7 @@ bool TerrainDock::handleMousePress(int screenX, int screenY, int button, int qtB
 		}
 		
 		syncGodClientEditorBrushSettings();
+		applyPenDynamics();
 
 		// Region-wide shader fills use Fill Region — LMB always runs the brush stroke so paint
 		// matches the yellow preview ring (Painting with an active selection still clips to region).
@@ -7044,6 +7187,7 @@ bool TerrainDock::handleMouseMove(int screenX, int screenY, int qtButtonState)
 		GodClientTerrainEditor& editor = GodClientTerrainEditor::getInstance();
 
 		editor.setCursorWorldPosition(Vector(worldX, groundY, worldZ));
+		applyPenDynamics();
 
 		if (editor.isBrushStrokeActive())
 		{
@@ -7076,7 +7220,9 @@ void TerrainDock::updateFrame(float elapsedTime)
 		return;
 	
 	GodClientTerrainEditor& editor = GodClientTerrainEditor::getInstance();
-	
+
+	refreshPenTabletRow();
+
 	editor.renderTerrainDebugOverlays(*camera, m_showWireframe, m_showHeightColors, m_showChunkGrid);
 
 	float regionOverlayMinX = 0.f;
@@ -7210,6 +7356,130 @@ bool TerrainDock::suppressCameraDoubleClickForTerrainTool() const
 	default:
 		return false;
 	}
+}
+
+// ----------------------------------------------------------------------
+
+bool TerrainDock::tryConsumeUndoShortcut()
+{
+	if (!isTerrainEditingActive())
+		return false;
+
+	bool const editorUndo = GodClientTerrainEditor::isInstalled() && GodClientTerrainEditor::getInstance().canUndo();
+	if (!editorUndo && m_undoStack.empty())
+		return false;
+
+	onUndo();
+	return true;
+}
+
+// ----------------------------------------------------------------------
+
+bool TerrainDock::tryConsumeRedoShortcut()
+{
+	if (!isTerrainEditingActive())
+		return false;
+
+	bool const editorRedo = GodClientTerrainEditor::isInstalled() && GodClientTerrainEditor::getInstance().canRedo();
+	if (!editorRedo && m_redoStack.empty())
+		return false;
+
+	onRedo();
+	return true;
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::stepBrushSize(int const direction)
+{
+	if (!m_brushSizeSlider || direction == 0)
+		return;
+
+	int const current = m_brushSizeSlider->value();
+	int next = direction > 0
+		? std::max(current + 1, static_cast<int>(static_cast<float>(current) * 1.25f + 0.5f))
+		: std::min(current - 1, static_cast<int>(static_cast<float>(current) / 1.25f + 0.5f));
+	next = std::max(m_brushSizeSlider->minValue(), std::min(m_brushSizeSlider->maxValue(), next));
+	m_brushSizeSlider->setValue(next);
+
+	QString msg;
+	msg.sprintf("Terrain brush size %dm", m_brushSizeSlider->value());
+	MainFrame::getInstance().statusBar()->message(msg, 2000);
+}
+
+// ----------------------------------------------------------------------
+
+void TerrainDock::stepBrushStrength(int const direction)
+{
+	if (!m_brushStrengthSlider || direction == 0)
+		return;
+
+	int const step = direction > 0 ? 5 : -5;
+	int const next = std::max(m_brushStrengthSlider->minValue(), std::min(m_brushStrengthSlider->maxValue(), m_brushStrengthSlider->value() + step));
+	m_brushStrengthSlider->setValue(next);
+
+	QString msg;
+	msg.sprintf("Terrain brush strength %d%%", m_brushStrengthSlider->value());
+	MainFrame::getInstance().statusBar()->message(msg, 2000);
+}
+
+// ----------------------------------------------------------------------
+
+bool TerrainDock::scriptedBrushStroke(ToolMode const tool, float const size, float const strength, std::vector<Vector2d> const & points, std::string & error)
+{
+	if (!GodClientTerrainEditor::isInstalled() || !hasActiveTerrain())
+	{
+		error = "no procedural terrain loaded in the Terrain dock";
+		return false;
+	}
+	if (points.empty())
+	{
+		error = "no points";
+		return false;
+	}
+
+	if (tool != TM_None && tool != m_toolMode)
+		setToolMode(tool);
+
+	switch (m_toolMode)
+	{
+	case TM_Raise:
+	case TM_Lower:
+	case TM_Flatten:
+	case TM_Smooth:
+	case TM_Noise:
+	case TM_SetHeight:
+	case TM_PaintShader:
+	case TM_PaintFlora:
+	case TM_PlaceWater:
+	case TM_PlaceRadial:
+		break;
+	default:
+		error = "the armed terrain tool is not a brush tool (raise, lower, flatten, smooth, noise, setheight, shader, flora, water, radial)";
+		return false;
+	}
+
+	//-- through the sliders, so the dock shows what the stroke used
+	if (size > 0.0f && m_brushSizeSlider)
+		m_brushSizeSlider->setValue(std::max(m_brushSizeSlider->minValue(), std::min(m_brushSizeSlider->maxValue(), static_cast<int>(size + 0.5f))));
+	if (strength > 0.0f && m_brushStrengthSlider)
+		m_brushStrengthSlider->setValue(std::max(m_brushStrengthSlider->minValue(), std::min(m_brushStrengthSlider->maxValue(), static_cast<int>(strength * 100.0f + 0.5f))));
+
+	GodClientTerrainEditor & editor = GodClientTerrainEditor::getInstance();
+	syncGodClientEditorBrushSettings();
+	editor.setBrushDynamics(1.0f, 1.0f, false); // no pen: the dock's full size and strength
+
+	if (!editor.beginBrushStroke(points.front().x, points.front().y))
+	{
+		error = "the brush stroke did not start";
+		return false;
+	}
+	m_terrainModified = true;
+	for (std::vector<Vector2d>::const_iterator it = points.begin() + 1; it != points.end(); ++it)
+		editor.continueBrushStroke(it->x, it->y);
+	editor.endBrushStroke();
+	updateUndoRedoState();
+	return true;
 }
 
 // ----------------------------------------------------------------------

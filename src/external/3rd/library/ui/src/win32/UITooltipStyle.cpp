@@ -245,6 +245,7 @@ bool UITooltipStyle::SetProperty( const UILowerString & Name, const UIString &Va
 		if( NewTextStyle || Value.empty() )
 		{
 			SetTextStyle( reinterpret_cast<UITextStyle *>( NewTextStyle ) );
+			mTextStyleName = Value;
 			return true;
 		}
 		// Fall through
@@ -297,6 +298,11 @@ bool UITooltipStyle::GetProperty( const UILowerString & Name, UIString &Value ) 
 		return UIUtils::FormatFloat( Value, mBackgroundOpacity );
 	else if( Name == PropertyName::TextStyle )
 	{
+		if( !mTextStyleName.empty() )
+		{
+			Value = mTextStyleName;
+			return true;
+		}
 		if( mTextStyle )
 		{
 			Value = mTextStyle->GetLogicalName();

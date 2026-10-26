@@ -39,6 +39,11 @@ public:
 	ActionHack*             m_grabRelativeCoordinates;
 	ActionHack*             m_sendSystemMessage;
 	ActionHack*             m_renderRangeSettings;
+	ActionHack*             m_satelliteMapGenerator;
+	ActionHack*             m_tabletSettings;
+	ActionHack*             m_commandPalette;
+	ActionHack*             m_keyboardShortcuts;
+	ActionHack*             m_screenshot;
 	//lint -restore
 
 public:
@@ -58,6 +63,11 @@ private slots:
 	void onGrabRelativeCoordinates() const;
 	void onSendSystemMessage      () const;
 	void onRenderRangeSettings    () const;
+	void onSatelliteMapGenerator  () const;
+	void onTabletSettings         () const;
+	void onCommandPalette         () const;
+	void onKeyboardShortcuts      () const;
+	void onScreenshot             () const;
 
 private:
 	//disabled

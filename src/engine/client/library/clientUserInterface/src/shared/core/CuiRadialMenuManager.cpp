@@ -757,6 +757,7 @@ void CuiRadialMenuManager::update()
 			if (camera->projectInWorldSpace(worldPosition, &screenVect.x, &screenVect.y, 0, false))
 			{
 				UIPoint screenPoint(static_cast<UIScalar>(screenVect.x), static_cast<UIScalar>(screenVect.y));
+				CuiManager::transformScreenPixelsToUiSpace(screenPoint);      // render-target pixels -> UI-scaled space
 				ms_radial->Center(screenPoint);
 				s_originalPosition = ms_radial->GetLocation();
 			}

@@ -421,6 +421,8 @@
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
     <ClCompile Include="..\..\src\shared\page\SwgCuiAppearanceTab.cpp" />
+    <ClCompile Include="..\..\src\shared\page\SwgCuiCompanionTab.cpp" />
+    <ClCompile Include="..\..\src\shared\page\SwgCuiCompanionCustomize.cpp" />
     <ClCompile Include="..\..\src\shared\page\SwgCuiAuctionBid.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
@@ -1261,6 +1263,7 @@
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
+    <ClCompile Include="..\..\src\shared\parser\SwgCuiCommandParserDevTest.cpp" />
     <ClCompile Include="..\..\src\shared\parser\SwgCuiCommandParserMount.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
@@ -1337,6 +1340,8 @@
     <ClInclude Include="..\..\src\shared\page\SwgCuiAllTargetsSpace.h" />
     <ClInclude Include="..\..\src\shared\page\SwgCuiAllTargetsSpace_DamagerData.h" />
     <ClInclude Include="..\..\src\shared\page\SwgCuiAppearanceTab.h" />
+    <ClInclude Include="..\..\src\shared\page\SwgCuiCompanionTab.h" />
+    <ClInclude Include="..\..\src\shared\page\SwgCuiCompanionCustomize.h" />
     <ClInclude Include="..\..\src\shared\page\SwgCuiAuctionBid.h" />
     <ClInclude Include="..\..\src\shared\page\SwgCuiAuctionBuy.h" />
     <ClInclude Include="..\..\src\shared\page\SwgCuiAuctionDetails.h" />
@@ -1565,6 +1570,7 @@
     <ClInclude Include="..\..\src\shared\parser\SwgCuiCommandParserCustomization.h" />
     <ClInclude Include="..\..\src\shared\parser\SwgCuiCommandParserDefault.h" />
     <ClInclude Include="..\..\src\shared\parser\SwgCuiCommandParserLocale.h" />
+    <ClInclude Include="..\..\src\shared\parser\SwgCuiCommandParserDevTest.h" />
     <ClInclude Include="..\..\src\shared\parser\SwgCuiCommandParserMount.h" />
     <ClInclude Include="..\..\src\shared\parser\SwgCuiCommandParserNebula.h" />
     <ClInclude Include="..\..\src\shared\parser\SwgCuiCommandParserNet.h" />

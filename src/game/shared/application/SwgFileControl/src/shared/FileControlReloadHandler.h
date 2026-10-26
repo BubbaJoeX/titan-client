@@ -25,8 +25,14 @@ class FileControlReloadHandler
 {
 public:
 
+	/** Reloads a compiled object template by TreeFile name (object/...iff); returns false on failure. */
+	typedef bool (*TemplateReloadFunction)(const std::string & templateName);
+
 	static void install();
 	static void remove();
+
+	// The host application (the God Client) supplies the in-process template reload.
+	static void setTemplateReloadFunction(TemplateReloadFunction function);
 
 	static bool handleReloadNotify(const std::string & relativePath, const std::string & reloadCommand);
 
@@ -45,6 +51,7 @@ private:
 	FileControlReloadHandler & operator=(const FileControlReloadHandler &);
 
 	static bool ms_installed;
+	static TemplateReloadFunction ms_templateReloadFunction;
 };
 
 // ======================================================================

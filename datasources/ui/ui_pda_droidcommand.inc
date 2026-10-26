@@ -1847,7 +1847,7 @@ a</Text>
 					Visible='false'
 				/>
 				<Composite
-					BackgroundColor='#1CFFFF'
+					BackgroundColor='#3C94DF'
 					Location='23,65'
 					Name='both'
 					PackLocation='nfn,nfn'

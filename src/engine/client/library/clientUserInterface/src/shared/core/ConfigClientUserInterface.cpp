@@ -224,7 +224,7 @@ void ConfigClientUserInterface::install ()
 	KEY_BOOL   (targetNothingUntargets,           true);
 	KEY_FLOAT  (firstPersonameraInertia,          5.0f);
 	KEY_FLOAT  (objectNameFontSizeFactor,         0.8f);
-	KEY_STRING (paletteName,                      "destroyer");
+	KEY_STRING (paletteName,                      "Titan");
 	KEY_BOOL   (drawObjectNamesPlayers,           true);
 	KEY_BOOL   (drawObjectNamesGroup,             true);
 	KEY_BOOL   (drawObjectNamesNpcs,              false);
@@ -260,7 +260,7 @@ void ConfigClientUserInterface::install ()
 	KEY_BOOL   (showQuestHelper,     			  true);
 	KEY_BOOL   (showEnteringCombatFlyText,     	  true);
 	KEY_BOOL   (showCompletedCollections,         true);
-	KEY_INT    (uiScalePercent,                   100);
+	KEY_INT    (uiScalePercent,                   0);     // 0 = automatic, from the screen height
 	KEY_INT    (uiFontScalePercent,               100);
 	KEY_BOOL   (uiFontFullReplace,               false);
 	KEY_BOOL   (debugUiFlushDump,                false);
@@ -937,6 +937,8 @@ int ConfigClientUserInterface::getUiScalePercent ()
 float ConfigClientUserInterface::getUiScaleFactor ()
 {
 	int p = ms_uiScalePercent;
+	if (p == 0)
+		return 1.0f;                                   // automatic: CuiPreferences::getUiScaleFactor knows the screen
 	if (p < 50)
 		p = 50;
 	else

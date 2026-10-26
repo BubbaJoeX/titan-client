@@ -1,7 +1,7 @@
 /****************************************************************************
 ** ConsoleWindow meta object code from reading C++ file 'ConsoleWindow.h'
 **
-** Created: Thu Jul 23 03:18:10 2026
+** Created: Sat Oct 24 07:53:23 2026
 **      by: The Qt MOC ($Id: $)
 **
 ** WARNING! All changes made in this file will be lost!
@@ -54,12 +54,14 @@ QMetaObject* ConsoleWindow::staticMetaObject()
 	{ 0, &static_QUType_charstar, 0, QUParameter::In }
     };
     static const QUMethod slot_0 = {"onConsoleCommandIssued", 1, param_slot_0 };
+    static const QUMethod slot_1 = {"onCommandEntered", 0, 0 };
     static const QMetaData slot_tbl[] = {
-	{ "onConsoleCommandIssued(const char*)", &slot_0, QMetaData::Public }
+	{ "onConsoleCommandIssued(const char*)", &slot_0, QMetaData::Public },
+	{ "onCommandEntered()", &slot_1, QMetaData::Private }
     };
     metaObj = QMetaObject::new_metaobject(
 	"ConsoleWindow", parentObject,
-	slot_tbl, 1,
+	slot_tbl, 2,
 	0, 0,
 #ifndef QT_NO_PROPERTIES
 	0, 0,
@@ -83,6 +85,7 @@ bool ConsoleWindow::qt_invoke( int _id, QUObject* _o )
 {
     switch ( _id - staticMetaObject()->slotOffset() ) {
     case 0: onConsoleCommandIssued((const char*)static_QUType_charstar.get(_o+1)); break;
+    case 1: onCommandEntered(); break;
     default:
 	return BaseConsoleWindow::qt_invoke( _id, _o );
     }

@@ -135,7 +135,7 @@
 				/>
 			</DataSource>
 			<TabbedPane
-				BackgroundColor='#009977'
+				BackgroundColor='#155584'
 				Location='14,30'
 				MinimumScrollExtent='358,0'
 				MinimumSize='0,19'
@@ -412,7 +412,7 @@
 						GetsInput='false'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='448,299'
 						Size='448,299'
 					>
@@ -2543,7 +2543,7 @@
 						GetsInput='false'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='490,359'
 						Size='490,359'
 					>

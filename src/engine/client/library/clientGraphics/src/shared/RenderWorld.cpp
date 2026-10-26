@@ -684,10 +684,8 @@ DPVS::Object *RenderWorldNamespace::createDpvsPortal(Portal *portal)
 {
 	IndexedTriangleList const & portalGeometry = portal->getGeometry();
 
-	// @todo these need to be shared as well
-	// create the target model
 	DPVS::MeshModel *dpvsPortalModel = RenderWorld::fetchMeshModel(portalGeometry, portal->isGeometryWindingOrderClockwise());
-	dpvsPortalModel->set(DPVS::Model::BACKFACE_CULLABLE, true);
+	dpvsPortalModel->set(DPVS::Model::BACKFACE_CULLABLE, !portal->isRuntimePortal());
 
 	// get the target cell in dpvs
 	DPVS::PhysicalPortal * dpvsPortal = 0;
@@ -727,13 +725,17 @@ DPVS::Object *RenderWorldNamespace::createDpvsPortal(Portal *portal)
 	// can disable the rendering of the neighboring portal's door (to avoid z-fighting among
 	// other issues).  This needs to be an appearance because the RenderWorldCommander expects
 	// all DPVS object user pointers to be appearance pointers.
-	Object *neighboringDoor = portal->getNeighbor()->getDoorObject();
-	if (neighboringDoor)
+	Portal * const neighbor = portal->getNeighbor();
+	if (neighbor)
 	{
-		PortalAppearance *portalAppearance = new PortalAppearance(neighboringDoor);
-		dpvsPortal->set(DPVS::Object::REPORT_IMMEDIATELY, true);
-		portal->setAppearance(portalAppearance);
-		dpvsPortal->setUserPointer(portalAppearance);
+		Object * const neighboringDoor = neighbor->getDoorObject();
+		if (neighboringDoor)
+		{
+			PortalAppearance *portalAppearance = new PortalAppearance(neighboringDoor);
+			dpvsPortal->set(DPVS::Object::REPORT_IMMEDIATELY, true);
+			portal->setAppearance(portalAppearance);
+			dpvsPortal->setUserPointer(portalAppearance);
+		}
 	}
 
 	return dpvsPortal;

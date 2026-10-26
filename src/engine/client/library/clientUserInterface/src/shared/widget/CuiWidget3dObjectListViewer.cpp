@@ -892,9 +892,12 @@ void CuiWidget3dObjectListViewer::RenderText(UICanvas & canvas) const
 
 				if (m_camera->projectInWorldSpace(text3d->m_location, &screen2d.x, &screen2d.y, &screen2d.z, false))
 				{
+					// projectInWorldSpace answers in PHYSICAL pixels; the canvas draws in LOGICAL (UI-scaled) units
+					const float uiScale = Graphics::getUiCanvasScale();
+					const float invScale = (uiScale != 0.0f) ? (1.0f / uiScale) : 1.0f;
 					const UIPoint gpt = m_viewport.Location ();
-					screen2d.x -= gpt.x;
-					screen2d.y -= gpt.y;
+					screen2d.x = screen2d.x * invScale - gpt.x;
+					screen2d.y = screen2d.y * invScale - gpt.y;
 
 					UIPoint location2d(static_cast<int>(screen2d.x), static_cast<int>(screen2d.y));
 
@@ -3089,7 +3092,14 @@ void CuiWidget3dObjectListViewer::recomputeZoom ()
 	fitRect_center.x += static_cast<long>(static_cast<float>((m_fitRect.right  + m_fitRect.left) * GetWidth  ()) * 0.01f * 0.5f);
 	fitRect_center.y += static_cast<long>(static_cast<float>((m_fitRect.bottom + m_fitRect.top)  * GetHeight ()) * 0.01f * 0.5f);
 
-	const Vector targetVector = m_camera->reverseProjectInScreenSpace (fitRect_center.x, fitRect_center.y);
+	// UI scale: fitRect_center is in LOGICAL canvas coords, but RenderStart set the camera viewport in PHYSICAL
+	// render-target pixels and reverseProjectInScreenSpace subtracts that viewport's origin. Unscaled, the camera
+	// aimed up and left of the object, further the further the widget sat from the screen origin: preview
+	// models were off-centre and inventory icons rendered empty at any scale above 100%.
+	const float uiScale = Graphics::getUiCanvasScale();
+	const Vector targetVector = m_camera->reverseProjectInScreenSpace (
+		static_cast<int>(static_cast<float>(fitRect_center.x) * uiScale),
+		static_cast<int>(static_cast<float>(fitRect_center.y) * uiScale));
 
 	m_cameraDeflectionAngle.x = -targetVector.theta ();
 	m_cameraDeflectionAngle.y = -targetVector.phi   ();

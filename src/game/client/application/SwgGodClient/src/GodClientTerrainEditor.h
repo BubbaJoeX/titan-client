@@ -261,6 +261,10 @@ public:
 	void setBrushStrength(float strength);
 	float getBrushStrength() const;
 
+	/// Per-dab stylus dynamics, set by TerrainDock from GodClientPen before each brush sample:
+	/// strength and size scale the dock values (0..1), invert swaps Raise and Lower. The mouse uses 1, 1, false.
+	void setBrushDynamics(float strengthScale, float sizeScale, bool invert);
+
 	float getRaiseLowerSpeed() const;
 	float getRaiseLowerBias() const;
 	float getRaiseLowerClickRate() const;
@@ -679,6 +683,11 @@ private:
 	uint8 m_shaderPaintTintR;
 	uint8 m_shaderPaintTintG;
 	uint8 m_shaderPaintTintB;
+
+	// Stylus dynamics for the next dab (see setBrushDynamics)
+	float m_dynamicsStrengthScale;
+	float m_dynamicsSizeScale;
+	bool m_dynamicsInvert;
 
 	// Brush preview
 	bool m_brushPreviewEnabled;

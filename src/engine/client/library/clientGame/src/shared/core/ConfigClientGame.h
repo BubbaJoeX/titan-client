@@ -58,6 +58,7 @@ public:
 	// Network Services
 	static const std::string & getLoginServerAddress();
 	static const uint16        getLoginServerPort();
+	static int                 getDevBridgePort();
 	static const char*         getLoginClientID();
 	static const char*         getLoginClientPassword();
 

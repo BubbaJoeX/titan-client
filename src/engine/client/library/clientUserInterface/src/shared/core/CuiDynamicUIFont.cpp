@@ -17,6 +17,7 @@
 #include "clientUserInterface/CuiWidgetGroundRadar.h"
 #include "clientGraphics/Texture.h"
 #include "clientGraphics/TextureList.h"
+#include "sharedFoundation/ConfigFile.h"
 
 #include "UIBaseObject.h"
 #include "UIString.h"
@@ -44,6 +45,29 @@
 namespace
 {
 	char const * const CUI_UIF_FIXED_FACE = "cuiuif";
+	char const * const CUI_UIF_BOLD_FACE = "cuiuifb";       // bold weight, for the logical "bold" face
+	char const * const CUI_UIF_STOCK = "stock";             // face preference meaning the shipped bitmap fonts
+
+	/// The theme font used while the face preference is empty (Titan Modern, 2026-10-25).
+	std::string themeFontFace ()
+	{
+		return ConfigFile::getKeyString ("ClientUserInterface", "themeFontFace", "Segoe UI");
+	}
+
+	/// Family name for the bold atlases: weight-named families ("Segoe UI Semibold") have no bold of their own, so
+	/// bold comes from the base family.
+	Unicode::String boldFaceFor (Unicode::String const &faceW)
+	{
+		static char const * const s_weightSuffixes[] = { " Semibold", " SemiBold", " Semilight", " SemiLight", " Light", " Black" };
+		std::string const narrow = Unicode::wideToNarrow (faceW);
+		for (size_t i = 0; i < sizeof (s_weightSuffixes) / sizeof (s_weightSuffixes[0]); ++i)
+		{
+			size_t const n = strlen (s_weightSuffixes[i]);
+			if (narrow.size () > n && !_stricmp (narrow.c_str () + narrow.size () - n, s_weightSuffixes[i]))
+				return Unicode::narrowToWide (narrow.substr (0, narrow.size () - n));
+		}
+		return faceW;
+	}
 
 	bool isAcceptableFontFaceUtf8 (std::string const &s)
 	{
@@ -143,16 +167,14 @@ namespace
 		return 1;
 	}
 
-	bool buildPointSize (Unicode::String const &faceW, int pointSize, int atlasGen, UIBaseObject *fontsRoot, AtlasTextureVector &outAtlasTextures)
+	bool buildPointSize (Unicode::String const &faceW, int pointSize, int atlasGen, UIBaseObject *fontsRoot, AtlasTextureVector &outAtlasTextures,
+		int weight = FW_NORMAL, char const *family = CUI_UIF_FIXED_FACE)
 	{
-		HDC const screen = GetDC (0);
-		if (!screen)
-			return false;
-		int const dpi = GetDeviceCaps (screen, LOGPIXELSY);
-		ReleaseDC (0, screen);
-
-		int const height = -MulDiv (pointSize, dpi, 72);
-		HFONT const hFont = CreateFontW (height, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+		// The size in a font name is the em in UI pixels, as in the stock bitmap fonts (verdana_bold_12 is a 13 pixel
+		// line); the UI scale magnifies from there. Converting it as points at the system DPI made every theme font
+		// a third larger than the stock one it replaces (more on high-DPI screens) and clipped it in stock-sized rows.
+		int const height = -pointSize;
+		HFONT const hFont = CreateFontW (height, 0, 0, 0, weight, FALSE, FALSE, FALSE,
 			DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
 			FF_DONTCARE | DEFAULT_PITCH, reinterpret_cast<LPCWSTR>(faceW.c_str ()));
 		if (!hFont)
@@ -189,6 +211,7 @@ namespace
 		std::vector<int> advArr (static_cast<size_t>(glyphCount), 1);
 		std::vector<int> advPreArr (static_cast<size_t>(glyphCount), 0);
 		std::vector<int> drawShiftArr (static_cast<size_t>(glyphCount), 0);
+		std::vector<int> inkArr (static_cast<size_t>(glyphCount), 1);
 		for (int gi = 0; gi < glyphCount; ++gi)
 		{
 			size_t const ix = static_cast<size_t>(gi);
@@ -200,6 +223,7 @@ namespace
 				advArr[ix] = std::max (1, static_cast<int>(w + 0.5f));
 				advPreArr[ix] = std::max (0, static_cast<int>(abc.abcfA + 0.5f));
 				drawShiftArr[ix] = std::max (0, static_cast<int>(-abc.abcfA + 0.5f));
+				inkArr[ix] = std::max (1, static_cast<int>(abc.abcfB + 0.999f));
 			}
 			else
 			{
@@ -207,6 +231,7 @@ namespace
 				GetTextExtentPoint32W (hdc, &wch, 1, &sz);
 				advArr[ix] = std::max (1, static_cast<int>(sz.cx));
 				advPreArr[ix] = 0;
+				inkArr[ix] = advArr[ix];
 			}
 		}
 
@@ -249,7 +274,11 @@ namespace
 		TEXTMETRICW tm;
 		ZeroMemory (&tm, sizeof (tm));
 		GetTextMetricsW (hdc, &tm);
-		int const leading = static_cast<int>(tm.tmHeight + tm.tmExternalLeading);
+		// Glyph quads start below the cell padding and most of the internal leading (the accent room above the
+		// capitals; Segoe UI's is a third of the em), so the line is as tall as a stock font's of the same size
+		// name and text fits the rows the stock pages were laid out for. A third of it stays for accented capitals.
+		int const trimTop = (static_cast<int>(tm.tmInternalLeading) * 2) / 3;
+		int const leading = static_cast<int>(tm.tmHeight + tm.tmExternalLeading) - trimTop;
 
 		for (int gi = 0; gi < glyphCount; ++gi)
 		{
@@ -283,7 +312,7 @@ namespace
 		}
 
 		char texName[256];
-		_snprintf (texName, sizeof (texName), "texture/cui_uifont_%08x_%d.dds", atlasGen, pointSize);
+		_snprintf (texName, sizeof (texName), "texture/cui_uifont_%08x_%s_%d.dds", atlasGen, family, pointSize);
 		texName[sizeof (texName) - 1] = 0;
 		Texture const * const atlasTexture = TextureList::registerNamedPixelTexture (texName, &rgba[0], TF_ARGB_8888, texW, texH);
 		if (atlasTexture)
@@ -295,7 +324,7 @@ namespace
 		DeleteObject (hFont);
 
 		char styleName[64];
-		_snprintf (styleName, sizeof (styleName), "%s_%d", CUI_UIF_FIXED_FACE, pointSize);
+		_snprintf (styleName, sizeof (styleName), "%s_%d", family, pointSize);
 		styleName[sizeof (styleName) - 1] = 0;
 
 		UITextStyle *style = dynamic_cast<UITextStyle *>(fontsRoot->GetChild (styleName));
@@ -341,10 +370,14 @@ namespace
 			int const cellIndex = static_cast<int>(ix);
 			int const col = cellIndex % cols;
 			int const row = cellIndex / cols;
-			int const sx = col * cellW;
+			// UITextStyle draws the quad at pen + AdvancePre, so it starts where the ink does (after the cell padding
+			// and the A width), and is as wide as the ink: starting at the cell edge put every glyph pad + A pixels
+			// right of where MeasureText expects it, and the last letter of tightly sized labels was clipped.
+			int const sx = col * cellW + pad + advPre;
 			int const sy = row * cellH;
+			int const inkW = std::max (1, std::min (cellW - pad - advPre, std::max (adv - advPre, inkArr[ix]) + 1));
 
-			UIRect srcRect (UIPoint (sx, sy), UISize (cellW, cellH));
+			UIRect srcRect (UIPoint (sx, sy + pad + trimTop), UISize (inkW, std::max (1, cellH - pad - trimTop)));
 
 			UIFontCharacter *ch = new UIFontCharacter;
 			ch->SetCharacterCode (static_cast<Unicode::unicode_char_t>(cp));
@@ -379,6 +412,36 @@ namespace
 
 namespace
 {
+	/// Re-resolve every font property in the UI (pages and the /Styles tree) from the logical font name each object
+	/// asked for. Fonts are resolved once, when the property is set, so without this a font that becomes active after
+	/// the UI loads (the theme font at start-up, any face from the picker) only reached objects created later: windows
+	/// mixed stock Verdana with the theme font, at sizes borrowed from whichever name last touched a shared style.
+	int reresolveFontProperties (UIBaseObject &obj)
+	{
+		if (obj.IsA (TUITextStyle))
+			return 0;                          // glyphs only
+		int count = 0;
+		UIBaseObject::UIPropertyNameVector names;
+		obj.GetPropertyNames (names, false);
+		for (UIBaseObject::UIPropertyNameVector::const_iterator it = names.begin (); it != names.end (); ++it)
+		{
+			// get () returns the name as first registered ("Font", "TextStyleNormal"), not lowercased
+			std::string n = it->get ();
+			std::transform (n.begin (), n.end (), n.begin (), ::tolower);
+			if (n != "font" && n.find ("textstyle") == std::string::npos)
+				continue;
+			UIString v;
+			if (obj.GetProperty (*it, v) && !v.empty () && obj.SetProperty (*it, v))
+				++count;
+		}
+		UIBaseObject::UIObjectList children;
+		obj.GetChildren (children);
+		for (UIBaseObject::UIObjectList::const_iterator c = children.begin (); c != children.end (); ++c)
+			if (*c)
+				count += reresolveFontProperties (**c);
+		return count;
+	}
+
 	void reapplyTextStyleProperty (UIBaseObject *obj, UILowerString const &prop)
 	{
 		if (!obj)
@@ -425,6 +488,8 @@ namespace
 void CuiDynamicUIFont::refreshAllUiText ()
 {
 	UIPage *const root = UIManager::gUIManager ().GetRootPage ();
+	if (root)
+		IGNORE_RETURN (reresolveFontProperties (*root));
 	if (root)
 		root->ResetLocalizedStrings ();
 
@@ -514,7 +579,8 @@ bool CuiDynamicUIFont::applyFontFaceUtf8 (std::string const &utf8Face)
 	AtlasTextureVector newAtlasTextures;
 	for (size_t i = 0; i < sizeof (s_pointSizes) / sizeof (s_pointSizes[0]); ++i)
 	{
-		if (!buildPointSize (faceW, s_pointSizes[i], gen, fontsRoot, newAtlasTextures))
+		if (!buildPointSize (faceW, s_pointSizes[i], gen, fontsRoot, newAtlasTextures)
+			|| !buildPointSize (boldFaceFor (faceW), s_pointSizes[i], gen, fontsRoot, newAtlasTextures, FW_SEMIBOLD, CUI_UIF_BOLD_FACE))
 		{
 			UITextStyleManager::GetInstance ()->clearUserDefaultFontFace ();
 			CuiPreferences::setUiDefaultFontFaceUtf8 ("");
@@ -545,7 +611,7 @@ bool CuiDynamicUIFont::applyFontFaceUtf8 (std::string const &utf8Face)
 
 void CuiDynamicUIFont::clearUserFont ()
 {
-	CuiPreferences::setUiDefaultFontFaceUtf8 ("");
+	CuiPreferences::setUiDefaultFontFaceUtf8 (CUI_UIF_STOCK);
 #if defined(_WIN32)
 	UITextStyleManager *const mgr = UITextStyleManager::GetInstance ();
 	if (mgr)
@@ -559,6 +625,14 @@ void CuiDynamicUIFont::clearUserFont ()
 
 //----------------------------------------------------------------------
 
+void CuiDynamicUIFont::resetToThemeFont ()
+{
+	CuiPreferences::setUiDefaultFontFaceUtf8 ("");
+	applySavedPreferenceIfAny ();
+}
+
+//----------------------------------------------------------------------
+
 void CuiDynamicUIFont::applySavedPreferenceIfAny ()
 {
 #if defined(_WIN32)
@@ -568,9 +642,18 @@ void CuiDynamicUIFont::applySavedPreferenceIfAny ()
 		mgr->setFontScalePercent (CuiPreferences::getUiFontScalePercent ());
 		mgr->setUserFontFullReplace (CuiPreferences::getUiFontFullReplace ());
 	}
-	std::string const &s = CuiPreferences::getUiDefaultFontFaceUtf8 ();
+	std::string const s = CuiPreferences::getUiDefaultFontFaceUtf8 ();
+	if (s == CUI_UIF_STOCK)
+		return;
 	if (!s.empty ())
+	{
 		IGNORE_RETURN (applyFontFaceUtf8 (s));
+		return;
+	}
+	//-- no choice saved: the theme font, without recording it as the player's choice
+	std::string const theme = themeFontFace ();
+	if (!theme.empty () && theme != CUI_UIF_STOCK && applyFontFaceUtf8 (theme))
+		CuiPreferences::setUiDefaultFontFaceUtf8 ("");
 #endif
 }
 

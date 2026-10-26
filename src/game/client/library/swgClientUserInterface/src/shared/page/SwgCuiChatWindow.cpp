@@ -74,6 +74,7 @@
 #include "swgClientUserInterface/SwgCuiActions.h"
 #include "swgClientUserInterface/SwgCuiCommandParserChatRoom.h"
 #include "swgClientUserInterface/SwgCuiCommandParserDefault.h"
+#include "swgClientUserInterface/SwgCuiCommandParserDevTest.h"
 #include "swgClientUserInterface/SwgCuiCommandParserMount.h"
 #include "swgClientUserInterface/SwgCuiCommandParserRemote.h"
 #include "swgClientUserInterface/SwgCuiCommandParserScene.h"
@@ -439,6 +440,7 @@ m_needToRunHoverOutScript(false)
 	IGNORE_RETURN(parser->addSubCommand(new SwgCuiCommandParserRemote()));
 	IGNORE_RETURN(parser->addSubCommand(new SwgCuiCommandParserScene()));
 	IGNORE_RETURN(parser->addSubCommand(new SwgCuiCommandParserMount()));
+	IGNORE_RETURN(parser->addSubCommand(new SwgCuiCommandParserDevTest()));
 #endif
 	IGNORE_RETURN(parser->addSubCommand(new SwgCuiCommandParserVideo()));
 

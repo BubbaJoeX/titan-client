@@ -1565,7 +1565,7 @@ parent.treebg.enabled=visible'
 								PackSize='a,f'
 								ScrollExtent='181,17'
 								Size='181,17'
-								TextColor='#00FFFF'
+								TextColor='#2487DB'
 								Visible='false'
 							>City</Text>
 							<DataSource
@@ -1863,7 +1863,7 @@ parent.treebg.enabled=visible'
 						GetsInput='false'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='764,569'
 						Size='764,569'
 					>

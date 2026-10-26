@@ -169,7 +169,7 @@
 						<ComboBox
 							Activated='true'
 							BackgroundColor='#FFFFFF'
-							BackgroundOpacity='0.70'
+							BackgroundOpacity='1.00'
 							ButtonMargin='2,2,2,0'
 							ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 							ButtonWidth='10'
@@ -574,7 +574,7 @@
 			>
 				<Textbox
 					BackgroundOpacity='0.80'
-					BackgroundTint='#1CFFFF'
+					BackgroundTint='#3C94DF'
 					Cursor='.'
 					EditableUnicode='true'
 					IME='true'
@@ -1473,7 +1473,7 @@
 						</Page>
 						<Page
 							BackgroundOpacity='0.75'
-							BackgroundTint='#00D6FB'
+							BackgroundTint='#2381D8'
 							Name='Background'
 							RStyleDefault='/Styles.window.gridbg.rs_default'
 							ScrollExtent='470,239'
@@ -1875,7 +1875,7 @@
 						>\\#00FF00PvP Destroy</Text>
 						<Page
 							BackgroundOpacity='0.75'
-							BackgroundTint='#00D6FB'
+							BackgroundTint='#2381D8'
 							Name='Background'
 							RStyleDefault='/Styles.window.gridbg.rs_default'
 							ScrollExtent='470,229'
@@ -2413,7 +2413,7 @@
 						>\\#00FF00Kill And Loot</Text>
 						<Page
 							BackgroundOpacity='0.75'
-							BackgroundTint='#00D6FB'
+							BackgroundTint='#2381D8'
 							Name='Background'
 							RStyleDefault='/Styles.window.gridbg.rs_default'
 							ScrollExtent='470,266'
@@ -2863,7 +2863,7 @@
 						>\\#00FF00Craft</Text>
 						<Page
 							BackgroundOpacity='0.75'
-							BackgroundTint='#00D6FB'
+							BackgroundTint='#2381D8'
 							Name='Background'
 							RStyleDefault='/Styles.window.gridbg.rs_default'
 							ScrollExtent='470,279'
@@ -3274,7 +3274,7 @@
 						>\\#00FF00Comm. Message From</Text>
 						<Page
 							BackgroundOpacity='0.75'
-							BackgroundTint='#00D6FB'
+							BackgroundTint='#2381D8'
 							Name='Background'
 							RStyleDefault='/Styles.window.gridbg.rs_default'
 							ScrollExtent='470,237'
@@ -3298,7 +3298,7 @@
 							<ComboBox
 								Activated='true'
 								BackgroundColor='#FFFFFF'
-								BackgroundOpacity='0.70'
+								BackgroundOpacity='1.00'
 								ButtonMargin='2,2,2,0'
 								ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 								ButtonWidth='10'
@@ -3338,7 +3338,7 @@
 							<ComboBox
 								Activated='true'
 								BackgroundColor='#FFFFFF'
-								BackgroundOpacity='0.70'
+								BackgroundOpacity='1.00'
 								ButtonMargin='2,2,2,0'
 								ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 								ButtonWidth='10'
@@ -4001,7 +4001,7 @@
 						>\\#00FF00Perform</Text>
 						<Page
 							BackgroundOpacity='0.75'
-							BackgroundTint='#00D6FB'
+							BackgroundTint='#2381D8'
 							Name='Background'
 							RStyleDefault='/Styles.window.gridbg.rs_default'
 							ScrollExtent='470,248'
@@ -4403,7 +4403,7 @@
 						>\\#00FF00PvP Kill</Text>
 						<Page
 							BackgroundOpacity='0.75'
-							BackgroundTint='#00D6FB'
+							BackgroundTint='#2381D8'
 							Name='Background'
 							RStyleDefault='/Styles.window.gridbg.rs_default'
 							ScrollExtent='470,229'
@@ -4842,7 +4842,7 @@
 						>\\#00FF00Loot</Text>
 						<Page
 							BackgroundOpacity='0.75'
-							BackgroundTint='#00D6FB'
+							BackgroundTint='#2381D8'
 							Name='Background'
 							RStyleDefault='/Styles.window.gridbg.rs_default'
 							ScrollExtent='470,241'
@@ -5442,7 +5442,7 @@
 						</Page>
 						<Page
 							BackgroundOpacity='0.75'
-							BackgroundTint='#00D6FB'
+							BackgroundTint='#2381D8'
 							Name='Background'
 							RStyleDefault='/Styles.window.gridbg.rs_default'
 							ScrollExtent='470,239'
@@ -5704,7 +5704,7 @@
 						>credits</Textbox>
 						<Page
 							BackgroundOpacity='1.00'
-							BackgroundTint='#00D6FB'
+							BackgroundTint='#2381D8'
 							Name='Background'
 							RStyleDefault='/Styles.Roadmap.boxstyle_white.rs_default'
 							ScrollExtent='470,126'
@@ -6106,7 +6106,7 @@
 						>\\#00FF00Kill</Text>
 						<Page
 							BackgroundOpacity='0.75'
-							BackgroundTint='#00D6FB'
+							BackgroundTint='#2381D8'
 							Name='Background'
 							RStyleDefault='/Styles.window.gridbg.rs_default'
 							ScrollExtent='470,239'
@@ -6283,7 +6283,7 @@
 				<ComboBox
 					Activated='true'
 					BackgroundColor='#FFFFFF'
-					BackgroundOpacity='0.70'
+					BackgroundOpacity='1.00'
 					ButtonMargin='2,2,2,0'
 					ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 					ButtonWidth='10'
@@ -6556,7 +6556,7 @@
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='999,700'
 						Size='999,700'
 					>

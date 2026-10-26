@@ -523,7 +523,7 @@ parent.buttonTravel.visible=false
 					/>
 				</Page>
 				<ComboBox
-					BackgroundOpacity='0.70'
+					BackgroundOpacity='1.00'
 					ButtonMargin='2,2,2,0'
 					ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 					ButtonWidth='10'
@@ -558,7 +558,7 @@ parent.buttonTravel.visible=false
 					/>
 				</DataSource>
 				<ComboBox
-					BackgroundOpacity='0.70'
+					BackgroundOpacity='1.00'
 					ButtonMargin='2,2,2,0'
 					ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 					ButtonWidth='10'
@@ -4227,7 +4227,7 @@ parent.planetnames.visible=visible'
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='513,677'
 						Size='513,677'
 					>

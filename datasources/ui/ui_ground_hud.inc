@@ -768,7 +768,7 @@
 				TargetColor2='#FFFFFF'
 			/>
 			<Image
-				Color='#54E4FE'
+				Color='#6CABE6'
 				LocalTooltip='tooltip'
 				Location='238,2'
 				MaximumSize='100,100'
@@ -973,7 +973,7 @@
 		/>
 		<include>ui_ground_hud_incap.inc</include>
 		<Page
-			BackgroundColor='#42FFC7'
+			BackgroundColor='#5CACE5'
 			GetsInput='false'
 			Location='278,79'
 			Name='SystemMessage'
@@ -1127,7 +1127,7 @@
 			/>
 		</Page>
 		<Page
-			BackgroundColor='#42FFC7'
+			BackgroundColor='#5CACE5'
 			GetsInput='false'
 			Location='225,448'
 			Name='SystemMessageNoob'
@@ -1359,7 +1359,7 @@
 			>100</Text>
 			<Page
 				BackgroundColor='#FFFFFF'
-				BackgroundTint='#00D6FB'
+				BackgroundTint='#2381D8'
 				Location='2,2'
 				MaximumSize='128,128'
 				MinimumSize='31,34'
@@ -2112,7 +2112,7 @@
 		<include>ui_terraforming.inc</include>
 		<include>ui_ground_hud_all_targets.inc</include>
 		<Page
-			Color='#00FF88'
+			Color='#2494DB'
 			GetsInput='false'
 			Location='517,328'
 			MinimumSize='40,40'

@@ -433,7 +433,7 @@ xxx attrib 8:    info here
 					/>
 				</DataSource>
 				<TabbedPane
-					BackgroundColor='#009977'
+					BackgroundColor='#155584'
 					MinimumScrollExtent='667,0'
 					MinimumSize='0,19'
 					Name='tabs'
@@ -1848,7 +1848,7 @@ oldIconVisible=parent.details.visible'
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='518,355'
 						Size='518,355'
 					>

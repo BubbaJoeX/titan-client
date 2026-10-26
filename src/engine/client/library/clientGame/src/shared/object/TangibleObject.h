@@ -171,6 +171,12 @@ public:
 
 	static bool         getVideoPlaybackInfo              (TangibleObject const * obj, __int64 & outTimeMs, __int64 & outLengthMs);
 	static bool         seekVideoPlayback                 (TangibleObject const * obj, __int64 timeMs);
+	// The remote / video / RT texture path: on the appearance's "screen" / "canvas" shaders when it has any,
+	// else on every MAIN texture. Returns whether screen surfaces were found.
+	static bool         applyScreenSurfaceTexture         (Object & object, Texture const & texture);
+	/** Dev tools (offline scenes): apply an hp_dyn pack ("v1\n<kind>\t...") as if the server had replicated it. */
+	void                applyDynamicHardpointsStateLocally(std::string const & packed);
+	void                setRemoteVideoStreamLocally(std::string const & url, std::string const & aspect);
 
 	bool isInCombat() const;
 	void setIsInCombat(bool inCombat);
@@ -408,6 +414,8 @@ private:
 	bool                                      m_lastOnOffStatus : 1;
 	bool                                      m_isReceivingCallbacks : 1;
 	Watcher<Object>                           m_interestingAttachedObject;
+	// hp_dyn "app" row on the @interesting hardpoint: the marker shown instead of the stock info disc
+	std::string                               m_interestingAppearanceOverride;
 	mutable bool                              m_untargettableOverride : 1;
 
 	typedef stdvector<Watcher<Object> >::fwd ClientOnlyInteriorLayoutObjectList;

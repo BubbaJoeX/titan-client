@@ -156,7 +156,7 @@
 						/>
 					</DataSource>
 					<TabbedPane
-						BackgroundColor='#009977'
+						BackgroundColor='#155584'
 						Location='0,1'
 						MinimumScrollExtent='217,0'
 						MinimumSize='0,19'
@@ -195,18 +195,21 @@
 								/>
 								<ImageStyle
 									Name='w'
-									Source='ui_rebel_final'
-									SourceRect='92,137,108,153'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:92,137,108,153'
+									SourceRect='186,18,194,34'
 								/>
 								<ImageStyle
 									Name='e'
-									Source='ui_rebel_final'
-									SourceRect='113,137,127,153'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:113,137,127,153'
+									SourceRect='202,18,210,34'
 								/>
 								<ImageStyle
 									Name='c'
-									Source='ui_rebel_final'
-									SourceRect='109,137,110,153'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:109,137,110,153'
+									SourceRect='194,18,202,34'
 								/>
 							</Namespace>
 							<Namespace
@@ -222,18 +225,21 @@
 								/>
 								<ImageStyle
 									Name='w'
-									Source='ui_rebel_final'
-									SourceRect='95,161,111,177'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:95,161,111,177'
+									SourceRect='213,18,221,34'
 								/>
 								<ImageStyle
 									Name='e'
-									Source='ui_rebel_final'
-									SourceRect='116,161,130,177'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:116,161,130,177'
+									SourceRect='229,18,237,34'
 								/>
 								<ImageStyle
 									Name='c'
-									Source='ui_rebel_final'
-									SourceRect='112,161,113,177'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:112,161,113,177'
+									SourceRect='221,18,229,34'
 								/>
 							</Namespace>
 							<Namespace
@@ -249,18 +255,21 @@
 								/>
 								<ImageStyle
 									Name='w'
-									Source='ui_rebel_final'
-									SourceRect='52,138,68,154'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:52,138,68,154'
+									SourceRect='159,18,167,34'
 								/>
 								<ImageStyle
 									Name='e'
-									Source='ui_rebel_final'
-									SourceRect='73,138,87,154'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:73,138,87,154'
+									SourceRect='175,18,183,34'
 								/>
 								<ImageStyle
 									Name='c'
-									Source='ui_rebel_final'
-									SourceRect='69,138,70,154'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:69,138,70,154'
+									SourceRect='167,18,175,34'
 								/>
 							</Namespace>
 							<Namespace
@@ -276,18 +285,21 @@
 								/>
 								<ImageStyle
 									Name='w'
-									Source='ui_rebel_final'
-									SourceRect='92,137,108,153'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:92,137,108,153'
+									SourceRect='186,18,194,34'
 								/>
 								<ImageStyle
 									Name='e'
-									Source='ui_rebel_final'
-									SourceRect='113,137,127,153'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:113,137,127,153'
+									SourceRect='202,18,210,34'
 								/>
 								<ImageStyle
 									Name='c'
-									Source='ui_rebel_final'
-									SourceRect='109,137,110,153'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:109,137,110,153'
+									SourceRect='194,18,202,34'
 								/>
 							</Namespace>
 							<Namespace
@@ -303,18 +315,21 @@
 								/>
 								<ImageStyle
 									Name='w'
-									Source='ui_rebel_final'
-									SourceRect='92,137,108,153'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:92,137,108,153'
+									SourceRect='186,18,194,34'
 								/>
 								<ImageStyle
 									Name='e'
-									Source='ui_rebel_final'
-									SourceRect='113,137,127,153'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:113,137,127,153'
+									SourceRect='202,18,210,34'
 								/>
 								<ImageStyle
 									Name='c'
-									Source='ui_rebel_final'
-									SourceRect='109,137,110,153'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:109,137,110,153'
+									SourceRect='194,18,202,34'
 								/>
 							</Namespace>
 							<ButtonStyle
@@ -2385,7 +2400,7 @@
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='905,653'
 						Size='905,653'
 					>

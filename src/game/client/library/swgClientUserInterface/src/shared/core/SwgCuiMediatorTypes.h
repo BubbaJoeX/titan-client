@@ -106,6 +106,8 @@ namespace CuiMediatorTypes
 	MAKE_MEDIATOR_TYPE (WS_TcgWindow);
 	MAKE_MEDIATOR_TYPE (WS_Mahjong);
 	MAKE_MEDIATOR_TYPE (WS_AppearanceTab);
+	MAKE_MEDIATOR_TYPE (WS_CompanionTab);
+	MAKE_MEDIATOR_TYPE (WS_CompanionCustomize);
 	MAKE_MEDIATOR_TYPE (WS_QuestBuilder);
 	MAKE_MEDIATOR_TYPE (WS_Rating);
 	MAKE_MEDIATOR_TYPE (WS_PlayerQuestConversation);

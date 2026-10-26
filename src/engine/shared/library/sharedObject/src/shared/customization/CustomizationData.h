@@ -145,8 +145,9 @@ private:
 	void             saveToByteVector(ByteVector &data, bool persistRemoteData = false) const;
 
 	bool             restoreFromByteVector(ByteVector const &data);
-	bool             restoreFromByteVector_1(ByteVector const &data);
+	bool             restoreFromByteVector_1(ByteVector const &data, bool extendedIds = false);
 	bool             restoreFromByteVector_2(ByteVector const &data);
+	bool             restoreFromByteVector_4(ByteVector const &data);
 
 	
 	// Disabled.

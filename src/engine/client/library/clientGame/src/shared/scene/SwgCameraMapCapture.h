@@ -20,6 +20,29 @@ class SwgCameraMapCapture
 {
 public:
 
+	struct MapCaptureRequest
+	{
+		char  outputDir[512];
+		float worldMinX;
+		float worldMaxX;
+		float worldMinZ;
+		float worldMaxZ;
+		float tileWorldSize;
+		float cameraHeight;
+		int   settleFrames;
+		int   viewportWidth;
+		int   viewportHeight;
+		bool  filterCreatures;
+		bool  filterLairs;
+		bool  filterNpcLike;
+		bool  suppressFog;
+		bool  suppressParticles;
+		bool  suppressWeather;
+		bool  useFixedWorldBounds;
+
+		MapCaptureRequest();
+	};
+
 	static void install();
 	static void remove();
 
@@ -30,6 +53,18 @@ public:
 
 	/// True while an ortho tile batch is active (used to suppress FreeCamera input).
 	static bool isBatchActive();
+	static bool isExternalCapturePending();
+
+	/// Programmatic capture (e.g. God Client Satellite Map Generator).
+	static void requestBatch(MapCaptureRequest const &request);
+	static void cancelBatch();
+	static void getBatchProgress(int &currentTile, int &totalTiles);
+	/// Returns true once when an externally requested batch has finished.
+	static bool consumeBatchCompleted();
+
+	/// Grid dimensions from the last started batch (valid until next batch).
+	static void getBatchGrid(int &numCols, int &numRows, int &totalTiles);
+	static void getTileFileBasePath(int linearIndex, char *path, size_t pathSize);
 
 private:
 

@@ -226,6 +226,10 @@ public:
 	real             resolvePasteGroundAnchorY     (const ClipboardList_t& clip, bool pasteFromBrush) const;
 	bool             getSelectionExtent            (bool ghosts, BoxExtent& extent) const;
 	bool             getIsSelectionOrGhost         (const Object& obj, bool& isSelection, bool& isGhost) const;
+	/// The ghost of a selected object (moved but not applied yet), or 0.
+	const Object*    getSelectionGhost             (const ClientObject& obj) const;
+	/// After obj's appearance was rebuilt in place: give its ghost, if any, a copy of the new one.
+	void             refreshGhostAppearance        (const ClientObject& obj);
 	void             saveCurrentSelectionAsBrush   (const std::string& brushName);
 	void             setSelectionX                 (real x);
 	void             setSelectionY                 (real y);
@@ -254,6 +258,15 @@ public:
 	bool             moveGhostsFollowingObject     (const NetworkId& id, const Vector& pt, bool alongGround);
 	void             setObjectCreationPending      (bool val);
 	bool             getObjectCreationPending      ();
+	/// Adds every loaded object built from \a templateName (not ghosts) to the selection; returns how many.
+	int              selectObjectsWithTemplate     (char const * templateName);
+
+	//--- transform clipboard: position / rotation / scale of the primary selection (its ghost if moved)
+	bool             copySelectionTransform        ();
+	bool             hasCopiedTransform            () const;
+	/// Ghosts every selected object and gives it the copied parts; apply with Ctrl+T / Space as usual.
+	int              pasteSelectionTransform       (bool position, bool rotation, bool scale);
+	std::string      describeCopiedTransform       () const;
 
 	//---clipboard-related functions-----------------------------------
 	void             copySelection                 ();
@@ -417,6 +430,11 @@ private:
 	std::vector<Vector>           m_patrolWaypoints;
 	bool                          m_patrolWaypointPlacementMode;
 	std::string                   m_patrolPathType;
+
+	///the transform clipboard (object-to-parent; parent is the source object's cell)
+	bool                          m_copiedTransformValid;
+	Transform                     m_copiedTransform;
+	Vector                        m_copiedScale;
 };
 
 // ----------------------------------------------------------------------

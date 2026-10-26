@@ -259,6 +259,7 @@ bool UIButtonStyle::SetProperty( const UILowerString & Name, const UIString &Val
 				if( NewTextStyle || Value.empty() )
 				{
 					SetTextStyle( State, NewTextStyle );
+					mStateInfo[State].mTextStyleName = Value;
 					return true;
 				}
 				break;
@@ -330,6 +331,11 @@ bool UIButtonStyle::GetProperty( const UILowerString & Name, UIString &Value ) c
 		switch( Element )
 		{
 			case TextStyle:
+				if( !mStateInfo[State].mTextStyleName.empty() )
+				{
+					Value = mStateInfo[State].mTextStyleName;
+					return true;
+				}
 				if( mStateInfo[State].mTextStyle )
 				{
 					Value = mStateInfo[State].mTextStyle->GetLogicalName();

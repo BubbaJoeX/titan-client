@@ -86,3 +86,5 @@ src/build/win32/.vs/*
 *.vsidx
 *.db-shm
 *.db-wal
+# MayaModern scratch CMake build trees
+src/engine/client/application/MayaModern/build-*/

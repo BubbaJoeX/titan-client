@@ -442,7 +442,10 @@ void CuiLayerRenderer::renderTriangles (const Shader * shader, int numTris, cons
 	}
 
 	const real pixOffset = CuiManager::getPixelOffset ();
-	const float uiScale = Graphics::getUiCanvasScale(); // see renderPointsGeneric for rationale
+	// Unlike points and lines, triangles arrive already in render-target pixels: their only producer, UIPie, builds
+	// every vertex with UICanvas::Transform, which includes the root UI-scale matrix (like quads in BltFrom).
+	// Scaling here again drew pies (the loading wheel, cooldown and resource pies) 1.25x away from their widget.
+	const float uiScale = 1.0f;
 
 	uint32 const color32 = color.convertToUint32NoClamp();
 

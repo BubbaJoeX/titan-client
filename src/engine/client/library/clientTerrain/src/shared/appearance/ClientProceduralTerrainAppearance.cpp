@@ -407,6 +407,70 @@ void ClientProceduralTerrainAppearance::setReferenceCamera (Camera const * const
 	ms_referenceCamera = referenceCamera;
 }
 
+//----------------------------------------------------------------------
+
+void ClientProceduralTerrainAppearance::setForceRenderEntireMapEnabled (bool const enabled)
+{
+	if (enabled)
+	{
+		TerrainObject *const terrainObject = TerrainObject::getInstance();
+		if (terrainObject)
+		{
+			ClientProceduralTerrainAppearance *const appearance =
+				dynamic_cast<ClientProceduralTerrainAppearance *>(terrainObject->getAppearance());
+			if (appearance)
+			{
+				appearance->m_forceRenderEntireMapDone = false;
+				appearance->m_forceRenderEntireMapCursorX = 0;
+				appearance->m_forceRenderEntireMapCursorZ = 0;
+				appearance->m_levelOfDetailFillComplete = false;
+			}
+		}
+	}
+
+	ms_forceRenderEntireMapEnabled = enabled;
+
+	if (enabled)
+		return;
+
+	TerrainObject *const terrainObject = TerrainObject::getInstance();
+	if (!terrainObject)
+		return;
+
+	ClientProceduralTerrainAppearance *const appearance =
+		dynamic_cast<ClientProceduralTerrainAppearance *>(terrainObject->getAppearance());
+	if (!appearance)
+		return;
+
+	appearance->m_forceRenderEntireMapDone = false;
+	appearance->m_forceRenderEntireMapCursorX = 0;
+	appearance->m_forceRenderEntireMapCursorZ = 0;
+	appearance->m_levelOfDetailFillComplete = false;
+}
+
+//----------------------------------------------------------------------
+
+bool ClientProceduralTerrainAppearance::getForceRenderEntireMapEnabled ()
+{
+	return ms_forceRenderEntireMapEnabled;
+}
+
+//----------------------------------------------------------------------
+
+bool ClientProceduralTerrainAppearance::isForceRenderEntireMapComplete ()
+{
+	if (!ms_forceRenderEntireMapEnabled)
+		return true;
+
+	TerrainObject *const terrainObject = TerrainObject::getInstance();
+	if (!terrainObject)
+		return false;
+
+	ClientProceduralTerrainAppearance const *const appearance =
+		dynamic_cast<ClientProceduralTerrainAppearance const *>(terrainObject->getAppearance());
+	return appearance && appearance->m_forceRenderEntireMapDone;
+}
+
 //===================================================================
 // PUBLIC ClientProceduralTerrainAppearance
 //===================================================================

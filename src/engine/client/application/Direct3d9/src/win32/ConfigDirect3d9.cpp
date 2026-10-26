@@ -24,6 +24,7 @@ namespace ConfigDirect3d9Namespace
 	int  ms_shaderCapabilityOverride;
 
 	bool ms_allowTearing;
+	bool ms_windowedVsync;
 	int  ms_fullscreenRefreshRate;
 
 	bool ms_disableDynamicTextures;
@@ -79,6 +80,7 @@ void ConfigDirect3d9::install()
 	KEY_INT (shaderCapabilityOverride, 0);
 
 	KEY_BOOL(allowTearing, false);
+	KEY_BOOL(windowedVsync, false);
 	KEY_INT (fullscreenRefreshRate, 0);
 
 	KEY_BOOL(disableDynamicTextures, false);
@@ -182,6 +184,13 @@ int ConfigDirect3d9::getShaderCapabilityOverride()
 bool ConfigDirect3d9::getAllowTearing()
 {
 	return ms_allowTearing;
+}
+
+// ----------------------------------------------------------------------
+
+bool ConfigDirect3d9::getWindowedVsync()
+{
+	return ms_windowedVsync;
 }
 
 // ----------------------------------------------------------------------

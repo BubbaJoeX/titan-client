@@ -33,6 +33,7 @@ float UITextStyle::ms_opacityRelativeMin       = 0.0f;
 const UILowerString UITextStyle::PropertyName::Leading = UILowerString ("Leading");
 const UILowerString UITextStyle::PropertyName::DropShadowDepth = UILowerString ("DropShadowDepth");
 const UILowerString UITextStyle::PropertyName::DropShadowsEnabled = UILowerString ("DropShadowsEnabled");
+const UILowerString UITextStyle::PropertyName::AtlasScale = UILowerString ("AtlasScale");
 
 const std::string UITextStyle::AlignmentNames::Left    = "Left";
 const std::string UITextStyle::AlignmentNames::Center  = "Center";
@@ -106,7 +107,8 @@ mGlyphMap (new GlyphMap_t),
 mLeading (0),
 mOpacity (1.0f),
 mDropShadowEnabled(false),
-mDropShadowDepth(NULL)
+mDropShadowDepth(NULL),
+mAtlasScale(1.0f)
 {
 	for( long i = 0; i < GLYPH_ARRAY_SIZE; ++i )
 		mGlyphArray[i] = 0;
@@ -164,7 +166,7 @@ void UITextStyle::MeasureCharacter( long c, long &width, long &height ) const
 	
 	if( glyph )
 	{
-		width  = glyph->GetWidth();
+		width  = GetGlyphDrawWidth (*glyph);
 		height = mLeading;
 	}
 	else
@@ -195,6 +197,29 @@ long UITextStyle::GetLeading( void ) const
 	return mLeading;
 }
 
+//----------------------------------------------------------------------
+
+long UITextStyle::GetGlyphDrawWidth (UIFontCharacter const & glyph) const
+{
+	if (mAtlasScale == 1.0f)
+		return glyph.GetWidth ();
+	return static_cast<long> (static_cast<float> (glyph.GetWidth ()) / mAtlasScale + 0.999f);
+}
+
+//----------------------------------------------------------------------
+
+void UITextStyle::BltGlyph (UICanvas & canvas, UIFontCharacter const & glyph, UIPoint const & dest, UISize const & size) const
+{
+	if (mAtlasScale == 1.0f)
+	{
+		canvas.BltFromNoScaleOrRotate (glyph.GetCanvas (), glyph.GetLocation (), dest, size);
+		return;
+	}
+	canvas.SetSourceScale (mAtlasScale, mAtlasScale);
+	canvas.BltFromNoScaleOrRotate (glyph.GetCanvas (), glyph.GetLocation (), dest, size);
+	canvas.SetSourceScale (1.0f, 1.0f);
+}
+
 // ==============================================================
 
 void UITextStyle::GetPropertyGroups(UIPropertyGroupVector &o_groups, UIPropertyCategories::Category category) const
@@ -211,7 +236,7 @@ void UITextStyle::GetPropertyNames( UIPropertyNameVector &In, bool forCopy ) con
 	In.push_back ( PropertyName::Leading );
 	In.push_back( PropertyName::DropShadowsEnabled);
 	In.push_back( PropertyName::DropShadowDepth);
-
+	In.push_back( PropertyName::AtlasScale);
 
 	UIStyle::GetPropertyNames( In, forCopy );
 }
@@ -246,6 +271,14 @@ bool UITextStyle::SetProperty( const UILowerString & Name, const UIString &Value
 		SetDropShadowDepth(offset);
 		return true;
 	}
+	else if(Name == PropertyName::AtlasScale)
+	{
+		float scale = 1.0f;
+		if(!UIUtils::ParseFloat(Value, scale))
+			return false;
+		SetAtlasScale(scale);
+		return true;
+	}
 	
 	return UIStyle::SetProperty( Name, Value );
 }
@@ -265,6 +298,10 @@ bool UITextStyle::GetProperty( const UILowerString & Name, UIString &Value ) con
 	else if(Name == PropertyName::DropShadowDepth)
 	{
 		return UIUtils::FormatPoint(Value, GetDropShadowDepth());
+	}
+	else if(Name == PropertyName::AtlasScale)
+	{
+		return UIUtils::FormatFloat(Value, mAtlasScale);
 	}
 
 	return UIStyle::GetProperty( Name, Value );
@@ -358,10 +395,12 @@ bool UITextStyle::RemoveChild( UIBaseObject *o )
 		{
 			GlyphMap_t::iterator find_iter = mGlyphMap->find (code);
 			
-			if (find_iter != mGlyphMap->end ())
+			if (find_iter != mGlyphMap->end () && (*find_iter).second == NewCharacter)
 			{
-				(*find_iter).second->Detach (this);
-				(*find_iter).second = 0;
+				// Erase the entry: a null left in the map crashed the next AddChild for this code
+				// (Detach on null), GetChild, GetChildren users and the destructor.
+				NewCharacter->Detach (this);
+				mGlyphMap->erase (find_iter);
 				return true;
 			}
 		}		
@@ -454,7 +493,7 @@ void UITextStyle::MeasureText( const UIString &s, long &width, long &height, Mea
 		if( glyph )
 		{
 			if( ((i + 1) == s.end()) && (method == UseLastCharWidth) )
-				width += glyph->GetWidth();
+				width += GetGlyphDrawWidth (*glyph);
 			else
 				width += glyph->GetAdvance();
 		}
@@ -801,9 +840,16 @@ long UITextStyle::RenderPrewrappedLine(RenderLineData const & rld, UIRectangleSt
 			drld.ignoreColors   = true;
 
 			const UIColor color = rld.canvas ? rld.canvas->GetColor () : UIColor::white;
+			// a crisp screen-resolution atlas needs only a soft shadow; full black reads as a hard outline
+			float const shadowOpacity = rld.canvas ? rld.canvas->GetOpacity () : 1.0f;
+			if (rld.canvas && mAtlasScale != 1.0f)
+				rld.canvas->SetOpacity (shadowOpacity * 0.5f);
 			RenderPrewrappedLine (drld);
 			if (rld.canvas)
+			{
+				rld.canvas->SetOpacity (shadowOpacity);
 				rld.canvas->SetColor (color);
+			}
 		}
 	}
 
@@ -976,13 +1022,13 @@ long UITextStyle::RenderPrewrappedLine(RenderLineData const & rld, UIRectangleSt
 
 				if (rld.truncateElipsis && elipsisCh && needsToTruncate && (ch->GetAdvance () + outdest.x) > truncateX)
 				{
-					const UISize elipsisSize (elipsisCh->GetWidth (), mLeading);
+					const UISize elipsisSize (GetGlyphDrawWidth (*elipsisCh), mLeading);
 					
 					for (int e = 0; e < 3; ++e)
 					{
 						if (rld.canvas)
 						{
-							rld.canvas->BltFromNoScaleOrRotate (elipsisCh->GetCanvas(), elipsisCh->GetLocation(), outdest, elipsisSize );
+							BltGlyph (*rld.canvas, *elipsisCh, outdest, elipsisSize);
 						}
 
 						outdest.x += elipsisCh->GetAdvance();
@@ -1003,7 +1049,7 @@ long UITextStyle::RenderPrewrappedLine(RenderLineData const & rld, UIRectangleSt
 					}
 					else
 					{
-						UISize const textSize(ch->GetWidth(), mLeading);
+						UISize const textSize(GetGlyphDrawWidth (*ch), mLeading);
 
 						outdest.x += ch->GetAdvancePre();
 
@@ -1018,7 +1064,7 @@ long UITextStyle::RenderPrewrappedLine(RenderLineData const & rld, UIRectangleSt
 							rld.canvas->Translate(-newDest);
 						}
 
-						rld.canvas->BltFromNoScaleOrRotate (ch->GetCanvas(), ch->GetLocation(), outdest, textSize);
+						BltGlyph (*rld.canvas, *ch, outdest, textSize);
 						outdest.x -= ch->GetAdvancePre();
 					}
 

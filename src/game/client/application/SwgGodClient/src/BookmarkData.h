@@ -16,12 +16,10 @@
 
 /**
 * BookmarkData is a singleton for storing information about the user's currently
-* assigned bookmarks.  The camera bookmarks are assumed to be for the current
-* GroundScene only.  The camera bookmarks should reload whenever the GroundScene
-* changes.
-*
-* @todo: make these bookmarks save between sessions, either on disk or on the server.
-* @todo: Camera bookmarks should be on a per-scene basis
+* assigned bookmarks.  Camera bookmarks belong to the current scene: they are saved
+* per scene (QSettings group CameraBookmarks) whenever they change, and reloaded by
+* setScene when the GroundScene changes.  Object bookmarks are session-only, since
+* network ids do not outlive the session.
 *
 */
 
@@ -64,14 +62,21 @@ public:
 	size_t                    getNumObjectBookmarks() const;
 	const ObjectBookmark&     getObjectBookmark(size_t index) const;
 
+	/// Switches the camera bookmarks to those saved for \a sceneId.
+	void                      setScene(const std::string & sceneId);
+
 private:
 	//disabled
 	BookmarkData(const BookmarkData & rhs);
 	BookmarkData& operator=(const BookmarkData & rhs);
 
+	void                      saveCameraBookmarks() const;
+	void                      loadCameraBookmarks();
+
 private:
 	CameraBookmarkContainer* m_cameras;
 	ObjectBookmarkContainer* m_objects;
+	std::string              m_sceneId;
 };
 
 // ======================================================================

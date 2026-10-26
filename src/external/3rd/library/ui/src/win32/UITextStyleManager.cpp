@@ -46,19 +46,6 @@ namespace UITextStyleManagerNamespace
 }
 using namespace UITextStyleManagerNamespace;
 
-namespace
-{
-	/// Custom font atlases (cuiuif_*) share one typeface; template logical pt sizes still span a wide
-	/// range. Compress toward the HUD baseline so grids/buttons don't dwarf nearby labels (same fix for
-	/// full UI replace and for default/bold/starwars when only partial routing uses the custom atlas).
-	inline int dampenPointTowardBaselineForCustomAtlas (int scaledPoint, int baselinePt)
-	{
-		int const d = scaledPoint - baselinePt;
-		int const out = baselinePt + d / 2;
-		return std::max (MIN_POINT_SIZE, std::min (MAX_POINT_SIZE, out));
-	}
-
-}
 //======================================================================================
 
 //----------------------------------------------------------------------
@@ -288,16 +275,9 @@ UITextStyle * UITextStyleManager::GetFontForLogicalFont (const UILowerString &lo
 		scaledLogicalPoint = std::max (MIN_POINT_SIZE, std::min (MAX_POINT_SIZE, scaledLogicalPoint));
 	}
 
+	//-- theme/user atlases take the size as named, like the stock fonts (they used to be pulled halfway toward 14,
+	//   which made every small label two sizes larger than the rows built for it)
 	bool const userFontActive = !m_userDefaultFontFaceUtf8.empty ();
-	if (userFontActive)
-	{
-		bool const resolveViaCuiuifAtlas = m_userFontFullReplace
-			|| !_stricmp (logicalFontFace.c_str (), "default")
-			|| !_stricmp (logicalFontFace.c_str (), "bold")
-			|| !_stricmp (logicalFontFace.c_str (), "starwars");
-		if (resolveViaCuiuifAtlas && _stricmp (logicalFontFace.c_str (), "stockui") != 0)
-			scaledLogicalPoint = dampenPointTowardBaselineForCustomAtlas (scaledLogicalPoint, fontSizeToMoveTowards);
-	}
 
 	scaledLogicalPoint = std::max (MIN_POINT_SIZE, std::min (MAX_POINT_SIZE, scaledLogicalPoint));
 
@@ -334,7 +314,9 @@ UITextStyle * UITextStyleManager::GetFontForLogicalFont (const UILowerString &lo
 		bool const forceStockUiChrome = !_stricmp (logicalFontFace.c_str (), "stockui");
 		if (!forceStockUiChrome && userFontActive && (m_userFontFullReplace || !_stricmp (logicalFontFace.c_str (), "default") || !_stricmp (logicalFontFace.c_str (), "bold") || !_stricmp (logicalFontFace.c_str (), "starwars")))
 		{
-			fixedFontFace = UILowerString ("cuiuif");
+			// "bold" keeps its weight through the generated bold atlases (cuiuifb_*, CuiDynamicUIFont) when present
+			bool const boldAtlas = !_stricmp (logicalFontFace.c_str (), "bold") && GetObjectFromPath ("/Fonts.cuiuifb_14", TUITextStyle) != 0;
+			fixedFontFace = UILowerString (boldAtlas ? "cuiuifb" : "cuiuif");
 		}
 		else
 		{

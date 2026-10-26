@@ -20,6 +20,7 @@
 #include "sharedFoundation/Production.h"
 #include "sharedNetworkMessages/MessageQueueGenericValueType.h"
 #include "sharedObject/Controller.h"
+#include "swgClientUserInterface/SwgCuiHudActionSpace.h"
 #include "swgClientUserInterface/SwgCuiHudWindowManagerGround.h"
 
 //======================================================================
@@ -34,8 +35,15 @@ using namespace SwgCuiHudActionGroundNamespace;
 //======================================================================
 
 SwgCuiHudActionGround::SwgCuiHudActionGround (SwgCuiHud & mediator) :
-SwgCuiHudAction (mediator)
+SwgCuiHudAction (mediator),
+m_shipBoosterDebounceMs(0),
+m_shipTargetLockDebounceMs(0)
 {
+	// atmospheric flight runs the ground HUD: the pilot's ship actions (component detail, hyperspace map, booster,
+	// target lock, weapon groups...) are the space HUD's
+	if (Game::isShipScene())
+		SwgCuiHudActionSpace::addShipActions(this);
+
 	CuiActionManager::addAction (CuiActions::showSurvey,               this, false);
 	CuiActionManager::addAction (CuiActions::survey,                   this, false);
 	CuiActionManager::addAction (CuiActions::shipChoose,               this, false);
@@ -63,6 +71,9 @@ SwgCuiHudWindowManagerGround & SwgCuiHudActionGround::getWindowManagerGround () 
 
 bool  SwgCuiHudActionGround::performAction (const std::string & id, const Unicode::String & params) const
 {
+	if (Game::isShipScene() && SwgCuiHudActionSpace::performShipAction(id, params, m_shipBoosterDebounceMs, m_shipTargetLockDebounceMs))
+		return true;
+
 	if (id == CuiActions::survey)
 	{
 		CuiSurveyManager::doSurvey();

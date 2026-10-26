@@ -12,9 +12,14 @@
 
 #include "Singleton/Singleton.h"
 
+#include <ctime>
+
 // =====================================================================
 
 class ActionHack;
+class ClientObject;
+class QProcess;
+class QTimer;
 
 //----------------------------------------------------------------------
 
@@ -52,6 +57,7 @@ public:
 	ActionHack*             m_clientSubmit;
 	ActionHack*             m_clientCompile;
 	ActionHack*             m_clientReplace;
+	ActionHack*             m_reloadAppearance;
 
 	ActionHack*				m_serverAddToFavorites;
 	ActionHack*				m_clientAddToFavorites;
@@ -70,7 +76,7 @@ private slots:
 	void onServerEdit   ();
 	void onServerNew    ();
 	void onServerSubmit ();
-	void onServerCompile() const;
+	void onServerCompile();
 	void onServerReload ()  const;
 	void onServerReplace();
 
@@ -79,15 +85,24 @@ private slots:
 	void onClientEdit   ();
 	void onClientNew    ();
 	void onClientSubmit ();
-	void onClientCompile() const;
+	void onClientCompile();
 	void onClientReplace();
+	void onReloadAppearance();
 
 	void onServerAddToFavorites ();
 	void onClientAddToFavorites ();
 
+	void onCompileOutput   ();
+	void onCompileExited   ();
+	void onCompileTimedOut ();
+
 public:
 	ActionsObjectTemplate ();
 	~ActionsObjectTemplate();
+
+	bool        compileTemplate     (const std::string& tpfPath);
+	static bool reloadClientTemplate(const std::string& templateName, const std::string& compiledFile);
+	static bool reloadAppearances   (const std::vector<ClientObject*>& objects);
 
 private:
 	//disabled
@@ -103,6 +118,24 @@ private:
 	const std::string getClientObjectTemplateIffFilePath() const;
 
 	void replaceObject(bool client);
+
+	struct CompileRequest
+	{
+		std::string tpfPath;       // absolute source path
+		std::string iffPath;       // absolute path the compiler writes
+		std::string templateName;  // TreeFile name, e.g. object/tangible/foo/shared_bar.iff
+		bool        server;
+		time_t      previousWriteTime;
+	};
+
+	void startNextCompile    ();
+	void appendCompileOutput (const char* data, int length, bool flush);
+
+	QProcess*                   m_compileProcess;
+	QTimer*                     m_compileTimer;
+	std::vector<CompileRequest> m_compileQueue; // front() is the one running
+	std::string                 m_compileLine;
+	int                         m_compileErrorLines;
 
 	std::string   m_selectedServerPath;
 	std::string   m_selectedClientPath;

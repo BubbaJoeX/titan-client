@@ -14,6 +14,7 @@
 class CellProperty;
 class Floor;
 class Iff;
+class IndexedTriangleList;
 class Object;
 class Portal;
 class PortalPropertyTemplate;
@@ -132,8 +133,10 @@ public:
 	bool                          clearLoadedCellSlot(int cellIndex);
 	bool                          releaseGraftedCellSlot(int graftedCellIndex);
 	bool                          computeGraftCellTransform(int hostCellIndex, int hostPortalIndex, char const *donorPobName, int donorCellIndex, int donorPortalIndex, Transform &outCellTransform_o2p, int *outResolvedDonorPortalIndex = 0) const;
+	bool                          computeLinkedGraftCellTransform(int hostCellIndex, int hostPortalIndex, int graftCellIndex, int graftPortalIndex, Transform &outCellTransform_o2p) const;
 	bool                          recordDynamicRoomGraft(DynamicRoomGraft const &graft);
 	bool                          removeDynamicRoomGraft(int graftedCellIndex);
+	void                          clearDynamicRoomGrafts();
 	bool                          findDynamicRoomGraftForSocket(int cellIndex, int portalIndex, DynamicRoomGraft &outGraft) const;
 	DynamicRoomGraftList const   &getDynamicRoomGrafts() const;
 
@@ -150,6 +153,8 @@ public:
 		int         materializedPortalIndex;
 		float       doorwayWidth;
 		float       doorwayHeight;
+		int         floorExtensionStartTri;
+		int         floorExtensionTriCount;
 	};
 
 	typedef std::vector<CustomSocket> CustomSocketList;
@@ -178,9 +183,17 @@ public:
 	uint32                        computeEffectiveLayoutCrc() const;
 	bool                          getPortalSocketTransform_o2p(int cellIndex, int portalIndex, Transform &outTransform_o2p) const;
 	bool                          getPortalNeighbor(int cellIndex, int portalIndex, int &outNeighborCellIndex, int &outNeighborPortalIndex) const;
+	IndexedTriangleList const    *getCellPortalGeometry(int cellIndex, int portalIndex) const;
 	bool                          linkCustomSocketGraft(int hostCellIndex, int customSocketIndex, int graftCellIndex, int graftPortalIndex);
+	bool                          prepareCustomSocketPortalOpening(int cellIndex, int customSocketIndex);
+	bool                          finalizeCustomSocketPortalWalkthrough(int cellIndex, int customSocketIndex);
 	bool                          materializeCustomSocketPortal(int cellIndex, int customSocketIndex);
+	void                          dematerializeAllCustomSocketPortals();
+	bool                          cutWallMeshForCustomSocketPortal(int cellIndex, int customSocketIndex);
+	void                          refreshCellWallCuts(int cellIndex);
+	void                          refreshAllCustomSocketWallCuts();
 	bool                          markCustomSocketOpen(int cellIndex, int socketIndex, bool open);
+	void                          refreshDynamicGraftPortalDpvs();
 
 	void                          clearBridgeSegments();
 	void                          recordBridgeSegment(BridgeSegment const &segment);

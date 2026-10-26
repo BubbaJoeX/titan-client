@@ -26,6 +26,7 @@
 class ClientProceduralTerrainAppearance;
 class ProceduralTerrainAppearanceTemplate;
 class TerrainGenerator;
+class Vector2d;
 class QListViewItem;
 class QResizeEvent;
 class QGroupBox;
@@ -340,6 +341,11 @@ private slots:
 	/// Applies the expensive full-map procedural invalidate after generator commits (runs next event-loop tick).
 	void onDeferredTerrainGeneratorHeavyInvalidate();
 
+	/// Pen row in Brush Settings: quick pressure toggles and the full Pen Tablet Settings dialog.
+	void onPenPressureStrengthToggled(bool on);
+	void onPenPressureSizeToggled(bool on);
+	void onTabletSettingsClicked();
+
 	/// Runs generator prepare / water rebuild / layer list refresh after bulky Apply paths (next event-loop tick).
 	void onDeferredTerrainGeneratorLiveCommitAfterHeavyApply();
 
@@ -392,6 +398,11 @@ private:
 	void populateEnvironmentFamilyCombo();
 	void populateBitmapStampCombo();
 	void createImportHeightRasterSection();
+	void createPenTabletRow();
+	/// Keeps the pen row in step with settings changed from Tools > Pen Tablet Settings and shows live pressure.
+	void refreshPenTabletRow();
+	/// Push GodClientPen pressure / eraser into GodClientTerrainEditor before a brush sample (neutral for the mouse).
+	void applyPenDynamics() const;
 
 	void scheduleDeferredTerrainGeneratorHeavyInvalidate();
 	void scheduleDeferredTerrainGeneratorLiveCommitAfterHeavyApply();
@@ -471,6 +482,19 @@ public:
 
 	/// True for brush-like tools and Select Region — suppresses orbit camera double-click.
 	bool suppressCameraDoubleClickForTerrainTool() const;
+
+	/// Ctrl+Z / Ctrl+Y with a terrain tool armed and terrain history available: undo/redo the stroke and return true.
+	bool tryConsumeUndoShortcut();
+	bool tryConsumeRedoShortcut();
+
+	/// [ / ] in the 3D view with a terrain tool armed: step brush size (x1.25) or strength (5%) through the dock sliders.
+	void stepBrushSize(int direction);
+	void stepBrushStrength(int direction);
+
+	/// Automation (GodClientBridge): arm \a tool (TM_None keeps the armed one), put \a size (m) and \a strength (0..1)
+	/// on the sliders when > 0, then one brush stroke through the world x/z points, as a mouse drag makes it (one
+	/// undo step). False with \a error set when no terrain is loaded or the tool is not a brush tool.
+	bool scriptedBrushStroke(ToolMode tool, float size, float strength, std::vector<Vector2d> const & points, std::string & error);
 
 private:
 
@@ -637,6 +661,13 @@ private:
 	QSpinBox*                  m_importHeightRasterPointsSpin;
 	QCheckBox*                 m_importHeightRasterInvertCheck;
 	QPushButton*               m_importHeightRasterApplyButton;
+
+	/// Built at runtime into Brush Settings (pen tablet pressure).
+	QCheckBox*                 m_penPressureStrengthCheck;
+	QCheckBox*                 m_penPressureSizeCheck;
+	QLabel*                    m_penPressureLabel;
+	QPushButton*               m_tabletSettingsButton;
+	int                        m_penPressureShown;
 
 	// Message callback
 	MessageDispatch::Callback* m_callback;

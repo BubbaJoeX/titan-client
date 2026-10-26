@@ -113,6 +113,7 @@ namespace CuiIoWinNamespace
 		case DIK_0: case DIK_NUMPAD0: return static_cast<unsigned short>('0');
 		case DIK_MINUS: case DIK_SUBTRACT: return static_cast<unsigned short>('-');
 		case DIK_EQUALS: case DIK_ADD: return static_cast<unsigned short>('=');
+		case DIK_SPACE: return UIMessage::Space;
 		default:
 			return 0;
 		}
@@ -1178,8 +1179,12 @@ IoResult CuiIoWin::processEvent (IoEvent * event)
 	if (event->type == IOET_KeyDown)
 	{
 		unsigned short const cinematicKs = mapDikToCinematicConversationKeystroke (event->arg2);
+		bool const cinematicInputActive =
+			CuiConversationManager::isCinematicConversationUiActive ()
+			|| CuiConversationManager::hasCloseCinematicUiHandler ()
+			|| CuiConversationManager::fetchCinematicMediatorInstance () != 0;
 		if (cinematicKs != 0
-			&& CuiConversationManager::isCinematicConversationUiActive ()
+			&& cinematicInputActive
 			&& (shiftState & (CuiM_BITS_CTRL | CuiM_BITS_MENU)) == 0
 			&& !textIsFocused
 			&& !(navigationIsFocused && isNavigationCode (event->arg2)))

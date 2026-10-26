@@ -105,7 +105,9 @@
 #include "FavoritesWindow.h"
 #include "FilesystemTree.h"
 #include "FormWindow.h"
+#include "GodClientBridge.h"
 #include "GodClientData.h"
+#include "GodClientPen.h"
 #include "GodClientTerrainEditor.h"
 #include "MainFrame.h"
 #include "ObjectTemplateData.h"
@@ -115,8 +117,10 @@
 
 
 //system includes
+#include <algorithm>
 #include <ctime>
 #include <sstream>
+#include <vector>
 
 // God Client must not include <dinput.h> in this TU: include order vs Qt/STLport reintroduces
 // Windows "far"/COM issues. SetupClientDirectInput only needs the menu key scan code here;
@@ -137,7 +141,9 @@ namespace
 #include <qmessagebox.h>
 #include <qpainter.h>
 #include <qpopupmenu.h>
+#include <qsettings.h>
 #include <qstatusbar.h>
+#include <qstringlist.h>
 #include <qtimer.h>
 
 // ======================================================================
@@ -206,7 +212,12 @@ namespace GameWidgetNamespace
 	//Persist object key
 	const int s_persistObjectKey = static_cast<int>(Qt::Key_P);
 
-	const int s_gameLoopTimeOut    = 5;
+	//-- zero-length: the loop runs whenever the Qt event queue is empty and Clock::limitFrameRate (at the end of each
+	//   frame) paces it. A 5 ms timer fired on the 15.6 ms system tick, so a 60 fps limit ran at about 32 fps.
+	const int s_gameLoopTimeOut    = 0;
+
+	//-- pixels a pen barrel press may wander before it becomes a camera drag instead of a context-menu click
+	const int s_penNavigationThreshold = 6;
 
 	bool s_mustApplyTransforms = true;
 
@@ -234,6 +245,54 @@ namespace GameWidgetNamespace
 	std::string s_lastBuildoutFileOpened;
 	bool        s_askQuestionAboutBuildoutFiles = true;
 	bool        s_openBuildoutFiles = false;
+
+	//-- most recently placed templates (full "object/....iff" names), newest first, kept across sessions
+	size_t const             s_maxRecentTemplates = 12;
+	std::vector<std::string> s_recentTemplates;
+	char const               s_recentTemplatesGroup[] = "RecentTemplates";
+
+	void loadRecentTemplates()
+	{
+		QSettings settings;
+		settings.insertSearchPath(QSettings::Windows, "/SOE/SwgGodClient");
+		settings.beginGroup(s_recentTemplatesGroup);
+		QStringList const names(QStringList::split('|', settings.readEntry("list", QString())));
+		settings.endGroup();
+
+		s_recentTemplates.clear();
+		for (QStringList::ConstIterator it = names.begin(); it != names.end() && s_recentTemplates.size() < s_maxRecentTemplates; ++it)
+			s_recentTemplates.push_back(std::string((*it).latin1()));
+	}
+
+	void saveRecentTemplates()
+	{
+		QString blob;
+		for (std::vector<std::string>::const_iterator it = s_recentTemplates.begin(); it != s_recentTemplates.end(); ++it)
+		{
+			if (!blob.isEmpty())
+				blob += "|";
+			blob += it->c_str();
+		}
+
+		QSettings settings;
+		settings.insertSearchPath(QSettings::Windows, "/SOE/SwgGodClient");
+		settings.beginGroup(s_recentTemplatesGroup);
+		IGNORE_RETURN(settings.writeEntry("list", blob));
+		settings.endGroup();
+	}
+
+	void rememberPlacedTemplate(std::string const & templateName)
+	{
+		std::vector<std::string>::iterator const it = std::find(s_recentTemplates.begin(), s_recentTemplates.end(), templateName);
+		if (it != s_recentTemplates.end())
+			IGNORE_RETURN(s_recentTemplates.erase(it));
+		IGNORE_RETURN(s_recentTemplates.insert(s_recentTemplates.begin(), templateName));
+		if (s_recentTemplates.size() > s_maxRecentTemplates)
+			s_recentTemplates.resize(s_maxRecentTemplates);
+		saveRecentTemplates();
+
+		ActionsEdit::getInstance().placeLastTemplate->setEnabled(true);
+	}
 }
 
 static void fileControlLogToConsole(const char * message)
@@ -317,6 +376,7 @@ GameWidget::GameWidget(QWidget* theParent, const char*theName)
   m_pop(0),
   m_templateMenu(0),
   m_setConditionMenu(0),
+  m_recentTemplatesMenu(0),
   m_conditionMenuIdMap(),
   m_lastOID(10000),
   m_rubberBandRect(),
@@ -324,6 +384,8 @@ GameWidget::GameWidget(QWidget* theParent, const char*theName)
   m_rubberBandOk(false),
   m_mouseDownPoint(),
   m_flyButtonDown(false),
+  m_penNavigating(false),
+  m_penNavigated(false),
   m_interiorCameraOn(false),
   m_popupData(),
   m_gs(0),
@@ -484,9 +546,13 @@ GameWidget::GameWidget(QWidget* theParent, const char*theName)
 
 	GodClientApplication::setGameHWND(winId());
 
-	//-- override the platform frame rate limiter with our own, if needed
+	//-- no Windows Ink press-and-hold right click, flicks or ripples while dragging in the 3D view
+	GodClientPen::attachWindow(static_cast<HWND>(winId()));
+
+	//-- the Clock frame rate limiter paces the game loop (setFrameRateLimit keeps it in step); 20 fps if nothing
+	//   configures a limit
+	Clock::setFrameRateLimit(1000.0f / static_cast<float>(m_minFrameLength));
 	setFrameRateLimit(static_cast<int>(ConfigSharedFoundation::getFrameRateLimit()));
-	Clock::noFrameRateLimit();
 
 	ConfigFileControl::install();
 	FileControlClient::install();
@@ -539,6 +605,11 @@ GameWidget::GameWidget(QWidget* theParent, const char*theName)
 	m_setConditionMenu = new QPopupMenu(this, "GameWidget_setConditionMenu");
 	IGNORE_RETURN(connect(m_setConditionMenu, SIGNAL(activated(int)), this, SLOT(onSetConditionMenuActivated(int))));
 
+	m_recentTemplatesMenu = new QPopupMenu(this, "GameWidget_recentTemplatesMenu");
+	IGNORE_RETURN(connect(m_recentTemplatesMenu, SIGNAL(activated(int)), this, SLOT(onRecentTemplateFromMenu(int))));
+	loadRecentTemplates();
+	ActionsEdit::getInstance().placeLastTemplate->setEnabled(!s_recentTemplates.empty());
+
 	m_keyStates = new KeyStates;
 
 	updateSceneData();
@@ -546,6 +617,7 @@ GameWidget::GameWidget(QWidget* theParent, const char*theName)
 	IGNORE_RETURN(connect(ActionsGame::getInstance().gameFocusAllowed, SIGNAL(toggled(bool)), this, SLOT(onGameFocusAllowedChanged(bool))));
 //	IGNORE_RETURN(connect(ActionsGame::getInstance().interiorCameraAllowed, SIGNAL(toggled(bool)), this, SLOT(onInteriorCameraChanged(bool))));
 	IGNORE_RETURN(connect(ActionsEdit::getInstance().createObjectFromSelectedTemplate, SIGNAL(activated()), this, SLOT(createObjectFromSelectedTemplate())));
+	IGNORE_RETURN(connect(ActionsEdit::getInstance().placeLastTemplate, SIGNAL(activated()), this, SLOT(placeLastTemplateAtCursor())));
 	IGNORE_RETURN(connect(ActionsView::getInstance().addObjectBookmark, SIGNAL(activated()), this, SLOT(onAddObjectBookmark())));
 
 	m_callback->connect (*this, &GameWidget::onEditFormData, static_cast<FormManagerClient::Messages::EditFormData *>(0));
@@ -559,6 +631,8 @@ GameWidget::GameWidget(QWidget* theParent, const char*theName)
 GameWidget::~GameWidget()
 {
 	ms_globalGameWidget = NULL;
+
+	GodClientPen::detachWindow(static_cast<HWND>(winId()));
 
 	delete m_timer;
 	m_timer = NULL;
@@ -575,12 +649,14 @@ GameWidget::~GameWidget()
 	delete m_callback;
 	m_callback = 0;
 
+	GodClientBridge::remove();
 	RecentDirectory::remove();
 	SetupSharedFoundation::remove();
 	SetupSharedThread::remove();
 
 	m_templateMenu = NULL; //lint !e423 creation of memory leak, it's owned by Qt, gets deleted eventually
 	m_setConditionMenu = NULL; //lint !e423 creation of memory leak, it's owned by Qt, gets deleted eventually
+	m_recentTemplatesMenu = NULL; //lint !e423 owned by Qt
 	m_gs = NULL;
 	m_autoDragNetworkId = NULL;
 	m_pop = NULL;          //lint !e423 creation of memory leak, it's owned by Qt, gets deleted eventually
@@ -592,18 +668,24 @@ void GameWidget::runGameLoop()
 {
 	static bool processingThisFunction = false;
 
-	int actualMinFrameLength = m_minFrameLength;
-	//-- if invisible, run at 1 fps, if simply inactive(may still be visible), run at half speed
+	//-- if invisible, run at 1 fps, if simply inactive(may still be visible), run at half speed; otherwise the
+	//   Clock frame rate limiter paces the loop
+	int throttledFrameLength = 0;
 	if(!isVisible())
-		actualMinFrameLength = 1000;
+		throttledFrameLength = 1000;
 	else if(!MainFrame::getInstance().isActive())
-		actualMinFrameLength *= 2;
+		throttledFrameLength = m_minFrameLength * 2;
 
 	const QTime curTime = QTime::currentTime();
 
+	//-- negative across midnight (QTime wraps): run the frame rather than wait
 	int const elapsedTime = m_lastFrameTimestamp.msecsTo(curTime);
-	if(elapsedTime < actualMinFrameLength)
+	if(elapsedTime >= 0 && elapsedTime < throttledFrameLength)
+	{
+		//-- sleep out the rest of the throttled frame on the timer instead of spinning the event loop
+		IGNORE_RETURN(m_timer->start(throttledFrameLength - elapsedTime, false));
 		return;
+	}
 
 	m_lastFrameTimestamp = curTime;
 
@@ -643,12 +725,15 @@ void GameWidget::runGameLoop()
 
 	++m_frameCounter;
 
+	//-- automation requests run between frames, inside the re-entry guard (see GodClientBridge.h)
+	GodClientBridge::update();
+
 	// Update terrain dock for brush preview rendering
 	{
 		TerrainDock* terrainDock = MainFrame::getInstance().getTerrainDock();
 		if (terrainDock)
 		{
-			terrainDock->updateFrame(static_cast<float>(elapsedTime) * 0.001f);
+			terrainDock->updateFrame(static_cast<float>(std::max(0, elapsedTime)) * 0.001f);
 		}
 	}
 
@@ -777,14 +862,24 @@ void GameWidget::keyPressEvent(QKeyEvent*keyEvent)
 		{
 			GodClientData::getInstance().translateSelection(+1, +0, false);
 		}
-		//-- move towards camera
-		if (keyEvent->key() == s_moveTowardsCameraKey)
+		//-- [ and ]: with a terrain tool armed, brush size (Shift: strength); otherwise push the
+		//-- selection away from / pull it toward the camera by 10% of its distance
+		bool const bracketLeft  = keyEvent->key() == s_moveAwayFromCameraKey || keyEvent->key() == static_cast<int>(Qt::Key_BraceLeft);
+		bool const bracketRight = keyEvent->key() == s_moveTowardsCameraKey  || keyEvent->key() == static_cast<int>(Qt::Key_BraceRight);
+		if (bracketLeft || bracketRight)
 		{
-			ConsoleWarning("GameWidget::keyPressEvent: s_moveTowardsCameraKey not implemented yet");
-		}
-		if (keyEvent->key() == s_moveAwayFromCameraKey)
-		{
-			ConsoleWarning("GameWidget::keyPressEvent: s_moveAwayFromCameraKey not implemented yet");
+			int const direction = bracketRight ? 1 : -1;
+			TerrainDock* const terrainDock = MainFrame::getInstance().getTerrainDock();
+			if (terrainDock && terrainDock->isTerrainEditingActive())
+			{
+				if (hasState(keyEvent, Qt::ShiftButton))
+					terrainDock->stepBrushStrength(direction);
+				else
+					terrainDock->stepBrushSize(direction);
+			}
+			else
+				pullSelection(bracketRight ? CONST_REAL(-0.1) : CONST_REAL(0.1), false);
+			return;
 		}
 		//--Persist key
 		if (keyEvent->key() == s_persistObjectKey)
@@ -993,6 +1088,21 @@ void GameWidget::mouseMoveEvent(QMouseEvent*mouseEvent)
 	m_gs->activateGodClientCamera();
 	FreeCamera* const cam  = NON_NULL(m_gs->getGodClientCamera());
 
+	//-- Windows Ink turns pen barrel button + tip into the right button: dragging with it moves
+	//-- the camera (orbit, Shift pans, Ctrl zooms) while a barrel click still opens the context menu
+	GodClientPen::Settings const & penSettings = GodClientPen::getSettings();
+	bool const penBarrelDrag =
+		penSettings.enabled &&
+		penSettings.barrelNavigation &&
+		!hasState(mouseEvent, QWidget::AltButton) &&
+		hasState(mouseEvent, QWidget::RightButton) &&
+		!hasState(mouseEvent, QWidget::LeftButton) &&
+		!m_keyStates->hasAnyState() &&
+		GodClientPen::isPenEvent();
+
+	if(penBarrelDrag && !m_penNavigating && (mouseEvent->pos() - m_mouseDownPoint).manhattanLength() > s_penNavigationThreshold)
+		m_penNavigating = true;
+
 	//-- use maya movement controls
 	if(hasState(mouseEvent, QWidget::AltButton))
 	{
@@ -1097,6 +1207,39 @@ void GameWidget::mouseMoveEvent(QMouseEvent*mouseEvent)
 		}
 
 		emit pivotDistanceChanged(m_gs->getGodClientCamera()->getPivotDistance());
+	}
+
+	else if(penBarrelDrag)
+	{
+		if(m_penNavigating)
+		{
+			InputMap* const imap   = NON_NULL(m_gs->getGodClientInputMap());
+			MessageQueue* const q  = NON_NULL(imap->getMessageQueue());
+
+			//-- pan parallel to the view plane, like Alt+right drag
+			if(hasState(mouseEvent, QWidget::ShiftButton))
+			{
+				if(dx)
+					q->appendMessage(static_cast<int>(CM_cameraPivotTranslateX), -dx);
+				if(dy)
+					q->appendMessage(static_cast<int>(CM_cameraPivotTranslateY), dy);
+			}
+
+			//-- zoom the pivot; right or up zooms in, like Alt+middle drag
+			else if(hasState(mouseEvent, QWidget::ControlButton))
+			{
+				q->appendMessage(static_cast<int>(CM_cameraPivotZoom), dy - dx);
+			}
+
+			//-- orbit the pivot, like Alt+left drag
+			else
+			{
+				q->appendMessage(static_cast<int>(CM_cameraPivotYaw),   dx);
+				q->appendMessage(static_cast<int>(CM_cameraPivotPitch), dy);
+			}
+
+			emit pivotDistanceChanged(m_gs->getGodClientCamera()->getPivotDistance());
+		}
 	}
 
 	else if(m_autoDraggingObjects && !m_keyStates->hasAnyState())
@@ -1306,6 +1449,13 @@ void GameWidget::wheelEvent(QWheelEvent* evt)
 void GameWidget::mousePressEvent(QMouseEvent*mouseEvent)
 {
 	mouseEvent->accept();
+
+	if(mouseEvent->button() == Qt::RightButton)
+	{
+		m_penNavigating = false;
+		m_penNavigated = false;
+	}
+
 	if(isMiddleButtonActive(mouseEvent) &&
 		(mouseEvent->state() &(Qt::AltButton | Qt::ControlButton)) ==(Qt::AltButton | Qt::ControlButton))
 		m_flyButtonDown = true;
@@ -1382,6 +1532,13 @@ void GameWidget::mousePressEvent(QMouseEvent*mouseEvent)
 void GameWidget::mouseReleaseEvent(QMouseEvent*mouseEvent)
 {
 	mouseEvent->accept();
+
+	//-- Qt sends the context menu event right after this release
+	if(mouseEvent->button() == Qt::RightButton)
+	{
+		m_penNavigated = m_penNavigating;
+		m_penNavigating = false;
+	}
 
 	if(!isMiddleButtonActive(mouseEvent))
 		m_flyButtonDown = false;
@@ -1547,7 +1704,9 @@ void GameWidget::mouseDoubleClickEvent(QMouseEvent* mouseEvent)
 			if(obj)
 			{
 				ActionsView::getInstance().centerCameraOnObject(*obj, true, static_cast<int>(ActionsView::Fit_dontCare));
-				QCursor::setPos(mapToGlobal(rect().center()));
+				//-- a pen owns the cursor position; warping it just flickers back to the tip
+				if(!GodClientPen::getState().inRange)
+					QCursor::setPos(mapToGlobal(rect().center()));
 				m_rubberBandOk = false;
 				m_rubberBanding = false;
 			}
@@ -1561,7 +1720,8 @@ void GameWidget::mouseDoubleClickEvent(QMouseEvent* mouseEvent)
 					if(cellProperty && cellProperty != CellProperty::getWorldCellProperty())
 						worldPoint = cellProperty->getOwner().getTransform_o2w().rotateTranslate_l2p(intersection_p);
 					ActionsView::getInstance().centerCameraOnPoint(worldPoint, true, static_cast<int>(ActionsView::Fit_point));
-					QCursor::setPos(mapToGlobal(rect().center()));
+					if(!GodClientPen::getState().inRange)
+						QCursor::setPos(mapToGlobal(rect().center()));
 					m_rubberBandOk = false;
 					m_rubberBanding = false;
 				}
@@ -1643,6 +1803,14 @@ namespace
 
 void GameWidget::contextMenuEvent(QContextMenuEvent* evt)
 {
+	//-- the barrel button was dragging the camera, not asking for a menu
+	if(m_penNavigated)
+	{
+		m_penNavigated = false;
+		evt->accept();
+		return;
+	}
+
 	if(m_gameHasFocus || !m_gs)
 		return;
 
@@ -1747,6 +1915,12 @@ void GameWidget::contextMenuEvent(QContextMenuEvent* evt)
 		IGNORE_RETURN(ea.dropToTerrain-> addTo(m_pop));
 		IGNORE_RETURN(ea.randomRotate->  addTo(m_pop));
 		IGNORE_RETURN(ea.setTransform->  addTo(m_pop));
+		IGNORE_RETURN(ea.copyTransform-> addTo(m_pop));
+		IGNORE_RETURN(ea.pastePosition-> addTo(m_pop));
+		IGNORE_RETURN(ea.pasteRotation-> addTo(m_pop));
+		IGNORE_RETURN(ea.pasteTransform->addTo(m_pop));
+		IGNORE_RETURN(ea.selectSameTemplate->addTo(m_pop));
+		IGNORE_RETURN(ActionsObjectTemplate::getInstance().m_reloadAppearance->addTo(m_pop));
 		IGNORE_RETURN(ea.editTriggers->  addTo(m_pop));
 		IGNORE_RETURN(ea.showObjectAxes->addTo(m_pop));
 		IGNORE_RETURN(ActionsGame::getInstance().watchTargetPath->addTo(m_pop));
@@ -1782,6 +1956,13 @@ void GameWidget::contextMenuEvent(QContextMenuEvent* evt)
 	{
 		IGNORE_RETURN(m_pop->insertSeparator());
 		IGNORE_RETURN(m_pop->insertItem("Create Object...", m_templateMenu));
+
+		NOT_NULL(m_recentTemplatesMenu);
+		m_recentTemplatesMenu->clear();
+		for(size_t i = 0; i < s_recentTemplates.size(); ++i)
+			IGNORE_RETURN(m_recentTemplatesMenu->insertItem(s_recentTemplates[i].c_str(), static_cast<int>(i)));
+		int const recentId = m_pop->insertItem("Recent Templates", m_recentTemplatesMenu);
+		m_pop->setItemEnabled(recentId, !s_recentTemplates.empty());
 	}
 
 	m_popupData.point = QCursor::pos();
@@ -1911,6 +2092,9 @@ void GameWidget::updateSceneData()
 		SwgCuiHud * const hud = SwgCuiHudFactory::findMediatorForCurrentHud ();
 		if (hud)
 			hud->setHudEnabled(false);
+
+		//-- camera bookmarks are saved per planet
+		BookmarkData::getInstance().setScene(Game::getSceneId());
 	}
 
 	//send the setgodmode command to the server
@@ -2076,6 +2260,42 @@ void GameWidget::createObjectFromSelectedTemplate()
 	}
 }
 
+// ----------------------------------------------------------------------
+
+/**
+ * Ctrl+Shift+N: place the most recently placed template again, under the cursor.
+ */
+void GameWidget::placeLastTemplateAtCursor()
+{
+	if(s_recentTemplates.empty())
+	{
+		QApplication::beep();
+		return;
+	}
+
+	std::string const templateName(s_recentTemplates.front());
+	GodClientData::getInstance().setObjectCreationPending(true);
+	ClientObject* const obj = dynamic_cast<ClientObject *>(createObjectFromTemplateAtPoint(templateName, mapFromGlobal(QCursor::pos())));
+	if(obj)
+	{
+		GodClientData::getInstance().setSelection(obj);
+		GodClientData::getInstance().synchronizeSelectionWithGhosts();
+	}
+}
+
+// ----------------------------------------------------------------------
+
+void GameWidget::onRecentTemplateFromMenu(int const index)
+{
+	if(index < 0 || index >= static_cast<int>(s_recentTemplates.size()))
+		return;
+
+	//-- place where the menu was opened, like Create Object...
+	QCursor::setPos(m_popupData.point);
+	std::string const templateName(s_recentTemplates[static_cast<size_t>(index)]);
+	IGNORE_RETURN(createObjectFromTemplateAtPoint(templateName, mapFromGlobal(m_popupData.point)));
+}
+
 //-----------------------------------------------------------------
 
 /**
@@ -2108,14 +2328,6 @@ Object* GameWidget::createObjectFromTemplateAtPoint(const std::string& templateN
 		return NULL;
 	}
 
-	// determine the name of the buildout file for this object
-
-	std::string buildoutName( SharedBuildoutAreaManager::getBuildoutNameForPosition( Game::getSceneId().c_str(), result, false ) );
-	std::pair<std::string, std::string> const & s = SharedBuildoutAreaManager::parseEncodedBuildoutName(buildoutName.c_str());
-
-
-	bool okToPlaceObj = true;
-
 	if ( s_askQuestionAboutBuildoutFiles )
 	{
 		s_askQuestionAboutBuildoutFiles = false; // <- make sure we don't ask again for this session
@@ -2132,27 +2344,52 @@ Object* GameWidget::createObjectFromTemplateAtPoint(const std::string& templateN
 		}
 
 	}
+
+	Transform transform;
+	transform.setPosition_p(result);
+	return createObjectFromTemplateWithTransform(templateName, cellProperty, transform);
+}
+
+//-----------------------------------------------------------------
+
+/**
+ * A cursor placement without the cursor or any dialog (also the automation bridge's, GodClientBridge): opens the
+ * spot's buildout files if the user chose that, creates the object (offline) or asks the server for it (connected,
+ * returns NULL), and remembers the template for Recent Templates.
+ * @pre templateName must be fully qualified as object/<templateName>.iff already
+ */
+Object* GameWidget::createObjectFromTemplateWithTransform(const std::string& templateName, const CellProperty* cellProperty, const Transform& transform)
+{
+	if(templateName.empty())
+		return NULL;
+
+	// determine the name of the buildout file for this object
+
+	std::string buildoutName( SharedBuildoutAreaManager::getBuildoutNameForPosition( Game::getSceneId().c_str(), transform.getPosition_p(), false ) );
+	std::pair<std::string, std::string> const & s = SharedBuildoutAreaManager::parseEncodedBuildoutName(buildoutName.c_str());
+
+	bool okToPlaceObj = true;
 	if ( s_openBuildoutFiles && s.second != s_lastBuildoutFileOpened )
 	{
 		okToPlaceObj = BuildoutAreaSupport::openBuildoutFilesForEditing( s.second );
 	}
-	
+
 	Object *obj = 0;
 
 	// get the names of the data files
 	if ( okToPlaceObj == true )
 	{
 		// save the name of the buildout area so that we don't try and open it every time we place an object
-		s_lastBuildoutFileOpened = s.second; 
+		s_lastBuildoutFileOpened = s.second;
 
 		// try and create the object
-		Transform transform;
-		transform.setPosition_p(result);
 		obj = ServerCommander::getInstance().createObject("Newb", templateName, cellProperty, transform);
+
+		if(obj)
+			rememberPlacedTemplate(templateName);
 	}
 
 	return obj;
-	
 }
 
 //-----------------------------------------------------------------
@@ -2498,8 +2735,11 @@ void GameWidget::focusInEvent( QFocusEvent* )
 
 void GameWidget::setFrameRateLimit(int fps)
 {
-	if(fps)
+	if(fps > 0)
+	{
 		m_minFrameLength = std::max(1, 1000 / fps);
+		Clock::setFrameRateLimit(static_cast<float>(fps));
+	}
 }
 
 //----------------------------------------------------------------------

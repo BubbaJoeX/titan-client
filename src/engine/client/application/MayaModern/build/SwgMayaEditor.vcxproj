@@ -149,6 +149,10 @@ if %errorlevel% neq 0 goto :cmEnd
 if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgSplitMeshFourQuadrants.py D:/titan/client/src/engine/client/application/MayaModern/build/Debug/swgSplitMeshFourQuadrants.py
 if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgMocapSuite.mel D:/titan/client/src/engine/client/application/MayaModern/build/Debug/swgMocapSuite.mel
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_directory D:/titan/client/src/engine/client/application/MayaModern/scripts/swg_mocap D:/titan/client/src/engine/client/application/MayaModern/build/Debug/swg_mocap
+if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 :cmErrorLevel
@@ -238,6 +242,10 @@ if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgKeepFrameZeroKeys.mel D:/titan/client/src/engine/client/application/MayaModern/build/Release/swgKeepFrameZeroKeys.mel
 if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgSplitMeshFourQuadrants.py D:/titan/client/src/engine/client/application/MayaModern/build/Release/swgSplitMeshFourQuadrants.py
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgMocapSuite.mel D:/titan/client/src/engine/client/application/MayaModern/build/Release/swgMocapSuite.mel
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_directory D:/titan/client/src/engine/client/application/MayaModern/scripts/swg_mocap D:/titan/client/src/engine/client/application/MayaModern/build/Release/swg_mocap
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -329,6 +337,10 @@ if %errorlevel% neq 0 goto :cmEnd
 if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgSplitMeshFourQuadrants.py D:/titan/client/src/engine/client/application/MayaModern/build/MinSizeRel/swgSplitMeshFourQuadrants.py
 if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgMocapSuite.mel D:/titan/client/src/engine/client/application/MayaModern/build/MinSizeRel/swgMocapSuite.mel
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_directory D:/titan/client/src/engine/client/application/MayaModern/scripts/swg_mocap D:/titan/client/src/engine/client/application/MayaModern/build/MinSizeRel/swg_mocap
+if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 :cmErrorLevel
@@ -417,6 +429,10 @@ if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgKeepFrameZeroKeys.mel D:/titan/client/src/engine/client/application/MayaModern/build/RelWithDebInfo/swgKeepFrameZeroKeys.mel
 if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgSplitMeshFourQuadrants.py D:/titan/client/src/engine/client/application/MayaModern/build/RelWithDebInfo/swgSplitMeshFourQuadrants.py
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different D:/titan/client/src/engine/client/application/MayaModern/scripts/swgMocapSuite.mel D:/titan/client/src/engine/client/application/MayaModern/build/RelWithDebInfo/swgMocapSuite.mel
+if %errorlevel% neq 0 goto :cmEnd
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_directory D:/titan/client/src/engine/client/application/MayaModern/scripts/swg_mocap D:/titan/client/src/engine/client/application/MayaModern/build/RelWithDebInfo/swg_mocap
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -684,6 +700,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgLightsaberToolkit.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgVehicleToolkit.cpp" />
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgVehicleToolkit.h" />
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgMocapSuite.cpp" />
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgMocapSuite.h" />
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ShaderExporter.cpp" />
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ShaderExporter.h" />
   </ItemGroup>

@@ -424,16 +424,16 @@
 							/>
 						</Namespace>
 						<ButtonStyle
-							DisabledIconColor='#80FFFF'
+							DisabledIconColor='#92C3ED'
 							DisabledTextColor='#028BA8'
 							DisabledTextMargin='3,0,3,0'
-							MouseOverIconColor='#00FFFF'
+							MouseOverIconColor='#2487DB'
 							MouseOverSound='ui_rollover'
 							MouseOverTextColor='#18393D'
 							MouseOverTextMargin='3,0,3,0'
 							MouseOverTextStyle='starwars_21'
 							Name='style'
-							NormalIconColor='#00D6FB'
+							NormalIconColor='#2381D8'
 							NormalTextColor='#62FF15'
 							NormalTextMargin='3,0,3,0'
 							NormalTextStyle='starwars_21'
@@ -974,16 +974,16 @@
 								/>
 							</Namespace>
 							<ButtonStyle
-								DisabledIconColor='#80FFFF'
+								DisabledIconColor='#92C3ED'
 								DisabledTextColor='#028BA8'
 								DisabledTextMargin='3,0,3,0'
-								MouseOverIconColor='#00FFFF'
+								MouseOverIconColor='#2487DB'
 								MouseOverSound='ui_rollover'
 								MouseOverTextColor='#18393D'
 								MouseOverTextMargin='3,0,3,0'
 								MouseOverTextStyle='starwars_14'
 								Name='style'
-								NormalIconColor='#00D6FB'
+								NormalIconColor='#2381D8'
 								NormalTextColor='#62FF15'
 								NormalTextMargin='3,0,3,0'
 								NormalTextStyle='starwars_14'
@@ -1227,7 +1227,7 @@
 						GetsInput='false'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='1024,768'
 						Size='1024,768'
 					>
@@ -1824,7 +1824,7 @@
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='300,464'
 						Size='300,464'
 					>
@@ -2197,7 +2197,7 @@
 								Visible='false'
 							>
 								<Image
-									BackgroundColor='#1FE6F5'
+									BackgroundColor='#3D8FD7'
 									Color='#54E4FE'
 									DragType='cmd_dummy'
 									Location='2,0'
@@ -2392,7 +2392,7 @@
 								Size='399,36'
 							>
 								<Image
-									BackgroundColor='#1FE6F5'
+									BackgroundColor='#3D8FD7'
 									DragType='cmd_dummy'
 									Location='2,0'
 									Name='icon'
@@ -2434,7 +2434,7 @@
 								Size='399,36'
 							>
 								<Image
-									BackgroundColor='#1FE6F5'
+									BackgroundColor='#3D8FD7'
 									DragType='cmd_dummy'
 									Location='2,0'
 									Name='icon'
@@ -2476,7 +2476,7 @@
 								Size='399,36'
 							>
 								<Image
-									BackgroundColor='#1FE6F5'
+									BackgroundColor='#3D8FD7'
 									DragType='cmd_dummy'
 									Location='2,0'
 									Name='icon'
@@ -2519,7 +2519,7 @@
 								Size='399,36'
 							>
 								<Image
-									BackgroundColor='#1FE6F5'
+									BackgroundColor='#3D8FD7'
 									DragType='cmd_dummy'
 									Location='2,0'
 									Name='icon'
@@ -2561,7 +2561,7 @@
 								Size='399,36'
 							>
 								<Image
-									BackgroundColor='#1FE6F5'
+									BackgroundColor='#3D8FD7'
 									DragType='cmd_dummy'
 									Location='2,0'
 									Name='icon'
@@ -2787,7 +2787,7 @@
 				</Page>
 			</Composite>
 			<TabbedPane
-				BackgroundColor='#009977'
+				BackgroundColor='#155584'
 				DataSource='TabData'
 				Location='11,31'
 				MinimumScrollExtent='2334,0'
@@ -2959,7 +2959,7 @@
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='444,438'
 						Size='444,438'
 					>

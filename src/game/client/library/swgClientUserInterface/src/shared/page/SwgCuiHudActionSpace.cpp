@@ -7,6 +7,10 @@
 
 #include "swgClientUserInterface/FirstSwgClientUserInterface.h"
 #include "swgClientUserInterface/SwgCuiHudActionSpace.h"
+#include "clientUserInterface/CuiMediatorTypes.h"
+#include "swgClientUserInterface/SwgCuiShipComponentDetail.h"
+#include "sharedObject/NetworkIdManager.h"
+#include "clientGame/ClientObject.h"
 
 #include "UnicodeUtils.h"
 #include "clientGame/ClientCommandQueue.h"
@@ -48,20 +52,27 @@ SwgCuiHudAction (mediator),
 m_toggleDebounceCounterMsBooster(0),
 m_toggleDebounceCounterMsTargetLock(0)
 {
-	CuiActionManager::addAction (CuiActions::autopilotLevelShip,         this, false);
-	CuiActionManager::addAction (CuiActions::onPointerToggled,           this, false);
-	CuiActionManager::addAction (CuiActions::boosterToggleDown,          this, false);
-	CuiActionManager::addAction (CuiActions::boosterToggleUp,            this, false);
+	addShipActions(this);
 #ifdef ENABLE_FORMATIONS
 	CuiActionManager::addAction (CuiActions::spaceAssignPlayerFormation, this, false);
 #endif
-	CuiActionManager::addAction (CuiActions::weaponGroupAssignment,      this, false);
-	CuiActionManager::addAction (CuiActions::shipComponentDetail,        this, false);
-	CuiActionManager::addAction (CuiActions::hyperspaceMap,              this, false);
-	CuiActionManager::addAction (CuiActions::targetLockDown,             this, false);
-	CuiActionManager::addAction (CuiActions::targetLockUp,               this, false);
-	CuiActionManager::addAction (CuiActions::spaceTargetStationAndComm,  this, false);
-	CuiActionManager::addAction (CuiActions::spaceMiningSale,  this, false);
+}
+
+//----------------------------------------------------------------------
+
+void SwgCuiHudActionSpace::addShipActions (CuiAction * const action)
+{
+	CuiActionManager::addAction (CuiActions::autopilotLevelShip,         action, false);
+	CuiActionManager::addAction (CuiActions::onPointerToggled,           action, false);
+	CuiActionManager::addAction (CuiActions::boosterToggleDown,          action, false);
+	CuiActionManager::addAction (CuiActions::boosterToggleUp,            action, false);
+	CuiActionManager::addAction (CuiActions::weaponGroupAssignment,      action, false);
+	CuiActionManager::addAction (CuiActions::shipComponentDetail,        action, false);
+	CuiActionManager::addAction (CuiActions::hyperspaceMap,              action, false);
+	CuiActionManager::addAction (CuiActions::targetLockDown,             action, false);
+	CuiActionManager::addAction (CuiActions::targetLockUp,               action, false);
+	CuiActionManager::addAction (CuiActions::spaceTargetStationAndComm,  action, false);
+	CuiActionManager::addAction (CuiActions::spaceMiningSale,            action, false);
 }
 
 //----------------------------------------------------------------------
@@ -80,6 +91,32 @@ SwgCuiHudWindowManagerSpace & SwgCuiHudActionSpace::getWindowManagerSpace () con
 //----------------------------------------------------------------------
 
 bool  SwgCuiHudActionSpace::performAction (const std::string & id, const Unicode::String & params) const
+{
+	if (performShipAction(id, params, m_toggleDebounceCounterMsBooster, m_toggleDebounceCounterMsTargetLock))
+		return true;
+
+#ifdef ENABLE_FORMATIONS
+	if (id == CuiActions::spaceAssignPlayerFormation)
+	{	
+		CreatureObject const * const playerCreatureObject = Game::getPlayerCreature();
+		if (playerCreatureObject)
+		{
+			Object const * const groupAsObject = playerCreatureObject->getGroup().getObject();
+			GroupObject const * const group = dynamic_cast<GroupObject const *>(groupAsObject);
+			if (group && group->getLeader() == playerCreatureObject->getNetworkId())
+				getWindowManagerSpace().spawnSpaceAssignPlayerFormation();
+			else
+				CuiSystemMessageManager::sendFakeSystemMessage(SharedStringIds::not_group_leader_for_formation.localize());
+		}
+	}
+#endif
+
+	return SwgCuiHudAction::performAction (id, params);
+}
+
+//----------------------------------------------------------------------
+
+bool SwgCuiHudActionSpace::performShipAction (const std::string & id, const Unicode::String & params, int & boosterDebounceMs, int & targetLockDebounceMs)
 {
 	//----------------------------------------------------------------------
 
@@ -114,7 +151,8 @@ bool  SwgCuiHudActionSpace::performAction (const std::string & id, const Unicode
 
 	else if (id == CuiActions::onPointerToggled)
 	{
-		if (!CuiManager::getPointerToggledOn())
+		// (flying only: on foot on an atmospheric-flight planet the ground HUD has these actions too)
+		if (!CuiManager::getPointerToggledOn() && (Game::isSpace() || Game::getPlayerPilotedShip()))
 		{
 			// warp cursor to the center of the screen so that closing menus doesn't cause a deflection on
 			// the virtual joystick			
@@ -130,7 +168,7 @@ bool  SwgCuiHudActionSpace::performAction (const std::string & id, const Unicode
 	else if (id == CuiActions::boosterToggleDown)
 	{
 		int const timeMs = static_cast<int>(Clock::timeMs());
-		if (timeMs > m_toggleDebounceCounterMsBooster)
+		if (timeMs > boosterDebounceMs)
 		{
 			ShipObject * const shipObject = Game::getPlayerPilotedShip();
 			if (shipObject == NULL)
@@ -150,7 +188,7 @@ bool  SwgCuiHudActionSpace::performAction (const std::string & id, const Unicode
 						static uint32 const hash_boosterOn = Crc::normalizeAndCalculate("boosterOn");
 						IGNORE_RETURN(ClientCommandQueue::enqueueCommand(hash_boosterOn, NetworkId::cms_invalid, Unicode::emptyString));
 					}
-					m_toggleDebounceCounterMsBooster = timeMs + s_toggleDebounceMsBooster;
+					boosterDebounceMs = timeMs + s_toggleDebounceMsBooster;
 				}
 			}
 		}
@@ -161,7 +199,7 @@ bool  SwgCuiHudActionSpace::performAction (const std::string & id, const Unicode
 	else if (id == CuiActions::boosterToggleUp)
 	{	
 		int const timeMs = static_cast<int>(Clock::timeMs());
-		if (timeMs > m_toggleDebounceCounterMsBooster)
+		if (timeMs > boosterDebounceMs)
 		{
 			ShipObject * const shipObject = Game::getPlayerPilotedShip();
 			if (shipObject == NULL)
@@ -172,7 +210,7 @@ bool  SwgCuiHudActionSpace::performAction (const std::string & id, const Unicode
 				
 				if (boosterActive)
 				{
-					m_toggleDebounceCounterMsBooster = timeMs;
+					boosterDebounceMs = timeMs;
 				
 					if (Game::getSinglePlayer())
 						IGNORE_RETURN(shipObject->clientSetComponentActive(ShipChassisSlotType::SCST_booster, false));
@@ -201,21 +239,6 @@ bool  SwgCuiHudActionSpace::performAction (const std::string & id, const Unicode
 
 	//----------------------------------------------------------------------
 
-#ifdef ENABLE_FORMATIONS
-	else if (id == CuiActions::spaceAssignPlayerFormation)
-	{	
-		CreatureObject const * const playerCreatureObject = Game::getPlayerCreature();
-		if (playerCreatureObject)
-		{
-			Object const * const groupAsObject = playerCreatureObject->getGroup().getObject();
-			GroupObject const * const group = dynamic_cast<GroupObject const *>(groupAsObject);
-			if (group && group->getLeader() == playerCreatureObject->getNetworkId())
-				getWindowManagerSpace().spawnSpaceAssignPlayerFormation();
-			else
-				CuiSystemMessageManager::sendFakeSystemMessage(SharedStringIds::not_group_leader_for_formation.localize());
-		}
-	}
-#endif
 
 	//----------------------------------------------------------------------
 
@@ -223,16 +246,24 @@ bool  SwgCuiHudActionSpace::performAction (const std::string & id, const Unicode
 	{
 		std::string const & shipIdStr = Unicode::wideToNarrow(params);
 		NetworkId const shipId(shipIdStr);
-		getWindowManagerSpace().spawnShipComponentDetail(shipId);
+		Object * const o = NetworkIdManager::getObjectById(shipId);
+		ClientObject * const co = o ? o->asClientObject() : NULL;
+		ShipObject * const ship = co ? co->asShipObject() : NULL;
+		if (ship)
+		{
+			SwgCuiShipComponentDetail * const mediator = safe_cast<SwgCuiShipComponentDetail *>(CuiMediatorFactory::toggleInWorkspace (CuiMediatorTypes::WS_ShipComponentDetail));
+			if (mediator)
+				mediator->setShip(ship);
+		}
 	}
 
 	//----------------------------------------------------------------------
 
 	else if(id == CuiActions::hyperspaceMap)
 	{
-		// Disable hyperspace map in atmospheric flight (not available on ground planets)
-		if (Game::getPlayerPilotedShip() && Game::isSpace())
-			getWindowManagerSpace().spawnHyperspaceMap();
+		// the pilot's map: in space and in atmospheric flight alike
+		if (Game::getPlayerPilotedShip())
+			CuiMediatorFactory::toggleInWorkspace (CuiMediatorTypes::WS_HyperspaceMap);
 	}
 	
 	//----------------------------------------------------------------------
@@ -240,7 +271,7 @@ bool  SwgCuiHudActionSpace::performAction (const std::string & id, const Unicode
 	else if (id == CuiActions::targetLockDown)
 	{
 		int const timeMs = static_cast<int>(Clock::timeMs());
-		if (timeMs > m_toggleDebounceCounterMsTargetLock)
+		if (timeMs > targetLockDebounceMs)
 		{
 			CockpitCamera * const cockpitCamera = dynamic_cast<CockpitCamera *>(Game::getCamera());
 			
@@ -251,7 +282,7 @@ bool  SwgCuiHudActionSpace::performAction (const std::string & id, const Unicode
 				else
 				{
 					cockpitCamera->setCameraLockTarget(true);
-					m_toggleDebounceCounterMsTargetLock = timeMs + s_toggleDebounceMsTargetLock;
+					targetLockDebounceMs = timeMs + s_toggleDebounceMsTargetLock;
 				}			
 			}
 		}
@@ -262,13 +293,13 @@ bool  SwgCuiHudActionSpace::performAction (const std::string & id, const Unicode
 	else if (id == CuiActions::targetLockUp)
 	{	
 		int const timeMs = static_cast<int>(Clock::timeMs());
-		if (timeMs > m_toggleDebounceCounterMsTargetLock)
+		if (timeMs > targetLockDebounceMs)
 		{
 			CockpitCamera * const cockpitCamera = dynamic_cast<CockpitCamera *>(Game::getCamera());
 			
 			if (NULL != cockpitCamera)
 			{
-				m_toggleDebounceCounterMsTargetLock = timeMs;
+				targetLockDebounceMs = timeMs;
 				cockpitCamera->setCameraLockTarget(false);
 			}
 		}
@@ -299,7 +330,10 @@ bool  SwgCuiHudActionSpace::performAction (const std::string & id, const Unicode
 
 	//----------------------------------------------------------------------
 
-	return SwgCuiHudAction::performAction (id, params);
+	else
+		return false;
+
+	return true;
 }
 
 //======================================================================

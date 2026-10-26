@@ -95,6 +95,7 @@ StaticMeshTransferOptions StaticMeshTransferOptions::authoringDefaults()
     StaticMeshTransferOptions o;
     o.uvStorage = StaticMeshViewportSpace::UvStorage::LegacyOneMinusV;
     o.visualHardpoints = false;
+    o.oneToOne = true;
     return o;
 }
 
@@ -118,12 +119,25 @@ StaticMeshTransferOptions StaticMeshTransferOptions::fromSwgMshOptionsString(con
     // legacyTriangleFlip= is ignored (winding is automatic via StaticMeshViewportSpace).
     (void)parseOptionBoolLastWin(str, "legacyTriangleFlip=", false, nullptr);
 
+    bool oneToOneFound = false;
+    const bool oneToOneVal = parseOptionBoolLastWin(str, "oneToOne=", true, &oneToOneFound);
+    bool rebuildFound = false;
+    const bool rebuildVal = parseOptionBoolLastWin(str, "rebuildShaders=", false, &rebuildFound);
+    if (rebuildFound && rebuildVal)
+        o.oneToOne = false;
+    else if (oneToOneFound)
+        o.oneToOne = oneToOneVal;
+    else
+        o.oneToOne = true;
+
     return o;
 }
 
-StaticMeshTransferOptions StaticMeshTransferOptions::fromExportCommandFlags(bool objExportDirectUvFlag)
+StaticMeshTransferOptions StaticMeshTransferOptions::fromExportCommandFlags(bool objExportDirectUvFlag, bool oneToOneFlag,
+    bool rebuildShadersFlag)
 {
     StaticMeshTransferOptions o = authoringDefaults();
+    o.oneToOne = rebuildShadersFlag ? false : oneToOneFlag;
     if (objExportDirectUvFlag)
     {
         o.uvStorage = StaticMeshViewportSpace::UvStorage::ViewportDirect;
@@ -142,6 +156,8 @@ MString StaticMeshTransferOptions::toSwgMshOptionsString() const
     s += usesViewportDirectUv() ? "1" : "0";
     s += ";visualHardpoints=";
     s += visualHardpoints ? "1" : "0";
+    s += ";oneToOne=";
+    s += oneToOne ? "1" : "0";
     return s;
 }
 

@@ -1031,3 +1031,69 @@ void ShaderExporter::bootstrapDependenciesForWrittenShader(const std::string& ab
 {
     ::bootstrapDependenciesForWrittenShader(absShaderPath);
 }
+
+std::string ShaderExporter::copyOriginalShaderToExportTree(const std::string& sourceShtPathOrTree)
+{
+    if (sourceShtPathOrTree.empty())
+        return std::string();
+
+    std::string treeRel = toGameTreeRelativePath(sourceShtPathOrTree);
+    if (treeRel.empty())
+    {
+        treeRel = sourceShtPathOrTree;
+        for (char& c : treeRel)
+            if (c == '\\')
+                c = '/';
+        if (treeRel.size() >= 2 && treeRel[1] == ':')
+            treeRel.clear();
+    }
+    if (treeRel.empty())
+        return std::string();
+    if (treeRel.compare(0, 7, "shader/") != 0)
+        treeRel = std::string("shader/") + treeRel;
+    if (treeRel.size() < 4 || treeRel.compare(treeRel.size() - 4, 4, ".sht") != 0)
+        treeRel += ".sht";
+
+    std::string srcAbs = sourceShtPathOrTree;
+    for (char& c : srcAbs)
+        if (c == '\\')
+            c = '/';
+    if (!(srcAbs.size() >= 2 && srcAbs[1] == ':') || !MayaUtility::fileExists(srcAbs))
+        srcAbs = resolveGameAssetPath(treeRel);
+    if (srcAbs.empty())
+        srcAbs = resolveTreeAssetPath(treeRel, sourceShtPathOrTree, "shader/");
+    if (srcAbs.empty() || !MayaUtility::fileExists(srcAbs))
+    {
+        std::cerr << "[ShaderExporter] 1:1 copy: source shader not found: " << sourceShtPathOrTree << "\n";
+        return std::string();
+    }
+
+    if (!ExportDirectoryBootstrap::bootstrapShaderTreeFile(treeRel))
+    {
+        std::cerr << "[ShaderExporter] 1:1 copy: failed to place " << treeRel << " in export shader/\n";
+        return std::string();
+    }
+
+    const char* shaderWriteDir = SetDirectoryCommand::getDirectoryString(SetDirectoryCommand::SHADER_TEMPLATE_WRITE_DIR_INDEX);
+    std::string destAbs;
+    if (shaderWriteDir && shaderWriteDir[0])
+    {
+        destAbs = shaderWriteDir;
+        for (char& c : destAbs)
+            if (c == '/')
+                c = '\\';
+        if (!destAbs.empty() && destAbs.back() != '\\')
+            destAbs += '\\';
+        std::string name = treeRel.substr(7);
+        for (char& c : name)
+            if (c == '/')
+                c = '\\';
+        destAbs += name;
+    }
+    if (destAbs.empty() || !MayaUtility::fileExists(destAbs))
+        destAbs = srcAbs;
+
+    ShaderExporter::bootstrapDependenciesForWrittenShader(destAbs);
+    MGlobal::displayInfo(MString("[ShaderExporter] 1:1 copied original shader ") + treeRel.c_str());
+    return destAbs;
+}

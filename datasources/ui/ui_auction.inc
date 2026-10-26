@@ -859,7 +859,7 @@ parent.buttonAccept.visible=false'
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='510,492'
 						Size='510,492'
 					>
@@ -1105,7 +1105,7 @@ parent.buttonAccept.visible=false'
 			>
 			</Scrollbar>
 			<TabbedPane
-				BackgroundColor='#009977'
+				BackgroundColor='#155584'
 				DataSource='TabData'
 				Location='10,32'
 				MinimumScrollExtent='544,0'
@@ -2056,7 +2056,7 @@ parent.radioCity.checked=false'
 								Style='/Styles.New.Checkbox.Style2'
 							>@ui_auc:attribute_filter</Checkbox>
 							<ComboBox
-								BackgroundOpacity='0.70'
+								BackgroundOpacity='1.00'
 								ButtonMargin='2,2,2,0'
 								ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 								ButtonWidth='10'
@@ -2313,7 +2313,7 @@ parent.radioCity.checked=false'
 								TextColor='#97FFFF'
 							>@ui_auc:attribute_name</Text>
 							<ComboBox
-								BackgroundOpacity='0.70'
+								BackgroundOpacity='1.00'
 								ButtonMargin='2,2,2,0'
 								ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 								ButtonWidth='10'
@@ -2448,7 +2448,7 @@ parent.radioCity.checked=false'
 								/>
 							</Page>
 							<ComboBox
-								BackgroundOpacity='0.70'
+								BackgroundOpacity='1.00'
 								ButtonMargin='2,2,2,0'
 								ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 								ButtonWidth='10'
@@ -2491,7 +2491,7 @@ parent.radioCity.checked=false'
 								/>
 							</DataSource>
 							<ComboBox
-								BackgroundOpacity='0.70'
+								BackgroundOpacity='1.00'
 								ButtonMargin='2,2,2,0'
 								ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 								ButtonWidth='10'
@@ -3732,7 +3732,7 @@ parent.radioCity.checked=false'
 								Style='/Styles.New.Checkbox.Style2'
 							>@ui_auc:attribute_filter</Checkbox>
 							<ComboBox
-								BackgroundOpacity='0.70'
+								BackgroundOpacity='1.00'
 								ButtonMargin='2,2,2,0'
 								ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 								ButtonWidth='10'
@@ -3989,7 +3989,7 @@ parent.radioCity.checked=false'
 								TextColor='#97FFFF'
 							>@ui_auc:attribute_name</Text>
 							<ComboBox
-								BackgroundOpacity='0.70'
+								BackgroundOpacity='1.00'
 								ButtonMargin='2,2,2,0'
 								ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 								ButtonWidth='10'
@@ -4124,7 +4124,7 @@ parent.radioCity.checked=false'
 								/>
 							</Page>
 							<ComboBox
-								BackgroundOpacity='0.70'
+								BackgroundOpacity='1.00'
 								ButtonMargin='2,2,2,0'
 								ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 								ButtonWidth='10'
@@ -4167,7 +4167,7 @@ parent.radioCity.checked=false'
 								/>
 							</DataSource>
 							<ComboBox
-								BackgroundOpacity='0.70'
+								BackgroundOpacity='1.00'
 								ButtonMargin='2,2,2,0'
 								ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 								ButtonWidth='10'
@@ -5416,7 +5416,7 @@ parent.radioCity.checked=false'
 								Style='/Styles.New.Checkbox.Style2'
 							>@ui_auc:attribute_filter</Checkbox>
 							<ComboBox
-								BackgroundOpacity='0.70'
+								BackgroundOpacity='1.00'
 								ButtonMargin='2,2,2,0'
 								ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 								ButtonWidth='10'
@@ -5673,7 +5673,7 @@ parent.radioCity.checked=false'
 								TextColor='#97FFFF'
 							>@ui_auc:attribute_name</Text>
 							<ComboBox
-								BackgroundOpacity='0.70'
+								BackgroundOpacity='1.00'
 								ButtonMargin='2,2,2,0'
 								ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 								ButtonWidth='10'
@@ -5808,7 +5808,7 @@ parent.radioCity.checked=false'
 								/>
 							</Page>
 							<ComboBox
-								BackgroundOpacity='0.70'
+								BackgroundOpacity='1.00'
 								ButtonMargin='2,2,2,0'
 								ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 								ButtonWidth='10'
@@ -5851,7 +5851,7 @@ parent.radioCity.checked=false'
 								/>
 							</DataSource>
 							<ComboBox
-								BackgroundOpacity='0.70'
+								BackgroundOpacity='1.00'
 								ButtonMargin='2,2,2,0'
 								ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 								ButtonWidth='10'
@@ -6951,7 +6951,7 @@ parent.radioCity.checked=false'
 								Style='/Styles.New.Checkbox.Style2'
 							>@ui_auc:attribute_filter</Checkbox>
 							<ComboBox
-								BackgroundOpacity='0.70'
+								BackgroundOpacity='1.00'
 								ButtonMargin='2,2,2,0'
 								ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 								ButtonWidth='10'
@@ -7208,7 +7208,7 @@ parent.radioCity.checked=false'
 								TextColor='#97FFFF'
 							>@ui_auc:attribute_name</Text>
 							<ComboBox
-								BackgroundOpacity='0.70'
+								BackgroundOpacity='1.00'
 								ButtonMargin='2,2,2,0'
 								ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 								ButtonWidth='10'
@@ -7343,7 +7343,7 @@ parent.radioCity.checked=false'
 								/>
 							</Page>
 							<ComboBox
-								BackgroundOpacity='0.70'
+								BackgroundOpacity='1.00'
 								ButtonMargin='2,2,2,0'
 								ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 								ButtonWidth='10'
@@ -7386,7 +7386,7 @@ parent.radioCity.checked=false'
 								/>
 							</DataSource>
 							<ComboBox
-								BackgroundOpacity='0.70'
+								BackgroundOpacity='1.00'
 								ButtonMargin='2,2,2,0'
 								ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 								ButtonWidth='10'
@@ -8904,7 +8904,7 @@ parent.radioCity.checked=false'
 								Style='/Styles.New.Checkbox.Style2'
 							>@ui_auc:attribute_filter</Checkbox>
 							<ComboBox
-								BackgroundOpacity='0.70'
+								BackgroundOpacity='1.00'
 								ButtonMargin='2,2,2,0'
 								ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 								ButtonWidth='10'
@@ -9161,7 +9161,7 @@ parent.radioCity.checked=false'
 								TextColor='#97FFFF'
 							>@ui_auc:attribute_name</Text>
 							<ComboBox
-								BackgroundOpacity='0.70'
+								BackgroundOpacity='1.00'
 								ButtonMargin='2,2,2,0'
 								ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 								ButtonWidth='10'
@@ -9296,7 +9296,7 @@ parent.radioCity.checked=false'
 								/>
 							</Page>
 							<ComboBox
-								BackgroundOpacity='0.70'
+								BackgroundOpacity='1.00'
 								ButtonMargin='2,2,2,0'
 								ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 								ButtonWidth='10'
@@ -9339,7 +9339,7 @@ parent.radioCity.checked=false'
 								/>
 							</DataSource>
 							<ComboBox
-								BackgroundOpacity='0.70'
+								BackgroundOpacity='1.00'
 								ButtonMargin='2,2,2,0'
 								ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 								ButtonWidth='10'
@@ -11390,7 +11390,7 @@ parent.radioMarket.checked=false'
 								Style='/Styles.New.Checkbox.Style2'
 							>@ui_auc:attribute_filter</Checkbox>
 							<ComboBox
-								BackgroundOpacity='0.70'
+								BackgroundOpacity='1.00'
 								ButtonMargin='2,2,2,0'
 								ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 								ButtonWidth='10'
@@ -11647,7 +11647,7 @@ parent.radioMarket.checked=false'
 								TextColor='#97FFFF'
 							>@ui_auc:attribute_name</Text>
 							<ComboBox
-								BackgroundOpacity='0.70'
+								BackgroundOpacity='1.00'
 								ButtonMargin='2,2,2,0'
 								ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 								ButtonWidth='10'
@@ -11782,7 +11782,7 @@ parent.radioMarket.checked=false'
 								/>
 							</Page>
 							<ComboBox
-								BackgroundOpacity='0.70'
+								BackgroundOpacity='1.00'
 								ButtonMargin='2,2,2,0'
 								ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 								ButtonWidth='10'
@@ -11825,7 +11825,7 @@ parent.radioMarket.checked=false'
 								/>
 							</DataSource>
 							<ComboBox
-								BackgroundOpacity='0.70'
+								BackgroundOpacity='1.00'
 								ButtonMargin='2,2,2,0'
 								ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 								ButtonWidth='10'
@@ -12514,7 +12514,7 @@ parent.radioMarket.checked=false'
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='811,582'
 						Size='811,582'
 					>
@@ -12753,7 +12753,7 @@ parent.stock.visible=false'
 						/>
 					</DataSource>
 					<TabbedPane
-						BackgroundColor='#009977'
+						BackgroundColor='#155584'
 						Location='6,0'
 						MinimumScrollExtent='294,0'
 						MinimumSize='0,19'
@@ -14399,7 +14399,7 @@ parent.labelInstantSale.visible=false'
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='622,527'
 						Size='622,527'
 					>
@@ -14813,7 +14813,7 @@ parent.labelInstantSale.visible=false'
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='342,151'
 						Size='342,151'
 					>
@@ -15249,7 +15249,7 @@ parent.labelInstantSale.visible=false'
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='342,212'
 						Size='342,212'
 					>
@@ -15758,7 +15758,7 @@ parent.labelInstantSale.visible=false'
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='276,300'
 						Size='276,300'
 					>

@@ -66,6 +66,7 @@ namespace ConfigClientGameNamespace
 	// Network Services
 	std::string     ms_loginServerAddress;
 	int             ms_loginServerPort;
+	int             ms_devBridgePort;
 
 	const char*     ms_loginClientID;              //-- the login id to use to autoconnect to the login server
 	const char*     ms_loginClientPassword;        //-- the login passwd to use to autoconnect to the login server
@@ -415,6 +416,13 @@ const std::string & ConfigClientGame::getLoginServerAddress ()
 const uint16 ConfigClientGame::getLoginServerPort ()
 {
 	return static_cast<const uint16>(ms_loginServerPort);
+}
+
+//-------------------------------------------------------------------
+
+int ConfigClientGame::getDevBridgePort ()
+{
+	return ms_devBridgePort;
 }
 
 //-------------------------------------------------------------------
@@ -1099,6 +1107,7 @@ void ConfigClientGame::install(void)
 
 	KEY_STRING (loginServerAddress,            "localhost");
 	KEY_INT    (loginServerPort,               44453);
+	KEY_INT    (devBridgePort,                 0);       // DevBridge: localhost tool socket, 0 = off
 	KEY_STRING (loginClientID,                 "");
 	KEY_STRING (loginClientPassword,           "");
 

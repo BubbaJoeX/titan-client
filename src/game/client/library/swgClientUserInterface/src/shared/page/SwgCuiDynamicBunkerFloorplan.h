@@ -111,6 +111,9 @@ public:
 	// Called from SwgCuiHud when the player clicks the world view while placing portal corners.
 	static bool tryConsumeWorldPlaceClick();
 
+	// Called from SwgCuiHud when the player presses Ctrl+Enter while placing a doorway.
+	static bool tryConsumeWorldPlaceKey(UIMessage const & msg);
+
 	static SwgCuiDynamicBunkerFloorplan * getActiveInstance();
 
 private:
@@ -157,7 +160,11 @@ private:
 
 	void assignSelectedRoom();
 
+	void executePendingAssignIfReady();
+
 	void unassignSelectedSocket();
+
+	void revertBuildingToRawPob();
 
 	void createCustomSocket();
 
@@ -165,23 +172,48 @@ private:
 
 	void cancelPlacePointsMode();
 
-	void clearPlacePointMarkers();
+	void updateSnapPlacementPreview();
 
-	void addPlacePoint(Vector const & worldPoint, NetworkId const & cellNetworkId, Vector const * worldNormal = 0);
+	char const * resolveSnapPreviewDoorStyle() const;
+
+	bool getSelectedGraftCellIndex(int & outGraftedCellIndex) const;
+
+	void nudgeSelectedGraft(Vector const & delta_cell, float deltaYaw);
+
+	void applySelectedGraftAdjust();
+
+	void confirmSnapPlacement();
+
+	void clearSnapGhost();
+
+	void clearPlacePointMarkers();
 
 	bool handleWorldPlaceClick(int mouseX, int mouseY);
 
 	bool isClickInsideFloorplanPanel(UIBaseObject const * widget) const;
 
-	void computePortalTransformFromPlacePoints();
-
 	void updatePlacePointVisuals();
+
+	static bool getCatalogPortalDimensions(
+		DynamicBunkerOpenFloorplanMessage::RoomEntry const & room,
+		float & outWidth,
+		float & outHeight);
+
+	static void computePortalTransformFromWallHit(
+		Vector const & hitPoint_cell,
+		Vector const & wallNormalIntoCell_cell,
+		float doorwayWidth,
+		float doorwayHeight,
+		Transform & outTransform_cell,
+		Vector const * playerPos_cell = 0);
 
 	int resolvePlaceCellIndex() const;
 
 	int resolvePlayerCellIndex() const;
 
 	void updatePlaceCellDisplay();
+
+	void autoSelectExtensionSocketInPlayerCell(bool force);
 
 	void selectSocketByIndex(int socketIndex);
 
@@ -219,11 +251,21 @@ private:
 
 	UIButton * m_buttonUnassign;
 
+	UIButton * m_buttonRevertPob;
+
 	UIButton * m_buttonCancel;
 
 	UIButton * m_buttonCreatePortal;
 
 	UIButton * m_buttonPlacePoints;
+
+	UIButton * m_buttonAdjustLeft;
+	UIButton * m_buttonAdjustRight;
+	UIButton * m_buttonAdjustForward;
+	UIButton * m_buttonAdjustBack;
+	UIButton * m_buttonAdjustRotateLeft;
+	UIButton * m_buttonAdjustRotateRight;
+	UIButton * m_buttonAdjustApply;
 
 	UIButton * m_placeWallButtons[9];
 
@@ -269,13 +311,15 @@ private:
 
 	int m_selectedSocketRow;
 
+	int m_lastExtensionAutoSelectCell;
+
 	int m_selectedPlaceWall;
 
 	bool m_placingPortalPoints;
 
-	int m_placePointCount;
+	bool m_snapPreviewValid;
 
-	bool m_placePointsReady;
+	int m_snapPreviewMissFrames;
 
 	Vector m_placePoint0_cell;
 
@@ -289,11 +333,17 @@ private:
 
 	bool m_hasPlaceWallNormal;
 
+	NetworkId m_wallHitObjectId;
+
 	Transform m_portalDoorTransform_cell;
 
 	float m_placeDoorwayWidth;
 
 	float m_placeDoorwayHeight;
+
+	Object * m_snapGhostDoor;
+
+	std::string m_snapGhostDoorAppearance;
 
 	std::vector<Object *> m_placePointMarkers;
 
@@ -326,6 +376,8 @@ private:
 	bool m_suppressPortalRefresh;
 
 	int m_pendingCreateSnapCellIndex;
+
+	int m_pendingAssignRoomIndex;
 
 	int m_trackedPlaceCellIndex;
 

@@ -300,7 +300,7 @@
 					</Composite>
 				</Page>
 				<Page
-					BackgroundColor='#00D6FB'
+					BackgroundColor='#2381D8'
 					BackgroundTint='#00D6FB'
 					Location='150,0'
 					MinimumSize='250,0'

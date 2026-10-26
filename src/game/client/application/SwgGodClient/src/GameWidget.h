@@ -10,6 +10,7 @@
 
 // ======================================================================
 
+class CellProperty;
 class ClientObject;
 class GodClientData;
 class GroundScene;
@@ -17,6 +18,7 @@ class QPopupMenu;
 class QTimer;
 class Object;
 class TerrainDock;
+class Transform;
 class Vector;
 
 struct UpdateObjects
@@ -68,6 +70,8 @@ public:
 	void receiveMessage   (const MessageDispatch::Emitter & source, const MessageDispatch::MessageBase & message);
 	int  getFrameRateLimit() const;
 
+	static Object* createObjectFromTemplateWithTransform(const std::string & templateName, const CellProperty * cellProperty, const Transform & transform);
+
 signals: //implicitly public
 	void gameExclusiveFocusChanged (bool);
 	void interiorCameraFocusChanged(bool);
@@ -85,7 +89,9 @@ protected slots:
 	void grabExclusiveFocus              ();
 	void contextMenuEvent                (QContextMenuEvent* e);
 	void createObjectFromSelectedTemplate();
+	void placeLastTemplateAtCursor       ();
 	void onCreateTemplateFromMenu        (int id);
+	void onRecentTemplateFromMenu        (int index);
 	void onAddObjectBookmark             ();
 
 protected:
@@ -157,6 +163,7 @@ private:
 	QPopupMenu*        m_pop;
 	QPopupMenu*        m_templateMenu;
 	QPopupMenu*        m_setConditionMenu;
+	QPopupMenu*        m_recentTemplatesMenu;
 	std::map<int, int> m_conditionMenuIdMap;
 
 	size_t             m_lastOID;
@@ -168,6 +175,9 @@ private:
 	QPoint             m_mouseDownPoint;
 
 	bool               m_flyButtonDown;
+
+	bool               m_penNavigating; // pen barrel drag is moving the camera
+	bool               m_penNavigated;  // ...so the right-button release must not open the context menu
 
 	bool               m_interiorCameraOn;
 

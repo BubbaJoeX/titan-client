@@ -806,6 +806,27 @@ unsigned int ServerCommander::setGodMode()
 	return 0;
 }
 
+//-----------------------------------------------------------------
+
+unsigned int ServerCommander::consoleCommand(const std::string& line, const NetworkId& slashTarget)
+{
+	if(line.empty())
+		return 0;
+
+	if(line[0] != '/')
+		return issueCommand(line.c_str());
+
+	std::string const body(line.substr(1));
+	std::string::size_type const space = body.find(' ');
+	std::string const name(body.substr(0, space));
+	std::string const params(space == std::string::npos ? std::string() : body.substr(space + 1));
+	if(name.empty())
+		return 0;
+
+	emit consoleCommandIssued(line.c_str());
+	return ClientCommandQueue::enqueueCommand(name, slashTarget, Unicode::narrowToWide(params));
+}
+
 unsigned int ServerCommander::persistObject(const ClientObject& obj)
 {
 	if (Game::getSinglePlayer())

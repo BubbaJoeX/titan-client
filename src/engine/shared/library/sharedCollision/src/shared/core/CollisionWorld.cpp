@@ -186,6 +186,14 @@ namespace CollisionWorldNamespace
 	CollisionWorld::DoCollisionWithTerrainFunction ms_doCollisionWithTerrainFunction = 0;
 	CollisionWorld::SkywayCollisionCallback ms_skywayCollisionCallback = 0;
 
+	//----------------------------------------------------------------------
+
+	// Titan: an object floor owned by a pob (exterior floor of a pob parked inside another pob's cell)
+	bool isNestedPobFloor(Floor const * const floor)
+	{
+		Object const * const owner = floor ? floor->getOwner() : 0;
+		return owner && owner->getPortalProperty();
+	}
 }
 
 using namespace CollisionWorldNamespace;
@@ -1667,7 +1675,6 @@ CanMoveResult CollisionWorld::canMoveInCell ( Object const * object,
 
 	bool hasOutLoc = false;
 
-	if(startCell == CellProperty::getWorldCellProperty())
 	{
 		if(ms_database)
 		{
@@ -1678,6 +1685,11 @@ CanMoveResult CollisionWorld::canMoveInCell ( Object const * object,
 			for(uint i = 0; i < floors.size(); i++)
 			{
 				Floor const * floor = floors[i];
+
+				// Titan: inside a cell only the floors of a pob parked in it (a vessel in a hangar) count, like pob
+				// floors in the world cell; other object floors in cells keep being ignored as before.
+				if(startCell != CellProperty::getWorldCellProperty() && !isNestedPobFloor(floor))
+					continue;
 
 				CanMoveResult result = canMoveOnFloor(object,startLoc,floor,goalLoc,checkY,checkFlora,checkFauna,outLoc,outHitPortalId);
 
@@ -1703,6 +1715,15 @@ CanMoveResult CollisionWorld::canMoveInCell ( Object const * object,
 
 	if(cellFloor)
 	{
+		if(hasOutLoc)
+		{
+			// Titan: the move crossed a portal edge on a nested pob's floor; keep that result, but the cell
+			// floor's own edges still have to allow the move
+			FloorLocator cellOutLoc;
+			int cellHitPortalId = -1;
+			return canMoveOnFloor(object,startLoc,cellFloor,goalLoc,checkY,checkFlora,checkFauna,cellOutLoc,cellHitPortalId);
+		}
+
 		return canMoveOnFloor(object,startLoc,cellFloor,goalLoc,checkY,checkFlora,checkFauna,outLoc,outHitPortalId);
 	}
 	else
@@ -2616,13 +2637,27 @@ bool CollisionWorld::findLocators ( CellProperty const * cell, Vector const & po
 		if( floor && floor->dropTest(point,tempLoc) )
 		{
 			outLocs.push_back(tempLoc);
+		}
 
-			return true;
-		}
-		else
+		// Titan: plus the floors of a pob parked in this cell (a vessel in a hangar)
+		if(ms_database)
 		{
-			return false;
+			FloorVec floors;
+
+			Segment3d querySeg(point, point - (Vector::unitY * 10.0f));
+
+			IGNORE_RETURN(ms_database->queryFloors(cell,querySeg,&floors));
+
+			for(uint i = 0; i < floors.size(); i++)
+			{
+				Floor const * const nestedFloor = floors[i];
+
+				if(nestedFloor && isNestedPobFloor(nestedFloor) && nestedFloor->dropTest(point,tempLoc))
+					outLocs.push_back(tempLoc);
+			}
 		}
+
+		return !outLocs.empty();
 	}
 	else
 	{
@@ -2810,6 +2845,47 @@ Floor const * CollisionWorld::getFloorStandingOn(Object const & object)
 	}
 
 	return resultFloor;
+}
+
+// ----------------------------------------------------------------------
+
+// ----------------------------------------------------------------------
+// Titan: the ground a ship meets over a hole in the terrain (a starport's landing well and its bays). Ships have no
+// footprint, so no floor holds them; over terrain the terrain is their ground, and where the terrain is cut away it
+// is the highest floor of a building in the world cell at or below position_w (or within a metre above it, as a
+// drop test reads it). False when there is none (the open shaft over nothing).
+
+bool CollisionWorld::findObjectFloorHeightBelow(Vector const & position_w, float & outHeight)
+{
+	if (!ms_database)
+		return false;
+
+	CellProperty const * const worldCell = CellProperty::getWorldCellProperty();
+
+	FloorVec floors;
+	Segment3d const querySeg(position_w + Vector::unitY, position_w - Vector::unitY * 2000.0f);
+	IGNORE_RETURN(ms_database->queryFloors(worldCell, querySeg, &floors));
+
+	bool found = false;
+	for (uint i = 0; i < floors.size(); ++i)
+	{
+		Floor const * const floor = floors[i];
+		FloorLocator loc;
+		if (!floor || floor->getCell() != worldCell || !floor->dropTest(position_w, loc))
+			continue;
+
+		float const y = loc.getPosition_w().y;
+		if (y > position_w.y + 1.0f)
+			continue;
+
+		if (!found || y > outHeight)
+		{
+			outHeight = y;
+			found = true;
+		}
+	}
+
+	return found;
 }
 
 // ----------------------------------------------------------------------

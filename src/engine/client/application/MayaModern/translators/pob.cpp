@@ -2,6 +2,7 @@
 #include "SwgTranslatorNames.h"
 #include "ImportPathResolver.h"
 #include "ImportPob.h"
+#include "MayaSceneBuilder.h"
 #include "MayaUtility.h"
 #include "SwgImportTrace.h"
 
@@ -64,6 +65,7 @@ MStatus PobTranslator::reader(const MFileObject& file, const MString& /*optionsS
     args.addArg(MString(pathStd.c_str()));
     ImportPob importer;
     const MStatus status = importer.doIt(args);
+    MayaSceneBuilder::scheduleImportedTextureRebind();
     SwgImportTrace::stagef("PobTranslator::reader doIt %s", status ? "OK" : "FAILED");
     if (!status)
         MGlobal::displayError("POB import failed — see Script Editor / stderr for [ImportPob] logs.");

@@ -20,24 +20,24 @@
 		<Button
 			BackgroundOpacity='0.80'
 			LocalText='[@game_menu_locations]'
-			Location='407,458'
+			Location='399,411'
 			Name='locationsButton'
 			PackLocation='cfc,nfc'
 			RStyleDefault='rs_default'
 			ScrollExtent='211,23'
-			Size='211,23'
+			Size='231,23'
 			Style='/Styles.New.buttons.hud.style'
 		>@game_menu_locations</Button>
 		<Page
 			Location='372,315'
-			MaximumSize='280,160'
+			MaximumSize='280,190'
 			MinimumSize='255,138'
 			Name='menu'
 			PackLocation='cfc,cfc'
 			PackSize='a,f'
 			RStyleDefault='rs_default'
-			ScrollExtent='280,138'
-			Size='280,138'
+			ScrollExtent='280,168'
+			Size='280,168'
 			UserMovable='true'
 		>
 			<Button
@@ -54,7 +54,7 @@
 			<Button
 				IsCancelButton='true'
 				LocalText='[@game_menu_resume]'
-				Location='159,113'
+				Location='159,143'
 				MinimumSize='0,19'
 				Name='resumeButton'
 				PackLocation='fff,fff'
@@ -77,7 +77,7 @@
 			>@game_menu_disconnect</Button>
 			<Button
 				LocalText='[@game_exit]'
-				Location='16,113'
+				Location='16,143'
 				MinimumSize='0,19'
 				Name='exitButton'
 				PackLocation='nfn,fff'
@@ -117,8 +117,8 @@
 				Name='bg'
 				PackLocation='nfn,nfn'
 				PackSize='a,a'
-				ScrollExtent='280,138'
-				Size='280,138'
+				ScrollExtent='280,168'
+				Size='280,168'
 			>
 				<Page
 					Location='269,8'
@@ -176,9 +176,9 @@
 					PackSize='a,a'
 					PalBgTint='baselight'
 					RStyleDefault='/Styles.New.thin_in.rs_default'
-					ScrollExtent='279,138'
+					ScrollExtent='279,168'
 					Selectable='true'
-					Size='279,138'
+					Size='279,168'
 				>
 					<Page
 						BackgroundColor='#FFFFFF'
@@ -186,9 +186,9 @@
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
-						ScrollExtent='279,138'
-						Size='279,138'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
+						ScrollExtent='279,168'
+						Size='279,168'
 					>
 						<Page
 							BackgroundColor='#FFFFFF'
@@ -306,7 +306,7 @@
 					/>
 					<Page
 						BackgroundOpacity='1.00'
-						Location='0,115'
+						Location='0,145'
 						Name='bottom'
 						PackLocation='nfn,fff'
 						PackSize='a,f'
@@ -325,9 +325,9 @@
 					PackSize='a,a'
 					PalBgTint='back1'
 					RStyleDefault='/Styles.New.thin_in_small.rs_default'
-					ScrollExtent='280,137'
+					ScrollExtent='280,167'
 					Selectable='true'
-					Size='280,137'
+					Size='280,167'
 				/>
 				<Page
 					BackgroundOpacity='1.00'
@@ -338,9 +338,9 @@
 					PackSize='a,a'
 					PalBgTint='back1'
 					RStyleDefault='/Styles.space.spaceglow.rs_default'
-					ScrollExtent='280,137'
+					ScrollExtent='280,167'
 					Selectable='true'
-					Size='280,137'
+					Size='280,167'
 				/>
 			</Page>
 		</Page>

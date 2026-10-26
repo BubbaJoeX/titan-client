@@ -174,6 +174,7 @@ public:
 	static int                           getScreenShotQuality();
 	static void                          setScreenShotQuality(int quality);
 	static bool                          screenShot(const char *fileName);
+	static void                          setForceScreenShotBackBuffer(bool active, bool useBackBuffer);
 
 	static ShaderImplementationGraphicsData  *createShaderImplementationGraphicsData(const ShaderImplementation &shaderImplementation);
 	static StaticShaderGraphicsData          *createStaticShaderGraphicsData(const StaticShader &shader);

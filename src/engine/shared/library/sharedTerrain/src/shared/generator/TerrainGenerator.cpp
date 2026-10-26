@@ -16,6 +16,7 @@
 #include "sharedTerrain/Feather.h"
 #include "sharedTerrain/TerrainGeneratorLoader.h"
 #include "sharedTerrain/Filter.h"
+#include "sharedTerrain/Affector.h"
 
 #include <algorithm>
 #include <vector>
@@ -402,6 +403,20 @@ void TerrainGenerator::Boundary::setCenter (const Vector2d& /*center*/)
 
 void TerrainGenerator::Boundary::setRotation (const float /*angle*/)
 {
+}
+
+//-------------------------------------------------------------------
+
+bool TerrainGenerator::Boundary::hasExactEdge () const
+{
+	return false;
+}
+
+//-------------------------------------------------------------------
+
+bool TerrainGenerator::Boundary::getNearestEdgePoint (const float /*worldX*/, const float /*worldZ*/, Vector2d& /*edgePoint*/) const
+{
+	return false;
 }
 
 //-------------------------------------------------------------------
@@ -1067,6 +1082,10 @@ void TerrainGenerator::Layer::affect (const float * previousAmountMap, const Gen
 	}
 	//-----------------------------------------------------------------------
 
+	//-- fine exclusion: the generator cuts the terrain along this layer's boundaries once every layer ran
+	if (hasFineExclusion ())
+		generatorChunkData.fineExcludeLayersIUO.push_back (this);
+
 	const bool onlyHasSubLayers = !m_hasActiveBoundaries && !m_hasActiveFilters && !m_hasActiveAffectors;
 	const int numberOfPoles = generatorChunkData.numberOfPoles;
 
@@ -1241,6 +1260,82 @@ void TerrainGenerator::Layer::affect (const float * previousAmountMap, const Gen
 			}
 		}
 	}
+}
+
+//-------------------------------------------------------------------
+
+bool TerrainGenerator::Layer::hasFineExclusion () const
+{
+	if (!m_hasActiveBoundaries || !m_hasActiveAffectors || m_invertBoundaries)
+		return false;
+
+	for (int i = 0; i < m_affectorList.getNumberOfElements (); ++i)
+	{
+		const Affector* const a = m_affectorList [i];
+		if (a && a->isActive () && !a->isPruned () && a->getType () == TGAT_exclude && safe_cast<const AffectorExclude*> (a)->isFine ())
+			return true;
+	}
+
+	return false;
+}
+
+//-------------------------------------------------------------------
+
+bool TerrainGenerator::Layer::hasExactExclusionEdge () const
+{
+	bool any = false;
+	for (int i = 0; i < m_boundaryList.getNumberOfElements (); ++i)
+	{
+		const Boundary* const b = m_boundaryList [i];
+		if (!b || !b->isActive ())
+			continue;
+
+		if (!b->hasExactEdge ())
+			return false;
+
+		any = true;
+	}
+
+	return any;
+}
+
+//-------------------------------------------------------------------
+
+bool TerrainGenerator::Layer::isWithinFineExclusion (const float worldX, const float worldZ) const
+{
+	for (int i = 0; i < m_boundaryList.getNumberOfElements (); ++i)
+	{
+		const Boundary* const b = m_boundaryList [i];
+		if (b && b->isActive () && b->isWithin (worldX, worldZ) >= 0.5f)
+			return true;
+	}
+
+	return false;
+}
+
+//-------------------------------------------------------------------
+
+bool TerrainGenerator::Layer::getFineExclusionEdge (const float worldX, const float worldZ, Vector2d& edgePoint) const
+{
+	bool found = false;
+	float bestDistanceSquared = 0.f;
+	for (int i = 0; i < m_boundaryList.getNumberOfElements (); ++i)
+	{
+		const Boundary* const b = m_boundaryList [i];
+		Vector2d point;
+		if (!b || !b->isActive () || b->isWithin (worldX, worldZ) < 0.5f || !b->getNearestEdgePoint (worldX, worldZ, point))
+			continue;
+
+		const float distanceSquared = sqr (point.x - worldX) + sqr (point.y - worldZ);
+		if (!found || distanceSquared < bestDistanceSquared)
+		{
+			found = true;
+			bestDistanceSquared = distanceSquared;
+			edgePoint = point;
+		}
+	}
+
+	return found;
 }
 
 //-------------------------------------------------------------------
@@ -1859,6 +1954,7 @@ void TerrainGenerator::affect (const GeneratorChunkData& generatorChunkData) con
 
 	generatorChunkData.normalsDirtyIUO = true;
 	generatorChunkData.shadersDirtyIUO = true;
+	generatorChunkData.fineExcludeLayersIUO.clear ();
 
 	//-- calculate chunk extents
 	generatorChunkData.chunkExtentIUO.x0 = generatorChunkData.start.x;
@@ -1922,6 +2018,8 @@ void TerrainGenerator::affect (const GeneratorChunkData& generatorChunkData) con
 	{
 		_generateVertexPositions(generatorChunkData);
 	}
+
+	_applyFineExclusion (generatorChunkData, (sampleMaps & TGM_vertexPosition) != 0);
 
 	if (  (sampleMaps & TGM_shader)!=0
 		&& generatorChunkData.shadersDirtyIUO
@@ -2028,6 +2126,117 @@ void TerrainGenerator::_generateVertexPositions(const GeneratorChunkData& genera
 			v.x=fx;
 			v.y=start.y + heightRow[x];
 			v.z=posZ;
+		}
+	}
+}
+
+//-------------------------------------------------------------------
+// Fine exclusion (AffectorExclude::isFine): tiles fully inside a layer's boundaries are excluded; in the tiles the
+// edge crosses, the inside poles move onto the nearest point of the edge, so the tile's triangles end exactly at it.
+// Stock exclusion drops whole tiles (two poles wide) by their origin pole, which steps the cut by up to a tile.
+// Layers whose boundaries have no exact edge (rectangles, polylines) exclude every inside pole, as stock.
+
+void TerrainGenerator::_applyFineExclusion (const GeneratorChunkData& generatorChunkData, const bool snapVertices) const
+{
+	const std::vector<const Layer*>& layers = generatorChunkData.fineExcludeLayersIUO;
+	if (layers.empty ())
+		return;
+
+	const int    numberOfPoles        = generatorChunkData.numberOfPoles;
+	const int    originOffset         = generatorChunkData.originOffset;
+	const float  distanceBetweenPoles = generatorChunkData.distanceBetweenPoles;
+	const Vector start                = generatorChunkData.start;
+	Array2d<bool>* const   excludeMap        = generatorChunkData.excludeMap;
+	Array2d<Vector>* const vertexPositionMap = generatorChunkData.vertexPositionMap;
+
+	//-- 0 outside, 1 inside an exact edge, 2 inside a layer without one
+	std::vector<unsigned char> inside (static_cast<size_t> (numberOfPoles * numberOfPoles), 0);
+	bool any = false;
+	for (int z = 0; z < numberOfPoles; ++z)
+	{
+		const float worldZ = start.z + static_cast<float> (z) * distanceBetweenPoles;
+		for (int x = 0; x < numberOfPoles; ++x)
+		{
+			const float worldX = start.x + static_cast<float> (x) * distanceBetweenPoles;
+			unsigned char& flag = inside [static_cast<size_t> (z * numberOfPoles + x)];
+			for (size_t i = 0; i < layers.size (); ++i)
+			{
+				if (!layers [i]->isWithinFineExclusion (worldX, worldZ))
+					continue;
+
+				flag = std::max (flag, static_cast<unsigned char> (layers [i]->hasExactExclusionEdge () ? 1 : 2));
+				any = true;
+			}
+
+			if (flag == 2)
+				excludeMap->setData (x, z, true);
+		}
+	}
+
+	if (!any)
+		return;
+
+	//-- tiles start at originOffset and are two poles wide
+	std::vector<unsigned char> snap (inside.size (), 0);
+	for (int tz = originOffset; tz + 2 < numberOfPoles; tz += 2)
+	{
+		for (int tx = originOffset; tx + 2 < numberOfPoles; tx += 2)
+		{
+			int count = 0;
+			for (int dz = 0; dz <= 2; ++dz)
+				for (int dx = 0; dx <= 2; ++dx)
+					if (inside [static_cast<size_t> ((tz + dz) * numberOfPoles + tx + dx)] != 0)
+						++count;
+
+			if (count == 9)
+				excludeMap->setData (tx, tz, true);
+			else if (count > 0)
+			{
+				for (int dz = 0; dz <= 2; ++dz)
+					for (int dx = 0; dx <= 2; ++dx)
+					{
+						const size_t index = static_cast<size_t> ((tz + dz) * numberOfPoles + tx + dx);
+						if (inside [index] == 1)
+							snap [index] = 1;
+					}
+			}
+		}
+	}
+
+	if (!snapVertices || !vertexPositionMap)
+		return;
+
+	for (int z = 0; z < numberOfPoles; ++z)
+	{
+		for (int x = 0; x < numberOfPoles; ++x)
+		{
+			if (!snap [static_cast<size_t> (z * numberOfPoles + x)])
+				continue;
+
+			Vector& position = vertexPositionMap->getData (x, z);
+			bool found = false;
+			float bestDistanceSquared = 0.f;
+			Vector2d best;
+			for (size_t i = 0; i < layers.size (); ++i)
+			{
+				Vector2d edgePoint;
+				if (!layers [i]->hasExactExclusionEdge () || !layers [i]->getFineExclusionEdge (position.x, position.z, edgePoint))
+					continue;
+
+				const float distanceSquared = sqr (edgePoint.x - position.x) + sqr (edgePoint.y - position.z);
+				if (!found || distanceSquared < bestDistanceSquared)
+				{
+					found = true;
+					bestDistanceSquared = distanceSquared;
+					best = edgePoint;
+				}
+			}
+
+			if (found)
+			{
+				position.x = best.x;
+				position.z = best.y;
+			}
 		}
 	}
 }

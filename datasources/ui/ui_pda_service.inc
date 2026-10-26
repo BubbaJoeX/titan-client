@@ -68,7 +68,7 @@
 					Style='/Styles.New.buttons.hud.style'
 				>@ui_serv:done</Button>
 				<TabbedPane
-					BackgroundColor='#009977'
+					BackgroundColor='#155584'
 					DataSource='TabData'
 					Location='11,29'
 					MinimumScrollExtent='316,0'
@@ -145,7 +145,7 @@
 							Name='CodeData'
 						/>
 						<Text
-							BackgroundTint='#1CFFFF'
+							BackgroundTint='#3C94DF'
 							Font='normal_12'
 							LocalText='[@ui_serv:instructions_bug]'
 							Location='8,6'
@@ -173,7 +173,7 @@
 						>@ui_serv:bug</Button>
 						<Page
 							BackgroundOpacity='1.00'
-							Color='#00FFFF'
+							Color='#2487DB'
 							Location='53,176'
 							Name='spacer1'
 							PackLocation='nfn,cpf'
@@ -194,7 +194,7 @@
 							ScrollExtent='373,172'
 							Size='373,172'
 							TextAlignmentVertical='Bottom'
-							TextColor='#00FFFF'
+							TextColor='#2487DB'
 						>@ui_serv:instructions_ticket</Text>
 						<Button
 							LocalText='[@ui_serv:new_ticket]'
@@ -270,7 +270,7 @@
 							Size='375,101'
 						>
 							<ComboBox
-								BackgroundOpacity='0.70'
+								BackgroundOpacity='1.00'
 								ButtonMargin='2,2,2,0'
 								ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 								ButtonWidth='10'
@@ -369,7 +369,7 @@
 								/>
 							</DataSource>
 							<ComboBox
-								BackgroundOpacity='0.70'
+								BackgroundOpacity='1.00'
 								ButtonMargin='2,2,2,0'
 								ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 								ButtonWidth='10'
@@ -709,7 +709,7 @@
 							Location='1,0'
 							Name='lines'
 							PackSize='a,a'
-							RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+							RStyleDefault='/Styles.New.text_blank.default.rs'
 							ScrollExtent='401,471'
 							Size='401,471'
 						>
@@ -1222,7 +1222,7 @@
 							Location='1,0'
 							Name='lines'
 							PackSize='a,a'
-							RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+							RStyleDefault='/Styles.New.text_blank.default.rs'
 							ScrollExtent='404,400'
 							Size='404,400'
 						>
@@ -1596,7 +1596,7 @@
 							Location='1,0'
 							Name='lines'
 							PackSize='a,a'
-							RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+							RStyleDefault='/Styles.New.text_blank.default.rs'
 							ScrollExtent='401,400'
 							Size='401,400'
 						>
@@ -1814,7 +1814,7 @@
 					Style='/Styles.New.buttons.hud.style'
 				>@ui_serv:done</Button>
 				<TabbedPane
-					BackgroundColor='#009977'
+					BackgroundColor='#155584'
 					DataSource='TabData'
 					Location='11,29'
 					MinimumScrollExtent='552,0'
@@ -2527,7 +2527,7 @@
 							Name='CodeData'
 						/>
 						<Text
-							BackgroundTint='#1CFFFF'
+							BackgroundTint='#3C94DF'
 							Font='bold_13'
 							LocalText='[@ui_serv:known_issues_header]'
 							Location='8,10'
@@ -2546,7 +2546,7 @@
 						>@ui_serv:known_issues_header</Text>
 						<Page
 							BackgroundOpacity='1.00'
-							Color='#00FFFF'
+							Color='#2487DB'
 							Location='53,45'
 							Name='spacer1'
 							PackLocation='nfn,cpf'
@@ -2556,7 +2556,7 @@
 							Size='311,2'
 						/>
 						<Text
-							BackgroundTint='#1CFFFF'
+							BackgroundTint='#3C94DF'
 							Font='normal_12'
 							LocalText='[@ui_serv:known_issues_welcome ]'
 							Location='8,50'
@@ -2567,7 +2567,7 @@
 							ScrollExtent='401,68'
 							Size='401,68'
 							TextAlignmentVertical='Center'
-							TextColor='#00FFFF'
+							TextColor='#2487DB'
 						>@ui_serv:known_issues_welcome </Text>
 						<Page
 							Location='2,121'
@@ -2666,7 +2666,7 @@
 							ScrollExtent='404,127'
 							Size='404,127'
 							TextAlignmentVertical='Center'
-							TextColor='#00FFFF'
+							TextColor='#2487DB'
 						>@ui_serv:known_issues_footer</Text>
 						<Page
 							GetsInput='false'
@@ -3118,7 +3118,7 @@
 							Location='1,0'
 							Name='lines'
 							PackSize='a,a'
-							RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+							RStyleDefault='/Styles.New.text_blank.default.rs'
 							ScrollExtent='432,619'
 							Size='432,619'
 						>
@@ -3487,7 +3487,7 @@
 							Location='1,0'
 							Name='lines'
 							PackSize='a,a'
-							RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+							RStyleDefault='/Styles.New.text_blank.default.rs'
 							ScrollExtent='327,149'
 							Size='327,149'
 						>

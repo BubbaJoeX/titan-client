@@ -44,6 +44,7 @@ namespace AppearanceTemplateListNamespace
 	typedef std::map<const CrcString *, AppearanceTemplate *, LessPointerComparator> NamedTemplates;
 	typedef std::pair<float, AppearanceTemplate *>                                   TimedTemplate;
 	typedef std::map<const CrcString *, TimedTemplate, LessPointerComparator>        NamedTimedTemplates;
+	typedef std::set<AppearanceTemplate *>                                           DetachedTemplates;
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -64,6 +65,7 @@ namespace AppearanceTemplateListNamespace
 	AnonymousTemplates  ms_anonymousTemplates;
 	NamedTemplates      ms_namedTemplates;
 	NamedTimedTemplates ms_namedTimedTemplates;
+	DetachedTemplates   ms_detachedTemplates;
 	bool                ms_allowTimedTemplates;
 	bool                ms_useTimedTemplates;
 	bool ms_logCreate;
@@ -363,6 +365,13 @@ void AppearanceTemplateList::release(const AppearanceTemplate *const appearanceT
 
 		AppearanceTemplate *const nonConstAppearanceTemplate = const_cast<AppearanceTemplate *>(appearanceTemplate);
 
+		//-- a flushed template is in no list, and its name now belongs to the copy loaded after it
+		if (ms_detachedTemplates.erase(nonConstAppearanceTemplate) != 0)
+		{
+			delete nonConstAppearanceTemplate;
+			return;
+		}
+
 		//-- remove from list
 		removeAppearanceTemplate(nonConstAppearanceTemplate);
 		CrcLowerString const & crcName  = appearanceTemplate->getCrcName();
@@ -409,6 +418,71 @@ Appearance *AppearanceTemplateList::createAppearance(const char *const fileName)
 	release(appearanceTemplate);
 
 	return appearance;
+}
+
+// ----------------------------------------------------------------------
+/**
+ * Forget the cached copy of an appearance file, so that the next fetch
+ * reads the file from disk again.  This is for tools that reload changed
+ * assets in a running client.
+ *
+ * A redirector (.apt) forgets its target.  A cached template nobody uses
+ * is deleted.  A template still in use is detached: the appearances made
+ * from it keep it until they are destroyed, and the next fetch creates a
+ * new one.
+ *
+ * A template that holds the flushed one as a child (a .lod holding its
+ * .msh levels, for instance) keeps the old child, so flush it as well.
+ *
+ * @param fileName  Name of the appearance file, as passed to fetch()
+ * @return true if anything was cached under that name
+ */
+
+bool AppearanceTemplateList::flush(const char *const fileName)
+{
+	DEBUG_FATAL(!ms_installed, ("not installed"));
+	NOT_NULL(fileName);
+
+	TemporaryCrcString const crcFileName(fileName, true);
+	bool flushed = false;
+
+	{
+		RedirectorMap::iterator iter = ms_redirectorMap.find(&crcFileName);
+		if (iter != ms_redirectorMap.end())
+		{
+			CrcString const *const redirectorName = iter->first;
+			CrcString const *const targetName     = iter->second;
+			ms_redirectorMap.erase(iter);
+			delete const_cast<CrcString *>(redirectorName);
+			delete const_cast<CrcString *>(targetName);
+			flushed = true;
+		}
+	}
+
+	{
+		//-- the map key points into the template, so erase before deleting
+		NamedTimedTemplates::iterator iter = ms_namedTimedTemplates.find(&crcFileName);
+		if (iter != ms_namedTimedTemplates.end())
+		{
+			AppearanceTemplate *const appearanceTemplate = iter->second.second;
+			ms_namedTimedTemplates.erase(iter);
+			delete appearanceTemplate;
+			flushed = true;
+		}
+	}
+
+	{
+		NamedTemplates::iterator iter = ms_namedTemplates.find(&crcFileName);
+		if (iter != ms_namedTemplates.end())
+		{
+			AppearanceTemplate *const appearanceTemplate = iter->second;
+			ms_namedTemplates.erase(iter);
+			IGNORE_RETURN(ms_detachedTemplates.insert(appearanceTemplate));
+			flushed = true;
+		}
+	}
+
+	return flushed;
 }
 
 // ----------------------------------------------------------------------
@@ -700,6 +774,7 @@ void AppearanceTemplateListNamespace::debugReport()
 	DEBUG_REPORT_PRINT(true, ("Named templates       = %i\n", ms_namedTemplates.size()));
 	DEBUG_REPORT_PRINT(true, ("Named timed templates = %i\n", ms_namedTimedTemplates.size()));
 	DEBUG_REPORT_PRINT(true, ("Anonymous templates   = %i\n", ms_anonymousTemplates.size()));
+	DEBUG_REPORT_PRINT(true, ("Detached templates    = %i\n", ms_detachedTemplates.size()));
 #endif
 }
 

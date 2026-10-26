@@ -180,7 +180,7 @@
 							Size='315,632'
 						>
 							<TabbedPane
-								BackgroundColor='#009977'
+								BackgroundColor='#155584'
 								DataSource='TabData'
 								Location='6,0'
 								MinimumScrollExtent='419,0'
@@ -1723,7 +1723,7 @@
 											</Page>
 											<Page
 												BackgroundColor='#FFFFFF'
-												BackgroundTint='#1CFFFF'
+												BackgroundTint='#3C94DF'
 												Location='8,13'
 												Name='blur'
 												PackLocation='nfn,nfn'
@@ -2571,7 +2571,7 @@
 							Location='1,0'
 							Name='lines'
 							PackSize='a,a'
-							RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+							RStyleDefault='/Styles.New.text_blank.default.rs'
 							ScrollExtent='650,703'
 							Size='650,703'
 						>
@@ -3258,7 +3258,7 @@
 							Location='1,0'
 							Name='lines'
 							PackSize='a,a'
-							RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+							RStyleDefault='/Styles.New.text_blank.default.rs'
 							ScrollExtent='734,390'
 							Size='734,390'
 						>

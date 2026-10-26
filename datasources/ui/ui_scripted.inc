@@ -105,7 +105,7 @@
 					ScrollExtent='332,18'
 					Size='332,18'
 					TextAlignment='Center'
-					TextColor='#8ECAE6'
+					TextColor='#9ABADA'
 				></Text>
 				<Page
 					Location='8,30'
@@ -160,7 +160,7 @@
 							Name='labelSaturation'
 							ScrollExtent='70,18'
 							Size='70,18'
-							TextColor='#8ECAE6'
+							TextColor='#9ABADA'
 						>Saturation</Text>
 						<Sliderbar
 							AbsorbsInput='false'
@@ -201,7 +201,7 @@
 							Name='labelAlpha'
 							ScrollExtent='70,18'
 							Size='70,18'
-							TextColor='#8ECAE6'
+							TextColor='#9ABADA'
 						>Alpha</Text>
 						<Sliderbar
 							Location='74,4'
@@ -312,7 +312,7 @@
 							Name='labelHtml'
 							ScrollExtent='38,23'
 							Size='38,23'
-							TextColor='#8ECAE6'
+							TextColor='#9ABADA'
 						>HTML</Text>
 						<Textbox
 							BackgroundOpacity='0.90'
@@ -393,7 +393,7 @@
 				ScrollExtent='120,30'
 				Size='120,30'
 				Style='/Styles.New.buttons.hud.style'
-				TextColor='#00FFCC'
+				TextColor='#248DDB'
 			>@ui:ok</Button>
 			<Button
 				IsCancelButton='true'
@@ -689,7 +689,7 @@ parent.btnOk.Press=t'
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='485,430'
 						Size='485,430'
 					>
@@ -1094,7 +1094,7 @@ parent.btnOk.Press=t'
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='286,289'
 						Size='286,289'
 					>
@@ -1552,7 +1552,7 @@ parent.btnOk.Press=t'
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='609,357'
 						Size='609,357'
 					>
@@ -3384,7 +3384,7 @@ parent.btnOk.Press=t'
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='729,604'
 						Size='729,604'
 					>
@@ -4099,7 +4099,7 @@ parent.btnOk.Press=t'
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='875,680'
 						Size='875,680'
 					>
@@ -4439,7 +4439,7 @@ parent.btnOk.Press=t'
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='317,180'
 						Size='317,180'
 					>
@@ -4824,7 +4824,7 @@ parent.btnOk.Press=t'
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='741,640'
 						Size='741,640'
 					>
@@ -9838,7 +9838,7 @@ xxx attrib 8:    info here
 						>@ui_cmnty:friend_list_comment</Text>
 						<ComboBox
 							BackgroundColor='#FFFFFF'
-							BackgroundOpacity='0.70'
+							BackgroundOpacity='1.00'
 							ButtonMargin='2,2,2,0'
 							ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 							ButtonWidth='10'
@@ -10255,7 +10255,7 @@ xxx attrib 8:    info here
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='620,585'
 						Size='620,585'
 					>
@@ -10450,7 +10450,7 @@ xxx attrib 8:    info here
 				SpacingType='Fill'
 			>
 				<Text
-					BackgroundTint='#01687E'
+					BackgroundTint='#12416D'
 					Enabled='false'
 					Font='bold_11'
 					LocalText='Any reasonable person would say no sure yes'
@@ -12070,7 +12070,7 @@ xxx attrib 8:    info here
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='434,467'
 						Size='434,467'
 					>
@@ -12245,7 +12245,7 @@ xxx attrib 8:    info here
 				Name='CodeData'
 			/>
 			<Text
-				BackgroundTint='#01687E'
+				BackgroundTint='#12416D'
 				Enabled='false'
 				Font='bold_11'
 				LocalText='Any reasonable person would say no sure yes'
@@ -13514,7 +13514,7 @@ xxx attrib 8:    info here
 						>@ui_cmnty:friend_list_comment</Text>
 						<ComboBox
 							BackgroundColor='#FFFFFF'
-							BackgroundOpacity='0.70'
+							BackgroundOpacity='1.00'
 							ButtonMargin='2,4,2,-6'
 							ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 							ButtonWidth='14'
@@ -13923,7 +13923,7 @@ xxx attrib 8:    info here
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='415,476'
 						Size='415,476'
 					>
@@ -14098,7 +14098,7 @@ xxx attrib 8:    info here
 				Name='CodeData'
 			/>
 			<Text
-				BackgroundTint='#01687E'
+				BackgroundTint='#12416D'
 				Enabled='false'
 				Font='bold_11'
 				LocalText='Any reasonable person would say no'
@@ -14722,7 +14722,7 @@ parent.compBg.location=location'
 			</Page>
 		</Page>
 		<Page
-			BackgroundTint='#00D6FB'
+			BackgroundTint='#2381D8'
 			Location='54,209'
 			MaximumSize='366,318'
 			MinimumSize='140,287'
@@ -15067,7 +15067,7 @@ parent.compBg.location=location'
 				TextColor='#000000'
 			>@ui_numPad:enter</Button>
 			<Page
-				BackgroundTint='#00D6FB'
+				BackgroundTint='#2381D8'
 				MaximumSize='366,318'
 				MinimumSize='140,287'
 				Name='background'
@@ -15575,7 +15575,7 @@ parent.compBg.location=location'
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='194,318'
 						Size='194,318'
 					>
@@ -15950,7 +15950,7 @@ parent.compBg.location=location'
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='289,149'
 						Size='289,149'
 					>
@@ -16473,7 +16473,7 @@ parent.compBg.location=location'
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='444,241'
 						Size='444,241'
 					>
@@ -16987,7 +16987,7 @@ parent.compBg.location=location'
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='364,218'
 						Size='364,218'
 					>
@@ -17317,7 +17317,7 @@ parent.compBg.location=location'
 			</DataSource>
 			<ComboBox
 				BackgroundColor='#FFFFFF'
-				BackgroundOpacity='0.60'
+				BackgroundOpacity='1.00'
 				ButtonMargin='2,2,2,0'
 				ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 				ButtonWidth='10'
@@ -17414,7 +17414,7 @@ parent.compBg.location=location'
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='305,232'
 						Size='305,232'
 					>
@@ -17795,7 +17795,7 @@ parent.compBg.location=location'
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='327,147'
 						Size='327,147'
 					>
@@ -19205,7 +19205,7 @@ parent.compBg.location=location'
 					/>
 				</Page>
 				<Page
-					BackgroundTint='#00D6FB'
+					BackgroundTint='#2381D8'
 					GetsInput='false'
 					Name='lights'
 					PackLocation='nfn,nfn'
@@ -19425,7 +19425,7 @@ parent.compBg.location=location'
 						TextColor='#000000'
 					>1</Text>
 					<Textbox
-						BackgroundTint='#03546B'
+						BackgroundTint='#12385C'
 						Location='14,3'
 						Name='textboxPrice'
 						NumericInteger='true'
@@ -22813,7 +22813,7 @@ parent.compBg.location=location'
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='219,124'
 						Size='219,124'
 					>

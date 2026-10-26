@@ -157,11 +157,23 @@ const char* GameAnimationMessageCallbackNamespace::getSurfaceType(const Object* 
 	{
 		//-- object is in a cell, so get the cell property's footstep id
 		const CellProperty* const cellProperty = object->getParentCell ();
+		if (!cellProperty)
+			return 0;
+
 		const char* const cellName = cellProperty->getCellName ();
 		const PortalProperty* const portalProperty = cellProperty->getPortalProperty ();
-		const char* const pobShortName = portalProperty->getPobShortName ();
+		if (!portalProperty || !cellName)
+			return 0;
 
-		return InteriorEnvironmentBlockManager::getEnvironmentBlock (pobShortName, cellName)->getSurfaceType ();
+		const char* const pobShortName = portalProperty->getPobShortName ();
+		if (!pobShortName || !pobShortName[0])
+			return 0;
+
+		InteriorEnvironmentBlock const * const environmentBlock = InteriorEnvironmentBlockManager::getEnvironmentBlock (pobShortName, cellName);
+		if (!environmentBlock)
+			return 0;
+
+		return environmentBlock->getSurfaceType ();
 	}
 
 	return 0;

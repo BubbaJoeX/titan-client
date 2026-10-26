@@ -1,7 +1,7 @@
 /****************************************************************************
 ** ActionsObjectTemplate meta object code from reading C++ file 'ActionsObjectTemplate.h'
 **
-** Created: Thu Jul 23 03:18:10 2026
+** Created: Sat Oct 24 09:51:36 2026
 **      by: The Qt MOC ($Id: $)
 **
 ** WARNING! All changes made in this file will be lost!
@@ -93,8 +93,12 @@ QMetaObject* ActionsObjectTemplate::staticMetaObject()
     static const QUMethod slot_17 = {"onClientSubmit", 0, 0 };
     static const QUMethod slot_18 = {"onClientCompile", 0, 0 };
     static const QUMethod slot_19 = {"onClientReplace", 0, 0 };
-    static const QUMethod slot_20 = {"onServerAddToFavorites", 0, 0 };
-    static const QUMethod slot_21 = {"onClientAddToFavorites", 0, 0 };
+    static const QUMethod slot_20 = {"onReloadAppearance", 0, 0 };
+    static const QUMethod slot_21 = {"onServerAddToFavorites", 0, 0 };
+    static const QUMethod slot_22 = {"onClientAddToFavorites", 0, 0 };
+    static const QUMethod slot_23 = {"onCompileOutput", 0, 0 };
+    static const QUMethod slot_24 = {"onCompileExited", 0, 0 };
+    static const QUMethod slot_25 = {"onCompileTimedOut", 0, 0 };
     static const QMetaData slot_tbl[] = {
 	{ "onServerObjectTemplatePathSelectionChanged(const std::string&,bool,bool,bool)", &slot_0, QMetaData::Public },
 	{ "getSelectedServerObjectTemplate(std::string&)", &slot_1, QMetaData::Public },
@@ -116,12 +120,16 @@ QMetaObject* ActionsObjectTemplate::staticMetaObject()
 	{ "onClientSubmit()", &slot_17, QMetaData::Private },
 	{ "onClientCompile()", &slot_18, QMetaData::Private },
 	{ "onClientReplace()", &slot_19, QMetaData::Private },
-	{ "onServerAddToFavorites()", &slot_20, QMetaData::Private },
-	{ "onClientAddToFavorites()", &slot_21, QMetaData::Private }
+	{ "onReloadAppearance()", &slot_20, QMetaData::Private },
+	{ "onServerAddToFavorites()", &slot_21, QMetaData::Private },
+	{ "onClientAddToFavorites()", &slot_22, QMetaData::Private },
+	{ "onCompileOutput()", &slot_23, QMetaData::Private },
+	{ "onCompileExited()", &slot_24, QMetaData::Private },
+	{ "onCompileTimedOut()", &slot_25, QMetaData::Private }
     };
     metaObj = QMetaObject::new_metaobject(
 	"ActionsObjectTemplate", parentObject,
-	slot_tbl, 22,
+	slot_tbl, 26,
 	0, 0,
 #ifndef QT_NO_PROPERTIES
 	0, 0,
@@ -164,8 +172,12 @@ bool ActionsObjectTemplate::qt_invoke( int _id, QUObject* _o )
     case 17: onClientSubmit(); break;
     case 18: onClientCompile(); break;
     case 19: onClientReplace(); break;
-    case 20: onServerAddToFavorites(); break;
-    case 21: onClientAddToFavorites(); break;
+    case 20: onReloadAppearance(); break;
+    case 21: onServerAddToFavorites(); break;
+    case 22: onClientAddToFavorites(); break;
+    case 23: onCompileOutput(); break;
+    case 24: onCompileExited(); break;
+    case 25: onCompileTimedOut(); break;
     default:
 	return QObject::qt_invoke( _id, _o );
     }

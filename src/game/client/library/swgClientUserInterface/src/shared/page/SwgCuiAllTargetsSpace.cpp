@@ -369,13 +369,17 @@ void SwgCuiAllTargetsSpace::updateShipTarget(Camera const & camera)
 				Vector screenCoords;
 				UIPoint screenCenterOffset;
 				
-				UIRect const screenRect(0L, 0L, Graphics::getCurrentRenderTargetWidth(), Graphics::getCurrentRenderTargetHeight());
+				// The screen center, dead zone and cursor live in UI-scaled (logical) space, like CuiIoWin's own;
+				// the camera projects into render-target pixels.
+				UIRect const screenRect(0L, 0L, Graphics::getUiCanvasWidth(), Graphics::getUiCanvasHeight());
 				UIPoint centerLocation(screenRect.Size() / 2L);
 
 				if (!Game::isViewFreeCamera() && camera.projectInWorldSpace(targetPoint_w, &screenCoords.x, &screenCoords.y, 0))
 				{
-					long const cursorPosX = static_cast<long>(screenCoords.x + 0.5f);
-					long const cursorPosY = static_cast<long>(screenCoords.y + 0.5f);
+					UIPoint cursorPos(static_cast<long>(screenCoords.x + 0.5f), static_cast<long>(screenCoords.y + 0.5f));
+					CuiManager::transformScreenPixelsToUiSpace(cursorPos);
+					long const cursorPosX = cursorPos.x;
+					long const cursorPosY = cursorPos.y;
 
 					int const deadZoneSize = CuiIoWin::getDeadZoneSizeUsable();
 					long const halfDeadZoneSize = deadZoneSize / 2;
@@ -456,6 +460,7 @@ void SwgCuiAllTargetsSpace::updateShipTarget(Camera const & camera)
 						if (camera.projectInWorldSpace(lookAtTarget->rotateTranslate_o2w(s_lastTargetLeadLocation_o), &leadScreenPos.x, &leadScreenPos.y, 0))
 						{
 							UIPoint leadLocation(static_cast<long>(leadScreenPos.x + 0.5f), static_cast<long>(leadScreenPos.y + 0.5f));
+							CuiManager::transformScreenPixelsToUiSpace(leadLocation);
 							leadLocation -= screenCenterOffset;
 							m_targetLeadIndicator->SetLocation(leadLocation, true);
 							m_targetLeadIndicatorOutOfRange->SetLocation(leadLocation, true);
@@ -632,6 +637,7 @@ void SwgCuiAllTargetsSpace::updateWaypointIndicators(Camera const& camera)
 				if (camera.projectInCameraSpace(posToDraw_o, &waypointIndicatorScreenPos.x, &waypointIndicatorScreenPos.y, 0))
 				{
 					UIPoint waypointIndicatorLocation(static_cast<long>(waypointIndicatorScreenPos.x), static_cast<long>(waypointIndicatorScreenPos.y));
+					CuiManager::transformScreenPixelsToUiSpace(waypointIndicatorLocation);
 					UIPoint screenCenterOffset;
 					CuiManager::getIoWin().getScreenCenterOffset(screenCenterOffset);
 					waypointIndicatorLocation -= screenCenterOffset;
@@ -896,9 +902,11 @@ void SwgCuiAllTargetsSpace::updateOnRender()
 						{
 							float const targetConeRadiusRadians = convertDegreesToRadians(MissileManager::getTargetAcquisitionAngle(missileTypeId));
 
+							// Graphics::drawCircle draws in render-target pixels, like the projected radius below
 							UIPoint screenCenter;
 							CuiManager::getIoWin().getScreenCenter(screenCenter);
-							
+							CuiManager::transformUiPixelsToScreen(screenCenter);
+
 							Transform shipTransform_o2w = ship->getTransform_o2w();
 							Transform const & muzzleTransform = ship->getTransform_o2w();							
 							Vector const & shotDirection = muzzleTransform.getLocalFrameK_p();
@@ -951,6 +959,7 @@ void SwgCuiAllTargetsSpace::updateOnRender()
 
 		UIPoint screenCenter;
 		CuiManager::getIoWin().getScreenCenter(screenCenter);
+		CuiManager::transformUiPixelsToScreen(screenCenter);     // drawCircle and the viewport-based radius are in pixels
 		int const circleRadius = ClientShipTargeting::getOnScreenVariableReticleRadius();
  		Graphics::setStaticShader(ShaderTemplateList::get2dVertexColorAStaticShader());
 		VectorArgb const targetColor(0.25f, 1.0f, 0.0f, 8.0f);

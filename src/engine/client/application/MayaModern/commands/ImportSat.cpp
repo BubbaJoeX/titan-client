@@ -3,22 +3,32 @@
 #include "ImportLodMesh.h"
 #include "ImportSkeleton.h"
 #include "ImportSkeletalMesh.h"
+#include "MayaSceneBuilder.h"
 #include "SatRoundTrip.h"
 
 #include "Iff.h"
 #include "Tag.h"
 
+#include <maya/M3dView.h>
 #include <maya/MArgList.h>
+#include <maya/MColor.h>
 #include <maya/MDagPath.h>
+#include <maya/MEulerRotation.h>
 #include <maya/MFn.h>
+#include <maya/MFnAmbientLight.h>
 #include <maya/MFnDagNode.h>
+#include <maya/MFnDirectionalLight.h>
+#include <maya/MFnTransform.h>
 #include <maya/MGlobal.h>
+#include <maya/MDagModifier.h>
 #include <maya/MItDag.h>
 #include <maya/MSelectionList.h>
+#include <maya/MVector.h>
 
 #include <string>
 #include <vector>
 #include <cstdlib>
+#include <cstdio>
 #include <algorithm>
 #include <cctype>
 
@@ -46,17 +56,62 @@ namespace
         return pathExt == ext;
     }
 
+    static bool nodeExists(const char* name)
+    {
+        MSelectionList list;
+        return list.add(MString(name)) == MS::kSuccess && list.length() > 0;
+    }
+
     static void ensureSwgLighting()
     {
-        MStringArray result;
-        if (MGlobal::executeCommand("objExists \"swgLighting\"", result, false, false) && result.length() > 0 && result[0] == "1")
+        if (nodeExists("swgLighting"))
             return;
 
-        MGlobal::executeCommand("group -em -n swgLighting");
-        MGlobal::executeCommand("directionalLight -intensity 1.2 -rgb 0.95 0.92 0.85 -n swgSun");
-        MGlobal::executeCommand("ambientLight -intensity 0.4 -rgb 0.52 0.52 0.58 -n swgAmbient");
-        MGlobal::executeCommand("rotate -r -45 35 0 swgSun");
-        MGlobal::executeCommand("parent swgSun swgAmbient swgLighting");
+        MStatus status;
+        MFnTransform groupFn;
+        MObject groupObj = groupFn.create(MObject::kNullObj, &status);
+        if (!status)
+            return;
+        groupFn.setName("swgLighting");
+
+        MFnDirectionalLight sunFn;
+        MObject sunXformObj = sunFn.create(groupObj, true, true, &status);
+        if (status)
+        {
+            sunFn.setIntensity(1.2f);
+            sunFn.setColor(MColor(0.95f, 0.92f, 0.85f));
+            MFnTransform sunXform(sunXformObj, &status);
+            if (status)
+            {
+                sunXform.setName("swgSun");
+                sunXform.setRotation(MEulerRotation(
+                    -45.0 * 3.14159265358979323846 / 180.0,
+                    35.0 * 3.14159265358979323846 / 180.0,
+                    0.0));
+            }
+        }
+
+        MFnAmbientLight ambFn;
+        MObject ambXformObj = ambFn.create(groupObj, true, true, &status);
+        if (status)
+        {
+            ambFn.setIntensity(0.4f);
+            ambFn.setColor(MColor(0.52f, 0.52f, 0.58f));
+            MFnTransform ambXform(ambXformObj, &status);
+            if (status)
+                ambXform.setName("swgAmbient");
+        }
+    }
+
+    static void enableJointDisplay()
+    {
+        MStatus status;
+        M3dView view = M3dView::active3dView(&status);
+        if (!status)
+            return;
+        const unsigned mask = view.objectDisplay(&status);
+        if (status)
+            view.setObjectDisplay(mask | M3dView::kDisplayJoints);
     }
 
     static std::string stripNamespace(const std::string& s)
@@ -124,24 +179,93 @@ namespace
                 break;
             }
         }
-        if (!rootPath.isValid())
-            return std::string();
+        if (rootPath.isValid())
+        {
+            std::string rootFullPath(rootPath.fullPathName().asChar());
+            dagIt.reset();
+            for (; !dagIt.isDone(); dagIt.next())
+            {
+                MDagPath path;
+                dagIt.getPath(path);
+                std::string fullPath(path.fullPathName().asChar());
+                if (fullPath != rootFullPath && fullPath.find(rootFullPath + "|") != 0)
+                    continue;
+                MFnDagNode fn(path);
+                std::string name = stripNamespace(fn.name().asChar());
+                if (jointMatchesAttachment(name, attachmentName))
+                    return path.fullPathName().asChar();
+            }
+        }
 
-        std::string rootFullPath(rootPath.fullPathName().asChar());
+        // Scoped search can miss Head when the body root is named root__all_b
+        // vs root, or the first SKT is SLOD. Face SKT attach is still "head".
         dagIt.reset();
         for (; !dagIt.isDone(); dagIt.next())
         {
             MDagPath path;
             dagIt.getPath(path);
-            std::string fullPath(path.fullPathName().asChar());
-            if (fullPath != rootFullPath && fullPath.find(rootFullPath + "|") != 0)
-                continue;
             MFnDagNode fn(path);
-            std::string name(fn.name().asChar());
+            std::string name = stripNamespace(fn.name().asChar());
             if (jointMatchesAttachment(name, attachmentName))
                 return path.fullPathName().asChar();
         }
         return std::string();
+    }
+
+    static bool dagPathIsUnder(const std::string& child, const std::string& ancestor)
+    {
+        return child == ancestor || (child.size() > ancestor.size() &&
+            child.compare(0, ancestor.size(), ancestor) == 0 &&
+            child[ancestor.size()] == '|');
+    }
+
+    // Game attachSkeletonSegment: face_root's parent is Head. Import with -parent
+    // can miss when the body root short name does not match the Maya DAG.
+    static void ensureFaceRootUnderHead()
+    {
+        const std::string headPath = findAttachmentJointPath(std::string(), "head");
+        if (headPath.empty())
+            return;
+
+        MStatus status;
+        MDagPath faceRoot;
+        MItDag dagIt(MItDag::kDepthFirst, MFn::kJoint, &status);
+        if (!status)
+            return;
+        for (; !dagIt.isDone(); dagIt.next())
+        {
+            MDagPath path;
+            dagIt.getPath(path);
+            MFnDagNode fn(path);
+            const std::string name = stripNamespace(fn.name().asChar());
+            if (jointMatchesAttachment(name, "face_root"))
+            {
+                faceRoot = path;
+                break;
+            }
+        }
+        if (!faceRoot.isValid())
+            return;
+
+        const std::string faceFull(faceRoot.fullPathName().asChar());
+        if (dagPathIsUnder(faceFull, headPath))
+            return;
+
+        MSelectionList sel;
+        if (sel.add(MString(headPath.c_str())) != MS::kSuccess)
+            return;
+        MDagPath headDag;
+        if (sel.getDagPath(0, headDag) != MS::kSuccess)
+            return;
+
+        MDagModifier mod;
+        status = mod.reparentNode(faceRoot.node(), headDag.node());
+        if (status)
+            status = mod.doIt();
+        if (status)
+            MGlobal::displayInfo(MString("ImportSat: parented face_root under ") + headPath.c_str());
+        else
+            std::cerr << "ImportSat: failed to parent face_root under Head" << std::endl;
     }
 
     static std::string fileBasenameNoExtension(std::string path)
@@ -314,6 +438,27 @@ namespace
     }
 }
 
+namespace
+{
+    int g_fileImportDepth = 0;
+}
+
+SwgFileImportScope::SwgFileImportScope()
+{
+    ++g_fileImportDepth;
+}
+
+SwgFileImportScope::~SwgFileImportScope()
+{
+    if (g_fileImportDepth > 0)
+        --g_fileImportDepth;
+}
+
+bool SwgFileImportScope::active()
+{
+    return g_fileImportDepth > 0;
+}
+
 void* ImportSat::creator()
 {
     return new ImportSat();
@@ -321,6 +466,7 @@ void* ImportSat::creator()
 
 MStatus ImportSat::doIt(const MArgList& args)
 {
+    MGlobal::displayInfo("SwgMayaEditor 20260831k: ImportSat starting");
     MStatus status;
     std::string filename;
 
@@ -439,11 +585,12 @@ MStatus ImportSat::doIt(const MArgList& args)
         skelArgs.addArg(MString("-i"));
         skelArgs.addArg(MString(resolvedPath.c_str()));
 
-        if (i > 0 && !firstSkeletonRootName.empty() && !attachmentName.empty())
+        if (i > 0 && !attachmentName.empty())
         {
-            // SLOD skeletons use root__name_l0; try that first, then root__name
+            // SLOD skeletons use root__name_l0; try that first, then root__name,
+            // then any joint named Head/head (SKTI attach is lowercase "head").
             std::string parentPath;
-            if (firstSkeletonRootName.find("_l0") == std::string::npos)
+            if (!firstSkeletonRootName.empty() && firstSkeletonRootName.find("_l0") == std::string::npos)
                 parentPath = findAttachmentJointPath(firstSkeletonRootName + "_l0", attachmentName);
             if (parentPath.empty())
                 parentPath = findAttachmentJointPath(firstSkeletonRootName, attachmentName);
@@ -469,6 +616,7 @@ MStatus ImportSat::doIt(const MArgList& args)
                 firstSkeletonRootName = getSkeletonRootNameFallback(relativePath);
         }
     }
+    ensureFaceRootUnderHead();
 
     std::string firstSkeletonResolved;
     if (!skeletonTemplatePaths.empty())
@@ -482,7 +630,7 @@ MStatus ImportSat::doIt(const MArgList& args)
         + "\" firstSkelResolved=\"" + firstSkeletonResolved.c_str() + "\"");
 
     if (meshGeneratorPaths.empty())
-        MGlobal::displayWarning(
+        MGlobal::displayInfo(
             MString("ImportSat: SMAT has zero mesh generator paths (MSGN). Skeleton will import; add meshes manually or fix the SAT if this appearance should be skinned."));
 
     bool meshImportFailed = false;
@@ -515,28 +663,97 @@ MStatus ImportSat::doIt(const MArgList& args)
             meshImportFailed = true;
             MString err = "ImportSat: skeletal mesh import failed for ";
             err += resolvedPath.c_str();
-            err += " (see Script Editor / stderr for ImportSkeletalMesh details).";
-            MGlobal::displayError(err);
-            if (hasExtension(relativePath, ".lmg"))
-                std::cerr << "ImportSat: failed to import mesh generator [" << resolvedPath << "]" << std::endl;
-            else
-                std::cerr << "ImportSat: failed to import skeletal mesh [" << resolvedPath << "]" << std::endl;
+            err += " (see Script Editor). Continuing without that mesh.";
+            MGlobal::displayInfo(err);
+            std::cerr << "ImportSat: failed to import mesh generator [" << resolvedPath << "]" << std::endl;
         }
     }
 
     if (!meshGeneratorPaths.empty() && meshImportFailed)
+        MGlobal::displayInfo("ImportSat: one or more mesh generators failed (Script Editor). Skeleton was still imported.");
+
+    // Default hair SAT sits beside the body SAT (hum_m_hair_s01.sat). Face rig is a later tool;
+    // this only pulls the extra skinned mesh onto the already-imported all_b joints.
     {
-        MGlobal::displayError(
-            "ImportSat: one or more mesh generators failed to import. Fix errors above; skeleton-only scene is not sufficient for SAT round-trip.");
-        return MS::kFailure;
+        std::string hairSat = filename;
+        const size_t dot = hairSat.find_last_of('.');
+        if (dot != std::string::npos)
+            hairSat = hairSat.substr(0, dot) + "_hair_s01.sat";
+        FILE* hf = fopen(hairSat.c_str(), "rb");
+        if (hf)
+        {
+            fclose(hf);
+            Iff hairIff;
+            if (hairIff.open(hairSat.c_str(), false) && hairIff.getCurrentName() == TAG_SMAT)
+            {
+                hairIff.enterForm(TAG_SMAT);
+                const Tag hairVer = hairIff.getCurrentName();
+                hairIff.enterForm(hairVer);
+                int32 hairMeshCount = 0;
+                hairIff.enterChunk(TAG_INFO);
+                hairMeshCount = hairIff.read_int32();
+                hairIff.read_int32();
+                hairIff.exitChunk(TAG_INFO, true);
+                hairIff.enterChunk(TAG_MSGN);
+                for (int32 hi = 0; hi < hairMeshCount; ++hi)
+                {
+                    const std::string rel = hairIff.read_stdstring();
+                    const std::string resolved = lod_path_helpers::resolveTreeFilePath(rel, hairSat);
+                    MGlobal::displayInfo(MString("ImportSat: companion hair MSGN \"") + rel.c_str()
+                        + "\" -> \"" + resolved.c_str() + "\"");
+                    MArgList hairArgs;
+                    hairArgs.addArg(MString("-i"));
+                    hairArgs.addArg(MString(resolved.c_str()));
+                    if (!firstSkeletonResolved.empty())
+                    {
+                        hairArgs.addArg(MString("-skeleton"));
+                        hairArgs.addArg(MString(firstSkeletonResolved.c_str()));
+                    }
+                    if (!meshParentDag.empty())
+                    {
+                        hairArgs.addArg(MString("-parent"));
+                        hairArgs.addArg(MString(meshParentDag.c_str()));
+                    }
+                    ImportSkeletalMesh hairImporter;
+                    if (hairImporter.doIt(hairArgs) != MS::kSuccess)
+                        MGlobal::displayInfo(MString("ImportSat: hair mesh failed: ") + resolved.c_str());
+                }
+                hairIff.exitChunk(TAG_MSGN, true);
+                hairIff.exitForm(hairVer, true);
+                hairIff.exitForm(TAG_SMAT, true);
+            }
+        }
     }
 
-    ensureSwgLighting();
+    // Do not create scene lights: VP2 switches to "Use All Lights" and the mesh goes black
+    // if materials have not evaluated yet. Default viewport lighting shows the file textures.
+    enableJointDisplay();
+    MayaSceneBuilder::forceVp2TexturedViewport();
+    MayaSceneBuilder::scheduleImportedTextureRebind();
+
+    MGlobal::displayInfo("SwgMayaEditor 20260831k: ImportSat finished (body+head+hair MAIN PNG + VP2)");
 
     const std::string satBaseName = fileBasenameNoExtension(filename);
     const std::string payload = sat_round_trip::serializePayload(satRt);
-    if (!sat_round_trip::createMetadataNode(satBaseName, payload))
+    if (!sat_round_trip::createMetadataNode(satBaseName, payload, filename))
         std::cerr << "ImportSat: warning: failed to create SAT metadata transform (swgSmatRoundTrip) for round-trip export." << std::endl;
 
+    return MS::kSuccess;
+}
+
+void* SwgFixSatViewport::creator()
+{
+    return new SwgFixSatViewport();
+}
+
+MStatus SwgFixSatViewport::doIt(const MArgList&)
+{
+    MayaSceneBuilder::forceVp2TexturedViewport();
+    MString result;
+    MGlobal::executeCommand(
+        "python(\"from swg_mocap.maya_bridge import fix_sat_viewport; print(fix_sat_viewport())\")",
+        result, true);
+    if (result.length() > 0)
+        MGlobal::displayInfo(result);
     return MS::kSuccess;
 }

@@ -8,6 +8,7 @@
 
 #include "clientGame/FirstClientGame.h"
 #include "clientGame/TangibleObject.h"
+#include "clientGraphics/ShaderPrimitiveSet.h"
 #include "clientGraphics/Light.h"
 #include "clientGame/GameLight.h"
 #include "clientObject/HardpointObject.h"
@@ -49,6 +50,7 @@
 #include "sharedGame/PvpData.h"
 #include "sharedGame/SharedObjectTemplate.h"
 #include "sharedGame/SharedStringIds.h"
+#include "sharedMath/Quaternion.h"
 #include "sharedMath/VectorArgb.h"
 #include "sharedMath/Transform.h"
 #include "sharedMathArchive/VectorArchive.h"
@@ -62,6 +64,7 @@
 #include "sharedObject/Container.h"
 #include "sharedObject/CustomizationData.h"
 #include "sharedObject/CustomizationDataProperty.h"
+#include "sharedObject/Dynamics.h"
 #include "sharedObject/NetworkIdManager.h"
 #include "sharedObject/ObjectTemplateList.h"
 #include "sharedObject/RotationDynamics.h"
@@ -371,6 +374,31 @@ namespace TangibleObjectNamespace
 		return ext == ".gif";
 	}
 
+	//-- Screen surfaces: an appearance whose shaders include a "screen" / "canvas" one (a themed video screen, a
+	//   painting frame) takes remote, video and RT-camera textures on those shaders only, and gets no floating
+	//   overlay; any other appearance keeps the old behaviour (every MAIN texture replaced, overlays as before).
+	bool hasScreenSurface(Appearance * appearance)
+	{
+		if (!appearance)
+			return false;
+		ShaderPrimitiveSet::beginScreenSurfaceFilter(true);
+		appearance->setTextureScroll(TAG(M,A,I,N), 0.0f, 0.0f);
+		return ShaderPrimitiveSet::endScreenSurfaceFilter() > 0;
+	}
+
+	void setSurfaceTexture(Appearance * appearance, Texture const & texture)
+	{
+		// ShaderPrimitiveSet keeps MAIN textures off the frame when the appearance has screen surfaces
+		if (appearance)
+			appearance->setTexture(TAG(M,A,I,N), texture);
+	}
+
+	void setSurfaceTextureScroll(Appearance * appearance, float scrollH, float scrollV)
+	{
+		if (appearance)
+			appearance->setTextureScroll(TAG(M,A,I,N), scrollH, scrollV);
+	}
+
 	bool templateNameContainsPainting(char const * templateName)
 	{
 		if (!templateName)
@@ -445,7 +473,7 @@ namespace TangibleObjectNamespace
 
 		// Magic painting: drive the tangible's shader only (no child cube/prism overlays).
 		if (ownerAppearance)
-			ownerAppearance->setTexture(TAG_MAIN, *runtimeData.texture);
+			setSurfaceTexture(ownerAppearance, *runtimeData.texture);
 	}
 
 	// Worn items are baked into the creature's composite mesh; setTexture on the wearable alone does not refresh
@@ -1014,13 +1042,13 @@ namespace TangibleObjectNamespace
 	{
 		if (!appearance)
 			return;
-		appearance->setTextureScroll(TAG_MAIN, scrollH, scrollV);
+		setSurfaceTextureScroll(appearance, scrollH, scrollV);
 	}
 
 	void applyTextureToSurface(Texture const * texture, Appearance * appearance)
 	{
 		if (texture && appearance)
-			appearance->setTexture(TAG_MAIN, *texture);
+			setSurfaceTexture(appearance, *texture);
 	}
 
 	void applyPictureOnlyPresentation(TangibleObject & object, RemoteImageRuntimeData & runtimeData, bool pictureOnly)
@@ -1094,6 +1122,17 @@ namespace TangibleObjectNamespace
 }
 
 using namespace TangibleObjectNamespace;
+
+// ----------------------------------------------------------------------
+
+bool TangibleObject::applyScreenSurfaceTexture(Object & object, Texture const & texture)
+{
+	Appearance * const appearance = object.getAppearance();
+	bool const screens = hasScreenSurface(appearance);
+	setSurfaceTexture(appearance, texture);
+	object.scheduleForAlter();      // MeshAppearance applies a set texture on its next alter
+	return screens;
+}
 
 // ======================================================================
 // libVLC dynamic loading and video stream support
@@ -1804,7 +1843,7 @@ namespace VideoStreamNamespace
 		target->addToWorld();
 
 		if (runtimeData.texture)
-			appearance->setTexture(TAG_MAIN, *runtimeData.texture);
+			setSurfaceTexture(appearance, *runtimeData.texture);
 
 		if (portalDisabled)
 			CellProperty::setPortalTransitionsEnabled(true);
@@ -1831,20 +1870,20 @@ namespace VideoStreamNamespace
 		if (runtimeData.isPaintingTemplate)
 		{
 			if (ownerAppearance)
-				ownerAppearance->setTexture(TAG_MAIN, *runtimeData.texture);
+				setSurfaceTexture(ownerAppearance, *runtimeData.texture);
 			return;
 		}
 
 		Appearance * const overlayAppearance = runtimeData.overlayObject ? runtimeData.overlayObject->getAppearance() : 0;
 		if (overlayAppearance)
-			overlayAppearance->setTexture(TAG_MAIN, *runtimeData.texture);
+			setSurfaceTexture(overlayAppearance, *runtimeData.texture);
 
 		Appearance * const overlayBackAppearance = runtimeData.overlayBackObject ? runtimeData.overlayBackObject->getAppearance() : 0;
 		if (overlayBackAppearance)
-			overlayBackAppearance->setTexture(TAG_MAIN, *runtimeData.texture);
+			setSurfaceTexture(overlayBackAppearance, *runtimeData.texture);
 
 		if (ownerAppearance)
-			ownerAppearance->setTexture(TAG_MAIN, *runtimeData.texture);
+			setSurfaceTexture(ownerAppearance, *runtimeData.texture);
 	}
 
 	// remoteStreamAspect: optional tuning for magic video (same replicated string as aspect ratio).
@@ -2192,6 +2231,7 @@ m_testDamageLevel        (0.f),
 m_lastOnOffStatus        (false),
 m_isReceivingCallbacks   (false),
 m_interestingAttachedObject(0),
+m_interestingAppearanceOverride(),
 m_untargettableOverride(false),
 m_clientOnlyInteriorLayoutObjectList(0),
 m_visabilityFlag(newTemplate->getClientVisabilityFlag()),
@@ -2719,6 +2759,11 @@ void TangibleObject::changeAppearance(const SharedTangibleObjectTemplate & objec
 * @arg value  the value of the new appearance customization string
 */
 
+namespace TangibleObjectHpDynClientNamespace
+{
+	void pushCustomizationToHpDynParts(TangibleObject & owner);
+}
+
 void TangibleObject::appearanceDataModified(const std::string& value)
 {
 	// we don't value to use the value arg since we already have the
@@ -2749,6 +2794,8 @@ void TangibleObject::appearanceDataModified(const std::string& value)
 
 	//-- release local reference
 	customizationData->release();
+
+	TangibleObjectHpDynClientNamespace::pushCustomizationToHpDynParts(*this);
 
 	//-- Make sure the damn appearance gets an alter --- static meshes will not alter unless instructed.
 	scheduleForAlter();
@@ -2909,7 +2956,7 @@ void TangibleObject::updateRemoteImageTexture()
 
 	if (!runtimeData.isPaintingTemplateResolved)
 	{
-		runtimeData.isPaintingTemplate = usesTailorRemoteTextureMode() || templateNameContainsPainting(getObjectTemplateName());
+		runtimeData.isPaintingTemplate = usesTailorRemoteTextureMode() || templateNameContainsPainting(getObjectTemplateName()) || hasScreenSurface(getAppearance());
 		runtimeData.isPaintingTemplateResolved = true;
 	}
 
@@ -3181,7 +3228,7 @@ void TangibleObject::updateGifAnimation(float elapsedTime)
 	runtimeData.texture->fetch();
 
 	if (Appearance * const ownerApp = getAppearance())
-		ownerApp->setTexture(TAG_MAIN, *frameTexture);
+		setSurfaceTexture(ownerApp, *frameTexture);
 	if (runtimeData.isPaintingTemplate || usesTailorRemoteTextureMode())
 		markRemoteTextureMeshesDirty(*this);
 
@@ -3364,7 +3411,7 @@ void TangibleObject::updateRemoteVideoStream()
 
 	if (!runtimeData.isPaintingTemplateResolved)
 	{
-		runtimeData.isPaintingTemplate = templateNameContainsPainting(getObjectTemplateName());
+		runtimeData.isPaintingTemplate = templateNameContainsPainting(getObjectTemplateName()) || hasScreenSurface(getAppearance());
 		runtimeData.isPaintingTemplateResolved = true;
 	}
 
@@ -3733,51 +3780,41 @@ void TangibleObject::updateVideoEmitterAudio()
 	if (!player)
 		return;
 
-	Vector const emitterPos = getPosition_w();
-	Vector const playerPos = player->getPosition_w();
-	float const distance = emitterPos.magnitudeBetween(playerPos);
-
-	if (distance > AUDIO_MAX_DISTANCE)
+	// The stream plays once, so every speaker linked to it sets the same volume: the loudest one for the player
+	// (several speakers round a room or down a cabin ceiling, rather than whichever updated last).
+	float volume = 0.0f;
+	for (EmitterRuntimeDataMap::const_iterator it = ms_emitterRuntimeDataMap.begin(); it != ms_emitterRuntimeDataMap.end(); ++it)
 	{
-		applyLibvlcPlayerVolume(parentVideoData, 0);
-		scheduleForAlter();
-		return;
-	}
+		TangibleObject const * const emitter = it->second.owner;
+		if (!emitter || !it->second.active || it->second.parentNetworkIdStr != parentIdStr || !emitter->isInWorld())
+			continue;
 
-	float volume = 1.0f;
-	if (distance > AUDIO_FULL_VOLUME_DISTANCE)
-	{
-		float const fadeRange = AUDIO_MAX_DISTANCE - AUDIO_FULL_VOLUME_DISTANCE;
-		volume = 1.0f - ((distance - AUDIO_FULL_VOLUME_DISTANCE) / fadeRange);
-		if (volume < 0.0f)
-			volume = 0.0f;
-	}
+		float const distance = emitter->getPosition_w().magnitudeBetween(player->getPosition_w());
+		if (distance > AUDIO_MAX_DISTANCE)
+			continue;
 
-	CellProperty const * const emitterCell = getParentCell();
-	CellProperty const * const playerCell = player->getParentCell();
-
-	if (emitterCell != playerCell)
-	{
-		if (emitterCell && playerCell)
+		float emitterVolume = 1.0f;
+		if (distance > AUDIO_FULL_VOLUME_DISTANCE)
 		{
-			if (emitterCell->getPortalProperty() == playerCell->getPortalProperty())
-				volume *= AUDIO_OBSTRUCTION_FACTOR;
+			float const fadeRange = AUDIO_MAX_DISTANCE - AUDIO_FULL_VOLUME_DISTANCE;
+			emitterVolume = std::max(0.0f, 1.0f - ((distance - AUDIO_FULL_VOLUME_DISTANCE) / fadeRange));
+		}
+
+		CellProperty const * const emitterCell = emitter->getParentCell();
+		CellProperty const * const playerCell = player->getParentCell();
+		if (emitterCell != playerCell)
+		{
+			if (emitterCell && playerCell && emitterCell->getPortalProperty() == playerCell->getPortalProperty())
+				emitterVolume *= AUDIO_OBSTRUCTION_FACTOR;
 			else
-				volume *= AUDIO_OCCLUSION_FACTOR;
+				emitterVolume *= AUDIO_OCCLUSION_FACTOR;
 		}
-		else
-		{
-			volume *= AUDIO_OCCLUSION_FACTOR;
-		}
-	}
 
-	std::string const & emitterVolumeStr = m_remoteEmitterVolume.get();
-	if (!emitterVolumeStr.empty())
-	{
-		int emitterVolume = atoi(emitterVolumeStr.c_str());
-		if (emitterVolume < 0) emitterVolume = 0;
-		if (emitterVolume > 100) emitterVolume = 100;
-		volume *= (emitterVolume / 100.0f);
+		std::string const & emitterVolumeStr = emitter->m_remoteEmitterVolume.get();
+		if (!emitterVolumeStr.empty())
+			emitterVolume *= clamp(0, atoi(emitterVolumeStr.c_str()), 100) / 100.0f;
+
+		volume = std::max(volume, emitterVolume);
 	}
 
 	int vlcVolume = static_cast<int>(volume * 100.0f);
@@ -4142,6 +4179,224 @@ namespace TangibleObjectHpDynClientNamespace
 		owner.addChildObject_o(ho);
 		return true;
 	}
+
+	/**
+	 * hp_dyn "part": a ramp, hatch or landing leg hung on a hardpoint. State 0 is the pose as modelled, state 1 is
+	 * that pose turned `amount` degrees about (rot) or moved `amount` metres along (move) the hardpoint-space axis.
+	 * A rot part may also slide: stowed it sits moved by the slide vector (hardpoint space), and deploying first slides
+	 * it home, then turns it (a ramp run out of the hull, then lowered).
+	 * Unlike the other hp_dyn kinds a part survives repacks, so a state change eases from wherever it is.
+	 */
+	class HpDynPartDynamics : public Dynamics
+	{
+	public:
+
+		HpDynPartDynamics(Object * const owner, std::string const & key, bool const rotate, Vector const & axis, float const amount, Vector const & slide, float const state) :
+			Dynamics(owner),
+			m_key(key),
+			m_rotate(rotate),
+			m_axis(axis),
+			m_amount(amount),
+			m_slide(slide),
+			m_from(state),
+			m_current(state),
+			m_target(state),
+			m_seconds(0.0f),
+			m_delay(0.0f),
+			m_elapsed(0.0f)
+		{
+			if (!m_axis.normalize())
+				m_axis = Vector::unitX;
+			applyPose();
+		}
+
+		std::string const & getKey() const
+		{
+			return m_key;
+		}
+
+		void setTarget(float const state, float const seconds, float const delay)
+		{
+			if (state == m_target)
+				return;
+
+			m_from = m_current;
+			m_target = state;
+			m_seconds = std::max(0.0f, seconds);
+			m_delay = std::max(0.0f, delay);
+			m_elapsed = 0.0f;
+
+			Object * const owner = getOwner();
+			if (owner)
+				owner->scheduleForAlter();
+		}
+
+		virtual float alter(float const elapsedTime)
+		{
+			IGNORE_RETURN(Dynamics::alter(elapsedTime));
+
+			if (m_current == m_target)
+				return AlterResult::cms_keepNoAlter;
+
+			if (m_delay > 0.0f)
+			{
+				m_delay -= elapsedTime;
+				return AlterResult::cms_alterNextFrame;
+			}
+
+			m_elapsed += elapsedTime;
+			float const t = (m_seconds > 0.0f) ? clamp(0.0f, m_elapsed / m_seconds, 1.0f) : 1.0f;
+			float const eased = t * t * (3.0f - 2.0f * t);
+			m_current = (t >= 1.0f) ? m_target : m_from + (m_target - m_from) * eased;
+			applyPose();
+
+			return (m_current == m_target) ? AlterResult::cms_keepNoAlter : AlterResult::cms_alterNextFrame;
+		}
+
+	private:
+
+		void applyPose()
+		{
+			Object * const owner = getOwner();
+			if (!owner)
+				return;
+
+			Transform pose;
+			if (m_rotate && m_slide != Vector::zero)
+			{
+				// first half: slide home from the stowed offset; second half: turn
+				float const slid = clamp(0.0f, m_current * 2.0f, 1.0f);
+				float const turned = clamp(0.0f, m_current * 2.0f - 1.0f, 1.0f);
+				Transform turn;
+				Quaternion(convertDegreesToRadians(m_amount * turned), m_axis).getTransform(&turn);
+				Transform slide;
+				slide.setPosition_p(m_slide * (1.0f - slid));
+				pose.multiply(turn, slide);
+			}
+			else if (m_rotate)
+				Quaternion(convertDegreesToRadians(m_amount * m_current), m_axis).getTransform(&pose);
+			else
+				pose.setPosition_p(m_axis * (m_amount * m_current));
+			owner->setTransform_o2p(pose);
+		}
+
+	private:
+
+		std::string const m_key;
+		bool const        m_rotate;
+		Vector            m_axis;
+		float const       m_amount;
+		Vector const      m_slide;
+		float             m_from;
+		float             m_current;
+		float             m_target;
+		float             m_seconds;
+		float             m_delay;
+		float             m_elapsed;
+	};
+
+	char const * const cs_hpDynPartName = "HpDynPart";
+
+	HpDynPartDynamics * getHpDynPartDynamics(Object & hardpointObject)
+	{
+		if (hardpointObject.getNumberOfChildObjects() < 1)
+			return 0;
+		Object * const holder = hardpointObject.getChildObject(0);
+		return holder ? dynamic_cast<HpDynPartDynamics *>(holder->getDynamics()) : 0;
+	}
+
+	void collectHpDynParts(Object & owner, std::vector<Object *> & out)
+	{
+		int const n = owner.getNumberOfChildObjects();
+		for (int i = 0; i < n; ++i)
+		{
+			Object * const child = owner.getChildObject(i);
+			char const * const dbg = child ? child->getDebugName() : 0;
+			if (dbg && std::strcmp(dbg, cs_hpDynPartName) == 0)
+				out.push_back(child);
+		}
+	}
+
+	/** Parts wear the owner's paint: their hue shaders read the owner's customization variables. A part made before
+	    the owner had customization data would never see its changes, so this runs after every hp_dyn update and
+	    whenever the owner's appearance data changes. */
+	void pushCustomizationToHpDynParts(TangibleObject & owner)
+	{
+		CustomizationData * const customizationData = owner.fetchCustomizationData();
+		if (!customizationData)
+			return;
+		std::vector<Object *> parts;
+		collectHpDynParts(owner, parts);
+		for (size_t i = 0; i < parts.size(); ++i)
+		{
+			Object * const holder = parts[i]->getNumberOfChildObjects() > 0 ? parts[i]->getChildObject(0) : 0;
+			Appearance * const appearance = holder ? holder->getAppearance() : 0;
+			if (appearance)
+				appearance->setCustomizationData(customizationData);
+		}
+		customizationData->release();
+	}
+
+	/** Reuses the part with the same hardpoint, appearance and motion (so it eases to its new state) or adds it in place. */
+	Object * applyHpDynPart(TangibleObject & owner, std::vector<Object *> & existingParts, std::vector<std::string> const & f)
+	{
+		bool const rotate = f[3] != "move";
+		Vector const axis(static_cast<float>(atof(f[4].c_str())), static_cast<float>(atof(f[5].c_str())), static_cast<float>(atof(f[6].c_str())));
+		float const amount = static_cast<float>(atof(f[7].c_str()));
+		float const seconds = static_cast<float>(atof(f[8].c_str()));
+		float const delay = static_cast<float>(atof(f[9].c_str()));
+		float const state = clamp(0.0f, static_cast<float>(atof(f[10].c_str())), 1.0f);
+		Vector slide;
+		if (f.size() >= 14)
+			slide = Vector(static_cast<float>(atof(f[11].c_str())), static_cast<float>(atof(f[12].c_str())), static_cast<float>(atof(f[13].c_str())));
+
+		std::string key(f[1]);
+		for (int i = 2; i <= 7; ++i)
+		{
+			key.push_back('\t');
+			key += f[static_cast<size_t>(i)];
+		}
+		for (size_t i = 11; i < f.size() && i <= 13; ++i)
+		{
+			key.push_back('\t');
+			key += f[i];
+		}
+
+		for (std::vector<Object *>::iterator i = existingParts.begin(); i != existingParts.end(); ++i)
+		{
+			HpDynPartDynamics * const dynamics = getHpDynPartDynamics(**i);
+			if (dynamics && dynamics->getKey() == key)
+			{
+				Object * const part = *i;
+				dynamics->setTarget(state, seconds, delay);
+				existingParts.erase(i);
+				return part;
+			}
+		}
+
+		AppearanceTemplate const * const at = AppearanceTemplateList::fetch(f[2].c_str());
+		if (!at)
+			return 0;
+		Appearance * const appearance = at->createAppearance();
+		AppearanceTemplateList::release(at);
+		if (!appearance)
+			return 0;
+
+		CrcLowerString const hpCrc = resolveHpDynHardpointCrc(owner, f[1]);
+		HardpointObject * const ho = new HardpointObject(hpCrc);
+		ho->setDebugName(cs_hpDynPartName);
+		RenderWorld::addObjectNotifications(*ho);
+		applyHpDynMountAttachmentScale(owner, *ho, hpCrc);
+
+		Object * const holder = new Object();
+		holder->setAppearance(appearance);
+		holder->setDynamics(new HpDynPartDynamics(holder, key, rotate, axis, amount, slide, state));
+		RenderWorld::addObjectNotifications(*holder);
+		ho->addChildObject_o(holder);
+
+		owner.addChildObject_o(ho);
+		return ho;
+	}
 }
 
 void TangibleObject::clearDynamicHardpointObjects()
@@ -4150,6 +4405,25 @@ void TangibleObject::clearDynamicHardpointObjects()
 	TangibleObjectHpDynClientNamespace::collectHpDynNodesPostOrder(this, toDelete);
 	for (size_t i = 0; i < toDelete.size(); ++i)
 		delete toDelete[i];
+}
+
+void TangibleObject::applyDynamicHardpointsStateLocally(std::string const &packed)
+{
+	dynamicHardpointsStateModified(packed);
+}
+
+/** Offline / debug: play `url` on this object's screen as the magic video player condition and stream fields would. */
+void TangibleObject::setRemoteVideoStreamLocally(std::string const & url, std::string const & aspect)
+{
+	char startTime[32];
+	IGNORE_RETURN(snprintf(startTime, sizeof(startTime), "%ld", static_cast<long>(time(0))));
+	m_remoteStreamLoop = std::string("1");
+	m_remoteStreamAspect = aspect;
+	m_remoteStreamTimestamp = std::string("0");
+	m_remoteStreamStartTime = std::string(startTime);
+	m_remoteStreamUrl = url;
+	setCondition(C_magicVideoPlayer);
+	scheduleForAlter();
 }
 
 void TangibleObject::dynamicHardpointsStateModified(std::string const &value)
@@ -4170,16 +4444,18 @@ void TangibleObject::applyDynamicHardpointsState(std::string const &packed)
 	m_mountDynamicSeatPose.clear();
 	m_mountDynamicSeatOffset.clear();
 
-	if (packed.empty())
-		return;
-	if (packed.size() < 2 || packed[0] != 'v' || packed[1] != '1')
-		return;
+	//-- Parts outlive repacks; whatever the new pack doesn't name is removed at the end
+	std::vector<Object *> staleParts;
+	TangibleObjectHpDynClientNamespace::collectHpDynParts(*this, staleParts);
 
-	size_t pos = packed.find('\n');
-	if (pos == std::string::npos)
-		return;
+	//-- An "app" row on the @interesting hardpoint swaps the interesting marker (quest-giver disc) instead of
+	//   attaching anything; servers use it for marker variants (Historical quests) without a condition bit
+	std::string const previousInterestingOverride(m_interestingAppearanceOverride);
+	m_interestingAppearanceOverride.clear();
 
-	for (size_t lineStart = pos + 1; lineStart < packed.size(); )
+	size_t const pos = (packed.size() >= 2 && packed[0] == 'v' && packed[1] == '1') ? packed.find('\n') : std::string::npos;
+
+	for (size_t lineStart = (pos == std::string::npos) ? packed.size() : pos + 1; lineStart < packed.size(); )
 	{
 		size_t lineEnd = packed.find('\n', lineStart);
 		std::string line = (lineEnd == std::string::npos) ? packed.substr(lineStart) : packed.substr(lineStart, lineEnd - lineStart);
@@ -4240,7 +4516,10 @@ void TangibleObject::applyDynamicHardpointsState(std::string const &packed)
 				oy = static_cast<float>(atof(f[4].c_str()));
 				oz = static_cast<float>(atof(f[5].c_str()));
 			}
-			IGNORE_RETURN(TangibleObjectHpDynClientNamespace::attachHpDynApp(*this, f[1], f[2], Vector(ox, oy, oz)));
+			if (f[1] == "@interesting")
+				m_interestingAppearanceOverride = f[2];
+			else
+				IGNORE_RETURN(TangibleObjectHpDynClientNamespace::attachHpDynApp(*this, f[1], f[2], Vector(ox, oy, oz)));
 		}
 		else if (kind == "light" && f.size() >= 7)
 		{
@@ -4259,7 +4538,19 @@ void TangibleObject::applyDynamicHardpointsState(std::string const &packed)
 			float sc = static_cast<float>(atof(f[6].c_str()));
 			IGNORE_RETURN(TangibleObjectHpDynClientNamespace::attachHpDynFx(*this, f[1], f[2], Vector(ox, oy, oz), sc));
 		}
+		else if (kind == "part" && f.size() >= 11)
+		{
+			IGNORE_RETURN(TangibleObjectHpDynClientNamespace::applyHpDynPart(*this, staleParts, f));
+		}
 	}
+
+	for (size_t i = 0; i < staleParts.size(); ++i)
+		delete staleParts[i];
+
+	TangibleObjectHpDynClientNamespace::pushCustomizationToHpDynParts(*this);
+
+	if (m_interestingAppearanceOverride != previousInterestingOverride && isInWorld())
+		updateInterestingAttachedObject(getCondition());
 }
 
 //-----------------------------------------------------------------------
@@ -4458,7 +4749,7 @@ void TangibleObject::updateRtScreenTexture()
 	if (appearance)
 	{
 		// Use TAG_MAIN to replace the primary texture
-		appearance->setTexture(TAG_MAIN, *cameraTexture);
+		setSurfaceTexture(appearance, *cameraTexture);
 	}
 }
 
@@ -5001,7 +5292,8 @@ void TangibleObject::updateInterestingAttachedObject(int objectCondition)
 		{
 			m_interestingAttachedObject = new Object ();
 
-			char const * const appearanceTemplateName =  holidayInteresting ? "appearance/item_present_partcile_icon.apt" : (spaceInteresting ? "appearance/space_info_disk.apt" : "appearance/info_disk.apt");
+			char const * const groundMarker = m_interestingAppearanceOverride.empty() ? "appearance/info_disk.apt" : m_interestingAppearanceOverride.c_str();
+			char const * const appearanceTemplateName =  holidayInteresting ? "appearance/item_present_partcile_icon.apt" : (spaceInteresting ? "appearance/space_info_disk.apt" : groundMarker);
 			m_interestingAttachedObject->setAppearance(AppearanceTemplateList::createAppearance(appearanceTemplateName));
 			m_interestingAttachedObject->addNotification(ClientWorld::getIntangibleNotification());
 			RenderWorld::addObjectNotifications (*m_interestingAttachedObject);

@@ -53,7 +53,7 @@ std::string serializePayload(const SatRoundTripData& data);
 bool deserializePayload(const std::string& s, SatRoundTripData& out);
 
 /** Create a locator-style transform holding storable string attribute `swgSmatRoundTrip` for export. */
-bool createMetadataNode(const std::string& mayaBasename, const std::string& payloadUtf8);
+bool createMetadataNode(const std::string& mayaBasename, const std::string& payloadUtf8, const std::string& sourcePath = "");
 } // namespace sat_round_trip
 
 #endif

@@ -1,7 +1,7 @@
 /****************************************************************************
 ** ActionsTool meta object code from reading C++ file 'ActionsTool.h'
 **
-** Created: Thu Jul 23 03:18:10 2026
+** Created: Sat Oct 24 07:53:23 2026
 **      by: The Qt MOC ($Id: $)
 **
 ** WARNING! All changes made in this file will be lost!
@@ -62,6 +62,11 @@ QMetaObject* ActionsTool::staticMetaObject()
     static const QUMethod slot_9 = {"onGrabRelativeCoordinates", 0, 0 };
     static const QUMethod slot_10 = {"onSendSystemMessage", 0, 0 };
     static const QUMethod slot_11 = {"onRenderRangeSettings", 0, 0 };
+    static const QUMethod slot_12 = {"onSatelliteMapGenerator", 0, 0 };
+    static const QUMethod slot_13 = {"onTabletSettings", 0, 0 };
+    static const QUMethod slot_14 = {"onCommandPalette", 0, 0 };
+    static const QUMethod slot_15 = {"onKeyboardShortcuts", 0, 0 };
+    static const QUMethod slot_16 = {"onScreenshot", 0, 0 };
     static const QMetaData slot_tbl[] = {
 	{ "onSnapToGrid()", &slot_0, QMetaData::Private },
 	{ "onStackObject()", &slot_1, QMetaData::Private },
@@ -74,11 +79,16 @@ QMetaObject* ActionsTool::staticMetaObject()
 	{ "onShowSphereTree()", &slot_8, QMetaData::Private },
 	{ "onGrabRelativeCoordinates()", &slot_9, QMetaData::Private },
 	{ "onSendSystemMessage()", &slot_10, QMetaData::Private },
-	{ "onRenderRangeSettings()", &slot_11, QMetaData::Private }
+	{ "onRenderRangeSettings()", &slot_11, QMetaData::Private },
+	{ "onSatelliteMapGenerator()", &slot_12, QMetaData::Private },
+	{ "onTabletSettings()", &slot_13, QMetaData::Private },
+	{ "onCommandPalette()", &slot_14, QMetaData::Private },
+	{ "onKeyboardShortcuts()", &slot_15, QMetaData::Private },
+	{ "onScreenshot()", &slot_16, QMetaData::Private }
     };
     metaObj = QMetaObject::new_metaobject(
 	"ActionsTool", parentObject,
-	slot_tbl, 12,
+	slot_tbl, 17,
 	0, 0,
 #ifndef QT_NO_PROPERTIES
 	0, 0,
@@ -113,6 +123,11 @@ bool ActionsTool::qt_invoke( int _id, QUObject* _o )
     case 9: onGrabRelativeCoordinates(); break;
     case 10: onSendSystemMessage(); break;
     case 11: onRenderRangeSettings(); break;
+    case 12: onSatelliteMapGenerator(); break;
+    case 13: onTabletSettings(); break;
+    case 14: onCommandPalette(); break;
+    case 15: onKeyboardShortcuts(); break;
+    case 16: onScreenshot(); break;
     default:
 	return QObject::qt_invoke( _id, _o );
     }

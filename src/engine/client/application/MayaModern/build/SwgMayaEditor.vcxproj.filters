@@ -262,6 +262,9 @@
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgVehicleToolkit.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgMocapSuite.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ShaderExporter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -553,6 +556,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgVehicleToolkit.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\SwgMocapSuite.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="D:\titan\client\src\engine\client\application\MayaModern\commands\ShaderExporter.h">

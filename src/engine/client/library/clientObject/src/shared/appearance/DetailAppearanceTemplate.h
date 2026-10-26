@@ -44,6 +44,8 @@ public:
 	virtual Appearance        *createAppearance() const;
 
 	int                        getDetailLevelCount(void) const;
+	const char*                getAppearanceTemplateName (int detailLevel) const;
+	const AppearanceTemplate*  getAppearanceTemplate (int detailLevel) const;
 	Appearance*                createAppearance(int detailLevel) const;
 	real                       getNearDistance(int detailLevel) const;
 	real                       getFarDistance(int detailLevel) const;
@@ -60,9 +62,6 @@ public:
 	bool getDisableLodCrossFade()           const { return m_disableLodCrossFade; }
 
 private:
-
-	const char*                getAppearanceTemplateName (int detailLevel) const;
-	const AppearanceTemplate*  getAppearanceTemplate (int detailLevel) const;
 
 	void load(Iff& iff);
 	bool loadEntries( Iff & iff );

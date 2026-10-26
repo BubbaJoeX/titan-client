@@ -63,7 +63,7 @@
 				/>
 			</DataSource>
 			<TabbedPane
-				BackgroundColor='#009977'
+				BackgroundColor='#155584'
 				Location='14,30'
 				MinimumScrollExtent='117,0'
 				MinimumSize='0,19'
@@ -381,7 +381,7 @@
 						GetsInput='false'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='249,250'
 						Size='249,250'
 					>
@@ -770,7 +770,7 @@ parent.AdvancedChannelSelectionPage.Visible=false'
 				/>
 				<Page
 					AbsorbsInput='false'
-					BackgroundColor='#00FFFF'
+					BackgroundColor='#2487DB'
 					BackgroundOpacity='1.00'
 					BackgroundTint='#00D6FB'
 					MaximumSize='126,118'
@@ -1121,7 +1121,7 @@ parent.parent.cobohours.enabled=true
 				</Composite>
 				<Page
 					AbsorbsInput='false'
-					BackgroundColor='#00FFFF'
+					BackgroundColor='#2487DB'
 					BackgroundOpacity='1.00'
 					BackgroundTint='#00D6FB'
 					MaximumSize='126,125'

@@ -12,6 +12,14 @@
     </ClCompile>
   </ItemDefinitionGroup>
 
+  <!-- Release|x64: let the optimizer inline any suitable function (/Ob2, what /O2 implies). The projects still
+       carry the original /Ob1, which inlines only functions declared inline and leaves the rest as calls. -->
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
+    <ClCompile>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
   <!-- SwgClient Debug|x64 uses /MT (hybrid debug); must link libcmt like Release|x64, not ignore LIBCMT. -->
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64' and '$(ConfigurationType)' == 'Application'">
     <Link>

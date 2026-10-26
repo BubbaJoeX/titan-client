@@ -447,16 +447,16 @@
 							/>
 						</Namespace>
 						<ButtonStyle
-							DisabledIconColor='#80FFFF'
+							DisabledIconColor='#92C3ED'
 							DisabledTextColor='#028BA8'
 							DisabledTextMargin='3,0,3,0'
-							MouseOverIconColor='#00FFFF'
+							MouseOverIconColor='#2487DB'
 							MouseOverSound='ui_rollover'
 							MouseOverTextColor='#18393D'
 							MouseOverTextMargin='3,0,3,0'
 							MouseOverTextStyle='starwars_21'
 							Name='style'
-							NormalIconColor='#00D6FB'
+							NormalIconColor='#2381D8'
 							NormalTextColor='#62FF15'
 							NormalTextMargin='3,0,3,0'
 							NormalTextStyle='starwars_21'
@@ -1053,16 +1053,16 @@
 								/>
 							</Namespace>
 							<ButtonStyle
-								DisabledIconColor='#80FFFF'
+								DisabledIconColor='#92C3ED'
 								DisabledTextColor='#028BA8'
 								DisabledTextMargin='3,0,3,0'
-								MouseOverIconColor='#00FFFF'
+								MouseOverIconColor='#2487DB'
 								MouseOverSound='ui_rollover'
 								MouseOverTextColor='#18393D'
 								MouseOverTextMargin='3,0,3,0'
 								MouseOverTextStyle='starwars_14'
 								Name='style'
-								NormalIconColor='#00D6FB'
+								NormalIconColor='#2381D8'
 								NormalTextColor='#62FF15'
 								NormalTextMargin='3,0,3,0'
 								NormalTextStyle='starwars_14'
@@ -1193,7 +1193,7 @@
 						GetsInput='false'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='1003,689'
 						Size='1003,689'
 					>
@@ -1399,6 +1399,7 @@
 					GetsInput='false'
 					Location='15,11'
 					MaximumSize='179,20'
+					Visible='false'
 					Name='runner'
 					Opacity='0.20'
 					PackLocation='nfn,fff'
@@ -1413,7 +1414,7 @@
 					Size='125,16'
 				>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='6,2'
@@ -1426,7 +1427,7 @@
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='23,2'
@@ -1439,7 +1440,7 @@
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='40,2'
@@ -1452,7 +1453,7 @@
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='57,2'
@@ -1464,7 +1465,7 @@
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='74,2'
@@ -1476,7 +1477,7 @@
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='91,2'
@@ -1534,6 +1535,7 @@
 					GetsInput='false'
 					Location='21,11'
 					MaximumSize='179,20'
+					Visible='false'
 					Name='runner'
 					Opacity='0.20'
 					PackLocation='nfn,fff'
@@ -1549,7 +1551,7 @@
 					Size='125,16'
 				>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='6,2'
@@ -1562,7 +1564,7 @@
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='23,2'
@@ -1575,7 +1577,7 @@
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='40,2'
@@ -1588,7 +1590,7 @@
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='57,2'
@@ -1600,7 +1602,7 @@
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='74,2'
@@ -1612,7 +1614,7 @@
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='91,2'

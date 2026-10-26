@@ -2447,10 +2447,10 @@
 						Visible='false'
 					/>
 					<Page
-						BackgroundColor='#00D6EA'
+						BackgroundColor='#217AC9'
 						BackgroundOpacity='1.00'
-						BackgroundTint='#00D6EA'
-						Color='#00D6EA'
+						BackgroundTint='#217AC9'
+						Color='#217AC9'
 						ContextCapable='true'
 						Location='17,17'
 						MaximumSize='36,36'
@@ -2464,10 +2464,10 @@
 						Visible='false'
 					/>
 					<Page
-						BackgroundColor='#00D6EA'
+						BackgroundColor='#217AC9'
 						BackgroundOpacity='1.00'
-						BackgroundTint='#00D6EA'
-						Color='#00D6EA'
+						BackgroundTint='#217AC9'
+						Color='#217AC9'
 						ContextCapable='true'
 						Location='17,17'
 						MaximumSize='36,36'
@@ -2551,7 +2551,7 @@
 						</Namespace>
 						<Page
 							BackgroundOpacity='1.00'
-							BackgroundTint='#A7D0D2'
+							BackgroundTint='#ADBECC'
 							Location='-2,0'
 							Name='bar'
 							OpacityRelativeMin='1.00'
@@ -3461,7 +3461,7 @@
 						</Namespace>
 						<Page
 							BackgroundOpacity='1.00'
-							BackgroundTint='#A7D0D2'
+							BackgroundTint='#ADBECC'
 							Location='-2,0'
 							Name='bar'
 							OpacityRelativeMin='1.00'
@@ -5858,10 +5858,10 @@
 						Visible='false'
 					/>
 					<Page
-						BackgroundColor='#00D6EA'
+						BackgroundColor='#217AC9'
 						BackgroundOpacity='1.00'
-						BackgroundTint='#00D6EA'
-						Color='#00D6EA'
+						BackgroundTint='#217AC9'
+						Color='#217AC9'
 						ContextCapable='true'
 						Location='17,17'
 						MaximumSize='36,36'
@@ -5875,10 +5875,10 @@
 						Visible='false'
 					/>
 					<Page
-						BackgroundColor='#00D6EA'
+						BackgroundColor='#217AC9'
 						BackgroundOpacity='1.00'
-						BackgroundTint='#00D6EA'
-						Color='#00D6EA'
+						BackgroundTint='#217AC9'
+						Color='#217AC9'
 						ContextCapable='true'
 						Location='17,17'
 						MaximumSize='36,36'

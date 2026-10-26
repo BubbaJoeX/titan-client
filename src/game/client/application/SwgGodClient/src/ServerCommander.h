@@ -79,6 +79,8 @@ public:
 	unsigned int          getRegionsList        ();
 	unsigned int          sendSystemMessage     (const std::string& messageType, const std::string targetName, const std::string& message);
 	unsigned int          setGodMode            ();
+	/// A typed console line: "/name params" runs a slash command on \a slashTarget, anything else goes to the server console.
+	unsigned int          consoleCommand        (const std::string& line, const NetworkId& slashTarget);
 
 	unsigned int persistObject(const ClientObject& obj);
 

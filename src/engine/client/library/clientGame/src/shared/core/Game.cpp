@@ -29,6 +29,8 @@
 #include "clientGame/CollisionTest.h"
 #include "clientGame/CommandCppFuncs.h"
 #include "clientGame/ConfigClientGame.h"
+#include "clientGame/DevBridge.h"
+#include "clientGame/DevTestMenu.h"
 #include "clientGame/CreatureObject.h"
 #include "clientGame/CutScene.h"
 #include "clientGame/DraftSchematicManager.h"
@@ -1015,6 +1017,7 @@ void Game::install(Application const application)
 
 void Game::remove(void)
 {
+	DevBridge::remove();
 	DebugFlags::unregisterFlag (ms_garbageCollectNextFrame);
 	DebugFlags::unregisterFlag (ms_verifyGuardPatterns);
 	DebugFlags::unregisterFlag (ms_verifyFreePatterns);
@@ -1232,6 +1235,10 @@ void Game::runGameLoopOnce(bool presentToWindow, HWND hwnd, int width, int heigh
 			CuiManager::update (elapsedTime);
 		}
 
+		//-- developer tools socket (off unless [ClientGame] devBridgePort is set)
+		DevBridge::update();
+		DevTestMenu::update();
+
 		NP_PROFILER_NAMED_AUTO_BLOCK_TRANSFER(profilerMainLoop, "clienteffect heartbeat");
 		ClientEffectManager::sendHeartbeat(elapsedTime);
 
@@ -1276,6 +1283,9 @@ void Game::runGameLoopOnce(bool presentToWindow, HWND hwnd, int width, int heigh
 			Graphics::endScene();
 
 			VideoPlaybackManager::performBlitting();
+
+			//-- developer tools: screenshots read the finished back buffer here
+			DevBridge::beforePresent();
 
 			if (presentToWindow)
 				IGNORE_RETURN(Graphics::present(hwnd, width, height));

@@ -12,9 +12,12 @@
 
 #include "BaseConsoleWindow.h"
 
+class QLineEdit;
+
 // ======================================================================
 /**
-* ConsoleWindow outputs all console messages from the server.
+* ConsoleWindow outputs all console messages from the server, and takes typed
+* commands: server console commands, or "/command" slash commands on the selection.
 */
 class ConsoleWindow : public BaseConsoleWindow, public MessageDispatch::Receiver
 {
@@ -28,6 +31,12 @@ public:
 
 public slots:
 	void onConsoleCommandIssued (const char *);
+
+private slots:
+	void onCommandEntered       ();
+
+private:
+	QLineEdit *               m_input;
 };
 
 // ======================================================================

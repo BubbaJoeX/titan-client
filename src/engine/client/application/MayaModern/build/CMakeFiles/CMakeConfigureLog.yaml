@@ -21,7 +21,6 @@ events:
     names:
       - "OpenMaya.lib"
     candidate_directories:
-      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/node_modules/@vscode/ripgrep/bin/"
       - "C:/Windows/System32/"
       - "C:/Windows/"
       - "C:/Windows/System32/wbem/"
@@ -31,12 +30,27 @@ events:
       - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/"
       - "C:/Program Files/dotnet/"
       - "C:/Program Files/Git/cmd/"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
+      - "C:/Program Files/CMake/bin/"
+      - "C:/Program Files/Docker/Docker/resources/bin/"
+      - "C:/Program Files/nodejs/"
+      - "C:/Program Files (x86)/cloudflared/"
+      - "C:/Program Files/WireGuard/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/Scripts/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Launcher/"
       - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/"
       - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/"
+      - "C:/Users/jojoj/.dotnet/tools/"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2026.2.0.1/bin/"
+      - "C:/Users/jojoj/AppData/Roaming/npm/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-9.0.2-full_build/bin/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe/"
+      - "C:/Program Files/Git/mingw64/bin/"
       - "D:/titan/lib/Maya2027/devkitBase/lib/"
       - "D:/titan/lib/runTime/lib/"
     searched_directories:
-      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/node_modules/@vscode/ripgrep/bin/OpenMaya.lib"
       - "C:/Windows/System32/OpenMaya.lib"
       - "C:/Windows/OpenMaya.lib"
       - "C:/Windows/System32/wbem/OpenMaya.lib"
@@ -46,12 +60,27 @@ events:
       - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/OpenMaya.lib"
       - "C:/Program Files/dotnet/OpenMaya.lib"
       - "C:/Program Files/Git/cmd/OpenMaya.lib"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/OpenMaya.lib"
+      - "C:/Program Files/CMake/bin/OpenMaya.lib"
+      - "C:/Program Files/Docker/Docker/resources/bin/OpenMaya.lib"
+      - "C:/Program Files/nodejs/OpenMaya.lib"
+      - "C:/Program Files (x86)/cloudflared/OpenMaya.lib"
+      - "C:/Program Files/WireGuard/OpenMaya.lib"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/Scripts/OpenMaya.lib"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/OpenMaya.lib"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Launcher/OpenMaya.lib"
       - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/OpenMaya.lib"
       - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/OpenMaya.lib"
+      - "C:/Users/jojoj/.dotnet/tools/OpenMaya.lib"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2026.2.0.1/bin/OpenMaya.lib"
+      - "C:/Users/jojoj/AppData/Roaming/npm/OpenMaya.lib"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe/OpenMaya.lib"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-9.0.2-full_build/bin/OpenMaya.lib"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe/OpenMaya.lib"
+      - "C:/Program Files/Git/mingw64/bin/OpenMaya.lib"
     found: "D:/titan/lib/Maya2027/devkitBase/lib/"
     search_context:
       ENV{PATH}:
-        - "c:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\node_modules\\@vscode\\ripgrep\\bin"
         - "C:\\Windows\\system32"
         - "C:\\Windows"
         - "C:\\Windows\\System32\\Wbem"
@@ -61,8 +90,26 @@ events:
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA App\\NvDLISR"
         - "C:\\Program Files\\dotnet\\"
         - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
+        - "C:\\Program Files\\nodejs\\"
+        - "C:\\Program Files (x86)\\cloudflared\\"
+        - "C:\\Program Files\\WireGuard\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312\\Scripts\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Launcher\\"
         - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WindowsApps"
         - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\bin"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "D:\\Program Files\\JetBrains\\IntelliJ IDEA 2026.2.0.1\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Roaming\\npm"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-9.0.2-full_build\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312"
+        - "C:\\Program Files\\nodejs"
+        - "C:\\Program Files\\Git\\mingw64\\bin"
   -
     kind: "find-v1"
     backtrace:
@@ -83,8 +130,6 @@ events:
     names:
       - "maya/MFn.h"
     candidate_directories:
-      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/node_modules/@vscode/ripgrep/bin/include/"
-      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/node_modules/@vscode/ripgrep/bin/"
       - "C:/Windows/System32/include/"
       - "C:/Windows/System32/"
       - "C:/Windows/include/"
@@ -103,15 +148,45 @@ events:
       - "C:/Program Files/dotnet/"
       - "C:/Program Files/Git/cmd/include/"
       - "C:/Program Files/Git/cmd/"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/include/"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
+      - "C:/Program Files/CMake/bin/include/"
+      - "C:/Program Files/CMake/bin/"
+      - "C:/Program Files/Docker/Docker/resources/bin/include/"
+      - "C:/Program Files/Docker/Docker/resources/bin/"
+      - "C:/Program Files/nodejs/include/"
+      - "C:/Program Files/nodejs/"
+      - "C:/Program Files (x86)/cloudflared/include/"
+      - "C:/Program Files (x86)/cloudflared/"
+      - "C:/Program Files/WireGuard/include/"
+      - "C:/Program Files/WireGuard/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/Scripts/include/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/Scripts/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/include/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Launcher/include/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Launcher/"
       - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/include/"
       - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/"
       - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/include/"
       - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/"
+      - "C:/Users/jojoj/.dotnet/tools/include/"
+      - "C:/Users/jojoj/.dotnet/tools/"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2026.2.0.1/bin/include/"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2026.2.0.1/bin/"
+      - "C:/Users/jojoj/AppData/Roaming/npm/include/"
+      - "C:/Users/jojoj/AppData/Roaming/npm/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe/include/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-9.0.2-full_build/bin/include/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-9.0.2-full_build/bin/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe/include/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe/"
+      - "C:/Program Files/Git/mingw64/bin/include/"
+      - "C:/Program Files/Git/mingw64/bin/"
       - "D:/titan/lib/Maya2027/devkitBase/include/"
       - "D:/titan/lib/Maya2027/devkitBase/"
     searched_directories:
-      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/node_modules/@vscode/ripgrep/bin/include/maya/MFn.h"
-      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/node_modules/@vscode/ripgrep/bin/maya/MFn.h"
       - "C:/Windows/System32/include/maya/MFn.h"
       - "C:/Windows/System32/maya/MFn.h"
       - "C:/Windows/include/maya/MFn.h"
@@ -130,14 +205,45 @@ events:
       - "C:/Program Files/dotnet/maya/MFn.h"
       - "C:/Program Files/Git/cmd/include/maya/MFn.h"
       - "C:/Program Files/Git/cmd/maya/MFn.h"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/include/maya/MFn.h"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/maya/MFn.h"
+      - "C:/Program Files/CMake/bin/include/maya/MFn.h"
+      - "C:/Program Files/CMake/bin/maya/MFn.h"
+      - "C:/Program Files/Docker/Docker/resources/bin/include/maya/MFn.h"
+      - "C:/Program Files/Docker/Docker/resources/bin/maya/MFn.h"
+      - "C:/Program Files/nodejs/include/maya/MFn.h"
+      - "C:/Program Files/nodejs/maya/MFn.h"
+      - "C:/Program Files (x86)/cloudflared/include/maya/MFn.h"
+      - "C:/Program Files (x86)/cloudflared/maya/MFn.h"
+      - "C:/Program Files/WireGuard/include/maya/MFn.h"
+      - "C:/Program Files/WireGuard/maya/MFn.h"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/Scripts/include/maya/MFn.h"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/Scripts/maya/MFn.h"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/include/maya/MFn.h"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/maya/MFn.h"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Launcher/include/maya/MFn.h"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Launcher/maya/MFn.h"
       - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/include/maya/MFn.h"
       - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/maya/MFn.h"
       - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/include/maya/MFn.h"
       - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/maya/MFn.h"
+      - "C:/Users/jojoj/.dotnet/tools/include/maya/MFn.h"
+      - "C:/Users/jojoj/.dotnet/tools/maya/MFn.h"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2026.2.0.1/bin/include/maya/MFn.h"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2026.2.0.1/bin/maya/MFn.h"
+      - "C:/Users/jojoj/AppData/Roaming/npm/include/maya/MFn.h"
+      - "C:/Users/jojoj/AppData/Roaming/npm/maya/MFn.h"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe/include/maya/MFn.h"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe/maya/MFn.h"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-9.0.2-full_build/bin/include/maya/MFn.h"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-9.0.2-full_build/bin/maya/MFn.h"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe/include/maya/MFn.h"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe/maya/MFn.h"
+      - "C:/Program Files/Git/mingw64/bin/include/maya/MFn.h"
+      - "C:/Program Files/Git/mingw64/bin/maya/MFn.h"
     found: "D:/titan/lib/Maya2027/devkitBase/include/"
     search_context:
       ENV{PATH}:
-        - "c:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\node_modules\\@vscode\\ripgrep\\bin"
         - "C:\\Windows\\system32"
         - "C:\\Windows"
         - "C:\\Windows\\System32\\Wbem"
@@ -147,15 +253,33 @@ events:
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA App\\NvDLISR"
         - "C:\\Program Files\\dotnet\\"
         - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
+        - "C:\\Program Files\\nodejs\\"
+        - "C:\\Program Files (x86)\\cloudflared\\"
+        - "C:\\Program Files\\WireGuard\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312\\Scripts\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Launcher\\"
         - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WindowsApps"
         - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\bin"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "D:\\Program Files\\JetBrains\\IntelliJ IDEA 2026.2.0.1\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Roaming\\npm"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-9.0.2-full_build\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312"
+        - "C:\\Program Files\\nodejs"
+        - "C:\\Program Files\\Git\\mingw64\\bin"
   -
     kind: "message-v1"
     backtrace:
       - "C:/Program Files/CMake/share/cmake-4.3/Modules/CMakeDetermineSystem.cmake:212 (message)"
       - "unicode/CMakeLists.txt:3 (project)"
     message: |
-      The system is: Windows - 10 - AMD64
+      The system is: Windows - 10.0 - AMD64
   -
     kind: "find-v1"
     backtrace:
@@ -184,7 +308,6 @@ events:
     found: "C:/Program Files/CMake/share/cmake-4.3/Modules/CMakeCCompilerId.c.in"
     search_context:
       ENV{PATH}:
-        - "c:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\node_modules\\@vscode\\ripgrep\\bin"
         - "C:\\Windows\\system32"
         - "C:\\Windows"
         - "C:\\Windows\\System32\\Wbem"
@@ -194,8 +317,26 @@ events:
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA App\\NvDLISR"
         - "C:\\Program Files\\dotnet\\"
         - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
+        - "C:\\Program Files\\nodejs\\"
+        - "C:\\Program Files (x86)\\cloudflared\\"
+        - "C:\\Program Files\\WireGuard\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312\\Scripts\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Launcher\\"
         - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WindowsApps"
         - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\bin"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "D:\\Program Files\\JetBrains\\IntelliJ IDEA 2026.2.0.1\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Roaming\\npm"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-9.0.2-full_build\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312"
+        - "C:\\Program Files\\nodejs"
+        - "C:\\Program Files\\Git\\mingw64\\bin"
   -
     kind: "message-v1"
     backtrace:
@@ -211,8 +352,8 @@ events:
       
       The output was:
       0
-      MSBuild version 18.8.1+c99826b40 for .NET Framework
-      Build started 6/12/2026 11:46:14 AM.
+      MSBuild version 18.8.2+ce25c0108 for .NET Framework
+      Build started 10/20/2026 11:06:14 PM.
       
       Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\4.3.3\\CompilerIdC\\CompilerIdC.vcxproj" on node 1 (default targets).
       PrepareForBuild:
@@ -223,15 +364,15 @@ events:
         Creating "Debug\\CompilerIdC.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
         Touching "Debug\\CompilerIdC.tlog\\unsuccessfulbuild".
       ClCompile:
-        C:\\Program Files\\Microsoft Visual Studio\\18\\Insiders\\VC\\Tools\\MSVC\\14.51.36231\\bin\\HostX64\\x64\\CL.exe /c /nologo /W0 /WX- /diagnostics:column /Od /D _MBCS /Gm- /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"Debug\\\\" /Fd"Debug\\vc145.pdb" /external:W0 /Gd /TC /FC /errorReport:queue CMakeCCompilerId.c
+        C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Tools\\MSVC\\14.51.36231\\bin\\HostX64\\x64\\CL.exe /c /ID:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\4.3.3\\CompilerIdC\\ /nologo /W0 /WX- /diagnostics:column /Od /D _ITERATOR_DEBUG_LEVEL=0 /D _MBCS /D _HAS_AUTO_PTR_ETC=1 /D _SILENCE_STDEXT_HASH_DEPRECATION_WARNINGS /Gm- /EHsc /MT /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"Debug\\\\" /Fd"Debug\\CompilerIdC.pdb" /external:W0 /Gd /TC /FC /errorReport:queue /U _DEBUG /FS CMakeCCompilerId.c
         CMakeCCompilerId.c
       Link:
-        C:\\Program Files\\Microsoft Visual Studio\\18\\Insiders\\VC\\Tools\\MSVC\\14.51.36231\\bin\\HostX64\\x64\\link.exe /ERRORREPORT:QUEUE /OUT:".\\CompilerIdC.exe" /INCREMENTAL:NO /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /PDB:".\\CompilerIdC.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:".\\CompilerIdC.lib" /MACHINE:X64 Debug\\CMakeCCompilerId.obj
+        C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Tools\\MSVC\\14.51.36231\\bin\\HostX64\\x64\\link.exe /ERRORREPORT:QUEUE /OUT:".\\CompilerIdC.exe" /INCREMENTAL:NO /NOLOGO /LIBPATH:D:\\titan\\client\\deps\\x64\\lib /LIBPATH:"C:\\Program Files (x86)\\Microsoft DirectX SDK (June 2010)\\Lib\\x64" /LIBPATH:"C:\\Program Files (x86)\\Windows Kits\\10\\lib\\10.0.26100.0\\um\\x64" /LIBPATH:"C:\\Program Files (x86)\\Windows Kits\\NETFXSDK\\4.8\\lib\\um\\x64" kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /NODEFAULTLIB:libcmtd.lib /NODEFAULTLIB:msvcrtd.lib /NODEFAULTLIB:libc.lib /NODEFAULTLIB:msvcrt.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /PDB:".\\CompilerIdC.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:".\\CompilerIdC.lib" /MACHINE:X64 Debug\\CMakeCCompilerId.obj
         CompilerIdC.vcxproj -> D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\4.3.3\\CompilerIdC\\CompilerIdC.exe
       PostBuildEvent:
         for %%i in (cl.exe) do @echo CMAKE_C_COMPILER=%%~$PATH:i
         :VCEnd
-        CMAKE_C_COMPILER=C:\\Program Files\\Microsoft Visual Studio\\18\\Insiders\\VC\\Tools\\MSVC\\14.51.36231\\bin\\Hostx64\\x64\\cl.exe
+        CMAKE_C_COMPILER=C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Tools\\MSVC\\14.51.36231\\bin\\Hostx64\\x64\\cl.exe
       FinalizeBuildStatus:
         Deleting file "Debug\\CompilerIdC.tlog\\unsuccessfulbuild".
         Touching "Debug\\CompilerIdC.tlog\\CompilerIdC.lastbuildstate".
@@ -241,7 +382,7 @@ events:
           0 Warning(s)
           0 Error(s)
       
-      Time Elapsed 00:00:04.00
+      Time Elapsed 00:00:01.27
       
       
       Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "CompilerIdC.exe"
@@ -273,8 +414,7 @@ events:
     names:
       - "link"
     candidate_directories:
-      - "C:/Program Files/Microsoft Visual Studio/18/Insiders/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/"
-      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/node_modules/@vscode/ripgrep/bin/"
+      - "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/"
       - "C:/Windows/System32/"
       - "C:/Windows/"
       - "C:/Windows/System32/wbem/"
@@ -284,14 +424,29 @@ events:
       - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/"
       - "C:/Program Files/dotnet/"
       - "C:/Program Files/Git/cmd/"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
+      - "C:/Program Files/CMake/bin/"
+      - "C:/Program Files/Docker/Docker/resources/bin/"
+      - "C:/Program Files/nodejs/"
+      - "C:/Program Files (x86)/cloudflared/"
+      - "C:/Program Files/WireGuard/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/Scripts/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Launcher/"
       - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/"
       - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/"
+      - "C:/Users/jojoj/.dotnet/tools/"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2026.2.0.1/bin/"
+      - "C:/Users/jojoj/AppData/Roaming/npm/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-9.0.2-full_build/bin/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe/"
+      - "C:/Program Files/Git/mingw64/bin/"
     searched_directories:
-      - "C:/Program Files/Microsoft Visual Studio/18/Insiders/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/link.com"
-    found: "C:/Program Files/Microsoft Visual Studio/18/Insiders/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/link.exe"
+      - "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/link.com"
+    found: "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/link.exe"
     search_context:
       ENV{PATH}:
-        - "c:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\node_modules\\@vscode\\ripgrep\\bin"
         - "C:\\Windows\\system32"
         - "C:\\Windows"
         - "C:\\Windows\\System32\\Wbem"
@@ -301,8 +456,26 @@ events:
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA App\\NvDLISR"
         - "C:\\Program Files\\dotnet\\"
         - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
+        - "C:\\Program Files\\nodejs\\"
+        - "C:\\Program Files (x86)\\cloudflared\\"
+        - "C:\\Program Files\\WireGuard\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312\\Scripts\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Launcher\\"
         - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WindowsApps"
         - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\bin"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "D:\\Program Files\\JetBrains\\IntelliJ IDEA 2026.2.0.1\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Roaming\\npm"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-9.0.2-full_build\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312"
+        - "C:\\Program Files\\nodejs"
+        - "C:\\Program Files\\Git\\mingw64\\bin"
   -
     kind: "find-v1"
     backtrace:
@@ -325,8 +498,7 @@ events:
     names:
       - "lld-link"
     candidate_directories:
-      - "C:/Program Files/Microsoft Visual Studio/18/Insiders/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/"
-      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/node_modules/@vscode/ripgrep/bin/"
+      - "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/"
       - "C:/Windows/System32/"
       - "C:/Windows/"
       - "C:/Windows/System32/wbem/"
@@ -336,15 +508,28 @@ events:
       - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/"
       - "C:/Program Files/dotnet/"
       - "C:/Program Files/Git/cmd/"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
+      - "C:/Program Files/CMake/bin/"
+      - "C:/Program Files/Docker/Docker/resources/bin/"
+      - "C:/Program Files/nodejs/"
+      - "C:/Program Files (x86)/cloudflared/"
+      - "C:/Program Files/WireGuard/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/Scripts/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Launcher/"
       - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/"
       - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/"
+      - "C:/Users/jojoj/.dotnet/tools/"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2026.2.0.1/bin/"
+      - "C:/Users/jojoj/AppData/Roaming/npm/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-9.0.2-full_build/bin/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe/"
+      - "C:/Program Files/Git/mingw64/bin/"
     searched_directories:
-      - "C:/Program Files/Microsoft Visual Studio/18/Insiders/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/lld-link.com"
-      - "C:/Program Files/Microsoft Visual Studio/18/Insiders/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/lld-link.exe"
-      - "C:/Program Files/Microsoft Visual Studio/18/Insiders/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/lld-link"
-      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/node_modules/@vscode/ripgrep/bin/lld-link.com"
-      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/node_modules/@vscode/ripgrep/bin/lld-link.exe"
-      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/node_modules/@vscode/ripgrep/bin/lld-link"
+      - "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/lld-link.com"
+      - "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/lld-link.exe"
+      - "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/lld-link"
       - "C:/Windows/System32/lld-link.com"
       - "C:/Windows/System32/lld-link.exe"
       - "C:/Windows/System32/lld-link"
@@ -372,16 +557,63 @@ events:
       - "C:/Program Files/Git/cmd/lld-link.com"
       - "C:/Program Files/Git/cmd/lld-link.exe"
       - "C:/Program Files/Git/cmd/lld-link"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/lld-link.com"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/lld-link.exe"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/lld-link"
+      - "C:/Program Files/CMake/bin/lld-link.com"
+      - "C:/Program Files/CMake/bin/lld-link.exe"
+      - "C:/Program Files/CMake/bin/lld-link"
+      - "C:/Program Files/Docker/Docker/resources/bin/lld-link.com"
+      - "C:/Program Files/Docker/Docker/resources/bin/lld-link.exe"
+      - "C:/Program Files/Docker/Docker/resources/bin/lld-link"
+      - "C:/Program Files/nodejs/lld-link.com"
+      - "C:/Program Files/nodejs/lld-link.exe"
+      - "C:/Program Files/nodejs/lld-link"
+      - "C:/Program Files (x86)/cloudflared/lld-link.com"
+      - "C:/Program Files (x86)/cloudflared/lld-link.exe"
+      - "C:/Program Files (x86)/cloudflared/lld-link"
+      - "C:/Program Files/WireGuard/lld-link.com"
+      - "C:/Program Files/WireGuard/lld-link.exe"
+      - "C:/Program Files/WireGuard/lld-link"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/Scripts/lld-link.com"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/Scripts/lld-link.exe"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/Scripts/lld-link"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/lld-link.com"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/lld-link.exe"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/lld-link"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Launcher/lld-link.com"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Launcher/lld-link.exe"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Launcher/lld-link"
       - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/lld-link.com"
       - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/lld-link.exe"
       - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/lld-link"
       - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/lld-link.com"
       - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/lld-link.exe"
       - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/lld-link"
+      - "C:/Users/jojoj/.dotnet/tools/lld-link.com"
+      - "C:/Users/jojoj/.dotnet/tools/lld-link.exe"
+      - "C:/Users/jojoj/.dotnet/tools/lld-link"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2026.2.0.1/bin/lld-link.com"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2026.2.0.1/bin/lld-link.exe"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2026.2.0.1/bin/lld-link"
+      - "C:/Users/jojoj/AppData/Roaming/npm/lld-link.com"
+      - "C:/Users/jojoj/AppData/Roaming/npm/lld-link.exe"
+      - "C:/Users/jojoj/AppData/Roaming/npm/lld-link"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe/lld-link.com"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe/lld-link.exe"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe/lld-link"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-9.0.2-full_build/bin/lld-link.com"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-9.0.2-full_build/bin/lld-link.exe"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-9.0.2-full_build/bin/lld-link"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe/lld-link.com"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe/lld-link.exe"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe/lld-link"
+      - "C:/Program Files/Git/mingw64/bin/lld-link.com"
+      - "C:/Program Files/Git/mingw64/bin/lld-link.exe"
+      - "C:/Program Files/Git/mingw64/bin/lld-link"
     found: false
     search_context:
       ENV{PATH}:
-        - "c:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\node_modules\\@vscode\\ripgrep\\bin"
         - "C:\\Windows\\system32"
         - "C:\\Windows"
         - "C:\\Windows\\System32\\Wbem"
@@ -391,8 +623,26 @@ events:
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA App\\NvDLISR"
         - "C:\\Program Files\\dotnet\\"
         - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
+        - "C:\\Program Files\\nodejs\\"
+        - "C:\\Program Files (x86)\\cloudflared\\"
+        - "C:\\Program Files\\WireGuard\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312\\Scripts\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Launcher\\"
         - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WindowsApps"
         - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\bin"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "D:\\Program Files\\JetBrains\\IntelliJ IDEA 2026.2.0.1\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Roaming\\npm"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-9.0.2-full_build\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312"
+        - "C:\\Program Files\\nodejs"
+        - "C:\\Program Files\\Git\\mingw64\\bin"
   -
     kind: "find-v1"
     backtrace:
@@ -413,8 +663,7 @@ events:
     names:
       - "link"
     candidate_directories:
-      - "C:/Program Files/Microsoft Visual Studio/18/Insiders/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/"
-      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/node_modules/@vscode/ripgrep/bin/"
+      - "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/"
       - "C:/Windows/System32/"
       - "C:/Windows/"
       - "C:/Windows/System32/wbem/"
@@ -424,14 +673,29 @@ events:
       - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/"
       - "C:/Program Files/dotnet/"
       - "C:/Program Files/Git/cmd/"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
+      - "C:/Program Files/CMake/bin/"
+      - "C:/Program Files/Docker/Docker/resources/bin/"
+      - "C:/Program Files/nodejs/"
+      - "C:/Program Files (x86)/cloudflared/"
+      - "C:/Program Files/WireGuard/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/Scripts/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Launcher/"
       - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/"
       - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/"
+      - "C:/Users/jojoj/.dotnet/tools/"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2026.2.0.1/bin/"
+      - "C:/Users/jojoj/AppData/Roaming/npm/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-9.0.2-full_build/bin/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe/"
+      - "C:/Program Files/Git/mingw64/bin/"
     searched_directories:
-      - "C:/Program Files/Microsoft Visual Studio/18/Insiders/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/link.com"
-    found: "C:/Program Files/Microsoft Visual Studio/18/Insiders/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/link.exe"
+      - "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/link.com"
+    found: "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/link.exe"
     search_context:
       ENV{PATH}:
-        - "c:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\node_modules\\@vscode\\ripgrep\\bin"
         - "C:\\Windows\\system32"
         - "C:\\Windows"
         - "C:\\Windows\\System32\\Wbem"
@@ -441,8 +705,26 @@ events:
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA App\\NvDLISR"
         - "C:\\Program Files\\dotnet\\"
         - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
+        - "C:\\Program Files\\nodejs\\"
+        - "C:\\Program Files (x86)\\cloudflared\\"
+        - "C:\\Program Files\\WireGuard\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312\\Scripts\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Launcher\\"
         - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WindowsApps"
         - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\bin"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "D:\\Program Files\\JetBrains\\IntelliJ IDEA 2026.2.0.1\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Roaming\\npm"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-9.0.2-full_build\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312"
+        - "C:\\Program Files\\nodejs"
+        - "C:\\Program Files\\Git\\mingw64\\bin"
   -
     kind: "find-v1"
     backtrace:
@@ -463,8 +745,7 @@ events:
     names:
       - "mt"
     candidate_directories:
-      - "C:/Program Files/Microsoft Visual Studio/18/Insiders/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/"
-      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/node_modules/@vscode/ripgrep/bin/"
+      - "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/"
       - "C:/Windows/System32/"
       - "C:/Windows/"
       - "C:/Windows/System32/wbem/"
@@ -474,15 +755,28 @@ events:
       - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/"
       - "C:/Program Files/dotnet/"
       - "C:/Program Files/Git/cmd/"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
+      - "C:/Program Files/CMake/bin/"
+      - "C:/Program Files/Docker/Docker/resources/bin/"
+      - "C:/Program Files/nodejs/"
+      - "C:/Program Files (x86)/cloudflared/"
+      - "C:/Program Files/WireGuard/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/Scripts/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Launcher/"
       - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/"
       - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/"
+      - "C:/Users/jojoj/.dotnet/tools/"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2026.2.0.1/bin/"
+      - "C:/Users/jojoj/AppData/Roaming/npm/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-9.0.2-full_build/bin/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe/"
+      - "C:/Program Files/Git/mingw64/bin/"
     searched_directories:
-      - "C:/Program Files/Microsoft Visual Studio/18/Insiders/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/mt.com"
-      - "C:/Program Files/Microsoft Visual Studio/18/Insiders/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/mt.exe"
-      - "C:/Program Files/Microsoft Visual Studio/18/Insiders/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/mt"
-      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/node_modules/@vscode/ripgrep/bin/mt.com"
-      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/node_modules/@vscode/ripgrep/bin/mt.exe"
-      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/node_modules/@vscode/ripgrep/bin/mt"
+      - "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/mt.com"
+      - "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/mt.exe"
+      - "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/mt"
       - "C:/Windows/System32/mt.com"
       - "C:/Windows/System32/mt.exe"
       - "C:/Windows/System32/mt"
@@ -510,16 +804,63 @@ events:
       - "C:/Program Files/Git/cmd/mt.com"
       - "C:/Program Files/Git/cmd/mt.exe"
       - "C:/Program Files/Git/cmd/mt"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/mt.com"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/mt.exe"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/mt"
+      - "C:/Program Files/CMake/bin/mt.com"
+      - "C:/Program Files/CMake/bin/mt.exe"
+      - "C:/Program Files/CMake/bin/mt"
+      - "C:/Program Files/Docker/Docker/resources/bin/mt.com"
+      - "C:/Program Files/Docker/Docker/resources/bin/mt.exe"
+      - "C:/Program Files/Docker/Docker/resources/bin/mt"
+      - "C:/Program Files/nodejs/mt.com"
+      - "C:/Program Files/nodejs/mt.exe"
+      - "C:/Program Files/nodejs/mt"
+      - "C:/Program Files (x86)/cloudflared/mt.com"
+      - "C:/Program Files (x86)/cloudflared/mt.exe"
+      - "C:/Program Files (x86)/cloudflared/mt"
+      - "C:/Program Files/WireGuard/mt.com"
+      - "C:/Program Files/WireGuard/mt.exe"
+      - "C:/Program Files/WireGuard/mt"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/Scripts/mt.com"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/Scripts/mt.exe"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/Scripts/mt"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/mt.com"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/mt.exe"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/mt"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Launcher/mt.com"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Launcher/mt.exe"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Launcher/mt"
       - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/mt.com"
       - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/mt.exe"
       - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/mt"
       - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/mt.com"
       - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/mt.exe"
       - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/mt"
+      - "C:/Users/jojoj/.dotnet/tools/mt.com"
+      - "C:/Users/jojoj/.dotnet/tools/mt.exe"
+      - "C:/Users/jojoj/.dotnet/tools/mt"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2026.2.0.1/bin/mt.com"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2026.2.0.1/bin/mt.exe"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2026.2.0.1/bin/mt"
+      - "C:/Users/jojoj/AppData/Roaming/npm/mt.com"
+      - "C:/Users/jojoj/AppData/Roaming/npm/mt.exe"
+      - "C:/Users/jojoj/AppData/Roaming/npm/mt"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe/mt.com"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe/mt.exe"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe/mt"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-9.0.2-full_build/bin/mt.com"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-9.0.2-full_build/bin/mt.exe"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-9.0.2-full_build/bin/mt"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe/mt.com"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe/mt.exe"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe/mt"
+      - "C:/Program Files/Git/mingw64/bin/mt.com"
+      - "C:/Program Files/Git/mingw64/bin/mt.exe"
+      - "C:/Program Files/Git/mingw64/bin/mt"
     found: false
     search_context:
       ENV{PATH}:
-        - "c:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\node_modules\\@vscode\\ripgrep\\bin"
         - "C:\\Windows\\system32"
         - "C:\\Windows"
         - "C:\\Windows\\System32\\Wbem"
@@ -529,8 +870,26 @@ events:
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA App\\NvDLISR"
         - "C:\\Program Files\\dotnet\\"
         - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
+        - "C:\\Program Files\\nodejs\\"
+        - "C:\\Program Files (x86)\\cloudflared\\"
+        - "C:\\Program Files\\WireGuard\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312\\Scripts\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Launcher\\"
         - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WindowsApps"
         - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\bin"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "D:\\Program Files\\JetBrains\\IntelliJ IDEA 2026.2.0.1\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Roaming\\npm"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-9.0.2-full_build\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312"
+        - "C:\\Program Files\\nodejs"
+        - "C:\\Program Files\\Git\\mingw64\\bin"
   -
     kind: "find-v1"
     backtrace:
@@ -551,8 +910,7 @@ events:
     names:
       - "lib"
     candidate_directories:
-      - "C:/Program Files/Microsoft Visual Studio/18/Insiders/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/"
-      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/node_modules/@vscode/ripgrep/bin/"
+      - "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/"
       - "C:/Windows/System32/"
       - "C:/Windows/"
       - "C:/Windows/System32/wbem/"
@@ -562,14 +920,29 @@ events:
       - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/"
       - "C:/Program Files/dotnet/"
       - "C:/Program Files/Git/cmd/"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
+      - "C:/Program Files/CMake/bin/"
+      - "C:/Program Files/Docker/Docker/resources/bin/"
+      - "C:/Program Files/nodejs/"
+      - "C:/Program Files (x86)/cloudflared/"
+      - "C:/Program Files/WireGuard/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/Scripts/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Launcher/"
       - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/"
       - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/"
+      - "C:/Users/jojoj/.dotnet/tools/"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2026.2.0.1/bin/"
+      - "C:/Users/jojoj/AppData/Roaming/npm/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-9.0.2-full_build/bin/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe/"
+      - "C:/Program Files/Git/mingw64/bin/"
     searched_directories:
-      - "C:/Program Files/Microsoft Visual Studio/18/Insiders/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/lib.com"
-    found: "C:/Program Files/Microsoft Visual Studio/18/Insiders/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/lib.exe"
+      - "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/lib.com"
+    found: "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/lib.exe"
     search_context:
       ENV{PATH}:
-        - "c:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\node_modules\\@vscode\\ripgrep\\bin"
         - "C:\\Windows\\system32"
         - "C:\\Windows"
         - "C:\\Windows\\System32\\Wbem"
@@ -579,8 +952,26 @@ events:
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA App\\NvDLISR"
         - "C:\\Program Files\\dotnet\\"
         - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
+        - "C:\\Program Files\\nodejs\\"
+        - "C:\\Program Files (x86)\\cloudflared\\"
+        - "C:\\Program Files\\WireGuard\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312\\Scripts\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Launcher\\"
         - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WindowsApps"
         - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\bin"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "D:\\Program Files\\JetBrains\\IntelliJ IDEA 2026.2.0.1\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Roaming\\npm"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-9.0.2-full_build\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312"
+        - "C:\\Program Files\\nodejs"
+        - "C:\\Program Files\\Git\\mingw64\\bin"
   -
     kind: "find-v1"
     backtrace:
@@ -609,7 +1000,6 @@ events:
     found: "C:/Program Files/CMake/share/cmake-4.3/Modules/CMakeCXXCompilerId.cpp.in"
     search_context:
       ENV{PATH}:
-        - "c:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\node_modules\\@vscode\\ripgrep\\bin"
         - "C:\\Windows\\system32"
         - "C:\\Windows"
         - "C:\\Windows\\System32\\Wbem"
@@ -619,8 +1009,26 @@ events:
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA App\\NvDLISR"
         - "C:\\Program Files\\dotnet\\"
         - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
+        - "C:\\Program Files\\nodejs\\"
+        - "C:\\Program Files (x86)\\cloudflared\\"
+        - "C:\\Program Files\\WireGuard\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312\\Scripts\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Launcher\\"
         - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WindowsApps"
         - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\bin"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "D:\\Program Files\\JetBrains\\IntelliJ IDEA 2026.2.0.1\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Roaming\\npm"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-9.0.2-full_build\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312"
+        - "C:\\Program Files\\nodejs"
+        - "C:\\Program Files\\Git\\mingw64\\bin"
   -
     kind: "message-v1"
     backtrace:
@@ -636,8 +1044,8 @@ events:
       
       The output was:
       0
-      MSBuild version 18.8.1+c99826b40 for .NET Framework
-      Build started 6/12/2026 11:46:18 AM.
+      MSBuild version 18.8.2+ce25c0108 for .NET Framework
+      Build started 10/20/2026 11:06:17 PM.
       
       Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\4.3.3\\CompilerIdCXX\\CompilerIdCXX.vcxproj" on node 1 (default targets).
       PrepareForBuild:
@@ -648,15 +1056,15 @@ events:
         Creating "Debug\\CompilerIdCXX.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
         Touching "Debug\\CompilerIdCXX.tlog\\unsuccessfulbuild".
       ClCompile:
-        C:\\Program Files\\Microsoft Visual Studio\\18\\Insiders\\VC\\Tools\\MSVC\\14.51.36231\\bin\\HostX64\\x64\\CL.exe /c /nologo /W0 /WX- /diagnostics:column /Od /D _MBCS /Gm- /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"Debug\\\\" /Fd"Debug\\vc145.pdb" /external:W0 /Gd /TP /FC /errorReport:queue CMakeCXXCompilerId.cpp
+        C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Tools\\MSVC\\14.51.36231\\bin\\HostX64\\x64\\CL.exe /c /ID:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\4.3.3\\CompilerIdCXX\\ /nologo /W0 /WX- /diagnostics:column /Od /D _ITERATOR_DEBUG_LEVEL=0 /D _MBCS /D _HAS_AUTO_PTR_ETC=1 /D _SILENCE_STDEXT_HASH_DEPRECATION_WARNINGS /Gm- /EHsc /MT /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"Debug\\\\" /Fd"Debug\\CompilerIdCXX.pdb" /external:W0 /Gd /TP /FC /errorReport:queue /U _DEBUG /FS CMakeCXXCompilerId.cpp
         CMakeCXXCompilerId.cpp
       Link:
-        C:\\Program Files\\Microsoft Visual Studio\\18\\Insiders\\VC\\Tools\\MSVC\\14.51.36231\\bin\\HostX64\\x64\\link.exe /ERRORREPORT:QUEUE /OUT:".\\CompilerIdCXX.exe" /INCREMENTAL:NO /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /PDB:".\\CompilerIdCXX.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:".\\CompilerIdCXX.lib" /MACHINE:X64 Debug\\CMakeCXXCompilerId.obj
+        C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Tools\\MSVC\\14.51.36231\\bin\\HostX64\\x64\\link.exe /ERRORREPORT:QUEUE /OUT:".\\CompilerIdCXX.exe" /INCREMENTAL:NO /NOLOGO /LIBPATH:D:\\titan\\client\\deps\\x64\\lib /LIBPATH:"C:\\Program Files (x86)\\Microsoft DirectX SDK (June 2010)\\Lib\\x64" /LIBPATH:"C:\\Program Files (x86)\\Windows Kits\\10\\lib\\10.0.26100.0\\um\\x64" /LIBPATH:"C:\\Program Files (x86)\\Windows Kits\\NETFXSDK\\4.8\\lib\\um\\x64" kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /NODEFAULTLIB:libcmtd.lib /NODEFAULTLIB:msvcrtd.lib /NODEFAULTLIB:libc.lib /NODEFAULTLIB:msvcrt.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /PDB:".\\CompilerIdCXX.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:".\\CompilerIdCXX.lib" /MACHINE:X64 Debug\\CMakeCXXCompilerId.obj
         CompilerIdCXX.vcxproj -> D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\4.3.3\\CompilerIdCXX\\CompilerIdCXX.exe
       PostBuildEvent:
         for %%i in (cl.exe) do @echo CMAKE_CXX_COMPILER=%%~$PATH:i
         :VCEnd
-        CMAKE_CXX_COMPILER=C:\\Program Files\\Microsoft Visual Studio\\18\\Insiders\\VC\\Tools\\MSVC\\14.51.36231\\bin\\Hostx64\\x64\\cl.exe
+        CMAKE_CXX_COMPILER=C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Tools\\MSVC\\14.51.36231\\bin\\Hostx64\\x64\\cl.exe
       FinalizeBuildStatus:
         Deleting file "Debug\\CompilerIdCXX.tlog\\unsuccessfulbuild".
         Touching "Debug\\CompilerIdCXX.tlog\\CompilerIdCXX.lastbuildstate".
@@ -666,7 +1074,7 @@ events:
           0 Warning(s)
           0 Error(s)
       
-      Time Elapsed 00:00:00.86
+      Time Elapsed 00:00:00.81
       
       
       Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "CompilerIdCXX.exe"
@@ -698,8 +1106,7 @@ events:
     names:
       - "lld-link"
     candidate_directories:
-      - "C:/Program Files/Microsoft Visual Studio/18/Insiders/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/"
-      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/node_modules/@vscode/ripgrep/bin/"
+      - "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/"
       - "C:/Windows/System32/"
       - "C:/Windows/"
       - "C:/Windows/System32/wbem/"
@@ -709,15 +1116,28 @@ events:
       - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/"
       - "C:/Program Files/dotnet/"
       - "C:/Program Files/Git/cmd/"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
+      - "C:/Program Files/CMake/bin/"
+      - "C:/Program Files/Docker/Docker/resources/bin/"
+      - "C:/Program Files/nodejs/"
+      - "C:/Program Files (x86)/cloudflared/"
+      - "C:/Program Files/WireGuard/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/Scripts/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Launcher/"
       - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/"
       - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/"
+      - "C:/Users/jojoj/.dotnet/tools/"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2026.2.0.1/bin/"
+      - "C:/Users/jojoj/AppData/Roaming/npm/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-9.0.2-full_build/bin/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe/"
+      - "C:/Program Files/Git/mingw64/bin/"
     searched_directories:
-      - "C:/Program Files/Microsoft Visual Studio/18/Insiders/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/lld-link.com"
-      - "C:/Program Files/Microsoft Visual Studio/18/Insiders/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/lld-link.exe"
-      - "C:/Program Files/Microsoft Visual Studio/18/Insiders/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/lld-link"
-      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/node_modules/@vscode/ripgrep/bin/lld-link.com"
-      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/node_modules/@vscode/ripgrep/bin/lld-link.exe"
-      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/node_modules/@vscode/ripgrep/bin/lld-link"
+      - "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/lld-link.com"
+      - "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/lld-link.exe"
+      - "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/lld-link"
       - "C:/Windows/System32/lld-link.com"
       - "C:/Windows/System32/lld-link.exe"
       - "C:/Windows/System32/lld-link"
@@ -745,16 +1165,63 @@ events:
       - "C:/Program Files/Git/cmd/lld-link.com"
       - "C:/Program Files/Git/cmd/lld-link.exe"
       - "C:/Program Files/Git/cmd/lld-link"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/lld-link.com"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/lld-link.exe"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/lld-link"
+      - "C:/Program Files/CMake/bin/lld-link.com"
+      - "C:/Program Files/CMake/bin/lld-link.exe"
+      - "C:/Program Files/CMake/bin/lld-link"
+      - "C:/Program Files/Docker/Docker/resources/bin/lld-link.com"
+      - "C:/Program Files/Docker/Docker/resources/bin/lld-link.exe"
+      - "C:/Program Files/Docker/Docker/resources/bin/lld-link"
+      - "C:/Program Files/nodejs/lld-link.com"
+      - "C:/Program Files/nodejs/lld-link.exe"
+      - "C:/Program Files/nodejs/lld-link"
+      - "C:/Program Files (x86)/cloudflared/lld-link.com"
+      - "C:/Program Files (x86)/cloudflared/lld-link.exe"
+      - "C:/Program Files (x86)/cloudflared/lld-link"
+      - "C:/Program Files/WireGuard/lld-link.com"
+      - "C:/Program Files/WireGuard/lld-link.exe"
+      - "C:/Program Files/WireGuard/lld-link"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/Scripts/lld-link.com"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/Scripts/lld-link.exe"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/Scripts/lld-link"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/lld-link.com"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/lld-link.exe"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/lld-link"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Launcher/lld-link.com"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Launcher/lld-link.exe"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Launcher/lld-link"
       - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/lld-link.com"
       - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/lld-link.exe"
       - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/lld-link"
       - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/lld-link.com"
       - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/lld-link.exe"
       - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/lld-link"
+      - "C:/Users/jojoj/.dotnet/tools/lld-link.com"
+      - "C:/Users/jojoj/.dotnet/tools/lld-link.exe"
+      - "C:/Users/jojoj/.dotnet/tools/lld-link"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2026.2.0.1/bin/lld-link.com"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2026.2.0.1/bin/lld-link.exe"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2026.2.0.1/bin/lld-link"
+      - "C:/Users/jojoj/AppData/Roaming/npm/lld-link.com"
+      - "C:/Users/jojoj/AppData/Roaming/npm/lld-link.exe"
+      - "C:/Users/jojoj/AppData/Roaming/npm/lld-link"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe/lld-link.com"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe/lld-link.exe"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe/lld-link"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-9.0.2-full_build/bin/lld-link.com"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-9.0.2-full_build/bin/lld-link.exe"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-9.0.2-full_build/bin/lld-link"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe/lld-link.com"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe/lld-link.exe"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe/lld-link"
+      - "C:/Program Files/Git/mingw64/bin/lld-link.com"
+      - "C:/Program Files/Git/mingw64/bin/lld-link.exe"
+      - "C:/Program Files/Git/mingw64/bin/lld-link"
     found: false
     search_context:
       ENV{PATH}:
-        - "c:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\node_modules\\@vscode\\ripgrep\\bin"
         - "C:\\Windows\\system32"
         - "C:\\Windows"
         - "C:\\Windows\\System32\\Wbem"
@@ -764,8 +1231,26 @@ events:
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA App\\NvDLISR"
         - "C:\\Program Files\\dotnet\\"
         - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
+        - "C:\\Program Files\\nodejs\\"
+        - "C:\\Program Files (x86)\\cloudflared\\"
+        - "C:\\Program Files\\WireGuard\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312\\Scripts\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Launcher\\"
         - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WindowsApps"
         - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\bin"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "D:\\Program Files\\JetBrains\\IntelliJ IDEA 2026.2.0.1\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Roaming\\npm"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-9.0.2-full_build\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312"
+        - "C:\\Program Files\\nodejs"
+        - "C:\\Program Files\\Git\\mingw64\\bin"
   -
     kind: "find-v1"
     backtrace:
@@ -789,7 +1274,6 @@ events:
     names:
       - "rc"
     candidate_directories:
-      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/node_modules/@vscode/ripgrep/bin/"
       - "C:/Windows/System32/"
       - "C:/Windows/"
       - "C:/Windows/System32/wbem/"
@@ -799,8 +1283,24 @@ events:
       - "C:/Program Files/NVIDIA Corporation/NVIDIA App/NvDLISR/"
       - "C:/Program Files/dotnet/"
       - "C:/Program Files/Git/cmd/"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/"
+      - "C:/Program Files/CMake/bin/"
+      - "C:/Program Files/Docker/Docker/resources/bin/"
+      - "C:/Program Files/nodejs/"
+      - "C:/Program Files (x86)/cloudflared/"
+      - "C:/Program Files/WireGuard/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/Scripts/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Launcher/"
       - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/"
       - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/"
+      - "C:/Users/jojoj/.dotnet/tools/"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2026.2.0.1/bin/"
+      - "C:/Users/jojoj/AppData/Roaming/npm/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-9.0.2-full_build/bin/"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe/"
+      - "C:/Program Files/Git/mingw64/bin/"
       - "C:/Program Files/bin/"
       - "C:/Program Files/sbin/"
       - "C:/Program Files/"
@@ -814,9 +1314,6 @@ events:
       - "C:/Program Files/unicode/sbin/"
       - "C:/Program Files/unicode/"
     searched_directories:
-      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/node_modules/@vscode/ripgrep/bin/rc.com"
-      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/node_modules/@vscode/ripgrep/bin/rc.exe"
-      - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/node_modules/@vscode/ripgrep/bin/rc"
       - "C:/Windows/System32/rc.com"
       - "C:/Windows/System32/rc.exe"
       - "C:/Windows/System32/rc"
@@ -844,12 +1341,60 @@ events:
       - "C:/Program Files/Git/cmd/rc.com"
       - "C:/Program Files/Git/cmd/rc.exe"
       - "C:/Program Files/Git/cmd/rc"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/rc.com"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/rc.exe"
+      - "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/rc"
+      - "C:/Program Files/CMake/bin/rc.com"
+      - "C:/Program Files/CMake/bin/rc.exe"
+      - "C:/Program Files/CMake/bin/rc"
+      - "C:/Program Files/Docker/Docker/resources/bin/rc.com"
+      - "C:/Program Files/Docker/Docker/resources/bin/rc.exe"
+      - "C:/Program Files/Docker/Docker/resources/bin/rc"
+      - "C:/Program Files/nodejs/rc.com"
+      - "C:/Program Files/nodejs/rc.exe"
+      - "C:/Program Files/nodejs/rc"
+      - "C:/Program Files (x86)/cloudflared/rc.com"
+      - "C:/Program Files (x86)/cloudflared/rc.exe"
+      - "C:/Program Files (x86)/cloudflared/rc"
+      - "C:/Program Files/WireGuard/rc.com"
+      - "C:/Program Files/WireGuard/rc.exe"
+      - "C:/Program Files/WireGuard/rc"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/Scripts/rc.com"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/Scripts/rc.exe"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/Scripts/rc"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/rc.com"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/rc.exe"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Python312/rc"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Launcher/rc.com"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Launcher/rc.exe"
+      - "C:/Users/jojoj/AppData/Local/Programs/Python/Launcher/rc"
       - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/rc.com"
       - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/rc.exe"
       - "C:/Users/jojoj/AppData/Local/Microsoft/WindowsApps/rc"
       - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/rc.com"
       - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/rc.exe"
       - "C:/Users/jojoj/AppData/Local/Programs/cursor/resources/app/bin/rc"
+      - "C:/Users/jojoj/.dotnet/tools/rc.com"
+      - "C:/Users/jojoj/.dotnet/tools/rc.exe"
+      - "C:/Users/jojoj/.dotnet/tools/rc"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2026.2.0.1/bin/rc.com"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2026.2.0.1/bin/rc.exe"
+      - "D:/Program Files/Jetbrains/IntelliJ IDEA 2026.2.0.1/bin/rc"
+      - "C:/Users/jojoj/AppData/Roaming/npm/rc.com"
+      - "C:/Users/jojoj/AppData/Roaming/npm/rc.exe"
+      - "C:/Users/jojoj/AppData/Roaming/npm/rc"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe/rc.com"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe/rc.exe"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe/rc"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-9.0.2-full_build/bin/rc.com"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-9.0.2-full_build/bin/rc.exe"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-9.0.2-full_build/bin/rc"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe/rc.com"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe/rc.exe"
+      - "C:/Users/jojoj/AppData/Local/Microsoft/WinGet/Packages/astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe/rc"
+      - "C:/Program Files/Git/mingw64/bin/rc.com"
+      - "C:/Program Files/Git/mingw64/bin/rc.exe"
+      - "C:/Program Files/Git/mingw64/bin/rc"
       - "C:/Program Files/bin/rc.com"
       - "C:/Program Files/bin/rc.exe"
       - "C:/Program Files/bin/rc"
@@ -889,7 +1434,6 @@ events:
     found: false
     search_context:
       ENV{PATH}:
-        - "c:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\node_modules\\@vscode\\ripgrep\\bin"
         - "C:\\Windows\\system32"
         - "C:\\Windows"
         - "C:\\Windows\\System32\\Wbem"
@@ -899,8 +1443,26 @@ events:
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA App\\NvDLISR"
         - "C:\\Program Files\\dotnet\\"
         - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
+        - "C:\\Program Files\\nodejs\\"
+        - "C:\\Program Files (x86)\\cloudflared\\"
+        - "C:\\Program Files\\WireGuard\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312\\Scripts\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Launcher\\"
         - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WindowsApps"
         - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\bin"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "D:\\Program Files\\JetBrains\\IntelliJ IDEA 2026.2.0.1\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Roaming\\npm"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-9.0.2-full_build\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312"
+        - "C:\\Program Files\\nodejs"
+        - "C:\\Program Files\\Git\\mingw64\\bin"
       CMAKE_INSTALL_PREFIX: "C:/Program Files/unicode"
       CMAKE_SYSTEM_PREFIX_PATH:
         - "C:/Program Files"
@@ -916,8 +1478,8 @@ events:
     checks:
       - "Detecting C compiler ABI info"
     directories:
-      source: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-fturse"
-      binary: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-fturse"
+      source: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-6vnl1z"
+      binary: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-6vnl1z"
     cmakeVariables:
       CMAKE_CXX_STDLIB_MODULES_JSON: ""
       CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS /W3"
@@ -929,39 +1491,39 @@ events:
       variable: "CMAKE_C_ABI_COMPILED"
       cached: true
       stdout: |
-        Change Dir: 'D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-fturse'
+        Change Dir: 'D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-6vnl1z'
         
-        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/18/Insiders/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_0ea03.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=18.0 /v:n
-        MSBuild version 18.8.1+c99826b40 for .NET Framework
-        Build started 6/12/2026 11:46:20 AM.
+        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_dfe60.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=18.0 /v:n
+        MSBuild version 18.8.2+ce25c0108 for .NET Framework
+        Build started 10/20/2026 11:06:19 PM.
         
-        Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-fturse\\cmTC_0ea03.vcxproj" on node 1 (default targets).
+        Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6vnl1z\\cmTC_dfe60.vcxproj" on node 1 (default targets).
         PrepareForBuild:
           Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-fturse\\Debug\\".
-          Creating directory "cmTC_0ea03.dir\\Debug\\cmTC_0ea03.tlog\\".
+          Creating directory "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6vnl1z\\Debug\\".
+          Creating directory "cmTC_dfe60.dir\\Debug\\cmTC_dfe60.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_0ea03.dir\\Debug\\cmTC_0ea03.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_0ea03.dir\\Debug\\cmTC_0ea03.tlog\\unsuccessfulbuild".
+          Creating "cmTC_dfe60.dir\\Debug\\cmTC_dfe60.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_dfe60.dir\\Debug\\cmTC_dfe60.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files\\Microsoft Visual Studio\\18\\Insiders\\VC\\Tools\\MSVC\\14.51.36231\\bin\\HostX64\\x64\\CL.exe /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_0ea03.dir\\Debug\\\\" /Fd"cmTC_0ea03.dir\\Debug\\vc145.pdb" /external:W3 /TC /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCCompilerABI.c"
-          Microsoft (R) C/C++ Optimizing Compiler Version 19.51.36247 for x64
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Tools\\MSVC\\14.51.36231\\bin\\HostX64\\x64\\CL.exe /c /I"D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6vnl1z\\Debug\\\\" /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _ITERATOR_DEBUG_LEVEL=0 /D _MBCS /D _HAS_AUTO_PTR_ETC=1 /D _SILENCE_STDEXT_HASH_DEPRECATION_WARNINGS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /MT /Fo"cmTC_dfe60.dir\\Debug\\\\" /Fd"cmTC_dfe60.dir\\Debug\\cmTC_dfe60.pdb" /external:W3 /TC /errorReport:queue /U _DEBUG /FS "C:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCCompilerABI.c"
+          Microsoft (R) C/C++ Optimizing Compiler Version 19.51.36248 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_0ea03.dir\\Debug\\\\" /Fd"cmTC_0ea03.dir\\Debug\\vc145.pdb" /external:W3 /TC /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCCompilerABI.c"
+          cl /c /I"D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6vnl1z\\Debug\\\\" /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _ITERATOR_DEBUG_LEVEL=0 /D _MBCS /D _HAS_AUTO_PTR_ETC=1 /D _SILENCE_STDEXT_HASH_DEPRECATION_WARNINGS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /MT /Fo"cmTC_dfe60.dir\\Debug\\\\" /Fd"cmTC_dfe60.dir\\Debug\\cmTC_dfe60.pdb" /external:W3 /TC /errorReport:queue /U _DEBUG /FS "C:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCCompilerABI.c"
           CMakeCCompilerABI.c
         Link:
-          C:\\Program Files\\Microsoft Visual Studio\\18\\Insiders\\VC\\Tools\\MSVC\\14.51.36231\\bin\\HostX64\\x64\\link.exe /OUT:"D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-fturse\\Debug\\cmTC_0ea03.exe" /INCREMENTAL /ILK:"cmTC_0ea03.dir\\Debug\\cmTC_0ea03.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-fturse/Debug/cmTC_0ea03.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-fturse/Debug/cmTC_0ea03.lib" /MACHINE:X64  /IGNORE:4099 cmTC_0ea03.dir\\Debug\\CMakeCCompilerABI.obj
-          cmTC_0ea03.vcxproj -> D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-fturse\\Debug\\cmTC_0ea03.exe
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Tools\\MSVC\\14.51.36231\\bin\\HostX64\\x64\\link.exe /OUT:"D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6vnl1z\\Debug\\cmTC_dfe60.exe" /INCREMENTAL /ILK:"cmTC_dfe60.dir\\Debug\\cmTC_dfe60.ilk" /NOLOGO /LIBPATH:D:\\titan\\client\\deps\\x64\\lib /LIBPATH:"C:\\Program Files (x86)\\Microsoft DirectX SDK (June 2010)\\Lib\\x64" /LIBPATH:"C:\\Program Files (x86)\\Windows Kits\\10\\lib\\10.0.26100.0\\um\\x64" /LIBPATH:"C:\\Program Files (x86)\\Windows Kits\\NETFXSDK\\4.8\\lib\\um\\x64" kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /NODEFAULTLIB:libcmtd.lib /NODEFAULTLIB:msvcrtd.lib /NODEFAULTLIB:libc.lib /NODEFAULTLIB:msvcrt.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6vnl1z\\Debug\\cmTC_dfe60.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-6vnl1z/Debug/cmTC_dfe60.lib" /MACHINE:X64  /IGNORE:4099 cmTC_dfe60.dir\\Debug\\CMakeCCompilerABI.obj
+          cmTC_dfe60.vcxproj -> D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6vnl1z\\Debug\\cmTC_dfe60.exe
         FinalizeBuildStatus:
-          Deleting file "cmTC_0ea03.dir\\Debug\\cmTC_0ea03.tlog\\unsuccessfulbuild".
-          Touching "cmTC_0ea03.dir\\Debug\\cmTC_0ea03.tlog\\cmTC_0ea03.lastbuildstate".
-        Done Building Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-fturse\\cmTC_0ea03.vcxproj" (default targets).
+          Deleting file "cmTC_dfe60.dir\\Debug\\cmTC_dfe60.tlog\\unsuccessfulbuild".
+          Touching "cmTC_dfe60.dir\\Debug\\cmTC_dfe60.tlog\\cmTC_dfe60.lastbuildstate".
+        Done Building Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6vnl1z\\cmTC_dfe60.vcxproj" (default targets).
         
         Build succeeded.
             0 Warning(s)
             0 Error(s)
         
-        Time Elapsed 00:00:00.61
+        Time Elapsed 00:00:01.20
         
       exitCode: 0
   -
@@ -974,7 +1536,7 @@ events:
       Parsed C implicit link information:
         link line regex: [^( *|.*[/\\])(ld[0-9]*(|\\.[a-rt-z][a-z]*|\\.s[a-np-z][a-z]*|\\.so[a-z]+)|link\\.exe|lld-link(\\.exe)?|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
         linker tool regex: [^[ 	]*(->|"|[0-9]+>[ 	-]*Build:[ 	0-9]+ ms[ 	]*)?[ 	]*(([^"]*[/\\])?(ld[0-9]*(|\\.[a-rt-z][a-z]*|\\.s[a-np-z][a-z]*|\\.so[a-z]+)|link\\.exe|lld-link(\\.exe)?))("|,| |$)]
-        linker tool for 'C': C:/Program Files/Microsoft Visual Studio/18/Insiders/VC/Tools/MSVC/14.51.36231/bin/HostX64/x64/link.exe
+        linker tool for 'C': C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Tools/MSVC/14.51.36231/bin/HostX64/x64/link.exe
         implicit libs: []
         implicit objs: []
         implicit dirs: []
@@ -989,8 +1551,8 @@ events:
       - "C:/Program Files/CMake/share/cmake-4.3/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
       - "unicode/CMakeLists.txt:3 (project)"
     message: |
-      Running the C compiler's linker: "C:/Program Files/Microsoft Visual Studio/18/Insiders/VC/Tools/MSVC/14.51.36231/bin/HostX64/x64/link.exe" "-v"
-      Microsoft (R) Incremental Linker Version 14.51.36247.0
+      Running the C compiler's linker: "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Tools/MSVC/14.51.36231/bin/HostX64/x64/link.exe" "-v"
+      Microsoft (R) Incremental Linker Version 14.51.36248.0
       Copyright (C) Microsoft Corporation.  All rights reserved.
   -
     kind: "try_compile-v1"
@@ -1001,8 +1563,8 @@ events:
     checks:
       - "Detecting CXX compiler ABI info"
     directories:
-      source: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-lyhpz5"
-      binary: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-lyhpz5"
+      source: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-pgdmmw"
+      binary: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-pgdmmw"
     cmakeVariables:
       CMAKE_CXX_FLAGS: " /Zi /wd4996"
       CMAKE_CXX_FLAGS_DEBUG: "/MD"
@@ -1015,39 +1577,39 @@ events:
       variable: "CMAKE_CXX_ABI_COMPILED"
       cached: true
       stdout: |
-        Change Dir: 'D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-lyhpz5'
+        Change Dir: 'D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-pgdmmw'
         
-        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/18/Insiders/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_75ce8.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=18.0 /v:n
-        MSBuild version 18.8.1+c99826b40 for .NET Framework
-        Build started 6/12/2026 11:46:21 AM.
+        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_6416f.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=18.0 /v:n
+        MSBuild version 18.8.2+ce25c0108 for .NET Framework
+        Build started 10/20/2026 11:06:21 PM.
         
-        Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-lyhpz5\\cmTC_75ce8.vcxproj" on node 1 (default targets).
+        Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-pgdmmw\\cmTC_6416f.vcxproj" on node 1 (default targets).
         PrepareForBuild:
           Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-lyhpz5\\Debug\\".
-          Creating directory "cmTC_75ce8.dir\\Debug\\cmTC_75ce8.tlog\\".
+          Creating directory "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-pgdmmw\\Debug\\".
+          Creating directory "cmTC_6416f.dir\\Debug\\cmTC_6416f.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_75ce8.dir\\Debug\\cmTC_75ce8.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_75ce8.dir\\Debug\\cmTC_75ce8.tlog\\unsuccessfulbuild".
+          Creating "cmTC_6416f.dir\\Debug\\cmTC_6416f.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_6416f.dir\\Debug\\cmTC_6416f.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files\\Microsoft Visual Studio\\18\\Insiders\\VC\\Tools\\MSVC\\14.51.36231\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /D _MBCS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /MD /std:c++17 /Fo"cmTC_75ce8.dir\\Debug\\\\" /Fd"cmTC_75ce8.dir\\Debug\\vc145.pdb" /external:W1 /TP /wd4996 /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCXXCompilerABI.cpp"
-          Microsoft (R) C/C++ Optimizing Compiler Version 19.51.36247 for x64
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Tools\\MSVC\\14.51.36231\\bin\\HostX64\\x64\\CL.exe /c /I"D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-pgdmmw\\Debug\\\\" /Zi /W1 /WX- /diagnostics:column /D _ITERATOR_DEBUG_LEVEL=0 /D _MBCS /D _HAS_AUTO_PTR_ETC=1 /D _SILENCE_STDEXT_HASH_DEPRECATION_WARNINGS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /MT /std:c++17 /Fo"cmTC_6416f.dir\\Debug\\\\" /Fd"cmTC_6416f.dir\\Debug\\cmTC_6416f.pdb" /external:W1 /TP /wd4996 /errorReport:queue /U _DEBUG /FS "C:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCXXCompilerABI.cpp"
+          Microsoft (R) C/C++ Optimizing Compiler Version 19.51.36248 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W1 /WX- /diagnostics:column /D _MBCS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /MD /std:c++17 /Fo"cmTC_75ce8.dir\\Debug\\\\" /Fd"cmTC_75ce8.dir\\Debug\\vc145.pdb" /external:W1 /TP /wd4996 /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCXXCompilerABI.cpp"
+          cl /c /I"D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-pgdmmw\\Debug\\\\" /Zi /W1 /WX- /diagnostics:column /D _ITERATOR_DEBUG_LEVEL=0 /D _MBCS /D _HAS_AUTO_PTR_ETC=1 /D _SILENCE_STDEXT_HASH_DEPRECATION_WARNINGS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /MT /std:c++17 /Fo"cmTC_6416f.dir\\Debug\\\\" /Fd"cmTC_6416f.dir\\Debug\\cmTC_6416f.pdb" /external:W1 /TP /wd4996 /errorReport:queue /U _DEBUG /FS "C:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCXXCompilerABI.cpp"
           CMakeCXXCompilerABI.cpp
         Link:
-          C:\\Program Files\\Microsoft Visual Studio\\18\\Insiders\\VC\\Tools\\MSVC\\14.51.36231\\bin\\HostX64\\x64\\link.exe /OUT:"D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-lyhpz5\\Debug\\cmTC_75ce8.exe" /INCREMENTAL /ILK:"cmTC_75ce8.dir\\Debug\\cmTC_75ce8.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-lyhpz5/Debug/cmTC_75ce8.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-lyhpz5/Debug/cmTC_75ce8.lib" /MACHINE:X64  /IGNORE:4099 cmTC_75ce8.dir\\Debug\\CMakeCXXCompilerABI.obj
-          cmTC_75ce8.vcxproj -> D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-lyhpz5\\Debug\\cmTC_75ce8.exe
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Tools\\MSVC\\14.51.36231\\bin\\HostX64\\x64\\link.exe /OUT:"D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-pgdmmw\\Debug\\cmTC_6416f.exe" /INCREMENTAL /ILK:"cmTC_6416f.dir\\Debug\\cmTC_6416f.ilk" /NOLOGO /LIBPATH:D:\\titan\\client\\deps\\x64\\lib /LIBPATH:"C:\\Program Files (x86)\\Microsoft DirectX SDK (June 2010)\\Lib\\x64" /LIBPATH:"C:\\Program Files (x86)\\Windows Kits\\10\\lib\\10.0.26100.0\\um\\x64" /LIBPATH:"C:\\Program Files (x86)\\Windows Kits\\NETFXSDK\\4.8\\lib\\um\\x64" kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /NODEFAULTLIB:libcmtd.lib /NODEFAULTLIB:msvcrtd.lib /NODEFAULTLIB:libc.lib /NODEFAULTLIB:msvcrt.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-pgdmmw\\Debug\\cmTC_6416f.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-pgdmmw/Debug/cmTC_6416f.lib" /MACHINE:X64  /IGNORE:4099 cmTC_6416f.dir\\Debug\\CMakeCXXCompilerABI.obj
+          cmTC_6416f.vcxproj -> D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-pgdmmw\\Debug\\cmTC_6416f.exe
         FinalizeBuildStatus:
-          Deleting file "cmTC_75ce8.dir\\Debug\\cmTC_75ce8.tlog\\unsuccessfulbuild".
-          Touching "cmTC_75ce8.dir\\Debug\\cmTC_75ce8.tlog\\cmTC_75ce8.lastbuildstate".
-        Done Building Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-lyhpz5\\cmTC_75ce8.vcxproj" (default targets).
+          Deleting file "cmTC_6416f.dir\\Debug\\cmTC_6416f.tlog\\unsuccessfulbuild".
+          Touching "cmTC_6416f.dir\\Debug\\cmTC_6416f.tlog\\cmTC_6416f.lastbuildstate".
+        Done Building Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-pgdmmw\\cmTC_6416f.vcxproj" (default targets).
         
         Build succeeded.
             0 Warning(s)
             0 Error(s)
         
-        Time Elapsed 00:00:00.49
+        Time Elapsed 00:00:00.87
         
       exitCode: 0
   -
@@ -1060,7 +1622,7 @@ events:
       Parsed CXX implicit link information:
         link line regex: [^( *|.*[/\\])(ld[0-9]*(|\\.[a-rt-z][a-z]*|\\.s[a-np-z][a-z]*|\\.so[a-z]+)|link\\.exe|lld-link(\\.exe)?|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
         linker tool regex: [^[ 	]*(->|"|[0-9]+>[ 	-]*Build:[ 	0-9]+ ms[ 	]*)?[ 	]*(([^"]*[/\\])?(ld[0-9]*(|\\.[a-rt-z][a-z]*|\\.s[a-np-z][a-z]*|\\.so[a-z]+)|link\\.exe|lld-link(\\.exe)?))("|,| |$)]
-        linker tool for 'CXX': C:/Program Files/Microsoft Visual Studio/18/Insiders/VC/Tools/MSVC/14.51.36231/bin/HostX64/x64/link.exe
+        linker tool for 'CXX': C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Tools/MSVC/14.51.36231/bin/HostX64/x64/link.exe
         implicit libs: []
         implicit objs: []
         implicit dirs: []
@@ -1075,8 +1637,8 @@ events:
       - "C:/Program Files/CMake/share/cmake-4.3/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
       - "unicode/CMakeLists.txt:3 (project)"
     message: |
-      Running the CXX compiler's linker: "C:/Program Files/Microsoft Visual Studio/18/Insiders/VC/Tools/MSVC/14.51.36231/bin/HostX64/x64/link.exe" "-v"
-      Microsoft (R) Incremental Linker Version 14.51.36247.0
+      Running the CXX compiler's linker: "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Tools/MSVC/14.51.36231/bin/HostX64/x64/link.exe" "-v"
+      Microsoft (R) Incremental Linker Version 14.51.36248.0
       Copyright (C) Microsoft Corporation.  All rights reserved.
   -
     kind: "try_compile-v1"
@@ -1085,12 +1647,12 @@ events:
       - "C:/Program Files/CMake/share/cmake-4.3/Modules/CheckCSourceCompiles.cmake:103 (cmake_check_source_compiles)"
       - "C:/Program Files/CMake/share/cmake-4.3/Modules/FindThreads.cmake:160 (check_c_source_compiles)"
       - "C:/Program Files/CMake/share/cmake-4.3/Modules/FindThreads.cmake:226 (_threads_check_libc)"
-      - "CMakeLists.txt:279 (find_package)"
+      - "CMakeLists.txt:293 (find_package)"
     checks:
       - "Performing Test CMAKE_HAVE_LIBC_PTHREAD"
     directories:
-      source: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-gqxxyp"
-      binary: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-gqxxyp"
+      source: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-m8hbc3"
+      binary: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-m8hbc3"
     cmakeVariables:
       CMAKE_CXX_STDLIB_MODULES_JSON: ""
       CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS /W3"
@@ -1102,39 +1664,39 @@ events:
       variable: "CMAKE_HAVE_LIBC_PTHREAD"
       cached: true
       stdout: |
-        Change Dir: 'D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-gqxxyp'
+        Change Dir: 'D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-m8hbc3'
         
-        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/18/Insiders/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_19760.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=18.0 /v:n
-        MSBuild version 18.8.1+c99826b40 for .NET Framework
-        Build started 6/12/2026 11:46:21 AM.
+        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_e29e9.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=18.0 /v:n
+        MSBuild version 18.8.2+ce25c0108 for .NET Framework
+        Build started 10/20/2026 11:06:23 PM.
         
-        Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-gqxxyp\\cmTC_19760.vcxproj" on node 1 (default targets).
+        Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-m8hbc3\\cmTC_e29e9.vcxproj" on node 1 (default targets).
         PrepareForBuild:
           Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-gqxxyp\\Debug\\".
-          Creating directory "cmTC_19760.dir\\Debug\\cmTC_19760.tlog\\".
+          Creating directory "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-m8hbc3\\Debug\\".
+          Creating directory "cmTC_e29e9.dir\\Debug\\cmTC_e29e9.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_19760.dir\\Debug\\cmTC_19760.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_19760.dir\\Debug\\cmTC_19760.tlog\\unsuccessfulbuild".
+          Creating "cmTC_e29e9.dir\\Debug\\cmTC_e29e9.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_e29e9.dir\\Debug\\cmTC_e29e9.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files\\Microsoft Visual Studio\\18\\Insiders\\VC\\Tools\\MSVC\\14.51.36231\\bin\\HostX64\\x64\\CL.exe /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CMAKE_HAVE_LIBC_PTHREAD /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_19760.dir\\Debug\\\\" /Fd"cmTC_19760.dir\\Debug\\vc145.pdb" /external:W3 /TC /errorReport:queue "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-gqxxyp\\src.c"
-          Microsoft (R) C/C++ Optimizing Compiler Version 19.51.36247 for x64
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Tools\\MSVC\\14.51.36231\\bin\\HostX64\\x64\\CL.exe /c /I"D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-m8hbc3\\Debug\\\\" /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _ITERATOR_DEBUG_LEVEL=0 /D _MBCS /D _HAS_AUTO_PTR_ETC=1 /D _SILENCE_STDEXT_HASH_DEPRECATION_WARNINGS /D WIN32 /D _WINDOWS /D CMAKE_HAVE_LIBC_PTHREAD /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /MT /Fo"cmTC_e29e9.dir\\Debug\\\\" /Fd"cmTC_e29e9.dir\\Debug\\cmTC_e29e9.pdb" /external:W3 /TC /errorReport:queue /U _DEBUG /FS "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-m8hbc3\\src.c"
+          Microsoft (R) C/C++ Optimizing Compiler Version 19.51.36248 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CMAKE_HAVE_LIBC_PTHREAD /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_19760.dir\\Debug\\\\" /Fd"cmTC_19760.dir\\Debug\\vc145.pdb" /external:W3 /TC /errorReport:queue "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-gqxxyp\\src.c"
+          cl /c /I"D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-m8hbc3\\Debug\\\\" /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _ITERATOR_DEBUG_LEVEL=0 /D _MBCS /D _HAS_AUTO_PTR_ETC=1 /D _SILENCE_STDEXT_HASH_DEPRECATION_WARNINGS /D WIN32 /D _WINDOWS /D CMAKE_HAVE_LIBC_PTHREAD /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /MT /Fo"cmTC_e29e9.dir\\Debug\\\\" /Fd"cmTC_e29e9.dir\\Debug\\cmTC_e29e9.pdb" /external:W3 /TC /errorReport:queue /U _DEBUG /FS "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-m8hbc3\\src.c"
           src.c
-        D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-gqxxyp\\src.c(1,10): error C1083: Cannot open include file: 'pthread.h': No such file or directory [D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-gqxxyp\\cmTC_19760.vcxproj]
-        Done Building Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-gqxxyp\\cmTC_19760.vcxproj" (default targets) -- FAILED.
+        D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-m8hbc3\\src.c(1,10): error C1083: Cannot open include file: 'pthread.h': No such file or directory [D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-m8hbc3\\cmTC_e29e9.vcxproj]
+        Done Building Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-m8hbc3\\cmTC_e29e9.vcxproj" (default targets) -- FAILED.
         
         Build FAILED.
         
-        "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-gqxxyp\\cmTC_19760.vcxproj" (default target) (1) ->
+        "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-m8hbc3\\cmTC_e29e9.vcxproj" (default target) (1) ->
         (ClCompile target) -> 
-          D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-gqxxyp\\src.c(1,10): error C1083: Cannot open include file: 'pthread.h': No such file or directory [D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-gqxxyp\\cmTC_19760.vcxproj]
+          D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-m8hbc3\\src.c(1,10): error C1083: Cannot open include file: 'pthread.h': No such file or directory [D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-m8hbc3\\cmTC_e29e9.vcxproj]
         
             0 Warning(s)
             1 Error(s)
         
-        Time Elapsed 00:00:00.37
+        Time Elapsed 00:00:00.40
         
       exitCode: 1
   -
@@ -1143,12 +1705,12 @@ events:
       - "C:/Program Files/CMake/share/cmake-4.3/Modules/CheckLibraryExists.cmake:154 (try_compile)"
       - "C:/Program Files/CMake/share/cmake-4.3/Modules/FindThreads.cmake:175 (check_library_exists)"
       - "C:/Program Files/CMake/share/cmake-4.3/Modules/FindThreads.cmake:238 (_threads_check_lib)"
-      - "CMakeLists.txt:279 (find_package)"
+      - "CMakeLists.txt:293 (find_package)"
     checks:
       - "Looking for pthread_create in pthreads"
     directories:
-      source: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-6i44l7"
-      binary: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-6i44l7"
+      source: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-hzulj4"
+      binary: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-hzulj4"
     cmakeVariables:
       CMAKE_CXX_STDLIB_MODULES_JSON: ""
       CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS /W3"
@@ -1160,36 +1722,36 @@ events:
       variable: "CMAKE_HAVE_PTHREADS_CREATE"
       cached: true
       stdout: |
-        Change Dir: 'D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-6i44l7'
+        Change Dir: 'D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-hzulj4'
         
-        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/18/Insiders/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_04c3a.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=18.0 /v:n
-        MSBuild version 18.8.1+c99826b40 for .NET Framework
-        Build started 6/12/2026 11:46:22 AM.
+        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_2415c.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=18.0 /v:n
+        MSBuild version 18.8.2+ce25c0108 for .NET Framework
+        Build started 10/20/2026 11:06:24 PM.
         
-        Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6i44l7\\cmTC_04c3a.vcxproj" on node 1 (default targets).
+        Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-hzulj4\\cmTC_2415c.vcxproj" on node 1 (default targets).
         PrepareForBuild:
           Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6i44l7\\Debug\\".
-          Creating directory "cmTC_04c3a.dir\\Debug\\cmTC_04c3a.tlog\\".
+          Creating directory "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-hzulj4\\Debug\\".
+          Creating directory "cmTC_2415c.dir\\Debug\\cmTC_2415c.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_04c3a.dir\\Debug\\cmTC_04c3a.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_04c3a.dir\\Debug\\cmTC_04c3a.tlog\\unsuccessfulbuild".
+          Creating "cmTC_2415c.dir\\Debug\\cmTC_2415c.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_2415c.dir\\Debug\\cmTC_2415c.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files\\Microsoft Visual Studio\\18\\Insiders\\VC\\Tools\\MSVC\\14.51.36231\\bin\\HostX64\\x64\\CL.exe /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_04c3a.dir\\Debug\\\\" /Fd"cmTC_04c3a.dir\\Debug\\vc145.pdb" /external:W3 /TC /errorReport:queue "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6i44l7\\CheckFunctionExists.c"
-          Microsoft (R) C/C++ Optimizing Compiler Version 19.51.36247 for x64
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Tools\\MSVC\\14.51.36231\\bin\\HostX64\\x64\\CL.exe /c /I"D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-hzulj4\\Debug\\\\" /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _ITERATOR_DEBUG_LEVEL=0 /D _MBCS /D _HAS_AUTO_PTR_ETC=1 /D _SILENCE_STDEXT_HASH_DEPRECATION_WARNINGS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /MT /Fo"cmTC_2415c.dir\\Debug\\\\" /Fd"cmTC_2415c.dir\\Debug\\cmTC_2415c.pdb" /external:W3 /TC /errorReport:queue /U _DEBUG /FS "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-hzulj4\\CheckFunctionExists.c"
+          Microsoft (R) C/C++ Optimizing Compiler Version 19.51.36248 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_04c3a.dir\\Debug\\\\" /Fd"cmTC_04c3a.dir\\Debug\\vc145.pdb" /external:W3 /TC /errorReport:queue "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6i44l7\\CheckFunctionExists.c"
+          cl /c /I"D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-hzulj4\\Debug\\\\" /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _ITERATOR_DEBUG_LEVEL=0 /D _MBCS /D _HAS_AUTO_PTR_ETC=1 /D _SILENCE_STDEXT_HASH_DEPRECATION_WARNINGS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /MT /Fo"cmTC_2415c.dir\\Debug\\\\" /Fd"cmTC_2415c.dir\\Debug\\cmTC_2415c.pdb" /external:W3 /TC /errorReport:queue /U _DEBUG /FS "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-hzulj4\\CheckFunctionExists.c"
           CheckFunctionExists.c
         Link:
-          C:\\Program Files\\Microsoft Visual Studio\\18\\Insiders\\VC\\Tools\\MSVC\\14.51.36231\\bin\\HostX64\\x64\\link.exe /OUT:"D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6i44l7\\Debug\\cmTC_04c3a.exe" /INCREMENTAL /ILK:"cmTC_04c3a.dir\\Debug\\cmTC_04c3a.ilk" /NOLOGO pthreads.lib kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-6i44l7/Debug/cmTC_04c3a.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-6i44l7/Debug/cmTC_04c3a.lib" /MACHINE:X64  /IGNORE:4099 cmTC_04c3a.dir\\Debug\\CheckFunctionExists.obj
-        LINK : fatal error LNK1104: cannot open file 'pthreads.lib' [D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6i44l7\\cmTC_04c3a.vcxproj]
-        Done Building Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6i44l7\\cmTC_04c3a.vcxproj" (default targets) -- FAILED.
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Tools\\MSVC\\14.51.36231\\bin\\HostX64\\x64\\link.exe /OUT:"D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-hzulj4\\Debug\\cmTC_2415c.exe" /INCREMENTAL /ILK:"cmTC_2415c.dir\\Debug\\cmTC_2415c.ilk" /NOLOGO /LIBPATH:D:\\titan\\client\\deps\\x64\\lib /LIBPATH:"C:\\Program Files (x86)\\Microsoft DirectX SDK (June 2010)\\Lib\\x64" /LIBPATH:"C:\\Program Files (x86)\\Windows Kits\\10\\lib\\10.0.26100.0\\um\\x64" /LIBPATH:"C:\\Program Files (x86)\\Windows Kits\\NETFXSDK\\4.8\\lib\\um\\x64" pthreads.lib kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /NODEFAULTLIB:libcmtd.lib /NODEFAULTLIB:msvcrtd.lib /NODEFAULTLIB:libc.lib /NODEFAULTLIB:msvcrt.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-hzulj4\\Debug\\cmTC_2415c.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-hzulj4/Debug/cmTC_2415c.lib" /MACHINE:X64  /IGNORE:4099 cmTC_2415c.dir\\Debug\\CheckFunctionExists.obj
+        LINK : fatal error LNK1104: cannot open file 'pthreads.lib' [D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-hzulj4\\cmTC_2415c.vcxproj]
+        Done Building Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-hzulj4\\cmTC_2415c.vcxproj" (default targets) -- FAILED.
         
         Build FAILED.
         
-        "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6i44l7\\cmTC_04c3a.vcxproj" (default target) (1) ->
+        "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-hzulj4\\cmTC_2415c.vcxproj" (default target) (1) ->
         (Link target) -> 
-          LINK : fatal error LNK1104: cannot open file 'pthreads.lib' [D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-6i44l7\\cmTC_04c3a.vcxproj]
+          LINK : fatal error LNK1104: cannot open file 'pthreads.lib' [D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-hzulj4\\cmTC_2415c.vcxproj]
         
             0 Warning(s)
             1 Error(s)
@@ -1203,12 +1765,12 @@ events:
       - "C:/Program Files/CMake/share/cmake-4.3/Modules/CheckLibraryExists.cmake:154 (try_compile)"
       - "C:/Program Files/CMake/share/cmake-4.3/Modules/FindThreads.cmake:175 (check_library_exists)"
       - "C:/Program Files/CMake/share/cmake-4.3/Modules/FindThreads.cmake:239 (_threads_check_lib)"
-      - "CMakeLists.txt:279 (find_package)"
+      - "CMakeLists.txt:293 (find_package)"
     checks:
       - "Looking for pthread_create in pthread"
     directories:
-      source: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-9brnxg"
-      binary: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-9brnxg"
+      source: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-j1as4n"
+      binary: "D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-j1as4n"
     cmakeVariables:
       CMAKE_CXX_STDLIB_MODULES_JSON: ""
       CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS /W3"
@@ -1220,48 +1782,48 @@ events:
       variable: "CMAKE_HAVE_PTHREAD_CREATE"
       cached: true
       stdout: |
-        Change Dir: 'D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-9brnxg'
+        Change Dir: 'D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-j1as4n'
         
-        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/18/Insiders/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_58f0f.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=18.0 /v:n
-        MSBuild version 18.8.1+c99826b40 for .NET Framework
-        Build started 6/12/2026 11:46:23 AM.
+        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_e13fa.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=18.0 /v:n
+        MSBuild version 18.8.2+ce25c0108 for .NET Framework
+        Build started 10/20/2026 11:06:25 PM.
         
-        Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9brnxg\\cmTC_58f0f.vcxproj" on node 1 (default targets).
+        Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-j1as4n\\cmTC_e13fa.vcxproj" on node 1 (default targets).
         PrepareForBuild:
           Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9brnxg\\Debug\\".
-          Creating directory "cmTC_58f0f.dir\\Debug\\cmTC_58f0f.tlog\\".
+          Creating directory "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-j1as4n\\Debug\\".
+          Creating directory "cmTC_e13fa.dir\\Debug\\cmTC_e13fa.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_58f0f.dir\\Debug\\cmTC_58f0f.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_58f0f.dir\\Debug\\cmTC_58f0f.tlog\\unsuccessfulbuild".
+          Creating "cmTC_e13fa.dir\\Debug\\cmTC_e13fa.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_e13fa.dir\\Debug\\cmTC_e13fa.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files\\Microsoft Visual Studio\\18\\Insiders\\VC\\Tools\\MSVC\\14.51.36231\\bin\\HostX64\\x64\\CL.exe /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_58f0f.dir\\Debug\\\\" /Fd"cmTC_58f0f.dir\\Debug\\vc145.pdb" /external:W3 /TC /errorReport:queue "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9brnxg\\CheckFunctionExists.c"
-          Microsoft (R) C/C++ Optimizing Compiler Version 19.51.36247 for x64
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Tools\\MSVC\\14.51.36231\\bin\\HostX64\\x64\\CL.exe /c /I"D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-j1as4n\\Debug\\\\" /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _ITERATOR_DEBUG_LEVEL=0 /D _MBCS /D _HAS_AUTO_PTR_ETC=1 /D _SILENCE_STDEXT_HASH_DEPRECATION_WARNINGS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /MT /Fo"cmTC_e13fa.dir\\Debug\\\\" /Fd"cmTC_e13fa.dir\\Debug\\cmTC_e13fa.pdb" /external:W3 /TC /errorReport:queue /U _DEBUG /FS "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-j1as4n\\CheckFunctionExists.c"
+          Microsoft (R) C/C++ Optimizing Compiler Version 19.51.36248 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /Fo"cmTC_58f0f.dir\\Debug\\\\" /Fd"cmTC_58f0f.dir\\Debug\\vc145.pdb" /external:W3 /TC /errorReport:queue "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9brnxg\\CheckFunctionExists.c"
+          cl /c /I"D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-j1as4n\\Debug\\\\" /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _ITERATOR_DEBUG_LEVEL=0 /D _MBCS /D _HAS_AUTO_PTR_ETC=1 /D _SILENCE_STDEXT_HASH_DEPRECATION_WARNINGS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /MT /Fo"cmTC_e13fa.dir\\Debug\\\\" /Fd"cmTC_e13fa.dir\\Debug\\cmTC_e13fa.pdb" /external:W3 /TC /errorReport:queue /U _DEBUG /FS "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-j1as4n\\CheckFunctionExists.c"
           CheckFunctionExists.c
         Link:
-          C:\\Program Files\\Microsoft Visual Studio\\18\\Insiders\\VC\\Tools\\MSVC\\14.51.36231\\bin\\HostX64\\x64\\link.exe /OUT:"D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9brnxg\\Debug\\cmTC_58f0f.exe" /INCREMENTAL /ILK:"cmTC_58f0f.dir\\Debug\\cmTC_58f0f.ilk" /NOLOGO pthread.lib kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-9brnxg/Debug/cmTC_58f0f.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-9brnxg/Debug/cmTC_58f0f.lib" /MACHINE:X64  /IGNORE:4099 cmTC_58f0f.dir\\Debug\\CheckFunctionExists.obj
-        LINK : fatal error LNK1104: cannot open file 'pthread.lib' [D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9brnxg\\cmTC_58f0f.vcxproj]
-        Done Building Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9brnxg\\cmTC_58f0f.vcxproj" (default targets) -- FAILED.
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Tools\\MSVC\\14.51.36231\\bin\\HostX64\\x64\\link.exe /OUT:"D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-j1as4n\\Debug\\cmTC_e13fa.exe" /INCREMENTAL /ILK:"cmTC_e13fa.dir\\Debug\\cmTC_e13fa.ilk" /NOLOGO /LIBPATH:D:\\titan\\client\\deps\\x64\\lib /LIBPATH:"C:\\Program Files (x86)\\Microsoft DirectX SDK (June 2010)\\Lib\\x64" /LIBPATH:"C:\\Program Files (x86)\\Windows Kits\\10\\lib\\10.0.26100.0\\um\\x64" /LIBPATH:"C:\\Program Files (x86)\\Windows Kits\\NETFXSDK\\4.8\\lib\\um\\x64" pthread.lib kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /NODEFAULTLIB:libcmtd.lib /NODEFAULTLIB:msvcrtd.lib /NODEFAULTLIB:libc.lib /NODEFAULTLIB:msvcrt.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-j1as4n\\Debug\\cmTC_e13fa.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"D:/titan/client/src/engine/client/application/MayaModern/build/CMakeFiles/CMakeScratch/TryCompile-j1as4n/Debug/cmTC_e13fa.lib" /MACHINE:X64  /IGNORE:4099 cmTC_e13fa.dir\\Debug\\CheckFunctionExists.obj
+        LINK : fatal error LNK1104: cannot open file 'pthread.lib' [D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-j1as4n\\cmTC_e13fa.vcxproj]
+        Done Building Project "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-j1as4n\\cmTC_e13fa.vcxproj" (default targets) -- FAILED.
         
         Build FAILED.
         
-        "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9brnxg\\cmTC_58f0f.vcxproj" (default target) (1) ->
+        "D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-j1as4n\\cmTC_e13fa.vcxproj" (default target) (1) ->
         (Link target) -> 
-          LINK : fatal error LNK1104: cannot open file 'pthread.lib' [D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-9brnxg\\cmTC_58f0f.vcxproj]
+          LINK : fatal error LNK1104: cannot open file 'pthread.lib' [D:\\titan\\client\\src\\engine\\client\\application\\MayaModern\\build\\CMakeFiles\\CMakeScratch\\TryCompile-j1as4n\\cmTC_e13fa.vcxproj]
         
             0 Warning(s)
             1 Error(s)
         
-        Time Elapsed 00:00:00.46
+        Time Elapsed 00:00:00.52
         
       exitCode: 1
   -
     kind: "find-v1"
     backtrace:
       - "D:/titan/lib/Maya2027/devkitBase/cmake/pluginEntry.cmake:261 (find_library)"
-      - "CMakeLists.txt:301 (build_plugin)"
+      - "CMakeLists.txt:315 (build_plugin)"
     mode: "library"
     variable: "OpenMaya_PATH"
     description: "Path to a library."
@@ -1280,7 +1842,6 @@ events:
     found: "D:/titan/lib/Maya2027/devkitBase/lib/OpenMaya.lib"
     search_context:
       ENV{PATH}:
-        - "c:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\node_modules\\@vscode\\ripgrep\\bin"
         - "C:\\Windows\\system32"
         - "C:\\Windows"
         - "C:\\Windows\\System32\\Wbem"
@@ -1290,8 +1851,26 @@ events:
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA App\\NvDLISR"
         - "C:\\Program Files\\dotnet\\"
         - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
+        - "C:\\Program Files\\nodejs\\"
+        - "C:\\Program Files (x86)\\cloudflared\\"
+        - "C:\\Program Files\\WireGuard\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312\\Scripts\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Launcher\\"
         - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WindowsApps"
         - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\bin"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "D:\\Program Files\\JetBrains\\IntelliJ IDEA 2026.2.0.1\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Roaming\\npm"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-9.0.2-full_build\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312"
+        - "C:\\Program Files\\nodejs"
+        - "C:\\Program Files\\Git\\mingw64\\bin"
       CMAKE_INSTALL_PREFIX: "C:/Program Files/unicode"
       CMAKE_SYSTEM_PREFIX_PATH:
         - "C:/Program Files"
@@ -1306,7 +1885,7 @@ events:
     kind: "find-v1"
     backtrace:
       - "D:/titan/lib/Maya2027/devkitBase/cmake/pluginEntry.cmake:261 (find_library)"
-      - "CMakeLists.txt:301 (build_plugin)"
+      - "CMakeLists.txt:315 (build_plugin)"
     mode: "library"
     variable: "Foundation_PATH"
     description: "Path to a library."
@@ -1325,7 +1904,6 @@ events:
     found: "D:/titan/lib/Maya2027/devkitBase/lib/Foundation.lib"
     search_context:
       ENV{PATH}:
-        - "c:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\node_modules\\@vscode\\ripgrep\\bin"
         - "C:\\Windows\\system32"
         - "C:\\Windows"
         - "C:\\Windows\\System32\\Wbem"
@@ -1335,8 +1913,26 @@ events:
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA App\\NvDLISR"
         - "C:\\Program Files\\dotnet\\"
         - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
+        - "C:\\Program Files\\nodejs\\"
+        - "C:\\Program Files (x86)\\cloudflared\\"
+        - "C:\\Program Files\\WireGuard\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312\\Scripts\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Launcher\\"
         - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WindowsApps"
         - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\bin"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "D:\\Program Files\\JetBrains\\IntelliJ IDEA 2026.2.0.1\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Roaming\\npm"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-9.0.2-full_build\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312"
+        - "C:\\Program Files\\nodejs"
+        - "C:\\Program Files\\Git\\mingw64\\bin"
       CMAKE_INSTALL_PREFIX: "C:/Program Files/unicode"
       CMAKE_SYSTEM_PREFIX_PATH:
         - "C:/Program Files"
@@ -1351,7 +1947,7 @@ events:
     kind: "find-v1"
     backtrace:
       - "D:/titan/lib/Maya2027/devkitBase/cmake/pluginEntry.cmake:261 (find_library)"
-      - "CMakeLists.txt:301 (build_plugin)"
+      - "CMakeLists.txt:315 (build_plugin)"
     mode: "library"
     variable: "OpenMayaUI_PATH"
     description: "Path to a library."
@@ -1370,7 +1966,6 @@ events:
     found: "D:/titan/lib/Maya2027/devkitBase/lib/OpenMayaUI.lib"
     search_context:
       ENV{PATH}:
-        - "c:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\node_modules\\@vscode\\ripgrep\\bin"
         - "C:\\Windows\\system32"
         - "C:\\Windows"
         - "C:\\Windows\\System32\\Wbem"
@@ -1380,8 +1975,26 @@ events:
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA App\\NvDLISR"
         - "C:\\Program Files\\dotnet\\"
         - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
+        - "C:\\Program Files\\nodejs\\"
+        - "C:\\Program Files (x86)\\cloudflared\\"
+        - "C:\\Program Files\\WireGuard\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312\\Scripts\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Launcher\\"
         - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WindowsApps"
         - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\bin"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "D:\\Program Files\\JetBrains\\IntelliJ IDEA 2026.2.0.1\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Roaming\\npm"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-9.0.2-full_build\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312"
+        - "C:\\Program Files\\nodejs"
+        - "C:\\Program Files\\Git\\mingw64\\bin"
       CMAKE_INSTALL_PREFIX: "C:/Program Files/unicode"
       CMAKE_SYSTEM_PREFIX_PATH:
         - "C:/Program Files"
@@ -1396,7 +2009,7 @@ events:
     kind: "find-v1"
     backtrace:
       - "D:/titan/lib/Maya2027/devkitBase/cmake/pluginEntry.cmake:261 (find_library)"
-      - "CMakeLists.txt:301 (build_plugin)"
+      - "CMakeLists.txt:315 (build_plugin)"
     mode: "library"
     variable: "OpenMayaAnim_PATH"
     description: "Path to a library."
@@ -1415,7 +2028,6 @@ events:
     found: "D:/titan/lib/Maya2027/devkitBase/lib/OpenMayaAnim.lib"
     search_context:
       ENV{PATH}:
-        - "c:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\node_modules\\@vscode\\ripgrep\\bin"
         - "C:\\Windows\\system32"
         - "C:\\Windows"
         - "C:\\Windows\\System32\\Wbem"
@@ -1425,8 +2037,26 @@ events:
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA App\\NvDLISR"
         - "C:\\Program Files\\dotnet\\"
         - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
+        - "C:\\Program Files\\nodejs\\"
+        - "C:\\Program Files (x86)\\cloudflared\\"
+        - "C:\\Program Files\\WireGuard\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312\\Scripts\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Launcher\\"
         - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WindowsApps"
         - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\bin"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "D:\\Program Files\\JetBrains\\IntelliJ IDEA 2026.2.0.1\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Roaming\\npm"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-9.0.2-full_build\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312"
+        - "C:\\Program Files\\nodejs"
+        - "C:\\Program Files\\Git\\mingw64\\bin"
       CMAKE_INSTALL_PREFIX: "C:/Program Files/unicode"
       CMAKE_SYSTEM_PREFIX_PATH:
         - "C:/Program Files"
@@ -1441,7 +2071,7 @@ events:
     kind: "find-v1"
     backtrace:
       - "D:/titan/lib/Maya2027/devkitBase/cmake/pluginEntry.cmake:261 (find_library)"
-      - "CMakeLists.txt:301 (build_plugin)"
+      - "CMakeLists.txt:315 (build_plugin)"
     mode: "library"
     variable: "OpenMayaFX_PATH"
     description: "Path to a library."
@@ -1460,7 +2090,6 @@ events:
     found: "D:/titan/lib/Maya2027/devkitBase/lib/OpenMayaFX.lib"
     search_context:
       ENV{PATH}:
-        - "c:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\node_modules\\@vscode\\ripgrep\\bin"
         - "C:\\Windows\\system32"
         - "C:\\Windows"
         - "C:\\Windows\\System32\\Wbem"
@@ -1470,8 +2099,26 @@ events:
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA App\\NvDLISR"
         - "C:\\Program Files\\dotnet\\"
         - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
+        - "C:\\Program Files\\nodejs\\"
+        - "C:\\Program Files (x86)\\cloudflared\\"
+        - "C:\\Program Files\\WireGuard\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312\\Scripts\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Launcher\\"
         - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WindowsApps"
         - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\bin"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "D:\\Program Files\\JetBrains\\IntelliJ IDEA 2026.2.0.1\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Roaming\\npm"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-9.0.2-full_build\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312"
+        - "C:\\Program Files\\nodejs"
+        - "C:\\Program Files\\Git\\mingw64\\bin"
       CMAKE_INSTALL_PREFIX: "C:/Program Files/unicode"
       CMAKE_SYSTEM_PREFIX_PATH:
         - "C:/Program Files"
@@ -1486,7 +2133,7 @@ events:
     kind: "find-v1"
     backtrace:
       - "D:/titan/lib/Maya2027/devkitBase/cmake/pluginEntry.cmake:261 (find_library)"
-      - "CMakeLists.txt:301 (build_plugin)"
+      - "CMakeLists.txt:315 (build_plugin)"
     mode: "library"
     variable: "OpenMayaRender_PATH"
     description: "Path to a library."
@@ -1505,7 +2152,6 @@ events:
     found: "D:/titan/lib/Maya2027/devkitBase/lib/OpenMayaRender.lib"
     search_context:
       ENV{PATH}:
-        - "c:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\node_modules\\@vscode\\ripgrep\\bin"
         - "C:\\Windows\\system32"
         - "C:\\Windows"
         - "C:\\Windows\\System32\\Wbem"
@@ -1515,8 +2161,26 @@ events:
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA App\\NvDLISR"
         - "C:\\Program Files\\dotnet\\"
         - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
+        - "C:\\Program Files\\nodejs\\"
+        - "C:\\Program Files (x86)\\cloudflared\\"
+        - "C:\\Program Files\\WireGuard\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312\\Scripts\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312\\"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Launcher\\"
         - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WindowsApps"
         - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\cursor\\resources\\app\\bin"
+        - "C:\\Users\\jojoj\\.dotnet\\tools"
+        - "D:\\Program Files\\JetBrains\\IntelliJ IDEA 2026.2.0.1\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Roaming\\npm"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\DenoLand.Deno_Microsoft.Winget.Source_8wekyb3d8bbwe"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-9.0.2-full_build\\bin"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Microsoft\\WinGet\\Packages\\astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe"
+        - "C:\\Users\\jojoj\\AppData\\Local\\Programs\\Python\\Python312"
+        - "C:\\Program Files\\nodejs"
+        - "C:\\Program Files\\Git\\mingw64\\bin"
       CMAKE_INSTALL_PREFIX: "C:/Program Files/unicode"
       CMAKE_SYSTEM_PREFIX_PATH:
         - "C:/Program Files"

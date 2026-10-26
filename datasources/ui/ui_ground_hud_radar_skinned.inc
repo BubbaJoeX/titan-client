@@ -726,7 +726,7 @@ altRadarFg.ZoomBottom.EffectorExecute=\"/Effectors.FadeOut\"'
 						TextColor='#62FF15'
 					>@radar_range</Text>
 					<Image
-						Color='#018BA9'
+						Color='#195791'
 						Enabled='false'
 						GetsInput='true'
 						MinimumScrollExtent='139,139'

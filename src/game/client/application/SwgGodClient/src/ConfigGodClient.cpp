@@ -66,6 +66,9 @@ void ConfigGodClient::install()
 	KEY_STRING2(templateServerIffPath, "//depot/swg/current/data/sku.0/sys.server/compiled/game/object");
 	KEY_STRING2(templateServerSourcePath, "//depot/swg/current/dsrc/sku.0/sys.server/compiled/game/object");
 	KEY_STRING2(templateEditor, "Textpad.exe");
+	// titan.sh sync compiles in the Titan WSL distro and copies the .iff to the server's data mirror;
+	// the God Client does the reloads itself, so titan.sh's own reload is switched off
+	KEY_STRING2(templateCompileCommand, "wsl.exe -d Titan -u root -- env TITAN_NO_RELOAD=1 bash /mnt/d/titan/wsl/titan.sh sync");
 
 	KEY_STRING2(localClientSrcPath, "c:/work/swg/current/dsrc/sku.0/sys.shared/compiled/game");
 	KEY_STRING2(localClientDataPath, "c:/work/swg/current/data/sku.0/sys.shared/compiled/game");
@@ -78,6 +81,7 @@ void ConfigGodClient::install()
 	KEY_INT2(gameScreenWidth, 0);
 	KEY_INT2(gameScreenHeight, 0);
 	KEY_INT2(objectUpdateRangeCap, 0);
+	KEY_INT2(bridgePort, 0);
 
 	KEY_STRING(serverObjectTemplateTheaterDirectory, "../../dsrc/sku.0/sys.server/compiled/game");
 	KEY_STRING(serverDataTableTheaterDirectory, "../../dsrc/sku.0/sys.server/compiled/game");

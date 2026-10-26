@@ -15,9 +15,11 @@
 #include "clientGraphics/Graphics.h"
 #include "clientObject/GameCamera.h"
 #include "clientParticle/ParticleManager.h"
+#include "clientTerrain/ClientProceduralTerrainAppearance.h"
 #include "clientTerrain/GroundEnvironment.h"
 #include "clientTerrain/WeatherManager.h"
 #include "clientUserInterface/CuiManager.h"
+#include "sharedTerrain/TerrainObject.h"
 #include "sharedFoundation/ConfigFile.h"
 #include "sharedFoundation/ExitChain.h"
 #include "sharedFoundation/FloatMath.h"
@@ -84,6 +86,208 @@ namespace SwgCameraMapCaptureNamespace
 	bool  s_pendingShot = false;
 
 	bool  s_appliedProjection = false;
+
+	bool  s_externalRequestPending = false;
+	bool  s_externalRequestActive = false;
+	bool  s_batchCompleted = false;
+	SwgCameraMapCapture::MapCaptureRequest s_pendingRequest;
+
+	int   s_savedViewportWidth = 0;
+	int   s_savedViewportHeight = 0;
+	bool  s_savedViewport = false;
+	int   s_savedScreenShotFormat = 0;
+
+	float s_savedLodThreshold = 512.f;
+	float s_savedHighLodThreshold = 512.f;
+	bool  s_savedTerrainLod = false;
+
+	int   s_lastNumCols = 0;
+	int   s_lastNumRows = 0;
+	int   s_lastTotalTiles = 0;
+	char  s_lastOutputDir[Os::MAX_PATH_LENGTH] = "";
+
+	Vector s_savedPlayerPosition_w;
+	bool   s_savedPlayerPosition = false;
+	bool   s_savedForceRenderEntireMap = false;
+
+	void getTileCenterXZ(int linearIndex, float &centerX, float &centerZ);
+
+	Object *getCapturePlayer(GroundScene *groundScene)
+	{
+		if (groundScene)
+		{
+			Object *const scenePlayer = groundScene->getPlayer();
+			if (scenePlayer)
+				return scenePlayer;
+		}
+
+		return Game::getPlayer();
+	}
+
+	bool isCapturePlayerReady(GroundScene *groundScene)
+	{
+		Object *const player = getCapturePlayer(groundScene);
+		if (!player)
+			return false;
+
+		return Game::isGodClient() || Game::getPlayerObject() != nullptr || player->isInWorld();
+	}
+
+	//----------------------------------------------------------------------
+
+	void repositionPlayerForTileCapture()
+	{
+		if (!s_externalRequestActive)
+			return;
+
+		GroundScene *const groundScene = dynamic_cast<GroundScene *>(Game::getScene());
+		Object *const player = getCapturePlayer(groundScene);
+		if (!player)
+			return;
+
+		float centerX = 0.f;
+		float centerZ = 0.f;
+		getTileCenterXZ(s_tileLinearIndex, centerX, centerZ);
+
+		Vector pos(centerX, player->getPosition_w().y, centerZ);
+		if (TerrainObject *const terrain = TerrainObject::getInstance())
+		{
+			float height = 0.f;
+			if (terrain->getHeightForceChunkCreation(pos, height))
+				pos.y = height + 2.f;
+		}
+
+		player->setPosition_w(pos);
+	}
+
+	void restorePlayerPosition()
+	{
+		if (!s_savedPlayerPosition)
+			return;
+
+		GroundScene *const groundScene = dynamic_cast<GroundScene *>(Game::getScene());
+		Object *const player = getCapturePlayer(groundScene);
+		if (player)
+			player->setPosition_w(s_savedPlayerPosition_w);
+
+		s_savedPlayerPosition = false;
+	}
+
+	void beginExternalCaptureEnvironment()
+	{
+		GroundScene *const groundScene = dynamic_cast<GroundScene *>(Game::getScene());
+		Object *const player = getCapturePlayer(groundScene);
+		if (player && !s_savedPlayerPosition)
+		{
+			s_savedPlayerPosition_w = player->getPosition_w();
+			s_savedPlayerPosition = true;
+		}
+	}
+
+	void endExternalCaptureEnvironment()
+	{
+		Graphics::setForceScreenShotBackBuffer(false, true);
+		ClientProceduralTerrainAppearance::setForceRenderEntireMapEnabled(s_savedForceRenderEntireMap);
+		restorePlayerPosition();
+	}
+
+	bool isTerrainPrewarmComplete()
+	{
+		if (!s_externalRequestPending && !s_externalRequestActive)
+			return true;
+
+		return ClientProceduralTerrainAppearance::isForceRenderEntireMapComplete();
+	}
+
+	//----------------------------------------------------------------------
+
+	void applyRequestSettings(SwgCameraMapCapture::MapCaptureRequest const &request)
+	{
+		if (request.outputDir[0])
+			IGNORE_RETURN(strncpy(s_outputDir, request.outputDir, sizeof(s_outputDir)));
+		else
+			IGNORE_RETURN(strncpy(s_outputDir, "mapcapture", sizeof(s_outputDir)));
+		s_outputDir[sizeof(s_outputDir) - 1] = '\0';
+
+		s_tileWorldSize = request.tileWorldSize;
+		s_cameraHeight = request.cameraHeight;
+		s_settleFrames = request.settleFrames;
+		s_filterCreatures = request.filterCreatures;
+		s_filterLairs = request.filterLairs;
+		s_filterNpcLike = request.filterNpcLike;
+		s_suppressFog = request.suppressFog;
+		s_suppressParticles = request.suppressParticles;
+		s_suppressWeather = request.suppressWeather;
+		s_useFixedWorldBounds = request.useFixedWorldBounds;
+		s_worldMinX = request.worldMinX;
+		s_worldMaxX = request.worldMaxX;
+		s_worldMinZ = request.worldMinZ;
+		s_worldMaxZ = request.worldMaxZ;
+
+		if (s_tileWorldSize < 1.f)
+			s_tileWorldSize = 1.f;
+		if (s_cameraHeight < 1.f)
+			s_cameraHeight = 1.f;
+		if (s_settleFrames < 0)
+			s_settleFrames = 0;
+
+		if (s_worldMinX > s_worldMaxX)
+		{
+			float const t = s_worldMinX;
+			s_worldMinX = s_worldMaxX;
+			s_worldMaxX = t;
+		}
+		if (s_worldMinZ > s_worldMaxZ)
+		{
+			float const t = s_worldMinZ;
+			s_worldMinZ = s_worldMaxZ;
+			s_worldMaxZ = t;
+		}
+
+		if (request.viewportWidth > 0 && request.viewportHeight > 0)
+		{
+			s_savedViewportWidth = Graphics::getCurrentRenderTargetWidth();
+			s_savedViewportHeight = Graphics::getCurrentRenderTargetHeight();
+			if (s_savedViewportWidth != request.viewportWidth || s_savedViewportHeight != request.viewportHeight)
+			{
+				Graphics::resize(request.viewportWidth, request.viewportHeight);
+				s_savedViewport = true;
+			}
+			else
+				s_savedViewport = false;
+		}
+		else
+			s_savedViewport = false;
+
+		s_savedScreenShotFormat = static_cast<int>(Graphics::getScreenShotFormat());
+		Graphics::setScreenShotFormat(GSSF_tga);
+	}
+
+	void restoreRequestSettings()
+	{
+		if (s_savedViewport)
+		{
+			Graphics::resize(s_savedViewportWidth, s_savedViewportHeight);
+			s_savedViewport = false;
+		}
+
+		Graphics::setScreenShotFormat(static_cast<GlScreenShotFormat>(s_savedScreenShotFormat));
+	}
+
+	void resetExternalCaptureRequest()
+	{
+		s_externalRequestPending = false;
+		s_externalRequestActive = false;
+		s_waitingForStart = false;
+		s_batchCompleted = false;
+		endExternalCaptureEnvironment();
+		restoreRequestSettings();
+	}
+
+	bool isCaptureEnabled()
+	{
+		return s_mapCaptureEnabled || s_externalRequestPending || s_externalRequestActive;
+	}
 
 	//----------------------------------------------------------------------
 
@@ -284,6 +488,9 @@ void SwgCameraMapCapture::advanceTileIndex()
 	++s_tileLinearIndex;
 	if (s_tileLinearIndex >= s_totalTiles)
 	{
+		if (s_externalRequestActive)
+			s_batchCompleted = true;
+
 		GroundScene *const gs = dynamic_cast<GroundScene *>(Game::getScene());
 		endBatch(gs);
 		return;
@@ -297,19 +504,23 @@ void SwgCameraMapCapture::advanceTileIndex()
 
 void SwgCameraMapCapture::beginBatch(GroundScene *groundScene)
 {
-	if (s_batchActive || !groundScene)
+	if (s_batchActive || !groundScene || groundScene->isLoading())
 		return;
 
-	loadConfig();
-
-	if (!s_mapCaptureEnabled)
+	if (!isCapturePlayerReady(groundScene))
 		return;
 
-	if (groundScene->isLoading())
-		return;
+	if (s_externalRequestPending)
+	{
+		applyRequestSettings(s_pendingRequest);
+		s_externalRequestPending = false;
+		s_externalRequestActive = true;
+		beginExternalCaptureEnvironment();
+	}
+	else
+		loadConfig();
 
-	Object *const player = Game::getPlayer();
-	if (!player)
+	if (!isCaptureEnabled())
 		return;
 
 	s_savedView = groundScene->getCurrentView();
@@ -329,7 +540,8 @@ void SwgCameraMapCapture::beginBatch(GroundScene *groundScene)
 	}
 	else
 	{
-		Vector const p = player->getPosition_w();
+		Object *const player = getCapturePlayer(groundScene);
+		Vector const p = player ? player->getPosition_w() : Vector::zero;
 		s_originTileX = static_cast<int>(floorf(p.x / s_tileWorldSize));
 		s_originTileZ = static_cast<int>(floorf(p.z / s_tileWorldSize));
 		s_tileSide = std::max(1, 2 * s_gridRadius + 1);
@@ -341,6 +553,21 @@ void SwgCameraMapCapture::beginBatch(GroundScene *groundScene)
 	s_tileLinearIndex = 0;
 	s_settleRemaining = s_settleFrames;
 	s_pendingShot = false;
+
+	s_lastNumCols = s_numCols;
+	s_lastNumRows = s_numRows;
+	s_lastTotalTiles = s_totalTiles;
+	IGNORE_RETURN(strncpy(s_lastOutputDir, s_outputDir, sizeof(s_lastOutputDir)));
+	s_lastOutputDir[sizeof(s_lastOutputDir) - 1] = '\0';
+
+	if (s_externalRequestActive)
+	{
+		s_savedLodThreshold = TerrainObject::getLevelOfDetailThreshold();
+		s_savedHighLodThreshold = TerrainObject::getHighLevelOfDetailThreshold();
+		TerrainObject::setLevelOfDetailThreshold(8192.f);
+		TerrainObject::setHighLevelOfDetailThreshold(8192.f);
+		s_savedTerrainLod = true;
+	}
 
 	if (s_suppressFog)
 	{
@@ -386,7 +613,25 @@ void SwgCameraMapCapture::endBatch(GroundScene *groundScene)
 		gs = dynamic_cast<GroundScene *>(Game::getScene());
 
 	if (!s_batchActive)
+	{
+		if (s_externalRequestActive)
+			resetExternalCaptureRequest();
 		return;
+	}
+
+	if (s_externalRequestActive)
+	{
+		endExternalCaptureEnvironment();
+		s_externalRequestActive = false;
+		restoreRequestSettings();
+	}
+
+	if (s_savedTerrainLod)
+	{
+		TerrainObject::setLevelOfDetailThreshold(s_savedLodThreshold);
+		TerrainObject::setHighLevelOfDetailThreshold(s_savedHighLodThreshold);
+		s_savedTerrainLod = false;
+	}
 
 	if (gs)
 	{
@@ -423,9 +668,10 @@ void SwgCameraMapCapture::update(float elapsedTime, GroundScene *groundScene)
 	if (!s_installed || !groundScene)
 		return;
 
-	loadConfig();
+	if (!s_externalRequestActive)
+		loadConfig();
 
-	if (!s_mapCaptureEnabled)
+	if (!isCaptureEnabled())
 	{
 		if (s_batchActive)
 			endBatch(groundScene);
@@ -440,11 +686,7 @@ void SwgCameraMapCapture::update(float elapsedTime, GroundScene *groundScene)
 		if (!s_waitingForStart)
 			s_waitingForStart = true;
 
-		Object *const player = Game::getPlayer();
-		// Match GroundScene loading completion: WorldSnapshot can finish while isInWorld() is still false for a frame or two.
-		PlayerObject const *const po = Game::getPlayerObject();
-		bool const playerReady = player && (po != nullptr || player->isInWorld());
-		if (s_waitingForStart && playerReady)
+		if (s_waitingForStart && isCapturePlayerReady(groundScene))
 			beginBatch(groundScene);
 
 		return;
@@ -475,6 +717,8 @@ void SwgCameraMapCapture::prepareDraw(GroundScene *groundScene)
 	float centerX = 0.f;
 	float centerZ = 0.f;
 	getTileCenterXZ(s_tileLinearIndex, centerX, centerZ);
+
+	repositionPlayerForTileCapture();
 
 	freeCam->setMode(FreeCamera::M_fly);
 	freeCam->setInterpolating(false);
@@ -550,5 +794,133 @@ void SwgCameraMapCapture::finishDraw(GroundScene *groundScene)
 
 bool SwgCameraMapCapture::isBatchActive()
 {
-	return SwgCameraMapCaptureNamespace::s_batchActive && SwgCameraMapCaptureNamespace::s_mapCaptureEnabled;
+	return SwgCameraMapCaptureNamespace::s_batchActive;
+}
+
+// ----------------------------------------------------------------------
+
+bool SwgCameraMapCapture::isExternalCapturePending()
+{
+	return SwgCameraMapCaptureNamespace::s_externalRequestPending
+		|| SwgCameraMapCaptureNamespace::s_externalRequestActive;
+}
+
+// ----------------------------------------------------------------------
+
+SwgCameraMapCapture::MapCaptureRequest::MapCaptureRequest()
+: worldMinX(-8000.f),
+  worldMaxX(8000.f),
+  worldMinZ(-8000.f),
+  worldMaxZ(8000.f),
+  tileWorldSize(512.f),
+  cameraHeight(700.f),
+  settleFrames(2),
+  viewportWidth(512),
+  viewportHeight(512),
+  filterCreatures(true),
+  filterLairs(true),
+  filterNpcLike(true),
+  suppressFog(true),
+  suppressParticles(true),
+  suppressWeather(true),
+  useFixedWorldBounds(true)
+{
+	outputDir[0] = '\0';
+}
+
+// ----------------------------------------------------------------------
+
+void SwgCameraMapCapture::requestBatch(MapCaptureRequest const &request)
+{
+	if (s_batchActive)
+		return;
+
+	if (s_externalRequestPending || s_externalRequestActive)
+		resetExternalCaptureRequest();
+
+	s_pendingRequest = request;
+	s_externalRequestPending = true;
+	s_batchCompleted = false;
+	s_waitingForStart = false;
+
+	s_savedForceRenderEntireMap = ClientProceduralTerrainAppearance::getForceRenderEntireMapEnabled();
+	ClientProceduralTerrainAppearance::setForceRenderEntireMapEnabled(true);
+	Graphics::setForceScreenShotBackBuffer(true, true);
+}
+
+// ----------------------------------------------------------------------
+
+void SwgCameraMapCapture::cancelBatch()
+{
+	if (s_externalRequestPending || (s_externalRequestActive && !s_batchActive))
+	{
+		resetExternalCaptureRequest();
+		return;
+	}
+
+	GroundScene *const gs = dynamic_cast<GroundScene *>(Game::getScene());
+	endBatch(gs);
+}
+
+// ----------------------------------------------------------------------
+
+void SwgCameraMapCapture::getBatchProgress(int &currentTile, int &totalTiles)
+{
+	if (!s_batchActive)
+	{
+		currentTile = 0;
+		totalTiles = 0;
+		return;
+	}
+
+	currentTile = s_tileLinearIndex;
+	totalTiles = s_totalTiles;
+}
+
+// ----------------------------------------------------------------------
+
+bool SwgCameraMapCapture::consumeBatchCompleted()
+{
+	if (!s_batchCompleted)
+		return false;
+
+	s_batchCompleted = false;
+	return true;
+}
+
+// ----------------------------------------------------------------------
+
+void SwgCameraMapCapture::getBatchGrid(int &numCols, int &numRows, int &totalTiles)
+{
+	numCols = s_lastNumCols;
+	numRows = s_lastNumRows;
+	totalTiles = s_lastTotalTiles;
+}
+
+// ----------------------------------------------------------------------
+
+void SwgCameraMapCapture::getTileFileBasePath(int linearIndex, char *path, size_t pathSize)
+{
+	if (!path || pathSize == 0)
+		return;
+
+	path[0] = '\0';
+
+	if (linearIndex < 0 || linearIndex >= s_lastTotalTiles || s_lastOutputDir[0] == '\0')
+		return;
+
+	if (s_lastNumCols > 0)
+	{
+		int const row = linearIndex / s_lastNumCols;
+		int const inner = linearIndex % s_lastNumCols;
+		int const col = (row % 2 == 0) ? inner : (s_lastNumCols - 1 - inner);
+		sprintf(path, "%s/tile_%05d_r%03d_c%03d", s_lastOutputDir, linearIndex, row, col);
+	}
+	else
+	{
+		sprintf(path, "%s/tile_%05d", s_lastOutputDir, linearIndex);
+	}
+
+	if (strlen(path) >= pathSize)
+		path[pathSize - 1] = '\0';
 }

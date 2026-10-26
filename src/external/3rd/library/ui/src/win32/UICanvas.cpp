@@ -18,6 +18,17 @@ namespace
 {
 	static UIFloatPoint s_theVertices[4];
 	static UIFloatPoint s_theUVs[4];
+
+	// ClippingRect and Translation are both kept before the transformation matrix, so clipping a blit before
+	// transforming it is exact while the matrix keeps rectangles axis-aligned: translation plus the UI-scale
+	// Scale that CuiManager applies to the root. A rotation (radar arrows) or shear keeps the unclipped path.
+	inline bool canClipBeforeTransform (const UICanvasState & state)
+	{
+		return state.TranslationOnly
+			|| (state.TransformationMatrix[0][1] == 0.0f && state.TransformationMatrix[1][0] == 0.0f
+			&&  state.TransformationMatrix[2][0] == 0.0f && state.TransformationMatrix[2][1] == 0.0f
+			&&  state.mShear.x == 0.0f && state.mShear.y == 0.0f);
+	}
 }
 
 //----------------------------------------------------------------------
@@ -169,7 +180,7 @@ void UICanvas::BltFrom( const UICanvas * const src, const UIPoint &Source, const
 
 	UIPoint clippedSourcePt (Source);
 
-	if( mState.TranslationOnly )
+	if( canClipBeforeTransform (mState) )
 	{
 		const UIRect oldDestRect (DestRect);
 
@@ -504,7 +515,7 @@ void UICanvas::BltFromNoScaleOrRotate( const UICanvas * const src, const UIPoint
 
 	UIPoint clippedSourcePt (Source);
 
-	if( mState.TranslationOnly )
+	if( canClipBeforeTransform (mState) )
 	{
 		const UIRect oldDestRect (DestRect);
 
@@ -560,8 +571,9 @@ void UICanvas::BltFromNoScaleOrRotate( const UICanvas * const src, const UIPoint
 
 		SourceRect.top		= clippedSourcePt.y;
 		SourceRect.left		= clippedSourcePt.x;
-		SourceRect.bottom	= SourceRect.top + DestRect.Height ();
-		SourceRect.right	= SourceRect.left + DestRect.Width ();
+		// mSrcScale: glyphs from atlases rasterized above UI size (UITextStyle::AtlasScale)
+		SourceRect.bottom	= SourceRect.top + static_cast<long> (static_cast<float> (DestRect.Height ()) * mSrcScale.y + 0.5f);
+		SourceRect.right	= SourceRect.left + static_cast<long> (static_cast<float> (DestRect.Width ()) * mSrcScale.x + 0.5f);
 
 
 		s_theUVs[0].x = (float)SourceRect.left * invSrcWidth;

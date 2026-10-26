@@ -1207,6 +1207,7 @@ void UIText::CopyPropertiesFrom(const UIBaseObject & rhs)
 		UIText const & rhs_text = static_cast<UIText const &>(rhs);
 		
 		SetStyle(static_cast<UITextStyle *>(rhs_text.GetStyle()));
+		mStyleName = rhs_text.mStyleName;
 		
 		SetPreLocalized(rhs_text.IsPreLocalized());
 		
@@ -1260,6 +1261,7 @@ bool UIText::SetProperty( const UILowerString & Name, const UIString &Value )
 		if( NewStyle || Value.empty() )
 		{
 			SetStyle( static_cast<UITextStyle *>( NewStyle ) );
+			mStyleName = Value;
 			return true;
 		}
 	}
@@ -1514,6 +1516,13 @@ bool UIText::GetProperty( const UILowerString & Name, UIString &Value ) const
 {
 	if( Name == PropertyName::Style )
 	{
+		// the logical font name asked for: style objects are shared between names (UITextStyleManager), so re-resolving
+	// from the style's own logical name could pick another size
+		if( !mStyleName.empty() )
+		{
+			Value = mStyleName;
+			return true;
+		}
 		if( mStyle )
 		{
 			Value = mStyle->GetLogicalName();

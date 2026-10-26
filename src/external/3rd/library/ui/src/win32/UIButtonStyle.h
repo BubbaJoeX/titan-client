@@ -102,6 +102,7 @@ private:
 	struct StateInfo
 	{
 		UITextStyle  *mTextStyle;
+		UIString      mTextStyleName;      // logical font asked for; see UIText::mStyleName
 		UIColor       mTextColor;
 		UIRect        mTextMargin;
 		UIColor       mIconColor;

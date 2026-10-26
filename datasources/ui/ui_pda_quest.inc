@@ -213,7 +213,7 @@
 										TextColor='#97FFFF'
 									>Sort By:</Text>
 									<ComboBox
-										BackgroundOpacity='0.70'
+										BackgroundOpacity='1.00'
 										ButtonMargin='2,2,2,0'
 										ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 										ButtonWidth='10'
@@ -3121,7 +3121,7 @@ end
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='482,619'
 						Size='482,619'
 					>

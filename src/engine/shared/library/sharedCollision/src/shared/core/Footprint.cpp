@@ -66,6 +66,12 @@ typedef MultiListConstDataIterator<FloorContactShape> ConstContactIterator;
 
 namespace FootprintNamespace
 {
+	// a vessel's floor hatch: its ramp cell lies under a deck people also walk over (see sweepContacts)
+	bool isHatchCell(CellProperty const * cell)
+	{
+		char const * const name = cell ? cell->getCellName() : 0;
+		return name && strncmp(name, "hatch", 5) == 0;
+	}
 }
 
 using namespace FootprintNamespace;
@@ -307,6 +313,13 @@ void Footprint::sweepContacts ( void )
 			{
 				if(contactCell == worldCell)
 				{
+					getFloorList().erase(node);
+				}
+				else if((contactCell != objectCell) && (isHatchCell(objectCell) || isHatchCell(contactCell)))
+				{
+					// A vessel's floor hatch (cells named hatch*) lies under a deck people also walk over: the deck's
+					// contact must not hold someone who has stepped into the hatch (or the hatch's someone who has
+					// climbed out onto the deck), or they float over the open hatch.
 					getFloorList().erase(node);
 				}
 			}

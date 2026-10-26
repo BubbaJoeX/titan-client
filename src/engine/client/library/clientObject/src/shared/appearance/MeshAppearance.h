@@ -13,9 +13,36 @@
 // ======================================================================
 
 class MeshAppearanceTemplate;
+class NetworkId;
 class ShaderPrimitiveSet;
+class StaticIndexBuffer;
+class Transform;
 
 #include "sharedObject/Appearance.h"
+
+#include <vector>
+
+struct PortalVolumeCut
+{
+	float minI;
+	float maxI;
+	float minJ;
+	float maxJ;
+	float inwardDepth;
+	float outwardDepth;
+};
+
+struct PendingPortalCut
+{
+	Transform doorWorld;
+	PortalVolumeCut volume;
+};
+
+struct RegisteredCellPortalCut
+{
+	Transform doorTransform_cell;
+	PortalVolumeCut volume;
+};
 
 // ======================================================================
 
@@ -28,6 +55,11 @@ public:
 	static void install ();
 	static void setCollideAgainstAllGeometry (bool collideAgainstAllGeometry);
 	static void setFadeInEnabled(bool enabled);
+
+	static void clearBuildingCellPortalCuts(NetworkId const & buildingId);
+	static void setBuildingCellPortalCuts(NetworkId const & buildingId, int cellIndex, std::vector<RegisteredCellPortalCut> const & cuts);
+	static void setActivePortalCutBuildingId(NetworkId const & buildingId);
+	static void clearActivePortalCutBuildingId();
 
 public:
 
@@ -56,6 +88,19 @@ public:
 	const ShaderPrimitiveSet   *getShaderPrimitiveSet() const;
 
 	virtual void                getMeshGeometryForCollision(IndexedTriangleList & out) const;
+
+	virtual void hideShaderPrimitivesInBox(AxialBox const & box_o);
+	virtual bool hideShaderPrimitivesInPortalVolume(Transform const & door_o, PortalVolumeCut const & volume);
+	virtual bool hideShaderPrimitivesInPortalVolumeWorld(Transform const & door_w, Transform const & meshToWorld, PortalVolumeCut const & volume);
+	virtual void clearHiddenShaderPrimitives();
+
+	void addPendingPortalCut(Transform const & doorWorld, PortalVolumeCut const & volume);
+	void clearPendingPortalCuts();
+	bool hasPendingPortalCuts() const;
+	bool hasAnyHiddenShaderPrimitive() const;
+	void applyPendingPortalCuts();
+	int  applyPortalVolumeCut(Transform const & doorWorld, PortalVolumeCut const & volume);
+	int  applyPortalVolumeBoxFallback(Transform const & doorMesh, PortalVolumeCut const & volume);
 
 	virtual void                setTexture(Tag tag, const Texture &texture);
 	virtual void                setTextureScroll(Tag tag, float scrollU, float scrollV);
@@ -96,6 +141,11 @@ protected:
 
 	bool mutable m_lastCouldRenderShadow;
 	bool mutable m_lastCouldRenderReticles;
+	std::vector<bool> m_hiddenShaderPrimitiveMask;
+	std::vector<StaticIndexBuffer *> m_portalCutIndexBuffers;
+	std::vector<PendingPortalCut> m_pendingPortalCuts;
+
+	void clearPortalCutIndexBuffers();
 };
 
 // ======================================================================

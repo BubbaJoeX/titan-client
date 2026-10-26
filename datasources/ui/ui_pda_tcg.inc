@@ -115,7 +115,7 @@
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='1015,720'
 						Size='1015,720'
 					>
@@ -224,7 +224,7 @@
 						</Page>
 					</Page>
 					<Page
-						BackgroundColor='#1FE6F5'
+						BackgroundColor='#3D8FD7'
 						BackgroundOpacity='1.00'
 						BackgroundTint='#1FE6F5'
 						Location='-1,0'
@@ -237,7 +237,7 @@
 						Size='1016,29'
 					/>
 					<Page
-						BackgroundColor='#1FE6F5'
+						BackgroundColor='#3D8FD7'
 						BackgroundOpacity='1.00'
 						BackgroundTint='#1FE6F5'
 						Location='0,697'

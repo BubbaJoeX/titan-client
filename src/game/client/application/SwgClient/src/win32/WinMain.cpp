@@ -21,6 +21,16 @@
 extern void externalCommandHandler(const char*);
 
 // ======================================================================
+// Ask NVIDIA Optimus / AMD PowerXpress laptops to run the client on the discrete GPU; the drivers read these
+// exports from the executable, and without them a Direct3D 9 game defaults to the integrated GPU.
+
+extern "C"
+{
+	__declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
+	__declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
+}
+
+// ======================================================================
 
 static bool SetUserSelectedMemoryManagerTarget()
 {

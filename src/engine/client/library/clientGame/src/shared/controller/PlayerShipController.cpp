@@ -788,16 +788,25 @@ float PlayerShipController::realAlter(float const elapsedTime)
 			Transform t = m_shipDynamicsModel->getTransform();
 			Vector pos = t.getPosition_p();
 
-			float terrainHeight = 0.0f;
+			//-- Titan: the ground is the terrain, or where the terrain is cut away (a starport's landing well and its
+			//-- bays) the building floor under the ship; over neither (the open shaft) nothing holds it. It used to
+			//-- read a cut-away terrain as height 0, which kept ships out of the well. A building floor under a ship
+			//-- that is below the terrain's height means the terrain is cut away there: the coarse chunks the
+			//-- terrain answers from once the camera is far down a well are not cut, so the floor wins.
+			float groundHeight = 0.0f;
+			float floorHeight = 0.0f;
 			TerrainObject const * const terrain = TerrainObject::getConstInstance();
-			if (terrain)
-				terrain->getHeight(pos, terrainHeight);
+			bool const hasTerrain = terrain && terrain->getHeight(pos, groundHeight);
+			bool const hasFloor = CollisionWorld::findObjectFloorHeightBelow(pos, floorHeight);
+			if (hasFloor && (!hasTerrain || pos.y < groundHeight))
+				groundHeight = floorHeight;
+			bool const hasGround = hasTerrain || hasFloor;
 
 			AxialBox const shipExtent = owner->getTangibleExtent();
 			float const extentBottom = shipExtent.getMin().y;
-			float const minShipY = terrainHeight - extentBottom;
+			float const minShipY = groundHeight - extentBottom;
 
-			if (pos.y < minShipY)
+			if (hasGround && pos.y < minShipY)
 			{
 				Vector const impactVelocity = m_shipDynamicsModel->getVelocity();
 				if (impactVelocity.y < -c_terrainImpactMinimumSpeed)
@@ -942,6 +951,29 @@ void PlayerShipController::handleNetUpdateTransform(MessageQueueDataTransform co
 		GameControllerMessageFlags::SEND |
 		GameControllerMessageFlags::RELIABLE |
 		GameControllerMessageFlags::DEST_AUTH_SERVER);
+}
+
+// ----------------------------------------------------------------------
+
+void PlayerShipController::warpForDevTest(Transform const & transform_p)
+{
+	Object * const owner = getOwner();
+	if (!owner)
+		return;
+
+	if (owner->getAttachedTo())
+		owner->setParentCell(CellProperty::getWorldCellProperty());
+
+	CellProperty::setPortalTransitionsEnabled(false);
+		owner->setTransform_o2p(transform_p);
+	CellProperty::setPortalTransitionsEnabled(true);
+
+	CollisionWorld::objectWarped(owner);
+
+	m_shipDynamicsModel->setTransform(transform_p);
+	m_shipDynamicsModel->makeStationary();
+	m_serverShipDynamicsModel->setTransform(transform_p);
+	m_serverShipDynamicsModel->makeStationary();
 }
 
 // ----------------------------------------------------------------------

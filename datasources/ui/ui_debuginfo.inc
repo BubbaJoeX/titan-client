@@ -692,7 +692,7 @@
 			/>
 		</Page>
 		<Page
-			BackgroundColor='#42FFC7'
+			BackgroundColor='#5CACE5'
 			Location='302,177'
 			Name='ServerDisconnected'
 			OnDisableEffector='/effectors.opacity.fast.fadeout'
@@ -789,7 +789,7 @@
 			>@ui_bugreport:bugtype</Text>
 			<ComboBox
 				BackgroundColor='#FFFFFF'
-				BackgroundOpacity='0.60'
+				BackgroundOpacity='1.00'
 				ButtonMargin='2,2,2,0'
 				ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 				ButtonWidth='10'
@@ -861,7 +861,7 @@
 			>@ui_bugreport:bugsubtype</Text>
 			<ComboBox
 				BackgroundColor='#FFFFFF'
-				BackgroundOpacity='0.60'
+				BackgroundOpacity='1.00'
 				ButtonMargin='2,2,2,0'
 				ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 				ButtonWidth='10'
@@ -933,7 +933,7 @@
 			>@ui_bugreport:system</Text>
 			<ComboBox
 				BackgroundColor='#FFFFFF'
-				BackgroundOpacity='0.60'
+				BackgroundOpacity='1.00'
 				ButtonMargin='2,2,2,0'
 				ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 				ButtonWidth='10'
@@ -1020,7 +1020,7 @@
 			>@ui_bugreport:severity</Text>
 			<ComboBox
 				BackgroundColor='#FFFFFF'
-				BackgroundOpacity='0.60'
+				BackgroundOpacity='1.00'
 				ButtonMargin='2,2,2,0'
 				ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 				ButtonWidth='10'
@@ -1082,7 +1082,7 @@
 			>@ui_bugreport:repeatable</Text>
 			<ComboBox
 				BackgroundColor='#FFFFFF'
-				BackgroundOpacity='0.60'
+				BackgroundOpacity='1.00'
 				ButtonMargin='2,2,2,0'
 				ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 				ButtonWidth='10'
@@ -1360,7 +1360,7 @@
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='342,408'
 						Size='342,408'
 					>

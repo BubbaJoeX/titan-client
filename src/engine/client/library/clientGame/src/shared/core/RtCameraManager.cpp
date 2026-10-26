@@ -10,6 +10,7 @@
 
 #include "clientGame/FirstClientGame.h"
 #include "clientGame/RtCameraManager.h"
+#include "sharedFoundation/ConstCharCrcLowerString.h"
 
 #include "clientGame/ClientWorld.h"
 #include "clientGame/Game.h"
@@ -564,9 +565,18 @@ void RtCameraManager::renderSingleFeed(RtCameraFeed& feed)
 		cameraCell = CellProperty::getWorldCellProperty();
 	s_rtCamera->setParentCell(cameraCell);
 
-	Transform const cameraTransform = (cameraCell == CellProperty::getWorldCellProperty())
+	Transform cameraTransform = (cameraCell == CellProperty::getWorldCellProperty())
 		? cameraObject->getTransform_o2w()
 		: cameraObject->getTransform_o2p();
+
+	// A camera model (the camera droid) marks its eye with a "lens" hardpoint: render from there, not the floor.
+	Transform lens(Transform::IF_none);
+	if (cameraObject->getAppearance() && cameraObject->getAppearance()->findHardpoint(ConstCharCrcLowerString("lens"), lens))
+	{
+		Transform atLens(Transform::IF_none);
+		atLens.multiply(cameraTransform, lens);
+		cameraTransform = atLens;
+	}
 	s_rtCamera->setTransform_o2p(cameraTransform);
 
 	// Set camera parameters

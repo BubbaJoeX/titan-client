@@ -182,6 +182,7 @@ namespace Direct3d9Namespace
 	void                               clearViewport(bool clearColor, uint32 colorValue, bool clearDepth, float depthValue, bool clearStencil, uint32 stencilValue);
 
 	bool                               screenShot(GlScreenShotFormat screenShotFormat, int quality, const char *fileName);
+	void                               setForceScreenShotBackBuffer(bool active, bool useBackBuffer);
 
 	void                               update(float elapsedTime);
 	void                               beginScene();
@@ -342,6 +343,9 @@ namespace Direct3d9Namespace
 	int                                        ms_frameNumber;
 	float                                      ms_currentTime;
 	HWND                                       ms_window;
+
+	bool                                       ms_forceScreenShotBackBufferActive = false;
+	bool                                       ms_forceScreenShotBackBuffer = true;
 
 	Gl_api                                     ms_glApi;
 #if defined(_DEBUG) && defined(VSPS)
@@ -1057,6 +1061,7 @@ bool Direct3d9::install(Gl_install *gl_install)
 	ms_glApi.copyRenderTargetToNonRenderTargetTexture = copyRenderTargetToNonRenderTargetTexture;
 
 	ms_glApi.screenShot                        = screenShot;
+	ms_glApi.setForceScreenShotBackBuffer      = setForceScreenShotBackBuffer;
 
 	ms_glApi.setBadVertexShaderStaticShader    = setBadVertexShaderStaticShader;
 	ms_glApi.setStaticShader                   = setStaticShader;
@@ -2139,7 +2144,10 @@ void Direct3d9Namespace::setPresentParameters()
 		ms_presentParameters.SwapEffect = D3DSWAPEFFECT_DISCARD;
 	}
 
-	if (ConfigDirect3d9::getAllowTearing())
+	// A windowed (or borderless) swap chain is composed by DWM, which never tears, so waiting for the vertical
+	// blank there only quantizes the frame rate: a frame that misses one refresh waits for the next, halving it.
+	// Windowed presents go out immediately and the Clock frame rate limiter paces the loop instead.
+	if (ConfigDirect3d9::getAllowTearing() || (ms_windowed && !ConfigDirect3d9::getWindowedVsync()))
 		ms_presentParameters.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
 	else
 		ms_presentParameters.PresentationInterval = D3DPRESENT_INTERVAL_ONE;
@@ -2654,6 +2662,16 @@ bool Direct3d9Namespace::applyGammaCorrectionToXRGBSurface( IDirect3DSurface9 *s
 
 // ----------------------------------------------------------------------
 
+// ----------------------------------------------------------------------
+
+void Direct3d9Namespace::setForceScreenShotBackBuffer(bool const active, bool const useBackBuffer)
+{
+	ms_forceScreenShotBackBufferActive = active;
+	ms_forceScreenShotBackBuffer = useBackBuffer;
+}
+
+// ----------------------------------------------------------------------
+
 bool Direct3d9Namespace::screenShot(GlScreenShotFormat format, int quality, const char *fileName)
 {
 	HRESULT hresult;
@@ -2662,7 +2680,7 @@ bool Direct3d9Namespace::screenShot(GlScreenShotFormat format, int quality, cons
 	RECT monitorCoordinates = { 0, 0, 0, 0 };
 	int offset = 0;
 
-	if (ConfigDirect3d9::getScreenShotBackBuffer())
+	if (ConfigDirect3d9::getScreenShotBackBuffer() || (ms_forceScreenShotBackBufferActive && ms_forceScreenShotBackBuffer))
 	{
 		// I don't feel like handling pixel format conversions, and this is what the game is supposed to be running in anyway.
 		if (ms_backBufferFormat != D3DFMT_A8R8G8B8 && ms_backBufferFormat != D3DFMT_X8R8G8B8)
@@ -2672,12 +2690,46 @@ bool Direct3d9Namespace::screenShot(GlScreenShotFormat format, int quality, cons
 		}
 
 		// get access to the back buffer surface
-		hresult = ms_device->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &surface);
+		IDirect3DSurface9 * backBuffer = NULL;
+		hresult = ms_device->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &backBuffer);
 
 		// if unable to get access to the back buffer return false
-		if (FAILED(hresult)||surface==NULL)
+		if (FAILED(hresult)||backBuffer==NULL)
 		{
-			Graphics::setLastError("engine", "screenshot_failed_unknown");
+			static char s_error[64];
+			sprintf(s_error, "screenshot_failed_getbackbuffer_hr%08x", static_cast<unsigned int>(hresult));
+			Graphics::setLastError("engine", s_error);
+			return false;
+		}
+
+		// The back buffer is only lockable without antialiasing (D3DPRESENTFLAG_LOCKABLE_BACKBUFFER), so copy it into
+		// system memory instead of locking it: resolve a multisampled buffer into a plain render target first, then
+		// GetRenderTargetData. Works whatever window covers the client (the front buffer is a copy of the screen).
+		D3DSURFACE_DESC desc;
+		IGNORE_RETURN(backBuffer->GetDesc(&desc));
+		IDirect3DSurface9 * resolved = backBuffer;
+		IDirect3DSurface9 * resolveTarget = NULL;
+		if (desc.MultiSampleType != D3DMULTISAMPLE_NONE)
+		{
+			hresult = ms_device->CreateRenderTarget(desc.Width, desc.Height, desc.Format, D3DMULTISAMPLE_NONE, 0, FALSE, &resolveTarget, NULL);
+			if (SUCCEEDED(hresult))
+				hresult = ms_device->StretchRect(backBuffer, NULL, resolveTarget, NULL, D3DTEXF_NONE);
+			resolved = resolveTarget;
+		}
+		if (SUCCEEDED(hresult))
+			hresult = ms_device->CreateOffscreenPlainSurface(desc.Width, desc.Height, desc.Format, D3DPOOL_SYSTEMMEM, &surface, NULL);
+		if (SUCCEEDED(hresult))
+			hresult = ms_device->GetRenderTargetData(resolved, surface);
+		if (resolveTarget)
+			resolveTarget->Release();
+		backBuffer->Release();
+		if (FAILED(hresult) || surface == NULL)
+		{
+			if (surface)
+				surface->Release();
+			static char s_error[96];
+			sprintf(s_error, "screenshot_failed_readback_%s_ms%d_hr%08x", surface ? "copy" : "alloc", static_cast<int>(desc.MultiSampleType), static_cast<unsigned int>(hresult));
+			Graphics::setLastError("engine", s_error);
 			return false;
 		}
 	}
@@ -2793,7 +2845,9 @@ bool Direct3d9Namespace::screenShot(GlScreenShotFormat format, int quality, cons
 			hresult = surface->LockRect(&lockedRect, NULL, D3DLOCK_READONLY);
 			if (FAILED(hresult))
 			{
-				Graphics::setLastError("engine", "screenshot_failed_unknown");
+				static char s_error[64];
+				sprintf(s_error, "screenshot_failed_lock_hr%08x", static_cast<unsigned int>(hresult));
+				Graphics::setLastError("engine", s_error);
 				surface->Release();
 				return false;
 			}

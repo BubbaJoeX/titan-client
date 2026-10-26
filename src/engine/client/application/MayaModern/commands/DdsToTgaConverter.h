@@ -10,7 +10,15 @@ public:
     /// By default writes TGA next to the DDS. If outputDir is non-empty, writes there instead
     /// (preserving relative path for editable round-trip, e.g. texture/foo.tga).
     /// Non-DDS or unsupported DDS formats return empty string (caller should use original path).
-    static std::string convertToTga(const std::string& ddsPath, const std::string& outputDir = std::string());
+    static std::string convertToTga(const std::string& ddsPath, const std::string& outputDir = std::string(),
+        bool flattenAlpha = false);
+
+    /// DDS → bottom-left TGA, or rewrite a top-left (0x28) TGA so Maya VP2 will sample it.
+    /// Never returns a path Maya 2027 rejects (top-left TGA or raw DXT DDS).
+    /// flattenAlpha (default true): MAIN albedo stores gloss in DXT5 alpha — VP2 treats that
+    /// as transparency and the mesh goes ghostly/green. Hair passes false.
+    static std::string mayaSafeImagePath(const std::string& imagePath, const std::string& outputDir = std::string(),
+        bool flattenAlpha = true);
 };
 
 #endif

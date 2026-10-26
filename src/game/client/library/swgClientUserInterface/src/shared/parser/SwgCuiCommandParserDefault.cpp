@@ -435,10 +435,12 @@ m_aliasHandler  (0)
 	setAliasStatic ("warpme",         "/scene warpme");
 	setAliasStatic ("warp",           "/scene warp");
 	setAliasStatic ("drawNetworkIds", "/scene drawNetworkIds");
+	setAliasStatic ("devmenu",        "/devtest menu");
 #else
 	removeAliasStatic (Unicode::narrowToWide ("warpme"));
 	removeAliasStatic (Unicode::narrowToWide ("warp"));
 	removeAliasStatic (Unicode::narrowToWide ("drawNetworkIds"));
+	removeAliasStatic (Unicode::narrowToWide ("devmenu"));
 #endif
 
 	//setAliasStatic ("browser", "/ui browser");

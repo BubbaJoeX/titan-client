@@ -87,6 +87,8 @@ protected:
 	virtual void               setGroup                         (std::string const & groupName);
 	virtual void               updateSelectedHairColorState     ();
 	void                       updateMorphSliders               (bool notify);
+	virtual std::string        getCustomizationSpeciesGender    (ClientObject const & object) const;
+	virtual std::string        getHairStyleTemplateName         (ClientObject const & object) const;
 	const CustomizationGroup * findHairCustomizationGroup       () const;
 	CustomizationGroup *       findHairCustomizationGroup       ();
 	void                       resetDefaults                    ();

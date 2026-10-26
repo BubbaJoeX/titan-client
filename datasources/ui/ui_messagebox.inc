@@ -528,9 +528,9 @@ parent.compBg.location=location'
 			</Page>
 		</Page>
 		<Page
-			BackgroundColor='#00AAFF'
+			BackgroundColor='#247EDB'
 			BackgroundOpacity='0.50'
-			BackgroundTint='#00AAFF'
+			BackgroundTint='#247EDB'
 			Location='253,375'
 			Name='chatbubbles'
 			RStyleDefault='/Styles.chatBubbles.rect.thought.rs'
@@ -1015,7 +1015,7 @@ parent.compBg.location=location'
 			Name='label'
 			ScrollExtent='248,18'
 			Size='248,18'
-			TextColor='#97FFFF'
+			TextColor='#A6CEF0'
 		>Window scale (%)</Text>
 		<Sliderbar
 			Location='10,28'

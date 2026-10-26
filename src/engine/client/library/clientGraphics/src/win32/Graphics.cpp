@@ -1112,6 +1112,14 @@ bool Graphics::screenShot(const char *fileName)
 }
 
 // ----------------------------------------------------------------------
+
+void Graphics::setForceScreenShotBackBuffer(bool const active, bool const useBackBuffer)
+{
+	if (ms_api && ms_api->setForceScreenShotBackBuffer)
+		ms_api->setForceScreenShotBackBuffer(active, useBackBuffer);
+}
+
+// ----------------------------------------------------------------------
 /**
  * Clear the viewport as specified.
  *
@@ -1346,6 +1354,13 @@ void Graphics::setSystemMouseCursorPosition(int x, int y)
 	if (Os::isFocused())
 	{
 		ms_translatePointFromGameToScreen(x, y);
+
+		//-- mouse look re-centers the cursor every frame; SetCursorPos is a slow system call, so skip it when the
+		//   cursor is already there
+		POINT current;
+		if (GetCursorPos(&current) && current.x == x && current.y == y)
+			return;
+
 		SetCursorPos(x, y);
 	}
 }

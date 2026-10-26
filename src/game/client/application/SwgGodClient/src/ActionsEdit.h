@@ -84,6 +84,12 @@ public:
 	ActionHack*				m_toggleDropToTerrain;
 	ActionHack*				m_toggleAlignToTerrain;
 	ActionHack*				m_toggleUnrealEngineTransformGizmo;
+	ActionHack*             copyTransform;
+	ActionHack*             pastePosition;
+	ActionHack*             pasteRotation;
+	ActionHack*             pasteTransform;
+	ActionHack*             selectSameTemplate;
+	ActionHack*             placeLastTemplate;   // connected by GameWidget, which owns object placement
 	//lint -restore
 
 	void receiveMessage(const MessageDispatch::Emitter & source, const MessageDispatch::MessageBase & message);
@@ -127,6 +133,11 @@ private slots:
 	void                  onToggleDropToTerrain () const;
 	void                  onToggleAlignToTerrain () const;
 	void                  onToggleUnrealEngineTransformGizmo () const;
+	void                  onCopyTransform    () const;
+	void                  onPastePosition    () const;
+	void                  onPasteRotation    () const;
+	void                  onPasteTransform   () const;
+	void                  onSelectSameTemplate() const;
 
 public slots:
 	void                  onServerTemplateSelectionChanged(const std::string &);
@@ -149,6 +160,7 @@ private:
 	void                  internalRotateDiscrete(const real rad) const;
 	void                  setSelectionControlsEnabled(bool b);
 	void                  internalPaste(GodClientData::ClipboardList_t& clip, bool pasteFromBrush) const;
+	void                  internalPasteTransform(bool position, bool rotation, bool scale, char const * what) const;
 
 private:
 	std::string           m_selectedServerTemplate;

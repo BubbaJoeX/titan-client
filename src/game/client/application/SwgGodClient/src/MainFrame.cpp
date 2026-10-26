@@ -36,6 +36,7 @@
 #include "GameWidget.h"
 #include "GameWindow.h"
 #include "GodClientData.h"
+#include "GodClientPen.h"
 #include "GodClientTheme.h"
 #include "GodClientPerforce.h"
 #include "GroupObjectWindow.h"
@@ -455,7 +456,13 @@ MainFrame::MainFrame(QWidget *theParent, const char *theName)
 			IGNORE_RETURN(m_actionsEdit->rotateDecrement45->addTo               (&m_menus.edit.menu));
 			IGNORE_RETURN(m_actionsEdit->randomRotate->addTo                    (&m_menus.edit.menu));
 			IGNORE_RETURN(m_actionsEdit->setTransform->addTo                    (&m_menus.edit.menu));
+			IGNORE_RETURN(m_actionsEdit->copyTransform->addTo                   (&m_menus.edit.menu));
+			IGNORE_RETURN(m_actionsEdit->pastePosition->addTo                   (&m_menus.edit.menu));
+			IGNORE_RETURN(m_actionsEdit->pasteRotation->addTo                   (&m_menus.edit.menu));
+			IGNORE_RETURN(m_actionsEdit->pasteTransform->addTo                  (&m_menus.edit.menu));
+			IGNORE_RETURN(m_actionsEdit->selectSameTemplate->addTo              (&m_menus.edit.menu));
 			IGNORE_RETURN(m_actionsEdit->createObjectFromSelectedTemplate->addTo(&m_menus.edit.menu));
+			IGNORE_RETURN(m_actionsEdit->placeLastTemplate->addTo               (&m_menus.edit.menu));
 			IGNORE_RETURN(m_actionsEdit->copyForPOI->addTo                      (&m_menus.edit.menu));
 			IGNORE_RETURN(m_actionsEdit->createTheater->addTo (&m_menus.edit.menu));
 			IGNORE_RETURN(m_actionsEdit->createClientDataFile->addTo (&m_menus.edit.menu));
@@ -506,8 +513,17 @@ MainFrame::MainFrame(QWidget *theParent, const char *theName)
 			IGNORE_RETURN(m_actionsTool->m_saveAsBrush->addTo                     (&m_menus.tool.menu));
 			IGNORE_RETURN(m_actionsTool->m_snapToGrid->addTo                      (&m_menus.tool.menu));
 			IGNORE_RETURN(m_actionsTool->m_renderRangeSettings->addTo             (&m_menus.tool.menu));
+			IGNORE_RETURN(m_actionsTool->m_satelliteMapGenerator->addTo           (&m_menus.tool.menu));
+			IGNORE_RETURN(m_actionsTool->m_tabletSettings->addTo                  (&m_menus.tool.menu));
+			IGNORE_RETURN(m_actionsTool->m_screenshot->addTo                      (&m_menus.tool.menu));
 			IGNORE_RETURN(m_actionsTool->m_stackObject->addTo                      (&m_menus.tool.menu));
 			IGNORE_RETURN(m_actionsTool->m_sendSystemMessage->addTo               (&m_menus.tool.menu));
+		}
+
+		//-- Help menu stuff
+		{
+			IGNORE_RETURN(m_actionsTool->m_commandPalette->addTo                  (&m_menus.help.menu));
+			IGNORE_RETURN(m_actionsTool->m_keyboardShortcuts->addTo               (&m_menus.help.menu));
 		}
 
 		//-- FileControl menu stuff
@@ -607,6 +623,7 @@ MainFrame::MainFrame(QWidget *theParent, const char *theName)
 
 			IGNORE_RETURN(m_actionsObjectTemplate->m_clientCompile->addTo(m_clientObjectTemplateMenu));
 			IGNORE_RETURN(m_actionsObjectTemplate->m_clientReplace->addTo(m_clientObjectTemplateMenu));
+			IGNORE_RETURN(m_actionsObjectTemplate->m_reloadAppearance->addTo(m_clientObjectTemplateMenu));
 		}
 
 
@@ -1004,6 +1021,9 @@ GodClientApplication::GodClientApplication(int& argc, char** argv)
 
 bool GodClientApplication::winEventFilter(MSG* msg)
 {
+	//-- watch only: unhandled WM_POINTER messages must reach DefWindowProc so Windows promotes the pen to the mouse
+	GodClientPen::handleWindowsMessage(*msg);
+
 	switch(msg->message)
 	{
 		case WM_COMMAND:

@@ -466,6 +466,9 @@ void SwgCuiAllTargets::update(const Camera & camera)
 		UIPoint parentHeadPt;
 		if ((!tangible->asShipObject() || drawNetworkIds) && CuiObjectTextManager::getObjectHeadPoint(*tangible, camera, 0.0f, parentHeadPt))
 		{
+			// The camera projects into render-target pixels; status pages sit in UI-scaled (logical) space.
+			CuiManager::transformScreenPixelsToUiSpace(parentHeadPt);
+
 			UIPoint pt;
 			SwgCuiStatusGround * const status = addStatus(*tangible);
 			if (status)

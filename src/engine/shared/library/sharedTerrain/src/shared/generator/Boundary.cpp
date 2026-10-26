@@ -9,6 +9,8 @@
 
 #include "sharedTerrain/FirstSharedTerrain.h"
 #include "sharedTerrain/Boundary.h"
+#include "sharedMath/Transform.h"
+#include <cstring>
 #include "sharedTerrain/Feather.h"
 
 #include "sharedFile/Iff.h"
@@ -25,7 +27,11 @@ BoundaryCircle::BoundaryCircle () :
 	centerX (0),
 	centerZ (0),
 	radius (0),
-	radiusSquared (0)
+	radiusSquared (0),
+	m_localCenter (),
+	m_placed (false),
+	m_placeCenter (),
+	m_placeAngle (0.f)
 {
 }
 
@@ -168,7 +174,75 @@ void BoundaryCircle::expand (Rectangle2d& extent) const
 
 void BoundaryCircle::setCenter (const Vector2d& center)
 {
-	translate (center - getCenter ());
+	if (!isLocal ())
+	{
+		translate (center - getCenter ());
+		return;
+	}
+
+	m_placeCenter = center;
+	place ();
+}
+
+//-------------------------------------------------------------------
+
+void BoundaryCircle::setRotation (const float angle)
+{
+	if (!isLocal ())
+		return;
+
+	m_placeAngle = angle;
+	place ();
+}
+
+//-------------------------------------------------------------------
+
+bool BoundaryCircle::isLocal () const
+{
+	char const * const name = getName ();
+	return name && strncmp (name, "local", 5) == 0;
+}
+
+//-------------------------------------------------------------------
+// The authored centre is building-local; place it with the transform BoundaryRectangle uses.
+
+void BoundaryCircle::place ()
+{
+	if (!m_placed)
+	{
+		m_localCenter = Vector2d (centerX, centerZ);
+		m_placed = true;
+	}
+
+	Transform transform;
+	transform.yaw_l (m_placeAngle);
+	transform.setPosition_p (Vector (m_placeCenter.x, 0.f, m_placeCenter.y));
+
+	Vector const world = transform.rotateTranslate_l2p (Vector (m_localCenter.x, 0.f, m_localCenter.y));
+	centerX = world.x;
+	centerZ = world.z;
+}
+
+//-------------------------------------------------------------------
+
+bool BoundaryCircle::hasExactEdge () const
+{
+	return true;
+}
+
+//-------------------------------------------------------------------
+
+bool BoundaryCircle::getNearestEdgePoint (const float worldX, const float worldZ, Vector2d& edgePoint) const
+{
+	const float dx = worldX - centerX;
+	const float dz = worldZ - centerZ;
+	const float distance = sqrt (sqr (dx) + sqr (dz));
+	if (distance < 1e-4f)
+		edgePoint = Vector2d (centerX + radius, centerZ);
+	else
+		edgePoint = Vector2d (centerX + dx * radius / distance, centerZ + dz * radius / distance);
+
+	return true;
 }
 
 //-------------------------------------------------------------------
@@ -926,7 +1000,11 @@ void BoundaryRectangle::save (Iff& iff) const
 BoundaryPoly::BoundaryPoly (Tag newTag, TerrainGeneratorBoundaryType newType) :
 	TerrainGenerator::Boundary (newTag, newType),
 	pointList (),
-	extent ()
+	extent (),
+	m_localPointList (),
+	m_placed (false),
+	m_placeCenter (),
+	m_placeAngle (0.f)
 {
 }
 
@@ -980,6 +1058,62 @@ void BoundaryPoly::clearPointList ()
 void BoundaryPoly::copyPointList (const ArrayList<Vector2d>& newPointList)
 {
 	pointList = newPointList;
+
+	recalculate ();
+}
+
+//-------------------------------------------------------------------
+
+bool BoundaryPoly::isLocal () const
+{
+	char const * const name = getName ();
+	return name && strncmp (name, "local", 5) == 0;
+}
+
+//-------------------------------------------------------------------
+
+void BoundaryPoly::setCenter (const Vector2d& center)
+{
+	if (!isLocal ())
+		return;
+
+	m_placeCenter = center;
+	place ();
+}
+
+//-------------------------------------------------------------------
+
+void BoundaryPoly::setRotation (const float angle)
+{
+	if (!isLocal ())
+		return;
+
+	m_placeAngle = angle;
+	place ();
+}
+
+//-------------------------------------------------------------------
+// Rebuild the points from the authored (building-local) ones with the same transform BoundaryRectangle uses.
+
+void BoundaryPoly::place ()
+{
+	if (!m_placed)
+	{
+		m_localPointList.clear ();
+		for (int i = 0; i < pointList.getNumberOfElements (); ++i)
+			m_localPointList.add (pointList [i]);
+		m_placed = true;
+	}
+
+	Transform transform;
+	transform.yaw_l (m_placeAngle);
+	transform.setPosition_p (Vector (m_placeCenter.x, 0.f, m_placeCenter.y));
+
+	for (int i = 0; i < m_localPointList.getNumberOfElements (); ++i)
+	{
+		Vector const world = transform.rotateTranslate_l2p (Vector (m_localPointList [i].x, 0.f, m_localPointList [i].y));
+		pointList [i] = Vector2d (world.x, world.z);
+	}
 
 	recalculate ();
 }
@@ -1167,6 +1301,43 @@ void BoundaryPolygon::setLocalWaterTableShaderTemplateName (const char* newLocal
 void BoundaryPolygon::setWaterType (TerrainGeneratorWaterType newWaterType)
 {
 	m_waterType = newWaterType;
+}
+
+//-------------------------------------------------------------------
+
+bool BoundaryPolygon::hasExactEdge () const
+{
+	return pointList.getNumberOfElements () >= 3;
+}
+
+//-------------------------------------------------------------------
+
+bool BoundaryPolygon::getNearestEdgePoint (const float worldX, const float worldZ, Vector2d& edgePoint) const
+{
+	const int n = pointList.getNumberOfElements ();
+	if (n < 2)
+		return false;
+
+	float bestDistanceSquared = 0.f;
+	for (int i = 0; i < n; ++i)
+	{
+		const Vector2d& a = pointList [i];
+		const Vector2d& b = pointList [(i + 1) % n];
+		const float ex = b.x - a.x;
+		const float ez = b.y - a.y;
+		const float lengthSquared = sqr (ex) + sqr (ez);
+		float t = lengthSquared > 0.f ? ((worldX - a.x) * ex + (worldZ - a.y) * ez) / lengthSquared : 0.f;
+		t = std::max (0.f, std::min (1.f, t));
+		const Vector2d point (a.x + ex * t, a.y + ez * t);
+		const float distanceSquared = sqr (point.x - worldX) + sqr (point.y - worldZ);
+		if (i == 0 || distanceSquared < bestDistanceSquared)
+		{
+			bestDistanceSquared = distanceSquared;
+			edgePoint = point;
+		}
+	}
+
+	return true;
 }
 
 //-------------------------------------------------------------------

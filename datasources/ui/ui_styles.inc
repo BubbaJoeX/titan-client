@@ -4689,7 +4689,7 @@
 				Size='128,64'
 			>
 				<ButtonStyle
-					MouseOverIconColor='#4FEDFF'
+					MouseOverIconColor='#68AAE6'
 					Name='style'
 					NormalTextStyle='bold_18'
 					ReleaseSound='ui_deselect'
@@ -4934,14 +4934,14 @@
 				Size='128,64'
 			>
 				<ButtonStyle
-					DisabledTextColor='#028BA8'
+					DisabledTextColor='#195791'
 					DisabledTextMargin='3,0,3,0'
 					MouseOverSound='ui_rollover'
-					MouseOverTextColor='#18393D'
+					MouseOverTextColor='#1D2B38'
 					MouseOverTextMargin='3,0,3,0'
 					Name='style'
 					NormalIconColor='#DDDDDD'
-					NormalTextColor='#2FF4FF'
+					NormalTextColor='#4C9CE2'
 					NormalTextMargin='3,0,3,0'
 					NormalTextStyle='bold_18'
 					PalActivatedText='textactivated'
@@ -5484,7 +5484,7 @@
 						PalNormalIcon='arrowdefault'
 						PalSelectedIcon='arrowselected'
 						PressedIconColor='#C4FE12'
-						PressedTextColor='#0B4257'
+						PressedTextColor='#16314C'
 						ReleaseSound='ui_deselect'
 						RStyleDefault='window.chat.key_frame_1piece.rs_default'
 						SelectedIconColor='#84FFFC'
@@ -10056,7 +10056,7 @@
 					>
 						<RectangleStyle
 							Center='c'
-							Color='#034B5A'
+							Color='#0F304E'
 							East='e'
 							Name='rs'
 							North='n'
@@ -10118,7 +10118,7 @@
 					>
 						<RectangleStyle
 							Center='c'
-							Color='#034B5A'
+							Color='#0F304E'
 							East='e'
 							Name='rs'
 							North='n'
@@ -10180,7 +10180,7 @@
 					>
 						<RectangleStyle
 							Center='c'
-							Color='#09A9C6'
+							Color='#236AAC'
 							East='e'
 							Name='rs'
 							North='n'
@@ -10240,17 +10240,17 @@
 					<ButtonStyle
 						DisabledTextColor='#649B98'
 						DisabledTextMargin='3,0,3,0'
-						MouseOverIconColor='#00FFFF'
+						MouseOverIconColor='#2487DB'
 						MouseOverSound='ui_rollover'
-						MouseOverTextColor='#82FFFF'
+						MouseOverTextColor='#93C4EE'
 						MouseOverTextMargin='3,0,3,0'
 						MouseOverTextStyle='bold_25'
 						Name='style'
-						NormalIconColor='#00D6FB'
-						NormalTextColor='#3EFFFF'
+						NormalIconColor='#2381D8'
+						NormalTextColor='#59A4E4'
 						NormalTextMargin='3,0,3,0'
 						NormalTextStyle='bold_22'
-						PressedTextColor='#82FFFF'
+						PressedTextColor='#93C4EE'
 						PressedTextMargin='3,0,3,0'
 						ReleaseSound='ui_deselect'
 						RStyleActivated='activated.rs'
@@ -10261,7 +10261,7 @@
 						RStyleMouseOverSelected='activated.rs'
 						RStyleSelected='activated.rs'
 						SelectedIconColor='#000000'
-						SelectedTextColor='#82FFFF'
+						SelectedTextColor='#93C4EE'
 						SelectedTextMargin='3,0,3,0'
 					/>
 				</Namespace>
@@ -10799,15 +10799,15 @@
 						/>
 					</Namespace>
 					<ButtonStyle
-						DisabledIconColor='#80FFFF'
+						DisabledIconColor='#92C3ED'
 						DisabledTextColor='#253745'
 						DisabledTextMargin='3,0,3,0'
-						MouseOverIconColor='#00FFFF'
+						MouseOverIconColor='#2487DB'
 						MouseOverSound='ui_rollover'
 						MouseOverTextColor='#2FF4FF'
 						MouseOverTextMargin='3,0,3,0'
 						Name='style'
-						NormalIconColor='#00D6FB'
+						NormalIconColor='#2381D8'
 						NormalTextColor='#253745'
 						NormalTextMargin='3,0,3,0'
 						NormalTextStyle='bold_20'
@@ -10929,17 +10929,17 @@
 						DisabledTextColor='#649B98'
 						DisabledTextMargin='1,10,0,0'
 						MarginHotSpot='0,11,0,0'
-						MouseOverIconColor='#00FFFF'
+						MouseOverIconColor='#2487DB'
 						MouseOverSound='ui_rollover'
-						MouseOverTextColor='#82FFFF'
+						MouseOverTextColor='#93C4EE'
 						MouseOverTextMargin='0,7,0,0'
 						MouseOverTextStyle='bold_25'
 						Name='style'
-						NormalIconColor='#00D6FB'
-						NormalTextColor='#3EFFFF'
+						NormalIconColor='#2381D8'
+						NormalTextColor='#59A4E4'
 						NormalTextMargin='1,10,0,0'
 						NormalTextStyle='bold_22'
-						PressedTextColor='#82FFFF'
+						PressedTextColor='#93C4EE'
 						PressedTextMargin='0,11,0,0'
 						ReleaseSound='ui_deselect'
 						RStyleActivated='activated.rs'
@@ -10947,7 +10947,7 @@
 						RStyleDisabled='disabled.rs'
 						RStyleMouseOver='hover.rs'
 						SelectedIconColor='#000000'
-						SelectedTextColor='#82FFFF'
+						SelectedTextColor='#93C4EE'
 						SelectedTextMargin='0,11,0,0'
 						TextAlignmentVertical='Top'
 					/>
@@ -10961,7 +10961,7 @@
 						/>
 						<RectangleStyle
 							Center='c'
-							Color='#067082'
+							Color='#174671'
 							Name='rs'
 						/>
 					</Namespace>
@@ -10989,7 +10989,7 @@
 						/>
 						<RectangleStyle
 							Center='c'
-							Color='#067082'
+							Color='#174671'
 							Name='rs'
 						/>
 					</Namespace>
@@ -11003,7 +11003,7 @@
 						/>
 						<RectangleStyle
 							Center='c'
-							Color='#0AB9D8'
+							Color='#2774BB'
 							Name='rs'
 						/>
 					</Namespace>
@@ -11330,15 +11330,15 @@
 						/>
 					</Namespace>
 					<ButtonStyle
-						DisabledIconColor='#80FFFF'
+						DisabledIconColor='#92C3ED'
 						DisabledTextColor='#028BA8'
 						DisabledTextMargin='3,0,3,0'
-						MouseOverIconColor='#00FFFF'
+						MouseOverIconColor='#2487DB'
 						MouseOverSound='ui_rollover'
 						MouseOverTextColor='#18393D'
 						MouseOverTextMargin='3,0,3,0'
 						Name='style'
-						NormalIconColor='#00D6FB'
+						NormalIconColor='#2381D8'
 						NormalTextColor='#2FF4FF'
 						NormalTextMargin='3,0,3,0'
 						NormalTextStyle='bold_11'
@@ -11845,15 +11845,15 @@
 						/>
 					</Namespace>
 					<ButtonStyle
-						DisabledIconColor='#80FFFF'
+						DisabledIconColor='#92C3ED'
 						DisabledTextColor='#028BA8'
 						DisabledTextMargin='3,0,3,0'
-						MouseOverIconColor='#00FFFF'
+						MouseOverIconColor='#2487DB'
 						MouseOverSound='ui_rollover'
 						MouseOverTextColor='#18393D'
 						MouseOverTextMargin='3,0,3,0'
 						Name='style'
-						NormalIconColor='#00D6FB'
+						NormalIconColor='#2381D8'
 						NormalTextColor='#2FF4FF'
 						NormalTextMargin='3,0,3,0'
 						NormalTextStyle='bold_11'
@@ -12203,24 +12203,24 @@
 					Size='128,64'
 				>
 					<ButtonStyle
-						DisabledIconColor='#80FFFF'
-						DisabledTextColor='#00FFFF'
-						MouseOverIconColor='#00FFFF'
+						DisabledIconColor='#92C3ED'
+						DisabledTextColor='#2487DB'
+						MouseOverIconColor='#2487DB'
 						MouseOverSound='ui_rollover'
-						MouseOverTextColor='#04575E'
+						MouseOverTextColor='#113351'
 						Name='style'
-						NormalIconColor='#00D6FB'
-						NormalTextColor='#00FFFF'
+						NormalIconColor='#2381D8'
+						NormalTextColor='#2487DB'
 						NormalTextStyle='bold_15'
 						PressedIconColor='#F5FF42'
-						PressedTextColor='#04575E'
+						PressedTextColor='#113351'
 						ReleaseSound='ui_deselect'
 						RStyleActivated='activated.rs'
 						RStyleDefault='default.rs'
 						RStyleDisabled='disabled.rs'
 						RStyleMouseOver='hover.rs'
 						SelectedIconColor='#000000'
-						SelectedTextColor='#04575E'
+						SelectedTextColor='#113351'
 					/>
 					<Namespace
 						Name='activated'
@@ -14901,13 +14901,13 @@
 				>
 					<ButtonStyle
 						DisabledIconColor='#70E9FE'
-						DisabledTextColor='#00FFFF'
+						DisabledTextColor='#2487DB'
 						MouseOverIconColor='#62FF15'
 						MouseOverSound='ui_rollover'
-						MouseOverTextColor='#04575E'
+						MouseOverTextColor='#113351'
 						Name='style'
 						NormalIconColor='#70E9FE'
-						NormalTextColor='#00FFFF'
+						NormalTextColor='#2487DB'
 						NormalTextStyle='bold_15'
 						PalActivatedIcon='highlight'
 						PalDisabledIcon='icon'
@@ -14915,11 +14915,11 @@
 						PalNormalIcon='icon'
 						PalSelectedIcon='contrast1'
 						PressedIconColor='#00FFFF'
-						PressedTextColor='#04575E'
+						PressedTextColor='#113351'
 						ReleaseSound='ui_deselect'
 						RStyleDefault='default.rs'
 						SelectedIconColor='#62FF15'
-						SelectedTextColor='#04575E'
+						SelectedTextColor='#113351'
 					/>
 					<Namespace
 						Name='default'
@@ -14989,13 +14989,13 @@
 				>
 					<ButtonStyle
 						DisabledIconColor='#70E9FE'
-						DisabledTextColor='#00FFFF'
+						DisabledTextColor='#2487DB'
 						MouseOverIconColor='#62FF15'
 						MouseOverSound='ui_rollover'
-						MouseOverTextColor='#04575E'
+						MouseOverTextColor='#113351'
 						Name='style'
 						NormalIconColor='#70E9FE'
-						NormalTextColor='#00FFFF'
+						NormalTextColor='#2487DB'
 						NormalTextStyle='bold_15'
 						PalActivatedIcon='highlight'
 						PalDisabledIcon='icon'
@@ -15003,14 +15003,14 @@
 						PalNormalIcon='icon'
 						PalSelectedIcon='contrast1'
 						PressedIconColor='#00FFFF'
-						PressedTextColor='#04575E'
+						PressedTextColor='#113351'
 						ReleaseSound='ui_deselect'
 						RStyleActivated='activated.rs'
 						RStyleDefault='default.rs'
 						RStyleDisabled='disabled.rs'
 						RStyleMouseOver='hover.rs'
 						SelectedIconColor='#62FF15'
-						SelectedTextColor='#04575E'
+						SelectedTextColor='#113351'
 					/>
 					<Namespace
 						Name='activated'
@@ -15071,23 +15071,23 @@
 				>
 					<ButtonStyle
 						DisabledIconColor='#70E9FE'
-						DisabledTextColor='#00FFFF'
+						DisabledTextColor='#2487DB'
 						MouseOverSound='ui_rollover'
-						MouseOverTextColor='#04575E'
+						MouseOverTextColor='#113351'
 						Name='style'
 						NormalTextStyle='bold_15'
 						PalActivatedIcon='highlight'
 						PalDisabledIcon='icon'
 						PalSelectedIcon='contrast1'
 						PressedIconColor='#00FFFF'
-						PressedTextColor='#04575E'
+						PressedTextColor='#113351'
 						ReleaseSound='ui_deselect'
 						RStyleActivated='activated.rs'
 						RStyleDefault='default.rs'
 						RStyleDisabled='disabled.rs'
 						RStyleMouseOver='hover.rs'
 						SelectedIconColor='#62FF15'
-						SelectedTextColor='#04575E'
+						SelectedTextColor='#113351'
 					/>
 					<Namespace
 						Name='activated'
@@ -15156,23 +15156,23 @@
 				>
 					<ButtonStyle
 						DisabledIconColor='#70E9FE'
-						DisabledTextColor='#00FFFF'
+						DisabledTextColor='#2487DB'
 						MouseOverSound='ui_rollover'
-						MouseOverTextColor='#04575E'
+						MouseOverTextColor='#113351'
 						Name='style'
 						NormalTextStyle='bold_15'
 						PalActivatedIcon='highlight'
 						PalDisabledIcon='icon'
 						PalSelectedIcon='contrast1'
 						PressedIconColor='#00FFFF'
-						PressedTextColor='#04575E'
+						PressedTextColor='#113351'
 						ReleaseSound='ui_deselect'
 						RStyleActivated='activated.rs'
 						RStyleDefault='default.rs'
 						RStyleDisabled='disabled.rs'
 						RStyleMouseOver='hover.rs'
 						SelectedIconColor='#62FF15'
-						SelectedTextColor='#04575E'
+						SelectedTextColor='#113351'
 					/>
 					<Namespace
 						Name='activated'
@@ -15241,23 +15241,23 @@
 				>
 					<ButtonStyle
 						DisabledIconColor='#70E9FE'
-						DisabledTextColor='#00FFFF'
+						DisabledTextColor='#2487DB'
 						MouseOverSound='ui_rollover'
-						MouseOverTextColor='#04575E'
+						MouseOverTextColor='#113351'
 						Name='style'
 						NormalTextStyle='bold_15'
 						PalActivatedIcon='highlight'
 						PalDisabledIcon='icon'
 						PalSelectedIcon='contrast1'
 						PressedIconColor='#00FFFF'
-						PressedTextColor='#04575E'
+						PressedTextColor='#113351'
 						ReleaseSound='ui_deselect'
 						RStyleActivated='activated.rs'
 						RStyleDefault='default.rs'
 						RStyleDisabled='disabled.rs'
 						RStyleMouseOver='hover.rs'
 						SelectedIconColor='#62FF15'
-						SelectedTextColor='#04575E'
+						SelectedTextColor='#113351'
 					/>
 					<Namespace
 						Name='activated'
@@ -15326,23 +15326,23 @@
 				>
 					<ButtonStyle
 						DisabledIconColor='#70E9FE'
-						DisabledTextColor='#00FFFF'
+						DisabledTextColor='#2487DB'
 						MouseOverSound='ui_rollover'
-						MouseOverTextColor='#04575E'
+						MouseOverTextColor='#113351'
 						Name='style'
 						NormalTextStyle='bold_15'
 						PalActivatedIcon='highlight'
 						PalDisabledIcon='icon'
 						PalSelectedIcon='contrast1'
 						PressedIconColor='#00FFFF'
-						PressedTextColor='#04575E'
+						PressedTextColor='#113351'
 						ReleaseSound='ui_deselect'
 						RStyleActivated='activated.rs'
 						RStyleDefault='default.rs'
 						RStyleDisabled='disabled.rs'
 						RStyleMouseOver='hover.rs'
 						SelectedIconColor='#62FF15'
-						SelectedTextColor='#04575E'
+						SelectedTextColor='#113351'
 					/>
 					<Namespace
 						Name='activated'
@@ -15411,23 +15411,23 @@
 				>
 					<ButtonStyle
 						DisabledIconColor='#70E9FE'
-						DisabledTextColor='#00FFFF'
+						DisabledTextColor='#2487DB'
 						MouseOverSound='ui_rollover'
-						MouseOverTextColor='#04575E'
+						MouseOverTextColor='#113351'
 						Name='style'
 						NormalTextStyle='bold_15'
 						PalActivatedIcon='highlight'
 						PalDisabledIcon='icon'
 						PalSelectedIcon='contrast1'
 						PressedIconColor='#00FFFF'
-						PressedTextColor='#04575E'
+						PressedTextColor='#113351'
 						ReleaseSound='ui_deselect'
 						RStyleActivated='activated.rs'
 						RStyleDefault='default.rs'
 						RStyleDisabled='disabled.rs'
 						RStyleMouseOver='hover.rs'
 						SelectedIconColor='#62FF15'
-						SelectedTextColor='#04575E'
+						SelectedTextColor='#113351'
 					/>
 					<Namespace
 						Name='activated'
@@ -15496,23 +15496,23 @@
 				>
 					<ButtonStyle
 						DisabledIconColor='#70E9FE'
-						DisabledTextColor='#00FFFF'
+						DisabledTextColor='#2487DB'
 						MouseOverSound='ui_rollover'
-						MouseOverTextColor='#04575E'
+						MouseOverTextColor='#113351'
 						Name='style'
 						NormalTextStyle='bold_15'
 						PalActivatedIcon='highlight'
 						PalDisabledIcon='icon'
 						PalSelectedIcon='contrast1'
 						PressedIconColor='#00FFFF'
-						PressedTextColor='#04575E'
+						PressedTextColor='#113351'
 						ReleaseSound='ui_deselect'
 						RStyleActivated='activated.rs'
 						RStyleDefault='default.rs'
 						RStyleDisabled='disabled.rs'
 						RStyleMouseOver='hover.rs'
 						SelectedIconColor='#62FF15'
-						SelectedTextColor='#04575E'
+						SelectedTextColor='#113351'
 					/>
 					<Namespace
 						Name='activated'
@@ -25393,7 +25393,7 @@
 					SourceRect='2,210,26,234'
 				/>
 				<ImageStyle
-					Color='#00ffff'
+					Color='#2487DB'
 					Name='peace'
 					Source='ui_rebel_icons'
 					SourceRect='48,117,72,141'
@@ -25704,7 +25704,7 @@
 				Name='combo'
 			>
 				<ListStyle
-					BackgroundColor='#00D6FB'
+					BackgroundColor='#2381D8'
 					BackgroundOpacity='0.00'
 					CellHeight='19'
 					CellPadding='4,2'
@@ -25723,8 +25723,8 @@
 					SelectionTextColor='#003842'
 				/>
 				<ListStyle
-					BackgroundColor='#00D6FB'
-					BackgroundOpacity='0.90'
+					BackgroundColor='#2381D8'
+					BackgroundOpacity='1.00'
 					CellPadding='0,0'
 					DefaultTextColor='#96F4FC'
 					DefaultTextStyle='bold_11'
@@ -25761,8 +25761,8 @@
 					SelectionTextColor='#003842'
 				/>
 				<ListStyle
-					BackgroundColor='#00505E'
-					BackgroundOpacity='0.70'
+					BackgroundColor='#0D3051'
+					BackgroundOpacity='1.00'
 					CellHeight='19'
 					CellPadding='4,3'
 					DefaultTextColor='#96F4FC'
@@ -25782,7 +25782,7 @@
 					SelectionTextColor='#003842'
 				/>
 				<ListStyle
-					BackgroundColor='#00D6FB'
+					BackgroundColor='#2381D8'
 					BackgroundOpacity='0.00'
 					CellHeight='19'
 					CellPadding='4,2'
@@ -25984,8 +25984,9 @@
 				>
 					<ImageStyle
 						Name='c'
-						Source='ui_rebel_final'
-						SourceRect='458,19,461,20'
+						Source='ui_titan_modern'
+						ThemeFrom='ui_rebel_final:458,19,461,20'
+						SourceRect='118,5,128,7'
 					/>
 					<RectangleStyle
 						Center='c'
@@ -26005,8 +26006,9 @@
 					/>
 					<ImageStyle
 						Name='c'
-						Source='ui_rebel_final'
-						SourceRect='443,14,453,2'
+						Source='ui_titan_modern'
+						ThemeFrom='ui_rebel_final:443,14,453,2'
+						SourceRect='131,14,141,2'
 					/>
 				</Namespace>
 				<Namespace
@@ -26097,8 +26099,9 @@
 				>
 					<ImageStyle
 						Name='c'
-						Source='ui_rebel_final'
-						SourceRect='505,487,508,489'
+						Source='ui_titan_modern'
+						ThemeFrom='ui_rebel_final:505,487,508,489'
+						SourceRect='105,6,115,10'
 					/>
 				</Namespace>
 				<Namespace
@@ -26984,24 +26987,24 @@
 					Size='128,64'
 				>
 					<ButtonStyle
-						DisabledIconColor='#80FFFF'
-						DisabledTextColor='#00FFFF'
-						MouseOverIconColor='#00FFFF'
+						DisabledIconColor='#92C3ED'
+						DisabledTextColor='#2487DB'
+						MouseOverIconColor='#2487DB'
 						MouseOverSound='ui_rollover'
-						MouseOverTextColor='#04575E'
+						MouseOverTextColor='#113351'
 						Name='style'
-						NormalIconColor='#00D6FB'
-						NormalTextColor='#00FFFF'
+						NormalIconColor='#2381D8'
+						NormalTextColor='#2487DB'
 						NormalTextStyle='bold_15'
 						PressedIconColor='#F5FF42'
-						PressedTextColor='#04575E'
+						PressedTextColor='#113351'
 						ReleaseSound='ui_deselect'
 						RStyleActivated='activated.rs'
 						RStyleDefault='default.rs'
 						RStyleDisabled='disabled.rs'
 						RStyleMouseOver='hover.rs'
 						SelectedIconColor='#000000'
-						SelectedTextColor='#04575E'
+						SelectedTextColor='#113351'
 					/>
 					<Namespace
 						Name='activated'
@@ -28039,15 +28042,15 @@
 						/>
 					</Namespace>
 					<ButtonStyle
-						DisabledIconColor='#80FFFF'
+						DisabledIconColor='#92C3ED'
 						DisabledTextColor='#028BA8'
 						DisabledTextMargin='3,0,3,0'
-						MouseOverIconColor='#00FFFF'
+						MouseOverIconColor='#2487DB'
 						MouseOverSound='ui_rollover'
 						MouseOverTextColor='#18393D'
 						MouseOverTextMargin='3,0,3,0'
 						Name='style'
-						NormalIconColor='#00D6FB'
+						NormalIconColor='#2381D8'
 						NormalTextColor='#2FF4FF'
 						NormalTextMargin='3,0,3,0'
 						NormalTextStyle='bold_13'
@@ -28104,7 +28107,7 @@
 						/>
 					</Namespace>
 					<ButtonStyle
-						DisabledTextColor='#00FFFF'
+						DisabledTextColor='#2487DB'
 						DisabledTextMargin='5,0,5,0'
 						MouseOverSound='ui_rollover'
 						MouseOverTextColor='#064A47'
@@ -28126,7 +28129,7 @@
 						RStyleMouseOverActivated='default.rs'
 						RStyleMouseOverSelected='default.rs'
 						RStyleSelected='default.rs'
-						SelectedTextColor='#04575E'
+						SelectedTextColor='#113351'
 						SelectedTextMargin='5,0,5,0'
 						TextAlignmentVertical='Bottom'
 					/>
@@ -28168,24 +28171,24 @@
 					Size='128,64'
 				>
 					<ButtonStyle
-						DisabledIconColor='#80FFFF'
-						DisabledTextColor='#00FFFF'
-						MouseOverIconColor='#00FFFF'
+						DisabledIconColor='#92C3ED'
+						DisabledTextColor='#2487DB'
+						MouseOverIconColor='#2487DB'
 						MouseOverSound='ui_rollover'
-						MouseOverTextColor='#04575E'
+						MouseOverTextColor='#113351'
 						Name='style'
-						NormalIconColor='#00D6FB'
-						NormalTextColor='#00FFFF'
+						NormalIconColor='#2381D8'
+						NormalTextColor='#2487DB'
 						NormalTextStyle='bold_15'
 						PressedIconColor='#F5FF42'
-						PressedTextColor='#04575E'
+						PressedTextColor='#113351'
 						ReleaseSound='ui_deselect'
 						RStyleActivated='activated.rs'
 						RStyleDefault='default.rs'
 						RStyleDisabled='disabled.rs'
 						RStyleMouseOver='hover.rs'
 						SelectedIconColor='#000000'
-						SelectedTextColor='#04575E'
+						SelectedTextColor='#113351'
 					/>
 					<Namespace
 						Name='activated'
@@ -28284,8 +28287,9 @@
 						/>
 						<ImageStyle
 							Name='c'
-							Source='ui_rebel_final'
-							SourceRect='493,212,483,222'
+							Source='ui_titan_modern'
+							ThemeFrom='ui_rebel_final:493,212,483,222'
+							SourceRect='200,2,190,12'
 						/>
 					</Namespace>
 					<Namespace
@@ -28303,8 +28307,9 @@
 						/>
 						<ImageStyle
 							Name='c'
-							Source='ui_rebel_final'
-							SourceRect='493,212,483,222'
+							Source='ui_titan_modern'
+							ThemeFrom='ui_rebel_final:493,212,483,222'
+							SourceRect='200,2,190,12'
 						/>
 					</Namespace>
 					<Namespace
@@ -28322,8 +28327,9 @@
 						/>
 						<ImageStyle
 							Name='c'
-							Source='ui_rebel_final'
-							SourceRect='493,212,483,222'
+							Source='ui_titan_modern'
+							ThemeFrom='ui_rebel_final:493,212,483,222'
+							SourceRect='200,2,190,12'
 						/>
 					</Namespace>
 					<Namespace
@@ -28341,8 +28347,9 @@
 						/>
 						<ImageStyle
 							Name='c'
-							Source='ui_rebel_final'
-							SourceRect='493,212,483,222'
+							Source='ui_titan_modern'
+							ThemeFrom='ui_rebel_final:493,212,483,222'
+							SourceRect='200,2,190,12'
 						/>
 					</Namespace>
 					<Namespace
@@ -28360,8 +28367,9 @@
 						/>
 						<ImageStyle
 							Name='c'
-							Source='ui_rebel_final'
-							SourceRect='493,212,483,222'
+							Source='ui_titan_modern'
+							ThemeFrom='ui_rebel_final:493,212,483,222'
+							SourceRect='200,2,190,12'
 						/>
 					</Namespace>
 				</Namespace>
@@ -29411,15 +29419,15 @@
 						/>
 					</Namespace>
 					<ButtonStyle
-						DisabledIconColor='#80FFFF'
+						DisabledIconColor='#92C3ED'
 						DisabledTextColor='#00D6FB'
 						DisabledTextMargin='3,0,3,0'
-						MouseOverIconColor='#00FFFF'
+						MouseOverIconColor='#2487DB'
 						MouseOverSound='ui_rollover'
 						MouseOverTextColor='#04575E'
 						MouseOverTextMargin='3,0,3,0'
 						Name='style'
-						NormalIconColor='#00D6FB'
+						NormalIconColor='#2381D8'
 						NormalTextColor='#FF8040'
 						NormalTextMargin='3,0,3,0'
 						NormalTextStyle='bold_11'
@@ -29764,15 +29772,15 @@
 						/>
 					</Namespace>
 					<ButtonStyle
-						DisabledIconColor='#80FFFF'
+						DisabledIconColor='#92C3ED'
 						DisabledTextColor='#028BA8'
 						DisabledTextMargin='3,0,3,0'
-						MouseOverIconColor='#00FFFF'
+						MouseOverIconColor='#2487DB'
 						MouseOverSound='ui_rollover'
 						MouseOverTextColor='#18393D'
 						MouseOverTextMargin='3,0,3,0'
 						Name='style'
-						NormalIconColor='#00D6FB'
+						NormalIconColor='#2381D8'
 						NormalTextColor='#2FF4FF'
 						NormalTextMargin='3,0,3,0'
 						NormalTextStyle='bold_11'
@@ -29802,16 +29810,16 @@
 					Size='128,64'
 				>
 					<ButtonStyle
-						DisabledIconColor='#80FFFF'
+						DisabledIconColor='#92C3ED'
 						DisabledTextColor='#028BA8'
 						DisabledTextMargin='3,0,3,0'
-						MouseOverIconColor='#00FFFF'
+						MouseOverIconColor='#2487DB'
 						MouseOverSound='ui_rollover'
 						MouseOverTextColor='#18393D'
 						MouseOverTextMargin='3,0,3,0'
 						MouseOverTextStyle='starwars_18'
 						Name='style_sw_sm'
-						NormalIconColor='#00D6FB'
+						NormalIconColor='#2381D8'
 						NormalTextColor='#2FF4FF'
 						NormalTextMargin='3,0,3,0'
 						NormalTextStyle='starwars_18'
@@ -29835,16 +29843,16 @@
 						SelectedTextMargin='3,0,3,0'
 					/>
 					<ButtonStyle
-						DisabledIconColor='#80FFFF'
+						DisabledIconColor='#92C3ED'
 						DisabledTextColor='#028BA8'
 						DisabledTextMargin='3,0,3,0'
-						MouseOverIconColor='#00FFFF'
+						MouseOverIconColor='#2487DB'
 						MouseOverSound='ui_rollover'
 						MouseOverTextColor='#18393D'
 						MouseOverTextMargin='3,0,3,0'
 						MouseOverTextStyle='bold_22'
 						Name='style_friend'
-						NormalIconColor='#00D6FB'
+						NormalIconColor='#2381D8'
 						NormalTextColor='#2FF4FF'
 						NormalTextMargin='3,0,3,0'
 						NormalTextStyle='bold_22'
@@ -30246,15 +30254,15 @@
 						/>
 					</Namespace>
 					<ButtonStyle
-						DisabledIconColor='#80FFFF'
+						DisabledIconColor='#92C3ED'
 						DisabledTextColor='#028BA8'
 						DisabledTextMargin='3,0,3,0'
-						MouseOverIconColor='#00FFFF'
+						MouseOverIconColor='#2487DB'
 						MouseOverSound='ui_rollover'
 						MouseOverTextColor='#18393D'
 						MouseOverTextMargin='3,0,3,0'
 						Name='styleGambling'
-						NormalIconColor='#00D6FB'
+						NormalIconColor='#2381D8'
 						NormalTextColor='#2FF4FF'
 						NormalTextMargin='3,0,3,0'
 						NormalTextStyle='bold_15'
@@ -30278,16 +30286,16 @@
 						SelectedTextMargin='3,0,3,0'
 					/>
 					<ButtonStyle
-						DisabledIconColor='#80FFFF'
+						DisabledIconColor='#92C3ED'
 						DisabledTextColor='#028BA8'
 						DisabledTextMargin='3,0,3,0'
-						MouseOverIconColor='#00FFFF'
+						MouseOverIconColor='#2487DB'
 						MouseOverSound='ui_rollover'
 						MouseOverTextColor='#18393D'
 						MouseOverTextMargin='3,0,3,0'
 						MouseOverTextStyle='bold_11'
 						Name='style'
-						NormalIconColor='#00D6FB'
+						NormalIconColor='#2381D8'
 						NormalTextColor='#2FF4FF'
 						NormalTextMargin='3,0,3,0'
 						NormalTextStyle='bold_11'
@@ -30311,15 +30319,15 @@
 						SelectedTextMargin='3,0,3,0'
 					/>
 					<ButtonStyle
-						DisabledIconColor='#80FFFF'
+						DisabledIconColor='#92C3ED'
 						DisabledTextColor='#04575E'
 						DisabledTextMargin='3,0,3,0'
-						MouseOverIconColor='#00FFFF'
+						MouseOverIconColor='#2487DB'
 						MouseOverSound='ui_rollover'
 						MouseOverTextColor='#04575E'
 						MouseOverTextMargin='3,0,3,0'
 						Name='stylePopupLabel'
-						NormalIconColor='#00D6FB'
+						NormalIconColor='#2381D8'
 						NormalTextColor='#62FF15'
 						NormalTextMargin='3,0,3,0'
 						NormalTextStyle='bold_11'
@@ -30344,15 +30352,15 @@
 						SelectedTextMargin='3,0,3,0'
 					/>
 					<ButtonStyle
-						DisabledIconColor='#80FFFF'
+						DisabledIconColor='#92C3ED'
 						DisabledTextColor='#0BD7E8'
 						DisabledTextMargin='3,0,3,0'
-						MouseOverIconColor='#00FFFF'
+						MouseOverIconColor='#2487DB'
 						MouseOverSound='ui_rollover'
 						MouseOverTextColor='#96F4FC'
 						MouseOverTextMargin='3,0,3,0'
 						Name='styleLeft'
-						NormalIconColor='#00D6FB'
+						NormalIconColor='#2381D8'
 						NormalTextColor='#96F4FC'
 						NormalTextMargin='3,0,3,0'
 						NormalTextStyle='bold_11'
@@ -30377,15 +30385,15 @@
 						TextAlignment='Left'
 					/>
 					<ButtonStyle
-						DisabledIconColor='#80FFFF'
+						DisabledIconColor='#92C3ED'
 						DisabledTextColor='#028BA8'
 						DisabledTextMargin='3,0,3,0'
-						MouseOverIconColor='#00FFFF'
+						MouseOverIconColor='#2487DB'
 						MouseOverSound='ui_rollover'
 						MouseOverTextColor='#18393D'
 						MouseOverTextMargin='3,0,3,0'
 						Name='style_big'
-						NormalIconColor='#00D6FB'
+						NormalIconColor='#2381D8'
 						NormalTextColor='#2FF4FF'
 						NormalTextMargin='3,0,3,0'
 						NormalTextStyle='bold_18'
@@ -30449,16 +30457,16 @@
 						SelectedTextMargin='3,0,3,0'
 					/>
 					<ButtonStyle
-						DisabledIconColor='#80FFFF'
+						DisabledIconColor='#92C3ED'
 						DisabledTextColor='#028BA8'
 						DisabledTextMargin='3,0,3,0'
-						MouseOverIconColor='#00FFFF'
+						MouseOverIconColor='#2487DB'
 						MouseOverSound='ui_rollover'
 						MouseOverTextColor='#18393D'
 						MouseOverTextMargin='3,0,3,0'
 						MouseOverTextStyle='starwars_21'
 						Name='style_sw'
-						NormalIconColor='#00D6FB'
+						NormalIconColor='#2381D8'
 						NormalTextColor='#2FF4FF'
 						NormalTextMargin='3,0,3,0'
 						NormalTextStyle='starwars_21'
@@ -32219,13 +32227,13 @@
 						/>
 					</Namespace>
 					<ButtonStyle
-						DisabledIconColor='#80FFFF'
+						DisabledIconColor='#92C3ED'
 						DisabledTextMargin='3,0,3,0'
-						MouseOverIconColor='#00FFFF'
+						MouseOverIconColor='#2487DB'
 						MouseOverSound='ui_rollover'
 						MouseOverTextMargin='3,0,3,0'
 						Name='style'
-						NormalIconColor='#00D6FB'
+						NormalIconColor='#2381D8'
 						NormalTextMargin='3,0,3,0'
 						NormalTextStyle='bold_11'
 						PalActivatedText='radialTextLight'
@@ -32252,24 +32260,24 @@
 					Size='128,64'
 				>
 					<ButtonStyle
-						DisabledIconColor='#80FFFF'
-						DisabledTextColor='#00FFFF'
-						MouseOverIconColor='#00FFFF'
+						DisabledIconColor='#92C3ED'
+						DisabledTextColor='#2487DB'
+						MouseOverIconColor='#2487DB'
 						MouseOverSound='ui_rollover'
-						MouseOverTextColor='#04575E'
+						MouseOverTextColor='#113351'
 						Name='style'
-						NormalIconColor='#00D6FB'
-						NormalTextColor='#00FFFF'
+						NormalIconColor='#2381D8'
+						NormalTextColor='#2487DB'
 						NormalTextStyle='bold_15'
 						PressedIconColor='#F5FF42'
-						PressedTextColor='#04575E'
+						PressedTextColor='#113351'
 						ReleaseSound='ui_deselect'
 						RStyleActivated='activated.rs'
 						RStyleDefault='default.rs'
 						RStyleDisabled='disabled.rs'
 						RStyleMouseOver='hover.rs'
 						SelectedIconColor='#000000'
-						SelectedTextColor='#04575E'
+						SelectedTextColor='#113351'
 					/>
 					<Namespace
 						Name='activated'
@@ -32657,7 +32665,7 @@
 					Size='128,64'
 				>
 					<ButtonStyle
-						DisabledTextColor='#00FFFF'
+						DisabledTextColor='#2487DB'
 						DisabledTextMargin='5,0,5,0'
 						MouseOverSound='ui_rollover'
 						MouseOverTextColor='#064A47'
@@ -32679,7 +32687,7 @@
 						RStyleMouseOverActivated='activated.rs'
 						RStyleMouseOverSelected='selected.rs'
 						RStyleSelected='selected.rs'
-						SelectedTextColor='#04575E'
+						SelectedTextColor='#113351'
 						SelectedTextMargin='5,0,5,0'
 						TextAlignmentVertical='Bottom'
 					/>
@@ -33411,8 +33419,9 @@
 				<ImageStyle
 					Name='checkedImage'
 					Size='128,64'
-					Source='ui_rebel_final'
-					SourceRect='421,153,439,166'
+					Source='ui_titan_modern'
+					ThemeFrom='ui_rebel_final:421,153,439,166'
+					SourceRect='224,2,242,15'
 				/>
 				<CheckboxStyle
 					Name='Style2'
@@ -33431,8 +33440,9 @@
 				<ImageStyle
 					Name='uncheckedImage'
 					Size='128,64'
-					Source='ui_rebel_final'
-					SourceRect='402,153,420,166'
+					Source='ui_titan_modern'
+					ThemeFrom='ui_rebel_final:402,153,420,166'
+					SourceRect='203,2,221,15'
 				/>
 			</Namespace>
 			<Namespace
@@ -33449,8 +33459,9 @@
 				<ImageStyle
 					Name='checkedImage'
 					Size='128,64'
-					Source='ui_rebel_final'
-					SourceRect='421,153,439,166'
+					Source='ui_titan_modern'
+					ThemeFrom='ui_rebel_final:421,153,439,166'
+					SourceRect='224,2,242,15'
 				/>
 				<CheckboxStyle
 					Name='Style'
@@ -33462,8 +33473,9 @@
 				<ImageStyle
 					Name='uncheckedImage'
 					Size='128,64'
-					Source='ui_rebel_final'
-					SourceRect='402,153,420,166'
+					Source='ui_titan_modern'
+					ThemeFrom='ui_rebel_final:402,153,420,166'
+					SourceRect='203,2,221,15'
 				/>
 			</Namespace>
 			<Namespace
@@ -35242,48 +35254,57 @@
 				>
 					<ImageStyle
 						Name='nw'
-						Source='ui_rebel_final'
-						SourceRect='13,444,60,480'
+						Source='ui_titan_modern'
+						ThemeFrom='ui_rebel_final:13,444,60,480'
+						SourceRect='66,18,78,30'
 					/>
 					<ImageStyle
 						Name='ne'
-						Source='ui_rebel_final'
-						SourceRect='60,444,119,480'
+						Source='ui_titan_modern'
+						ThemeFrom='ui_rebel_final:60,444,119,480'
+						SourceRect='102,18,114,30'
 					/>
 					<ImageStyle
 						Name='n'
-						Source='ui_rebel_final'
-						SourceRect='60,444,61,480'
+						Source='ui_titan_modern'
+						ThemeFrom='ui_rebel_final:60,444,61,480'
+						SourceRect='78,18,102,30'
 					/>
 					<ImageStyle
 						Name='sw'
-						Source='ui_rebel_final'
-						SourceRect='13,480,60,505'
+						Source='ui_titan_modern'
+						ThemeFrom='ui_rebel_final:13,480,60,505'
+						SourceRect='66,54,78,66'
 					/>
 					<ImageStyle
 						Name='se'
-						Source='ui_rebel_final'
-						SourceRect='60,480,119,505'
+						Source='ui_titan_modern'
+						ThemeFrom='ui_rebel_final:60,480,119,505'
+						SourceRect='102,54,114,66'
 					/>
 					<ImageStyle
 						Name='s'
-						Source='ui_rebel_final'
-						SourceRect='60,480,61,505'
+						Source='ui_titan_modern'
+						ThemeFrom='ui_rebel_final:60,480,61,505'
+						SourceRect='78,54,102,66'
 					/>
 					<ImageStyle
 						Name='e'
-						Source='ui_rebel_final'
-						SourceRect='60,480,119,481'
+						Source='ui_titan_modern'
+						ThemeFrom='ui_rebel_final:60,480,119,481'
+						SourceRect='102,30,114,54'
 					/>
 					<ImageStyle
 						Name='w'
-						Source='ui_rebel_final'
-						SourceRect='13,479,60,480'
+						Source='ui_titan_modern'
+						ThemeFrom='ui_rebel_final:13,479,60,480'
+						SourceRect='66,30,78,54'
 					/>
 					<ImageStyle
 						Name='c'
-						Source='ui_rebel_final'
-						SourceRect='60,479,61,480'
+						Source='ui_titan_modern'
+						ThemeFrom='ui_rebel_final:60,479,61,480'
+						SourceRect='78,30,102,54'
 					/>
 				</Namespace>
 			</Namespace>
@@ -35989,18 +36010,21 @@
 				>
 					<ImageStyle
 						Name='w'
-						Source='ui_rebel_final'
-						SourceRect='281,350,230,397'
+						Source='ui_titan_modern'
+						ThemeFrom='ui_rebel_final:281,350,230,397'
+						SourceRect='121,18,117,30'
 					/>
 					<ImageStyle
 						Name='e'
-						Source='ui_rebel_final'
-						SourceRect='231,350,151,397'
+						Source='ui_titan_modern'
+						ThemeFrom='ui_rebel_final:231,350,151,397'
+						SourceRect='129,18,125,30'
 					/>
 					<ImageStyle
 						Name='c'
-						Source='ui_rebel_final'
-						SourceRect='230,350,229,397'
+						Source='ui_titan_modern'
+						ThemeFrom='ui_rebel_final:230,350,229,397'
+						SourceRect='125,18,121,30'
 					/>
 				</Namespace>
 				<RectangleStyle
@@ -36970,18 +36994,21 @@
 				>
 					<ImageStyle
 						Name='w'
-						Source='ui_rebel_final'
-						SourceRect='151,350,231,397'
+						Source='ui_titan_modern'
+						ThemeFrom='ui_rebel_final:151,350,231,397'
+						SourceRect='117,18,121,30'
 					/>
 					<ImageStyle
 						Name='e'
-						Source='ui_rebel_final'
-						SourceRect='230,350,281,397'
+						Source='ui_titan_modern'
+						ThemeFrom='ui_rebel_final:230,350,281,397'
+						SourceRect='125,18,129,30'
 					/>
 					<ImageStyle
 						Name='c'
-						Source='ui_rebel_final'
-						SourceRect='229,350,230,397'
+						Source='ui_titan_modern'
+						ThemeFrom='ui_rebel_final:229,350,230,397'
+						SourceRect='121,18,125,30'
 					/>
 				</Namespace>
 				<RectangleStyle
@@ -37134,8 +37161,9 @@
 				<ImageStyle
 					Name='checkedImage'
 					Size='128,64'
-					Source='ui_rebel_final'
-					SourceRect='410,22,439,43'
+					Source='ui_titan_modern'
+					ThemeFrom='ui_rebel_final:410,22,439,43'
+					SourceRect='34,18,63,39'
 				/>
 				<CheckboxStyle
 					Name='Style'
@@ -37147,8 +37175,9 @@
 				<ImageStyle
 					Name='uncheckedImage'
 					Size='128,64'
-					Source='ui_rebel_final'
-					SourceRect='410,2,439,23'
+					Source='ui_titan_modern'
+					ThemeFrom='ui_rebel_final:410,2,439,23'
+					SourceRect='2,18,31,39'
 				/>
 			</Namespace>
 			<Namespace
@@ -37464,18 +37493,21 @@
 							<ImageStyle
 								Name='w'
 								Reversing='true'
-								Source='ui_rebel_buttons'
-								SourceRect='0,0,0,0'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_buttons:0,0,0,0'
+								SourceRect='144,2,148,10'
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_buttons'
-								SourceRect='0,0,0,0'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_buttons:0,0,0,0'
+								SourceRect='148,2,152,10'
 							/>
 							<ImageStyle
 								Name='e'
-								Source='ui_rebel_buttons'
-								SourceRect='0,0,0,0'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_buttons:0,0,0,0'
+								SourceRect='152,2,156,10'
 							/>
 						</Namespace>
 						<Namespace
@@ -37492,18 +37524,21 @@
 							<ImageStyle
 								Name='w'
 								Reversing='true'
-								Source='ui_rebel_buttons'
-								SourceRect='0,0,0,0'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_buttons:0,0,0,0'
+								SourceRect='144,2,148,10'
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_buttons'
-								SourceRect='0,0,0,0'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_buttons:0,0,0,0'
+								SourceRect='148,2,152,10'
 							/>
 							<ImageStyle
 								Name='e'
-								Source='ui_rebel_buttons'
-								SourceRect='0,0,0,0'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_buttons:0,0,0,0'
+								SourceRect='152,2,156,10'
 							/>
 						</Namespace>
 						<ButtonStyle
@@ -37528,18 +37563,21 @@
 							<ImageStyle
 								Name='w'
 								Reversing='true'
-								Source='ui_rebel_final'
-								SourceRect='493,292,500,296'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:493,292,500,296'
+								SourceRect='144,2,148,10'
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='493,292,500,296'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:493,292,500,296'
+								SourceRect='148,2,152,10'
 							/>
 							<ImageStyle
 								Name='e'
-								Source='ui_rebel_final'
-								SourceRect='493,292,500,296'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:493,292,500,296'
+								SourceRect='152,2,156,10'
 							/>
 						</Namespace>
 					</Namespace>
@@ -37563,8 +37601,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='493,211,480,221'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:493,211,480,221'
+								SourceRect='187,2,174,12'
 							/>
 						</Namespace>
 						<Namespace
@@ -37578,8 +37617,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='493,211,480,221'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:493,211,480,221'
+								SourceRect='187,2,174,12'
 							/>
 						</Namespace>
 						<Namespace
@@ -37593,8 +37633,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='493,211,480,221'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:493,211,480,221'
+								SourceRect='187,2,174,12'
 							/>
 						</Namespace>
 					</Namespace>
@@ -37615,18 +37656,21 @@
 						/>
 						<ImageStyle
 							Name='c'
-							Source='ui_rebel_final'
-							SourceRect='493,292,500,296'
+							Source='ui_titan_modern'
+							ThemeFrom='ui_rebel_final:493,292,500,296'
+							SourceRect='162,2,168,10'
 						/>
 						<ImageStyle
 							Name='e'
-							Source='ui_rebel_final'
-							SourceRect='493,292,500,296'
+							Source='ui_titan_modern'
+							ThemeFrom='ui_rebel_final:493,292,500,296'
+							SourceRect='168,2,171,10'
 						/>
 						<ImageStyle
 							Name='w'
-							Source='ui_rebel_final'
-							SourceRect='493,292,500,296'
+							Source='ui_titan_modern'
+							ThemeFrom='ui_rebel_final:493,292,500,296'
+							SourceRect='159,2,162,10'
 						/>
 					</Namespace>
 					<Namespace
@@ -37649,8 +37693,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='480,211,493,221'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:480,211,493,221'
+								SourceRect='174,2,187,12'
 							/>
 						</Namespace>
 						<Namespace
@@ -37664,8 +37709,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='480,211,493,221'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:480,211,493,221'
+								SourceRect='174,2,187,12'
 							/>
 						</Namespace>
 						<Namespace
@@ -37679,8 +37725,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='480,211,493,221'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:480,211,493,221'
+								SourceRect='174,2,187,12'
 							/>
 						</Namespace>
 					</Namespace>
@@ -38004,18 +38051,21 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='197,81,198,86'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:197,81,198,86'
+								SourceRect='5,2,11,12'
 							/>
 							<ImageStyle
 								Name='w'
-								Source='ui_rebel_final'
-								SourceRect='197,81,198,86'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:197,81,198,86'
+								SourceRect='2,2,5,12'
 							/>
 							<ImageStyle
 								Name='e'
-								Source='ui_rebel_final'
-								SourceRect='197,81,198,86'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:197,81,198,86'
+								SourceRect='11,2,14,12'
 							/>
 						</Namespace>
 						<Namespace
@@ -38050,18 +38100,21 @@
 								/>
 								<ImageStyle
 									Name='w'
-									Source='ui_rebel_final'
-									SourceRect='208,73,210,87'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:208,73,210,87'
+									SourceRect='47,2,60,16'
 								/>
 								<ImageStyle
 									Name='e'
-									Source='ui_rebel_final'
-									SourceRect='210,73,212,87'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:210,73,212,87'
+									SourceRect='61,2,74,16'
 								/>
 								<ImageStyle
 									Name='c'
-									Source='ui_rebel_final'
-									SourceRect='210,73,211,87'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:210,73,211,87'
+									SourceRect='60,2,61,16'
 								/>
 							</Namespace>
 							<Namespace
@@ -38077,18 +38130,21 @@
 								/>
 								<ImageStyle
 									Name='w'
-									Source='ui_rebel_final'
-									SourceRect='208,73,210,87'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:208,73,210,87'
+									SourceRect='47,2,60,16'
 								/>
 								<ImageStyle
 									Name='e'
-									Source='ui_rebel_final'
-									SourceRect='210,73,212,87'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:210,73,212,87'
+									SourceRect='61,2,74,16'
 								/>
 								<ImageStyle
 									Name='c'
-									Source='ui_rebel_final'
-									SourceRect='210,73,211,87'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:210,73,211,87'
+									SourceRect='60,2,61,16'
 								/>
 							</Namespace>
 							<Namespace
@@ -38104,18 +38160,21 @@
 								/>
 								<ImageStyle
 									Name='w'
-									Source='ui_rebel_final'
-									SourceRect='208,73,210,87'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:208,73,210,87'
+									SourceRect='47,2,60,16'
 								/>
 								<ImageStyle
 									Name='e'
-									Source='ui_rebel_final'
-									SourceRect='210,73,212,87'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:210,73,212,87'
+									SourceRect='61,2,74,16'
 								/>
 								<ImageStyle
 									Name='c'
-									Source='ui_rebel_final'
-									SourceRect='210,73,211,87'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:210,73,211,87'
+									SourceRect='60,2,61,16'
 								/>
 							</Namespace>
 						</Namespace>
@@ -38138,18 +38197,21 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='207,72,212,88'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:207,72,212,88'
+								SourceRect='35,2,41,14'
 							/>
 							<ImageStyle
 								Name='w'
-								Source='ui_rebel_final'
-								SourceRect='207,72,208,88'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:207,72,208,88'
+								SourceRect='32,2,35,14'
 							/>
 							<ImageStyle
 								Name='e'
-								Source='ui_rebel_final'
-								SourceRect='212,72,213,88'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:212,72,213,88'
+								SourceRect='41,2,44,14'
 							/>
 						</Namespace>
 					</Namespace>
@@ -38852,8 +38914,9 @@
 								/>
 								<ImageStyle
 									Name='c'
-									Source='ui_rebel_icons'
-									SourceRect='350,281,368,300'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_icons:350,281,368,300'
+									SourceRect='91,2,102,10'
 								/>
 							</Namespace>
 							<Namespace
@@ -38867,8 +38930,9 @@
 								/>
 								<ImageStyle
 									Name='c'
-									Source='ui_rebel_icons'
-									SourceRect='350,281,368,300'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_icons:350,281,368,300'
+									SourceRect='91,2,102,10'
 								/>
 							</Namespace>
 							<Namespace
@@ -38882,8 +38946,9 @@
 								/>
 								<ImageStyle
 									Name='c'
-									Source='ui_rebel_icons'
-									SourceRect='350,281,368,300'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_icons:350,281,368,300'
+									SourceRect='91,2,102,10'
 								/>
 							</Namespace>
 						</Namespace>
@@ -38917,8 +38982,9 @@
 								/>
 								<ImageStyle
 									Name='c'
-									Source='ui_rebel_icons'
-									SourceRect='350,305,368,324'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_icons:350,305,368,324'
+									SourceRect='77,2,88,10'
 								/>
 							</Namespace>
 							<Namespace
@@ -38932,8 +38998,9 @@
 								/>
 								<ImageStyle
 									Name='c'
-									Source='ui_rebel_icons'
-									SourceRect='350,305,368,324'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_icons:350,305,368,324'
+									SourceRect='77,2,88,10'
 								/>
 							</Namespace>
 							<Namespace
@@ -38947,8 +39014,9 @@
 								/>
 								<ImageStyle
 									Name='c'
-									Source='ui_rebel_icons'
-									SourceRect='350,305,368,324'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_icons:350,305,368,324'
+									SourceRect='77,2,88,10'
 								/>
 							</Namespace>
 						</Namespace>
@@ -38979,18 +39047,21 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='197,81,198,86'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:197,81,198,86'
+								SourceRect='5,2,11,12'
 							/>
 							<ImageStyle
 								Name='w'
-								Source='ui_rebel_final'
-								SourceRect='197,81,198,86'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:197,81,198,86'
+								SourceRect='2,2,5,12'
 							/>
 							<ImageStyle
 								Name='e'
-								Source='ui_rebel_final'
-								SourceRect='197,81,198,86'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:197,81,198,86'
+								SourceRect='11,2,14,12'
 							/>
 						</Namespace>
 						<Namespace
@@ -39024,18 +39095,21 @@
 								/>
 								<ImageStyle
 									Name='w'
-									Source='ui_rebel_final'
-									SourceRect='208,73,210,87'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:208,73,210,87'
+									SourceRect='47,2,60,16'
 								/>
 								<ImageStyle
 									Name='e'
-									Source='ui_rebel_final'
-									SourceRect='210,73,212,87'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:210,73,212,87'
+									SourceRect='61,2,74,16'
 								/>
 								<ImageStyle
 									Name='c'
-									Source='ui_rebel_final'
-									SourceRect='210,73,211,87'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:210,73,211,87'
+									SourceRect='60,2,61,16'
 								/>
 							</Namespace>
 							<Namespace
@@ -39051,18 +39125,21 @@
 								/>
 								<ImageStyle
 									Name='w'
-									Source='ui_rebel_final'
-									SourceRect='208,73,210,87'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:208,73,210,87'
+									SourceRect='47,2,60,16'
 								/>
 								<ImageStyle
 									Name='e'
-									Source='ui_rebel_final'
-									SourceRect='210,73,212,87'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:210,73,212,87'
+									SourceRect='61,2,74,16'
 								/>
 								<ImageStyle
 									Name='c'
-									Source='ui_rebel_final'
-									SourceRect='210,73,211,87'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:210,73,211,87'
+									SourceRect='60,2,61,16'
 								/>
 							</Namespace>
 							<Namespace
@@ -39078,18 +39155,21 @@
 								/>
 								<ImageStyle
 									Name='w'
-									Source='ui_rebel_final'
-									SourceRect='208,73,210,87'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:208,73,210,87'
+									SourceRect='47,2,60,16'
 								/>
 								<ImageStyle
 									Name='e'
-									Source='ui_rebel_final'
-									SourceRect='210,73,212,87'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:210,73,212,87'
+									SourceRect='61,2,74,16'
 								/>
 								<ImageStyle
 									Name='c'
-									Source='ui_rebel_final'
-									SourceRect='210,73,211,87'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:210,73,211,87'
+									SourceRect='60,2,61,16'
 								/>
 							</Namespace>
 						</Namespace>
@@ -39112,18 +39192,21 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='207,72,212,88'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:207,72,212,88'
+								SourceRect='35,2,41,14'
 							/>
 							<ImageStyle
 								Name='w'
-								Source='ui_rebel_final'
-								SourceRect='207,72,208,88'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:207,72,208,88'
+								SourceRect='32,2,35,14'
 							/>
 							<ImageStyle
 								Name='e'
-								Source='ui_rebel_final'
-								SourceRect='212,72,213,88'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:212,72,213,88'
+								SourceRect='41,2,44,14'
 							/>
 						</Namespace>
 					</Namespace>
@@ -39179,8 +39262,9 @@
 								/>
 								<ImageStyle
 									Name='c'
-									Source='ui_rebel_final'
-									SourceRect='454,72,465,80'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:454,72,465,80'
+									SourceRect='91,2,102,10'
 								/>
 							</Namespace>
 							<Namespace
@@ -39194,8 +39278,9 @@
 								/>
 								<ImageStyle
 									Name='c'
-									Source='ui_rebel_final'
-									SourceRect='454,72,465,80'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:454,72,465,80'
+									SourceRect='91,2,102,10'
 								/>
 							</Namespace>
 							<Namespace
@@ -39209,8 +39294,9 @@
 								/>
 								<ImageStyle
 									Name='c'
-									Source='ui_rebel_final'
-									SourceRect='454,72,465,80'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:454,72,465,80'
+									SourceRect='91,2,102,10'
 								/>
 							</Namespace>
 						</Namespace>
@@ -39244,8 +39330,9 @@
 								/>
 								<ImageStyle
 									Name='c'
-									Source='ui_rebel_final'
-									SourceRect='436,72,447,80'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:436,72,447,80'
+									SourceRect='77,2,88,10'
 								/>
 							</Namespace>
 							<Namespace
@@ -39259,8 +39346,9 @@
 								/>
 								<ImageStyle
 									Name='c'
-									Source='ui_rebel_final'
-									SourceRect='436,72,447,80'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:436,72,447,80'
+									SourceRect='77,2,88,10'
 								/>
 							</Namespace>
 							<Namespace
@@ -39274,8 +39362,9 @@
 								/>
 								<ImageStyle
 									Name='c'
-									Source='ui_rebel_final'
-									SourceRect='436,72,447,80'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:436,72,447,80'
+									SourceRect='77,2,88,10'
 								/>
 							</Namespace>
 						</Namespace>
@@ -39306,18 +39395,21 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='197,81,198,86'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:197,81,198,86'
+								SourceRect='5,2,11,12'
 							/>
 							<ImageStyle
 								Name='w'
-								Source='ui_rebel_final'
-								SourceRect='197,81,198,86'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:197,81,198,86'
+								SourceRect='2,2,5,12'
 							/>
 							<ImageStyle
 								Name='e'
-								Source='ui_rebel_final'
-								SourceRect='197,81,198,86'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:197,81,198,86'
+								SourceRect='11,2,14,12'
 							/>
 						</Namespace>
 						<Namespace
@@ -39347,23 +39439,26 @@
 									Color='#01B5C9'
 									East='e'
 									Name='rs'
-									PalColor='scrolldefault'
+									PalColor='text1'
 									West='w'
 								/>
 								<ImageStyle
 									Name='w'
-									Source='ui_rebel_final'
-									SourceRect='208,73,210,87'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:208,73,210,87'
+									SourceRect='47,2,60,16'
 								/>
 								<ImageStyle
 									Name='e'
-									Source='ui_rebel_final'
-									SourceRect='210,73,212,87'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:210,73,212,87'
+									SourceRect='61,2,74,16'
 								/>
 								<ImageStyle
 									Name='c'
-									Source='ui_rebel_final'
-									SourceRect='210,73,211,87'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:210,73,211,87'
+									SourceRect='60,2,61,16'
 								/>
 							</Namespace>
 							<Namespace
@@ -39374,23 +39469,26 @@
 									Color='#79FFFF'
 									East='e'
 									Name='rs'
-									PalColor='scrollhover'
+									PalColor='textHover'
 									West='w'
 								/>
 								<ImageStyle
 									Name='w'
-									Source='ui_rebel_final'
-									SourceRect='208,73,210,87'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:208,73,210,87'
+									SourceRect='47,2,60,16'
 								/>
 								<ImageStyle
 									Name='e'
-									Source='ui_rebel_final'
-									SourceRect='210,73,212,87'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:210,73,212,87'
+									SourceRect='61,2,74,16'
 								/>
 								<ImageStyle
 									Name='c'
-									Source='ui_rebel_final'
-									SourceRect='210,73,211,87'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:210,73,211,87'
+									SourceRect='60,2,61,16'
 								/>
 							</Namespace>
 							<Namespace
@@ -39401,23 +39499,26 @@
 									Color='#6CFD02'
 									East='e'
 									Name='rs'
-									PalColor='scrollactivated'
+									PalColor='contrast1'
 									West='w'
 								/>
 								<ImageStyle
 									Name='w'
-									Source='ui_rebel_final'
-									SourceRect='208,73,210,87'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:208,73,210,87'
+									SourceRect='47,2,60,16'
 								/>
 								<ImageStyle
 									Name='e'
-									Source='ui_rebel_final'
-									SourceRect='210,73,212,87'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:210,73,212,87'
+									SourceRect='61,2,74,16'
 								/>
 								<ImageStyle
 									Name='c'
-									Source='ui_rebel_final'
-									SourceRect='210,73,211,87'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:210,73,211,87'
+									SourceRect='60,2,61,16'
 								/>
 							</Namespace>
 						</Namespace>
@@ -39435,23 +39536,26 @@
 								Color='#01B5C9'
 								East='e'
 								Name='rs'
-								PalColor='scrolldefault'
+								PalColor='contrast1'
 								West='w'
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='207,72,212,88'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:207,72,212,88'
+								SourceRect='35,2,41,14'
 							/>
 							<ImageStyle
 								Name='w'
-								Source='ui_rebel_final'
-								SourceRect='207,72,208,88'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:207,72,208,88'
+								SourceRect='32,2,35,14'
 							/>
 							<ImageStyle
 								Name='e'
-								Source='ui_rebel_final'
-								SourceRect='212,72,213,88'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:212,72,213,88'
+								SourceRect='41,2,44,14'
 							/>
 						</Namespace>
 						<Namespace
@@ -39481,8 +39585,9 @@
 								/>
 								<ImageStyle
 									Name='c'
-									Source='ui_rebel_final'
-									SourceRect='210,73,211,79'
+									Source='ui_titan_modern'
+									ThemeFrom='ui_rebel_final:210,73,211,79'
+									SourceRect='17,2,29,12'
 								/>
 							</Namespace>
 						</Namespace>
@@ -39733,18 +39838,21 @@
 							/>
 							<ImageStyle
 								Name='w'
-								Source='ui_rebel_final'
-								SourceRect='92,137,108,153'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:92,137,108,153'
+								SourceRect='213,18,221,34'
 							/>
 							<ImageStyle
 								Name='e'
-								Source='ui_rebel_final'
-								SourceRect='113,137,127,153'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:113,137,127,153'
+								SourceRect='229,18,237,34'
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='109,137,110,153'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:109,137,110,153'
+								SourceRect='221,18,229,34'
 							/>
 						</Namespace>
 						<Namespace
@@ -39760,18 +39868,21 @@
 							/>
 							<ImageStyle
 								Name='w'
-								Source='ui_rebel_final'
-								SourceRect='95,161,111,177'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:95,161,111,177'
+								SourceRect='213,18,221,34'
 							/>
 							<ImageStyle
 								Name='e'
-								Source='ui_rebel_final'
-								SourceRect='116,161,130,177'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:116,161,130,177'
+								SourceRect='229,18,237,34'
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='112,161,113,177'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:112,161,113,177'
+								SourceRect='221,18,229,34'
 							/>
 						</Namespace>
 						<Namespace
@@ -39787,18 +39898,21 @@
 							/>
 							<ImageStyle
 								Name='w'
-								Source='ui_rebel_final'
-								SourceRect='52,138,68,154'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:52,138,68,154'
+								SourceRect='159,18,167,34'
 							/>
 							<ImageStyle
 								Name='e'
-								Source='ui_rebel_final'
-								SourceRect='73,138,87,154'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:73,138,87,154'
+								SourceRect='175,18,183,34'
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='69,138,70,154'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:69,138,70,154'
+								SourceRect='167,18,175,34'
 							/>
 						</Namespace>
 						<Namespace
@@ -39814,18 +39928,21 @@
 							/>
 							<ImageStyle
 								Name='w'
-								Source='ui_rebel_final'
-								SourceRect='92,137,108,153'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:92,137,108,153'
+								SourceRect='186,18,194,34'
 							/>
 							<ImageStyle
 								Name='e'
-								Source='ui_rebel_final'
-								SourceRect='113,137,127,153'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:113,137,127,153'
+								SourceRect='202,18,210,34'
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='109,137,110,153'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:109,137,110,153'
+								SourceRect='194,18,202,34'
 							/>
 						</Namespace>
 						<Namespace
@@ -39841,18 +39958,21 @@
 							/>
 							<ImageStyle
 								Name='w'
-								Source='ui_rebel_final'
-								SourceRect='92,137,108,153'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:92,137,108,153'
+								SourceRect='2,68,10,84'
 							/>
 							<ImageStyle
 								Name='e'
-								Source='ui_rebel_final'
-								SourceRect='113,137,127,153'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:113,137,127,153'
+								SourceRect='18,68,26,84'
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='109,137,110,153'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:109,137,110,153'
+								SourceRect='10,68,18,84'
 							/>
 						</Namespace>
 						<ButtonStyle
@@ -41666,12 +41786,12 @@
 					DisabledIconColor='#008000'
 					DisabledTextColor='#003C3C'
 					DisabledTextMargin='8,0,4,0'
-					MouseOverIconColor='#00FFFF'
+					MouseOverIconColor='#2487DB'
 					MouseOverSound='ui_rollover'
 					MouseOverTextColor='#FEEF3D'
 					MouseOverTextMargin='8,0,4,0'
 					Name='style'
-					NormalIconColor='#00D6FB'
+					NormalIconColor='#2381D8'
 					NormalTextColor='#003C3C'
 					NormalTextMargin='8,0,4,0'
 					NormalTextStyle='bold_11'
@@ -41889,15 +42009,15 @@
 					/>
 				</Namespace>
 				<ButtonStyle
-					DisabledIconColor='#80FFFF'
+					DisabledIconColor='#92C3ED'
 					DisabledTextColor='#A8FFFF'
 					DisabledTextMargin='8,0,4,0'
-					MouseOverIconColor='#00FFFF'
+					MouseOverIconColor='#2487DB'
 					MouseOverSound='ui_rollover'
 					MouseOverTextColor='#C4FFFF'
 					MouseOverTextMargin='8,0,4,0'
 					Name='style'
-					NormalIconColor='#00D6FB'
+					NormalIconColor='#2381D8'
 					NormalTextColor='#A8FFFF'
 					NormalTextMargin='8,0,4,0'
 					NormalTextStyle='bold_11'
@@ -42114,12 +42234,12 @@
 					DisabledIconColor='#F0F0F0'
 					DisabledTextColor='#003C3C'
 					DisabledTextMargin='8,0,4,0'
-					MouseOverIconColor='#00FFFF'
+					MouseOverIconColor='#2487DB'
 					MouseOverSound='ui_rollover'
 					MouseOverTextColor='#FEEF3D'
 					MouseOverTextMargin='8,0,4,0'
 					Name='style'
-					NormalIconColor='#00D6FB'
+					NormalIconColor='#2381D8'
 					NormalTextColor='#003C3C'
 					NormalTextMargin='8,0,4,0'
 					NormalTextStyle='bold_11'
@@ -43163,6 +43283,224 @@
 		<Namespace
 			Name='palette'
 		>
+			<Palette
+				AccentDark='#1A2533'
+				AccentLight='#5AB0F5'
+				Activated='#2A6FB0'
+				anim='#5AB0F5'
+				arrowActivated='#5AB0F5'
+				arrowdefault='#9AABBF'
+				arrowDisabled='#364455'
+				arrowHover='#FFFFFF'
+				arrowSelected='#5AB0F5'
+				back1='#33465C'
+				back2='#3C5068'
+				back3='#2A3848'
+				back4='#2E3D4E'
+				back5='#263241'
+				backDrop='#7FA3C8'
+				BaseDark='#1A2230'
+				BaseLight='#3D5068'
+				bottomBar='#2A3644'
+				box1='#687F93'
+				box2='#9B0CD9'
+				box3='#BCF319'
+				box4='#6922DD'
+				box5='#41257B'
+				button1='#9634D8'
+				button2='#6629D6'
+				button3='#080898'
+				button4='#E8540C'
+				button5='#FFFFFF'
+				carat='#FFFFFF'
+				closeActivated='#E5534B'
+				closeDarkActivated='#E5534B'
+				closeDarkHover='#FFFFFF'
+				closeDarkNormal='#9AABBF'
+				closeHover='#FFFFFF'
+				closeNormal='#9AABBF'
+				contrast1='#5AB0F5'
+				contrast2='#F0B44C'
+				contrast3='#EEF3F8'
+				contrast3a='#0B0F14'
+				contrast3h='#2F8BD8'
+				contrast4='#EEF3F8'
+				contrast4a='#8FD0FF'
+				contrast5='#1A2533'
+				contrast5a='#EEF3F8'
+				default='#2C3A4B'
+				disabled='#222A34'
+				disabledObject='#F20D0D'
+				EjectActivated='#F20D0D'
+				EjectDefault='#F20D0D'
+				EjectHover='#F2BA0D'
+				equipped='#C9D5E2'
+				exp='#E2B455'
+				forceBackground='#7FA3C8'
+				gamblingActivated='#DEAF0C'
+				gamblingactivated2='#59768F'
+				gamblingAllBets='#FFFFFF'
+				gamblingBack='#5A7790'
+				gamblingCircle='#87A0B5'
+				gamblingDefault='#2A3844'
+				gamblingdefault2='#59768F'
+				gamblingDisabled='#000000'
+				gamblingDisabled2='#0C0D0E'
+				gamblingFrame='#61819C'
+				gamblingGlow='#87A0B5'
+				gamblingHover='#8FACC5'
+				gamblinghover2='#1F2830'
+				gamblingJackpot='#F33F12'
+				gamblingLights='#DEAF0C'
+				gamblingPlayerBet='#DEAF0C'
+				gamblingPushBet='#80F20D'
+				gamblingPushNumber='#000000'
+				gamblingRouletteGlow='#7197B9'
+				gamblingRouletteText1='#22292F'
+				gamblingRouletteText2='#9DABB7'
+				glow='#5AB0F5'
+				head1='#8CC4F2'
+				head2='#8CC4F2'
+				head3='#8CC4F2'
+				head4='#8CC4F2'
+				head5='#8CC4F2'
+				header='#8CC4F2'
+				health='#E5534B'
+				helpBox='#121820'
+				Highlight='#5AB0F5'
+				holocron='#5AB0F5'
+				hover='#3A5878'
+				Icon='#9FC6EC'
+				iconactivated='#5AB0F5'
+				icondefault='#9FC6EC'
+				icondisabled='#4A5868'
+				iconGlow='#8FD0FF'
+				iconhover='#FFFFFF'
+				IconNegative='#E5534B'
+				IconPositive='#4CC38A'
+				jedicreate_holocron='#59768F'
+				jedicreate_lightning='#8AA1B5'
+				jedicreate_lightning2='#7D96AD'
+				lightning='#5AB0F5'
+				line1='#40546C'
+				line2='#4E6884'
+				line3='#5AB0F5'
+				line4='#5AB0F5'
+				line5='#5AB0F5'
+				listback='#2A3644'
+				listHilite='#2F8BD8'
+				listline='#40546C'
+				listtext='#D3DDE8'
+				loadBack='#2A3644'
+				loadBar='#121820'
+				loadbarFill='#2F8BD8'
+				mind='#0D0DED'
+				Name='Titan'
+				notcolor_ZoneAsteroid1='111'
+				notcolor_ZoneAsteroid2='111'
+				notcolor_ZoneDefault1='111'
+				notcolor_ZoneDefault2='111'
+				notcolor_ZoneHyperspace1='111'
+				notcolor_ZoneHyperspace2='111'
+				notcolor_ZoneMissionCritical1='111'
+				notcolor_ZoneMissionCritical2='111'
+				notcolor_ZoneSelect1='111'
+				notcolor_ZoneSelect2='111'
+				notcolor_ZoneShip1='111'
+				notcolor_ZoneShip2='111'
+				notcolor_ZoneSpaceStation1='111'
+				notcolor_ZoneSpaceStation2='111'
+				notcolor_ZoneWapointPoiActive2='111'
+				notcolor_ZoneWaypointActive1='111'
+				notcolor_ZoneWaypointActive2='111'
+				notcolor_ZoneWaypointInactive1='111'
+				notcolor_ZoneWaypointInactive2='111'
+				notcolor_ZoneWaypointPoiActive1='111'
+				notcolor_ZoneWaypointPoiInactive1='111'
+				notcolor_ZoneWaypointPoiInactive2='111'
+				numActivated='#2A6FB0'
+				numDefault='#2C3A4B'
+				numHover='#3A5878'
+				numTextActivated='#FFFFFF'
+				numTextDefault='#DCE6F0'
+				numTextHover='#FFFFFF'
+				outline1='#40546C'
+				outline2='#40546C'
+				outline3='#40546C'
+				outline4='#40546C'
+				outline5='#40546C'
+				OverlayDark='#2F8BD8'
+				overlayLight='#C9D5E2'
+				radactivated='#2A6FB0'
+				radar='#5AB0F5'
+				raddefault='#22303F'
+				raddisabled='#3A4656'
+				radhover='#2F7FC4'
+				radialTextDark='#EEF3F8'
+				radialTextLight='#EEF3F8'
+				radspin='#5AB0F5'
+				Runner='#40546C'
+				runnerDark='#000000'
+				scrollactivated='#5AB0F5'
+				scrolldefault='#4A5B70'
+				scrolldisabled='#2A3644'
+				scrollhover='#7F93AA'
+				scrollselected='#5AB0F5'
+				selected='#2F7FC4'
+				selectionBack='#1E5A8C'
+				skillAcquiredActivated='#B88A2E'
+				skillAcquiredDefault='#B88A2E'
+				skillAcquiredDisabled='#7A6233'
+				skillAcquiredHover='#D4A040'
+				skillAcquiredSelected='#B88A2E'
+				skillAcquiredTextActivated='#ECEFF2'
+				skillAcquiredTextDefault='#EEF0F2'
+				skillAcquiredTextHover='#FFFFFF'
+				skillactivated='#2F8BD8'
+				skilldefault='#2F7FC4'
+				skilldisabled='#2C3A4B'
+				skillhover='#3A5878'
+				skillselected='#2F8BD8'
+				skillTextActivated='#FFFFFF'
+				skillTextDefault='#FFFFFF'
+				slot='#33465C'
+				spaceGlow='#FFFFFF'
+				spaceLoading='#FFFFFF'
+				stamina='#4CC38A'
+				tab1='#4CC38A'
+				tab2='#4CC38A'
+				tab3='#4CC38A'
+				tab4='#4CC38A'
+				tab5='#F0B44C'
+				tableHeaderTextActivated='#EEF3F8'
+				tableHeaderTextDefault='#9AABBF'
+				tableHeaderTextDisabled='#6B7A8C'
+				tableHeaderTextHover='#FFFFFF'
+				tableHeaderTextSelected='#EEF3F8'
+				text1='#D3DDE8'
+				text2='#EEF3F8'
+				text3='#5AB0F5'
+				text4='#EEF3F8'
+				text5='#0B0F14'
+				textActivated='#FFFFFF'
+				TextDark='#121820'
+				textdefault='#DCE6F0'
+				textDisabled='#6B7A8C'
+				textHover='#FFFFFF'
+				textinsured='#F0B44C'
+				TextLight='#9AABBF'
+				textMagic='#B48CF2'
+				textMed='#6E8096'
+				textSelected='#FFFFFF'
+				textServer='#EEF3F8'
+				textskill='#E2B455'
+				titlebar='#2F8BD8'
+				titleText='#EEF3F8'
+				triangleHover='#9FC6EC'
+				triangleOff='#4A5B70'
+				triangleOn='#5AB0F5'
+				zoneback='#FFFFFF'
+			/>
 			<Palette
 				AccentDark='#1E2D2B'
 				AccentLight='#FFFFFF'
@@ -47507,8 +47845,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='450,72,451,80'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:450,72,451,80'
+								SourceRect='148,2,152,10'
 							/>
 							<ImageStyle
 								Name='e'
@@ -47535,8 +47874,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='450,72,451,80'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:450,72,451,80'
+								SourceRect='148,2,152,10'
 							/>
 							<ImageStyle
 								Name='e'
@@ -47571,8 +47911,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='450,72,451,80'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:450,72,451,80'
+								SourceRect='148,2,152,10'
 							/>
 							<ImageStyle
 								Name='e'
@@ -47713,13 +48054,15 @@
 						/>
 						<ImageStyle
 							Name='e'
-							Source='ui_rebel_final'
-							SourceRect='452,56,454,59'
+							Source='ui_titan_modern'
+							ThemeFrom='ui_rebel_final:452,56,454,59'
+							SourceRect='168,2,171,10'
 						/>
 						<ImageStyle
 							Name='w'
-							Source='ui_rebel_final'
-							SourceRect='447,56,449,59'
+							Source='ui_titan_modern'
+							ThemeFrom='ui_rebel_final:447,56,449,59'
+							SourceRect='159,2,162,10'
 						/>
 					</Namespace>
 				</Namespace>
@@ -47756,18 +48099,21 @@
 							<ImageStyle
 								Name='w'
 								Reversing='true'
-								Source='ui_rebel_final'
-								SourceRect='436,72,450,80'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:436,72,450,80'
+								SourceRect='144,2,148,10'
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='450,72,451,80'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:450,72,451,80'
+								SourceRect='148,2,152,10'
 							/>
 							<ImageStyle
 								Name='e'
-								Source='ui_rebel_final'
-								SourceRect='451,72,465,80'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:451,72,465,80'
+								SourceRect='152,2,156,10'
 							/>
 						</Namespace>
 						<Namespace
@@ -47784,18 +48130,21 @@
 							<ImageStyle
 								Name='w'
 								Reversing='true'
-								Source='ui_rebel_final'
-								SourceRect='436,72,450,80'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:436,72,450,80'
+								SourceRect='144,2,148,10'
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='450,72,451,80'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:450,72,451,80'
+								SourceRect='148,2,152,10'
 							/>
 							<ImageStyle
 								Name='e'
-								Source='ui_rebel_final'
-								SourceRect='451,72,465,80'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:451,72,465,80'
+								SourceRect='152,2,156,10'
 							/>
 						</Namespace>
 						<ButtonStyle
@@ -47820,18 +48169,21 @@
 							<ImageStyle
 								Name='w'
 								Reversing='true'
-								Source='ui_rebel_final'
-								SourceRect='436,72,450,80'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:436,72,450,80'
+								SourceRect='144,2,148,10'
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='450,72,451,80'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:450,72,451,80'
+								SourceRect='148,2,152,10'
 							/>
 							<ImageStyle
 								Name='e'
-								Source='ui_rebel_final'
-								SourceRect='451,72,465,80'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:451,72,465,80'
+								SourceRect='152,2,156,10'
 							/>
 						</Namespace>
 					</Namespace>
@@ -47855,8 +48207,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='448,63,452,68'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:448,63,452,68'
+								SourceRect='174,2,187,12'
 							/>
 						</Namespace>
 						<Namespace
@@ -47870,8 +48223,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='448,63,452,68'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:448,63,452,68'
+								SourceRect='174,2,187,12'
 							/>
 						</Namespace>
 						<Namespace
@@ -47885,8 +48239,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='448,63,452,68'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:448,63,452,68'
+								SourceRect='174,2,187,12'
 							/>
 						</Namespace>
 					</Namespace>
@@ -47910,8 +48265,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='448,63,452,68'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:448,63,452,68'
+								SourceRect='174,2,187,12'
 							/>
 						</Namespace>
 						<Namespace
@@ -47925,8 +48281,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='448,63,452,68'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:448,63,452,68'
+								SourceRect='174,2,187,12'
 							/>
 						</Namespace>
 						<Namespace
@@ -47940,8 +48297,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='448,63,452,68'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:448,63,452,68'
+								SourceRect='174,2,187,12'
 							/>
 						</Namespace>
 					</Namespace>
@@ -47962,18 +48320,21 @@
 						/>
 						<ImageStyle
 							Name='c'
-							Source='ui_rebel_final'
-							SourceRect='449,56,450,59'
+							Source='ui_titan_modern'
+							ThemeFrom='ui_rebel_final:449,56,450,59'
+							SourceRect='162,2,168,10'
 						/>
 						<ImageStyle
 							Name='e'
-							Source='ui_rebel_final'
-							SourceRect='452,56,454,59'
+							Source='ui_titan_modern'
+							ThemeFrom='ui_rebel_final:452,56,454,59'
+							SourceRect='168,2,171,10'
 						/>
 						<ImageStyle
 							Name='w'
-							Source='ui_rebel_final'
-							SourceRect='447,56,449,59'
+							Source='ui_titan_modern'
+							ThemeFrom='ui_rebel_final:447,56,449,59'
+							SourceRect='159,2,162,10'
 						/>
 					</Namespace>
 				</Namespace>
@@ -48021,18 +48382,21 @@
 							<ImageStyle
 								Name='n'
 								Reversing='true'
-								Source='ui_rebel_final'
-								SourceRect='448,57,453,60'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:448,57,453,60'
+								SourceRect='105,2,115,6'
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='473,18,481,19'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:473,18,481,19'
+								SourceRect='105,6,115,10'
 							/>
 							<ImageStyle
 								Name='s'
-								Source='ui_rebel_final'
-								SourceRect='448,55,453,58'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:448,55,453,58'
+								SourceRect='105,10,115,14'
 							/>
 						</Namespace>
 						<Namespace
@@ -48048,18 +48412,21 @@
 							/>
 							<ImageStyle
 								Name='n'
-								Source='ui_rebel_final'
-								SourceRect='448,57,453,60'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:448,57,453,60'
+								SourceRect='105,2,115,6'
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='473,18,481,19'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:473,18,481,19'
+								SourceRect='105,6,115,10'
 							/>
 							<ImageStyle
 								Name='s'
-								Source='ui_rebel_final'
-								SourceRect='448,55,453,58'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:448,55,453,58'
+								SourceRect='105,10,115,14'
 							/>
 						</Namespace>
 						<Namespace
@@ -48075,18 +48442,21 @@
 							/>
 							<ImageStyle
 								Name='n'
-								Source='ui_rebel_final'
-								SourceRect='448,57,453,60'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:448,57,453,60'
+								SourceRect='105,2,115,6'
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='473,18,481,19'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:473,18,481,19'
+								SourceRect='105,6,115,10'
 							/>
 							<ImageStyle
 								Name='s'
-								Source='ui_rebel_final'
-								SourceRect='448,55,453,58'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:448,55,453,58'
+								SourceRect='105,10,115,14'
 							/>
 						</Namespace>
 					</Namespace>
@@ -48110,8 +48480,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='443,14,453,2'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:443,14,453,2'
+								SourceRect='131,14,141,2'
 							/>
 						</Namespace>
 						<Namespace
@@ -48125,8 +48496,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='443,14,453,2'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:443,14,453,2'
+								SourceRect='131,14,141,2'
 							/>
 						</Namespace>
 						<Namespace
@@ -48140,8 +48512,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='443,14,453,2'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:443,14,453,2'
+								SourceRect='131,14,141,2'
 							/>
 						</Namespace>
 					</Namespace>
@@ -48162,18 +48535,21 @@
 						/>
 						<ImageStyle
 							Name='c'
-							Source='ui_rebel_final'
-							SourceRect='458,19,461,20'
+							Source='ui_titan_modern'
+							ThemeFrom='ui_rebel_final:458,19,461,20'
+							SourceRect='118,5,128,7'
 						/>
 						<ImageStyle
 							Name='n'
-							Source='ui_rebel_final'
-							SourceRect='458,15,461,17'
+							Source='ui_titan_modern'
+							ThemeFrom='ui_rebel_final:458,15,461,17'
+							SourceRect='118,2,128,5'
 						/>
 						<ImageStyle
 							Name='s'
-							Source='ui_rebel_final'
-							SourceRect='458,20,461,22'
+							Source='ui_titan_modern'
+							ThemeFrom='ui_rebel_final:458,20,461,22'
+							SourceRect='118,7,128,10'
 						/>
 					</Namespace>
 					<Namespace
@@ -48196,8 +48572,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='443,2,453,14'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:443,2,453,14'
+								SourceRect='131,2,141,14'
 							/>
 						</Namespace>
 						<Namespace
@@ -48211,8 +48588,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='443,2,453,14'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:443,2,453,14'
+								SourceRect='131,2,141,14'
 							/>
 						</Namespace>
 						<Namespace
@@ -48226,8 +48604,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='443,2,453,14'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:443,2,453,14'
+								SourceRect='131,2,141,14'
 							/>
 						</Namespace>
 					</Namespace>
@@ -48287,8 +48666,9 @@
 							<ImageStyle
 								Name='n'
 								Reversing='true'
-								Source='ui_rebel_final'
-								SourceRect='462,228,473,231'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:462,228,473,231'
+								SourceRect='105,2,115,6'
 							/>
 						</Namespace>
 					</Namespace>
@@ -48351,8 +48731,9 @@
 							/>
 							<ImageStyle
 								Name='s'
-								Source='ui_rebel_final'
-								SourceRect='505,487,508,489'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:505,487,508,489'
+								SourceRect='105,10,115,14'
 							/>
 						</Namespace>
 						<Namespace
@@ -48368,18 +48749,21 @@
 							/>
 							<ImageStyle
 								Name='n'
-								Source='ui_rebel_final'
-								SourceRect='505,487,508,489'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:505,487,508,489'
+								SourceRect='105,2,115,6'
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='505,487,508,489'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:505,487,508,489'
+								SourceRect='105,6,115,10'
 							/>
 							<ImageStyle
 								Name='s'
-								Source='ui_rebel_final'
-								SourceRect='505,487,508,489'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:505,487,508,489'
+								SourceRect='105,10,115,14'
 							/>
 						</Namespace>
 						<Namespace
@@ -48395,18 +48779,21 @@
 							/>
 							<ImageStyle
 								Name='n'
-								Source='ui_rebel_final'
-								SourceRect='505,487,508,489'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:505,487,508,489'
+								SourceRect='105,2,115,6'
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='505,487,508,489'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:505,487,508,489'
+								SourceRect='105,6,115,10'
 							/>
 							<ImageStyle
 								Name='s'
-								Source='ui_rebel_final'
-								SourceRect='505,487,508,489'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:505,487,508,489'
+								SourceRect='105,10,115,14'
 							/>
 						</Namespace>
 					</Namespace>
@@ -48441,8 +48828,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='462,228,473,231'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:462,228,473,231'
+								SourceRect='131,2,141,14'
 							/>
 						</Namespace>
 						<Namespace
@@ -48456,8 +48844,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='462,228,473,231'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:462,228,473,231'
+								SourceRect='131,2,141,14'
 							/>
 						</Namespace>
 						<Namespace
@@ -48471,8 +48860,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='462,228,473,231'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:462,228,473,231'
+								SourceRect='131,2,141,14'
 							/>
 						</Namespace>
 					</Namespace>
@@ -48494,18 +48884,21 @@
 						/>
 						<ImageStyle
 							Name='c'
-							Source='ui_rebel_final'
-							SourceRect='509,488,511,489'
+							Source='ui_titan_modern'
+							ThemeFrom='ui_rebel_final:509,488,511,489'
+							SourceRect='118,5,128,7'
 						/>
 						<ImageStyle
 							Name='n'
-							Source='ui_rebel_final'
-							SourceRect='509,487,511,490'
+							Source='ui_titan_modern'
+							ThemeFrom='ui_rebel_final:509,487,511,490'
+							SourceRect='118,2,128,5'
 						/>
 						<ImageStyle
 							Name='s'
-							Source='ui_rebel_final'
-							SourceRect='509,487,511,490'
+							Source='ui_titan_modern'
+							ThemeFrom='ui_rebel_final:509,487,511,490'
+							SourceRect='118,7,128,10'
 						/>
 					</Namespace>
 					<Namespace
@@ -48528,8 +48921,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='462,228,473,231'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:462,228,473,231'
+								SourceRect='131,2,141,14'
 							/>
 						</Namespace>
 						<Namespace
@@ -48543,8 +48937,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='462,228,473,231'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:462,228,473,231'
+								SourceRect='131,2,141,14'
 							/>
 						</Namespace>
 						<Namespace
@@ -48558,8 +48953,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='462,228,473,231'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:462,228,473,231'
+								SourceRect='131,2,141,14'
 							/>
 						</Namespace>
 					</Namespace>
@@ -48618,18 +49014,21 @@
 							<ImageStyle
 								Name='n'
 								Reversing='true'
-								Source='ui_rebel_final'
-								SourceRect='505,487,508,489'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:505,487,508,489'
+								SourceRect='105,2,115,6'
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='509,488,511,489'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:509,488,511,489'
+								SourceRect='105,6,115,10'
 							/>
 							<ImageStyle
 								Name='s'
-								Source='ui_rebel_final'
-								SourceRect='505,487,508,489'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:505,487,508,489'
+								SourceRect='105,10,115,14'
 							/>
 						</Namespace>
 						<Namespace
@@ -48645,18 +49044,21 @@
 							/>
 							<ImageStyle
 								Name='n'
-								Source='ui_rebel_final'
-								SourceRect='505,487,508,489'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:505,487,508,489'
+								SourceRect='105,2,115,6'
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='505,487,508,489'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:505,487,508,489'
+								SourceRect='105,6,115,10'
 							/>
 							<ImageStyle
 								Name='s'
-								Source='ui_rebel_final'
-								SourceRect='505,487,508,489'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:505,487,508,489'
+								SourceRect='105,10,115,14'
 							/>
 						</Namespace>
 						<Namespace
@@ -48672,18 +49074,21 @@
 							/>
 							<ImageStyle
 								Name='n'
-								Source='ui_rebel_final'
-								SourceRect='505,487,508,489'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:505,487,508,489'
+								SourceRect='105,2,115,6'
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='505,487,508,489'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:505,487,508,489'
+								SourceRect='105,6,115,10'
 							/>
 							<ImageStyle
 								Name='s'
-								Source='ui_rebel_final'
-								SourceRect='505,487,508,489'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:505,487,508,489'
+								SourceRect='105,10,115,14'
 							/>
 						</Namespace>
 					</Namespace>
@@ -48771,18 +49176,21 @@
 						/>
 						<ImageStyle
 							Name='c'
-							Source='ui_rebel_final'
-							SourceRect='509,488,511,489'
+							Source='ui_titan_modern'
+							ThemeFrom='ui_rebel_final:509,488,511,489'
+							SourceRect='105,6,115,10'
 						/>
 						<ImageStyle
 							Name='n'
-							Source='ui_rebel_final'
-							SourceRect='509,487,511,490'
+							Source='ui_titan_modern'
+							ThemeFrom='ui_rebel_final:509,487,511,490'
+							SourceRect='118,2,128,5'
 						/>
 						<ImageStyle
 							Name='s'
-							Source='ui_rebel_final'
-							SourceRect='509,487,511,490'
+							Source='ui_titan_modern'
+							ThemeFrom='ui_rebel_final:509,487,511,490'
+							SourceRect='118,7,128,10'
 						/>
 					</Namespace>
 					<Namespace
@@ -48879,18 +49287,21 @@
 							<ImageStyle
 								Name='n'
 								Reversing='true'
-								Source='ui_rebel_new_style'
-								SourceRect='167,87,177,90'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_new_style:167,87,177,90'
+								SourceRect='105,2,115,6'
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_new_style'
-								SourceRect='167,89,177,92'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_new_style:167,89,177,92'
+								SourceRect='105,6,115,10'
 							/>
 							<ImageStyle
 								Name='s'
-								Source='ui_rebel_new_style'
-								SourceRect='167,92,177,95'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_new_style:167,92,177,95'
+								SourceRect='105,10,115,14'
 							/>
 						</Namespace>
 						<Namespace
@@ -48907,18 +49318,21 @@
 							<ImageStyle
 								Name='n'
 								Reversing='true'
-								Source='ui_rebel_new_style'
-								SourceRect='167,87,177,90'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_new_style:167,87,177,90'
+								SourceRect='105,2,115,6'
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_new_style'
-								SourceRect='167,89,177,92'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_new_style:167,89,177,92'
+								SourceRect='105,6,115,10'
 							/>
 							<ImageStyle
 								Name='s'
-								Source='ui_rebel_new_style'
-								SourceRect='167,92,177,95'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_new_style:167,92,177,95'
+								SourceRect='105,10,115,14'
 							/>
 						</Namespace>
 						<ButtonStyle
@@ -48941,18 +49355,21 @@
 							<ImageStyle
 								Name='n'
 								Reversing='true'
-								Source='ui_rebel_new_style'
-								SourceRect='167,87,177,90'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_new_style:167,87,177,90'
+								SourceRect='105,2,115,6'
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_new_style'
-								SourceRect='167,89,177,92'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_new_style:167,89,177,92'
+								SourceRect='105,6,115,10'
 							/>
 							<ImageStyle
 								Name='s'
-								Source='ui_rebel_new_style'
-								SourceRect='167,92,177,95'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_new_style:167,92,177,95'
+								SourceRect='105,10,115,14'
 							/>
 						</Namespace>
 					</Namespace>
@@ -48975,8 +49392,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_new_style'
-								SourceRect='179,75,189,86'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_new_style:179,75,189,86'
+								SourceRect='131,2,141,14'
 							/>
 						</Namespace>
 						<Namespace
@@ -48988,8 +49406,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_new_style'
-								SourceRect='179,75,189,86'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_new_style:179,75,189,86'
+								SourceRect='131,2,141,14'
 							/>
 						</Namespace>
 						<Namespace
@@ -49002,8 +49421,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_new_style'
-								SourceRect='179,75,189,86'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_new_style:179,75,189,86'
+								SourceRect='131,2,141,14'
 							/>
 						</Namespace>
 					</Namespace>
@@ -49022,18 +49442,21 @@
 						/>
 						<ImageStyle
 							Name='c'
-							Source='ui_rebel_new_style'
-							SourceRect='178,89,189,92'
+							Source='ui_titan_modern'
+							ThemeFrom='ui_rebel_new_style:178,89,189,92'
+							SourceRect='118,5,128,7'
 						/>
 						<ImageStyle
 							Name='n'
-							Source='ui_rebel_new_style'
-							SourceRect='178,87,189,90'
+							Source='ui_titan_modern'
+							ThemeFrom='ui_rebel_new_style:178,87,189,90'
+							SourceRect='118,2,128,5'
 						/>
 						<ImageStyle
 							Name='s'
-							Source='ui_rebel_new_style'
-							SourceRect='178,91,189,94'
+							Source='ui_titan_modern'
+							ThemeFrom='ui_rebel_new_style:178,91,189,94'
+							SourceRect='118,7,128,10'
 						/>
 					</Namespace>
 					<Namespace
@@ -49055,8 +49478,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_new_style'
-								SourceRect='167,76,177,87'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_new_style:167,76,177,87'
+								SourceRect='131,2,141,14'
 							/>
 						</Namespace>
 						<Namespace
@@ -49068,8 +49492,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_new_style'
-								SourceRect='167,76,177,87'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_new_style:167,76,177,87'
+								SourceRect='131,2,141,14'
 							/>
 						</Namespace>
 						<Namespace
@@ -49082,8 +49507,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_new_style'
-								SourceRect='167,76,177,87'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_new_style:167,76,177,87'
+								SourceRect='131,2,141,14'
 							/>
 						</Namespace>
 					</Namespace>
@@ -49151,18 +49577,21 @@
 							<ImageStyle
 								Name='n'
 								Reversing='true'
-								Source='ui_rebel_new_style'
-								SourceRect='167,87,177,90'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_new_style:167,87,177,90'
+								SourceRect='105,2,115,6'
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_new_style'
-								SourceRect='167,89,177,92'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_new_style:167,89,177,92'
+								SourceRect='105,6,115,10'
 							/>
 							<ImageStyle
 								Name='s'
-								Source='ui_rebel_new_style'
-								SourceRect='167,92,177,95'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_new_style:167,92,177,95'
+								SourceRect='105,10,115,14'
 							/>
 						</Namespace>
 						<Namespace
@@ -49178,18 +49607,21 @@
 							<ImageStyle
 								Name='n'
 								Reversing='true'
-								Source='ui_rebel_new_style'
-								SourceRect='167,87,177,90'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_new_style:167,87,177,90'
+								SourceRect='105,2,115,6'
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_new_style'
-								SourceRect='167,89,177,92'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_new_style:167,89,177,92'
+								SourceRect='105,6,115,10'
 							/>
 							<ImageStyle
 								Name='s'
-								Source='ui_rebel_new_style'
-								SourceRect='167,92,177,95'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_new_style:167,92,177,95'
+								SourceRect='105,10,115,14'
 							/>
 						</Namespace>
 						<Namespace
@@ -49205,18 +49637,21 @@
 							<ImageStyle
 								Name='n'
 								Reversing='true'
-								Source='ui_shader_overlay:ui_rebel_new_style'
-								SourceRect='167,87,177,90'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_new_style:167,87,177,90'
+								SourceRect='105,2,115,6'
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_shader_overlay:ui_rebel_new_style'
-								SourceRect='167,89,177,92'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_new_style:167,89,177,92'
+								SourceRect='105,6,115,10'
 							/>
 							<ImageStyle
 								Name='s'
-								Source='ui_shader_overlay:ui_rebel_new_style'
-								SourceRect='167,92,177,95'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_new_style:167,92,177,95'
+								SourceRect='105,10,115,14'
 							/>
 						</Namespace>
 					</Namespace>
@@ -49239,8 +49674,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_new_style'
-								SourceRect='179,75,189,86'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_new_style:179,75,189,86'
+								SourceRect='131,2,141,14'
 							/>
 						</Namespace>
 						<Namespace
@@ -49252,8 +49688,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_shader_overlay:ui_rebel_new_style'
-								SourceRect='179,75,189,86'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_new_style:179,75,189,86'
+								SourceRect='131,2,141,14'
 							/>
 						</Namespace>
 						<Namespace
@@ -49266,8 +49703,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_new_style'
-								SourceRect='179,75,189,86'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_new_style:179,75,189,86'
+								SourceRect='131,2,141,14'
 							/>
 						</Namespace>
 					</Namespace>
@@ -49286,18 +49724,21 @@
 						/>
 						<ImageStyle
 							Name='c'
-							Source='ui_shader_overlay:ui_rebel_new_style'
-							SourceRect='178,89,189,92'
+							Source='ui_titan_modern'
+							ThemeFrom='ui_rebel_new_style:178,89,189,92'
+							SourceRect='118,5,128,7'
 						/>
 						<ImageStyle
 							Name='n'
-							Source='ui_shader_overlay:ui_rebel_new_style'
-							SourceRect='178,87,189,90'
+							Source='ui_titan_modern'
+							ThemeFrom='ui_rebel_new_style:178,87,189,90'
+							SourceRect='118,2,128,5'
 						/>
 						<ImageStyle
 							Name='s'
-							Source='ui_shader_overlay:ui_rebel_new_style'
-							SourceRect='178,91,189,94'
+							Source='ui_titan_modern'
+							ThemeFrom='ui_rebel_new_style:178,91,189,94'
+							SourceRect='118,7,128,10'
 						/>
 					</Namespace>
 					<Namespace
@@ -49319,8 +49760,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_new_style'
-								SourceRect='167,76,177,87'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_new_style:167,76,177,87'
+								SourceRect='131,2,141,14'
 							/>
 						</Namespace>
 						<Namespace
@@ -49332,8 +49774,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_shader_overlay:ui_rebel_new_style'
-								SourceRect='167,76,177,87'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_new_style:167,76,177,87'
+								SourceRect='131,2,141,14'
 							/>
 						</Namespace>
 						<Namespace
@@ -49346,8 +49789,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_new_style'
-								SourceRect='167,76,177,87'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_new_style:167,76,177,87'
+								SourceRect='131,2,141,14'
 							/>
 						</Namespace>
 					</Namespace>
@@ -49877,18 +50321,21 @@
 							<ImageStyle
 								Name='n'
 								Reversing='true'
-								Source='ui_rebel_final'
-								SourceRect='505,487,508,489'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:505,487,508,489'
+								SourceRect='105,2,115,6'
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='509,488,511,489'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:509,488,511,489'
+								SourceRect='105,6,115,10'
 							/>
 							<ImageStyle
 								Name='s'
-								Source='ui_rebel_final'
-								SourceRect='505,487,508,489'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:505,487,508,489'
+								SourceRect='105,10,115,14'
 							/>
 						</Namespace>
 						<Namespace
@@ -49904,18 +50351,21 @@
 							/>
 							<ImageStyle
 								Name='n'
-								Source='ui_rebel_final'
-								SourceRect='505,487,508,489'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:505,487,508,489'
+								SourceRect='105,2,115,6'
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='509,488,511,489'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:509,488,511,489'
+								SourceRect='105,6,115,10'
 							/>
 							<ImageStyle
 								Name='s'
-								Source='ui_rebel_final'
-								SourceRect='505,487,508,489'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:505,487,508,489'
+								SourceRect='105,10,115,14'
 							/>
 						</Namespace>
 						<Namespace
@@ -49931,18 +50381,21 @@
 							/>
 							<ImageStyle
 								Name='n'
-								Source='ui_rebel_final'
-								SourceRect='505,487,508,489'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:505,487,508,489'
+								SourceRect='105,2,115,6'
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='509,488,511,489'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:509,488,511,489'
+								SourceRect='105,6,115,10'
 							/>
 							<ImageStyle
 								Name='s'
-								Source='ui_rebel_final'
-								SourceRect='505,487,508,489'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:505,487,508,489'
+								SourceRect='105,10,115,14'
 							/>
 						</Namespace>
 					</Namespace>
@@ -49977,8 +50430,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='499,118,504,111'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:499,118,504,111'
+								SourceRect='131,14,141,2'
 							/>
 						</Namespace>
 						<Namespace
@@ -49992,8 +50446,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='499,118,504,111'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:499,118,504,111'
+								SourceRect='131,14,141,2'
 							/>
 						</Namespace>
 						<Namespace
@@ -50007,8 +50462,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='499,118,504,111'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:499,118,504,111'
+								SourceRect='131,14,141,2'
 							/>
 						</Namespace>
 					</Namespace>
@@ -50030,18 +50486,21 @@
 						/>
 						<ImageStyle
 							Name='c'
-							Source='ui_rebel_final'
-							SourceRect='509,488,511,489'
+							Source='ui_titan_modern'
+							ThemeFrom='ui_rebel_final:509,488,511,489'
+							SourceRect='118,5,128,7'
 						/>
 						<ImageStyle
 							Name='n'
-							Source='ui_rebel_final'
-							SourceRect='509,487,511,490'
+							Source='ui_titan_modern'
+							ThemeFrom='ui_rebel_final:509,487,511,490'
+							SourceRect='118,2,128,5'
 						/>
 						<ImageStyle
 							Name='s'
-							Source='ui_rebel_final'
-							SourceRect='509,487,511,490'
+							Source='ui_titan_modern'
+							ThemeFrom='ui_rebel_final:509,487,511,490'
+							SourceRect='118,7,128,10'
 						/>
 					</Namespace>
 					<Namespace
@@ -50064,8 +50523,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='499,111,504,118'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:499,111,504,118'
+								SourceRect='131,2,141,14'
 							/>
 						</Namespace>
 						<Namespace
@@ -50079,8 +50539,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='499,111,504,118'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:499,111,504,118'
+								SourceRect='131,2,141,14'
 							/>
 						</Namespace>
 						<Namespace
@@ -50094,8 +50555,9 @@
 							/>
 							<ImageStyle
 								Name='c'
-								Source='ui_rebel_final'
-								SourceRect='499,111,504,118'
+								Source='ui_titan_modern'
+								ThemeFrom='ui_rebel_final:499,111,504,118'
+								SourceRect='131,2,141,14'
 							/>
 						</Namespace>
 					</Namespace>
@@ -50350,8 +50812,8 @@
 				Name='buttonhoth'
 			>
 				<ButtonStyle
-					DisabledIconColor='#00ACE6'
-					DisabledTextColor='#00ACE6'
+					DisabledIconColor='#2074C6'
+					DisabledTextColor='#2074C6'
 					DisabledTextMargin='7,0,7,0'
 					MouseOverIconColor='#F7D724'
 					MouseOverSound='ui_rollover'
@@ -50359,11 +50821,11 @@
 					MouseOverTextMargin='7,0,7,0'
 					MouseOverTextStyle='bold_11'
 					Name='style'
-					NormalIconColor='#66F3FF'
-					NormalTextColor='#66F3FF'
+					NormalIconColor='#7BB6EA'
+					NormalTextColor='#7BB6EA'
 					NormalTextMargin='7,0,7,0'
 					NormalTextStyle='bold_11'
-					PressedTextColor='#1CFFA4'
+					PressedTextColor='#3C9EDF'
 					PressedTextMargin='7,0,7,0'
 					ReleaseSound='ui_deselect'
 					RStyleActivated='activated.rs'
@@ -50374,7 +50836,7 @@
 					RStyleMouseOverSelected='hover.rs'
 					RStyleSelected='selected.rs'
 					SelectedIconColor='#000000'
-					SelectedTextColor='#24EFFF'
+					SelectedTextColor='#4396E0'
 					SelectedTextMargin='7,0,7,0'
 					TextCapital='true'
 				/>
@@ -50383,7 +50845,7 @@
 				>
 					<RectangleStyle
 						Center='c'
-						Color='#0A7676'
+						Color='#194367'
 						East='e'
 						Name='rs'
 						North='n'
@@ -50469,7 +50931,7 @@
 					RStyleMouseOverSelected='hover.rs'
 					RStyleSelected='selected.rs'
 					SelectedIconColor='#000000'
-					SelectedTextColor='#42DBFB'
+					SelectedTextColor='#5CA1E1'
 					SelectedTextMargin='7,0,7,0'
 					TextCapital='true'
 				/>
@@ -53882,16 +54344,16 @@
 					Name='button5'
 				>
 					<ButtonStyle
-						DisabledIconColor='#80FFFF'
+						DisabledIconColor='#92C3ED'
 						DisabledTextColor='#FF0000'
 						DisabledTextMargin='7,0,7,0'
-						MouseOverIconColor='#00FFFF'
+						MouseOverIconColor='#2487DB'
 						MouseOverSound='ui_rollover'
 						MouseOverTextColor='#FFC000'
 						MouseOverTextMargin='7,0,7,0'
 						MouseOverTextStyle='bold_11'
 						Name='style'
-						NormalIconColor='#00D6FB'
+						NormalIconColor='#2381D8'
 						NormalTextColor='#FF0000'
 						NormalTextMargin='7,0,7,0'
 						NormalTextStyle='bold_11'
@@ -54127,16 +54589,16 @@
 					Name='eject'
 				>
 					<ButtonStyle
-						DisabledIconColor='#80FFFF'
+						DisabledIconColor='#92C3ED'
 						DisabledTextColor='#FF0000'
 						DisabledTextMargin='7,0,7,0'
-						MouseOverIconColor='#00FFFF'
+						MouseOverIconColor='#2487DB'
 						MouseOverSound='ui_rollover'
 						MouseOverTextColor='#FFC000'
 						MouseOverTextMargin='7,0,7,0'
 						MouseOverTextStyle='bold_15'
 						Name='style'
-						NormalIconColor='#00D6FB'
+						NormalIconColor='#2381D8'
 						NormalTextColor='#FF0000'
 						NormalTextMargin='7,0,7,0'
 						NormalTextStyle='bold_15'
@@ -54425,16 +54887,16 @@
 				Name='button2'
 			>
 				<ButtonStyle
-					DisabledIconColor='#80FFFF'
+					DisabledIconColor='#92C3ED'
 					DisabledTextColor='#59A8FF'
 					DisabledTextMargin='3,0,3,0'
-					MouseOverIconColor='#00FFFF'
+					MouseOverIconColor='#2487DB'
 					MouseOverSound='ui_rollover'
 					MouseOverTextColor='#CFE6FE'
 					MouseOverTextMargin='3,0,3,0'
 					MouseOverTextStyle='bold_11'
 					Name='style'
-					NormalIconColor='#00D6FB'
+					NormalIconColor='#2381D8'
 					NormalTextColor='#7ABCFE'
 					NormalTextMargin='3,0,3,0'
 					NormalTextStyle='bold_11'
@@ -54525,16 +54987,16 @@
 				Name='button3'
 			>
 				<ButtonStyle
-					DisabledIconColor='#80FFFF'
+					DisabledIconColor='#92C3ED'
 					DisabledTextColor='#028BA8'
 					DisabledTextMargin='3,0,3,0'
-					MouseOverIconColor='#00FFFF'
+					MouseOverIconColor='#2487DB'
 					MouseOverSound='ui_rollover'
 					MouseOverTextColor='#18393D'
 					MouseOverTextMargin='3,0,3,0'
 					MouseOverTextStyle='bold_11'
 					Name='style'
-					NormalIconColor='#00D6FB'
+					NormalIconColor='#2381D8'
 					NormalTextColor='#2FF4FF'
 					NormalTextMargin='3,0,3,0'
 					NormalTextStyle='bold_11'
@@ -54625,16 +55087,16 @@
 				Name='button4'
 			>
 				<ButtonStyle
-					DisabledIconColor='#80FFFF'
+					DisabledIconColor='#92C3ED'
 					DisabledTextColor='#028BA8'
 					DisabledTextMargin='7,0,7,0'
-					MouseOverIconColor='#00FFFF'
+					MouseOverIconColor='#2487DB'
 					MouseOverSound='ui_rollover'
 					MouseOverTextColor='#18393D'
 					MouseOverTextMargin='7,0,7,0'
 					MouseOverTextStyle='bold_11'
 					Name='style'
-					NormalIconColor='#00D6FB'
+					NormalIconColor='#2381D8'
 					NormalTextColor='#2FF4FF'
 					NormalTextMargin='7,0,7,0'
 					NormalTextStyle='bold_11'
@@ -54725,16 +55187,16 @@
 				Name='button5'
 			>
 				<ButtonStyle
-					DisabledIconColor='#80FFFF'
+					DisabledIconColor='#92C3ED'
 					DisabledTextColor='#59A8FF'
 					DisabledTextMargin='7,0,7,0'
-					MouseOverIconColor='#00FFFF'
+					MouseOverIconColor='#2487DB'
 					MouseOverSound='ui_rollover'
 					MouseOverTextColor='#CFE6FE'
 					MouseOverTextMargin='7,0,7,0'
 					MouseOverTextStyle='bold_11'
 					Name='style'
-					NormalIconColor='#00D6FB'
+					NormalIconColor='#2381D8'
 					NormalTextColor='#7ABCFE'
 					NormalTextMargin='7,0,7,0'
 					NormalTextStyle='bold_11'
@@ -55707,7 +56169,7 @@
 						PalNormalIcon='arrowdefault'
 						PalSelectedIcon='arrowselected'
 						PressedIconColor='#C4FE12'
-						PressedTextColor='#0B4257'
+						PressedTextColor='#16314C'
 						ReleaseSound='ui_deselect'
 						RStyleDefault='key_frame_1piece.rs_default'
 						SelectedIconColor='#84FFFC'
@@ -55780,16 +56242,16 @@
 					SelectedTextColor='#038D9C'
 				/>
 				<ButtonStyle
-					DisabledIconColor='#80FFFF'
+					DisabledIconColor='#92C3ED'
 					DisabledTextColor='#014A5A'
 					DisabledTextMargin='3,0,3,0'
-					MouseOverIconColor='#00FFFF'
+					MouseOverIconColor='#2487DB'
 					MouseOverSound='ui_rollover'
 					MouseOverTextColor='#4FEDFF'
 					MouseOverTextMargin='3,0,3,0'
 					MouseOverTextStyle='bold_20'
 					Name='styleBigger'
-					NormalIconColor='#00D6FB'
+					NormalIconColor='#2381D8'
 					NormalTextColor='#2DAAC6'
 					NormalTextMargin='3,0,3,0'
 					NormalTextStyle='bold_20'
@@ -55813,14 +56275,14 @@
 					SelectedTextMargin='3,0,3,0'
 				/>
 				<ButtonStyle
-					DisabledIconColor='#80FFFF'
+					DisabledIconColor='#92C3ED'
 					DisabledTextColor='#59A8FF'
-					MouseOverIconColor='#00FFFF'
+					MouseOverIconColor='#2487DB'
 					MouseOverSound='ui_rollover'
 					MouseOverTextColor='#CFE6FE'
 					MouseOverTextStyle='bold_13'
 					Name='styleBig'
-					NormalIconColor='#00D6FB'
+					NormalIconColor='#2381D8'
 					NormalTextColor='#7ABCFE'
 					NormalTextStyle='bold_13'
 					PalActivatedText='activated'
@@ -55841,16 +56303,16 @@
 					SelectedTextColor='#42DBFB'
 				/>
 				<ButtonStyle
-					DisabledIconColor='#80FFFF'
+					DisabledIconColor='#92C3ED'
 					DisabledTextColor='#014A5A'
 					DisabledTextMargin='3,0,3,0'
-					MouseOverIconColor='#00FFFF'
+					MouseOverIconColor='#2487DB'
 					MouseOverSound='ui_rollover'
 					MouseOverTextColor='#4FEDFF'
 					MouseOverTextMargin='3,0,3,0'
 					MouseOverTextStyle='bold_11'
 					Name='styleLight'
-					NormalIconColor='#00D6FB'
+					NormalIconColor='#2381D8'
 					NormalTextColor='#2DAAC6'
 					NormalTextMargin='3,0,3,0'
 					NormalTextStyle='bold_11'
@@ -55874,16 +56336,16 @@
 					SelectedTextMargin='3,0,3,0'
 				/>
 				<ButtonStyle
-					DisabledIconColor='#80FFFF'
+					DisabledIconColor='#92C3ED'
 					DisabledTextColor='#028BA8'
 					DisabledTextMargin='3,0,3,0'
-					MouseOverIconColor='#00FFFF'
+					MouseOverIconColor='#2487DB'
 					MouseOverSound='ui_rollover'
 					MouseOverTextColor='#18393D'
 					MouseOverTextMargin='3,0,3,0'
 					MouseOverTextStyle='bold_11'
 					Name='style'
-					NormalIconColor='#00D6FB'
+					NormalIconColor='#2381D8'
 					NormalTextColor='#2FF4FF'
 					NormalTextMargin='3,0,3,0'
 					NormalTextStyle='bold_11'
@@ -55974,16 +56436,16 @@
 				Name='buttontemp'
 			>
 				<ButtonStyle
-					DisabledIconColor='#80FFFF'
+					DisabledIconColor='#92C3ED'
 					DisabledTextColor='#0B68F4'
 					DisabledTextMargin='7,0,7,0'
-					MouseOverIconColor='#00FFFF'
+					MouseOverIconColor='#2487DB'
 					MouseOverSound='ui_rollover'
 					MouseOverTextColor='#CEE6FF'
 					MouseOverTextMargin='7,0,7,0'
 					MouseOverTextStyle='bold_11'
 					Name='style'
-					NormalIconColor='#00D6FB'
+					NormalIconColor='#2381D8'
 					NormalTextColor='#8DC6FE'
 					NormalTextMargin='7,0,7,0'
 					NormalTextStyle='bold_11'
@@ -55998,7 +56460,7 @@
 					RStyleMouseOverSelected='hover.rs'
 					RStyleSelected='selected.rs'
 					SelectedIconColor='#000000'
-					SelectedTextColor='#42DBFB'
+					SelectedTextColor='#5CA1E1'
 					SelectedTextMargin='7,0,7,0'
 					TextCapital='true'
 				/>
@@ -56069,10 +56531,10 @@
 				Name='buttontemp_color'
 			>
 				<ButtonStyle
-					DisabledIconColor='#80FFFF'
+					DisabledIconColor='#92C3ED'
 					DisabledTextColor='#F4D3B9'
 					DisabledTextMargin='7,0,7,0'
-					MouseOverIconColor='#00FFFF'
+					MouseOverIconColor='#2487DB'
 					MouseOverSound='ui_rollover'
 					MouseOverTextColor='#CEE6FF'
 					MouseOverTextMargin='7,0,7,0'
@@ -57352,13 +57814,13 @@
 					>
 						<ButtonStyle
 							DisabledIconColor='#70E9FE'
-							DisabledTextColor='#00FFFF'
+							DisabledTextColor='#2487DB'
 							MouseOverIconColor='#62FF15'
 							MouseOverSound='ui_rollover'
-							MouseOverTextColor='#04575E'
+							MouseOverTextColor='#113351'
 							Name='style'
 							NormalIconColor='#70E9FE'
-							NormalTextColor='#00FFFF'
+							NormalTextColor='#2487DB'
 							NormalTextStyle='bold_15'
 							PalActivatedIcon='highlight'
 							PalDisabledIcon='icon'
@@ -57366,11 +57828,11 @@
 							PalNormalIcon='icon'
 							PalSelectedIcon='contrast1'
 							PressedIconColor='#00FFFF'
-							PressedTextColor='#04575E'
+							PressedTextColor='#113351'
 							ReleaseSound='ui_deselect'
 							RStyleDefault='default.rs'
 							SelectedIconColor='#62FF15'
-							SelectedTextColor='#04575E'
+							SelectedTextColor='#113351'
 						/>
 						<Namespace
 							Name='default'
@@ -57394,13 +57856,13 @@
 					>
 						<ButtonStyle
 							DisabledIconColor='#70E9FE'
-							DisabledTextColor='#00FFFF'
+							DisabledTextColor='#2487DB'
 							MouseOverIconColor='#62FF15'
 							MouseOverSound='ui_rollover'
-							MouseOverTextColor='#04575E'
+							MouseOverTextColor='#113351'
 							Name='style'
 							NormalIconColor='#70E9FE'
-							NormalTextColor='#00FFFF'
+							NormalTextColor='#2487DB'
 							NormalTextStyle='bold_15'
 							PalActivatedIcon='highlight'
 							PalDisabledIcon='icon'
@@ -57408,14 +57870,14 @@
 							PalNormalIcon='icon'
 							PalSelectedIcon='contrast1'
 							PressedIconColor='#00FFFF'
-							PressedTextColor='#04575E'
+							PressedTextColor='#113351'
 							ReleaseSound='ui_deselect'
 							RStyleActivated='activated.rs'
 							RStyleDefault='default.rs'
 							RStyleDisabled='disabled.rs'
 							RStyleMouseOver='hover.rs'
 							SelectedIconColor='#62FF15'
-							SelectedTextColor='#04575E'
+							SelectedTextColor='#113351'
 						/>
 						<Namespace
 							Name='activated'
@@ -57476,13 +57938,13 @@
 					>
 						<ButtonStyle
 							DisabledIconColor='#70E9FE'
-							DisabledTextColor='#00FFFF'
+							DisabledTextColor='#2487DB'
 							MouseOverIconColor='#62FF15'
 							MouseOverSound='ui_rollover'
-							MouseOverTextColor='#04575E'
+							MouseOverTextColor='#113351'
 							Name='style'
 							NormalIconColor='#70E9FE'
-							NormalTextColor='#00FFFF'
+							NormalTextColor='#2487DB'
 							NormalTextStyle='bold_15'
 							PalActivatedIcon='highlight'
 							PalDisabledIcon='icon'
@@ -57490,14 +57952,14 @@
 							PalNormalIcon='icon'
 							PalSelectedIcon='contrast1'
 							PressedIconColor='#00FFFF'
-							PressedTextColor='#04575E'
+							PressedTextColor='#113351'
 							ReleaseSound='ui_deselect'
 							RStyleActivated='activated.rs'
 							RStyleDefault='default.rs'
 							RStyleDisabled='disabled.rs'
 							RStyleMouseOver='hover.rs'
 							SelectedIconColor='#62FF15'
-							SelectedTextColor='#04575E'
+							SelectedTextColor='#113351'
 						/>
 						<Namespace
 							Name='activated'
@@ -57566,13 +58028,13 @@
 					>
 						<ButtonStyle
 							DisabledIconColor='#70E9FE'
-							DisabledTextColor='#00FFFF'
+							DisabledTextColor='#2487DB'
 							MouseOverIconColor='#62FF15'
 							MouseOverSound='ui_rollover'
-							MouseOverTextColor='#04575E'
+							MouseOverTextColor='#113351'
 							Name='style'
 							NormalIconColor='#70E9FE'
-							NormalTextColor='#00FFFF'
+							NormalTextColor='#2487DB'
 							NormalTextStyle='bold_15'
 							PalActivatedIcon='highlight'
 							PalDisabledIcon='icon'
@@ -57580,14 +58042,14 @@
 							PalNormalIcon='icon'
 							PalSelectedIcon='contrast1'
 							PressedIconColor='#00FFFF'
-							PressedTextColor='#04575E'
+							PressedTextColor='#113351'
 							ReleaseSound='ui_deselect'
 							RStyleActivated='activated.rs'
 							RStyleDefault='default.rs'
 							RStyleDisabled='disabled.rs'
 							RStyleMouseOver='hover.rs'
 							SelectedIconColor='#62FF15'
-							SelectedTextColor='#04575E'
+							SelectedTextColor='#113351'
 						/>
 						<Namespace
 							Name='activated'
@@ -57656,13 +58118,13 @@
 					>
 						<ButtonStyle
 							DisabledIconColor='#70E9FE'
-							DisabledTextColor='#00FFFF'
+							DisabledTextColor='#2487DB'
 							MouseOverIconColor='#62FF15'
 							MouseOverSound='ui_rollover'
-							MouseOverTextColor='#04575E'
+							MouseOverTextColor='#113351'
 							Name='style'
 							NormalIconColor='#70E9FE'
-							NormalTextColor='#00FFFF'
+							NormalTextColor='#2487DB'
 							NormalTextStyle='bold_15'
 							PalActivatedIcon='highlight'
 							PalDisabledIcon='icon'
@@ -57670,14 +58132,14 @@
 							PalNormalIcon='icon'
 							PalSelectedIcon='contrast1'
 							PressedIconColor='#00FFFF'
-							PressedTextColor='#04575E'
+							PressedTextColor='#113351'
 							ReleaseSound='ui_deselect'
 							RStyleActivated='activated.rs'
 							RStyleDefault='default.rs'
 							RStyleDisabled='disabled.rs'
 							RStyleMouseOver='hover.rs'
 							SelectedIconColor='#62FF15'
-							SelectedTextColor='#04575E'
+							SelectedTextColor='#113351'
 						/>
 						<Namespace
 							Name='activated'
@@ -57746,13 +58208,13 @@
 					>
 						<ButtonStyle
 							DisabledIconColor='#70E9FE'
-							DisabledTextColor='#00FFFF'
+							DisabledTextColor='#2487DB'
 							MouseOverIconColor='#62FF15'
 							MouseOverSound='ui_rollover'
-							MouseOverTextColor='#04575E'
+							MouseOverTextColor='#113351'
 							Name='style'
 							NormalIconColor='#70E9FE'
-							NormalTextColor='#00FFFF'
+							NormalTextColor='#2487DB'
 							NormalTextStyle='bold_15'
 							PalActivatedIcon='highlight'
 							PalDisabledIcon='icon'
@@ -57760,14 +58222,14 @@
 							PalNormalIcon='icon'
 							PalSelectedIcon='contrast1'
 							PressedIconColor='#00FFFF'
-							PressedTextColor='#04575E'
+							PressedTextColor='#113351'
 							ReleaseSound='ui_deselect'
 							RStyleActivated='activated.rs'
 							RStyleDefault='default.rs'
 							RStyleDisabled='disabled.rs'
 							RStyleMouseOver='hover.rs'
 							SelectedIconColor='#62FF15'
-							SelectedTextColor='#04575E'
+							SelectedTextColor='#113351'
 						/>
 						<Namespace
 							Name='activated'
@@ -57836,13 +58298,13 @@
 					>
 						<ButtonStyle
 							DisabledIconColor='#70E9FE'
-							DisabledTextColor='#00FFFF'
+							DisabledTextColor='#2487DB'
 							MouseOverIconColor='#62FF15'
 							MouseOverSound='ui_rollover'
-							MouseOverTextColor='#04575E'
+							MouseOverTextColor='#113351'
 							Name='style'
 							NormalIconColor='#70E9FE'
-							NormalTextColor='#00FFFF'
+							NormalTextColor='#2487DB'
 							NormalTextStyle='bold_15'
 							PalActivatedIcon='highlight'
 							PalDisabledIcon='icon'
@@ -57850,14 +58312,14 @@
 							PalNormalIcon='icon'
 							PalSelectedIcon='contrast1'
 							PressedIconColor='#00FFFF'
-							PressedTextColor='#04575E'
+							PressedTextColor='#113351'
 							ReleaseSound='ui_deselect'
 							RStyleActivated='activated.rs'
 							RStyleDefault='default.rs'
 							RStyleDisabled='disabled.rs'
 							RStyleMouseOver='hover.rs'
 							SelectedIconColor='#62FF15'
-							SelectedTextColor='#04575E'
+							SelectedTextColor='#113351'
 						/>
 						<Namespace
 							Name='activated'
@@ -57926,13 +58388,13 @@
 					>
 						<ButtonStyle
 							DisabledIconColor='#70E9FE'
-							DisabledTextColor='#00FFFF'
+							DisabledTextColor='#2487DB'
 							MouseOverIconColor='#62FF15'
 							MouseOverSound='ui_rollover'
-							MouseOverTextColor='#04575E'
+							MouseOverTextColor='#113351'
 							Name='style'
 							NormalIconColor='#70E9FE'
-							NormalTextColor='#00FFFF'
+							NormalTextColor='#2487DB'
 							NormalTextStyle='bold_15'
 							PalActivatedIcon='highlight'
 							PalDisabledIcon='icon'
@@ -57940,14 +58402,14 @@
 							PalNormalIcon='icon'
 							PalSelectedIcon='contrast1'
 							PressedIconColor='#00FFFF'
-							PressedTextColor='#04575E'
+							PressedTextColor='#113351'
 							ReleaseSound='ui_deselect'
 							RStyleActivated='activated.rs'
 							RStyleDefault='default.rs'
 							RStyleDisabled='disabled.rs'
 							RStyleMouseOver='hover.rs'
 							SelectedIconColor='#62FF15'
-							SelectedTextColor='#04575E'
+							SelectedTextColor='#113351'
 						/>
 						<Namespace
 							Name='activated'
@@ -62595,7 +63057,7 @@
 						SourceRect='209,118,233,142'
 					/>
 					<ImageStyle
-						Color='#00ffff'
+						Color='#2487DB'
 						Name='peace'
 						Source='ui_rebel_icons'
 						SourceRect='48,117,72,141'
@@ -62971,7 +63433,7 @@
 					Name='combo'
 				>
 					<ListStyle
-						BackgroundColor='#00D6FB'
+						BackgroundColor='#2381D8'
 						BackgroundOpacity='0.00'
 						CellHeight='19'
 						CellPadding='4,2'
@@ -62990,8 +63452,8 @@
 						SelectionTextColor='#003842'
 					/>
 					<ListStyle
-						BackgroundColor='#00D6FB'
-						BackgroundOpacity='0.90'
+						BackgroundColor='#2381D8'
+						BackgroundOpacity='1.00'
 						CellPadding='0,0'
 						DefaultTextColor='#96F4FC'
 						DefaultTextStyle='bold_11'
@@ -63028,8 +63490,8 @@
 						SelectionTextColor='#003842'
 					/>
 					<ListStyle
-						BackgroundColor='#00505E'
-						BackgroundOpacity='0.70'
+						BackgroundColor='#0D3051'
+						BackgroundOpacity='1.00'
 						CellHeight='14'
 						CellPadding='4,3'
 						DefaultTextColor='#96F4FC'
@@ -63049,7 +63511,7 @@
 						SelectionTextColor='#003842'
 					/>
 					<ListStyle
-						BackgroundColor='#00D6FB'
+						BackgroundColor='#2381D8'
 						BackgroundOpacity='0.00'
 						CellHeight='19'
 						CellPadding='4,2'
@@ -66706,8 +67168,9 @@
 					/>
 					<ImageStyle
 						Name='c'
-						Source='ui_space_hud'
-						SourceRect='96,479,105,512'
+						Source='ui_titan_modern'
+						ThemeFrom='ui_space_hud:96,479,105,512'
+						SourceRect='132,18,156,42'
 					/>
 				</Namespace>
 			</Namespace>
@@ -67793,7 +68256,7 @@
 						<RectangleStyle
 							Center='c'
 							CenterStretchV='false'
-							Color='#27C4F1'
+							Color='#438DD5'
 							Name='rs'
 							North='n'
 							South='s'
@@ -67828,7 +68291,7 @@
 						>
 							<RectangleStyle
 								Center='c'
-								Color='#27C4F1'
+								Color='#438DD5'
 								Name='rs'
 								North='n'
 								South='s'
@@ -67855,7 +68318,7 @@
 						>
 							<RectangleStyle
 								Center='c'
-								Color='#24EFFF'
+								Color='#4396E0'
 								Name='rs'
 								North='n'
 								South='s'
@@ -67881,7 +68344,7 @@
 						>
 							<RectangleStyle
 								Center='c'
-								Color='#1CFFA4'
+								Color='#3C9EDF'
 								Name='rs'
 								North='n'
 								South='s'
@@ -67917,7 +68380,7 @@
 						>
 							<RectangleStyle
 								Center='c'
-								Color='#27C4F1'
+								Color='#438DD5'
 								Name='rs'
 							/>
 							<ImageStyle
@@ -67931,7 +68394,7 @@
 						>
 							<RectangleStyle
 								Center='c'
-								Color='#24EFFF'
+								Color='#4396E0'
 								Name='rs'
 							/>
 							<ImageStyle
@@ -67945,7 +68408,7 @@
 						>
 							<RectangleStyle
 								Center='c'
-								Color='#1CFFA4'
+								Color='#3C9EDF'
 								Name='rs'
 							/>
 							<ImageStyle
@@ -67969,7 +68432,7 @@
 						>
 							<RectangleStyle
 								Center='c'
-								Color='#27C4F1'
+								Color='#438DD5'
 								Name='rs'
 							/>
 							<ImageStyle
@@ -67983,7 +68446,7 @@
 						>
 							<RectangleStyle
 								Center='c'
-								Color='#24EFFF'
+								Color='#4396E0'
 								Name='rs'
 							/>
 							<ImageStyle
@@ -67997,7 +68460,7 @@
 						>
 							<RectangleStyle
 								Center='c'
-								Color='#1CFFA4'
+								Color='#3C9EDF'
 								Name='rs'
 								SourceRect='486,482,501,490'
 							/>

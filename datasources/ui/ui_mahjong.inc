@@ -251,7 +251,7 @@
 								Location='1,0'
 								Name='lines'
 								PackSize='a,a'
-								RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+								RStyleDefault='/Styles.New.text_blank.default.rs'
 								ScrollExtent='354,150'
 								Size='354,150'
 							>
@@ -492,7 +492,7 @@
 						>
 							<ComboBox
 								AutoRegister='true'
-								BackgroundOpacity='0.70'
+								BackgroundOpacity='1.00'
 								ButtonMargin='2,2,2,0'
 								ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 								ButtonWidth='10'
@@ -549,7 +549,7 @@
 						>
 							<ComboBox
 								AutoRegister='true'
-								BackgroundOpacity='0.70'
+								BackgroundOpacity='1.00'
 								ButtonMargin='2,2,2,0'
 								ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 								ButtonWidth='10'
@@ -725,7 +725,7 @@
 								Location='1,0'
 								Name='lines'
 								PackSize='a,a'
-								RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+								RStyleDefault='/Styles.New.text_blank.default.rs'
 								ScrollExtent='354,286'
 								Size='354,286'
 							>
@@ -1104,7 +1104,7 @@
 								Location='1,0'
 								Name='lines'
 								PackSize='a,a'
-								RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+								RStyleDefault='/Styles.New.text_blank.default.rs'
 								ScrollExtent='354,286'
 								Size='354,286'
 							>
@@ -1464,7 +1464,7 @@
 								Location='1,0'
 								Name='lines'
 								PackSize='a,a'
-								RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+								RStyleDefault='/Styles.New.text_blank.default.rs'
 								ScrollExtent='625,480'
 								Size='625,480'
 							>
@@ -1870,7 +1870,7 @@
 							>Chain:</Text>
 							<Page
 								AbsorbsInput='false'
-								BackgroundColor='#00FFFF'
+								BackgroundColor='#2487DB'
 								BackgroundOpacity='1.00'
 								GetsInput='false'
 								Location='63,3'
@@ -2035,7 +2035,7 @@
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='896,653'
 						Size='896,653'
 					>

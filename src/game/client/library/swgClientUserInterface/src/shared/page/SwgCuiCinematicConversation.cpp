@@ -364,9 +364,7 @@ void SwgCuiCinematicConversation::executeCloseFromConversationManager()
 void SwgCuiCinematicConversation::dispatchConversationKeystrokeFromManager(unsigned short const keystroke)
 {
 	SwgCuiCinematicConversation * const self = ms_cameraCommandTarget;
-	if (!self || !ms_enabled)
-		return;
-	if (!self->CuiMediator::isActive())
+	if (!self || !ms_enabled || !ms_active)
 		return;
 
 	UIMessage msg;
@@ -656,10 +654,7 @@ void SwgCuiCinematicConversation::performActivate()
 	{
 		SwgCuiHud * const hud = SwgCuiHudFactory::findMediatorForCurrentHud();
 		if (hud)
-		{
 			m_savedHudEnabled = hud->getHudEnabled();
-			hud->setHudEnabled(false);
-		}
 	}
 
 	// Connect to conversation manager signals
@@ -716,6 +711,14 @@ void SwgCuiCinematicConversation::performActivate()
 	// CuiMediator::update() (camera easing, letterbox) runs only when isUpdating() is true; the base
 	// activate() path only enables that when m_maxRangeFromObject > 0, which this page does not set.
 	setIsUpdating(true);
+
+	// Hide HUD only after dialogue content and handlers are bound (setHudEnabled disables the workspace).
+	if (Game::getHudSceneType() == Game::ST_ground)
+	{
+		SwgCuiHud * const hud = SwgCuiHudFactory::findMediatorForCurrentHud();
+		if (hud)
+			hud->setHudEnabled(false);
+	}
 }
 
 //----------------------------------------------------------------------
@@ -831,7 +834,7 @@ bool SwgCuiCinematicConversation::shouldSurviveDisabledWorkspace () const
 
 bool SwgCuiCinematicConversation::OnMessage(UIWidget * /*context*/, UIMessage const & msg)
 {
-	if (!isActive())
+	if (!ms_active)
 		return true;
 	if (msg.Type == UIMessage::KeyDown && msg.Keystroke == UIMessage::Escape)
 	{
@@ -2780,7 +2783,7 @@ void SwgCuiCinematicConversation::onTargetChanged(bool const &)
 		m_targetNpcId = NetworkId::cms_invalid;
 		if (m_npcNameText)
 			m_npcNameText->SetLocalText(Unicode::emptyString);
-		if (isActive())
+		if (ms_active)
 			m_deferCloseUntilUpdate = true;
 		return;
 	}

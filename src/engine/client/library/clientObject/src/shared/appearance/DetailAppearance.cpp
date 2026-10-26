@@ -18,6 +18,7 @@
 #include "clientGraphics/Texture.h"
 #include "clientObject/ConfigClientObject.h"
 #include "clientObject/DetailAppearanceTemplate.h"
+#include "clientObject/MeshAppearance.h"
 #include "clientObject/LODManager.h"
 #include "sharedCollision/BoxExtent.h"
 #include "sharedCollision/CollideParameters.h"
@@ -235,7 +236,8 @@ DetailAppearance::DetailAppearance(const DetailAppearanceTemplate *detailAppeara
 	m_currentDetailLevel(-1),
 	m_nextDetailLevel(-1),
 	m_customizationData(0),
-	m_timer(0.0f)
+	m_timer(0.0f),
+	m_writeModelSuppressed(false)
 {
 	// create the detail level appearances
 	int count = detailAppearanceTemplate->getDetailLevelCount();
@@ -684,6 +686,65 @@ void DetailAppearance::preRender() const
 
 // ----------------------------------------------------------------------
 
+void DetailAppearance::forEachLoadedMeshAppearance(void (*callback)(MeshAppearance & meshApp, void * context), void * context)
+{
+	if (!callback)
+		return;
+
+	for (int detailIndex = 0; detailIndex < m_appearanceListSize; ++detailIndex)
+	{
+		Appearance * const appearance = m_appearanceList[detailIndex];
+		if (!appearance || !appearance->isLoaded())
+			continue;
+
+		MeshAppearance * const meshApp = dynamic_cast<MeshAppearance *>(appearance);
+		if (meshApp)
+			callback(*meshApp, context);
+	}
+}
+
+// ----------------------------------------------------------------------
+
+void DetailAppearance::forEachAllDetailMeshAppearances(void (*callback)(MeshAppearance & meshApp, void * context), void * context)
+{
+	if (!callback)
+		return;
+
+	for (int detailIndex = 0; detailIndex < m_appearanceListSize; ++detailIndex)
+	{
+		Appearance * const appearance = _getAppearance(detailIndex);
+		if (!appearance)
+			continue;
+
+		IGNORE_RETURN(appearance->alter(0.0f));
+		if (!appearance->isLoaded())
+			continue;
+
+		MeshAppearance * const meshApp = dynamic_cast<MeshAppearance *>(appearance);
+		if (meshApp)
+			callback(*meshApp, context);
+	}
+}
+
+// ----------------------------------------------------------------------
+
+void DetailAppearance::disableDpvsWriteModel()
+{
+	m_writeModelSuppressed = true;
+	if (m_dpvsObject)
+		m_dpvsObject->setWriteModel(NULL);
+}
+
+// ----------------------------------------------------------------------
+
+void DetailAppearance::restoreDpvsWriteModel()
+{
+	m_writeModelSuppressed = false;
+	_setDpvsWriteShape();
+}
+
+// ----------------------------------------------------------------------
+
 void DetailAppearance::objectListCameraRender() const
 {
 	int const detailLevel = _chooseDetailLevel();
@@ -987,6 +1048,13 @@ void DetailAppearance::_updateLodSettings(int lodIndex)
 
 void DetailAppearance::_setDpvsWriteShape()
 {
+	if (m_writeModelSuppressed)
+	{
+		if (m_dpvsObject)
+			m_dpvsObject->setWriteModel(NULL);
+		return;
+	}
+
 	DPVS::Model* dpvsWriteShape = getDetailAppearanceTemplate()->getDpvsWriteShape();
 	if (dpvsWriteShape)
 		m_dpvsObject->setWriteModel(dpvsWriteShape);

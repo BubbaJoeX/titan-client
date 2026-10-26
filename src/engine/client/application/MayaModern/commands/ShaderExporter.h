@@ -63,6 +63,10 @@ public:
 
     /// Copies referenced effect/ and prototype texture/ files from game data into the export tree.
     static void bootstrapDependenciesForWrittenShader(const std::string& absShaderPath);
+
+    /// 1:1 export: copy the original .sht into the export shader/ tree (same relative name) and bootstrap
+    /// its effect/ + texture/ references. Returns the written (or existing) absolute path, or empty on failure.
+    static std::string copyOriginalShaderToExportTree(const std::string& sourceShtPathOrTree);
 };
 
 #endif

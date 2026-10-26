@@ -28,7 +28,7 @@
 
 	<!-- Title Bar -->
 	<Page
-		BackgroundColor='#1A3A4A'
+		BackgroundColor='#213243'
 		BackgroundOpacity='0.95'
 		Name='titleBar'
 		ScrollExtent='320,24'
@@ -40,7 +40,7 @@
 			Location='8,3'
 			ScrollExtent='200,18'
 			Size='200,18'
-			TextColor='#97FFFF'
+			TextColor='#A6CEF0'
 		>Color Wheel</Text>
 		<Button
 			Location='300,4'

@@ -23,6 +23,9 @@ public:
     /// Copy texture/<name>.dds from game data into export texture/ when missing (prototype env/spec slots).
     static bool bootstrapTextureTreeFile(const std::string& textureTreeRel);
 
+    /// Copy shader/<name>.sht from game data into export shader/ when missing (1:1 export).
+    static bool bootstrapShaderTreeFile(const std::string& shaderTreeRel);
+
     /// Derive data root from appearanceRootDir and applyExportDataRoot.
     static void syncFromAppearanceRoot(const std::string& appearanceRootDir);
 };

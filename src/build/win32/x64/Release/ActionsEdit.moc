@@ -1,7 +1,7 @@
 /****************************************************************************
 ** ActionsEdit meta object code from reading C++ file 'ActionsEdit.h'
 **
-** Created: Thu Jul 23 03:18:09 2026
+** Created: Sat Oct 24 07:53:23 2026
 **      by: The Qt MOC ($Id: $)
 **
 ** WARNING! All changes made in this file will be lost!
@@ -88,14 +88,19 @@ QMetaObject* ActionsEdit::staticMetaObject()
     static const QUMethod slot_35 = {"onToggleDropToTerrain", 0, 0 };
     static const QUMethod slot_36 = {"onToggleAlignToTerrain", 0, 0 };
     static const QUMethod slot_37 = {"onToggleUnrealEngineTransformGizmo", 0, 0 };
-    static const QUParameter param_slot_38[] = {
+    static const QUMethod slot_38 = {"onCopyTransform", 0, 0 };
+    static const QUMethod slot_39 = {"onPastePosition", 0, 0 };
+    static const QUMethod slot_40 = {"onPasteRotation", 0, 0 };
+    static const QUMethod slot_41 = {"onPasteTransform", 0, 0 };
+    static const QUMethod slot_42 = {"onSelectSameTemplate", 0, 0 };
+    static const QUParameter param_slot_43[] = {
 	{ 0, &static_QUType_ptr, "std::string", QUParameter::In }
     };
-    static const QUMethod slot_38 = {"onServerTemplateSelectionChanged", 1, param_slot_38 };
-    static const QUParameter param_slot_39[] = {
+    static const QUMethod slot_43 = {"onServerTemplateSelectionChanged", 1, param_slot_43 };
+    static const QUParameter param_slot_44[] = {
 	{ 0, &static_QUType_ptr, "std::string", QUParameter::In }
     };
-    static const QUMethod slot_39 = {"onClientTemplateSelectionChanged", 1, param_slot_39 };
+    static const QUMethod slot_44 = {"onClientTemplateSelectionChanged", 1, param_slot_44 };
     static const QMetaData slot_tbl[] = {
 	{ "onUndo()", &slot_0, QMetaData::Private },
 	{ "onRedo()", &slot_1, QMetaData::Private },
@@ -135,12 +140,17 @@ QMetaObject* ActionsEdit::staticMetaObject()
 	{ "onToggleDropToTerrain()", &slot_35, QMetaData::Private },
 	{ "onToggleAlignToTerrain()", &slot_36, QMetaData::Private },
 	{ "onToggleUnrealEngineTransformGizmo()", &slot_37, QMetaData::Private },
-	{ "onServerTemplateSelectionChanged(const std::string&)", &slot_38, QMetaData::Public },
-	{ "onClientTemplateSelectionChanged(const std::string&)", &slot_39, QMetaData::Public }
+	{ "onCopyTransform()", &slot_38, QMetaData::Private },
+	{ "onPastePosition()", &slot_39, QMetaData::Private },
+	{ "onPasteRotation()", &slot_40, QMetaData::Private },
+	{ "onPasteTransform()", &slot_41, QMetaData::Private },
+	{ "onSelectSameTemplate()", &slot_42, QMetaData::Private },
+	{ "onServerTemplateSelectionChanged(const std::string&)", &slot_43, QMetaData::Public },
+	{ "onClientTemplateSelectionChanged(const std::string&)", &slot_44, QMetaData::Public }
     };
     metaObj = QMetaObject::new_metaobject(
 	"ActionsEdit", parentObject,
-	slot_tbl, 40,
+	slot_tbl, 45,
 	0, 0,
 #ifndef QT_NO_PROPERTIES
 	0, 0,
@@ -203,8 +213,13 @@ bool ActionsEdit::qt_invoke( int _id, QUObject* _o )
     case 35: onToggleDropToTerrain(); break;
     case 36: onToggleAlignToTerrain(); break;
     case 37: onToggleUnrealEngineTransformGizmo(); break;
-    case 38: onServerTemplateSelectionChanged((const std::string&)*((const std::string*)static_QUType_ptr.get(_o+1))); break;
-    case 39: onClientTemplateSelectionChanged((const std::string&)*((const std::string*)static_QUType_ptr.get(_o+1))); break;
+    case 38: onCopyTransform(); break;
+    case 39: onPastePosition(); break;
+    case 40: onPasteRotation(); break;
+    case 41: onPasteTransform(); break;
+    case 42: onSelectSameTemplate(); break;
+    case 43: onServerTemplateSelectionChanged((const std::string&)*((const std::string*)static_QUType_ptr.get(_o+1))); break;
+    case 44: onClientTemplateSelectionChanged((const std::string&)*((const std::string*)static_QUType_ptr.get(_o+1))); break;
     default:
 	return QObject::qt_invoke( _id, _o );
     }

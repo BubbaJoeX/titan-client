@@ -72,6 +72,8 @@ private:
 	UIImageStyle				 *mImages[LastCheckboxState];
 	UITextStyle					 *mNormalTextStyle;
 	UITextStyle					 *mDisabledTextStyle;
+	UIString                      mNormalTextStyleName;     // logical fonts asked for; see UIText::mStyleName
+	UIString                      mDisabledTextStyleName;
 };
 
 #endif // __UICHECKBOXSTYLE_H__

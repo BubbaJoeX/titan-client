@@ -1171,7 +1171,7 @@ xxx attrib 8:    info here
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='949,702'
 						Size='949,702'
 					>

@@ -81,6 +81,7 @@ private:
 	UIRect								 mTextPadding;
 	UIColor								 mTextColor;
 	UITextStyle						*mTextStyle;
+	UIString                       mTextStyleName;   // logical font asked for; see UIText::mStyleName
 	float                            mBackgroundOpacity;
 
 

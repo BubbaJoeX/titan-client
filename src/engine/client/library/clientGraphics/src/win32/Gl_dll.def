@@ -147,6 +147,7 @@ struct Gl_api
 	bool (*copyRenderTargetToNonRenderTargetTexture)();
 
 	bool (*screenShot)(GlScreenShotFormat format, int quality, const char *fileName);
+	void (*setForceScreenShotBackBuffer)(bool active, bool useBackBuffer);
 
 	ShaderImplementationGraphicsData *(*createShaderImplementationGraphicsData)(const ShaderImplementation &shaderImplementation);
 	StaticShaderGraphicsData *(*createStaticShaderGraphicsData)(const StaticShader &shader);

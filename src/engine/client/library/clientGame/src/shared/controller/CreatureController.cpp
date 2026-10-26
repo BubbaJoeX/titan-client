@@ -241,6 +241,9 @@ float CreatureController::realAlter (float deltaTime)
 		return ClientController::realAlter (deltaTime);
 	}
 
+	//-- Lie down on / stay in / climb out of a bed the creature is "sitting" on.
+	GamePlaybackScript::alterBedRest (*creatureObject, deltaTime);
+
 	//--  face target if necessary
 	if (m_face)
 	{

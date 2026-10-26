@@ -1,0 +1,105 @@
+/****************************************************************************
+** TabletSettingsDialog meta object code from reading C++ file 'TabletSettingsDialog.h'
+**
+** Created: Sat Oct 24 07:58:04 2026
+**      by: The Qt MOC ($Id: $)
+**
+** WARNING! All changes made in this file will be lost!
+*****************************************************************************/
+
+#include <qmetaobject.h>
+#include <qapplication.h>
+
+#include <private/qucomextra_p.h>
+#if !defined(Q_MOC_OUTPUT_REVISION) || (Q_MOC_OUTPUT_REVISION != 26)
+#error "This file was generated using the moc from 3.3.4. It"
+#error "cannot be used with the include files from this version of Qt."
+#error "(The moc has changed too much.)"
+#endif
+
+const char *TabletSettingsDialog::className() const
+{
+    return "TabletSettingsDialog";
+}
+
+QMetaObject *TabletSettingsDialog::metaObj = 0;
+static QMetaObjectCleanUp cleanUp_TabletSettingsDialog( "TabletSettingsDialog", &TabletSettingsDialog::staticMetaObject );
+
+#ifndef QT_NO_TRANSLATION
+QString TabletSettingsDialog::tr( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "TabletSettingsDialog", s, c, QApplication::DefaultCodec );
+    else
+	return QString::fromLatin1( s );
+}
+#ifndef QT_NO_TRANSLATION_UTF8
+QString TabletSettingsDialog::trUtf8( const char *s, const char *c )
+{
+    if ( qApp )
+	return qApp->translate( "TabletSettingsDialog", s, c, QApplication::UnicodeUTF8 );
+    else
+	return QString::fromUtf8( s );
+}
+#endif // QT_NO_TRANSLATION_UTF8
+
+#endif // QT_NO_TRANSLATION
+
+QMetaObject* TabletSettingsDialog::staticMetaObject()
+{
+    if ( metaObj )
+	return metaObj;
+    QMetaObject* parentObject = QDialog::staticMetaObject();
+    static const QUMethod slot_0 = {"onDefaults", 0, 0 };
+    static const QUMethod slot_1 = {"onControlsChanged", 0, 0 };
+    static const QUMethod slot_2 = {"onPollPen", 0, 0 };
+    static const QMetaData slot_tbl[] = {
+	{ "onDefaults()", &slot_0, QMetaData::Private },
+	{ "onControlsChanged()", &slot_1, QMetaData::Private },
+	{ "onPollPen()", &slot_2, QMetaData::Private }
+    };
+    metaObj = QMetaObject::new_metaobject(
+	"TabletSettingsDialog", parentObject,
+	slot_tbl, 3,
+	0, 0,
+#ifndef QT_NO_PROPERTIES
+	0, 0,
+	0, 0,
+#endif // QT_NO_PROPERTIES
+	0, 0 );
+    cleanUp_TabletSettingsDialog.setMetaObject( metaObj );
+    return metaObj;
+}
+
+void* TabletSettingsDialog::qt_cast( const char* clname )
+{
+    if ( !qstrcmp( clname, "TabletSettingsDialog" ) )
+	return this;
+    return QDialog::qt_cast( clname );
+}
+
+bool TabletSettingsDialog::qt_invoke( int _id, QUObject* _o )
+{
+    switch ( _id - staticMetaObject()->slotOffset() ) {
+    case 0: onDefaults(); break;
+    case 1: onControlsChanged(); break;
+    case 2: onPollPen(); break;
+    default:
+	return QDialog::qt_invoke( _id, _o );
+    }
+    return TRUE;
+}
+
+bool TabletSettingsDialog::qt_emit( int _id, QUObject* _o )
+{
+    return QDialog::qt_emit(_id,_o);
+}
+#ifndef QT_NO_PROPERTIES
+
+bool TabletSettingsDialog::qt_property( int id, int f, QVariant* v)
+{
+    return QDialog::qt_property( id, f, v);
+}
+
+bool TabletSettingsDialog::qt_static_property( QObject* , int , int , QVariant* ){ return FALSE; }
+#endif // QT_NO_PROPERTIES

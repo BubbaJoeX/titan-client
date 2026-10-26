@@ -170,6 +170,14 @@ bool CellPropertyNamespace::Notification::positionChanged(Object &object, bool c
 		if(nextCell == currentCell) break;	
 		if(nextCell == lastCell) break;
 
+		// Titan: a vessel's floor hatch (cells named hatch*) lies under a deck people also walk over; while the hatch
+		// is shut (the cell doesn't admit the object) its portals are not crossed and the walker stays on the deck.
+		{
+			char const * const nextName = nextCell->getCellName();
+			if (nextName != 0 && strncmp(nextName, "hatch", 5) == 0 && !nextCell->getAccessAllowed())
+				break;
+		}
+
 		lastCell = currentCell;
 		currentCell = nextCell;
 
@@ -351,6 +359,7 @@ CellProperty::CellProperty(Object &owner)
 	m_portalObjectList(new PortalObjectList),
 	m_visible(false),
 	m_floor(NULL),
+	m_runtimeCollisionExtent(NULL),
 	m_cellName(NULL),
 	m_cellNameCrc(0),
 	m_dpvsCell(NULL),
@@ -388,6 +397,9 @@ CellProperty::~CellProperty()
 		ms_textureRelease(m_environmentTexture);
 		m_environmentTexture = NULL;
 	}
+
+	delete m_runtimeCollisionExtent;
+	m_runtimeCollisionExtent = NULL;
 
 	if (!m_portalObjectList->empty())
 	{
@@ -657,6 +669,16 @@ const Object *CellProperty::getAppearanceObject() const
 
 // ----------------------------------------------------------------------
 
+namespace CellPropertyNamespace
+{
+	// Titan: true when innerCell belongs to a pob whose owner sits directly in outerCell
+	bool isNestedPobCellOf(CellProperty const &innerCell, CellProperty const &outerCell)
+	{
+		PortalProperty const * const portalProperty = innerCell.getPortalProperty();
+		return portalProperty && portalProperty->getOwner().getParentCell() == &outerCell;
+	}
+}
+
 bool CellProperty::areAdjacent(const CellProperty *cellProperty1, const CellProperty *cellProperty2)
 {
 	bool result = false;
@@ -672,10 +694,14 @@ bool CellProperty::areAdjacent(const CellProperty *cellProperty1, const CellProp
 		}
 		else if (   (cellProperty1 != getWorldCellProperty())
 		         && (cellProperty2 != getWorldCellProperty())
-				 && (cellProperty1->getPortalProperty() != cellProperty2->getPortalProperty()))
+				 && (cellProperty1->getPortalProperty() != cellProperty2->getPortalProperty())
+				 && !isNestedPobCellOf(*cellProperty1, *cellProperty2)
+				 && !isNestedPobCellOf(*cellProperty2, *cellProperty1))
 		{
 			// Both cell properties are not the world cell property and
 			// they do not share the same portal property
+			// (Titan: unless one belongs to a pob parked in the other, e.g. a vessel in a hangar cell, which
+			// connects to that cell through its exterior portals exactly like a pob in the world cell)
 
 			result = false;
 		}
@@ -833,9 +859,11 @@ CellProperty *CellProperty::getDestinationCell(const Object *object, int portalI
 		const Object     &portalObject = i->portalProperty->getOwner();
 		const PortalList &portalList   = *i->portalList;
 
-		if(this == CellProperty::getWorldCellProperty())
+		if(this == CellProperty::getWorldCellProperty() || i->attached)
 		{
 			// We only want to check the list of portals for this cell object
+			// Titan: an interior cell also holds the attached exterior portals of a pob parked in it (a vessel in a
+			// hangar); match those by the floor owner, exactly like the world cell does.
 			if(&portalObject != object) continue;
 		}
 		else
@@ -850,7 +878,15 @@ CellProperty *CellProperty::getDestinationCell(const Object *object, int portalI
 			return NULL;
 		}
 
-		return portalList[static_cast<PortalList::size_type>(portalId)]->getNeighbor()->getParentCell();
+		Portal const * const portal = portalList[static_cast<PortalList::size_type>(portalId)];
+		if (!portal)
+			return NULL;
+
+		Portal const * const neighbor = portal->getNeighbor();
+		if (!neighbor)
+			return NULL;
+
+		return neighbor->getParentCell();
 	}
 
 	return NULL;
@@ -1112,6 +1148,9 @@ const Floor *CellProperty::getFloor() const
 
 const BaseExtent *CellProperty::getCollisionExtent() const
 {
+	if (m_runtimeCollisionExtent)
+		return m_runtimeCollisionExtent;
+
 	if(m_portalProperty)
 	{
 		return m_portalProperty->getCellTemplate(m_cellIndex).getCollisionExtent();
@@ -1120,6 +1159,22 @@ const BaseExtent *CellProperty::getCollisionExtent() const
 	{
 		return NULL;
 	}
+}
+
+// ----------------------------------------------------------------------
+
+void CellProperty::setRuntimeCollisionExtent(BaseExtent * extent)
+{
+	delete m_runtimeCollisionExtent;
+	m_runtimeCollisionExtent = extent;
+}
+
+// ----------------------------------------------------------------------
+
+void CellProperty::clearRuntimeCollisionExtent()
+{
+	delete m_runtimeCollisionExtent;
+	m_runtimeCollisionExtent = NULL;
 }
 
 // ----------------------------------------------------------------------
@@ -1358,6 +1413,28 @@ bool CellProperty::replaceRuntimePortal(int portalIndex, PortalPropertyTemplateC
 	}
 
 	(*portalList)[static_cast<PortalList::size_type>(portalIndex)] = new Portal(portalTemplate, this, &getOwner());
+	return true;
+}
+
+// ----------------------------------------------------------------------
+
+bool CellProperty::removeRuntimePortal(int portalIndex)
+{
+	if (!m_portalObjectList || m_portalObjectList->empty())
+		return false;
+
+	PortalList * const portalList = m_portalObjectList->front().portalList;
+	if (!portalList || portalIndex < 0 || portalIndex >= static_cast<int>(portalList->size()))
+		return false;
+
+	Portal * const portal = (*portalList)[static_cast<PortalList::size_type>(portalIndex)];
+	if (!portal || !portal->isRuntimePortal())
+		return false;
+
+	portal->clearNeighbor();
+	portal->removeFromDpvs();
+	delete portal;
+	portalList->erase(portalList->begin() + portalIndex);
 	return true;
 }
 

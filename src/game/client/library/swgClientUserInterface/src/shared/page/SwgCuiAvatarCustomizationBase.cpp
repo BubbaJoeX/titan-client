@@ -534,7 +534,7 @@ void SwgCuiAvatarCustomizationBase::setupCustomizationData (ClientObject * const
 	//----------------------------------------------------------------------
 	//-- setup hairstyles
 
-	setupHairStyles (object ? object->getObjectTemplateName () : "", hairSkillModValue);
+	setupHairStyles (object ? getHairStyleTemplateName(*object) : "", hairSkillModValue);
 }
 
 //-----------------------------------------------------------------
@@ -1165,25 +1165,14 @@ void SwgCuiAvatarCustomizationBase::updatePlayerPattern ()
 
 void SwgCuiAvatarCustomizationBase::setupCustomizationGroups (ClientObject const & object)
 {
-	Unicode::String species (Unicode::narrowToWide (object.getObjectTemplateName ()));
-
-	std::string species_gender;
-
-	// @todo: replace species hack code below with real code
-	Unicode::String::size_type sharedPos = species.find(Unicode::narrowToWide("shared_"), 0);
-	const Unicode::String::size_type iffPos = species.find(Unicode::narrowToWide(".iff"), 0);
-	if (sharedPos != Unicode::String::npos && iffPos != Unicode::String::npos)
-	{
-		sharedPos += strlen("shared_");
-		species = species.substr(sharedPos, iffPos - sharedPos);
-		species_gender = Unicode::wideToNarrow(species);
-		species = Unicode::narrowToWide("creature.") + species;
-	}
+	std::string const species_gender = getCustomizationSpeciesGender(object);
 
 	std::string debugString;
 
 	if (s_debugPrintCustomizationGroups)
-		debugString += Unicode::wideToNarrow (species) + "\n";
+		debugString += species_gender + "\n";
+
+	const Unicode::String species = Unicode::narrowToWide("creature." + species_gender);
 
 	const Unicode::String dataPath    (m_dataFolder + species);
 
@@ -1202,6 +1191,41 @@ void SwgCuiAvatarCustomizationBase::setupCustomizationGroups (ClientObject const
 
 	REPORT_LOG_PRINT (s_debugPrintCustomizationGroups, ("%s\n", debugString.c_str ()));
 
+}
+
+//----------------------------------------------------------------------
+
+std::string SwgCuiAvatarCustomizationBase::getCustomizationSpeciesGender (ClientObject const & object) const
+{
+	Unicode::String species (Unicode::narrowToWide (object.getObjectTemplateName ()));
+
+	Unicode::String::size_type sharedPos = species.find(Unicode::narrowToWide("shared_"), 0);
+	Unicode::String::size_type iffPos = species.find(Unicode::narrowToWide(".iff"), 0);
+	if (sharedPos != Unicode::String::npos && iffPos != Unicode::String::npos)
+	{
+		sharedPos += strlen("shared_");
+		species = species.substr(sharedPos, iffPos - sharedPos);
+		return Unicode::wideToNarrow(species);
+	}
+
+	Unicode::String::size_type slashPos = species.rfind(Unicode::narrowToWide("/"));
+	if (slashPos != Unicode::String::npos)
+	{
+		species = species.substr(slashPos + 1);
+		iffPos = species.find(Unicode::narrowToWide(".iff"), 0);
+		if (iffPos != Unicode::String::npos)
+			species = species.substr(0, iffPos);
+		return Unicode::wideToNarrow(species);
+	}
+
+	return Unicode::wideToNarrow(species);
+}
+
+//----------------------------------------------------------------------
+
+std::string SwgCuiAvatarCustomizationBase::getHairStyleTemplateName (ClientObject const & object) const
+{
+	return object.getObjectTemplateName();
 }
 
 //----------------------------------------------------------------------

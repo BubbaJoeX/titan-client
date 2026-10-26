@@ -24,11 +24,16 @@
 #include "sharedObject/AppearanceTemplate.h"
 #include "sharedObject/AppearanceTemplateList.h"
 #include "sharedObject/CellProperty.h"
+#include "sharedCollision/Extent.h"
 #include "sharedObject/ConfigSharedObject.h"
 #include "sharedObject/PortalPropertyTemplate.h"
+#include "sharedObject/PortalPropertyTemplateList.h"
+#include "sharedFoundation/CrcLowerString.h"
 #include "sharedUtility/DataTable.h"
 
 #include <vector>
+#include <string>
+#include <cmath>
 
 // ======================================================================
 
@@ -97,6 +102,94 @@ void Portal::preloadDoorStyle(const char* const doorStyle, std::vector<const App
 			preloadAppearanceTemplateList.push_back (appearanceTemplate);
 		}
 	}
+}
+
+// ----------------------------------------------------------------------
+
+char const * Portal::pickDynamicBunkerDoorStyle(Transform const & doorTransform)
+{
+	Vector const axisI = doorTransform.getLocalFrameI_p();
+	if (fabsf(axisI.x) >= fabsf(axisI.z))
+		return "door_bunker_rebel_x_axis";
+	return "poi_all_impl_bunker_int_door";
+}
+
+// ----------------------------------------------------------------------
+
+bool Portal::lookupDoorStyleAppearance(char const * doorStyle, std::string & outAppearancePath)
+{
+	outAppearancePath.clear();
+	if (!ms_doorStyleTable || !doorStyle || !doorStyle[0])
+		return false;
+
+	int const row = ms_doorStyleTable->searchColumnString(0, doorStyle);
+	if (row == -1)
+		return false;
+
+	outAppearancePath = ms_doorStyleTable->getStringValue(2, row);
+	if (outAppearancePath.empty())
+		outAppearancePath = ms_doorStyleTable->getStringValue(1, row);
+	return !outAppearancePath.empty();
+}
+
+// ----------------------------------------------------------------------
+
+bool Portal::lookupDoorStyleDimensions(char const * doorStyle, float & outWidth, float & outHeight)
+{
+	std::string appearancePath;
+	if (!lookupDoorStyleAppearance(doorStyle, appearancePath))
+		return false;
+
+	AppearanceTemplate const * const tmpl = AppearanceTemplateList::fetch(appearancePath.c_str());
+	if (!tmpl)
+		return false;
+
+	Extent const * const extent = tmpl->getExtent();
+	if (!extent)
+	{
+		AppearanceTemplateList::release(tmpl);
+		return false;
+	}
+
+	AxialBox const box = extent->getBoundingBox();
+	Vector const size = box.getMax() - box.getMin();
+	outWidth = std::max(size.x, size.z);
+	outHeight = std::max(0.5f, size.y);
+	AppearanceTemplateList::release(tmpl);
+	return outWidth > 0.01f && outHeight > 0.01f;
+}
+
+// ----------------------------------------------------------------------
+
+char const * Portal::lookupDonorPortalDoorStyle(char const * donorPob, int donorCellIndex, int donorPortalIndex)
+{
+	if (!donorPob || !donorPob[0])
+		return 0;
+
+	PortalPropertyTemplate const * const tmpl = PortalPropertyTemplateList::fetch(CrcLowerString(donorPob));
+	if (!tmpl)
+		return 0;
+
+	if (donorCellIndex < 1)
+		donorCellIndex = 1;
+	if (donorPortalIndex < 0)
+		donorPortalIndex = 0;
+
+	char const * result = 0;
+	if (donorCellIndex < tmpl->getNumberOfCells())
+	{
+		PortalPropertyTemplateCell const & donorCell = tmpl->getCell(donorCellIndex);
+		PortalPropertyTemplateCell::PortalPropertyTemplateCellPortalList const * const portalList = donorCell.getPortalList();
+		if (portalList && donorPortalIndex < static_cast<int>(portalList->size()))
+		{
+			char const * const doorStyle = (*portalList)[static_cast<size_t>(donorPortalIndex)]->getDoorStyleName();
+			if (doorStyle && doorStyle[0])
+				result = doorStyle;
+		}
+	}
+
+	tmpl->release();
+	return result;
 }
 
 // ======================================================================
@@ -353,6 +446,9 @@ bool Portal::isDisabled() const
 
 // ----------------------------------------------------------------------
 // Determine if players are allowed to pass through this portal or not.
+// A portal into a cell named "hatch..." (a vessel's floor hatch: its ramp cell lies under a deck people also walk
+// over) is crossed only while that cell admits the player; otherwise the walker stays in their cell, on its floor
+// over the closed hatch.
 
 bool Portal::isPassable() const
 {
@@ -362,7 +458,14 @@ bool Portal::isPassable() const
 
 		if (cell != 0)
 		{
-			return cell->getAccessAllowed();
+			if (!cell->getAccessAllowed())
+				return false;
+
+			Portal const * const neighbor = getNeighbor();
+			CellProperty const * const neighborCell = (neighbor != 0) ? neighbor->getParentCell() : 0;
+			char const * const neighborName = (neighborCell != 0) ? neighborCell->getCellName() : 0;
+			if (neighborName != 0 && strncmp(neighborName, "hatch", 5) == 0)
+				return neighborCell->getAccessAllowed();
 		}
 
 		return true;
@@ -463,6 +566,29 @@ void Portal::removeFromDpvs()
 
 	delete m_appearance;
 	m_appearance = 0;
+}
+
+// ----------------------------------------------------------------------
+
+void Portal::refreshDpvsPortal()
+{
+	if (!ms_createDpvsPortalHookFunction || !m_neighbor)
+		return;
+
+	Portal * const neighbor = m_neighbor;
+	removeFromDpvs();
+	m_neighbor = neighbor;
+
+	m_dpvsPortal = (*ms_createDpvsPortalHookFunction)(this);
+	if (m_dpvsPortal && m_relativeToObject)
+		m_relativeToObject->addDpvsObject(m_dpvsPortal);
+}
+
+// ----------------------------------------------------------------------
+
+bool Portal::isRuntimePortal() const
+{
+	return m_template.m_isRuntimePortal;
 }
 
 // ----------------------------------------------------------------------

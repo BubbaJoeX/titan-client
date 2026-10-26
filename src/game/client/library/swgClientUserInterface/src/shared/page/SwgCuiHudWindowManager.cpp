@@ -724,6 +724,22 @@ void SwgCuiHudWindowManager::receiveMessage(const MessageDispatch::Emitter & , c
 
 	//----------------------------------------------------------------------
 
+	else if (message.isType (DynamicBunkerBuildingRevertedMessage::MessageType))
+	{
+		Archive::ReadIterator ri = NON_NULL (safe_cast<const GameNetworkMessage *>(&message))->getByteStream().begin();
+		DynamicBunkerBuildingRevertedMessage const msg(ri);
+
+		SwgCuiDynamicBunkerFloorplan * floorplan = SwgCuiDynamicBunkerFloorplan::getActiveInstance();
+		if (!floorplan)
+			floorplan = findDynamicBunkerFloorplan(m_workspace);
+		if (floorplan && floorplan->isActive())
+			floorplan->deferPortalNotify(msg.getBuildingId());
+		else if (floorplan)
+			floorplan->notifyBuildingPortalsChanged(msg.getBuildingId());
+	}
+
+	//----------------------------------------------------------------------
+
 	else if (message.isType (EnterTicketPurchaseModeMessage::cms_name))
 	{
 		Archive::ReadIterator ri = NON_NULL (safe_cast<const GameNetworkMessage *>(&message))->getByteStream().begin();

@@ -129,6 +129,7 @@ public:
 	void                  clearAllPortalNeighbors();
 	int                   appendRuntimePortal(PortalPropertyTemplateCellPortal const & portalTemplate);
 	bool                  replaceRuntimePortal(int portalIndex, PortalPropertyTemplateCellPortal const & portalTemplate);
+	bool                  removeRuntimePortal(int portalIndex);
 
 	Object               *getAppearanceObject();
 	const Object         *getAppearanceObject() const;
@@ -144,6 +145,8 @@ public:
 	const Floor          *getFloor() const;
 
 	const BaseExtent     *getCollisionExtent() const;
+	void                  setRuntimeCollisionExtent(BaseExtent * extent);
+	void                  clearRuntimeCollisionExtent();
 
 	const BaseClass      *getPathGraph() const;
 
@@ -233,6 +236,7 @@ private:
 	PortalObjectList                 *m_portalObjectList;
 	mutable bool                      m_visible;
 	Floor                            *m_floor;
+	BaseExtent                       *m_runtimeCollisionExtent;
 	const char                       *m_cellName;
 	uint32                            m_cellNameCrc;
 	DPVS::Cell                       *m_dpvsCell;

@@ -140,7 +140,7 @@
 							Name='labelFilter'
 							ScrollExtent='40,18'
 							Size='40,18'
-							TextColor='#96F4FC'
+							TextColor='#A4CBEE'
 						>Query:</Text>
 						<Text
 							BackgroundColor='#1A1A1A'
@@ -181,7 +181,7 @@
 							Name='pageText'
 							ScrollExtent='200,16'
 							Size='200,16'
-							TextColor='#96F4FC'
+							TextColor='#A4CBEE'
 						>Page 1 / 1 (0 results)</Text>
 						<Button
 							LocalText='Prev'
@@ -299,7 +299,7 @@
 					>Viewer Settings</Text>
 					<Checkbox
 						Checked='true'
-						Color='#96F4FC'
+						Color='#A4CBEE'
 						Location='10,40'
 						Name='checkAutoZoom'
 						ScrollExtent='150,20'
@@ -307,7 +307,7 @@
 						Style='/Styles.New.Checkbox.Style2'
 					>Auto Zoom</Checkbox>
 					<Checkbox
-						Color='#96F4FC'
+						Color='#A4CBEE'
 						Location='170,40'
 						Name='checkHeadshot'
 						ScrollExtent='150,20'
@@ -316,7 +316,7 @@
 					>Headshot Mode</Checkbox>
 					<Checkbox
 						Checked='true'
-						Color='#96F4FC'
+						Color='#A4CBEE'
 						Location='10,65'
 						Name='checkRotate'
 						ScrollExtent='150,20'
@@ -325,7 +325,7 @@
 					>Auto Rotate</Checkbox>
 					<Checkbox
 						Checked='true'
-						Color='#96F4FC'
+						Color='#A4CBEE'
 						Location='170,65'
 						Name='checkDragYaw'
 						ScrollExtent='150,20'
@@ -334,7 +334,7 @@
 					>Drag Yaw</Checkbox>
 					<Checkbox
 						Checked='true'
-						Color='#96F4FC'
+						Color='#A4CBEE'
 						Location='10,90'
 						Name='checkDragPitch'
 						ScrollExtent='150,20'
@@ -342,7 +342,7 @@
 						Style='/Styles.New.Checkbox.Style2'
 					>Drag Pitch</Checkbox>
 					<Checkbox
-						Color='#96F4FC'
+						Color='#A4CBEE'
 						Location='170,90'
 						Name='checkShadows'
 						ScrollExtent='150,20'

@@ -22,8 +22,10 @@ void TerrainModificationHelper::setHeight (TerrainGenerator::Layer* layer, float
 		int i;
 		for (i = 0; i < layer->getNumberOfAffectors (); ++i)
 		{
+			//-- only absolute (replace) constants follow the object; add/subtract constants are offsets from it
+			//   (a sunken stair, a landing well) and keep their authored height
 			TerrainGenerator::Affector* const aff = layer->getAffector (i);
-			if (aff && aff->isActive () && aff->getType () == TGAT_heightConstant)
+			if (aff && aff->isActive () && aff->getType () == TGAT_heightConstant && safe_cast<AffectorHeightConstant*> (aff)->getOperation () == TGO_replace)
 				safe_cast<AffectorHeightConstant*> (aff)->setHeight (height);
 		}
 	}

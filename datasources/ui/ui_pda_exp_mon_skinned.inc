@@ -10,11 +10,11 @@
 mmc.enabled=enabled'
 			OnEnable='bg.enabled=enabled
 mmc.enabled=enabled'
-			PackLocation='cfc,fff'
-			PackSize='a,f'
+			PackLocation='nfn,fff'
+			PackSize='p,f'
 			PalBgTint='back1'
-			ScrollExtent='1014,13'
-			Size='1014,13'
+			ScrollExtent='627,13'
+			Size='627,13'
 		>
 			<Data
 				buttonclose='mmc.close'

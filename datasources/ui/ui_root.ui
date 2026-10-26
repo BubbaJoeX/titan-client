@@ -6,7 +6,7 @@
 	Name='root'
 	PackLocation='fixed,fixed'
 	PackSize='1,1'
-	palette='/styles.palette.alpha_blue'
+	palette='/styles.palette.Titan'
 	PopupStyle='/Styles.popupmenu.default.style'
 	ScrollExtent='1024,768'
 	Size='1024,768'

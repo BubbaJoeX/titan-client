@@ -1487,6 +1487,16 @@ float SkeletalAppearance2::alter(float deltaTime)
 	// animation.
 	m_animationResolver->alter(deltaTime);
 
+	//-- Alter the display LOD's shaders, as MeshAppearance does for its shader primitives, so animated shaders
+	//   (switch-texture SWTS, switch SWSH) run on skinned meshes too. Each primitive owns a modifiable shader.
+	if (m_perLodShaderPrimitives && (m_displayLodIndex >= 0) && (m_displayLodIndex < static_cast<int>(m_perLodShaderPrimitives->size())))
+	{
+		ShaderPrimitiveVector &shaderPrimitives = getDisplayLodShaderPrimitives();
+		for (ShaderPrimitiveVector::iterator it = shaderPrimitives.begin(); it != shaderPrimitives.end(); ++it)
+			if (*it)
+				IGNORE_RETURN((*it)->alter(deltaTime));
+	}
+
 	//-- Stop memory usage tracking.
 #ifdef _DEBUG
 	unsigned long const bytesAllocatedAfter = MemoryManager::getCurrentNumberOfBytesAllocated();
@@ -3959,7 +3969,7 @@ int SkeletalAppearance2::calculateDisplayLodIndex(float diameterScreenFraction, 
 	//   loaded level while level 0 data is asynchronously loading, so this
 	//   cannot stall or crash on missing data.  Returning here intentionally
 	//   bypasses the CharacterLodManager planned-LOD downgrade below.
-	//   Controlled by [ClientSkeletalAnimation] forceHighestLod (default true on x64).
+	//   Controlled by [ClientSkeletalAnimation] forceHighestLod (default false).
 	if (ConfigClientSkeletalAnimation::getForceHighestLod())
 		return 0;
 
@@ -3977,12 +3987,15 @@ int SkeletalAppearance2::calculateDisplayLodIndex(float diameterScreenFraction, 
 
 	// Hysteresis: stay on the previous LOD until screen fraction clears the band
 	// by a margin, to stop boundary flicker when the camera or character moves slightly.
+	// The margin scales the band edges by 20%. A share of the band width does not work:
+	// the outer bands are open-ended (+/-FLT_MAX), so their margin was infinite and a
+	// character never left LOD 0 or the lowest detail level it starts at.
 	if (previousLodIndex >= 0 && previousLodIndex <= maxLodIndex)
 	{
-		float const bandWidth = s_lodInfoArray[previousLodIndex].maxScreenFraction - s_lodInfoArray[previousLodIndex].minScreenFraction;
-		float const margin    = bandWidth * 0.20f;
-		if (diameterScreenFraction <= s_lodInfoArray[previousLodIndex].maxScreenFraction + margin
-			&& diameterScreenFraction >= s_lodInfoArray[previousLodIndex].minScreenFraction - margin)
+		float const maxScreenFraction = s_lodInfoArray[previousLodIndex].maxScreenFraction;
+		float const upperEdge = (maxScreenFraction < std::numeric_limits<float>::max()) ? maxScreenFraction * 1.20f : maxScreenFraction;
+		float const lowerEdge = s_lodInfoArray[previousLodIndex].minScreenFraction * 0.80f;
+		if (diameterScreenFraction <= upperEdge && diameterScreenFraction >= lowerEdge)
 		{
 			return clamp(0, previousLodIndex, maxLodIndex);
 		}

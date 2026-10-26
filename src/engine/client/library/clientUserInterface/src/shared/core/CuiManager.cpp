@@ -468,8 +468,6 @@ void CuiManager::install ()
 
 	UITextStyleManager::GetInstance()->Initialize(rootPage, theLoader);
 
-	CuiDynamicUIFont::applySavedPreferenceIfAny ();
-
 	InstallTimer installTimerLink("Link");
 	rootPage->Link ();
 	installTimerLink.manualExit();
@@ -493,6 +491,11 @@ void CuiManager::install ()
 	rootPage->ForcePackChildren ();
 
 	uiManager->SetRootPage (rootPage);
+
+	//-- the saved / theme font once the linked root is installed: it rebuilds the /Fonts atlases (found through the
+	//   UIManager root) and re-resolves every font property. Any earlier and it found no /Fonts, so the UI started in
+	//   stock fonts until the player touched the font picker.
+	CuiDynamicUIFont::applySavedPreferenceIfAny ();
 
 	//-- initialize warning display
 	bool const displayWarnings = ConfigFile::getKeyBool("ClientUserInterface", "displayWarnings", false);
@@ -866,6 +869,9 @@ void CuiManager::render ()
 {
 	DEBUG_FATAL (!ms_installed, ("not installed\n"));
 
+	//-- reading the factor schedules a re-layout when it moved (options loaded with a scene, window size), so the
+	//   flush below applies it in this frame instead of the next
+	IGNORE_RETURN (CuiPreferences::getUiScaleFactor ());
 	flushPendingUiScaleLayout ();
 
 	if (getRenderSuppressedRef ())

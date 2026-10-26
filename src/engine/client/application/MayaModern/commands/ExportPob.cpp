@@ -531,14 +531,13 @@ MStatus ExportPob::doIt(const MArgList& args)
                             if (!extractMeshGeometry(shapePath, shapePath.inclusiveMatrix() * cellInverse, part)) continue;
                             const int base = static_cast<int>(cell.collisionMesh.vertices.size());
                             cell.collisionMesh.vertices.insert(cell.collisionMesh.vertices.end(), part.vertices.begin(), part.vertices.end());
-                            // X is mirrored on export; swap two corners so the engine normal cross(B-A, C-A)
-                            // points where the Maya face points (stock CMSH faces the player's side).
-                            for (size_t t = 0; t + 2 < part.indices.size(); t += 3)
-                            {
+                            // Keep the Maya order: X is mirrored on export, which flips cross(B-A, C-A) to the side
+                            // away from the Maya face, and that is the stock layout (measured: stock room CMSH
+                            // triangles have cross(B-A, C-A) pointing out of the room; the engine takes the other
+                            // side as the front, like FLOR). Swapping corners here put the front outside the room,
+                            // so the chase camera slid through the walls from inside and the view went black.
+                            for (size_t t = 0; t < part.indices.size(); ++t)
                                 cell.collisionMesh.indices.push_back(base + part.indices[t]);
-                                cell.collisionMesh.indices.push_back(base + part.indices[t + 2]);
-                                cell.collisionMesh.indices.push_back(base + part.indices[t + 1]);
-                            }
                         }
                     }
                 }

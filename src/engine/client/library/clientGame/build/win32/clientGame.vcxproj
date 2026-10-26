@@ -620,6 +620,9 @@
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
     </ClCompile>
+    <ClCompile Include="..\..\src\shared\core\DevBridge.cpp" />
+    <ClCompile Include="..\..\src\shared\core\DevTestMenu.cpp" />
+    <ClCompile Include="..\..\src\shared\core\DevTestTools.cpp" />
     <ClCompile Include="..\..\src\shared\core\ConfigClientGame.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|Win32'">MaxSpeed</Optimization>
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Optimized|x64'">MaxSpeed</Optimization>
@@ -1745,6 +1748,9 @@
     <ClInclude Include="..\..\src\shared\core\CommunityManager.h" />
     <ClInclude Include="..\..\src\shared\core\CommunityManager_FriendData.h" />
     <ClInclude Include="..\..\src\shared\core\ConfigClientGame.h" />
+    <ClInclude Include="..\..\src\shared\core\DevBridge.h" />
+    <ClInclude Include="..\..\src\shared\core\DevTestMenu.h" />
+    <ClInclude Include="..\..\src\shared\core\DevTestTools.h" />
     <ClInclude Include="..\..\src\shared\core\CustomerServiceManager.h" />
     <ClInclude Include="..\..\src\shared\core\CutScene.h" />
     <ClInclude Include="..\..\src\shared\core\DraftSchematicInfo.h" />

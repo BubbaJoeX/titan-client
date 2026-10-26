@@ -261,12 +261,12 @@ namespace {
             if (m_tris.empty()) return false;
 
             // Orientation: engine floor tris have cross(B-A, C-A).y > 0 (Maya import keeps index order while
-            // negating X, so authored up-facing planes arrive reversed). Flip the whole mesh if most area faces down.
-            double upArea = 0.0;
-            for (const Tri& t : m_tris)
-                upArea += crossY(t);
-            if (upArea < 0.0)
-                for (Tri& t : m_tris) std::swap(t.c[1], t.c[2]);
+            // negating X, so authored up-facing planes arrive reversed). A walkable triangle never faces down, so
+            // orient each one: a whole-mesh vote left minority pieces (porches merged into an imported floor,
+            // sliver triangles) facing down, and the player fell through them.
+            for (Tri& t : m_tris)
+                if (crossY(t) < 0.0)
+                    std::swap(t.c[1], t.c[2]);
 
             // sweep unused verts
             std::vector<int> used(m_verts.size(), -1);
@@ -917,6 +917,29 @@ MStatus FlrTranslator::writer(const MFileObject& file, const MString& options, M
         MPlug cellName = MFnDependencyNode(cellPath.node()).findPlug("pobCellName", true);
         if (!cellName.isNull()) cellName.getValue(name);
         bool crossable = (name == "r0");
+        for (const MDagPath& shapePath : meshPaths)
+        {
+            MDagPath xf = shapePath;
+            xf.pop(1);
+            const MObject nodes[2] = {shapePath.node(), xf.node()};
+            for (const MObject& node : nodes)
+            {
+                MPlug plug = MFnDependencyNode(node).findPlug("swgFloorOpenEdgesCrossable", true);
+                if (!plug.isNull()) plug.getValue(crossable);
+            }
+        }
+        floor.setOpenEdgesCrossable(crossable);
+    }
+    else
+    {
+        // Standalone floor (a walkable static object: stair, bridge, walkway): wall feet come from the
+        // `collision|extent` meshes under the floor's top-level transform, and the open rim is uncrossable unless
+        // the floor mesh (or its transform) sets `swgFloorOpenEdgesCrossable` (step on/off at the ends).
+        MDagPath rootPath = meshPaths[0];
+        while (rootPath.length() > 1)
+            rootPath.pop(1);
+        floor.collectCellWalls(rootPath);
+        bool crossable = false;
         for (const MDagPath& shapePath : meshPaths)
         {
             MDagPath xf = shapePath;

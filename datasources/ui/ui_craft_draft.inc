@@ -118,7 +118,7 @@ parent.assembly.visible=false'
 					>
 					</Scrollbar>
 					<TabbedPane
-						BackgroundColor='#009977'
+						BackgroundColor='#155584'
 						Location='0,20'
 						MinimumScrollExtent='198,0'
 						MinimumSize='0,19'
@@ -714,7 +714,7 @@ xxx attrib 8:    info here
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='567,461'
 						Size='567,461'
 					>

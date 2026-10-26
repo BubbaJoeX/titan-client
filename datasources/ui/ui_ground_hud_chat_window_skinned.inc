@@ -57,7 +57,7 @@
 				AutoRegister='true'
 				BackgroundColor='#FFFFFF'
 				BackgroundOpacity='0.10'
-				BackgroundTint='#42FF00'
+				BackgroundTint='#0B1118'
 				Control='text'
 				Enabled='false'
 				Location='429,28'

@@ -32,6 +32,7 @@ public:
 	static int  getShaderCapabilityOverride();
 
 	static bool getAllowTearing();
+	static bool getWindowedVsync();
 	static int  getFullscreenRefreshRate();
 
 	static bool getDisableDynamicTextures();

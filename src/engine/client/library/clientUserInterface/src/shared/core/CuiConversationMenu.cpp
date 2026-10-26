@@ -310,8 +310,11 @@ bool CuiConversationMenu::updatePosition (const Camera & camera)
 
 		if (camera.projectInWorldSpace (chinPoint, &chinScreenVect.x, &chinScreenVect.y, 0, false))
 		{
-			const UIPoint headScreenPt (static_cast<long>(headScreenFloatPt.x), static_cast<long>(headScreenFloatPt.y));
-			const UIPoint chinScreenPt (static_cast<long>(chinScreenVect.x),    static_cast<long>(chinScreenVect.y));
+			UIPoint headScreenPt (static_cast<long>(headScreenFloatPt.x), static_cast<long>(headScreenFloatPt.y));
+			UIPoint chinScreenPt (static_cast<long>(chinScreenVect.x),    static_cast<long>(chinScreenVect.y));
+			// the camera projects into render-target pixels; the frame and text are widgets in UI-scaled space
+			CuiManager::transformScreenPixelsToUiSpace (headScreenPt);
+			CuiManager::transformScreenPixelsToUiSpace (chinScreenPt);
 			
 			m_frame->SetSize (UIPoint (abs (chinScreenPt.y - headScreenPt.y) * 2L / 3L, abs (chinScreenPt.y - headScreenPt.y)));
 			

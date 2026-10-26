@@ -426,6 +426,9 @@ GodClientTerrainEditor::GodClientTerrainEditor() :
 	m_shaderPaintTintR(255),
 	m_shaderPaintTintG(255),
 	m_shaderPaintTintB(255),
+	m_dynamicsStrengthScale(1.0f),
+	m_dynamicsSizeScale(1.0f),
+	m_dynamicsInvert(false),
 	m_brushPreviewEnabled(true),
 	m_cursorWorldPosition(Vector::zero),
 	m_cursorPositionValid(false),
@@ -545,6 +548,15 @@ void GodClientTerrainEditor::setBrushSize(float size)
 void GodClientTerrainEditor::setBrushStrength(float strength)
 {
 	m_brushStrength = std::max(0.01f, std::min(1.0f, strength));
+}
+
+// ----------------------------------------------------------------------
+
+void GodClientTerrainEditor::setBrushDynamics(float const strengthScale, float const sizeScale, bool const invert)
+{
+	m_dynamicsStrengthScale = std::max(0.0f, std::min(1.0f, strengthScale));
+	m_dynamicsSizeScale = std::max(0.0f, std::min(1.0f, sizeScale));
+	m_dynamicsInvert = invert;
 }
 
 // ----------------------------------------------------------------------
@@ -819,6 +831,9 @@ void GodClientTerrainEditor::endBrushStroke()
 
 	m_liveStrokeInvalidateHasPrior = false;
 
+	// The pen lifted: the preview ring goes back to the dock's brush size.
+	setBrushDynamics(1.0f, 1.0f, false);
+
 	// Flush any remaining terrain changes
 	flushTerrainChanges();
 	nudgeGodClientCameraToRefreshDpvs();
@@ -869,8 +884,22 @@ void GodClientTerrainEditor::applyBrushAtPoint(float worldX, float worldZ)
 	}
 	m_lastModificationTime = currentTime;
 
+	// Stylus dynamics scale this dab only; the dock's values are restored at the end.
+	float const dockBrushSize = m_brushSize;
+	float const dockBrushStrength = m_brushStrength;
+	float const dockRaiseLowerSpeed = m_raiseLowerSpeed;
+	m_brushSize = std::max(1.0f, m_brushSize * m_dynamicsSizeScale);
+	m_brushStrength *= m_dynamicsStrengthScale;
+	m_raiseLowerSpeed *= m_dynamicsStrengthScale;
+
+	ToolMode dabTool = m_toolMode;
+	if (m_dynamicsInvert && dabTool == TM_Raise)
+		dabTool = TM_Lower;
+	else if (m_dynamicsInvert && dabTool == TM_Lower)
+		dabTool = TM_Raise;
+
 	// Apply based on tool mode
-	switch (m_toolMode)
+	switch (dabTool)
 	{
 		case TM_Raise:
 			modifyHeightRaise(worldX, worldZ);
@@ -934,6 +963,10 @@ void GodClientTerrainEditor::applyBrushAtPoint(float worldX, float worldZ)
 
 	// Live stroke: throttled rolling invalidates + AOI sync while dragging; endBrushStroke() also invalidates full stroke AABB.
 	invalidateTerrainMeshesForLiveBrushSample(worldX, worldZ, regionRadius, currentTime);
+
+	m_brushSize = dockBrushSize;
+	m_brushStrength = dockBrushStrength;
+	m_raiseLowerSpeed = dockRaiseLowerSpeed;
 }
 
 // ----------------------------------------------------------------------
@@ -2075,13 +2108,20 @@ void GodClientTerrainEditor::renderBrushPreview(const Camera& camera) const
 
 	const float worldX = m_cursorWorldPosition.x;
 	const float worldZ = m_cursorWorldPosition.z;
-	const float radius = m_brushSize * 0.5f;
+	const float radius = std::max(1.0f, m_brushSize * m_dynamicsSizeScale) * 0.5f;
 	const int segments = 32;
 
 	// Determine brush color based on tool mode
 	VectorArgb brushColor(1.0f, 0.0f, 1.0f, 0.0f); // Default green
 
-	switch (m_toolMode)
+	// A pen eraser shows the swapped raise/lower colour before it touches down.
+	ToolMode previewTool = m_toolMode;
+	if (m_dynamicsInvert && previewTool == TM_Raise)
+		previewTool = TM_Lower;
+	else if (m_dynamicsInvert && previewTool == TM_Lower)
+		previewTool = TM_Raise;
+
+	switch (previewTool)
 	{
 		case TM_Raise:
 			brushColor = VectorArgb(1.0f, 0.0f, 0.8f, 0.0f);

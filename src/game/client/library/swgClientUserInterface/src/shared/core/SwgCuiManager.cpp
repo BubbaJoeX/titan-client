@@ -330,6 +330,9 @@ namespace SwgCuiManagerNamespace
 						// This option might not exist for the next character and it's crucial that we don't
 						// re-use the value from the previous character, so reset to 0 before load.
                         CuiPreferences::setUiSettingsVersion(0);
+						// Same for the theme version: a character saved before the Titan theme has no uiThemeVersion,
+						// and must get the one-time move to the theme defaults in refreshValues.
+						CuiPreferences::setUiThemeVersion(0);
 
 						std::string     loginId;
 						std::string     clusterName;

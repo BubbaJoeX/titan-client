@@ -1445,8 +1445,15 @@ void CreatureObject::endBaselines()
 		// Note: we don't have a chair object, but we need the script to run.
 		//       Set the chair to be this player.  The chair hardpoint won't
 		//       exist, but at least the object scaling will occur.
-		Object *const chairObject   = this;
+		Object *chairObject         = this;
 		const int     positionIndex = 0;
+
+		//-- Someone already at a station (lying in a bed, at a meditation mat...) when we arrive: use the station so
+		//   they are seen using it.
+		CellProperty const *const cell = getParentCell();
+		TangibleObject *const station = TangibleObject::findClosestInRangeChair((cell && cell != CellProperty::getWorldCellProperty()) ? cell->getOwner().getNetworkId() : NetworkId::cms_invalid, getPosition_p());
+		if (station && GamePlaybackScript::isStation(*station))
+			chairObject = station;
 
 		GamePlaybackScript::sitCreatureOnChair (*this, *chairObject, positionIndex);
 	}

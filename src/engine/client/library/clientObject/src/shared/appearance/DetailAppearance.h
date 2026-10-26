@@ -14,6 +14,7 @@
 
 class DetailAppearanceTemplate;
 class IndexedTriangleListShaderPrimitive;
+class MeshAppearance;
 
 namespace DPVS
 {
@@ -108,6 +109,12 @@ public:
 	virtual DetailAppearance       * asDetailAppearance();
 	virtual DetailAppearance const * asDetailAppearance() const;
 
+	void forEachLoadedMeshAppearance(void (*callback)(MeshAppearance & meshApp, void * context), void * context);
+	void forEachAllDetailMeshAppearances(void (*callback)(MeshAppearance & meshApp, void * context), void * context);
+
+	void disableDpvsWriteModel();
+	void restoreDpvsWriteModel();
+
 	virtual void setShadowBlobAllowed();
 
 protected:
@@ -179,6 +186,8 @@ private:
 	CustomizationData                   *m_customizationData;
 
 	mutable float                        m_timer;
+
+	bool                                 m_writeModelSuppressed;
 };
 
 // ======================================================================

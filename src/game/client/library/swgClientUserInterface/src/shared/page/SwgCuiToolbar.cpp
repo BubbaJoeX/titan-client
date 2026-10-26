@@ -911,7 +911,25 @@ UIWidget * SwgCuiToolbar::createToolbarWidget (const CuiDragInfo & item)
 
 	if (item.type == CuiDragInfoTypes::CDIT_command)
 	{
-		UIImageStyle * const imageStyle = CuiIconManager::findIconImageStyle (item);
+		UIImageStyle * imageStyle = 0;
+
+		// Story companion pet bar: always resolve icon from the display command, not the wrapper.
+		if (!item.str.empty())
+		{
+			std::string execCmd(item.str);
+			if (!execCmd.empty() && execCmd[0] == '/')
+				execCmd.erase(0, 1);
+			if (execCmd.find("companion_bar") == 0 && !item.cmd.empty())
+			{
+				CuiDragInfo displayInfo;
+				displayInfo.type = CuiDragInfoTypes::CDIT_command;
+				displayInfo.str  = std::string("/") + item.cmd;
+				imageStyle = CuiIconManager::findIconImageStyle(displayInfo);
+			}
+		}
+
+		if (!imageStyle)
+			imageStyle = CuiIconManager::findIconImageStyle (item);
 
 		if (imageStyle)
 		{
@@ -929,25 +947,12 @@ UIWidget * SwgCuiToolbar::createToolbarWidget (const CuiDragInfo & item)
 			{
 				std::string cmd(item.str);
 				cmd.erase(cmd.begin());
-				// Story companion pet bar: str is companion_bar_*; cmd holds the taught command for icon — use it for tooltip.
-				if (!item.cmd.empty() && cmd.find("companion_bar_") == 0)
+				// Story companion pet bar: str is companion_bar_*; cmd holds the taught/core command for icon/tooltip.
+				if (!item.cmd.empty() && cmd.find("companion_bar") == 0)
 				{
 					if (CuiSkillManager::localizeCmdDescription(Unicode::toLower(item.cmd), description))
 					{
 						button->SetTooltip(description);
-					}
-				}
-				else if (cmd.find("companion_bar_core_slot") == 0)
-				{
-					if (!item.cmd.empty())
-					{
-						if (CuiSkillManager::localizeCmdDescription(Unicode::toLower(item.cmd), description))
-							button->SetTooltip(description);
-					}
-					else
-					{
-						if (CuiSkillManager::localizeCmdDescription(Unicode::toLower(cmd), description))
-							button->SetTooltip(description);
 					}
 				}
 				else if (CuiSkillManager::localizeCmdDescription(Unicode::toLower(cmd), description))

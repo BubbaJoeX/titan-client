@@ -85,4 +85,5 @@ D:\titan\client\src\engine\client\application\MayaModern\commands\SwgMakeShip.cp
 D:\titan\client\src\engine\client\application\MayaModern\commands\SwgMakeVehicle.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\SwgMakeVehicle.obj
 D:\titan\client\src\engine\client\application\MayaModern\commands\SwgLightsaberToolkit.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\SwgLightsaberToolkit.obj
 D:\titan\client\src\engine\client\application\MayaModern\commands\SwgVehicleToolkit.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\SwgVehicleToolkit.obj
+D:\titan\client\src\engine\client\application\MayaModern\commands\SwgMocapSuite.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\SwgMocapSuite.obj
 D:\titan\client\src\engine\client\application\MayaModern\commands\ShaderExporter.cpp;D:\titan\client\src\engine\client\application\MayaModern\build\SwgMayaEditor.dir\Release\ShaderExporter.obj

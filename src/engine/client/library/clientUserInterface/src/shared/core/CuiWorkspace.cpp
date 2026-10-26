@@ -222,7 +222,7 @@ void CuiWorkspace::updateMediatorEnabledStates (bool force)
 		for (MediatorSet::iterator it = m_mediators->begin (); it != m_mediators->end (); ++it)
 		{
 			CuiMediator * const mediator = NON_NULL (*it);
-			if (!m_enabled || !mediator->isStickyVisible ())
+			if (!m_enabled && !mediator->isStickyVisible ())
 			{
 				if (mediator->isActive ())
 				{
@@ -232,7 +232,7 @@ void CuiWorkspace::updateMediatorEnabledStates (bool force)
 			}
 
 			if (m_toggleMediatorsEnabled)
-				mediator->setEnabled (false);
+				mediator->setEnabled (m_enabled || mediator->isStickyVisible ());
 		}
 	}
 

@@ -137,6 +137,9 @@ public:
 
 	static Floor const * getFloorStandingOn(Object const & object);
 
+	// Titan: a ship's ground where the terrain is cut away (building floors in the world cell under a point)
+	static bool findObjectFloorHeightBelow(Vector const & position_w, float & outHeight);
+
 protected:
 	// collision callbacks that are used by non-Footprint objects such as ShipObject
 	static bool canTestCollisionDetectionOnObjectThisFrame(Object * object);

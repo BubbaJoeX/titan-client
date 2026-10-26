@@ -21,10 +21,14 @@ public:
 	/// Build/apply GPU font atlases and persist the selection; empty resets to game default.
 	static bool applyFontFaceUtf8 (std::string const &utf8Face);
 
-	/// Persist and apply game-default font routing without invalidating generated style pointers.
+	/// Switch to the shipped bitmap fonts (persisted as "stock") without invalidating generated style pointers.
 	static void clearUserFont ();
 
-	/// Initialize font face, replacement mode, and scale from CuiPreferences.
+	/// Back to the theme font ([ClientUserInterface] themeFontFace) with an empty preference (Reset Defaults).
+	static void resetToThemeFont ();
+
+	/// Initialize font face, replacement mode, and scale from CuiPreferences. An empty face preference means
+	/// the theme font; "stock" means the shipped bitmap fonts.
 	static void applySavedPreferenceIfAny ();
 
 	/// Re-run text style binding on root, GroundHud/HudSpace, and all open SUI pages.

@@ -440,8 +440,11 @@ void CuiLayer::EngineCanvas::RenderLineStrip(const UICanvas * const src, int poi
 		VertexBufferWriteIterator v = vb.begin();
 		for (uint32 i = 0; i < num; ++i)
 		{
-			UIFloatPoint pt ((points [i].x + translate.x) * uiScale, (points [i].y + translate.y) * uiScale);
+			// ClippingRect is in unscaled UI units: clip first, then scale to the render target.
+			UIFloatPoint pt (points [i].x + translate.x, points [i].y + translate.y);
 			clipPoint (mState.ClippingRect, pt);
+			pt.x *= uiScale;
+			pt.y *= uiScale;
 			v.setPosition (pt.x, pt.y, 1.0f);
 			v.setOoz (1.0f);
 			v.setColor0 (dwVertexColor);

@@ -15,6 +15,9 @@ struct StaticMeshTransferOptions
     /// Import-only: create hp_* cube helpers. Export dialog passes this through for the next import.
     bool visualHardpoints = false;
 
+    /// Export: reuse imported swgShaderPath / textures / effect (copy originals) instead of cloning new .sht names.
+    bool oneToOne = true;
+
     bool usesViewportDirectUv() const
     {
         return uvStorage == StaticMeshViewportSpace::UvStorage::ViewportDirect;
@@ -27,7 +30,8 @@ struct StaticMeshTransferOptions
     static StaticMeshTransferOptions fromSwgMshOptionsString(const MString& options);
 
     /// MEL `exportStaticMesh` command flags + SwgMayaEditor.cfg when no options string is present.
-    static StaticMeshTransferOptions fromExportCommandFlags(bool objExportDirectUvFlag);
+    static StaticMeshTransferOptions fromExportCommandFlags(bool objExportDirectUvFlag, bool oneToOneFlag = true,
+        bool rebuildShadersFlag = false);
 
     /// Serialize for import sidecars / logging (legacyTriangleFlip kept for old scripts; ignored on read).
     MString toSwgMshOptionsString() const;

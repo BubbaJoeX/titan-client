@@ -44,7 +44,7 @@
 						Size='25,15'
 						TextAlignment='Right'
 						TextAlignmentVertical='Center'
-						TextColor='#00FFAF'
+						TextColor='#2490DB'
 					>100</Text>
 					<Image
 						AbsorbsInput='false'
@@ -355,7 +355,7 @@
 							ArcBegin='0.31'
 							ArcEnd='0.67'
 							CircleSegments='100'
-							Color='#24DEFF'
+							Color='#4395E0'
 							InnerRadiusColor='#2FEAFF'
 							InnerRadiusOpacity='0.40'
 							Location='-1,-4'

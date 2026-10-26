@@ -32,6 +32,8 @@ public:
 		const char *    templateServerIffPath;
 		const char *    templateServerSourcePath;
 		const char *    templateEditor;
+		/** ObjectTemplate Compile runs this with the absolute .tpf path appended; it must write dsrc/...tpf to data/...iff */
+		const char *    templateCompileCommand;
 
 //		const char *    localScriptClassPath;
 //		const char *    localTemplateClientIffPath;
@@ -52,6 +54,8 @@ public:
 		int             gameScreenHeight;
 		/** If > 0, scales down client-side object LOD/update ranges to this max distance (meters). */
 		int             objectUpdateRangeCap;
+		/** If > 0, the automation bridge (GodClientBridge) listens on 127.0.0.1 at this port. */
+		int             bridgePort;
 	};
 
 private:

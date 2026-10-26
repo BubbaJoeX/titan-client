@@ -27,6 +27,7 @@
 			StickyVisible='true'
 			buttonAssign='footer.buttonAssign'
 			buttonUnassign='footer.buttonUnassign'
+			buttonRevertPob='footer.buttonRevertPob'
 			buttonCancel='footer.buttonCancel'
 			buttonClose='header.buttonClose'
 			buttonCreatePortal='footer.buttonCreatePortal'
@@ -52,6 +53,13 @@
 			placeWall8='content.tabTarget.pagePlace.placeGrid.placeWall8'
 			layoutMapCanvas='content.tabTarget.pageLayout.layoutMapCanvas'
 			layoutMapViewer='content.tabTarget.pageLayout.layoutMapCanvas.layoutMapViewer'
+			buttonAdjustLeft='content.tabTarget.pageLayout.buttonAdjustLeft'
+			buttonAdjustRight='content.tabTarget.pageLayout.buttonAdjustRight'
+			buttonAdjustForward='content.tabTarget.pageLayout.buttonAdjustForward'
+			buttonAdjustBack='content.tabTarget.pageLayout.buttonAdjustBack'
+			buttonAdjustRotateLeft='content.tabTarget.pageLayout.buttonAdjustRotateLeft'
+			buttonAdjustRotateRight='content.tabTarget.pageLayout.buttonAdjustRotateRight'
+			buttonAdjustApply='content.tabTarget.pageLayout.buttonAdjustApply'
 			viewer='content.tabTarget.pageCatalog.right.viewerpage.viewer'
 			tabs='content.tabs'
 		/>
@@ -82,7 +90,7 @@
 				<!-- Catalog tab -->
 				<Page GetsInput='true' Location='0,0' Name='pageCatalog' ScrollExtent='880,520' Size='880,520'>
 					<Page BackgroundColor='#000000' BackgroundOpacity='0.40' Location='8,8' Name='left' ScrollExtent='270,504' Size='270,504'>
-						<Text Enabled='false' Font='bold_12' LocalText='Room Catalog' Location='8,6' ScrollExtent='250,18' Size='250,18' TextColor='#7EC8E3'>Room Catalog</Text>
+						<Text Enabled='false' Font='bold_12' LocalText='Room Catalog' Location='8,6' ScrollExtent='250,18' Size='250,18' TextColor='#8CB1D5'>Room Catalog</Text>
 						<Textbox
 							GetsInput='true'
 							Location='8,26'
@@ -156,14 +164,22 @@
 				<Page GetsInput='true' Location='0,0' Name='pageLayout' ScrollExtent='880,520' Size='880,520' Visible='false'>
 					<Text Enabled='false' Font='bold_13' LocalText='Top-down layout — click a node to select a portal for assign/unassign.' Location='12,8' Name='textLayoutHint' ScrollExtent='856,20' Size='856,20' TextColor='#E8F4FF'>Top-down layout — click a node to select a portal for assign/unassign.</Text>
 					<Text Enabled='false' Font='bold_11' LocalText='Yellow OPEN = assign   Orange OUT -> Cyan IN   Purple = custom snap' Location='12,30' ScrollExtent='856,16' Size='856,16' TextColor='#C8D0D8'>Yellow OPEN = assign   Orange OUT -&gt; Cyan IN   Purple = custom snap</Text>
+					<Text Enabled='false' Font='bold_11' LocalText='Select a linked (green) graft, nudge position/rotation, then Apply Adjust.' Location='12,48' ScrollExtent='856,16' Size='856,16' TextColor='#A0B8C8'>Select a linked (green) graft, nudge position/rotation, then Apply Adjust.</Text>
+					<Button LocalText='-X' Location='12,72' Name='buttonAdjustLeft' ScrollExtent='48,28' Size='48,28' Style='/Styles.New.buttons.hud.style'>-X</Button>
+					<Button LocalText='+X' Location='66,72' Name='buttonAdjustRight' ScrollExtent='48,28' Size='48,28' Style='/Styles.New.buttons.hud.style'>+X</Button>
+					<Button LocalText='-Z' Location='120,72' Name='buttonAdjustBack' ScrollExtent='48,28' Size='48,28' Style='/Styles.New.buttons.hud.style'>-Z</Button>
+					<Button LocalText='+Z' Location='174,72' Name='buttonAdjustForward' ScrollExtent='48,28' Size='48,28' Style='/Styles.New.buttons.hud.style'>+Z</Button>
+					<Button LocalText='Rot-' Location='240,72' Name='buttonAdjustRotateLeft' ScrollExtent='56,28' Size='56,28' Style='/Styles.New.buttons.hud.style'>Rot-</Button>
+					<Button LocalText='Rot+' Location='302,72' Name='buttonAdjustRotateRight' ScrollExtent='56,28' Size='56,28' Style='/Styles.New.buttons.hud.style'>Rot+</Button>
+					<Button LocalText='Apply Adjust' Location='370,72' Name='buttonAdjustApply' ScrollExtent='110,28' Size='110,28' Style='/Styles.New.buttons.hud.style'>Apply Adjust</Button>
 					<Page
 						BackgroundColor='#0A1218'
 						BackgroundOpacity='0.98'
-						Location='12,52'
+						Location='12,108'
 						Name='layoutMapCanvas'
 						RStyleDefault='/Styles.New.whiteOutline.rs_default'
-						ScrollExtent='856,456'
-						Size='856,456'
+						ScrollExtent='856,400'
+						Size='856,400'
 					>
 						<Button
 							Enabled='false'
@@ -192,8 +208,8 @@
 							Name='layoutMapViewer'
 							PalBgTint='back1'
 							RStyleDefault='/Styles.New.viewer.rs_default'
-							ScrollExtent='856,456'
-							Size='856,456'
+							ScrollExtent='856,400'
+							Size='856,400'
 							Visible='false'
 						/>
 					</Page>
@@ -233,11 +249,12 @@
 		</Page>
 
 		<Page BackgroundColor='#FFFFFF' BackgroundOpacity='0.35' BackgroundTint='#002838' Location='0,604' Name='footer' PalBgTint='back1' RStyleDefault='/Styles.New.whiteOutline.rs_default' ScrollExtent='900,56' Size='900,56'>
-			<Text Enabled='false' Font='bold_11' LocalText='Select a module and portal. Linked nodes can be replaced or unassigned.' Location='14,18' Name='textStatus' ScrollExtent='420,22' Size='420,22' TextColor='#D0E8F0'>Select a module and portal. Linked nodes can be replaced or unassigned.</Text>
-			<Button LocalText='Unassign' Location='440,12' Name='buttonUnassign' ScrollExtent='90,32' Size='90,32' Style='/Styles.New.buttons.hud.style'>Unassign</Button>
-			<Button LocalText='Assign' Location='540,12' Name='buttonAssign' ScrollExtent='90,32' Size='90,32' Style='/Styles.New.buttons.hud.style'>Assign</Button>
-			<Button LocalText='Create Snap' Location='640,12' Name='buttonCreatePortal' ScrollExtent='110,32' Size='110,32' Style='/Styles.New.buttons.hud.style'>Create Snap</Button>
-			<Button LocalText='Close' Location='760,12' Name='buttonCancel' ScrollExtent='90,32' Size='90,32' Style='/Styles.New.buttons.hud.style'>Close</Button>
+			<Text Enabled='false' Font='bold_11' LocalText='Select a module and portal. Linked nodes can be replaced or unassigned.' Location='14,18' Name='textStatus' ScrollExtent='300,22' Size='300,22' TextColor='#D4E0EC'>Select a module and portal. Linked nodes can be replaced or unassigned.</Text>
+			<Button LocalText='Revert POB' Location='320,12' Name='buttonRevertPob' ScrollExtent='100,32' Size='100,32' Style='/Styles.New.buttons.hud.style'>Revert POB</Button>
+			<Button LocalText='Unassign' Location='430,12' Name='buttonUnassign' ScrollExtent='90,32' Size='90,32' Style='/Styles.New.buttons.hud.style'>Unassign</Button>
+			<Button LocalText='Assign' Location='530,12' Name='buttonAssign' ScrollExtent='90,32' Size='90,32' Style='/Styles.New.buttons.hud.style'>Assign</Button>
+			<Button LocalText='Create Snap' Location='630,12' Name='buttonCreatePortal' ScrollExtent='110,32' Size='110,32' Style='/Styles.New.buttons.hud.style'>Create Snap</Button>
+			<Button LocalText='Close' Location='750,12' Name='buttonCancel' ScrollExtent='90,32' Size='90,32' Style='/Styles.New.buttons.hud.style'>Close</Button>
 		</Page>
 	</Page>
 </Page>

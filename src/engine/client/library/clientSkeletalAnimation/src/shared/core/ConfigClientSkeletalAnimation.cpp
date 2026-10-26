@@ -131,13 +131,11 @@ void ConfigClientSkeletalAnimation::install()
 	KEY_BOOL      (logSameTrackTrumping, false);
 	REGISTER_FLAG (logSameTrackTrumping);
 
-	// x64: force LOD 0 until screen-fraction + CharacterLodManager paths are validated
-	// on 64-bit (retail distance LOD caused persistent lowest-LOD lock in world + previews).
-#if defined(_WIN64)
-	KEY_BOOL      (forceHighestLod, true);
-#else
+	// Distance LOD on every platform. x64 used to force LOD 0 here because characters
+	// stuck at their lowest detail level; that lock came from the LOD hysteresis in
+	// SkeletalAppearance2::calculateDisplayLodIndex (infinite margin on the open-ended
+	// outer bands), which is fixed. forceHighestLod=1 still draws every character at LOD 0.
 	KEY_BOOL      (forceHighestLod, false);
-#endif
 
 	KEY_BOOL      (lodManagerEnable, true);
 	KEY_FLOAT     (lodManagerFirstLodCount, 2.5f);

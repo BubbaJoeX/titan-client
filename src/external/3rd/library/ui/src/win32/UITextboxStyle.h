@@ -98,6 +98,7 @@ private:
 
 	UIGridStyle           *mGridStyles[UIWidget::LastState];
 	UITextStyle           *mTextStyles[UIWidget::LastState];
+	UIString               mTextStyleNames[UIWidget::LastState];   // logical fonts asked for; see UIText::mStyleName
 
 	UIColor                mTextColor;
 

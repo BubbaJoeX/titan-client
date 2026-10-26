@@ -64,6 +64,7 @@ public:
 	virtual ~CollisionProperty();
 	
 	void                    initFloor           ( void );
+	void                    reloadFloor         ( void );
 	void                    initFromTemplate    ( SharedObjectTemplate const * objTemplate );
 	
 	// ----------

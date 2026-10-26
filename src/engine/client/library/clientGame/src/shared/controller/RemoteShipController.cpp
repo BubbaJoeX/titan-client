@@ -164,6 +164,10 @@ float RemoteShipController::realAlter(const float elapsedTime)
 		//-- Update the server position
 		m_shipDynamicsModel->predict(elapsedTime, ClientShipObjectInterface(owner));
 
+		//-- A ship always stays in the world cell: never let its own motion carry it through a portal (a POB ship's
+		//   exterior portals sit right behind its origin, and a long step would re-parent it into one of its cells)
+		CellProperty::setPortalTransitionsEnabled(false);
+
 		if (m_isInHyperspace)
 		{
 			m_totalElapsedTimeInHyperspaceSeconds += elapsedTime;
@@ -216,13 +220,16 @@ float RemoteShipController::realAlter(const float elapsedTime)
 					Transform transform_p;
 					orientation.getTransform(&transform_p);
 					transform_p.reorthonormalize();
-					transform_p.setPosition_p(position_w);
+					// Titan: back into parent space; differs from world for a ship parked in another pob's cell (a hangar)
+					transform_p.setPosition_p(cell.rotateTranslate_w2o(position_w));
 
 					//apply new rotation/position
 					owner->setTransform_o2p(transform_p);
 				}
 			}
 		}
+
+		CellProperty::setPortalTransitionsEnabled(true);
 
 #ifdef _DEBUG
 		Camera const * const camera = Game::getCamera();

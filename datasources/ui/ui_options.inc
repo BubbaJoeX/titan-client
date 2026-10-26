@@ -2372,7 +2372,7 @@ parent.slider.enabled=true'
 						>@ui_opt:reset_defaults</Button>
 						<Page
 							BackgroundColor='#FFFFFF'
-							BackgroundTint='#00FFFF'
+							BackgroundTint='#2487DB'
 							Name='main'
 							OpacityRelativeMin='0.70'
 							PackLocation='nfn,nfn'
@@ -2458,7 +2458,7 @@ parent.slider.enabled=true'
 										Size='486,33'
 									>
 										<ComboBox
-											BackgroundOpacity='0.70'
+											BackgroundOpacity='1.00'
 											ButtonMargin='2,2,2,0'
 											ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 											ButtonWidth='10'
@@ -4076,7 +4076,7 @@ parent.checkchatdiku.checked=false'
 										Size='327,21'
 									>
 										<ComboBox
-											BackgroundOpacity='0.70'
+											BackgroundOpacity='1.00'
 											ButtonMargin='2,2,2,0'
 											ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 											ButtonWidth='10'
@@ -5459,7 +5459,7 @@ parent.combohours.enabled=true
 												Tooltip='@ui_opt:tooltip_alarm_at'
 											>@ui_opt:alarm_at</Checkbox>
 											<ComboBox
-												BackgroundOpacity='0.60'
+												BackgroundOpacity='1.00'
 												ButtonMargin='2,2,2,0'
 												ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 												ButtonWidth='10'
@@ -5723,7 +5723,7 @@ parent.combohours.enabled=true
 												/>
 											</DataSource>
 											<ComboBox
-												BackgroundOpacity='0.60'
+												BackgroundOpacity='1.00'
 												ButtonMargin='2,2,2,0'
 												ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 												ButtonWidth='10'
@@ -5939,7 +5939,7 @@ parent.combohours.enabled=true
 												/>
 											</DataSource>
 											<ComboBox
-												BackgroundOpacity='0.60'
+												BackgroundOpacity='1.00'
 												ButtonMargin='2,2,2,0'
 												ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 												ButtonWidth='10'
@@ -6299,7 +6299,7 @@ parent.combohours.enabled=true
 										Tooltip='@ui_opt:tooltip_auto_afk_time'
 									>@ui_opt:auto_afk_time</Text>
 									<ComboBox
-										BackgroundOpacity='0.60'
+										BackgroundOpacity='1.00'
 										ButtonMargin='2,2,2,0'
 										ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 										ButtonWidth='10'
@@ -7016,7 +7016,7 @@ parent.combohours.enabled=true
 										Tooltip='When checked, every on-screen UI style uses this font. When unchecked, only the usual HUD faces change; decorative or specialty fonts stay as designed.'
 									>Fully replace font for all UI text</Checkbox>
 									<ComboBox
-										BackgroundOpacity='0.70'
+										BackgroundOpacity='1.00'
 										ButtonMargin='2,2,2,0'
 										ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 										ButtonWidth='10'
@@ -7710,7 +7710,7 @@ parent.combohours.enabled=true
 									Size='466,33'
 								>
 									<ComboBox
-										BackgroundOpacity='0.70'
+										BackgroundOpacity='1.00'
 										ButtonMargin='2,2,2,0'
 										ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 										ButtonWidth='10'
@@ -7789,7 +7789,7 @@ parent.combohours.enabled=true
 									Size='466,33'
 								>
 									<ComboBox
-										BackgroundOpacity='0.70'
+										BackgroundOpacity='1.00'
 										ButtonMargin='2,2,2,0'
 										ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 										ButtonWidth='10'
@@ -10348,7 +10348,7 @@ parent.snapAngle.enabled=false'
 									Size='466,33'
 								>
 									<ComboBox
-										BackgroundOpacity='0.70'
+										BackgroundOpacity='1.00'
 										ButtonMargin='2,2,2,0'
 										ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 										ButtonWidth='10'
@@ -10423,7 +10423,7 @@ parent.snapAngle.enabled=false'
 									Size='466,33'
 								>
 									<ComboBox
-										BackgroundOpacity='0.70'
+										BackgroundOpacity='1.00'
 										ButtonMargin='2,2,2,0'
 										ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 										ButtonWidth='10'
@@ -10508,7 +10508,7 @@ parent.snapAngle.enabled=false'
 									Size='466,33'
 								>
 									<ComboBox
-										BackgroundOpacity='0.70'
+										BackgroundOpacity='1.00'
 										ButtonMargin='2,2,2,0'
 										ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 										ButtonWidth='10'
@@ -10593,7 +10593,7 @@ parent.snapAngle.enabled=false'
 									Size='466,33'
 								>
 									<ComboBox
-										BackgroundOpacity='0.70'
+										BackgroundOpacity='1.00'
 										ButtonMargin='2,2,2,0'
 										ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 										ButtonWidth='10'
@@ -10678,7 +10678,7 @@ parent.snapAngle.enabled=false'
 									Size='466,33'
 								>
 									<ComboBox
-										BackgroundOpacity='0.70'
+										BackgroundOpacity='1.00'
 										ButtonMargin='2,2,2,0'
 										ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 										ButtonWidth='10'
@@ -10887,7 +10887,7 @@ parent.snapAngle.enabled=false'
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='651,622'
 						Size='651,622'
 					>

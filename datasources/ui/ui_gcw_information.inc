@@ -1051,7 +1051,7 @@
 			>
 				<ComboBox
 					AutoRegister='true'
-					BackgroundOpacity='0.70'
+					BackgroundOpacity='1.00'
 					ButtonMargin='2,2,2,0'
 					ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 					ButtonWidth='10'
@@ -2955,7 +2955,7 @@
 							/>
 						</DataSource>
 						<TabbedPane
-							BackgroundColor='#009977'
+							BackgroundColor='#155584'
 							MinimumScrollExtent='588,0'
 							MinimumSize='0,19'
 							Name='tabs'
@@ -2973,7 +2973,7 @@
 				</Composite>
 				<Page
 					BackgroundOpacity='1.00'
-					BackgroundTint='#00D6FB'
+					BackgroundTint='#2381D8'
 					Name='New Page'
 					Opacity='0.20'
 					PackSize='a,a'
@@ -2983,7 +2983,7 @@
 				/>
 				<Page
 					BackgroundOpacity='1.00'
-					BackgroundTint='#00D6FB'
+					BackgroundTint='#2381D8'
 					Name='New Page'
 					Opacity='0.20'
 					PackSize='a,a'
@@ -3122,7 +3122,7 @@
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='973,710'
 						Size='973,710'
 					>

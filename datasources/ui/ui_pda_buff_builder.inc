@@ -549,7 +549,7 @@
 							Location='1,0'
 							Name='lines'
 							PackSize='a,a'
-							RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+							RStyleDefault='/Styles.New.text_blank.default.rs'
 							ScrollExtent='650,594'
 							Size='650,594'
 						>
@@ -973,7 +973,7 @@
 							Location='1,0'
 							Name='lines'
 							PackSize='a,a'
-							RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+							RStyleDefault='/Styles.New.text_blank.default.rs'
 							ScrollExtent='667,390'
 							Size='667,390'
 						>

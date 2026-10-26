@@ -266,7 +266,8 @@ m_callbackReceiverExpMonitor (0)
 	registerSlider (slider, CuiPreferences::setHudOpacity, CuiPreferences::getHudOpacity, ConfigClientUserInterface::getHudOpacity, 0.1f, 1.0f);
 
 	getCodeDataObject (TUISliderbar, slider, "sliderUiScale");
-	registerSlider (slider, CuiPreferences::setUiScalePercent, CuiPreferences::getUiScalePercent, SwgCuiOptBase::getOneHundred, 75, 200, 200);
+	// Shows the effective scale; Reset Defaults goes back to automatic (config default 0, sized from the screen height).
+	registerSlider (slider, CuiPreferences::setUiScalePercent, CuiPreferences::getUiScalePercent, ConfigClientUserInterface::getUiScalePercent, 75, 300, 300);
 
 	getCodeDataObject (TUISliderbar, slider, "sliderUiFontScale");
 	registerSlider (slider, CuiPreferences::setUiFontScalePercent, CuiPreferences::getUiFontScalePercent, ConfigClientUserInterface::getUiFontScalePercent, 50, 200, 200);
@@ -502,7 +503,7 @@ void SwgCuiOptUi::performActivate ()
 	if (m_textUiFontFilter && m_comboUiFont)
 	{
 		std::string const saved = CuiPreferences::getUiDefaultFontFaceUtf8 ();
-		if (!saved.empty ())
+		if (!saved.empty () && saved != "stock")
 			m_textUiFontFilter->SetText (Unicode::utf8ToWide (saved));
 		else
 			m_textUiFontFilter->SetText (Unicode::emptyString);
@@ -552,9 +553,9 @@ void SwgCuiOptUi::resetDefaults   (bool confirmed)
 {
 	if (confirmed)
 	{
-		// Route subsequent slider/checkbox refreshes through stock fonts from the outset.
-		CuiDynamicUIFont::clearUserFont ();
+		// Back to the theme font (an empty face preference) before the sliders and checkboxes refresh.
 		CuiPreferences::setUiFontFullReplace (false);
+		CuiDynamicUIFont::resetToThemeFont ();
 	}
 	SwgCuiOptBase::resetDefaults (confirmed);
 	if (confirmed)
@@ -588,9 +589,13 @@ void SwgCuiOptUi::OnButtonPressed (UIWidget * context)
 		std::string name;
 		if (m_comboUiFont->GetSelectedIndex () >= 0)
 			m_comboUiFont->GetSelectedIndexName (name);
-		if (name.empty ())
+		if (name.empty () || name == "stock")
 		{
-			CuiDynamicUIFont::clearUserFont ();
+			// "" = the theme font, "stock" = the original bitmap fonts.
+			if (name.empty ())
+				CuiDynamicUIFont::resetToThemeFont ();
+			else
+				CuiDynamicUIFont::clearUserFont ();
 			if (m_textUiFontFilter)
 				m_textUiFontFilter->SetText (Unicode::emptyString);
 		}
@@ -638,11 +643,12 @@ void SwgCuiOptUi::rebuildUiFontCombo ()
 	trimAsciiInPlace (filterUtf8);
 
 	m_comboUiFont->Clear ();
-	m_comboUiFont->AddItem (Unicode::narrowToWide ("(Game default)"), "");
+	m_comboUiFont->AddItem (Unicode::narrowToWide ("(Theme font)"), "");
+	m_comboUiFont->AddItem (Unicode::narrowToWide ("(Stock game font)"), "stock");
 
 	ensureAllFontFacesCached ();
 
-	// Empty filter means "show everything" so players can browse installed faces (previously we aborted and only showed "(Game default)").
+	// Empty filter means "show everything" so players can browse installed faces (after the "(Theme font)" and "(Stock game font)" entries).
 	if (filterUtf8.empty ())
 	{
 		for (size_t i = 0; i < s_allFontFacesCache.size (); ++i)
@@ -718,7 +724,7 @@ void SwgCuiOptUi::syncComboSelectionAfterRebuild ()
 		for (int i = 0; i < n; ++i)
 		{
 			std::string name;
-			if (!m_comboUiFont->GetIndexName (i, name) || name.empty ())
+			if (!m_comboUiFont->GetIndexName (i, name) || name.empty () || name == "stock")
 				continue;
 			if (!_stricmp (name.c_str (), filterUtf8.c_str ()))
 			{

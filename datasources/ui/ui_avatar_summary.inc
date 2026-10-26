@@ -88,6 +88,7 @@ wookiee_male'
 					GetsInput='false'
 					Location='15,11'
 					MaximumSize='179,20'
+					Visible='false'
 					Name='runner'
 					Opacity='0.20'
 					PackLocation='nfn,fff'
@@ -102,7 +103,7 @@ wookiee_male'
 					Size='125,16'
 				>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='6,2'
@@ -115,7 +116,7 @@ wookiee_male'
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='23,2'
@@ -128,7 +129,7 @@ wookiee_male'
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='40,2'
@@ -140,7 +141,7 @@ wookiee_male'
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='57,2'
@@ -152,7 +153,7 @@ wookiee_male'
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='74,2'
@@ -165,7 +166,7 @@ wookiee_male'
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='91,2'
@@ -223,6 +224,7 @@ wookiee_male'
 					GetsInput='false'
 					Location='21,11'
 					MaximumSize='179,20'
+					Visible='false'
 					Name='runner'
 					Opacity='0.20'
 					PackLocation='nfn,fff'
@@ -238,7 +240,7 @@ wookiee_male'
 					Size='125,16'
 				>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='6,2'
@@ -251,7 +253,7 @@ wookiee_male'
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='23,2'
@@ -264,7 +266,7 @@ wookiee_male'
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='40,2'
@@ -276,7 +278,7 @@ wookiee_male'
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='57,2'
@@ -288,7 +290,7 @@ wookiee_male'
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='74,2'
@@ -301,7 +303,7 @@ wookiee_male'
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='91,2'
@@ -472,7 +474,7 @@ enabled=false'
 				/>
 			</DataSource>
 			<TabbedPane
-				BackgroundColor='#009977'
+				BackgroundColor='#155584'
 				Location='21,44'
 				MinimumScrollExtent='84,0'
 				MinimumSize='0,19'

@@ -5762,7 +5762,7 @@ Draft Template:   \\\>024object/draft_schematic/weapon/component/stock.iff\\\>00
 					Style='/Styles.New.Checkbox.Style2'
 				>@ui_craft:check_filter</Checkbox>
 				<TabbedPane
-					BackgroundColor='#009977'
+					BackgroundColor='#155584'
 					DataSource='TabData'
 					MinimumScrollExtent='241,0'
 					MinimumSize='0,19'
@@ -6701,7 +6701,7 @@ xxx attrib 8:    info here
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='708,575'
 						Size='708,575'
 					>

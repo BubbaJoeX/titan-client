@@ -510,7 +510,13 @@ void CuiWidget3dObjectViewer::RenderStart   (UICanvas & canvas) const
 	
 	DEBUG_FATAL (rect.Width () <= 0 || rect.Height () <= 0, ("cliprect fubar'd\n"));
 	
-	m_camera->setViewport (rect.left, rect.top, rect.Width (), rect.Height ());
+	// UI scale: rect is in LOGICAL canvas coords, the camera viewport in PHYSICAL render-target pixels.
+	const float uiScale = Graphics::getUiCanvasScale ();
+	m_camera->setViewport (
+		static_cast<int>(static_cast<float>(rect.left)     * uiScale),
+		static_cast<int>(static_cast<float>(rect.top)      * uiScale),
+		static_cast<int>(static_cast<float>(rect.Width ()) * uiScale),
+		static_cast<int>(static_cast<float>(rect.Height ()) * uiScale));
 	
 	const UISize visibleSize (rect.Size ());
 	

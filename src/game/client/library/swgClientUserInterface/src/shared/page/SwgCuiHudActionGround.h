@@ -29,6 +29,10 @@ private:
 
 	SwgCuiHudWindowManagerGround & getWindowManagerGround () const;
 
+
+	// Titan: the space HUD's ship actions, registered in atmospheric flight (SwgCuiHudActionSpace::performShipAction)
+	mutable int m_shipBoosterDebounceMs;
+	mutable int m_shipTargetLockDebounceMs;
 };
 
 //======================================================================

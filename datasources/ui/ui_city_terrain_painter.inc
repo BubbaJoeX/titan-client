@@ -62,7 +62,7 @@
 
 			<Text Enabled='false' Font='bold_11' LocalText='Paint Mode:' Location='0,36' Name='labelPaintMode' ScrollExtent='100,20' Size='100,20' TextAlignment='Left' TextColor='#FFFFFF'>Paint Mode:</Text>
 			<ComboBox
-				BackgroundOpacity='0.70'
+				BackgroundOpacity='1.00'
 				ButtonMargin='2,2,2,0'
 				ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 				ButtonWidth='10'
@@ -91,7 +91,7 @@
 
 			<Text Enabled='false' Font='bold_11' LocalText='Shader:' Location='0,66' Name='labelShader' ScrollExtent='100,20' Size='100,20' TextAlignment='Left' TextColor='#FFFFFF'>Shader:</Text>
 			<ComboBox
-				BackgroundOpacity='0.70'
+				BackgroundOpacity='1.00'
 				ButtonMargin='2,2,2,0'
 				ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 				ButtonWidth='10'

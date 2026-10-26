@@ -40,6 +40,10 @@ char const * const DynamicBunkerUngraftMessage::MessageType = "DynamicBunkerUngr
 
 char const * const DynamicBunkerCreateCustomSocketMessage::MessageType = "DynamicBunkerCreateCustomSocketMessage";
 char const * const DynamicBunkerCustomSocketSyncMessage::MessageType = "DynamicBunkerCustomSocketSyncMessage";
+char const * const DynamicBunkerRevertBuildingMessage::MessageType = "DynamicBunkerRevertBuildingMessage";
+char const * const DynamicBunkerBuildingRevertedMessage::MessageType = "DynamicBunkerBuildingRevertedMessage";
+char const * const DynamicBunkerAdjustGraftMessage::MessageType = "DynamicBunkerAdjustGraftMessage";
+char const * const DynamicBunkerGraftTransformMessage::MessageType = "DynamicBunkerGraftTransformMessage";
 
 
 
@@ -938,6 +942,123 @@ DynamicBunkerCustomSocketSyncMessage::~DynamicBunkerCustomSocketSyncMessage()
 }
 
 
+
+// ======================================================================
+
+DynamicBunkerRevertBuildingMessage::DynamicBunkerRevertBuildingMessage(
+	NetworkId const &buildingId,
+	NetworkId const &terminalId)
+: GameNetworkMessage(MessageType),
+	m_buildingId(buildingId),
+	m_terminalId(terminalId)
+{
+	addVariable(m_buildingId);
+	addVariable(m_terminalId);
+}
+
+DynamicBunkerRevertBuildingMessage::DynamicBunkerRevertBuildingMessage(Archive::ReadIterator &source)
+: GameNetworkMessage(MessageType),
+	m_buildingId(),
+	m_terminalId()
+{
+	addVariable(m_buildingId);
+	addVariable(m_terminalId);
+	unpack(source);
+}
+
+DynamicBunkerRevertBuildingMessage::~DynamicBunkerRevertBuildingMessage()
+{
+}
+
+// ======================================================================
+
+DynamicBunkerBuildingRevertedMessage::DynamicBunkerBuildingRevertedMessage(NetworkId const &buildingId)
+: GameNetworkMessage(MessageType),
+	m_buildingId(buildingId)
+{
+	addVariable(m_buildingId);
+}
+
+DynamicBunkerBuildingRevertedMessage::DynamicBunkerBuildingRevertedMessage(Archive::ReadIterator &source)
+: GameNetworkMessage(MessageType),
+	m_buildingId()
+{
+	addVariable(m_buildingId);
+	unpack(source);
+}
+
+DynamicBunkerBuildingRevertedMessage::~DynamicBunkerBuildingRevertedMessage()
+{
+}
+
+// ======================================================================
+
+DynamicBunkerAdjustGraftMessage::DynamicBunkerAdjustGraftMessage(
+	NetworkId const &buildingId,
+	NetworkId const &terminalId,
+	int32 graftedCellIndex,
+	Transform const &cellTransform_o2p)
+: GameNetworkMessage(MessageType),
+	m_buildingId(buildingId),
+	m_terminalId(terminalId),
+	m_graftedCellIndex(graftedCellIndex),
+	m_cellTransform_o2p(cellTransform_o2p)
+{
+	addVariable(m_buildingId);
+	addVariable(m_terminalId);
+	addVariable(m_graftedCellIndex);
+	addVariable(m_cellTransform_o2p);
+}
+
+DynamicBunkerAdjustGraftMessage::DynamicBunkerAdjustGraftMessage(Archive::ReadIterator &source)
+: GameNetworkMessage(MessageType),
+	m_buildingId(),
+	m_terminalId(),
+	m_graftedCellIndex(0),
+	m_cellTransform_o2p()
+{
+	addVariable(m_buildingId);
+	addVariable(m_terminalId);
+	addVariable(m_graftedCellIndex);
+	addVariable(m_cellTransform_o2p);
+	unpack(source);
+}
+
+DynamicBunkerAdjustGraftMessage::~DynamicBunkerAdjustGraftMessage()
+{
+}
+
+// ======================================================================
+
+DynamicBunkerGraftTransformMessage::DynamicBunkerGraftTransformMessage(
+	NetworkId const &buildingId,
+	int32 graftedCellIndex,
+	Transform const &cellTransform_o2p)
+: GameNetworkMessage(MessageType),
+	m_buildingId(buildingId),
+	m_graftedCellIndex(graftedCellIndex),
+	m_cellTransform_o2p(cellTransform_o2p)
+{
+	addVariable(m_buildingId);
+	addVariable(m_graftedCellIndex);
+	addVariable(m_cellTransform_o2p);
+}
+
+DynamicBunkerGraftTransformMessage::DynamicBunkerGraftTransformMessage(Archive::ReadIterator &source)
+: GameNetworkMessage(MessageType),
+	m_buildingId(),
+	m_graftedCellIndex(0),
+	m_cellTransform_o2p()
+{
+	addVariable(m_buildingId);
+	addVariable(m_graftedCellIndex);
+	addVariable(m_cellTransform_o2p);
+	unpack(source);
+}
+
+DynamicBunkerGraftTransformMessage::~DynamicBunkerGraftTransformMessage()
+{
+}
 
 // ======================================================================
 

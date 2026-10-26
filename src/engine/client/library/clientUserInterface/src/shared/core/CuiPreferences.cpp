@@ -13,6 +13,7 @@
 #include "clientGame/ConfigClientGame.h"
 #include "clientGame/Game.h"
 #include "clientGame/PlayerObject.h"
+#include "clientGraphics/Graphics.h"
 #include "clientUserInterface/ConfigClientUserInterface.h"
 #include "clientUserInterface/CuiActionManager.h"
 #include "clientUserInterface/CuiActions.h"
@@ -128,6 +129,11 @@ namespace
 	// Increment defaultUiSettingsVersion to force a reset to latest defaults for all users.
 	const int   cms_defaultUiSettingsVersion          = 1;
 	int         ms_uiSettingsVersion                  = 0;
+
+	// Titan Modern UI (2026-10-25). A character below this version still on the stock defaults moves to the Titan
+	// palette and automatic UI scale once (refreshValues); kept apart from uiSettingsVersion, which resets layouts.
+	const int   cms_uiThemeVersion                    = 1;
+	int         ms_uiThemeVersion                     = 0;
 
 	bool        ms_combatSpamVerbose                = false;
 	bool        ms_spamShowWeapon                   = true;
@@ -811,6 +817,7 @@ void CuiPreferences::install ()
 	REGISTER_OPTION_USER(paletteName);
 	REGISTER_OPTION_USER(hudOpacity);
 	REGISTER_OPTION_USER(uiScalePercent);
+	REGISTER_OPTION_USER(uiThemeVersion);
 	// Per-machine UI font override (custom face + scale) — stored in local_machine_options.iff
 	REGISTER_OPTION(uiFontScalePercent);
 	REGISTER_OPTION(uiDefaultFontFaceUtf8);
@@ -1206,7 +1213,9 @@ void CuiPreferences::setHudOpacity (float f)
 
 void CuiPreferences::setUiScalePercent (int percent)
 {
-	if (percent < 50)
+	if (percent <= 0)
+		percent = 0;                    // automatic
+	else if (percent < 50)
 		percent = 50;
 	else if (percent > 300)
 		percent = 300;
@@ -1616,19 +1625,47 @@ float CuiPreferences::getHudOpacity ()
 
 int CuiPreferences::getUiScalePercent ()
 {
-	return ms_uiScalePercent;
+	return static_cast<int>(getUiScaleFactor () * 100.0f + 0.5f);
+}
+
+//----------------------------------------------------------------------
+
+bool CuiPreferences::isUiScaleAuto ()
+{
+	return ms_uiScalePercent <= 0;
 }
 
 //----------------------------------------------------------------------
 
 float CuiPreferences::getUiScaleFactor ()
 {
+	float factor = 1.0f;
 	int p = ms_uiScalePercent;
-	if (p < 50)
-		p = 50;
-	else if (p > 300)
-		p = 300;
-	return static_cast<float>(p) / 100.0f;
+	if (p <= 0)
+	{
+		//-- automatic: the stock layouts were drawn for 768 lines and read well at about 864, so scale with the
+		//   screen height from there (1080p 125%, 1440p 165%, 2160p 250%), in 5% steps
+		int const height = Graphics::getFrameBufferMaxHeight ();
+		if (height > 0)
+		{
+			float const steps = floorf (static_cast<float>(height) / 864.0f * 20.0f + 0.5f);
+			factor = std::max (1.0f, std::min (3.0f, steps / 20.0f));
+		}
+	}
+	else
+		factor = static_cast<float>(std::max (50, std::min (300, p))) / 100.0f;
+
+	//-- re-lay the root page out whenever the effective factor moves. The frame buffer size isn't known yet when
+	//   the UI installs (the root page gets laid out at 1.0), it changes with the window, and the per-character
+	//   options (uiScalePercent) are loaded at every scene load without going through setUiScalePercent: without
+	//   this the root kept the old logical size and the HUD drew in a corner of the screen.
+	static float s_lastFactor = 0.0f;
+	if (factor != s_lastFactor)
+	{
+		s_lastFactor = factor;
+		CuiManager::scheduleUiScaleLayoutUpdate ();
+	}
+	return factor;
 }
 
 //----------------------------------------------------------------------
@@ -2280,6 +2317,16 @@ bool CuiPreferences::getSpamShowArmorAbsorption()
 
 void CuiPreferences::refreshValues ()
 {
+	if (ms_uiThemeVersion < cms_uiThemeVersion)
+	{
+		if (ms_paletteName.empty () || !_stricmp (ms_paletteName.c_str (), "destroyer") || !_stricmp (ms_paletteName.c_str (), "alpha_blue"))
+			ms_paletteName = ConfigClientUserInterface::getPaletteName ();
+		if (ms_uiScalePercent == 100)
+			ms_uiScalePercent = ConfigClientUserInterface::getUiScalePercent ();
+		ms_uiThemeVersion = cms_uiThemeVersion;
+		CuiManager::scheduleUiScaleLayoutUpdate ();
+	}
+
 	setTooltipDelaySecs (ms_tooltipDelaySecs);
 	setMouseModeDefault (getMouseModeDefault());
 	setCameraInertia    (ms_cameraInertia);
@@ -3066,6 +3113,13 @@ void CuiPreferences::setUiSettingsVersion(int i)
 int CuiPreferences::getUiSettingsVersion()
 {
 	return ms_uiSettingsVersion;
+}
+
+//----------------------------------------------------------------------
+
+void CuiPreferences::setUiThemeVersion(int i)
+{
+	ms_uiThemeVersion = i;
 }
 
 //----------------------------------------------------------------------

@@ -244,6 +244,7 @@ private:
 			void                    SyncRenderDataToLocalText ();
 
 	UITextStyle                    *mStyle;
+	UIString                        mStyleName;     // logical font asked for (Font); see UIText::GetProperty
 	UIString                        mData;
 	UIString                        mLocalText;
 	UIString                        mRenderData;

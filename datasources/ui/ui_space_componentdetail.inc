@@ -162,7 +162,7 @@
 					/>
 					<Image
 						BackgroundColor='#FFFFFF'
-						BackgroundTint='#00D6FB'
+						BackgroundTint='#2381D8'
 						Color='#54E4FE'
 						Location='32,2'
 						Name='disabled'
@@ -240,7 +240,7 @@
 						/>
 						<Image
 							BackgroundColor='#FFFFFF'
-							BackgroundTint='#00D6FB'
+							BackgroundTint='#2381D8'
 							Color='#54E4FE'
 							Location='32,2'
 							Name='disabled'
@@ -304,7 +304,7 @@
 						/>
 						<Image
 							BackgroundColor='#FFFFFF'
-							BackgroundTint='#00D6FB'
+							BackgroundTint='#2381D8'
 							Color='#54E4FE'
 							Location='32,2'
 							Name='disabled'
@@ -368,7 +368,7 @@
 						/>
 						<Image
 							BackgroundColor='#FFFFFF'
-							BackgroundTint='#00D6FB'
+							BackgroundTint='#2381D8'
 							Color='#54E4FE'
 							Location='32,2'
 							Name='disabled'
@@ -432,7 +432,7 @@
 						/>
 						<Image
 							BackgroundColor='#FFFFFF'
-							BackgroundTint='#00D6FB'
+							BackgroundTint='#2381D8'
 							Color='#54E4FE'
 							Location='32,2'
 							Name='disabled'
@@ -496,7 +496,7 @@
 						/>
 						<Image
 							BackgroundColor='#FFFFFF'
-							BackgroundTint='#00D6FB'
+							BackgroundTint='#2381D8'
 							Color='#54E4FE'
 							Location='32,2'
 							Name='disabled'
@@ -560,7 +560,7 @@
 						/>
 						<Image
 							BackgroundColor='#FFFFFF'
-							BackgroundTint='#00D6FB'
+							BackgroundTint='#2381D8'
 							Color='#54E4FE'
 							Location='32,2'
 							Name='disabled'
@@ -624,7 +624,7 @@
 						/>
 						<Image
 							BackgroundColor='#FFFFFF'
-							BackgroundTint='#00D6FB'
+							BackgroundTint='#2381D8'
 							Color='#54E4FE'
 							Location='32,2'
 							Name='disabled'

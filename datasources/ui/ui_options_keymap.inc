@@ -144,7 +144,7 @@
 									>
 									</Scrollbar>
 									<TabbedPane
-										BackgroundColor='#009977'
+										BackgroundColor='#155584'
 										Location='5,2'
 										MinimumScrollExtent='417,0'
 										MinimumSize='0,19'
@@ -571,7 +571,7 @@
 										TextColor='#97FFFF'
 									>@ui_opt:keybind_load_standard</Text>
 									<ComboBox
-										BackgroundOpacity='0.70'
+										BackgroundOpacity='1.00'
 										ButtonMargin='2,2,2,0'
 										ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 										ButtonWidth='10'

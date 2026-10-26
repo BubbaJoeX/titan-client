@@ -28,6 +28,7 @@
 #include "swgClientUserInterface/SwgCuiCommandParserCustomization.h"
 #include "swgClientUserInterface/SwgCuiCommandParserDefault.h"
 #include "swgClientUserInterface/SwgCuiCommandParserLocale.h"
+#include "swgClientUserInterface/SwgCuiCommandParserDevTest.h"
 #include "swgClientUserInterface/SwgCuiCommandParserMount.h"
 #include "swgClientUserInterface/SwgCuiCommandParserNet.h"
 #include "swgClientUserInterface/SwgCuiCommandParserParticle.h"
@@ -75,6 +76,9 @@ m_commandTableParser (new CuiCommandTableParser())
 	m_parser->addSubCommand (new SwgCuiCommandParserAudio ());
 	m_parser->addSubCommand (new SwgCuiCommandParserCustomization ());
 	m_parser->addSubCommand (new SwgCuiCommandParserMount ());
+#if PRODUCTION == 0
+	m_parser->addSubCommand (new SwgCuiCommandParserDevTest ());
+#endif
 	m_parser->addSubCommand (new SwgCuiCommandParserVideo ());
 }
 

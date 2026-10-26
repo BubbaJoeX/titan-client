@@ -404,7 +404,7 @@ LINE ELEVEN
 								<Text
 									Activated='true'
 									BackgroundColor='#FFFFFF'
-									BackgroundTint='#008080'
+									BackgroundTint='#12446E'
 									Enabled='false'
 									Font='bold_11'
 									LocalText='xxx
@@ -445,7 +445,7 @@ LINE ELEVEN
 </Text>
 								<Text
 									BackgroundColor='#FFFFFF'
-									BackgroundTint='#008080'
+									BackgroundTint='#12446E'
 									Enabled='false'
 									Font='bold_11'
 									LocalText='xxx
@@ -692,7 +692,7 @@ LINE ELEVEN
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='444,336'
 						Size='444,336'
 					>

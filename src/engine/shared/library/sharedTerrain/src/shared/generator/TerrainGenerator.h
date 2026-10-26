@@ -32,6 +32,8 @@
 #include "sharedTerrain/ShaderGroup.h"
 #include "sharedTerrain/TerrainGeneratorType.h"
 
+#include <vector>
+
 class Shader;
 
 //===================================================================
@@ -44,6 +46,8 @@ public:
 	//
 	// GeneratorChunkData is used to request a chunk from the generator
 	//
+	class Layer;
+
 	struct GeneratorChunkData
 	{
 	public:
@@ -112,6 +116,9 @@ public:
 		/// by coarser-grid copies that often revert cells to the default shader.
 		mutable bool                     skipShaderSynchronize;
 		mutable Rectangle2d              chunkExtentIUO;
+
+		//-- layers with a fine AffectorExclude met while generating this chunk (TerrainGenerator::_applyFineExclusion)
+		mutable std::vector<const Layer*> fineExcludeLayersIUO;
 
 	private:
 
@@ -255,6 +262,10 @@ public:
 
 		virtual bool intersects(const Rectangle2d& other) const=0;
 		virtual void scanConvertGT(float *o_data, const Rectangle2d &scanArea, int numberOfPoles) const;
+
+		//-- fine terrain exclusion: shapes with an exact edge give the nearest point on it
+		virtual bool  hasExactEdge () const;
+		virtual bool  getNearestEdgePoint (float worldX, float worldZ, Vector2d& edgePoint) const;
 
 		//-- run-time rule interface
 		virtual void  setCenter (const Vector2d& center);
@@ -410,6 +421,12 @@ public:
 		void _oldBoundaryTest(float &fuzzyTest, float worldX, float worldZ) const;
 
 		void              affect (const float *previousAmountMap, const GeneratorChunkData& generatorChunkData) const;
+
+		//-- fine terrain exclusion (AffectorExclude::isFine): the layer's own boundaries are the cut
+		bool              hasFineExclusion () const;
+		bool              hasExactExclusionEdge () const;
+		bool              isWithinFineExclusion (float worldX, float worldZ) const;
+		bool              getFineExclusionEdge (float worldX, float worldZ, Vector2d& edgePoint) const;
 		virtual void      prepare ();
 		virtual void      load (Iff& iff, TerrainGenerator* terrainGenerator);
 		virtual void      save (Iff& iff) const;
@@ -499,6 +516,7 @@ private:
 private:
 
 	void _generateVertexPositions(const GeneratorChunkData& generatorChunkData) const;
+	void _applyFineExclusion(const GeneratorChunkData& generatorChunkData, bool snapVertices) const;
 	void affect (const GeneratorChunkData& generatorChunkData) const;
 
 	void load_0000 (Iff& iff);

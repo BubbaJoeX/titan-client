@@ -1,5 +1,6 @@
 #include "ImportStructure.h"
 #include "ImportPathResolver.h"
+#include "ImportShader.h"
 #include "SwgTranslatorNames.h"
 
 #include <maya/MArgList.h>
@@ -217,11 +218,9 @@ MStatus ImportStructure::doIt(const MArgList& args)
 
 	if (!shaderTreePath.empty())
 	{
-		MString sc = "importShader -i \"";
-		sc += melEscapePath(normalizeSlashes(shaderTreePath)).c_str();
-		sc += "\"";
 		structureLog("Shader: %s", shaderTreePath.c_str());
-		status = MGlobal::executeCommand(sc, false, true);
+		MString importedSg;
+		status = ImportShader::importFromPath(normalizeSlashes(shaderTreePath), std::string(), importedSg);
 		if (status)
 			importedSomething = true;
 		else

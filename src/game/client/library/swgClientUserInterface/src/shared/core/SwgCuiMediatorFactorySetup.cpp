@@ -30,6 +30,8 @@
 #include "sharedDebug/DebugFlags.h"
 #include "sharedFoundation/Production.h"
 #include "swgClientUserInterface/SwgCuiAppearanceTab.h"
+#include "swgClientUserInterface/SwgCuiCompanionTab.h"
+#include "swgClientUserInterface/SwgCuiCompanionCustomize.h"
 #include "swgClientUserInterface/SwgCuiAuctionBid.h"
 #include "swgClientUserInterface/SwgCuiAuctionBuy.h"
 #include "swgClientUserInterface/SwgCuiAuctionDetails.h"
@@ -273,6 +275,8 @@ void SwgCuiMediatorFactorySetup::install ()
 	MAKE_SWG_CTOR_WS (TcgWindow,                      "/pda.Tcg");
 	MAKE_SWG_CTOR_WS (Mahjong,                        "/pda.Mahjong");
 	MAKE_SWG_CTOR_WS (AppearanceTab,                  "/pda.AppearanceTab");
+	MAKE_SWG_CTOR_WS (CompanionTab,                  "/pda.CompanionTab");
+	MAKE_SWG_CTOR_WS (CompanionCustomize,            "/pda.companioncustomize.designer");
 	MAKE_SWG_CTOR_WS (QuestBuilder,					  "/pda.QuestBuilder");
 	MAKE_SWG_CTOR_WS (Rating,                         "/pda.ratingScreen");
 	MAKE_SWG_CTOR_WS (GalacticCivilWar,               "/pda.GCWInformation");

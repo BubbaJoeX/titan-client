@@ -92,14 +92,14 @@
 
 		<Page BackgroundColor='#FFFFFF' BackgroundOpacity='0.50' BackgroundTint='#00354F' Location='0,0' Name='header' PalBgTint='back1' RStyleDefault='/Styles.New.whiteOutline.rs_default' ScrollExtent='560,40' Size='560,40'>
 			<Text Enabled='false' Font='bold_16' LocalText='City Terraforming Tools' Location='16,10' Name='titleText' ScrollExtent='200,22' Size='200,22' TextAlignment='Left' TextColor='#FFFFFF'>City Terraforming Tools</Text>
-			<Text Enabled='false' Font='bold_12' LocalText='' Location='230,12' Name='textCityName' ScrollExtent='200,18' Size='200,18' TextAlignment='Center' TextColor='#00FFFF'></Text>
+			<Text Enabled='false' Font='bold_12' LocalText='' Location='230,12' Name='textCityName' ScrollExtent='200,18' Size='200,18' TextAlignment='Center' TextColor='#2487DB'></Text>
 			<Button LocalText='X' Location='528,8' Name='buttonClose' ScrollExtent='24,24' Size='24,24' Style='/Styles.New.buttons.hud.style'>X</Button>
 		</Page>
 
 		<Page GetsInput='true' Location='8,48' Name='content' ScrollExtent='544,564' Size='544,564'>
 
 			<Page BackgroundColor='#223344' BackgroundOpacity='0.60' Location='0,0' Name='tabContainer' ScrollExtent='544,32' Size='544,32'>
-				<Button LocalText='Shader Paint' Location='2,2' Name='tabShaderPaint' ScrollExtent='103,28' Size='103,28' Style='/Styles.New.buttons.hud.style' TextColor='#00FFFF'>Shader Paint</Button>
+				<Button LocalText='Shader Paint' Location='2,2' Name='tabShaderPaint' ScrollExtent='103,28' Size='103,28' Style='/Styles.New.buttons.hud.style' TextColor='#2487DB'>Shader Paint</Button>
 				<Button LocalText='Height Edit' Location='109,2' Name='tabHeightEdit' ScrollExtent='103,28' Size='103,28' Style='/Styles.New.buttons.hud.style'>Height Edit</Button>
 				<Button LocalText='Roads' Location='216,2' Name='tabRoads' ScrollExtent='103,28' Size='103,28' Style='/Styles.New.buttons.hud.style'>Roads</Button>
 				<Button LocalText='Affectors' Location='323,2' Name='tabAffectors' ScrollExtent='103,28' Size='103,28' Style='/Styles.New.buttons.hud.style'>Affectors</Button>
@@ -111,7 +111,7 @@
 
 				<Text Enabled='false' Font='bold_11' LocalText='Shader:' Location='8,44' Name='labelShader' ScrollExtent='80,20' Size='80,20' TextAlignment='Left' TextColor='#FFFFFF'>Shader:</Text>
 				<ComboBox
-					BackgroundOpacity='0.80'
+					BackgroundOpacity='1.00'
 					ButtonMargin='2,2,2,0'
 					ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 					ButtonWidth='12'
@@ -242,7 +242,7 @@
 
 				<Text Enabled='false' Font='bold_11' LocalText='Mode:' Location='8,44' Name='labelMode' ScrollExtent='80,20' Size='80,20' TextAlignment='Left' TextColor='#FFFFFF'>Mode:</Text>
 				<ComboBox
-					BackgroundOpacity='0.80'
+					BackgroundOpacity='1.00'
 					ButtonMargin='2,2,2,0'
 					ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 					ButtonWidth='12'
@@ -430,7 +430,7 @@
 
 				<Text Enabled='false' Font='bold_11' LocalText='Surface:' Location='8,88' Name='labelShader' ScrollExtent='80,20' Size='80,20' TextAlignment='Left' TextColor='#FFFFFF'>Surface:</Text>
 				<ComboBox
-					BackgroundOpacity='0.80'
+					BackgroundOpacity='1.00'
 					ButtonMargin='2,2,2,0'
 					ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 					ButtonWidth='12'
@@ -486,7 +486,7 @@
 
 				<Text Enabled='false' Font='bold_11' LocalText='Type:' Location='8,44' Name='labelType' ScrollExtent='80,20' Size='80,20' TextAlignment='Left' TextColor='#FFFFFF'>Type:</Text>
 				<ComboBox
-					BackgroundOpacity='0.80'
+					BackgroundOpacity='1.00'
 					ButtonMargin='2,2,2,0'
 					ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 					ButtonWidth='12'
@@ -605,7 +605,7 @@
 
 				<Text Enabled='false' Font='bold_11' LocalText='Parameter:' Location='8,220' Name='labelParam' ScrollExtent='80,20' Size='80,20' TextAlignment='Left' TextColor='#FFFFFF'>Parameter:</Text>
 				<ComboBox
-					BackgroundOpacity='0.80'
+					BackgroundOpacity='1.00'
 					ButtonMargin='2,2,2,0'
 					ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 					ButtonWidth='12'

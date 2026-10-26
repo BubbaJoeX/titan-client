@@ -615,6 +615,8 @@ BuildoutEditorWindow::BuildoutEditorWindow(QWidget * parent, const char * name)
 	m_planetCombo->insertItem("yavin4");
 	m_planetCombo->insertItem("kashyyyk_main");
 	m_planetCombo->insertItem("mustafar");
+	m_planetCombo->insertItem("geonosis");
+	m_planetCombo->insertItem("adventure_heroic");
 	m_modeButton = new QPushButton("Planetary", this);
 	topLayout->addWidget(planetLabel);
 	topLayout->addWidget(m_planetCombo);

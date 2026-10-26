@@ -25,6 +25,14 @@
 // ======================================================================
 
 bool FileControlReloadHandler::ms_installed = false;
+FileControlReloadHandler::TemplateReloadFunction FileControlReloadHandler::ms_templateReloadFunction = 0;
+
+// ======================================================================
+
+void FileControlReloadHandler::setTemplateReloadFunction(TemplateReloadFunction function)
+{
+	ms_templateReloadFunction = function;
+}
 
 // ======================================================================
 
@@ -117,15 +125,27 @@ bool FileControlReloadHandler::reloadTemplate(const std::string & templatePath)
 {
 	LOG("FileControl", ("ReloadHandler: template reload %s", templatePath.c_str()));
 
-	// ObjectTemplateList::reload requires an Iff object. The file has already
-	// been stored to disk by the time we get here, so the next time the engine
-	// requests this template it will load the new version from disk.
-	// For immediate reload, we would need to open the file as Iff and call
-	// ObjectTemplateList::reload(iff). This is handled by the GodClient's
-	// existing reloadClientTemplate console command infrastructure.
+	// The file is already on disk. Templates nobody has loaded yet are read from it on
+	// next access; loaded ones are reloaded in place by the host's reload function
+	// (the God Client's ActionsObjectTemplate::reloadClientTemplate).
+	if (!ms_templateReloadFunction)
+	{
+		LOG("FileControl", ("ReloadHandler: template %s updated on disk, will be loaded on next access", templatePath.c_str()));
+		return true;
+	}
 
-	LOG("FileControl", ("ReloadHandler: template %s updated on disk, will be loaded on next access", templatePath.c_str()));
-	return true;
+	// data/sku.0/sys.shared/compiled/game/object/foo.iff -> object/foo.iff
+	std::string templateName = templatePath;
+	for (std::string::size_type i = 0; i < templateName.size(); ++i)
+	{
+		if (templateName[i] == '\\')
+			templateName[i] = '/';
+	}
+	const std::string::size_type gamePos = templateName.find("/compiled/game/");
+	if (gamePos != std::string::npos)
+		templateName = templateName.substr(gamePos + 15);
+
+	return ms_templateReloadFunction(templateName);
 }
 
 // ----------------------------------------------------------------------

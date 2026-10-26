@@ -272,7 +272,7 @@
 							>@ui_cmnty:my_profile</Text>
 							<ComboBox
 								BackgroundColor='#FFFFFF'
-								BackgroundOpacity='0.60'
+								BackgroundOpacity='1.00'
 								ButtonMargin='2,2,2,0'
 								ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 								ButtonWidth='10'
@@ -373,7 +373,7 @@
 								/>
 							</DataSource>
 							<ComboBox
-								BackgroundOpacity='0.60'
+								BackgroundOpacity='1.00'
 								ButtonMargin='2,2,2,0'
 								ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 								ButtonWidth='10'
@@ -620,7 +620,7 @@
 							Size='374,140'
 						>
 							<ComboBox
-								BackgroundOpacity='0.60'
+								BackgroundOpacity='1.00'
 								ButtonMargin='2,2,2,0'
 								ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 								ButtonWidth='10'
@@ -721,7 +721,7 @@
 								/>
 							</DataSource>
 							<ComboBox
-								BackgroundOpacity='0.60'
+								BackgroundOpacity='1.00'
 								ButtonMargin='2,2,2,0'
 								ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 								ButtonWidth='10'
@@ -1032,7 +1032,7 @@
 								TextColor='#97FFFF'
 							>@ui_cmnty:search_time</Text>
 							<ComboBox
-								BackgroundOpacity='0.60'
+								BackgroundOpacity='1.00'
 								ButtonMargin='2,4,2,-6'
 								ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 								ButtonWidth='14'
@@ -1784,7 +1784,7 @@
 						>@ui_cmnty:friend_list_comment</Text>
 						<ComboBox
 							BackgroundColor='#FFFFFF'
-							BackgroundOpacity='0.70'
+							BackgroundOpacity='1.00'
 							ButtonMargin='2,2,2,0'
 							ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 							ButtonWidth='10'
@@ -2501,7 +2501,7 @@
 							>@ui_cmnty:title</Text>
 							<ComboBox
 								BackgroundColor='#FFFFFF'
-								BackgroundOpacity='0.70'
+								BackgroundOpacity='1.00'
 								ButtonMargin='2,2,2,0'
 								ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 								ButtonWidth='10'
@@ -2551,7 +2551,7 @@
 							>@ui_cmnty:language</Text>
 							<ComboBox
 								BackgroundColor='#FFFFFF'
-								BackgroundOpacity='0.70'
+								BackgroundOpacity='1.00'
 								ButtonMargin='2,2,2,0'
 								ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 								ButtonWidth='10'
@@ -2843,7 +2843,7 @@
 					>
 						<ComboBox
 							AutoRegister='true'
-							BackgroundOpacity='0.70'
+							BackgroundOpacity='1.00'
 							ButtonMargin='2,2,2,0'
 							ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 							ButtonWidth='10'
@@ -3636,7 +3636,7 @@
 						</Page>
 						<ComboBox
 							BackgroundColor='#FFFFFF'
-							BackgroundOpacity='0.60'
+							BackgroundOpacity='1.00'
 							ButtonMargin='2,2,2,0'
 							ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 							ButtonWidth='10'
@@ -3722,7 +3722,7 @@
 						</DataSource>
 						<ComboBox
 							BackgroundColor='#FFFFFF'
-							BackgroundOpacity='0.60'
+							BackgroundOpacity='1.00'
 							ButtonMargin='2,2,2,0'
 							ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 							ButtonWidth='10'
@@ -3756,7 +3756,7 @@
 						</DataSource>
 						<ComboBox
 							BackgroundColor='#FFFFFF'
-							BackgroundOpacity='0.60'
+							BackgroundOpacity='1.00'
 							ButtonMargin='2,2,2,0'
 							ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 							ButtonWidth='10'
@@ -3798,7 +3798,7 @@
 						</DataSource>
 						<ComboBox
 							BackgroundColor='#FFFFFF'
-							BackgroundOpacity='0.60'
+							BackgroundOpacity='1.00'
 							ButtonMargin='2,2,2,0'
 							ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 							ButtonWidth='10'
@@ -4489,7 +4489,7 @@
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='772,614'
 						Size='772,614'
 					>

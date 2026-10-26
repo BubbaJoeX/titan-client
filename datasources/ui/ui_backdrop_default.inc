@@ -33,7 +33,7 @@
 		/>
 		<Image
 			BackgroundOpacity='1.00'
-			BackgroundTint='#00FFFF'
+			BackgroundTint='#2487DB'
 			Color='#00D6FB'
 			Name='station'
 			PackLocation='nfn,nfn'

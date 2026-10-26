@@ -5,7 +5,9 @@
 
 #include <maya/MGlobal.h>
 
+#include <cctype>
 #include <cstdlib>
+#include <cstring>
 #include <string>
 #include <vector>
 
@@ -41,19 +43,33 @@ namespace
         return false;
     }
 
-    bool hasTreeFilePrefix(const std::string& path)
+    bool startsWithFolder(const std::string& path, const char* folder, size_t folderLen)
     {
-        if (path.size() >= 11 && (path.compare(0, 11, "appearance/") == 0 || path.compare(0, 11, "appearance\\") == 0))
-            return true;
-        if (path.size() >= 7 && (path.compare(0, 7, "shader/") == 0 || path.compare(0, 7, "shader\\") == 0))
-            return true;
-        if (path.size() >= 7 && (path.compare(0, 7, "effect/") == 0 || path.compare(0, 7, "effect\\") == 0))
-            return true;
-        if (path.size() >= 8 && (path.compare(0, 8, "texture/") == 0 || path.compare(0, 8, "texture\\") == 0))
-            return true;
-        return false;
+        if (path.size() < folderLen + 1)
+            return false;
+        if (path.compare(0, folderLen, folder) != 0)
+            return false;
+        const char sep = path[folderLen];
+        return sep == '/' || sep == '\\';
     }
 
+}
+
+bool hasTreeFilePrefix(const std::string& path)
+{
+    static const char* kFolders[] = {
+        "appearance", "shader", "effect", "texture", "clienteffect", "clientdata",
+        "animation", "customization", "interiorlayout", "object", "sample", "sound",
+        "music", "ui", "terrain", "palette", "quest", "snapshot", "footprint",
+        "combat", "cockpit", "chat", "abstract", "legends", "misc", "pixel_program",
+        "vertex_program", "shared_program", "texturerenderer", nullptr
+    };
+    for (const char** p = kFolders; *p; ++p)
+    {
+        if (startsWithFolder(path, *p, std::strlen(*p)))
+            return true;
+    }
+    return false;
 }
 
 std::string getImportDataRoot()
@@ -136,13 +152,13 @@ std::string resolveImportPath(const std::string& path)
     if (!hasTreeFilePrefix(treePath))
         treePath = "appearance/" + treePath;
 
-    const std::string combined = baseDir + treePath;
-    if (MayaUtility::fileExists(combined))
-        return combined;
-
     const std::string probed = resolveGameAssetPath(treePath);
     if (!probed.empty())
         return probed;
+
+    const std::string combined = baseDir + treePath;
+    if (MayaUtility::fileExists(combined))
+        return combined;
 
     return combined;
 }
@@ -202,8 +218,8 @@ namespace
     {
         std::vector<std::string> roots;
 
-        const char* envNames[] = { "TITAN_DATA_ROOT", "DATA_ROOT", "TITAN_EXPORT_ROOT", nullptr };
-        for (const char** p = envNames; *p; ++p)
+        const char* envReadFirst[] = { "TITAN_DATA_ROOT", "DATA_ROOT", nullptr };
+        for (const char** p = envReadFirst; *p; ++p)
         {
             const char* env = getenv(*p);
             if (env && env[0])
@@ -225,7 +241,18 @@ namespace
             test += "effect/a_simple.eft";
             if (MayaUtility::fileExists(test))
                 appendGameRootCandidate(roots, probe);
+            else
+            {
+                test = probe;
+                test += "appearance/";
+                if (MayaUtility::fileExists(test))
+                    appendGameRootCandidate(roots, probe);
+            }
         }
+
+        const char* envExportRoot = getenv("TITAN_EXPORT_ROOT");
+        if (envExportRoot && envExportRoot[0])
+            appendGameRootCandidate(roots, envExportRoot);
 
         return roots;
     }
@@ -265,6 +292,106 @@ std::string resolveGameAssetPath(const std::string& treeRel)
     }
 
     return std::string();
+}
+
+std::string toGameTreeRelativePath(const std::string& pathOrTree)
+{
+    if (pathOrTree.empty())
+        return std::string();
+
+    std::string n = pathOrTree;
+    for (char& c : n)
+        if (c == '\\')
+            c = '/';
+    while (!n.empty() && (n[0] == '/' || n[0] == '\\'))
+        n.erase(0, 1);
+
+    const size_t cg = n.find("compiled/game/");
+    if (cg != std::string::npos)
+        n = n.substr(cg + 14);
+
+    if (hasTreeFilePrefix(n))
+        return n;
+
+    static const char* kMids[] = {
+        "/appearance/", "/shader/", "/effect/", "/texture/", "/clienteffect/",
+        "/clientdata/", "/animation/", "/object/", "/sample/", "/sound/", nullptr
+    };
+    for (const char** p = kMids; *p; ++p)
+    {
+        const size_t pos = n.find(*p);
+        if (pos != std::string::npos)
+            return n.substr(pos + 1);
+    }
+    return std::string();
+}
+
+std::string resolveTreeAssetPath(const std::string& treeRel, const std::string& anchorPath, const char* defaultPrefix)
+{
+    if (treeRel.empty())
+        return std::string();
+
+    std::string n = treeRel;
+    for (char& c : n)
+        if (c == '\\')
+            c = '/';
+
+    if (n.size() >= 2 && std::isalpha(static_cast<unsigned char>(n[0])) && n[1] == ':')
+    {
+        if (MayaUtility::fileExists(n))
+            return n;
+        const std::string tree = toGameTreeRelativePath(n);
+        if (!tree.empty())
+        {
+            const std::string probed = resolveGameAssetPath(tree);
+            if (!probed.empty())
+                return probed;
+        }
+        return n;
+    }
+    if (!n.empty() && n[0] == '/')
+    {
+        if (MayaUtility::fileExists(n))
+            return n;
+        const std::string win = resolveWindowsMayaAbsolutePath(n);
+        if (!win.empty() && MayaUtility::fileExists(win))
+            return win;
+    }
+
+    while (!n.empty() && (n[0] == '/' || n[0] == '\\'))
+        n.erase(0, 1);
+
+    if (!hasTreeFilePrefix(n) && defaultPrefix && defaultPrefix[0])
+    {
+        std::string prefix = defaultPrefix;
+        for (char& c : prefix)
+            if (c == '\\')
+                c = '/';
+        if (!prefix.empty() && prefix.back() != '/')
+            prefix += '/';
+        n = prefix + n;
+    }
+
+    const std::string fromGame = resolveGameAssetPath(n);
+    if (!fromGame.empty())
+        return fromGame;
+
+    if (!anchorPath.empty())
+    {
+        std::string anchor = anchorPath;
+        for (char& c : anchor)
+            if (c == '\\')
+                c = '/';
+        const size_t cgPos = anchor.find("compiled/game/");
+        if (cgPos != std::string::npos)
+        {
+            const std::string combined = anchor.substr(0, cgPos + 14) + n;
+            if (MayaUtility::fileExists(combined))
+                return combined;
+        }
+    }
+
+    return resolveImportPath(n);
 }
 
 std::string resolveWindowsMayaAbsolutePath(const std::string& path)

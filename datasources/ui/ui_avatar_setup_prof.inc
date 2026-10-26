@@ -87,6 +87,7 @@ p.descriptionbutton.press=1'
 					GetsInput='false'
 					Location='21,11'
 					MaximumSize='179,20'
+					Visible='false'
 					Name='runner'
 					Opacity='0.20'
 					PackLocation='nfn,fff'
@@ -102,7 +103,7 @@ p.descriptionbutton.press=1'
 					Size='125,16'
 				>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='6,2'
@@ -115,7 +116,7 @@ p.descriptionbutton.press=1'
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='23,2'
@@ -128,7 +129,7 @@ p.descriptionbutton.press=1'
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='40,2'
@@ -141,7 +142,7 @@ p.descriptionbutton.press=1'
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='57,2'
@@ -154,7 +155,7 @@ p.descriptionbutton.press=1'
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='74,2'
@@ -167,7 +168,7 @@ p.descriptionbutton.press=1'
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='91,2'
@@ -224,6 +225,7 @@ p.descriptionbutton.press=1'
 					GetsInput='false'
 					Location='15,11'
 					MaximumSize='179,20'
+					Visible='false'
 					Name='runner'
 					Opacity='0.20'
 					PackLocation='nfn,fff'
@@ -238,7 +240,7 @@ p.descriptionbutton.press=1'
 					Size='125,16'
 				>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='6,2'
@@ -251,7 +253,7 @@ p.descriptionbutton.press=1'
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='23,2'
@@ -264,7 +266,7 @@ p.descriptionbutton.press=1'
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='40,2'
@@ -277,7 +279,7 @@ p.descriptionbutton.press=1'
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='57,2'
@@ -290,7 +292,7 @@ p.descriptionbutton.press=1'
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='74,2'
@@ -303,7 +305,7 @@ p.descriptionbutton.press=1'
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='91,2'
@@ -462,7 +464,7 @@ enabled=false'
 			</DataSource>
 			<ComboBox
 				BackgroundColor='#FFFFFF'
-				BackgroundOpacity='0.80'
+				BackgroundOpacity='1.00'
 				ButtonMargin='2,2,2,0'
 				ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 				ButtonWidth='10'

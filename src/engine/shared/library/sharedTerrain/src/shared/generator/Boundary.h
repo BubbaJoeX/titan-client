@@ -28,7 +28,16 @@ private:
 	float radius;
 	float radiusSquared;
 
+	//-- building layers: a circle named "local..." keeps its offset from the building and turns with it
+	Vector2d m_localCenter;
+	bool     m_placed;
+	Vector2d m_placeCenter;
+	float    m_placeAngle;
+
 private:
+
+	bool isLocal () const;
+	void place ();
 
 	void load_0000 (Iff& iff);
 	void load_0001 (Iff& iff);
@@ -59,6 +68,9 @@ public:
 	virtual void expand (Rectangle2d& extent) const;
 	virtual const Vector2d getCenter () const;
 	virtual void setCenter (const Vector2d& center);
+	virtual void setRotation (float angle);
+	virtual bool hasExactEdge () const;
+	virtual bool getNearestEdgePoint (float worldX, float worldZ, Vector2d& edgePoint) const;
 };
 
 //-------------------------------------------------------------------
@@ -198,9 +210,18 @@ protected:
 	ArrayList<Vector2d> pointList;
 	Rectangle2d extent;
 
+	//-- building layers: a polygon named "local..." is authored around the building origin and follows the
+	//   building's position and heading (TerrainModificationHelper::setPosition / setRotation)
+	ArrayList<Vector2d> m_localPointList;
+	bool                m_placed;
+	Vector2d            m_placeCenter;
+	float               m_placeAngle;
+
 protected:
 
 	virtual void recalculate ();
+	bool isLocal () const;
+	void place ();
 
 private:
 
@@ -220,6 +241,8 @@ public:
 	virtual const Vector2d getCenter () const;
 
 	virtual bool intersects(const Rectangle2d& other) const;
+	virtual void setCenter (const Vector2d& center);
+	virtual void setRotation (float angle);
 
 	const ArrayList<Vector2d>& getPointList () const;
 	int getNumberOfPoints () const;
@@ -287,6 +310,8 @@ public:
 	virtual ~BoundaryPolygon ();
 
 	virtual float isWithin (float worldX, float worldZ) const;
+	virtual bool hasExactEdge () const;
+	virtual bool getNearestEdgePoint (float worldX, float worldZ, Vector2d& edgePoint) const;
 	virtual void load (Iff& iff);
 	virtual void save (Iff& iff) const;
 

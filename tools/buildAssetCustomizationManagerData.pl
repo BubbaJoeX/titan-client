@@ -67,7 +67,7 @@ my $maxAssignedVariableUsageId = 0;
 
 my $maxNameBlockOffset = (sprintf("%u", 1 << 16) - 1);
 
-my $MAX_VALID_CUSTOMIZATION_ID = 127;
+my $MAX_VALID_CUSTOMIZATION_ID = 382;  # CustomizationData version 4 escapes ids above 126
 
 # =====================================================================
 # Raw collect lines use ':' as delimiter. Windows absolute paths (C:/...) add

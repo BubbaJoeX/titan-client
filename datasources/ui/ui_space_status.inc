@@ -177,7 +177,7 @@
 							PackSize='a,a'
 							ScrollExtent='32,15'
 							Size='32,15'
-							TextColor='#C4F9FD'
+							TextColor='#CCE2F5'
 						>xxx %</Text>
 					</Page>
 					<Page
@@ -214,7 +214,7 @@
 							PackSize='a,a'
 							ScrollExtent='32,15'
 							Size='32,15'
-							TextColor='#C4F9FD'
+							TextColor='#CCE2F5'
 						>xxx %</Text>
 					</Page>
 					<Page
@@ -251,7 +251,7 @@
 							PackSize='a,a'
 							ScrollExtent='32,15'
 							Size='32,15'
-							TextColor='#C4F9FD'
+							TextColor='#CCE2F5'
 						>xxx %</Text>
 					</Page>
 					<Page
@@ -288,7 +288,7 @@
 							PackSize='a,a'
 							ScrollExtent='32,15'
 							Size='32,15'
-							TextColor='#C4F9FD'
+							TextColor='#CCE2F5'
 						>xxx %</Text>
 					</Page>
 					<Page
@@ -325,7 +325,7 @@
 							PackSize='a,a'
 							ScrollExtent='32,17'
 							Size='32,17'
-							TextColor='#C4F9FD'
+							TextColor='#CCE2F5'
 						>xxx %</Text>
 					</Page>
 				</Composite>

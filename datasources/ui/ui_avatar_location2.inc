@@ -64,6 +64,7 @@
 					GetsInput='false'
 					Location='21,11'
 					MaximumSize='179,20'
+					Visible='false'
 					Name='runner'
 					Opacity='0.20'
 					PackLocation='nfn,fff'
@@ -79,7 +80,7 @@
 					Size='125,16'
 				>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='6,2'
@@ -91,7 +92,7 @@
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='23,2'
@@ -103,7 +104,7 @@
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='40,2'
@@ -116,7 +117,7 @@
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='57,2'
@@ -129,7 +130,7 @@
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='74,2'
@@ -142,7 +143,7 @@
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='91,2'
@@ -200,6 +201,7 @@
 					GetsInput='false'
 					Location='15,11'
 					MaximumSize='179,20'
+					Visible='false'
 					Name='runner'
 					Opacity='0.20'
 					PackLocation='nfn,fff'
@@ -214,7 +216,7 @@
 					Size='125,16'
 				>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='6,2'
@@ -226,7 +228,7 @@
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='23,2'
@@ -238,7 +240,7 @@
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='40,2'
@@ -251,7 +253,7 @@
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='57,2'
@@ -264,7 +266,7 @@
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='74,2'
@@ -277,7 +279,7 @@
 						Size='14,12'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						Color='#00FFFF'
 						Location='91,2'
@@ -840,7 +842,7 @@
 			</Page>
 		</Page>
 		<Page
-			BackgroundColor='#005555'
+			BackgroundColor='#0C2D49'
 			Name='left'
 			PackSize='a,p'
 			ScrollExtent='684,729'

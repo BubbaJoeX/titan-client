@@ -25,6 +25,8 @@ class ShipUpdateTransformCollisionMessage;
 class PlayerShipController : public ShipController
 {
 public:
+	/** Titan dev tools (/devtest hop, goto): put the ship there with its flight model, so it flies on from there. */
+	void warpForDevTest(Transform const & transform_p);
 
 	static void install ();
 

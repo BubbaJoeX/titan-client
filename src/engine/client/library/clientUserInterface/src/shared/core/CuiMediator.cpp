@@ -1303,9 +1303,11 @@ void CuiMediator::loadSizeLocation (bool doSize, bool doLocation)
 	UISize size  = getPage ().GetSize ();
 	UIPoint loc  = getPage ().GetLocation ();
 	
-	if (doSize)
+	//-- a window the player cannot resize keeps its designed size: a saved one only replays an old layout (stale after
+	//   the page is redesigned, e.g. the calendar's height or the experience bar's width)
+	if (doSize && getPage ().IsUserResizable ())
 		CuiSettings::loadSize (m_mediatorDebugName, size);
-	
+
 	if (doLocation)
 		CuiSettings::loadLocation (m_mediatorDebugName, loc);
 	

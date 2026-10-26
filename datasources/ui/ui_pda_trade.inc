@@ -72,7 +72,7 @@
 					Size='175,20'
 				>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						BackgroundTint='#00FFFF'
 						Color='#00FFFF'
@@ -85,7 +85,7 @@
 						Size='15,14'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						BackgroundTint='#00FFFF'
 						Color='#00FFFF'
@@ -98,7 +98,7 @@
 						Size='15,14'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						BackgroundTint='#00FFFF'
 						Color='#00FFFF'
@@ -112,7 +112,7 @@
 						Size='15,14'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						BackgroundTint='#00FFFF'
 						Color='#00FFFF'
@@ -126,7 +126,7 @@
 						Size='15,14'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						BackgroundTint='#00FFFF'
 						Color='#00FFFF'
@@ -140,7 +140,7 @@
 						Size='15,14'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						BackgroundTint='#00FFFF'
 						Color='#00FFFF'
@@ -154,7 +154,7 @@
 						Size='15,14'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						BackgroundTint='#00FFFF'
 						Color='#00FFFF'
@@ -168,7 +168,7 @@
 						Size='15,14'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						BackgroundTint='#00FFFF'
 						Color='#00FFFF'
@@ -182,7 +182,7 @@
 						Size='15,14'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
 						BackgroundTint='#00FFFF'
 						Color='#00FFFF'
@@ -196,9 +196,9 @@
 						Size='15,14'
 					/>
 					<Page
-						BackgroundColor='#00FFFF'
+						BackgroundColor='#2487DB'
 						BackgroundOpacity='1.00'
-						BackgroundTint='#00FFFF'
+						BackgroundTint='#2487DB'
 						Color='#00FFFF'
 						Location='159,4'
 						Name='p'
@@ -1082,7 +1082,7 @@
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='469,592'
 						Size='469,592'
 					>

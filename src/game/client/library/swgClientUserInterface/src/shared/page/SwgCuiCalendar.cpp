@@ -408,18 +408,19 @@ void SwgCuiCalendar::updateCalendarDisplay()
 			bool isToday = (dayNum == todayDay && m_currentMonth == todayMonth && m_currentYear == todayYear);
 			bool isSelected = (dayNum == m_selectedDay);
 
+			// Titan theme: the accent for the selected day, its deep tone for today, slate for the rest
 			UIColor bgColor;
 			if (isSelected)
 			{
-				bgColor = UIColor(0, 255, 0);
+				bgColor = UIColor(47, 139, 216);
 			}
 			else if (isToday)
 			{
-				bgColor = UIColor(255, 215, 0);
+				bgColor = UIColor(30, 90, 140);
 			}
 			else
 			{
-				bgColor = UIColor(0, 51, 85);
+				bgColor = UIColor(36, 48, 62);
 			}
 
 			btn->SetBackgroundTint(bgColor);

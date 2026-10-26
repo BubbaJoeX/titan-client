@@ -113,7 +113,7 @@ void CustomizationIdManagerNamespace::load_0001(Iff &iff)
 
 				//-- Add to id->variableName vector.
 				FATAL(id != expectedId, ("CustomizationIdManager load error: non-consecutive ids listed: expecting [%d], found [%d] for [%s].", expectedId, id, variableName));
-				FATAL(id >= 128, ("CustomizationIdManager load error: exceeded limit of supported customization variable IDs [%d] for variable [%s].", id, variableName));
+				FATAL(id > 0x7f + 255, ("CustomizationIdManager load error: exceeded limit of supported customization variable IDs [%d] for variable [%s].", id, variableName));
 
 				CrcString *crcVariableName = 0;
 				s_idToVariableName.push_back(crcVariableName = new PersistentCrcString(variableName, true));

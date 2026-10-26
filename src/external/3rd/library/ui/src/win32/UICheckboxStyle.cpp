@@ -229,6 +229,7 @@ bool UICheckboxStyle::SetProperty( const UILowerString & Name, const UIString &V
 		if( NewStyle || Value.empty() )
 		{
 			SetTextStyle( true, reinterpret_cast<UITextStyle *>( NewStyle ) );
+			mNormalTextStyleName = Value;
 			return true;
 		}
 	}
@@ -239,6 +240,7 @@ bool UICheckboxStyle::SetProperty( const UILowerString & Name, const UIString &V
 		if( NewStyle || Value.empty() )
 		{
 			SetTextStyle( false, reinterpret_cast<UITextStyle *>( NewStyle ) );
+			mDisabledTextStyleName = Value;
 			return true;
 		}
 	}
@@ -264,6 +266,11 @@ bool UICheckboxStyle::GetProperty( const UILowerString & Name, UIString &Value )
 	}
 	else if( Name == PropertyName::NormalTextStyle )
 	{
+		if( !mNormalTextStyleName.empty() )
+		{
+			Value = mNormalTextStyleName;
+			return true;
+		}
 		if( mNormalTextStyle )
 		{
 			Value = mNormalTextStyle->GetLogicalName();
@@ -272,6 +279,11 @@ bool UICheckboxStyle::GetProperty( const UILowerString & Name, UIString &Value )
 	}
 	else if( Name == PropertyName::DisabledTextStyle )
 	{
+		if( !mDisabledTextStyleName.empty() )
+		{
+			Value = mDisabledTextStyleName;
+			return true;
+		}
 		if( mDisabledTextStyle )
 		{
 			Value = mDisabledTextStyle->GetLogicalName();

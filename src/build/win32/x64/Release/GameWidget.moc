@@ -1,7 +1,7 @@
 /****************************************************************************
 ** GameWidget meta object code from reading C++ file 'GameWidget.h'
 **
-** Created: Thu Jul 23 03:18:10 2026
+** Created: Sat Oct 24 08:59:26 2026
 **      by: The Qt MOC ($Id: $)
 **
 ** WARNING! All changes made in this file will be lost!
@@ -65,35 +65,40 @@ QMetaObject* GameWidget::staticMetaObject()
     };
     static const QUMethod slot_4 = {"contextMenuEvent", 1, param_slot_4 };
     static const QUMethod slot_5 = {"createObjectFromSelectedTemplate", 0, 0 };
-    static const QUParameter param_slot_6[] = {
+    static const QUMethod slot_6 = {"placeLastTemplateAtCursor", 0, 0 };
+    static const QUParameter param_slot_7[] = {
 	{ "id", &static_QUType_int, 0, QUParameter::In }
     };
-    static const QUMethod slot_6 = {"onCreateTemplateFromMenu", 1, param_slot_6 };
-    static const QUMethod slot_7 = {"onAddObjectBookmark", 0, 0 };
-    static const QUMethod slot_8 = {"secondElapsed", 0, 0 };
-    static const QUParameter param_slot_9[] = {
-	{ "id", &static_QUType_int, 0, QUParameter::In }
+    static const QUMethod slot_7 = {"onCreateTemplateFromMenu", 1, param_slot_7 };
+    static const QUParameter param_slot_8[] = {
+	{ "index", &static_QUType_int, 0, QUParameter::In }
     };
-    static const QUMethod slot_9 = {"onPopupItemActivated", 1, param_slot_9 };
-    static const QUParameter param_slot_10[] = {
-	{ "id", &static_QUType_int, 0, QUParameter::In }
-    };
-    static const QUMethod slot_10 = {"onSetConditionMenuActivated", 1, param_slot_10 };
+    static const QUMethod slot_8 = {"onRecentTemplateFromMenu", 1, param_slot_8 };
+    static const QUMethod slot_9 = {"onAddObjectBookmark", 0, 0 };
+    static const QUMethod slot_10 = {"secondElapsed", 0, 0 };
     static const QUParameter param_slot_11[] = {
 	{ "id", &static_QUType_int, 0, QUParameter::In }
     };
-    static const QUMethod slot_11 = {"onMagicPaintingConditionMenuActivated", 1, param_slot_11 };
+    static const QUMethod slot_11 = {"onPopupItemActivated", 1, param_slot_11 };
     static const QUParameter param_slot_12[] = {
 	{ "id", &static_QUType_int, 0, QUParameter::In }
     };
-    static const QUMethod slot_12 = {"onMagicVideoConditionMenuActivated", 1, param_slot_12 };
-    static const QUMethod slot_13 = {"onPopupMenuShow", 0, 0 };
-    static const QUMethod slot_14 = {"onPopupMenuHide", 0, 0 };
-    static const QUMethod slot_15 = {"onTemplateMenuShow", 0, 0 };
-    static const QUParameter param_slot_16[] = {
+    static const QUMethod slot_12 = {"onSetConditionMenuActivated", 1, param_slot_12 };
+    static const QUParameter param_slot_13[] = {
+	{ "id", &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod slot_13 = {"onMagicPaintingConditionMenuActivated", 1, param_slot_13 };
+    static const QUParameter param_slot_14[] = {
+	{ "id", &static_QUType_int, 0, QUParameter::In }
+    };
+    static const QUMethod slot_14 = {"onMagicVideoConditionMenuActivated", 1, param_slot_14 };
+    static const QUMethod slot_15 = {"onPopupMenuShow", 0, 0 };
+    static const QUMethod slot_16 = {"onPopupMenuHide", 0, 0 };
+    static const QUMethod slot_17 = {"onTemplateMenuShow", 0, 0 };
+    static const QUParameter param_slot_18[] = {
 	{ "fps", &static_QUType_int, 0, QUParameter::In }
     };
-    static const QUMethod slot_16 = {"setFrameRateLimit", 1, param_slot_16 };
+    static const QUMethod slot_18 = {"setFrameRateLimit", 1, param_slot_18 };
     static const QMetaData slot_tbl[] = {
 	{ "onGameFocusAllowedChanged(bool)", &slot_0, QMetaData::Public },
 	{ "onInteriorCameraChanged(bool)", &slot_1, QMetaData::Public },
@@ -101,17 +106,19 @@ QMetaObject* GameWidget::staticMetaObject()
 	{ "grabExclusiveFocus()", &slot_3, QMetaData::Protected },
 	{ "contextMenuEvent(QContextMenuEvent*)", &slot_4, QMetaData::Protected },
 	{ "createObjectFromSelectedTemplate()", &slot_5, QMetaData::Protected },
-	{ "onCreateTemplateFromMenu(int)", &slot_6, QMetaData::Protected },
-	{ "onAddObjectBookmark()", &slot_7, QMetaData::Protected },
-	{ "secondElapsed()", &slot_8, QMetaData::Private },
-	{ "onPopupItemActivated(int)", &slot_9, QMetaData::Private },
-	{ "onSetConditionMenuActivated(int)", &slot_10, QMetaData::Private },
-	{ "onMagicPaintingConditionMenuActivated(int)", &slot_11, QMetaData::Private },
-	{ "onMagicVideoConditionMenuActivated(int)", &slot_12, QMetaData::Private },
-	{ "onPopupMenuShow()", &slot_13, QMetaData::Private },
-	{ "onPopupMenuHide()", &slot_14, QMetaData::Private },
-	{ "onTemplateMenuShow()", &slot_15, QMetaData::Private },
-	{ "setFrameRateLimit(int)", &slot_16, QMetaData::Private }
+	{ "placeLastTemplateAtCursor()", &slot_6, QMetaData::Protected },
+	{ "onCreateTemplateFromMenu(int)", &slot_7, QMetaData::Protected },
+	{ "onRecentTemplateFromMenu(int)", &slot_8, QMetaData::Protected },
+	{ "onAddObjectBookmark()", &slot_9, QMetaData::Protected },
+	{ "secondElapsed()", &slot_10, QMetaData::Private },
+	{ "onPopupItemActivated(int)", &slot_11, QMetaData::Private },
+	{ "onSetConditionMenuActivated(int)", &slot_12, QMetaData::Private },
+	{ "onMagicPaintingConditionMenuActivated(int)", &slot_13, QMetaData::Private },
+	{ "onMagicVideoConditionMenuActivated(int)", &slot_14, QMetaData::Private },
+	{ "onPopupMenuShow()", &slot_15, QMetaData::Private },
+	{ "onPopupMenuHide()", &slot_16, QMetaData::Private },
+	{ "onTemplateMenuShow()", &slot_17, QMetaData::Private },
+	{ "setFrameRateLimit(int)", &slot_18, QMetaData::Private }
     };
     static const QUParameter param_signal_0[] = {
 	{ 0, &static_QUType_bool, 0, QUParameter::In }
@@ -150,7 +157,7 @@ QMetaObject* GameWidget::staticMetaObject()
     };
     metaObj = QMetaObject::new_metaobject(
 	"GameWidget", parentObject,
-	slot_tbl, 17,
+	slot_tbl, 19,
 	signal_tbl, 6,
 #ifndef QT_NO_PROPERTIES
 	0, 0,
@@ -242,17 +249,19 @@ bool GameWidget::qt_invoke( int _id, QUObject* _o )
     case 3: grabExclusiveFocus(); break;
     case 4: contextMenuEvent((QContextMenuEvent*)static_QUType_ptr.get(_o+1)); break;
     case 5: createObjectFromSelectedTemplate(); break;
-    case 6: onCreateTemplateFromMenu((int)static_QUType_int.get(_o+1)); break;
-    case 7: onAddObjectBookmark(); break;
-    case 8: secondElapsed(); break;
-    case 9: onPopupItemActivated((int)static_QUType_int.get(_o+1)); break;
-    case 10: onSetConditionMenuActivated((int)static_QUType_int.get(_o+1)); break;
-    case 11: onMagicPaintingConditionMenuActivated((int)static_QUType_int.get(_o+1)); break;
-    case 12: onMagicVideoConditionMenuActivated((int)static_QUType_int.get(_o+1)); break;
-    case 13: onPopupMenuShow(); break;
-    case 14: onPopupMenuHide(); break;
-    case 15: onTemplateMenuShow(); break;
-    case 16: setFrameRateLimit((int)static_QUType_int.get(_o+1)); break;
+    case 6: placeLastTemplateAtCursor(); break;
+    case 7: onCreateTemplateFromMenu((int)static_QUType_int.get(_o+1)); break;
+    case 8: onRecentTemplateFromMenu((int)static_QUType_int.get(_o+1)); break;
+    case 9: onAddObjectBookmark(); break;
+    case 10: secondElapsed(); break;
+    case 11: onPopupItemActivated((int)static_QUType_int.get(_o+1)); break;
+    case 12: onSetConditionMenuActivated((int)static_QUType_int.get(_o+1)); break;
+    case 13: onMagicPaintingConditionMenuActivated((int)static_QUType_int.get(_o+1)); break;
+    case 14: onMagicVideoConditionMenuActivated((int)static_QUType_int.get(_o+1)); break;
+    case 15: onPopupMenuShow(); break;
+    case 16: onPopupMenuHide(); break;
+    case 17: onTemplateMenuShow(); break;
+    case 18: setFrameRateLimit((int)static_QUType_int.get(_o+1)); break;
     default:
 	return QWidget::qt_invoke( _id, _o );
     }

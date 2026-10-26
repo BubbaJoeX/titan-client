@@ -70,7 +70,7 @@
 					/>
 				</DataSource>
 				<ComboBox
-					BackgroundOpacity='0.60'
+					BackgroundOpacity='1.00'
 					ButtonMargin='2,4,2,-6'
 					ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 					ButtonWidth='14'
@@ -200,7 +200,7 @@
 							Location='1,0'
 							Name='lines'
 							PackSize='a,a'
-							RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+							RStyleDefault='/Styles.New.text_blank.default.rs'
 							ScrollExtent='334,121'
 							Size='334,121'
 						>
@@ -561,7 +561,7 @@
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='474,293'
 						Size='474,293'
 					>

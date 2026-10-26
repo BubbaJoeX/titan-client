@@ -351,6 +351,94 @@ global proc swg_pob_exportDialog()
     eval $cmd;
 }
 
+/// One-shot structure export under $exportRoot (absolute, e.g. "D:/exported"):
+///   - each rN|mesh that holds real geometry → appearance/<base>_rN.apt (+ appearance/mesh/<base>_rN.msh, shader/, texture/)
+///     and rN|mesh.external_reference is pointed at it (cells without geometry keep their existing reference)
+///   - each rN|collision|floor0 that holds a mesh → appearance/collision/<base>_rN_collision_floor0.flr (SwgFlr)
+///   - the POB itself → appearance/<base>.pob
+/// pob_placeholder_room meshes are tagged swgExcludeFromStaticMeshExport. Child transforms under rN|mesh are
+/// frozen first because exportStaticMesh reads object-space points.
+/// Returns the written .pob path ("" on failure).
+global proc string swg_pob_exportStructure(string $rootName, string $exportRoot, string $baseName)
+{
+    $exportRoot = `substituteAllString $exportRoot "\\" "/"`;
+    if (`gmatch $exportRoot "*/"`)
+        $exportRoot = `substring $exportRoot 1 (size($exportRoot) - 1)`;
+    string $rootLs[] = `ls -long $rootName`;
+    if (size($rootLs) < 1)
+    {
+        warning ("swg_pob_exportStructure: no POB root named " + $rootName);
+        return "";
+    }
+    string $root = $rootLs[0];
+    if ($baseName == "")
+        $baseName = `match "[^|]*$" $root`;
+
+    setBaseDir $exportRoot;
+
+    int $exported = 0;
+    int $i;
+    for ($i = 0; $i < 512; $i++)
+    {
+        string $meshGrp = $root + "|r" + $i + "|mesh";
+        if (!`objExists ($root + "|r" + $i)`) break;
+        if (!`objExists $meshGrp`) continue;
+
+        string $shapes[] = `listRelatives -allDescendents -fullPath -type mesh $meshGrp`;
+        int $real = 0;
+        string $s;
+        for ($s in $shapes)
+        {
+            string $xf[] = `listRelatives -parent -fullPath $s`;
+            if (`gmatch $xf[0] "*|pob_placeholder_*"` || `getAttr ($s + ".intermediateObject")`)
+            {
+                if (!`attributeQuery -node $s -exists swgExcludeFromStaticMeshExport`)
+                    addAttr -ln swgExcludeFromStaticMeshExport -at bool $s;
+                setAttr ($s + ".swgExcludeFromStaticMeshExport") 1;
+                continue;
+            }
+            if (`attributeQuery -node $s -exists swgExcludeFromStaticMeshExport`
+                && `getAttr ($s + ".swgExcludeFromStaticMeshExport")`)
+                continue;
+            makeIdentity -apply true -t 1 -r 1 -s 1 -n 0 -pn 1 $xf[0];
+            $real++;
+        }
+        if ($real == 0) continue;
+
+        string $cellAsset = $baseName + "_r" + $i;
+        select -r $meshGrp;
+        // NULL collision: the client uses the cell's CMSH (or the floor) only when the appearance has none
+        exportStaticMesh -collision "none" -path ($exportRoot + "/appearance/" + $cellAsset + ".apt");
+        setAttr -type "string" ($meshGrp + ".external_reference") ("appearance/" + $cellAsset + ".apt");
+        $exported++;
+    }
+
+    // Floors: any mesh under rN|collision|floor0 (pob_placeholder_floor included — a flat plane is a valid floor).
+    // SwgFlr links neighbours, marks crossable edges and tags door edges with the cell's portal indices.
+    int $floors = 0;
+    sysFile -makeDir ($exportRoot + "/appearance/collision");
+    for ($i = 0; $i < 512; $i++)
+    {
+        if (!`objExists ($root + "|r" + $i)`) break;
+        string $floorT = $root + "|r" + $i + "|collision|floor0";
+        if (!`objExists $floorT`) continue;
+        string $floorShapes[] = `listRelatives -allDescendents -fullPath -type mesh $floorT`;
+        if (size($floorShapes) == 0) continue;
+        string $flrRel = "appearance/collision/" + $baseName + "_r" + $i + "_collision_floor0.flr";
+        select -r $floorT;
+        file -force -type "SwgFlr" -exportSelected ($exportRoot + "/" + $flrRel);
+        setAttr -type "string" ($floorT + ".external_reference") $flrRel;
+        $floors++;
+    }
+
+    string $pobPath = $exportRoot + "/appearance/" + $baseName + ".pob";
+    validatePob -root $root;
+    select -r $root;
+    string $written = `exportPob -i $pobPath`;
+    print ("// swg_pob_exportStructure: " + $exported + " cell mesh(es), " + $floors + " floor(s) + " + $written + "\n");
+    return $written;
+}
+
 // ---------------------------------------------------------------------------
 // Layout: vertical stack (high-rise preview) — each rN at Y += spacing
 // ---------------------------------------------------------------------------

@@ -1005,7 +1005,7 @@
 				/>
 			</Page>
 			<Image
-				Color='#54E4FE'
+				Color='#6CABE6'
 				LocalTooltip='tooltip'
 				Location='251,3'
 				MaximumSize='100,100'

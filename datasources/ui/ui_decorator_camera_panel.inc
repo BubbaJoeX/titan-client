@@ -37,7 +37,7 @@
 				Size='200,16'
 			>Decorator Options</Text>
 			<Checkbox
-				Color='#96F4FC'
+				Color='#A4CBEE'
 				Location='10,28'
 				Name='checkSnapHorizontal'
 				ScrollExtent='180,20'
@@ -45,7 +45,7 @@
 				Style='/Styles.New.Checkbox.Style2'
 			>Snap horizontal (J)</Checkbox>
 			<Checkbox
-				Color='#96F4FC'
+				Color='#A4CBEE'
 				Location='10,48'
 				Name='checkSnapVertical'
 				ScrollExtent='180,20'
@@ -62,7 +62,7 @@
 				TextColor='#CCCCCC'
 			>Grid: 1.0 m (G to cycle)</Text>
 			<Checkbox
-				Color='#96F4FC'
+				Color='#A4CBEE'
 				Location='10,88'
 				Name='checkFocusCamera'
 				ScrollExtent='180,20'
@@ -70,7 +70,7 @@
 				Style='/Styles.New.Checkbox.Style2'
 			>Focus Camera on Selection (F)</Checkbox>
 			<Checkbox
-				Color='#96F4FC'
+				Color='#A4CBEE'
 				Location='10,108'
 				Name='checkGimbalMovement'
 				ScrollExtent='180,20'
@@ -78,7 +78,7 @@
 				Style='/Styles.New.Checkbox.Style2'
 			>Gimbal (Mouse 1)</Checkbox>
 			<Checkbox
-				Color='#96F4FC'
+				Color='#A4CBEE'
 				Location='10,128'
 				Name='checkMouse4Drag'
 				ScrollExtent='180,20'
@@ -86,7 +86,7 @@
 				Style='/Styles.New.Checkbox.Style2'
 			>Mouse4 Free Drag</Checkbox>
 			<Checkbox
-				Color='#96F4FC'
+				Color='#A4CBEE'
 				Location='10,148'
 				Name='checkDragOnTerrain'
 				ScrollExtent='180,20'

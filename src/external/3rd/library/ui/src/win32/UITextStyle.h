@@ -26,6 +26,7 @@ public:
 		static const UILowerString Leading;
 		static const UILowerString DropShadowDepth;
 		static const UILowerString DropShadowsEnabled;
+		static const UILowerString AtlasScale;
 	};
 
 	enum MeasureMethod
@@ -200,6 +201,11 @@ public:
 
 	        void           SetLeading( const long );
 	        long           GetLeading( void ) const;
+	// Glyph atlases rasterized above UI size (the theme font is built at the UI scale, so it is sampled 1:1 on screen):
+	// source rects are atlas pixels, advances and leading UI units, and a glyph is drawn mAtlasScale times smaller.
+	        float          GetAtlasScale () const { return mAtlasScale; }
+	        void           SetAtlasScale (float scale) { mAtlasScale = scale > 0.0f ? scale : 1.0f; }
+	        long           GetGlyphDrawWidth (UIFontCharacter const & glyph) const;
 
 
 
@@ -242,6 +248,9 @@ private:
 	float              mOpacity;
 	bool mDropShadowEnabled;
 	UIPoint *  mDropShadowDepth;
+	float              mAtlasScale;
+
+	void               BltGlyph (UICanvas & canvas, UIFontCharacter const & glyph, UIPoint const & dest, UISize const & size) const;
 
 	static bool        ms_enabled;
 	static float       ms_opacityRelativeMin;

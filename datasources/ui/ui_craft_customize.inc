@@ -831,7 +831,7 @@ A prototype will not be created in your inventory and you will receive an experi
 					</DataSource>
 					<ComboBox
 						BackgroundColor='#FFFFFF'
-						BackgroundOpacity='0.70'
+						BackgroundOpacity='1.00'
 						ButtonMargin='2,2,2,0'
 						ButtonStyle='/Styles.New.buttons.combo_arrow.style'
 						ButtonWidth='10'
@@ -1610,7 +1610,7 @@ parent.sliderLimit.visible=visible'
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='780,527'
 						Size='780,527'
 					>

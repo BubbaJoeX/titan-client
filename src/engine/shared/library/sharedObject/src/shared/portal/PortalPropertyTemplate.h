@@ -39,6 +39,7 @@ public:
 	~PortalPropertyTemplateCellPortal();
 
 	Transform const    getDoorTransform(bool useDoorHardpoint=true) const;
+	char const       * getDoorStyleName() const { return m_doorStyle; }
 
 	bool               isPassable() const;
 
@@ -50,7 +51,9 @@ public:
 		IndexedTriangleList * geometry,
 		Transform const & doorTransform_o2p,
 		char const * doorStyleName,
-		bool doorAlwaysOpen = false);
+		bool doorAlwaysOpen = false,
+		bool geometryWindingClockwise = true,
+		bool geometryInCellSpace = false);
 
 private:
 
@@ -73,6 +76,7 @@ private:
 	bool              m_passable;
 	bool              m_geometryWindingClockwise;
 	bool              m_runtimeDoorAlwaysOpen;
+	bool              m_isRuntimePortal;
 	bool              m_ownsPortalGeometry;
 	IndexedTriangleList const * m_portalGeometry;
 	char             *m_doorStyle;

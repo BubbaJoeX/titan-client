@@ -22,6 +22,12 @@ class AffectorExclude : public TerrainGenerator::Affector
 private:
 
 	void load_0000 (Iff& iff);
+	void load_0001 (Iff& iff);
+
+private:
+
+	//-- keep in step with the declaration in Affector.h
+	bool m_fine;
 
 private:
 
@@ -37,6 +43,10 @@ public:
 	virtual void              load (Iff& iff);
 	virtual void              save (Iff& iff) const;
 	virtual unsigned          getAffectedMaps() const;
+
+	//-- fine: cut along the layer's boundary edge instead of dropping whole tiles (TerrainGenerator::_applyFineExclusion)
+	bool                      isFine () const;
+	void                      setFine (bool fine);
 };
 
 //===================================================================

@@ -81,7 +81,7 @@
 					SpacingType='Constant'
 				>
 					<Text
-						BackgroundColor='#00FF80'
+						BackgroundColor='#2495DB'
 						Font='default_20'
 						LocalText='696m'
 						MaximumSize='16384,45'
@@ -95,7 +95,7 @@
 						TextSelectable='false'
 					>696m</Text>
 					<Text
-						BackgroundColor='#00FF80'
+						BackgroundColor='#2495DB'
 						Font='default_20'
 						LocalText='(AFK)'
 						Location='0,21'
@@ -641,7 +641,7 @@
 						</Page>
 					</Composite>
 					<Text
-						BackgroundColor='#00FF80'
+						BackgroundColor='#2495DB'
 						Font='default_20'
 						LocalText='Rebel Peon'
 						Location='0,78'
@@ -656,7 +656,7 @@
 						TextSelectable='false'
 					>Rebel Peon</Text>
 					<Text
-						BackgroundColor='#00FF80'
+						BackgroundColor='#2495DB'
 						DropShadowAutoDetect='false'
 						Font='default_20'
 						LocalText='Target Name'
@@ -672,7 +672,7 @@
 						TextSelectable='false'
 					>Target Name</Text>
 					<Text
-						BackgroundColor='#00FF80'
+						BackgroundColor='#2495DB'
 						Font='default_20'
 						LocalText='Master Jedi'
 						Location='0,120'
@@ -687,7 +687,7 @@
 						TextSelectable='false'
 					>Master Jedi</Text>
 					<Text
-						BackgroundColor='#00FF80'
+						BackgroundColor='#2495DB'
 						Font='default_20'
 						LocalText='\<Imperial Butter Makers\>'
 						Location='0,141'
@@ -702,7 +702,7 @@
 						TextSelectable='false'
 					>\<Imperial Butter Makers\></Text>
 					<Text
-						BackgroundColor='#00FF80'
+						BackgroundColor='#2495DB'
 						Font='default_20'
 						LocalText='setjmp((void*)(rand() * rand()));'
 						Location='0,162'

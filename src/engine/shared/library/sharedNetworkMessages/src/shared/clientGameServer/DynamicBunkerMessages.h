@@ -346,6 +346,114 @@ private:
 };
 
 // ======================================================================
+// Client -> server: revert building to original POB cells only
+// ======================================================================
+
+class DynamicBunkerRevertBuildingMessage : public GameNetworkMessage
+{
+public:
+
+	static char const * const MessageType;
+
+	DynamicBunkerRevertBuildingMessage(
+		NetworkId const &buildingId,
+		NetworkId const &terminalId);
+
+	explicit DynamicBunkerRevertBuildingMessage(Archive::ReadIterator &source);
+	~DynamicBunkerRevertBuildingMessage();
+
+	NetworkId const &getBuildingId() const { return m_buildingId.get(); }
+	NetworkId const &getTerminalId() const { return m_terminalId.get(); }
+
+private:
+
+	Archive::AutoVariable<NetworkId> m_buildingId;
+	Archive::AutoVariable<NetworkId> m_terminalId;
+};
+
+// ======================================================================
+// Server -> client: building dynamic layout was cleared
+// ======================================================================
+
+class DynamicBunkerBuildingRevertedMessage : public GameNetworkMessage
+{
+public:
+
+	static char const * const MessageType;
+
+	explicit DynamicBunkerBuildingRevertedMessage(NetworkId const &buildingId);
+	explicit DynamicBunkerBuildingRevertedMessage(Archive::ReadIterator &source);
+	~DynamicBunkerBuildingRevertedMessage();
+
+	NetworkId const &getBuildingId() const { return m_buildingId.get(); }
+
+private:
+
+	Archive::AutoVariable<NetworkId> m_buildingId;
+};
+
+// ======================================================================
+// Client -> server: nudge/adjust a grafted room transform
+// ======================================================================
+
+class DynamicBunkerAdjustGraftMessage : public GameNetworkMessage
+{
+public:
+
+	static char const * const MessageType;
+
+	DynamicBunkerAdjustGraftMessage(
+		NetworkId const &buildingId,
+		NetworkId const &terminalId,
+		int32 graftedCellIndex,
+		Transform const &cellTransform_o2p);
+
+	explicit DynamicBunkerAdjustGraftMessage(Archive::ReadIterator &source);
+	~DynamicBunkerAdjustGraftMessage();
+
+	NetworkId const &getBuildingId() const { return m_buildingId.get(); }
+	NetworkId const &getTerminalId() const { return m_terminalId.get(); }
+	int32 getGraftedCellIndex() const { return m_graftedCellIndex.get(); }
+	Transform const &getCellTransform_o2p() const { return m_cellTransform_o2p.get(); }
+
+private:
+
+	Archive::AutoVariable<NetworkId> m_buildingId;
+	Archive::AutoVariable<NetworkId> m_terminalId;
+	Archive::AutoVariable<int32> m_graftedCellIndex;
+	Archive::AutoVariable<Transform> m_cellTransform_o2p;
+};
+
+// ======================================================================
+// Server -> client: authoritative graft cell transform update
+// ======================================================================
+
+class DynamicBunkerGraftTransformMessage : public GameNetworkMessage
+{
+public:
+
+	static char const * const MessageType;
+
+	DynamicBunkerGraftTransformMessage(
+		NetworkId const &buildingId,
+		int32 graftedCellIndex,
+		Transform const &cellTransform_o2p);
+
+	explicit DynamicBunkerGraftTransformMessage(Archive::ReadIterator &source);
+	~DynamicBunkerGraftTransformMessage();
+
+	NetworkId const &getBuildingId() const { return m_buildingId.get(); }
+	int32 getGraftedCellIndex() const { return m_graftedCellIndex.get(); }
+	Transform const &getCellTransform_o2p() const { return m_cellTransform_o2p.get(); }
+
+private:
+
+	Archive::AutoVariable<NetworkId> m_buildingId;
+	Archive::AutoVariable<int32> m_graftedCellIndex;
+	Archive::AutoVariable<Transform> m_cellTransform_o2p;
+};
+
+// ======================================================================
 
 namespace Archive
 {

@@ -120,7 +120,7 @@
 								/>
 							</DataSource>
 							<TabbedPane
-								BackgroundColor='#009977'
+								BackgroundColor='#155584'
 								MinimumScrollExtent='228,0'
 								MinimumSize='0,19'
 								Name='tabs'
@@ -391,7 +391,7 @@
 									Style='/Styles.Roadmap.phase_buttons.incomplete_phase'
 								/>
 								<Image
-									BackgroundColor='#00D6FB'
+									BackgroundColor='#2381D8'
 									Location='72,39'
 									Name='phase_background'
 									PalColor='contrast3'
@@ -400,7 +400,7 @@
 									Style='/Styles.Roadmap.phase_buttons.phase_background'
 								/>
 								<Image
-									BackgroundColor='#00D6FB'
+									BackgroundColor='#2381D8'
 									Location='162,39'
 									Name='phase_background'
 									PalColor='contrast3'
@@ -409,7 +409,7 @@
 									Style='/Styles.Roadmap.phase_buttons.phase_background'
 								/>
 								<Image
-									BackgroundColor='#00D6FB'
+									BackgroundColor='#2381D8'
 									Location='254,39'
 									Name='phase_background'
 									PalColor='contrast3'
@@ -1685,7 +1685,7 @@ Brawler</Text>
 											SourceRect='4,14,55,65'
 										/>
 										<Image
-											BackgroundColor='#00D6FB'
+											BackgroundColor='#2381D8'
 											Color='#00D6FB'
 											Name='Image'
 											PalColor='baselight'
@@ -1768,7 +1768,7 @@ Brawler</Text>
 								/>
 								<Page
 									BackgroundOpacity='1.00'
-									BackgroundTint='#00D6FB'
+									BackgroundTint='#2381D8'
 									Name='Grid'
 									Opacity='0.20'
 									PackSize='a,a'
@@ -1778,7 +1778,7 @@ Brawler</Text>
 								/>
 								<Page
 									BackgroundOpacity='1.00'
-									BackgroundTint='#1CFFFF'
+									BackgroundTint='#3C94DF'
 									Color='#00D6FB'
 									Name='Gradient'
 									PackSize='a,a'
@@ -1811,7 +1811,7 @@ Brawler</Text>
 								>foo</Button>
 								<Page
 									BackgroundOpacity='1.00'
-									Color='#00D6FB'
+									Color='#2381D8'
 									Location='6,5'
 									Name='IconBackground'
 									RStyleDefault='/Styles.Icon.neutral.rs_default'
@@ -2404,7 +2404,7 @@ Brawler</Text>
 											BackgroundColor='#FFFFFF'
 											BackgroundOpacity='0.00'
 											BackgroundScrolls='false'
-											BackgroundTint='#00D6FB'
+											BackgroundTint='#2381D8'
 											CellHeight='24'
 											ColumnSizeDataSource='colSizes'
 											DefaultTextColor='#96F4FC'
@@ -2471,7 +2471,7 @@ Brawler</Text>
 											/>
 										</Page>
 										<Text
-											Color='#96F4FC'
+											Color='#A4CBEE'
 											Font='bold_11'
 											LocalText='\\\>010- DH-9 Pistol
 - 1000 Credits
@@ -2508,7 +2508,7 @@ Brawler</Text>
 						</Composite>
 						<Page
 							BackgroundOpacity='1.00'
-							BackgroundTint='#00D6FB'
+							BackgroundTint='#2381D8'
 							Name='New Page'
 							Opacity='0.20'
 							PackSize='a,a'
@@ -2518,7 +2518,7 @@ Brawler</Text>
 						/>
 						<Page
 							BackgroundOpacity='1.00'
-							BackgroundTint='#00D6FB'
+							BackgroundTint='#2381D8'
 							Name='New Page'
 							Opacity='0.20'
 							PackSize='a,a'
@@ -2659,7 +2659,7 @@ Brawler</Text>
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='896,653'
 						Size='896,653'
 					>
@@ -2820,6 +2820,7 @@ Brawler</Text>
 		<include>ui_quest_builder.inc</include>
 		<include>ui_rating.inc</include>
 		<include>ui_appearance_tab.inc</include>
+		<include>ui_companion_tab.inc</include>
 		<include>ui_pda_tcg.inc</include>
 		<Page
 			Location='71,80'
@@ -3059,7 +3060,7 @@ Brawler</Text>
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='637,482'
 						Size='637,482'
 					>
@@ -3168,7 +3169,7 @@ Brawler</Text>
 						</Page>
 					</Page>
 					<Page
-						BackgroundColor='#1FE6F5'
+						BackgroundColor='#3D8FD7'
 						BackgroundOpacity='1.00'
 						BackgroundTint='#1FE6F5'
 						Location='-1,0'
@@ -3181,7 +3182,7 @@ Brawler</Text>
 						Size='638,29'
 					/>
 					<Page
-						BackgroundColor='#1FE6F5'
+						BackgroundColor='#3D8FD7'
 						BackgroundOpacity='1.00'
 						BackgroundTint='#1FE6F5'
 						Location='0,459'
@@ -3313,6 +3314,7 @@ Brawler</Text>
 		<include>ui_pda_data_storage.inc</include>
 		<include>ui_pda_font_sizer.inc</include>
 		<include>ui_pda_imagedesigner.inc</include>
+		<include>ui_companion_customize.inc</include>
 		<include>ui_inputbox.inc</include>
 		<include>ui_pda_permissionlist.inc</include>
 		<include>ui_pda_pm_browser.inc</include>

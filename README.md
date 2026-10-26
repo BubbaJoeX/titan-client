@@ -24,6 +24,7 @@ Monorepo feature index: [FEATURES.md](../FEATURES.md) (when using the full `tita
 | Guide | Link |
 |-------|------|
 | Compile **SwgTitan** / **SwgGodClient** | [COMPILE_GUIDE_CLIENT.md](COMPILE_GUIDE_CLIENT.md) |
+| Frame rate: limits, settings, benchmark/profiler | [docs/performance.md](docs/performance.md) |
 | Maya export pipeline | [MODELING.md](MODELING.md) |
 | libVLC / streaming stack | [VLC.md](VLC.md) |
 | Magic painting / video / speakers | [STREAMING-GIF-ETC.md](STREAMING-GIF-ETC.md) |

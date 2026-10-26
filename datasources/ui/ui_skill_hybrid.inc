@@ -483,7 +483,7 @@
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='300,464'
 						Size='300,464'
 					>
@@ -921,7 +921,7 @@
 								Visible='false'
 							>
 								<Image
-									BackgroundColor='#1FE6F5'
+									BackgroundColor='#3D8FD7'
 									Color='#54E4FE'
 									DragType='cmd_dummy'
 									Location='2,0'
@@ -1116,7 +1116,7 @@
 								Size='399,36'
 							>
 								<Image
-									BackgroundColor='#1FE6F5'
+									BackgroundColor='#3D8FD7'
 									DragType='cmd_dummy'
 									Location='2,0'
 									Name='icon'
@@ -1158,7 +1158,7 @@
 								Size='399,36'
 							>
 								<Image
-									BackgroundColor='#1FE6F5'
+									BackgroundColor='#3D8FD7'
 									DragType='cmd_dummy'
 									Location='2,0'
 									Name='icon'
@@ -1200,7 +1200,7 @@
 								Size='399,36'
 							>
 								<Image
-									BackgroundColor='#1FE6F5'
+									BackgroundColor='#3D8FD7'
 									DragType='cmd_dummy'
 									Location='2,0'
 									Name='icon'
@@ -1243,7 +1243,7 @@
 								Size='399,36'
 							>
 								<Image
-									BackgroundColor='#1FE6F5'
+									BackgroundColor='#3D8FD7'
 									DragType='cmd_dummy'
 									Location='2,0'
 									Name='icon'
@@ -1285,7 +1285,7 @@
 								Size='399,36'
 							>
 								<Image
-									BackgroundColor='#1FE6F5'
+									BackgroundColor='#3D8FD7'
 									DragType='cmd_dummy'
 									Location='2,0'
 									Name='icon'
@@ -1511,7 +1511,7 @@
 				</Page>
 			</Composite>
 			<TabbedPane
-				BackgroundColor='#009977'
+				BackgroundColor='#155584'
 				DataSource='TabData'
 				Location='11,31'
 				MinimumScrollExtent='1698,0'
@@ -1665,7 +1665,7 @@
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='444,438'
 						Size='444,438'
 					>
@@ -1991,7 +1991,7 @@
 					>
 					</Scrollbar>
 					<TabbedPane
-						BackgroundColor='#009977'
+						BackgroundColor='#155584'
 						DataSource='TabData'
 						MinimumScrollExtent='213,0'
 						MinimumSize='0,19'
@@ -10120,7 +10120,7 @@ parent.graph4x4.visible=false'
 									>
 										<Page
 											BackgroundOpacity='1.00'
-											BackgroundTint='#01DFF1'
+											BackgroundTint='#237ECF'
 											Location='428,0'
 											Name='recover'
 											OnDisable='opacity=0'
@@ -10322,7 +10322,7 @@ parent.graph4x4.visible=false'
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='1017,763'
 						Size='1017,763'
 					>
@@ -10687,7 +10687,7 @@ parent.graph4x4.visible=false'
 					>
 					</Scrollbar>
 					<TabbedPane
-						BackgroundColor='#009977'
+						BackgroundColor='#155584'
 						DataSource='TabData'
 						LocalTooltip='[@ui_respec:help_2]'
 						MinimumScrollExtent='213,0'
@@ -18462,7 +18462,7 @@ parent.graph4x4.visible=false'
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='1020,764'
 						Size='1020,764'
 					>

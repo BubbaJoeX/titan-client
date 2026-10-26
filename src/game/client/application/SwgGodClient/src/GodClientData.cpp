@@ -322,7 +322,10 @@ GodClientData::GodClientData()
   m_brushPasteGroundKnown(false),
   m_patrolWaypoints(),
   m_patrolWaypointPlacementMode(false),
-  m_patrolPathType("cycle")
+  m_patrolPathType("cycle"),
+  m_copiedTransformValid(false),
+  m_copiedTransform(),
+  m_copiedScale(Vector::xyz111)
 {
 	connectToMessage(World::Messages::OBJECT_REMOVED);
 	connectToMessage(Game::Messages::SCENE_CHANGED);
@@ -1142,6 +1145,142 @@ void GodClientData::setObjectCreationPending(bool val)
 bool GodClientData::getObjectCreationPending()
 {
 	return m_objectCreationPending;
+}
+
+//-----------------------------------------------------------------
+
+/**
+ * Add every loaded object built from the same template to the selection.
+ * Ghosts share their source's template, so they are skipped; addSelection
+ * still applies its own rules (appearance, same cell as the player).
+ */
+int GodClientData::selectObjectsWithTemplate(char const * const templateName)
+{
+	if(!templateName || !*templateName)
+		return 0;
+
+	ObjectList_t matches;
+	int const lists[] = { static_cast<int>(WOL_Tangible), static_cast<int>(WOL_TangibleNotTargetable), static_cast<int>(WOL_Intangible) };
+	for(size_t l = 0; l < sizeof(lists) / sizeof(lists[0]); ++l)
+	{
+		for(int i = 0; i < ClientWorld::getNumberOfObjects(lists[l]); ++i)
+		{
+			ClientObject* const obj = dynamic_cast<ClientObject*>(ClientWorld::getObject(lists[l], i));
+			if(!obj)
+				continue;
+
+			char const * const name = obj->getTemplateName();
+			if(!name || strcmp(name, templateName) != 0)
+				continue;
+
+			bool isSelection = false;
+			bool isGhost     = false;
+			IGNORE_RETURN(getIsSelectionOrGhost(*obj, isSelection, isGhost));
+			if(!isSelection && !isGhost)
+				matches.push_back(obj);
+		}
+	}
+
+	int const before = getSelectionSize();
+	for(ObjectList_t::const_iterator it = matches.begin(); it != matches.end(); ++it)
+		addSelection(*it);
+
+	return getSelectionSize() - before;
+}
+
+//-----------------------------------------------------------------
+
+/**
+ * Remember the primary selection's position, rotation and scale (from its ghost if it has
+ * been moved but not applied yet) so they can be pasted onto other objects.
+ */
+bool GodClientData::copySelectionTransform()
+{
+	cleanSelectedObjectList();
+	if(m_selectedObjects.empty())
+		return false;
+
+	SelectedObject const * const selObj = NON_NULL(m_selectedObjects.front());
+	Object const * const source = selObj->ghost ? selObj->ghost : selObj->obj.getPointer();
+	if(!source)
+		return false;
+
+	m_copiedTransform      = source->getTransform_o2p();
+	m_copiedScale          = source->getScale();
+	m_copiedTransformValid = true;
+	return true;
+}
+
+//-----------------------------------------------------------------
+
+bool GodClientData::hasCopiedTransform() const
+{
+	return m_copiedTransformValid;
+}
+
+//-----------------------------------------------------------------
+
+/**
+ * Give every selected object's ghost the copied position, rotation and/or scale.
+ * Positions are in the source object's parent space, as in the Set Transform dialog.
+ */
+int GodClientData::pasteSelectionTransform(bool const position, bool const rotation, bool const scale)
+{
+	if(!m_copiedTransformValid)
+		return 0;
+
+	cleanSelectedObjectList();
+
+	int pasted = 0;
+	m_createdCount = 0;
+	for(SelectedObjectList_t::iterator itr = m_selectedObjects.begin(); itr != m_selectedObjects.end(); ++itr)
+	{
+		SelectedObject* const selObj = NON_NULL(*itr);
+
+		//create the ghost if needed
+		if(!selObj->ghost)
+			selObj->ghost = NON_NULL(createGhost(*selObj->obj));
+
+		Transform transform(selObj->ghost->getTransform_o2p());
+		if(rotation)
+		{
+			Vector const keepPosition(transform.getPosition_p());
+			transform = m_copiedTransform;
+			transform.setPosition_p(keepPosition);
+		}
+		if(position)
+			transform.setPosition_p(m_copiedTransform.getPosition_p());
+		selObj->ghost->setTransform_o2p(transform);
+
+		if(scale)
+			selObj->ghost->setScale(m_copiedScale);
+
+		++pasted;
+	}
+
+	//if we created any new ghosts, emit the appropriate messages
+	if(m_createdCount)
+		emitMessage(MessageDispatch::MessageBase(Messages::GHOSTS_CREATED));
+
+	emitMessage(MessageDispatch::MessageBase(GodClientData::Messages::SELECTED_OBJECTS_CHANGED));
+	return pasted;
+}
+
+//-----------------------------------------------------------------
+
+std::string GodClientData::describeCopiedTransform() const
+{
+	if(!m_copiedTransformValid)
+		return std::string();
+
+	Vector const position(m_copiedTransform.getPosition_p());
+	real const headingDegrees = convertRadiansToDegrees(m_copiedTransform.getLocalFrameK_p().theta());
+
+	char buffer[160];
+	IGNORE_RETURN(_snprintf(buffer, sizeof(buffer), "%.3f %.3f %.3f heading %.1f scale %.3f %.3f %.3f",
+		position.x, position.y, position.z, headingDegrees, m_copiedScale.x, m_copiedScale.y, m_copiedScale.z));
+	buffer[sizeof(buffer) - 1] = '\0';
+	return std::string(buffer);
 }
 
 
@@ -2201,6 +2340,52 @@ bool GodClientData::getIsSelectionOrGhost(const Object& obj, bool& isSelection, 
 	}
 
 	return false;
+}
+
+//-----------------------------------------------------------------
+
+/**
+ * The ghost of a selected object (its moved but not yet applied transform), or 0.
+ */
+const Object* GodClientData::getSelectionGhost(const ClientObject& obj) const
+{
+	for(SelectedObjectList_t::const_iterator it = m_selectedObjects.begin(); it != m_selectedObjects.end(); ++it)
+	{
+		const SelectedObject* const selObj = NON_NULL(*it);
+		if(selObj->obj == &obj)
+			return selObj->ghost;
+	}
+	return 0;
+}
+
+//-----------------------------------------------------------------
+
+/**
+ * Give the ghost of a selected object a copy of the object's current appearance, after the
+ * object's appearance was rebuilt in place (template or appearance reload). The ghost keeps its
+ * transform, so a move that wasn't applied yet survives.
+ */
+void GodClientData::refreshGhostAppearance(const ClientObject& obj)
+{
+	for(SelectedObjectList_t::iterator it = m_selectedObjects.begin(); it != m_selectedObjects.end(); ++it)
+	{
+		SelectedObject* const selObj = NON_NULL(*it);
+		if(!(selObj->obj == &obj) || !selObj->ghost)
+			continue;
+
+		const Appearance* const appearance = obj.getAppearance();
+		const AppearanceTemplate* const appearanceTemplate = appearance ? appearance->getAppearanceTemplate() : 0;
+		if(!appearanceTemplate)
+			return;
+
+		Appearance* const ghostAppearance = appearanceTemplate->createAppearance();
+		SkeletalAppearance2* const skeletalAppearance = dynamic_cast<SkeletalAppearance2*>(ghostAppearance); // this is allowed to fail.
+		if(skeletalAppearance)
+			IGNORE_RETURN(skeletalAppearance->rebuildIfDirtyAndAvailable());
+
+		selObj->ghost->setAppearance(ghostAppearance);
+		return;
+	}
 }
 
 //-----------------------------------------------------------------

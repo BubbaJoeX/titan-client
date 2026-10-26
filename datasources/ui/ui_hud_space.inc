@@ -3813,7 +3813,7 @@ radarwidget.enabled=true'
 		/>
 		<include>ui_hud_space_incap.inc</include>
 		<Page
-			BackgroundColor='#42FFC7'
+			BackgroundColor='#5CACE5'
 			GetsInput='false'
 			Location='267,81'
 			Name='SystemMessage'
@@ -3968,7 +3968,7 @@ radarwidget.enabled=true'
 			/>
 		</Page>
 		<Page
-			BackgroundColor='#42FFC7'
+			BackgroundColor='#5CACE5'
 			GetsInput='false'
 			Location='42,182'
 			Name='SystemMessageNoob'
@@ -5228,7 +5228,7 @@ radarwidget.enabled=true'
 					SpacingType='Constant'
 				>
 					<Text
-						BackgroundColor='#00FF80'
+						BackgroundColor='#2495DB'
 						Font='default_20'
 						LocalText='(AFK)'
 						MaximumSize='16384,45'
@@ -5242,7 +5242,7 @@ radarwidget.enabled=true'
 						TextSelectable='false'
 					>(AFK)</Text>
 					<Text
-						BackgroundColor='#00FF80'
+						BackgroundColor='#2495DB'
 						Font='default_20'
 						LocalText='Master Jedi'
 						Location='0,21'
@@ -5257,7 +5257,7 @@ radarwidget.enabled=true'
 						TextSelectable='false'
 					>Master Jedi</Text>
 					<Text
-						BackgroundColor='#00FF80'
+						BackgroundColor='#2495DB'
 						DropShadowAutoDetect='false'
 						Font='default_20'
 						LocalText='Target Name'
@@ -5273,7 +5273,7 @@ radarwidget.enabled=true'
 						TextSelectable='false'
 					>Target Name</Text>
 					<Text
-						BackgroundColor='#00FF80'
+						BackgroundColor='#2495DB'
 						Font='default_20'
 						LocalText='696m'
 						Location='0,63'
@@ -5288,7 +5288,7 @@ radarwidget.enabled=true'
 						TextSelectable='false'
 					>696m</Text>
 					<Text
-						BackgroundColor='#00FF80'
+						BackgroundColor='#2495DB'
 						Font='default_20'
 						LocalText='Rebel Peon'
 						Location='0,84'
@@ -5303,7 +5303,7 @@ radarwidget.enabled=true'
 						TextSelectable='false'
 					>Rebel Peon</Text>
 					<Text
-						BackgroundColor='#00FF80'
+						BackgroundColor='#2495DB'
 						Font='default_20'
 						LocalText='\<Imperial Butter Makers\>'
 						Location='0,105'
@@ -5318,7 +5318,7 @@ radarwidget.enabled=true'
 						TextSelectable='false'
 					>\<Imperial Butter Makers\></Text>
 					<Text
-						BackgroundColor='#00FF80'
+						BackgroundColor='#2495DB'
 						Font='default_20'
 						LocalText='setjmp((void*)(rand() * rand()));'
 						Location='0,126'
@@ -5666,7 +5666,7 @@ enabled=true'
 			TextOpacityRelativeMin='0.80'
 		>
 			<Image
-				Color='#16DBFE'
+				Color='#368DDE'
 				MaximumSize='32,32'
 				MinimumSize='16,16'
 				Name='top_left'
@@ -5678,7 +5678,7 @@ enabled=true'
 				SourceResource='ui_cursor_selection2'
 			/>
 			<Image
-				Color='#16DBFE'
+				Color='#368DDE'
 				Location='24,0'
 				MaximumSize='32,32'
 				MinimumSize='16,16'
@@ -5692,7 +5692,7 @@ enabled=true'
 				SourceResource='ui_cursor_selection2'
 			/>
 			<Image
-				Color='#16DBFE'
+				Color='#368DDE'
 				Location='0,24'
 				MaximumSize='32,32'
 				MinimumSize='16,16'
@@ -5706,7 +5706,7 @@ enabled=true'
 				SourceResource='ui_cursor_selection2'
 			/>
 			<Image
-				Color='#16DBFE'
+				Color='#368DDE'
 				Location='24,24'
 				MaximumSize='32,32'
 				MinimumSize='16,16'

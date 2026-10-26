@@ -277,7 +277,7 @@
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='368,202'
 						Size='368,202'
 					>
@@ -719,7 +719,7 @@
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='511,329'
 						Size='511,329'
 					>
@@ -1206,7 +1206,7 @@
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='529,375'
 						Size='529,375'
 					>
@@ -1466,7 +1466,7 @@ parent.compBg.location=location'
 						Size='179,20'
 					>
 						<Page
-							BackgroundColor='#00FFFF'
+							BackgroundColor='#2487DB'
 							BackgroundOpacity='1.00'
 							BackgroundTint='#00FFFF'
 							Color='#00FFFF'
@@ -1480,7 +1480,7 @@ parent.compBg.location=location'
 							Size='15,14'
 						/>
 						<Page
-							BackgroundColor='#00FFFF'
+							BackgroundColor='#2487DB'
 							BackgroundOpacity='1.00'
 							BackgroundTint='#00FFFF'
 							Color='#00FFFF'
@@ -1494,7 +1494,7 @@ parent.compBg.location=location'
 							Size='15,14'
 						/>
 						<Page
-							BackgroundColor='#00FFFF'
+							BackgroundColor='#2487DB'
 							BackgroundOpacity='1.00'
 							BackgroundTint='#00FFFF'
 							Color='#00FFFF'
@@ -1508,7 +1508,7 @@ parent.compBg.location=location'
 							Size='15,14'
 						/>
 						<Page
-							BackgroundColor='#00FFFF'
+							BackgroundColor='#2487DB'
 							BackgroundOpacity='1.00'
 							BackgroundTint='#00FFFF'
 							Color='#00FFFF'
@@ -1522,7 +1522,7 @@ parent.compBg.location=location'
 							Size='15,14'
 						/>
 						<Page
-							BackgroundColor='#00FFFF'
+							BackgroundColor='#2487DB'
 							BackgroundOpacity='1.00'
 							BackgroundTint='#00FFFF'
 							Color='#00FFFF'
@@ -1536,7 +1536,7 @@ parent.compBg.location=location'
 							Size='15,14'
 						/>
 						<Page
-							BackgroundColor='#00FFFF'
+							BackgroundColor='#2487DB'
 							BackgroundOpacity='1.00'
 							BackgroundTint='#00FFFF'
 							Color='#00FFFF'
@@ -1549,7 +1549,7 @@ parent.compBg.location=location'
 							Size='15,14'
 						/>
 						<Page
-							BackgroundColor='#00FFFF'
+							BackgroundColor='#2487DB'
 							BackgroundOpacity='1.00'
 							BackgroundTint='#00FFFF'
 							Color='#00FFFF'
@@ -1562,7 +1562,7 @@ parent.compBg.location=location'
 							Size='15,14'
 						/>
 						<Page
-							BackgroundColor='#00FFFF'
+							BackgroundColor='#2487DB'
 							BackgroundOpacity='1.00'
 							BackgroundTint='#00FFFF'
 							Color='#00FFFF'
@@ -1576,7 +1576,7 @@ parent.compBg.location=location'
 							Size='15,14'
 						/>
 						<Page
-							BackgroundColor='#00FFFF'
+							BackgroundColor='#2487DB'
 							BackgroundOpacity='1.00'
 							BackgroundTint='#00FFFF'
 							Color='#00FFFF'
@@ -1590,9 +1590,9 @@ parent.compBg.location=location'
 							Size='15,14'
 						/>
 						<Page
-							BackgroundColor='#00FFFF'
+							BackgroundColor='#2487DB'
 							BackgroundOpacity='1.00'
-							BackgroundTint='#00FFFF'
+							BackgroundTint='#2487DB'
 							Color='#00FFFF'
 							Location='159,4'
 							Name='p'
@@ -1737,7 +1737,7 @@ parent.compBg.location=location'
 							TextColor='#96F4FC'
 						>0%</Text>
 						<Page
-							BackgroundColor='#02A696'
+							BackgroundColor='#195B8F'
 							Location='10,6'
 							Name='InnerPage'
 							PackLocation='nfn,nfn'
@@ -2831,7 +2831,7 @@ parent.compBg.location=location'
 						Location='1,0'
 						Name='lines'
 						PackSize='a,a'
-						RStyleDefault='/Styles.space.boxes.generic4.rs_default'
+						RStyleDefault='/Styles.New.text_blank.default.rs'
 						ScrollExtent='329,482'
 						Size='329,482'
 					>

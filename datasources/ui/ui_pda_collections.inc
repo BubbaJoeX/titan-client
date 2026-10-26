@@ -46,7 +46,7 @@
 			<Checkbox
 				Alignment='Right'
 				Checked='true'
-				Color='#00354F'
+				Color='#0B2744'
 				Location='324,592'
 				Name='showCompleted'
 				ScrollExtent='164,16'
@@ -1410,7 +1410,7 @@
 										Size='48,4'
 									>
 										<Page
-											BackgroundColor='#1CFFFF'
+											BackgroundColor='#3C94DF'
 											BackgroundOpacity='1.00'
 											Location='1,1'
 											MaximumSize='46,2'
@@ -1446,7 +1446,7 @@
 										Size='48,4'
 									>
 										<Page
-											BackgroundColor='#1CFFFF'
+											BackgroundColor='#3C94DF'
 											BackgroundOpacity='1.00'
 											Location='1,1'
 											MaximumSize='46,2'
@@ -1482,7 +1482,7 @@
 										Size='48,4'
 									>
 										<Page
-											BackgroundColor='#1CFFFF'
+											BackgroundColor='#3C94DF'
 											BackgroundOpacity='1.00'
 											Location='1,1'
 											MaximumSize='46,2'
@@ -1518,7 +1518,7 @@
 										Size='48,4'
 									>
 										<Page
-											BackgroundColor='#1CFFFF'
+											BackgroundColor='#3C94DF'
 											BackgroundOpacity='1.00'
 											Location='1,1'
 											MaximumSize='46,2'
@@ -1554,7 +1554,7 @@
 										Size='48,4'
 									>
 										<Page
-											BackgroundColor='#1CFFFF'
+											BackgroundColor='#3C94DF'
 											BackgroundOpacity='1.00'
 											Location='1,1'
 											MaximumSize='46,2'
@@ -1590,7 +1590,7 @@
 										Size='48,4'
 									>
 										<Page
-											BackgroundColor='#1CFFFF'
+											BackgroundColor='#3C94DF'
 											BackgroundOpacity='1.00'
 											Location='1,1'
 											MaximumSize='46,2'
@@ -1626,7 +1626,7 @@
 										Size='48,4'
 									>
 										<Page
-											BackgroundColor='#1CFFFF'
+											BackgroundColor='#3C94DF'
 											BackgroundOpacity='1.00'
 											Location='1,1'
 											MaximumSize='46,2'
@@ -1662,7 +1662,7 @@
 										Size='48,4'
 									>
 										<Page
-											BackgroundColor='#1CFFFF'
+											BackgroundColor='#3C94DF'
 											BackgroundOpacity='1.00'
 											Location='1,1'
 											MaximumSize='46,2'
@@ -1698,7 +1698,7 @@
 										Size='48,4'
 									>
 										<Page
-											BackgroundColor='#1CFFFF'
+											BackgroundColor='#3C94DF'
 											BackgroundOpacity='1.00'
 											Location='1,1'
 											MaximumSize='46,2'
@@ -1734,7 +1734,7 @@
 										Size='48,4'
 									>
 										<Page
-											BackgroundColor='#1CFFFF'
+											BackgroundColor='#3C94DF'
 											BackgroundOpacity='1.00'
 											Location='1,1'
 											MaximumSize='46,2'

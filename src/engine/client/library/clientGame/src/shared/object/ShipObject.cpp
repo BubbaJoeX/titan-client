@@ -3123,7 +3123,12 @@ void ShipObject::conditionModified(int oldCondition, int newCondition)
 			
 			if (groundScene != NULL)
 			{
-				if (   (oldCondition & static_cast<int>(TangibleObject::C_docking))
+				// Titan: in atmospheric flight the server marks a ship "docking" while its autopilot or a scripted path
+				// (a starport's landing well) flies it, so the pilot's client follows the server: no fly-by camera there
+				if (!Game::isSpace())
+				{
+				}
+				else if (   (oldCondition & static_cast<int>(TangibleObject::C_docking))
 					&& !hasCondition(static_cast<int>(TangibleObject::C_docking)))
 				{
 					// Change back to the previous non-docking camera

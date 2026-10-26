@@ -26,9 +26,10 @@ public:
 	static float               getHudOpacity ();
 	static void                setHudOpacity (float f);
 
-	static int                 getUiScalePercent ();
-	static void                setUiScalePercent (int percent);
+	static int                 getUiScalePercent ();          // effective percent (automatic resolved)
+	static void                setUiScalePercent (int percent);  // 0 = automatic from the screen height
 	static float               getUiScaleFactor ();
+	static bool                isUiScaleAuto ();
 
 	static int                 getUiFontScalePercent ();
 	static void                setUiFontScalePercent (int percent);
@@ -313,6 +314,7 @@ public:
 	
 	static void                setUiSettingsVersion( int i );
 	static int                 getUiSettingsVersion();
+	static void                setUiThemeVersion( int i );
 
 	static int                 getDefaultUiSettingsVersion();
 

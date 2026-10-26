@@ -76,6 +76,7 @@
 #include "sharedUtility/HttpGetEncoder.h"
 #include "swgClientUserInterface/SwgCuiActions.h"
 #include "swgClientUserInterface/SwgCuiAppearanceTab.h"
+#include "swgClientUserInterface/SwgCuiCompanionTab.h"
 #include "swgClientUserInterface/SwgCuiBiographyEdit.h"
 #include "swgClientUserInterface/SwgCuiBuffBuilderBuffee.h"
 #include "swgClientUserInterface/SwgCuiBuffBuilderBuffer.h"
@@ -288,6 +289,7 @@ m_toggleDownTimeNames          (0.0f)
 	//CuiActionManager::addAction (CuiActions::tcg, this, false);
 
 	CuiActionManager::addAction (CuiActions::appearanceTab, this, false);
+	CuiActionManager::addAction (CuiActions::companionTab, this, false);
 
 	CuiActionManager::addAction (CuiActions::questBuilder, this, false);
 
@@ -1632,6 +1634,10 @@ bool  SwgCuiHudAction::performAction (const std::string & id, const Unicode::Str
 	else if (id == CuiActions::appearanceTab)
 	{
 		CuiMediatorFactory::toggleInWorkspace(CuiMediatorTypes::WS_AppearanceTab);
+	}
+	else if (id == CuiActions::companionTab)
+	{
+		CuiMediatorFactory::toggleInWorkspace(CuiMediatorTypes::WS_CompanionTab);
 	}
 	else if (id == CuiActions::questBuilder)
 	{

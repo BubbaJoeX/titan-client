@@ -1,0 +1,54 @@
+// SWG Kinect v2 mocap suite — live viewport, SKT retarget, ANS / MotionBuilder.
+
+global proc string swgMocapSuiteFindDir()
+{
+    string $candidates[];
+    string $pluginPath = `pluginInfo -q -path SwgMayaEditor`;
+    $pluginPath = `substituteAllString $pluginPath "\\" "/"`;
+    int $plen = `size $pluginPath`;
+    int $lastSlash = 0;
+    int $i;
+    for ($i = $plen; $i >= 1; $i--)
+    {
+        string $c = `substring $pluginPath $i $i`;
+        if ($c == "/" || $c == "\\")
+        {
+            $lastSlash = $i;
+            break;
+        }
+    }
+    if ($lastSlash > 0)
+        $candidates[`size $candidates`] = `substring $pluginPath 1 $lastSlash`;
+
+    $candidates[`size $candidates`] = "C:/Program Files/Autodesk/Maya2027/bin/plug-ins/";
+    $candidates[`size $candidates`] = "D:/titan/client/src/engine/client/application/MayaModern/scripts/";
+
+    for ($i = 0; $i < `size $candidates`; $i++)
+    {
+        string $d = $candidates[$i];
+        if (`filetest -f ($d + "swg_mocap/app.py")`)
+            return $d;
+        if (`filetest -f ($d + "swgMocapSuite.mel")`)
+            return $d;
+    }
+    return "";
+}
+
+global proc swgMocapSuiteShow()
+{
+    string $dir = `swgMocapSuiteFindDir`;
+    if (`size $dir` == 0)
+        error "swgMocapSuite: swg_mocap package not found (Maya2027/bin/plug-ins or repo scripts).";
+
+    python ("import sys\n"
+        + "p = r'''" + $dir + "'''\n"
+        + "if p.endswith('/') or p.endswith('\\\\'):\n"
+        + "    p = p[:-1]\n"
+        + "if p not in sys.path:\n"
+        + "    sys.path.insert(0, p)\n"
+        + "for n in list(sys.modules):\n"
+        + "    if n == 'swg_mocap' or n.startswith('swg_mocap.'):\n"
+        + "        del sys.modules[n]\n"
+        + "from swg_mocap.app import show\n"
+        + "show()\n");
+}

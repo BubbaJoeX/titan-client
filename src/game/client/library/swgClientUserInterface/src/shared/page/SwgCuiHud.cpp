@@ -498,6 +498,16 @@ namespace SwgCuiHudNamespace
 		rect.right  = static_cast<long>(maxScreenVect.x);
 		rect.bottom = static_cast<long>(maxScreenVect.y);
 
+		//-- the camera projects into render-target pixels; selection boxes are widgets in UI-scaled space
+		float const uiScale = CuiPreferences::getUiScaleFactor ();
+		if (uiScale != 1.0f)
+		{
+			rect.left   = static_cast<long>(static_cast<float>(rect.left)   / uiScale);
+			rect.top    = static_cast<long>(static_cast<float>(rect.top)    / uiScale);
+			rect.right  = static_cast<long>(static_cast<float>(rect.right)  / uiScale);
+			rect.bottom = static_cast<long>(static_cast<float>(rect.bottom) / uiScale);
+		}
+
 		//-- fudge factor
 
 		const UIPoint margin (12L, 8L);
@@ -838,6 +848,12 @@ bool SwgCuiHud::OnMessage( UIWidget * const context, const UIMessage & msg)
 	if (msg.Type == UIMessage::LeftMouseDown)
 	{
 		if (SwgCuiDynamicBunkerFloorplan::tryConsumeWorldPlaceClick())
+			return false;
+	}
+
+	if (msg.Type == UIMessage::KeyDown)
+	{
+		if (SwgCuiDynamicBunkerFloorplan::tryConsumeWorldPlaceKey(msg))
 			return false;
 	}
 
@@ -1286,7 +1302,10 @@ void SwgCuiHud::update (float deltaTimeSecs)
 			if (updateCursor || allowLookAtTargetSelection)
 			{
 				worldStart = camera->getPosition_w ();
-				viewDirection = camera->rotate_o2w( camera->reverseProjectInScreenSpace (reticlePoint.x, reticlePoint.y));
+				// the mouse is in UI-scaled space, the camera wants render-target pixels
+				UIPoint reticleScreenPoint (reticlePoint);
+				CuiManager::transformUiPixelsToScreen (reticleScreenPoint);
+				viewDirection = camera->rotate_o2w( camera->reverseProjectInScreenSpace (reticleScreenPoint.x, reticleScreenPoint.y));
 				viewDirection.normalize ();
 
 				worldEnd = worldStart + viewDirection * viewDistance;
@@ -2076,6 +2095,7 @@ void SwgCuiHud::summonRadialMenu(const Unicode::String & params)
 			{
 				Camera * camera = Game::getCamera();
 				UIPoint reticlePoint(UIManager::gUIManager ().GetLastMouseCoord ());
+				CuiManager::transformUiPixelsToScreen (reticlePoint);    // UI-scaled mouse -> render-target pixels
 				static const float viewDistance = ConfigClientGame::getTargetingRange ();
 				Vector worldStart = camera->getPosition_w ();
 				Vector viewDirection = camera->rotate_o2w( camera->reverseProjectInScreenSpace (reticlePoint.x, reticlePoint.y));

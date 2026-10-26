@@ -258,6 +258,7 @@ namespace CuiActions
 	MAKE_ACTION(sendSavedPlayerInterestsToServer);
 	//MAKE_ACTION(tcg);
 	MAKE_ACTION(appearanceTab);
+	MAKE_ACTION(companionTab);
 	MAKE_ACTION(questBuilder);
 	MAKE_ACTION(rating);
 	MAKE_ACTION(commPlayerQuest);

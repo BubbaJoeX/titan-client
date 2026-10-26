@@ -947,7 +947,9 @@ bool SpatialDatabase::queryFloors ( CellProperty const * cell, Segment3d const &
 
 	FloorVec tempResults;
 
-	m_floorTree->findOnSegment( seg.getBegin(), seg.getEnd(), tempResults );
+	// Titan: the floor tree is in world space but seg is in the space of cell, which is not the world for a pob
+	// parked inside another pob's cell (a vessel in a hangar).  The extent test below stays in cell space.
+	m_floorTree->findOnSegment( CollisionUtils::transformToWorld(cell, seg.getBegin()), CollisionUtils::transformToWorld(cell, seg.getEnd()), tempResults );
 
 	for(uint i = 0; i < tempResults.size(); i++)
 	{

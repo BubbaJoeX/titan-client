@@ -270,6 +270,7 @@ bool UITextboxStyle::SetProperty( const UILowerString & Name, const UIString &Va
 		if( NewTextStyle || Value.empty() )
 		{
 			SetTextStyle( State, NewTextStyle );
+			mTextStyleNames[State] = Value;
 			return true;
 		}
 		// Fall through
@@ -333,6 +334,11 @@ bool UITextboxStyle::GetProperty( const UILowerString & Name, UIString &Value ) 
 
 	if( State != UIWidget::LastState )
 	{
+		if( !mTextStyleNames[State].empty() )
+		{
+			Value = mTextStyleNames[State];
+			return true;
+		}
 		if( mTextStyles[State] )
 		{
 			Value = mTextStyles[State]->GetLogicalName();
